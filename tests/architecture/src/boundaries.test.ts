@@ -24,6 +24,8 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['paid-ranking', 'paying-never-changes-ranking', 'modules/assessment/src/application/rank.ts'],
     ['components-tsx', 'components-tsx-only', 'apps/web/src/features/jobs/components/sortJobs.ts'],
     ['raw-pool', 'scoped-tx-only', 'modules/jobs/src/infrastructure/repository.ts'],
+    // SAFETY: mutation check: removed the candidate-site-no-recruiter-session check -> this case failed
+    ['candidate-session', 'candidate-site-no-recruiter-session', 'apps/web/src/app/(candidate)/layout.tsx'],
   ])('%s is reported as %s and names the file', (name, rule, file) => {
     expect(findViolations(fixture(name))).toContainEqual(expect.objectContaining({ rule, file }));
   });
