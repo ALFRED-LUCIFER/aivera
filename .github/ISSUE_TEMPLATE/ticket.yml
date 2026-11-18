@@ -1,0 +1,62 @@
+name: Ticket
+description: A buildable piece of work with Gherkin acceptance criteria (AGENTS.md 2.2)
+title: "[AIV-P0-000] "
+labels: ["type: Task", "status: to do"]
+body:
+  - type: textarea
+    id: meta
+    attributes:
+      label: Metadata
+      value: |
+        | | |
+        |---|---|
+        | Phase | P |
+        | Epic | AIV-P-E |
+        | Journey | J |
+        | Type / priority | Task · MUST |
+        | Roles | |
+        | Estimate | ideal dev-days (at most 2) |
+        | Screens | |
+        | Depends on | |
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What and why. Name the module(s) and feature folder(s) it touches.
+    validations:
+      required: true
+  - type: textarea
+    id: gherkin
+    attributes:
+      label: Acceptance criteria (Gherkin)
+      description: Concrete scenarios with the real copy and numbers from the design. Cover empty, loading, error and 403 states, and every AGENTS.md §1 rule the feature touches.
+      render: gherkin
+      value: |
+        Feature: <capability>
+          As a <role>, I want <goal>, so that <benefit>.
+
+          Scenario: <happy path>
+            Given <context>
+            When <action>
+            Then <outcome>
+
+          Scenario: <edge or failure case>
+            Given <context>
+            When <action>
+            Then <outcome>
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests
+      description: Unit, integration on PostgreSQL, Playwright journey step, axe. Name the safety tests that need a mutation check.
+    validations:
+      required: true
+  - type: textarea
+    id: not-in-ticket
+    attributes:
+      label: Not in this ticket
+      description: What is deliberately left out, and which ticket covers it.

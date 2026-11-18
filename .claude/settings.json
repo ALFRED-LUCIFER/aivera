@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": false
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\"" }]
+      }
+    ]
+  },
+  "autoMode": {
+    "environment": [
+      "**Repository**: github.com/ALFRED-LUCIFER/aivera. The working directory, its worktrees and that remote are the trusted repo. Work is tracked on GitHub Project 2 (owner ALFRED-LUCIFER).",
+      "**Product**: Aivera, evidence-based hiring for the UAE and KSA. It holds candidate CVs, work evidence, contact details and assessments. Rules: AGENTS.md and CLAUDE.md.",
+      "**Cloud**: Azure UAE North, dev environment, synthetic data only. Deploys go through GitHub Actions, never from a laptop.",
+      "**Owner-only actions**: Key Vault writes, infrastructure applies, Entra tenant settings, merging PRs, and anything whose name carries prod or production as a word or name segment.",
+      "**Sensitive data**: candidate personal data never leaves the database and Blob: not in logs, telemetry, URLs, issues, screenshots or external services. All data in the repo and on dev is synthetic (docs/00-product/personas.md).",
+      "**Secrets**: Key Vault in the cloud, an untracked .env.local on a laptop; .env.example holds names only.",
+      "**Protected branch**: main (required checks); never force-push it or commit on it directly."
+    ]
+  }
+}
