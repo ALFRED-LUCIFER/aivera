@@ -29,7 +29,7 @@ export type JobTypeEntry = {
 };
 
 // shortcut: starter competency names are English seed text copied into the recruiter's rubric, not i18n keys; move them
-// to `jobTypes.<key>.starter` when Arabic ships (AIV-P5-007).
+// to `jobTypes.<key>.starter` when the recruiter app ships in Arabic (AIV-P5-009).
 const STARTER_COMPETENCIES: Record<JobType, JobTypeEntry['starterCompetencies']> = {
   software_engineering: [
     'System design in production',
