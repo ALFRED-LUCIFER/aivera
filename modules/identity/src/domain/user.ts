@@ -13,8 +13,8 @@ export type IdTokenIdentity = {
   issuer: string;
   subject: string;
   email: string;
-  /** True only when the provider said so (`email_verified: true`); anything else is unverified. */
-  emailVerified: boolean;
+  /** The `email_verified` claim as sent; `undefined` when absent (see `isEmailVerified`). */
+  emailVerified: boolean | undefined;
   displayName: string | null;
 };
 
@@ -33,6 +33,14 @@ export class IdentityError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * Verified when the token says `email_verified: true`, or when it comes from Aivera's own External ID tenant and says
+ * nothing: that tenant verifies every email before it creates an account and sends no `email_verified` claim
+ * (ADR-009 point 4). An explicit `false` is never trusted, and no other issuer is trusted without the claim.
+ */
+export const isEmailVerified = (token: IdTokenIdentity, trustedIssuer: string): boolean =>
+  token.emailVerified === true || (token.emailVerified === undefined && token.issuer === trustedIssuer);
 
 /** Emails compare case-insensitively; the database enforces the lower-case form (check constraint). */
 export const normalizeEmail = (email: string): string => email.trim().toLowerCase();

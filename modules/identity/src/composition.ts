@@ -6,8 +6,10 @@ import { identityUseCases } from './application/identity.ts';
 import type { IdentityContract } from './contracts/index.ts';
 import { identityStore } from './infrastructure/repository.ts';
 
-export function createIdentity(db: Db): IdentityContract {
+/** `trustedIssuer` is the app's own External ID tenant issuer (ADR-009 point 4). */
+export function createIdentity(db: Db, { trustedIssuer }: { trustedIssuer: string }): IdentityContract {
   return identityUseCases({
+    trustedIssuer,
     inTransaction: (work) => db.transaction((tx) => work(identityStore(tx))),
     newId: () => uuidv7(),
   });

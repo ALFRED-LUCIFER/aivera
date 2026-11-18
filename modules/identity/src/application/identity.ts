@@ -1,4 +1,4 @@
-import { IdentityError, normalizeEmail, type IdTokenIdentity, type User } from '../domain/user.ts';
+import { IdentityError, isEmailVerified, normalizeEmail, type IdTokenIdentity, type User } from '../domain/user.ts';
 
 /** The store a use case sees inside one transaction. `identity` tables are global, not workspace-owned. */
 export type IdentityStore = {
@@ -14,15 +14,17 @@ export type IdentityStore = {
 export type Ports = {
   inTransaction<T>(work: (store: IdentityStore) => Promise<T>): Promise<T>;
   newId(): string;
+  /** Aivera's own External ID tenant issuer, whose emails count as verified without the claim. */
+  trustedIssuer: string;
 };
 
-export function identityUseCases({ inTransaction, newId }: Ports) {
+export function identityUseCases({ inTransaction, newId, trustedIssuer }: Ports) {
   return {
     upsertUserFromIdToken(token: IdTokenIdentity): Promise<User> {
       return inTransaction(async (store) => {
         const known = await store.findByMethod(token.issuer, token.subject);
         // An unverified email never creates or joins a user, so no one can claim an address before its owner does.
-        if (!known && !token.emailVerified) throw new IdentityError('unverified_email');
+        if (!known && !isEmailVerified(token, trustedIssuer)) throw new IdentityError('unverified_email');
         const user =
           known ??
           (await store.findOrInsertByEmail({

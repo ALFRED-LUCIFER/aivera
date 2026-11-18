@@ -25,10 +25,8 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         email: t('signIn.email'),
         passwordNote: t('signIn.passwordNote'),
         signIn: t('signIn.signIn'),
-        emailCode: t('signIn.emailCode'),
         or: t('signIn.or'),
         google: t('signIn.google'),
-        microsoft: t('signIn.microsoft'),
       }}
     />
   );

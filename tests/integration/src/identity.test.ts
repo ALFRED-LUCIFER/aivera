@@ -13,7 +13,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
+// The app's own External ID tenant (trusted without email_verified) and some other issuer (ADR-009 point 4).
 const ISSUER = 'https://tenant.ciamlogin.aivera.example/v2.0';
+const OTHER_ISSUER = 'https://other-idp.aivera.example';
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;
@@ -52,7 +54,7 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 2 });
-  identity = createIdentity(app);
+  identity = createIdentity(app, { trustedIssuer: ISSUER });
 });
 
 afterAll(async () => {
@@ -84,8 +86,8 @@ describe('upsertUserFromIdToken', () => {
     expect(await methodsOf(password.id)).toEqual(['nadia-google', 'nadia-password']);
   });
 
-  // SAFETY: mutation check: removed the `!token.emailVerified` refusal in identityUseCases -> both unverified tests failed
-  it('Scenario: An unverified email never joins an existing account', async () => {
+  // SAFETY: mutation check: removed the `!isEmailVerified(...)` refusal in identityUseCases -> this test, "does not create a user either" and "another issuer" failed
+  it('Scenario: An unverified email never joins an existing account (explicit email_verified false, even from our tenant)', async () => {
     const nadia = await identity.upsertUserFromIdToken(
       token({ subject: 'nadia-password', email: 'nadia@example.com' }),
     );
@@ -102,6 +104,24 @@ describe('upsertUserFromIdToken', () => {
       identity.upsertUserFromIdToken(token({ subject: 'omar-x', email: 'omar@example.com', emailVerified: false })),
     ).rejects.toThrow(IdentityError);
     expect(await usersWith('omar@example.com')).toBe(0);
+  });
+
+  it('our own tenant without an email_verified claim counts as verified: the tenant verifies email at sign-up', async () => {
+    const huda = await identity.upsertUserFromIdToken(
+      token({ subject: 'huda-password', email: 'huda@example.com', emailVerified: undefined }),
+    );
+    expect(await usersWith('huda@example.com')).toBe(1);
+    expect(await methodsOf(huda.id)).toEqual(['huda-password']);
+  });
+
+  // SAFETY: mutation check: isEmailVerified trusted a missing claim from any issuer (dropped the issuer comparison) -> this test failed
+  it('another issuer without an email_verified claim is refused', async () => {
+    await expect(
+      identity.upsertUserFromIdToken(
+        token({ issuer: OTHER_ISSUER, subject: 'faisal-x', email: 'faisal@example.com', emailVerified: undefined }),
+      ),
+    ).rejects.toThrow(IdentityError);
+    expect(await usersWith('faisal@example.com')).toBe(0);
   });
 
   it('updates the display name from the latest sign-in', async () => {

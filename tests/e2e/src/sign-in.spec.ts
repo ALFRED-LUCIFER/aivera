@@ -29,31 +29,23 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
   await desk(page);
 });
 
-test('Scenario: Email one-time code sign-in lands on My desk', async ({ page }) => {
-  await signIn(page, { email: 'nadia@example.com', button: 'Email me a code' });
+// Email one-time code and Microsoft accounts are not offered: the recruiter user flow has email with password and
+// Google only (owner decision on #241; docs/runbooks/recruiter-sign-in.md).
+test('Scenario: Social sign-in with "Continue with Google"', async ({ page }) => {
+  await page.goto('/sign-in');
+  await page.getByRole('button', { name: 'Continue with Google' }).click();
+  // The tenant is asked to go straight to Google (domain_hint).
+  await expect(page.getByText('Provider: google')).toBeVisible();
+  await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
+  await page.getByRole('button', { name: 'Continue' }).click();
   await desk(page);
 });
-
-for (const [button, provider] of [
-  ['Continue with Google', 'google'],
-  ['Continue with Microsoft', 'login.microsoftonline.com'],
-] as const) {
-  test(`Scenario: Social sign-in with "${button}"`, async ({ page }) => {
-    await page.goto('/sign-in');
-    await page.getByRole('button', { name: button }).click();
-    // The tenant is asked to go straight to that provider (domain_hint).
-    await expect(page.getByText(`Provider: ${provider}`)).toBeVisible();
-    await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
-    await page.getByRole('button', { name: 'Continue' }).click();
-    await desk(page);
-  });
-}
 
 test('Scenario: An unverified email never joins an existing account', async ({ page, context }) => {
   await signIn(page, { email: 'omar.agency@example.com' });
   await desk(page);
   await context.clearCookies();
-  await signIn(page, { email: 'omar.agency@example.com', button: 'Continue with Microsoft', verified: false });
+  await signIn(page, { email: 'omar.agency@example.com', button: 'Continue with Google', verified: false });
   await expect(page).toHaveURL(/\/sign-in/);
   await expect(page.getByRole('alert').filter({ hasText: 'Verify your email to continue.' })).toBeVisible();
   await page.goto('/app');
@@ -63,8 +55,10 @@ test('Scenario: An unverified email never joins an existing account', async ({ p
 test('Scenario: There is no company single sign-on button yet', async ({ page }) => {
   await page.goto('/sign-in');
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continue with Microsoft' })).toBeVisible();
   await expect(page.getByText('Continue with single sign-on')).toHaveCount(0);
+  // Only what the user flow really offers.
+  await expect(page.getByText('Email me a code')).toHaveCount(0);
+  await expect(page.getByText('Continue with Microsoft')).toHaveCount(0);
 });
 
 test('Scenario: Open redirects are refused', async ({ page }) => {

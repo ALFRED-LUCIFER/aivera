@@ -10,15 +10,20 @@ AIV-P0-009. Recruiters sign in on the dev External ID tenant through its recruit
 | Tenant id                       | `88c795fc-1018-45f7-8904-75e1c2991b8f`                                                                                                                          |
 | Recruiter app (client) id       | `463fb57b-570d-4384-b914-1078df012bd8`                                                                                                                          |
 | Client secret                   | Key Vault `kv-aivera-dev-3afs7i`, secret `entra-recruiter-client-secret`, expires **2027-11-18** (rotate before then)                                           |
-| User flow                       | `recruiter-signup-signin`, **email with password only**, linked to the recruiter app                                                                            |
+| Session secret                  | Key Vault `kv-aivera-dev-3afs7i`, secret `auth-secret`                                                                                                          |
+| User flow                       | `recruiter-signup-signin`: **email with password** and **Google**, linked to the recruiter app                                                                  |
 | Redirect URIs (Auth.js `entra`) | `http://localhost:3001/api/auth/callback/entra` and `https://ca-aivera-web-dev.greenground-7c8cb7a4.centralindia.azurecontainerapps.io/api/auth/callback/entra` |
 
 The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-75e1c2991b8f/v2.0/.well-known/openid-configuration`, names the issuer `https://88c795fc-1018-45f7-8904-75e1c2991b8f.ciamlogin.com/88c795fc-1018-45f7-8904-75e1c2991b8f/v2.0`: the tenant-id host, not the subdomain. The app expects exactly that issuer in every ID token and reads the metadata from the subdomain host (checked 18 Nov 2026).
 
 ## How the app uses it
 
-- **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`; "Continue with Google" sends `domain_hint=google` and "Continue with Microsoft" sends `domain_hint=login.microsoftonline.com`. Neither provider is in the user flow yet, so the tenant shows its own page.
-- The ID token's `iss` + `sub` become an `identity.sign_in_method`. The user is found by **verified** email: `email_verified: true` in the ID token. A token without it never creates or joins a user ("Verify your email to continue.").
+- **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`, and "Continue with Google" sends `domain_hint=google` so the tenant goes straight to Google.
+- The page offers only what the user flow offers: **email with password** and **Google**. There is no "Email me a code" (one email method per user flow, below) and no "Continue with Microsoft" (it cannot be added to the user flow; a ticket follows for personal Microsoft accounts).
+- The ID token's `iss` + `sub` become an `identity.sign_in_method`, and the user is found by **verified** email (ADR-009 point 4, amended 18 Nov 2026):
+  - `email_verified: true` counts as verified.
+  - So does a token from our tenant's issuer with no `email_verified` claim: the tenant's metadata lists no such claim, but the tenant verifies every email before it creates an account.
+  - An explicit `false`, or any other issuer without `true`, never creates or joins a user ("Verify your email to continue.").
 - The session cookie `__Host-aivera-session` holds only the identity user id, encrypted with `AUTH_SECRET`.
 - With no sign-in settings the app still starts, `/api/health` and `/api/ready` still answer, and the deploy smoke test passes; `/sign-in` says "Sign-in is not set up in this environment yet." and every `/app` page redirects to `/sign-in` (fails closed). `pilot` and `prod` refuse to start without the settings.
 
@@ -36,21 +41,19 @@ The five are all or nothing: a partial set stops the app at start-up, naming onl
 
 ## Owner steps still open
 
-1. **Write `auth-secret`** into `kv-aivera-dev-3afs7i` (`openssl rand -base64 32`). Bicep references it, so an apply without it fails to provision the revision.
-2. **Check the ID token carries `email_verified: true`.** The tenant's metadata `claims_supported` lists `email` but **not** `email_verified`. If the token lacks it, every sign-in is refused with "Verify your email to continue." (fails closed). This needs a decision before Azure dev sign-in works; see the PR.
-3. **Apply `infra/main.bicep`** (web gets the five settings; the app identity already has Key Vault Secrets User). `deploy-dev.yml` updates only the image, so the settings arrive with the apply.
-4. **Wrong-password copy.** The password page belongs to the tenant. Set its error text to "That email and password do not match." under Company branding → Language customization; the default already does not say whether the email exists. Raise the password minimum to 12 characters, per the SignUp copy, if the tenant allows it.
-5. **Optional, when wanted:** add Google and Microsoft to `recruiter-signup-signin`.
-   - **Google** is a built-in provider. Its OAuth client redirect URIs are `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-75e1c2991b8f/federation/oauth2` and `https://aiveradev.ciamlogin.com/aiveradev.onmicrosoft.com/federation/oauth2`.
-   - **Microsoft accounts are not built-in providers in External ID.** The built-in providers are email (password or one-time passcode), Google, Facebook and Apple. Microsoft is added as a custom OIDC provider ([identity providers](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers), [custom OIDC](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-oidc-federation-customers), read 18 Nov 2026).
-     - Personal accounts use the fixed consumers issuer `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0` with well-known endpoint `https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration`.
-     - Client authentication is `client_secret_post`; `client_secret_basic` is not supported.
-     - Work accounts from any company tenant cannot be one provider: a custom provider needs one fixed issuer, and the multi-tenant endpoint issues per-tenant issuers. Each company tenant is its own federation, which is the company SSO of AIV-P1-057.
-     - How sure: high that Microsoft is not built in. Medium on the personal-account setup and its `email_verified` handling. Medium on the work-account limit, which is inferred from the fixed-issuer rule.
+1. **Apply `infra/main.bicep`.** It gives the web app the five settings; the app identity already has Key Vault Secrets User. `deploy-dev.yml` updates only the image, so the settings arrive with the apply. Both Key Vault secrets exist.
+2. **Wrong-password copy.** The password page belongs to the tenant. Set its error text to "That email and password do not match." under Company branding → Language customization; the default already does not say whether the email exists. Raise the password minimum to 12 characters, per the SignUp copy, if the tenant allows it.
+
+## Microsoft accounts
+
+**Microsoft accounts are not built-in providers in External ID.** The built-in providers are email (password or one-time passcode), Google, Facebook and Apple ([identity providers](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers), read 18 Nov 2026). The owner confirmed in the portal that `recruiter-signup-signin` offers only Google to add. "Continue with Microsoft" is therefore not shown.
+
+- **Personal accounts:** a follow-up ticket covers them, as a [custom OIDC provider](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-oidc-federation-customers) on the fixed consumers issuer `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`. Medium confidence that this setup works.
+- **Work accounts from any company tenant:** these cannot be one provider. A custom provider needs one fixed issuer, and the multi-tenant endpoint issues per-tenant issuers. Each company tenant is its own federation, which is the company SSO of AIV-P1-057. Medium confidence: this is inferred from the fixed-issuer rule.
 
 ## Password or code: one per user flow
 
-A user flow's email accounts offer **either** "Email with password" **or** "Email one-time passcode", not both. The [user flow docs](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-user-flow-sign-up-sign-in-customers) say "select the Email Accounts check box, and then select one of these options", and each app has exactly one user flow. `recruiter-signup-signin` uses email with password, so a one-time passcode only verifies the email at sign-up and resets a password. The "Email me a code" button therefore opens the same tenant page as "Sign in". Offering code sign-in needs a product decision; it is not worked around in code.
+A user flow's email accounts offer **either** "Email with password" **or** "Email one-time passcode", not both. The [user flow docs](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-user-flow-sign-up-sign-in-customers) say "select the Email Accounts check box, and then select one of these options", and each app has exactly one user flow. The owner chose email with password. A one-time passcode therefore only verifies the email at sign-up and resets a password, and the sign-in page has no "Email me a code" button.
 
 ## Local
 

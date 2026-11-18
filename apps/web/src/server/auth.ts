@@ -14,12 +14,13 @@ import { env, type WebEnv } from './env';
 export const SESSION_COOKIE = '__Host-aivera-session';
 const EIGHT_HOURS = 8 * 60 * 60;
 
-// The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). Only `email_verified: true` is verified.
+// The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). `email_verified` stays undefined when absent;
+// identity decides what counts as verified (ADR-009 point 4).
 const idTokenClaims = z.object({
   iss: z.string().min(1),
   sub: z.string().min(1),
   email: z.email(),
-  email_verified: z.unknown().transform((v) => v === true),
+  email_verified: z.unknown().transform((v) => (v === undefined ? undefined : v === true)),
   name: z.string().min(1).optional(),
 });
 
@@ -27,7 +28,8 @@ const isDiscovery = (input: string | URL | Request) =>
   (input instanceof Request ? input.url : String(input)).endsWith('/.well-known/openid-configuration');
 
 let identity: IdentityContract | undefined;
-const getIdentity = () => (identity ??= createIdentity(getDb()));
+// Our own tenant's issuer: its emails are verified without the claim.
+const getIdentity = (trustedIssuer: string) => (identity ??= createIdentity(getDb(), { trustedIssuer }));
 
 export const authConfigured = (): boolean => env().auth !== null;
 
@@ -71,7 +73,7 @@ function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
         const claims = idTokenClaims.safeParse(profile);
         if (!claims.success) return false;
         try {
-          const found = await getIdentity().upsertUserFromIdToken({
+          const found = await getIdentity(auth.issuer).upsertUserFromIdToken({
             issuer: claims.data.iss,
             subject: claims.data.sub,
             email: claims.data.email,

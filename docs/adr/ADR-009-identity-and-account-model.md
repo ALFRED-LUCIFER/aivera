@@ -43,6 +43,13 @@ Two identity systems would also mean two sets of user flows, secrets and sign-in
 ### 4. One login, kept apart
 
 - **One account per verified email.** The `identity` module keeps one user per verified email. Each sign-in method (issuer and subject) maps to that user. An unverified email never joins an existing user.
+- **What counts as verified** (amended 18 Nov 2026, owner decision on AIV-P0-009, PR #241).
+  - An email is verified when the ID token says `email_verified: true`.
+  - An email is also verified when the token comes from Aivera's own External ID tenant (issuer `https://<tenant-id>.ciamlogin.com/<tenant-id>/v2.0`) and carries no `email_verified` claim.
+  - Reason: the tenant sends no `email_verified` claim (its metadata does not list one), yet it checks every email before it creates an account. Local accounts prove their email with a one-time code at sign-up, and Google-federated users arrive through the same issuer.
+  - An explicit `email_verified: false` is always refused.
+  - Any other issuer without `email_verified: true` is refused.
+  - An unverified email never creates or joins a user.
 - **Separate sessions.** The recruiter app and the candidate site have separate session cookies (`__Host-aivera-session`, `__Host-aivera-candidate`). Each middleware reads only its own cookie.
 - **Separate data.** Recruiter-side data hangs off workspace memberships (`workspaces`). The candidate's own data hangs off the candidate account (`candidate-accounts`). Both point at the identity user id, and neither reads the other.
 - **Nothing on the recruiter side reveals that a recruiter is also a candidate.** No recruiter-side module imports `candidate-accounts`, and `identity` offers recruiter code no "is a candidate" lookup.

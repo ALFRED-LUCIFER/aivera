@@ -21,7 +21,9 @@ export function safeNext(value: unknown): string {
 export const signInPath = (pathname: string, search: string) =>
   `/sign-in?${new URLSearchParams({ next: `${pathname}${search}` })}`;
 
-export const METHODS = ['password', 'code', 'google', 'microsoft'] as const;
+// Email with password and Google: what the recruiter user flow offers. A user flow has one email method (password,
+// not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md).
+export const METHODS = ['password', 'google'] as const;
 export type Method = (typeof METHODS)[number];
 
 const signInForm = z.object({
@@ -40,15 +42,12 @@ export const parseSignInForm = (form: FormData) =>
   });
 
 /**
- * Authorisation request parameters for the External ID user flow. `domain_hint` skips the tenant's picker straight to
- * Google, or to the Microsoft account provider (a custom OIDC provider whose issuer host is login.microsoftonline.com).
- * Email with password and email one-time code both happen on the tenant's own page, so the app never sees a password.
+ * Authorisation request parameters for the External ID user flow. `domain_hint=google` skips the tenant's picker straight
+ * to Google. Email and password are entered on the tenant's own page, so the app never sees a password.
  */
-// shortcut: "code" opens the password user flow, since an External ID user flow offers one email method (runbook "Password or code"); until the product decision on one-time-code sign-in
 export function authorizationParams(method: Method, email: string | undefined): Record<string, string> {
   const hint: Record<string, string> = email ? { login_hint: email } : {};
   if (method === 'google') return { ...hint, domain_hint: 'google' };
-  if (method === 'microsoft') return { ...hint, domain_hint: 'login.microsoftonline.com' };
   return hint;
 }
 

@@ -5,10 +5,8 @@ export type SignInFormLabels = {
   email: string;
   passwordNote: string;
   signIn: string;
-  emailCode: string;
   or: string;
   google: string;
-  microsoft: string;
 };
 
 export type SignInFormProps = {
@@ -40,15 +38,9 @@ export function SignInForm({ action, next, error, labels }: SignInFormProps) {
         <Button type="submit" name="method" value="password" variant="primary">
           {labels.signIn}
         </Button>
-        <Button type="submit" name="method" value="code">
-          {labels.emailCode}
-        </Button>
         <p className="text-center text-meta text-text-2">{labels.or}</p>
         <Button type="submit" name="method" value="google">
           {labels.google}
-        </Button>
-        <Button type="submit" name="method" value="microsoft">
-          {labels.microsoft}
         </Button>
       </form>
     </main>

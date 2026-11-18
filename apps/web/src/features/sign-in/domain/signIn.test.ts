@@ -51,14 +51,18 @@ describe('sign-in form and request', () => {
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('sends Google and Microsoft straight to their provider, and email methods to the tenant page', () => {
+  it('sends Google straight to its provider, and email and password to the tenant page', () => {
     expect(authorizationParams('google', undefined)).toEqual({ domain_hint: 'google' });
-    expect(authorizationParams('microsoft', 'alex@example.com')).toEqual({
+    expect(authorizationParams('google', 'alex@example.com')).toEqual({
       login_hint: 'alex@example.com',
-      domain_hint: 'login.microsoftonline.com',
+      domain_hint: 'google',
     });
     expect(authorizationParams('password', 'alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
-    expect(authorizationParams('code', undefined)).toEqual({});
+    expect(authorizationParams('password', undefined)).toEqual({});
+  });
+
+  it('refuses the methods the user flow does not offer', () => {
+    for (const method of ['code', 'microsoft']) expect(() => parseSignInForm(form({ method }))).toThrow();
   });
 
   it('maps error codes to messages, and anything unknown to a generic failure', () => {
