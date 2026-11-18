@@ -21,16 +21,16 @@ feat/AIV-P1-002-add-job          → PR (base: main)                      ← bo
 main
 ```
 
-| Step | Command |
-|---|---|
-| Once per machine | `gh extension install github/gh-stack` (agents: `gh skill install github/gh-stack`) |
-| See open stacks before picking a ticket | `gh stack view` / `gh stack checkout` |
-| Start a stack from `main`, or adopt existing branches | `gh stack init feat/AIV-P1-002-add-job` / `gh stack init <bottom> <next> …` |
-| Add the dependent ticket on top | `gh stack add feat/AIV-P1-003-rubric` |
-| Open or update all PRs with the right bases | `gh stack submit` |
-| A lower layer changed (review fix) | commit on that layer, then `gh stack rebase` and `gh stack push` |
-| `main` moved or a layer merged | `gh stack sync` |
-| Owner merges bottom-up | `gh stack merge <pr> --squash` |
+| Step                                                  | Command                                                                             |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Once per machine                                      | `gh extension install github/gh-stack` (agents: `gh skill install github/gh-stack`) |
+| See open stacks before picking a ticket               | `gh stack view` / `gh stack checkout`                                               |
+| Start a stack from `main`, or adopt existing branches | `gh stack init feat/AIV-P1-002-add-job` / `gh stack init <bottom> <next> …`         |
+| Add the dependent ticket on top                       | `gh stack add feat/AIV-P1-003-rubric`                                               |
+| Open or update all PRs with the right bases           | `gh stack submit`                                                                   |
+| A lower layer changed (review fix)                    | commit on that layer, then `gh stack rebase` and `gh stack push`                    |
+| `main` moved or a layer merged                        | `gh stack sync`                                                                     |
+| Owner merges bottom-up                                | `gh stack merge <pr> --squash`                                                      |
 
 Stack branches can live in different worktrees: `gh stack rebase` and `sync` update each clean worktree that owns a branch and stop if one is dirty. Keep the affected worktrees idle while a stack is rebased.
 
