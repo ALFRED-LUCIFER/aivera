@@ -1,3 +1,4 @@
+import { Chip } from './Chip.tsx';
 import { cx } from './cx.ts';
 
 // Foundations and Candidate artboards .score/.hatch. Solid to the proven value, hatched over the range resting on
@@ -151,27 +152,26 @@ export function NeedVsProvenBar(p: NeedVsProvenBarProps) {
       >
         <Track solid={pct(proven)} upTo={pct(claimed)} mark={pct(needed)} />
       </span>
-      {/* Status travels with an icon and a word (DESIGN.md). */}
-      <span
-        className={cx(
-          'inline-flex h-6.5 items-center gap-1.5 rounded-full border ps-1.75 pe-2.25 text-meta font-medium whitespace-nowrap',
-          outcome.ok ? 'border-ok-border bg-ok-bg text-ok-text' : 'border-warn-border bg-warn-bg text-warn-text',
-        )}
+      {/* Status travels with an icon and a word (DESIGN.md), on the shared Chip. */}
+      <Chip
+        tone={outcome.ok ? 'ok' : 'warn'}
+        icon={
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="size-3.5 flex-none"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {outcome.icon}
+          </svg>
+        }
       >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="size-3.5 flex-none"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {outcome.icon}
-        </svg>
         {outcome.label}
-      </span>
+      </Chip>
     </div>
   );
 }
