@@ -44,7 +44,9 @@ describe('web layer lint rules', () => {
     ['alpha/services/ImportsReact.ts', 'eslint(no-restricted-imports)'],
     // AIV-P0-026: hard-coded copy anywhere in a web app or packages/ui, as JSX text or in aria-label, title, placeholder.
     ['test/fixtures/web/src/app/HardCoded.tsx', 'react(jsx-no-literals) at line 3'],
-    ['test/fixtures/web/src/app/HardCodedLabel.tsx', 'react(jsx-no-literals) at line 1'],
+    ['test/fixtures/web/src/app/HardCodedLabel.tsx', 'react(jsx-no-literals) at line 3'], // aria-label
+    ['test/fixtures/web/src/app/HardCodedLabel.tsx', 'react(jsx-no-literals) at line 4'], // placeholder
+    ['test/fixtures/web/src/app/HardCodedLabel.tsx', 'react(jsx-no-literals) at line 5'], // title
   ])('%s is reported with %s', (file, code) => {
     expect(found.get(file)).toContain(code);
   });

@@ -2,7 +2,7 @@ import { createTranslator } from 'use-intl/core';
 import en from '../messages/en.json' with { type: 'json' };
 
 // Adding a language (Arabic, AIV-P5-007) is its locale here plus messages/<locale>.json; components do not change.
-export const locales = ['en'] as const;
+const locales = ['en'] as const;
 export type Locale = (typeof locales)[number];
 export type Messages = typeof en;
 export type Money = { amountMinor: number; currency: string };
@@ -42,15 +42,18 @@ export function withEnglishFallback(locale: string, messages: Catalogue): Messag
   return filled;
 }
 
-/** Server-side t() for pages, route handlers and email templates. The time zone is always explicit (AGENTS.md 3.9). */
-export async function getTranslations(locale: Locale, timeZone: string) {
+/**
+ * The one config for server t() and the client <IntlProvider {...await intlConfig(locale, timeZone)}>, so both print the
+ * same text. The time zone is always explicit, never the machine's or the browser's (AGENTS.md 3.9).
+ */
+export async function intlConfig(locale: Locale, timeZone: string) {
   const catalogue = (await import(`../messages/${locale}.json`, { with: { type: 'json' } })) as { default: Catalogue };
-  return createTranslator({
-    locale: intlLocale(locale),
-    timeZone,
-    formats,
-    messages: withEnglishFallback(locale, catalogue.default),
-  });
+  return { locale: intlLocale(locale), timeZone, formats, messages: withEnglishFallback(locale, catalogue.default) };
+}
+
+/** Server-side t() for pages, route handlers and email templates. */
+export async function getTranslations(locale: Locale, timeZone: string) {
+  return createTranslator(await intlConfig(locale, timeZone));
 }
 
 export const formatDate = (value: Date, locale: Locale, timeZone: string) =>
@@ -63,6 +66,7 @@ export function formatMoney({ amountMinor, currency }: Money, locale: Locale) {
     currency,
     trailingZeroDisplay: 'stripIfInteger',
   });
+  // shortcut: Intl display digits as the minor-unit exponent are right for AED/SAR/KWD/BHD/OMR; use an ISO 4217 minor-unit table when other currencies appear
   return format.format(amountMinor / 10 ** (format.resolvedOptions().maximumFractionDigits ?? 2));
 }
 

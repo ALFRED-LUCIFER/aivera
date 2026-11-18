@@ -9,7 +9,7 @@ Medvya used oxlint with per-glob overrides to enforce front-end layers and desig
 
 ## Decision
 
-1. **oxlint** for linting, with one base config in `packages/config/oxlint/` that every package extends. Layer rules (ADR-003), cross-feature rules, `react/jsx-no-literals` in features, and `no-restricted-imports` for module boundaries live in the base. Warnings fail CI (`--deny-warnings`).
+1. **oxlint** for linting, with one base config in `packages/config/oxlint/` that every package extends. Layer rules (ADR-003), cross-feature rules, `react/jsx-no-literals` across all web code outside test files (JSX text, `aria-label`, `title`, `placeholder`), and `no-restricted-imports` for module boundaries live in the base. Warnings fail CI (`--deny-warnings`).
 2. **TypeScript** `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`; `pnpm typecheck` runs `tsc --noEmit` per package.
 3. **Prettier** for formatting (TypeScript, JSON, Markdown, YAML, CSS), one config at the root.
 4. **lefthook** Git hooks: `pre-commit` runs oxlint and Prettier on staged files; `commit-msg` rejects a message without a ticket key (`AIV-P<n>-<nnn>` or `AIV-P<n>-E<nn>`). Hooks are never bypassed (`--no-verify` is blocked by the Claude guard hook too).
