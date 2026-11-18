@@ -1,0 +1,4 @@
+{
+  "extends": ["../../packages/config/oxlint/web.json"],
+  "ignorePatterns": [".next/**", "next-env.d.ts"]
+}

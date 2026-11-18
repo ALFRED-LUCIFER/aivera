@@ -1,0 +1,76 @@
+/* @aivera/ui theme (DESIGN.md). The app imports Tailwind first, then this file. Utilities read the Case file tokens,
+   so a theme switch (data-theme) changes every component without new classes. */
+@import '@aivera/tokens/tokens.css';
+
+@source './';
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-on-action: var(--on-action);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-hl: var(--hl);
+  --color-hl-text: var(--hl-text);
+  --color-focus: var(--focus);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-text: var(--ok-text);
+  --color-ok-border: var(--ok-border);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-text: var(--warn-text);
+  --color-warn-border: var(--warn-border);
+  --color-err-bg: var(--err-bg);
+  --color-err-text: var(--err-text);
+  --color-err-border: var(--err-border);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+  --color-info-border: var(--info-border);
+
+  --radius-tag: var(--radius-tag);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+
+  --shadow-1: var(--shadow-1);
+  --shadow-pop: var(--shadow-pop);
+
+  --font-sans: var(--font-hanken), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-bricolage), var(--font-hanken), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, Menlo, monospace;
+
+  --text-title: 28px;
+  --text-title--line-height: 36px;
+  --text-title--font-weight: 700;
+  --text-section: 18px;
+  --text-section--line-height: 26px;
+  --text-meta: 13px;
+  --text-meta--line-height: 18px;
+
+  --ease-case: var(--motion-ease);
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--hl);
+    color: var(--hl-text);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}

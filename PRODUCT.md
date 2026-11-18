@@ -4,13 +4,13 @@
 
 ## Who it is for
 
-| Who | What they need from Aivera |
-|---|---|
+| Who                                               | What they need from Aivera                                                                                                                   |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Recruiter** (in-house talent partner or agency) | One place from job description to decision: rubric, inbox, ranking, evidence requests, interviews, decision pack. Fewer interviews per hire. |
-| **Hiring owner** (e.g. Head of Engineering) | Approve the rubric; decide on a shortlist with the evidence in front of them. |
-| **Interviewer** | A scorecard with questions tied to the gaps in each candidate's evidence. |
-| **Client** (agency recruiting) | A shared shortlist with summaries and sources, to answer Interview, Hold or Pass. |
-| **Candidate** | Know what a job needs before applying; be judged on work, not keywords; never rejected by a machine. |
+| **Hiring owner** (e.g. Head of Engineering)       | Approve the rubric; decide on a shortlist with the evidence in front of them.                                                                |
+| **Interviewer**                                   | A scorecard with questions tied to the gaps in each candidate's evidence.                                                                    |
+| **Client** (agency recruiting)                    | A shared shortlist with summaries and sources, to answer Interview, Hold or Pass.                                                            |
+| **Candidate**                                     | Know what a job needs before applying; be judged on work, not keywords; never rejected by a machine.                                         |
 
 The demo cast is synthetic: [`docs/00-product/personas.md`](docs/00-product/personas.md).
 

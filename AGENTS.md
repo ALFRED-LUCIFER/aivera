@@ -115,15 +115,15 @@ When a ticket depends on another ticket that is not merged yet, do not wait and 
 
 ## 8 · Where things are
 
-| Need | Look in |
-|---|---|
-| What to build, acceptance criteria | GitHub issues and [Project 2](https://github.com/users/ALFRED-LUCIFER/projects/2) |
-| Who Aivera is for, principles, surfaces | [PRODUCT.md](PRODUCT.md), [`docs/00-product/`](docs/00-product/) |
-| Design system and screen rules | [DESIGN.md](DESIGN.md), [`docs/01-design/`](docs/01-design/) |
-| User journeys J0–J7 | [`docs/01-design/journeys.md`](docs/01-design/journeys.md) |
-| Modules and how they talk | [`docs/02-architecture/modules.md`](docs/02-architecture/modules.md) |
-| Decisions | [`docs/adr/`](docs/adr/) |
-| Working practice, local setup | [`docs/runbooks/`](docs/runbooks/) |
+| Need                                    | Look in                                                                           |
+| --------------------------------------- | --------------------------------------------------------------------------------- |
+| What to build, acceptance criteria      | GitHub issues and [Project 2](https://github.com/users/ALFRED-LUCIFER/projects/2) |
+| Who Aivera is for, principles, surfaces | [PRODUCT.md](PRODUCT.md), [`docs/00-product/`](docs/00-product/)                  |
+| Design system and screen rules          | [DESIGN.md](DESIGN.md), [`docs/01-design/`](docs/01-design/)                      |
+| User journeys J0–J7                     | [`docs/01-design/journeys.md`](docs/01-design/journeys.md)                        |
+| Modules and how they talk               | [`docs/02-architecture/modules.md`](docs/02-architecture/modules.md)              |
+| Decisions                               | [`docs/adr/`](docs/adr/)                                                          |
+| Working practice, local setup           | [`docs/runbooks/`](docs/runbooks/)                                                |
 
 ## 9 · Repository layout ([ADR-002](docs/adr/ADR-002-repository-layout.md))
 

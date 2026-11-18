@@ -15,22 +15,33 @@ TypeScript end to end on Azure ([ADR-001](docs/adr/ADR-001-technology-stack.md))
 
 ## Local start
 
-The workspace, toolchain and migrations arrive with AIV-P0-002; the commands are listed in [`docs/runbooks/`](docs/runbooks/) once they exist.
+```sh
+pnpm install && pnpm services:up && cp .env.example .env.local   # set the database URLs, see the runbook
+pnpm db:migrate && pnpm dev
+```
+
+Everything else (commands, schema changes, Colima): [`docs/runbooks/local-development.md`](docs/runbooks/local-development.md).
 
 ## Repository structure
 
 Layout and rules: [ADR-002](docs/adr/ADR-002-repository-layout.md). **No empty scaffolding**: a folder is created by the ticket that builds it.
 
-| Path | What | State |
-|---|---|---|
-| `AGENTS.md`, `CLAUDE.md`, `PRODUCT.md`, `DESIGN.md`, `SECURITY.md` | Rules, product, design system | Built (AIV-P0-001) |
-| `docs/` | Product, design journeys, architecture, ADRs, runbooks | Built (AIV-P0-001) |
-| `.claude/` | Claude Code settings, guard hook, `code-reviewer` and `ticket-writer` agents | Built (AIV-P0-001) |
-| `.github/` | PR template, ticket issue template (Gherkin), CODEOWNERS, Dependabot | Built (AIV-P0-001) |
-| `tools/check-links/` | Relative Markdown link check | Built (AIV-P0-001) |
-| `apps/web/` | Next.js app: marketing, recruiter app, candidate site, portal, client view | Planned (AIV-P0-002) |
-| `apps/worker/` | Queue consumers and scheduled jobs | Planned (P0 worker ticket) |
-| `modules/<m>/` | Bounded contexts (`@aivera/<m>`), one PostgreSQL schema each | Planned (per module ticket) |
-| `packages/config`, `tokens`, `ui`, `db` | Shared config, design tokens, design system, database and migrations | Planned (AIV-P0-002) |
-| `tests/architecture`, `tests/integration`, `tests/e2e` | Boundary rules, PostgreSQL tests, journeys J0–J7 | Planned (AIV-P0-002 and journey tickets) |
-| `infra/` | Bicep for Azure UAE North | Planned (P0 infra ticket) |
+| Path                                                                                                                       | What                                                                                               | State                             |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `AGENTS.md`, `CLAUDE.md`, `PRODUCT.md`, `DESIGN.md`, `SECURITY.md`                                                         | Rules, product, design system                                                                      | Built (AIV-P0-001)                |
+| `docs/`                                                                                                                    | Product, design journeys, architecture, ADRs, runbooks                                             | Built (AIV-P0-001)                |
+| `.claude/`                                                                                                                 | Claude Code settings, guard hook, `code-reviewer` and `ticket-writer` agents                       | Built (AIV-P0-001)                |
+| `.github/`                                                                                                                 | PR template, ticket issue template (Gherkin), CODEOWNERS, Dependabot                               | Built (AIV-P0-001)                |
+| `tools/check-links/`, `tools/check-commit-msg/`                                                                            | Markdown link check; ticket key in commit messages                                                 | Built (AIV-P0-001, AIV-P0-002)    |
+| Root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `lefthook.yml`, `docker-compose.yml`, `.github/workflows/pr.yml` | Workspace, tasks, Git hooks, local PostgreSQL, CI                                                  | Built (AIV-P0-002)                |
+| `apps/web/`                                                                                                                | Next.js app: marketing, recruiter app, candidate site, portal, client view. Placeholder page today | Built (AIV-P0-002)                |
+| `apps/worker/`                                                                                                             | Queue consumers and scheduled jobs                                                                 | Planned (P0 worker ticket)        |
+| `modules/<m>/`                                                                                                             | Bounded contexts (`@aivera/<m>`), one PostgreSQL schema each                                       | Planned (per module ticket)       |
+| `packages/config`                                                                                                          | Shared tsconfig, oxlint (base + web layers) and Vitest config                                      | Built (AIV-P0-002)                |
+| `packages/tokens`                                                                                                          | Case file `tokens.json` → `tokens.css`                                                             | Built (AIV-P0-002)                |
+| `packages/ui`                                                                                                              | Design system on Tailwind 4; `Button` so far                                                       | Built (AIV-P0-002)                |
+| `packages/db`                                                                                                              | PostgreSQL client, `withWorkspace`, migration runner and CLI, roles                                | Built (AIV-P0-002)                |
+| `packages/i18n`                                                                                                            | Messages and formatting                                                                            | Planned (P0 design-system ticket) |
+| `tests/architecture`, `tests/integration`                                                                                  | Boundary rules; PostgreSQL tests on Testcontainers                                                 | Built (AIV-P0-002)                |
+| `tests/e2e`                                                                                                                | Playwright journeys J0–J7                                                                          | Planned (first journey ticket)    |
+| `infra/`                                                                                                                   | Bicep for Azure UAE North                                                                          | Planned (P0 infra ticket)         |

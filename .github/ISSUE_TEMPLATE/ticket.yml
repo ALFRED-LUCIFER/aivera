@@ -1,7 +1,7 @@
 name: Ticket
 description: A buildable piece of work with Gherkin acceptance criteria (AGENTS.md 2.2)
-title: "[AIV-P0-000] "
-labels: ["type: Task", "status: to do"]
+title: '[AIV-P0-000] '
+labels: ['type: Task', 'status: to do']
 body:
   - type: textarea
     id: meta

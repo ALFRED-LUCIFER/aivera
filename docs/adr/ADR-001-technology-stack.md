@@ -11,22 +11,22 @@ Aivera needs a recruiter web app, public pages, a candidate site, background wor
 
 TypeScript end to end, on Azure.
 
-| Layer | Choice |
-|---|---|
-| Web | Next.js 16 App Router, React 19, TypeScript 6 (strict) |
-| UI | Tailwind CSS 4, shadcn/ui on Radix, `next/font` (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono), TanStack Query and Table, React Hook Form + Zod, hand-drawn SVG for score charts |
-| Back end | Modules as packages (ADR-002), called from Next.js server actions and route handlers; a Node worker (`apps/worker`) for queued and scheduled jobs. No separate REST API until a second client needs one. |
-| Database | Azure Database for PostgreSQL Flexible Server 17, Drizzle ORM, Drizzle Kit migrations (ADR-004), pgvector for embeddings |
-| AI | Azure AI Foundry (Azure OpenAI models) through the AI SDK `@ai-sdk/azure` (ADR-006); Azure AI Document Intelligence for CVs and PDFs; GitHub API (Octokit) for commit authorship |
-| Messaging | Azure Service Bus (scheduled messages for follow-ups), transactional outbox in PostgreSQL |
-| Files | Azure Blob Storage, direct browser upload with SAS, Defender for Storage malware scanning |
-| Identity | Microsoft Entra ID (recruiter workspaces, multi-tenant SSO); Entra External ID (candidates) |
-| Email | Azure Communication Services Email; Microsoft Graph for messages sent from the recruiter's own mailbox |
-| Payments | Stripe (candidate Plus, AED) |
-| Hosting | Azure Container Apps (web, worker), Azure Front Door (custom domains, portfolio subdomains), Key Vault with managed identity, Application Insights via OpenTelemetry |
-| Infrastructure | Bicep, GitHub Actions |
-| Region | UAE North |
-| Tooling | pnpm 11 workspaces, Turborepo, Node 24 LTS, Vitest, Playwright, Testcontainers, oxlint, Prettier, lefthook (ADR-007) |
+| Layer          | Choice                                                                                                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web            | Next.js 16 App Router, React 19, TypeScript 6 (strict)                                                                                                                                                   |
+| UI             | Tailwind CSS 4, shadcn/ui on Radix, `next/font` (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono), TanStack Query and Table, React Hook Form + Zod, hand-drawn SVG for score charts                  |
+| Back end       | Modules as packages (ADR-002), called from Next.js server actions and route handlers; a Node worker (`apps/worker`) for queued and scheduled jobs. No separate REST API until a second client needs one. |
+| Database       | Azure Database for PostgreSQL Flexible Server 17, Drizzle ORM, Drizzle Kit migrations (ADR-004), pgvector for embeddings                                                                                 |
+| AI             | Azure AI Foundry (Azure OpenAI models) through the AI SDK `@ai-sdk/azure` (ADR-006); Azure AI Document Intelligence for CVs and PDFs; GitHub API (Octokit) for commit authorship                         |
+| Messaging      | Azure Service Bus (scheduled messages for follow-ups), transactional outbox in PostgreSQL                                                                                                                |
+| Files          | Azure Blob Storage, direct browser upload with SAS, Defender for Storage malware scanning                                                                                                                |
+| Identity       | Microsoft Entra ID (recruiter workspaces, multi-tenant SSO); Entra External ID (candidates)                                                                                                              |
+| Email          | Azure Communication Services Email; Microsoft Graph for messages sent from the recruiter's own mailbox                                                                                                   |
+| Payments       | Stripe (candidate Plus, AED)                                                                                                                                                                             |
+| Hosting        | Azure Container Apps (web, worker), Azure Front Door (custom domains, portfolio subdomains), Key Vault with managed identity, Application Insights via OpenTelemetry                                     |
+| Infrastructure | Bicep, GitHub Actions                                                                                                                                                                                    |
+| Region         | UAE North                                                                                                                                                                                                |
+| Tooling        | pnpm 11 workspaces, Turborepo, Node 24 LTS, Vitest, Playwright, Testcontainers, oxlint, Prettier, lefthook (ADR-007)                                                                                     |
 
 ## Consequences
 

@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - modules/*
+  - packages/*
+  - tests/*
+# Build scripts are allow-listed (AGENTS.md 6.4): approve only what needs it.
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  sharp: true
+  '@parcel/watcher': false
+  # Testcontainers' optional SSH and protobuf extras: not needed for a local Docker socket.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+  unrs-resolver: false

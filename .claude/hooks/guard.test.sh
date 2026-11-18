@@ -20,8 +20,10 @@ expect 2 "plus-refspec push to main" '{"tool_name":"Bash","tool_input":{"command
 expect 2 "admin merge" '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 4 --admin --squash"}}'
 expect 2 "drizzle-kit push" '{"tool_name":"Bash","tool_input":{"command":"pnpm drizzle-kit push"}}'
 expect 2 "write .env.local" '{"tool_name":"Write","tool_input":{"file_path":"/x/.env.local"}}'
-existing="$tmp/migrations/0000_init.sql"; mkdir -p "$tmp/migrations"; : > "$existing"
-expect 2 "edit existing migration" "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$existing\"}}"
+existing="$tmp/migrations/0000_init.sql"; mkdir -p "$tmp/migrations"; : > "$existing"; git -C "$tmp" add "$existing"
+expect 2 "edit committed migration" "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$existing\"}}"
+draft="$tmp/migrations/0001_custom.sql"; : > "$draft"
+expect 0 "fill an uncommitted custom migration" "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$draft\"}}"
 expect 0 "new migration file" "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$tmp/migrations/0001_new.sql\"}}"
 expect 0 "normal push of a branch" '{"tool_name":"Bash","tool_input":{"command":"git push -u origin feat/AIV-P0-002-x"}}'
 expect 0 "commit on a branch" "{\"tool_name\":\"Bash\",\"cwd\":\"$repo\",\"tool_input\":{\"command\":\"git commit -m 'AIV-P0-001: x'\"}}"

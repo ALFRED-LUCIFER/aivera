@@ -1,0 +1,23 @@
+{
+  "name": "@aivera/config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./oxlint/base.json": "./oxlint/base.json",
+    "./oxlint/web.json": "./oxlint/web.json",
+    "./vitest": "./vitest/base.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings --ignore-pattern 'test/fixtures/**' .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
