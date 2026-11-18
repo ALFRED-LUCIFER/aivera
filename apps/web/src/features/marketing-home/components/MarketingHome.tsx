@@ -1,6 +1,7 @@
 import { buttonClassName } from '@aivera/ui';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
+import { column } from '../domain/layout.ts';
 import { links } from '../domain/links.ts';
 import { EvidenceCard, type EvidenceCardProps } from './EvidenceCard.tsx';
 
@@ -24,9 +25,6 @@ export type MarketingHomeLabels = {
 };
 
 export type MarketingHomeProps = { labels: MarketingHomeLabels; card: EvidenceCardProps; children?: ReactNode };
-
-/** The page column of the Landing artboard: 1200 px, fluid gutters. */
-export const column = 'mx-auto w-full max-w-300 px-[clamp(20px,4vw,40px)]';
 
 const step = (n: number) => ({ '--mk-step': n }) as CSSProperties;
 
@@ -54,7 +52,11 @@ const navLink =
 /** The website (Landing artboard): header, hero and the sections the page passes as children. */
 export function MarketingHome({ labels: l, card, children }: MarketingHomeProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-bg text-text">
+    <div className="mk-page flex min-h-screen flex-col bg-bg text-text">
+      {/* Without JavaScript nothing waits for a scroll reveal. */}
+      <noscript>
+        <style>{'.mk-reveal{opacity:1!important;transform:none!important}'}</style>
+      </noscript>
       <a
         href="#main"
         className="sr-only rounded-control bg-action px-3 py-2 font-semibold text-on-action focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50"

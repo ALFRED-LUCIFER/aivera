@@ -2,7 +2,7 @@
 
 Source of truth: the "Design system foundations" artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence" (v0.1, 18 Nov 2026). Every screen artboard in that canvas is the spec for its screen; [`docs/01-design/screens.md`](docs/01-design/screens.md) maps them.
 
-**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
+**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** The website alone, as the Landing artboard draws it, also lays it on "evidence" in the headline and on "what they have done" in the claims-tests-work line: both name what Aivera counts as evidence. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
 
 ## Typography
 

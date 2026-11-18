@@ -38,6 +38,36 @@
       "sourceRepo": "hessa.aivera.example/checkout-e2e",
       "sourceCi": "CI history, checked 12 Nov",
       "synthetic": "Illustrative candidate, synthetic data."
+    },
+    "contrast": {
+      "claims": "A CV tells you what someone claims.",
+      "tests": "A test tells you how they do on a test.",
+      "work": "Their work tells you <mark>what they have done</mark>."
+    },
+    "how": {
+      "title": "From job description to a decision you can defend",
+      "steps": {
+        "agree": {
+          "title": "Agree what matters",
+          "body": "Paste the job description. Aivera drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves."
+        },
+        "collect": {
+          "title": "Collect the work",
+          "body": "Repositories, test suites, design files, documents, shipped products. Where a candidate has nothing to show, Aivera asks for a short work sample and labels it as one."
+        },
+        "rank": {
+          "title": "See why each person ranks where they do",
+          "body": "Every score cites its source and says how strong the evidence is. Claims are marked as claims, and count for nothing until something supports them."
+        },
+        "interview": {
+          "title": "Interview only what is unproven",
+          "body": "Each interview gets questions tied to the gaps in that candidate’s evidence. Scorecards move the score, with the reason recorded."
+        },
+        "decide": {
+          "title": "Decide with the pack in front of you",
+          "body": "Strengths, risks and open questions for each shortlisted candidate, on one page. Aivera recommends. You decide."
+        }
+      }
     }
   },
   "candidate": {

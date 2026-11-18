@@ -101,3 +101,28 @@
     clip-path: inset(0);
   }
 }
+
+/* Scroll reveals (Reveal.tsx) never hide content from someone who asked for less motion, or from paper. */
+@media (prefers-reduced-motion: reduce), print {
+  .mk-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.mk-page) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* The contrast line's highlighter (ScrollSweep.tsx): drawn in full until the scroll takes it over. */
+.mk-scroll-sweep {
+  background-color: transparent;
+  background-image: linear-gradient(var(--hl), var(--hl));
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 100% 100%;
+}
+[dir='rtl'] .mk-scroll-sweep {
+  background-position: right center;
+}

@@ -101,3 +101,75 @@ test('the header keyboard path reaches every link in order', async ({ page }) =>
     await expect(page.getByRole('link', { name, exact: true }).first()).toBeFocused();
   }
 });
+
+// J7 step 2: how it works (AIV-P5-002).
+
+test('Scenario: The three-line contrast', async ({ page }) => {
+  await page.goto('/');
+  for (const line of [
+    'A CV tells you what someone claims.',
+    'A test tells you how they do on a test.',
+    'Their work tells you what they have done.',
+  ]) {
+    await page.getByText(line).scrollIntoViewIfNeeded();
+    await expect(page.getByText(line)).toBeVisible();
+  }
+});
+
+test('Scenario Outline: The five steps', async ({ page }) => {
+  await page.goto('/');
+  const section = page.getByRole('region', { name: 'From job description to a decision you can defend' });
+  await expect(section.getByRole('listitem').getByRole('heading', { level: 3 })).toHaveText([
+    'Agree what matters',
+    'Collect the work',
+    'See why each person ranks where they do',
+    'Interview only what is unproven',
+    'Decide with the pack in front of you',
+  ]);
+});
+
+// SAFETY: mutation check: removed tabIndex={-1} from the How it works heading -> this test failed (focus stayed on the link)
+test('Scenario: The header anchor scrolls here and moves focus to the heading', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('banner').getByRole('link', { name: 'How it works' }).click();
+  const heading = page.getByRole('heading', { level: 2, name: 'From job description to a decision you can defend' });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  // Not hidden under the sticky header, once the smooth scroll has settled.
+  const header = await page.getByRole('banner').evaluate((el) => el.getBoundingClientRect().bottom);
+  let last = Number.NaN;
+  await expect
+    .poll(async () => {
+      const top = await heading.evaluate((el) => el.getBoundingClientRect().top);
+      const settled = top === last;
+      last = top;
+      return settled;
+    })
+    .toBe(true);
+  expect(last).toBeGreaterThanOrEqual(header);
+});
+
+/** Every scroll reveal at full opacity: Playwright's toBeVisible and axe both pass over opacity 0, so read it. */
+const revealOpacities = (page: Page) =>
+  page.locator('.mk-reveal').evaluateAll((els) => [...new Set(els.map((el) => getComputedStyle(el).opacity))]);
+
+test.describe('content never waits for a reveal', () => {
+  test.describe('reduced motion', () => {
+    test.use({ reducedMotion: 'reduce' });
+    // SAFETY: mutation check: deleted the reduced-motion .mk-reveal rule in marketing.css -> this test failed (0)
+    test('every section is fully visible without scrolling', async ({ page }) => {
+      await page.goto('/');
+      await expect.poll(() => revealOpacities(page)).toEqual(['1']);
+    });
+  });
+
+  test.describe('no JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+    // SAFETY: mutation check: deleted the <noscript> style in MarketingHome.tsx -> this test failed (0)
+    test('every section is fully visible', async ({ page }) => {
+      await page.goto('/');
+      expect(await revealOpacities(page)).toEqual(['1']);
+      await expect(page.getByRole('heading', { level: 1, name: 'Hire on evidence, not claims.' })).toBeVisible();
+    });
+  });
+});
