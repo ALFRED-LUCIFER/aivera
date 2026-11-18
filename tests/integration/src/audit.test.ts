@@ -122,7 +122,7 @@ describe('Scenario: A score change is recorded with the change', () => {
   });
 });
 
-// AIV-P0-925: Alex Morgan and Huda Saleh are personas; only their ids are stored.
+// AIV-P0-925: synthetic opaque ids for the actor and the member.
 describe('Scenario: Entries written at the same instant come back in insertion order', () => {
   const ALEX = id(102);
 
