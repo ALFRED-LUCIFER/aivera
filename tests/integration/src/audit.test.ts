@@ -53,8 +53,10 @@ const as = (tx: AuditContext['tx'], workspaceId: string): AuditContext => ({
   actor: { type: 'user', id: INTERVIEWER },
 });
 
-const rejectsWith = (code: string, message: string) =>
-  expect.objectContaining({ cause: expect.objectContaining({ code, message }) });
+// Query errors drop the server's message (AIV-P0-902); PostgreSQL's routine tells a privilege refusal from the
+// refuse_change trigger's RAISE, the only RAISE on audit.entry.
+const PERMISSION_DENIED = expect.objectContaining({ code: '42501', routine: 'aclcheck_error' });
+const APPEND_ONLY = expect.objectContaining({ code: '42501', routine: 'exec_stmt_raise' });
 
 describe('the audit schema', () => {
   it('audit.entry is owned by aivera_migrator with row-level security enabled and forced', async () => {
@@ -141,28 +143,26 @@ describe('Scenario Outline: Entries cannot be changed', () => {
     TRUNCATE: sql`truncate audit.entry`,
   };
   // First layer: aivera_app has INSERT and SELECT only.
-  // SAFETY: mutation check: GRANT UPDATE, DELETE, TRUNCATE ON audit.entry TO aivera_app -> these failed (the trigger's message, not permission denied)
+  // SAFETY: mutation check: GRANT UPDATE, DELETE, TRUNCATE ON audit.entry TO aivera_app -> these failed (the trigger's RAISE, not permission denied)
   it.each(Object.keys(statements) as (keyof typeof statements)[])(
     'the application role running %s on audit.entry is refused (42501) and nothing changes',
     async (statement) => {
       const before = await notes();
       expect(before.length).toBeGreaterThan(0);
       await expect(withWorkspace(app, W1, (tx) => tx.execute(statements[statement]))).rejects.toThrow(
-        rejectsWith('42501', 'permission denied for table entry'),
+        PERMISSION_DENIED,
       );
       expect(await notes()).toEqual(before);
     },
   );
 
-  // Second layer, which holds even for the table owner: "audit entries are append-only".
+  // Second layer, which holds even for the table owner: the append-only trigger.
   // SAFETY: mutation check: dropped triggers entry_append_only and entry_no_truncate -> these failed (the owner's statements succeeded)
   it.each(Object.keys(statements) as (keyof typeof statements)[])(
-    'even the owner running %s on audit.entry gets "audit entries are append-only"',
+    "even the owner running %s on audit.entry is refused by the append-only trigger's RAISE (42501, exec_stmt_raise)",
     async (statement) => {
       const before = await notes();
-      await expect(withWorkspace(migrator, W1, (tx) => tx.execute(statements[statement]))).rejects.toThrow(
-        rejectsWith('42501', 'audit entries are append-only'),
-      );
+      await expect(withWorkspace(migrator, W1, (tx) => tx.execute(statements[statement]))).rejects.toThrow(APPEND_ONLY);
       expect(await notes()).toEqual(before);
     },
   );
@@ -178,7 +178,7 @@ describe('Scenario Outline: Entries cannot be changed', () => {
           await tx.execute(sql`set local session_replication_role = replica`);
           await tx.execute(statements[statement]);
         }),
-      ).rejects.toThrow(rejectsWith('42501', 'audit entries are append-only'));
+      ).rejects.toThrow(APPEND_ONLY);
       expect(await notes()).toEqual(before);
     },
   );
@@ -196,7 +196,7 @@ describe('Scenario: A note is required where a person changes an outcome', () =>
         tx.execute(sql`insert into audit.entry (id, workspace_id, occurred_at, actor_type, action, subject_type, subject_id)
           values (${id(901)}, ${W1}, now(), 'system', 'decision.recorded', 'decision', ${decision.id})`),
       ),
-    ).rejects.toThrow(expect.objectContaining({ cause: expect.objectContaining({ code: '23514' }) }));
+    ).rejects.toThrow(expect.objectContaining({ code: '23514' }));
     expect(await audit.listFor(W1, decision)).toEqual([]);
   });
 });
@@ -230,7 +230,7 @@ describe('Scenario: Audit entries are workspace-isolated', () => {
   it("a W1 transaction cannot write an entry into W2 (the policy's WITH CHECK)", async () => {
     await expect(
       withWorkspace(app, W1, (tx) => audit.record(as(tx, W2), { action: 'rubric.approved', subject: DANIEL })),
-    ).rejects.toThrow(expect.objectContaining({ cause: expect.objectContaining({ code: '42501' }) }));
+    ).rejects.toThrow(expect.objectContaining({ code: '42501' }));
   });
 });
 

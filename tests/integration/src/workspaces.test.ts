@@ -155,7 +155,7 @@ describe('Scenario: Members of another workspace are invisible at the database',
           sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w2}, ${user(99)}, 'admin', 'active')`,
         ),
       ),
-    ).rejects.toThrow(expect.objectContaining({ cause: expect.objectContaining({ code: '42501' }) }));
+    ).rejects.toThrow(expect.objectContaining({ code: '42501' }));
   });
 
   it('getMembership does not find a W2 member in W1', async () => {
@@ -184,7 +184,7 @@ describe('Scenario: The application role cannot switch RLS off', () => {
         app.execute(
           sql`alter table ${sql.identifier('workspaces')}.${sql.identifier(table)} disable row level security`,
         ),
-      ).rejects.toThrow(expect.objectContaining({ cause: expect.objectContaining({ code: '42501' }) }));
+      ).rejects.toThrow(expect.objectContaining({ code: '42501' }));
     },
   );
 });
