@@ -1,5 +1,6 @@
 import { IdentityError, type IdentityContract } from '@aivera/identity';
 import { createIdentity } from '@aivera/identity/composition';
+import { log } from '@aivera/observability';
 import NextAuth, { customFetch, type AuthError, type NextAuthConfig } from 'next-auth';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -101,10 +102,9 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
       },
     ],
     // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): codes only.
-    // shortcut: console until the app has a pino logger, AIV-P0-018 (#50); log through it then
     logger: {
-      error: (error) => console.error(`[auth] ${authErrorCode(error)}`),
-      warn: (code) => console.warn(`[auth] ${code}`),
+      error: (error) => log.error({ area: 'auth', code: authErrorCode(error) }, 'auth error'),
+      warn: (code) => log.warn({ area: 'auth', code }, 'auth warning'),
     },
     pages: { signIn: '/sign-in', error: '/sign-in' },
     session: { strategy: 'jwt', maxAge: EIGHT_HOURS },

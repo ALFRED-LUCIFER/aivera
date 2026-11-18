@@ -38,6 +38,9 @@ const attempt = (role: Role, action: Action, resource?: JobResource) =>
 //                      admin  recruiter hiring_owner interviewer
 const MATRIX: Record<Action, [string, string, string, string]> = {
   'job.create': ['YYY', 'YYY', '---', '---'],
+  'job.list': ['YYY', 'YYY', 'YYY', 'YYY'],
+  'job.view': ['YYY', 'YYY', 'Y--', 'Y--'],
+  'rubric.edit': ['YYY', 'YYY', '---', '---'],
   'workspace.settings': ['YYY', '---', '---', '---'],
   'client.manage': ['YYY', 'YYY', '---', '---'],
   'job_access.manage': ['YYY', '---', '---', '---'],

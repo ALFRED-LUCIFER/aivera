@@ -16,4 +16,4 @@ const moduleAt = (name: string): MigratableModule => ({ name, dir: join(repoRoot
  * Every module with migrations, in the order `pnpm db:migrate` applies them (ADR-004): platform modules first
  * (audit, workspaces, identity), then the rest. A module ticket adds its line here in the PR that creates the module.
  */
-export const MODULES: MigratableModule[] = ['audit', 'workspaces', 'identity', 'candidates'].map(moduleAt);
+export const MODULES: MigratableModule[] = ['audit', 'workspaces', 'identity', 'candidates', 'jobs'].map(moduleAt);

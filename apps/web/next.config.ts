@@ -18,9 +18,13 @@ const config: NextConfig = {
     '@aivera/db',
     '@aivera/identity',
     '@aivera/jobs',
+    '@aivera/candidates',
     '@aivera/workspaces',
     '@aivera/audit',
+    '@aivera/observability',
   ],
+  // The distro patches Node modules at runtime and reads files next to itself; bundled, it never starts (AIV-P0-018).
+  serverExternalPackages: ['@azure/monitor-opentelemetry'],
   // `forbidden()` and app/forbidden.tsx: a refused request context renders a 403 page (AIV-P0-010).
   experimental: { authInterrupts: true },
   // The container image runs the standalone server; trace from the repo root so workspace packages are included.

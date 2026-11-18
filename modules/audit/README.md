@@ -1,6 +1,6 @@
 # @aivera/audit
 
-The append-only audit log (AIV-P0-013): who did what to which record, when and why. Score changes, rubric approvals, merges, decisions, assistant-confirmed actions and role changes write here (AGENTS.md 1.5, 3.6). Other code imports only `@aivera/audit` (the `AuditContract` types); apps build it with `createAudit(db, now)` from `@aivera/audit/composition`.
+The append-only audit log (AIV-P0-013): who did what to which record, when and why. Score changes, rubric approvals, job creation, merges, decisions, assistant-confirmed actions and role changes write here (AGENTS.md 1.5, 3.6). Other code imports only `@aivera/audit` (the `AuditContract` types); apps build it with `createAudit(db, now)` from `@aivera/audit/composition`.
 
 - **Table:** `audit.entry` (id, workspace id, `occurred_at` from the injected clock, `seq` (identity, insertion order), actor type and id, action, subject type and id, note, `before` and `after` as JSONB, correlation id). Migrations are tracked in `migrations.audit`; `audit` migrates first (ADR-004).
 - **Writing in the caller's transaction:** `record({ tx, workspaceId, actor }, { action, subject, note, before, after })` inserts through the caller's own `withWorkspace` transaction, so the entry commits or rolls back with the change it records. Make it the last statement before commit.

@@ -3,12 +3,19 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/contracts/index.ts"
+    ".": "./src/contracts/index.ts",
+    "./composition": "./src/composition.ts"
   },
   "scripts": {
     "lint": "oxlint --deny-warnings .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@aivera/audit": "workspace:*",
+    "@aivera/db": "workspace:*",
+    "@aivera/workspaces": "workspace:*",
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
     "@aivera/config": "workspace:*",

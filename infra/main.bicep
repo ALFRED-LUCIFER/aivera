@@ -1,5 +1,5 @@
 // Aivera dev environment (epic AIV-P0-E02). Deployed into Medvya's dev resource group, Central India (ADR-008):
-//   az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha>
+//   az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha> alertEmail=<team address>
 // Owner only (infra/README.md). Never --mode Complete: the resource group is Medvya's, and Complete deletes everything
 // this template does not declare.
 targetScope = 'resourceGroup'
@@ -9,6 +9,9 @@ param githubRepo string = 'ALFRED-LUCIFER/aivera'
 
 @description('GitHub now puts immutable ids in the OIDC subject: owner@ownerId/repo@repoId. Must match exactly or azure/login fails with AADSTS700213.')
 param githubOidcRepo string = 'ALFRED-LUCIFER@95878204/aivera@1462479700'
+
+@description('Email address of the team that receives dev alerts (AIV-P0-018). Not a candidate\'s address.')
+param alertEmail string
 
 @description('Commit SHA tag of the images on ghcr.io to run. Pass the one running now so a redeploy changes nothing.')
 param imageTag string
@@ -74,6 +77,15 @@ module web 'modules/web.bicep' = {
     databaseName: database.outputs.databaseName
     webImage: '${images}/web:${imageTag}'
     commitSha: imageTag
+  }
+}
+
+module alerts 'modules/alerts.bicep' = {
+  name: 'aivera-alerts'
+  params: {
+    tags: tags
+    appInsightsId: foundation.outputs.appInsightsId
+    alertEmail: alertEmail
   }
 }
 
