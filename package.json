@@ -13,6 +13,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e": "pnpm --filter @aivera/tests-e2e e2e",
+    "e2e:update": "pnpm --filter @aivera/tests-e2e e2e:update",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "services:up": "docker compose up -d --wait",

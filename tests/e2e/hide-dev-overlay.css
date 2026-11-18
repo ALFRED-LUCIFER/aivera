@@ -1,0 +1,4 @@
+/* The Next.js dev-tools badge is not part of any component; keep it out of the visual baselines. */
+nextjs-portal {
+  display: none !important;
+}

@@ -13,6 +13,7 @@ next-env.d.ts
 test-results/
 playwright-report/
 blob-report/
+tests/e2e/**/*-darwin.png
 
 # Secrets: only .env.example is committed (AGENTS.md 1.11)
 .env

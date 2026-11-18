@@ -31,6 +31,23 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 | `pnpm --filter @aivera/tokens build`                        | Regenerates `tokens.css` after editing `tokens.json`                                 |
 | `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                          |
 
+## End-to-end tests and the component gallery (Playwright)
+
+`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It exists only under `next dev`; every other build answers 404.
+
+| Command                                                            | What it does                                                                                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `pnpm --filter @aivera/tests-e2e exec playwright install chromium` | Once per machine: the browser Playwright drives                                                                    |
+| `pnpm e2e`                                                         | Starts `next dev` on port 3200 (never 3000) and runs `tests/e2e`: axe in light and dark, browser checks, snapshots |
+| `pnpm e2e -g "forced colours"`                                     | Only the tests whose title matches                                                                                 |
+| `pnpm e2e:update`                                                  | Regenerates the visual baselines in the official Playwright Docker image                                           |
+
+**Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in.
+
+To approve a visual change: run `pnpm e2e:update` (needs Docker; with Colima, nothing else), look at every changed PNG under `tests/e2e/src/*-snapshots/` in the diff, and commit them with the change. Never commit a `*-darwin.png`. When CI fails on a snapshot, download the `playwright-report` artifact from the run and open `index.html` to see the expected, actual and diff images.
+
+When `@playwright/test` is upgraded, change the image tag in `.github/workflows/pr.yml` to the same version and rerun `pnpm e2e:update`.
+
 ## Adding a module's schema change
 
 1. Edit `modules/<m>/src/infrastructure/schema.ts` (a workspace-owned table gets `workspace_id`, `tenantPolicy(name, t.workspaceId)` from `@aivera/db/tenant-policy` (the `nullif(current_setting('app.workspace_id', true), '')::uuid` policy) and `.enableRLS()`; ADR-005).

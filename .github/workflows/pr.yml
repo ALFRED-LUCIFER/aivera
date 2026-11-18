@@ -34,6 +34,33 @@ jobs:
       - run: pnpm check:guard
       - run: pnpm audit --audit-level high
 
+  # Playwright on the @aivera/ui gallery: axe and visual snapshots in light and dark (AIV-P0-025). Should become a
+  # required check (owner setting).
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The image the Linux baselines are made in (`pnpm e2e:update`), so screenshots compare pixel for pixel. It ships
+    # Chromium and its system deps; keep its tag equal to @playwright/test in tests/e2e/package.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # No build scripts: the image has no git for the lefthook hook install, and next dev needs no native builds.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 14
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 5
