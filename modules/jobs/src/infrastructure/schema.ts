@@ -49,6 +49,9 @@ export const job = jobs
       hiringOwnerUserId: uuid('hiring_owner_user_id'),
       stage: text({ enum: JOB_STAGES }).notNull(),
       published: boolean().notNull(),
+      // How the candidate site names the employer; never the client's name (AIV-P1-015).
+      publicDescriptor: text('public_descriptor'),
+      publishedAt: timestamp('published_at', { withTimezone: true }),
       payMinMinor: integer('pay_min_minor'),
       payMaxMinor: integer('pay_max_minor'),
       payCurrency: text('pay_currency'),
@@ -74,6 +77,11 @@ export const job = jobs
       check(
         'job_pay_band_check',
         sql`(${t.payMinMinor} is null and ${t.payMaxMinor} is null and ${t.payCurrency} is null) or (0 <= ${t.payMinMinor} and ${t.payMinMinor} <= ${t.payMaxMinor} and ${t.payCurrency} ~ '^[A-Z]{3}$')`,
+      ),
+      // A published job always has its descriptor and publish time; unpublishing keeps both. 80: PUBLIC_DESCRIPTOR_MAX.
+      check(
+        'job_publication_check',
+        sql`not ${t.published} or (coalesce(btrim(${t.publicDescriptor}), '') <> '' and char_length(${t.publicDescriptor}) <= 80 and ${t.publishedAt} is not null)`,
       ),
       tenantPolicy('job_tenant_isolation', t.workspaceId),
       restrictive('job_scope', jobInScope(t.id, t.clientId)),

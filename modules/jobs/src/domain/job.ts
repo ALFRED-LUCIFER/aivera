@@ -30,6 +30,10 @@ export type Job = {
   hiringOwnerUserId: string | null;
   stage: JobStage;
   published: boolean;
+  /** How the candidate site names the employer, e.g. "A BNPL fintech"; never the client's name. Set on publishing. */
+  publicDescriptor: string | null;
+  /** When the job was last published; null until it first is. */
+  publishedAt: Date | null;
   payBand: PayBand | null;
   /** Demo and test jobs (AGENTS.md 1.1). */
   synthetic: boolean;
@@ -74,6 +78,8 @@ const MESSAGES = {
   level: 'The level needed is a whole number from 1 to 5.',
   not_found: 'That job or rubric version was not found.',
   version_status: 'This rubric version cannot move to that status.',
+  rubric_not_approved: 'Publish after the rubric is approved.',
+  public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
 } as const;
 
 export type JobErrorCode = keyof typeof MESSAGES;
@@ -125,6 +131,48 @@ const TRANSITIONS: Partial<Record<RubricStatus, RubricStatus[]>> = {
 
 export function assertTransition(from: RubricStatus, to: RubricStatus): void {
   if (!TRANSITIONS[from]?.includes(to)) throw new JobError('version_status');
+}
+
+/** The longest public descriptor ("A BNPL fintech", "A retail bank"); job_publication_check repeats it. */
+export const PUBLIC_DESCRIPTOR_MAX = 80;
+
+/**
+ * What the candidate site shows of a job (AIV-P1-015). Built field by field from an allow-list: no weight, no client
+ * name or id, no candidate, no score and no workspace id. The job description is left out: it is free text that can
+ * name the client, and the publish preview does not list it as shown.
+ */
+export type PublicListing = {
+  title: string;
+  jobType: JobType;
+  descriptor: string | null;
+  location: string | null;
+  // shortcut: a pay band has no period; the candidate site reads it as monthly (UAE norm), until a job states one.
+  payBand: PayBand | null;
+  competencies: { name: string; evidenceExpected: string; levelNeeded: number }[];
+};
+
+export const toPublicListing = (job: Job, competencies: readonly Competency[]): PublicListing => ({
+  title: job.title,
+  jobType: job.jobType,
+  descriptor: job.publicDescriptor,
+  location: job.location,
+  payBand: job.payBand && {
+    minMinor: job.payBand.minMinor,
+    maxMinor: job.payBand.maxMinor,
+    currency: job.payBand.currency,
+  },
+  competencies: competencies.map(({ name, evidenceExpected, levelNeeded }) => ({
+    name,
+    evidenceExpected,
+    levelNeeded,
+  })),
+});
+
+/** Throws unless the descriptor is 1 to 80 characters after trimming; returns it trimmed. */
+export function validPublicDescriptor(value: string): string {
+  const descriptor = value.trim();
+  if (!descriptor || descriptor.length > PUBLIC_DESCRIPTOR_MAX) throw new JobError('public_descriptor');
+  return descriptor;
 }
 
 /** A job's rubric as the Jobs list shows it: whether a version is in force, and the latest version's status. */

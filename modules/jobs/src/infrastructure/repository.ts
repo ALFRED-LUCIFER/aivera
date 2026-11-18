@@ -119,6 +119,12 @@ export function jobStore(tx: Tx): JobStore {
         .where(and(eq(competency.workspaceId, version.workspaceId), eq(competency.rubricVersionId, version.id)));
       await insertCompetencies(version.workspaceId, version.id, list);
     },
+    async setPublication(workspaceId, jobId, publication) {
+      await tx
+        .update(job)
+        .set(publication)
+        .where(and(jobWhere(workspaceId), eq(job.id, jobId)));
+    },
     async setStatus(workspaceId, versionId, status, approval) {
       await tx
         .update(rubricVersion)

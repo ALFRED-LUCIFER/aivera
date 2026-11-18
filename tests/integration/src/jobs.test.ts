@@ -572,6 +572,115 @@ describe('Database constraints (AGENTS.md 3.5)', () => {
   });
 });
 
+// AIV-P1-015: publishing a job on the candidate site (the commands; the rubric-page panel waits for AIV-P1-012).
+const sae = () => demoJobs['Senior AI Engineer'] ?? '';
+const publication = (jobId: string) =>
+  rows<{ published: boolean; public_descriptor: string | null }>(
+    ALEX,
+    demo,
+    sql`select published, public_descriptor from jobs.job where id = ${jobId}`,
+  );
+
+describe('Feature: Publish a job on the candidate site', () => {
+  it('Scenario: Preview before publishing: the preview is the approved rubric, and the job stays unpublished', async () => {
+    const listing = await as(RANA, demo, (ctx) => jobs.getPublicListing(ctx, sae()));
+    expect(listing?.title).toBe('Senior AI Engineer');
+    expect(listing?.competencies).toHaveLength(6);
+    expect(await publication(sae())).toEqual([{ published: false, public_descriptor: null }]);
+  });
+
+  it('Scenario: The public listing contains only allowed fields', async () => {
+    // The ticket's pay band; later tests in this file keep it, which none of them checks.
+    await rows(
+      ALEX,
+      demo,
+      sql`update jobs.job set pay_min_minor = 3500000, pay_max_minor = 4800000, pay_currency = 'AED' where id = ${sae()}`,
+    );
+    const listing = await as(RANA, demo, (ctx) => jobs.getPublicListing(ctx, sae()));
+    expect(listing?.payBand).toEqual({ minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' });
+    const approved = await rows<{ name: string; evidenceExpected: string; levelNeeded: number }>(
+      ALEX,
+      demo,
+      sql`select c.name, c.evidence_expected as "evidenceExpected", c.level_needed as "levelNeeded"
+        from jobs.competency c join jobs.rubric_version v on v.id = c.rubric_version_id
+        where v.job_id = ${sae()} and v.status = 'approved' order by c.position`,
+    );
+    expect(listing?.competencies).toEqual(approved);
+    expect(Object.keys(listing ?? {}).toSorted()).toEqual([
+      'competencies',
+      'descriptor',
+      'jobType',
+      'location',
+      'payBand',
+      'title',
+    ]);
+    for (const c of listing?.competencies ?? [])
+      expect(Object.keys(c)).toEqual(['name', 'evidenceExpected', 'levelNeeded']);
+  });
+
+  it('Scenario: A job without an approved rubric cannot be published', async () => {
+    const designer = demoJobs['Senior Product Designer'] ?? '';
+    expect(await as(RANA, demo, (ctx) => jobs.getPublicListing(ctx, designer))).toBeNull();
+    await expect(
+      as(RANA, demo, (ctx) => jobs.publishJob(ctx, designer, { publicDescriptor: 'A design studio' })),
+    ).rejects.toThrow('Publish after the rubric is approved.');
+    expect(await publication(designer)).toEqual([{ published: false, public_descriptor: null }]);
+  });
+
+  // SAFETY: mutation check: removed the client-name check in publishJob -> this test failed (published as "Falcon Pay")
+  it("the descriptor may not carry the client's name", async () => {
+    for (const publicDescriptor of ['Falcon Pay', 'a fintech (falcon pay)'])
+      await expect(as(ALEX, gulf, (ctx) => jobs.publishJob(ctx, j2, { publicDescriptor }))).rejects.toThrow(
+        new JobError('public_descriptor'),
+      );
+  });
+
+  it('a descriptor is required and at most 80 characters', async () => {
+    for (const publicDescriptor of ['  ', 'x'.repeat(81)])
+      await expect(as(RANA, demo, (ctx) => jobs.publishJob(ctx, sae(), { publicDescriptor }))).rejects.toThrow(
+        new JobError('public_descriptor'),
+      );
+  });
+
+  it('Scenario: Publish: the job is listed with its descriptor, and the audit log records who and when', async () => {
+    await as(RANA, demo, (ctx) => jobs.publishJob(ctx, sae(), { publicDescriptor: '  A BNPL fintech ' }));
+    expect(await publication(sae())).toEqual([{ published: true, public_descriptor: 'A BNPL fintech' }]);
+    expect((await as(RANA, demo, (ctx) => jobs.getJob(ctx, sae())))?.publishedAt).toEqual(NOW);
+    const entries = await audit.listFor(demo, { type: 'job', id: sae() });
+    expect(entries.at(-1)).toMatchObject({
+      action: 'job.published',
+      actor: { type: 'user', id: RANA },
+      occurredAt: NOW,
+      after: { published: true, publicDescriptor: 'A BNPL fintech' },
+    });
+  });
+
+  it('Scenario: Unpublish: the job is no longer listed, and unpublishing twice records one entry', async () => {
+    await as(RANA, demo, (ctx) => jobs.unpublishJob(ctx, sae()));
+    await as(RANA, demo, (ctx) => jobs.unpublishJob(ctx, sae()));
+    expect(await publication(sae())).toEqual([{ published: false, public_descriptor: 'A BNPL fintech' }]);
+    const actions = (await audit.listFor(demo, { type: 'job', id: sae() })).map((e) => e.action);
+    expect(actions.filter((a) => a === 'job.unpublished')).toHaveLength(1);
+  });
+
+  // SAFETY: mutation check: gave 'job.publish' to interviewers and hiring owners in permissions.ts -> this test failed
+  it('Scenario: Interviewers cannot publish (nor hiring owners): 403', async () => {
+    await expect(
+      as(LINA, gulf, (ctx) => jobs.publishJob(ctx, j1, { publicDescriptor: 'A logistics platform' })),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(as(LINA, gulf, (ctx) => jobs.unpublishJob(ctx, j1))).rejects.toThrow(ForbiddenError);
+    await expect(as(HEAD, demo, (ctx) => jobs.getPublicListing(ctx, sae()))).rejects.toThrow(ForbiddenError);
+  });
+
+  // SAFETY: mutation check: dropped job_publication_check in the migration -> this test failed (no constraint error)
+  it('the database refuses a published job without a descriptor', async () => {
+    const result = await pgError(
+      rows(ALEX, demo, sql`update jobs.job set published = true, public_descriptor = null where id = ${sae()}`),
+    );
+    expect(result).toEqual({ code: '23514', constraint: 'job_publication_check' });
+  });
+});
+
 const desk = (userId: string, workspaceId: string) => as(userId, workspaceId, (ctx) => jobs.listJobsForDesk(ctx));
 
 // Builds on the scenarios above: Senior Product Designer has only a draft; Senior AI Engineer has version 2 approved and

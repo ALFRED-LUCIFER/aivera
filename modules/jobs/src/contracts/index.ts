@@ -1,7 +1,7 @@
 // The only public surface of @aivera/jobs (ADR-002).
 import type { WorkspaceContext } from '@aivera/workspaces';
-import type { CreateJobInput, SaveRubricInput } from '../application/jobs.ts';
-import type { DeskJob, Job, Rubric, RubricVersion } from '../domain/job.ts';
+import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
+import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
 export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
@@ -14,12 +14,13 @@ export type {
   JobStage,
   NextAction,
   PayBand,
+  PublicListing,
   Rubric,
   RubricState,
   RubricStatus,
   RubricVersion,
 } from '../domain/job.ts';
-export type { CreateJobInput, SaveRubricInput } from '../application/jobs.ts';
+export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 
 /**
  * Emitted when a hiring owner approves a rubric version. Opaque ids only (AGENTS.md 3.1).
@@ -36,10 +37,18 @@ export type RubricApprovedV1 = {
 
 /**
  * Emitted when a job is published to the candidate site. Opaque ids only.
- * shortcut: defined but not yet published; publishing (AIV-P1-015) sends it through the outbox (AIV-P0-014).
+ * shortcut: defined but not yet published; publishJob sends it through the outbox once AIV-P0-014 lands.
  */
 export type JobPublishedV1 = {
   type: 'JobPublished.v1';
+  workspaceId: string;
+  jobId: string;
+  occurredAt: string;
+};
+
+/** Emitted when a job is taken off the candidate site. Opaque ids only. shortcut: as JobPublished.v1. */
+export type JobUnpublishedV1 = {
+  type: 'JobUnpublished.v1';
   workspaceId: string;
   jobId: string;
   occurredAt: string;
@@ -71,4 +80,13 @@ export interface JobsContract {
   submitRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;
   /** Admins and the job's granted hiring owner. The previous approved version becomes superseded. Audited. */
   approveRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;
+  /**
+   * Admins and recruiters: what the candidate site would show (the allow-listed listing, from the approved rubric),
+   * for the publish preview. Null when no rubric version is approved.
+   */
+  getPublicListing(ctx: WorkspaceContext, jobId: string): Promise<PublicListing | null>;
+  /** Admins and recruiters. Needs an approved rubric (`JobError` `rubric_not_approved`). Audited. */
+  publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void>;
+  /** Admins and recruiters. Unpublishing an unpublished job does nothing. Audited. */
+  unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void>;
 }

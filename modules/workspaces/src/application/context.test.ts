@@ -41,6 +41,7 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'job.list': ['YYY', 'YYY', 'YYY', 'YYY'],
   'job.view': ['YYY', 'YYY', 'Y--', 'Y--'],
   'rubric.edit': ['YYY', 'YYY', '---', '---'],
+  'job.publish': ['YYY', 'YYY', '---', '---'],
   'workspace.settings': ['YYY', '---', '---', '---'],
   'client.manage': ['YYY', 'YYY', '---', '---'],
   'job_access.manage': ['YYY', '---', '---', '---'],

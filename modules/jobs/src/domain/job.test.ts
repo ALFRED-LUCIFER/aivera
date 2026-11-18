@@ -6,7 +6,10 @@ import {
   editsInPlace,
   nextAction,
   RUBRIC_STATUSES,
+  toPublicListing,
+  validPublicDescriptor,
   type Competency,
+  type Job,
 } from './job.ts';
 
 const rubric = (weights: number[], level = 3): Competency[] =>
@@ -90,6 +93,55 @@ describe('Pay band', () => {
       { minMinor: 1, maxMinor: 2_147_483_648, currency: 'AED' },
     ])
       expect(() => assertValidPayBand(band)).toThrow('pay band');
+  });
+});
+
+describe('toPublicListing (AIV-P1-015)', () => {
+  const job: Job = {
+    id: '0190d4a2-0000-7000-8000-000000000001',
+    workspaceId: '0190d4a2-0000-7000-8000-000000000002',
+    title: 'Senior AI Engineer',
+    jobType: 'ai_llm_engineering',
+    description: 'Falcon Pay is hiring.',
+    team: 'AI platform',
+    clientId: '0190d4a2-0000-7000-8000-000000000003',
+    location: 'DIFC, Dubai',
+    hiringOwnerUserId: '0190d4a2-0000-7000-8000-000000000004',
+    stage: 'collecting_evidence',
+    published: true,
+    publicDescriptor: 'A BNPL fintech',
+    publishedAt: new Date('2026-11-12T09:00:00.000Z'),
+    payBand: { minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' },
+    synthetic: true,
+    createdBy: '0190d4a2-0000-7000-8000-000000000005',
+    createdAt: new Date('2026-11-01T09:00:00.000Z'),
+  };
+
+  // SAFETY: mutation check: added `weightPercent` to the competency mapping in toPublicListing -> this test failed
+  it('keeps only the allow-listed fields: no weight, client, description, ids or workspace', () => {
+    const listing = toPublicListing(job, rubric([60, 40], 4));
+    expect(listing).toEqual({
+      title: 'Senior AI Engineer',
+      jobType: 'ai_llm_engineering',
+      descriptor: 'A BNPL fintech',
+      location: 'DIFC, Dubai',
+      payBand: { minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' },
+      competencies: [
+        { name: 'Competency 1', evidenceExpected: 'A repository or a document', levelNeeded: 4 },
+        { name: 'Competency 2', evidenceExpected: 'A repository or a document', levelNeeded: 4 },
+      ],
+    });
+    // Nothing private survives anywhere in the object, at any depth.
+    const text = JSON.stringify(listing);
+    for (const hidden of [job.id, job.workspaceId, job.clientId, 'Falcon Pay', 'weight', 'AI platform']) {
+      expect(text).not.toContain(hidden);
+    }
+  });
+
+  it('validPublicDescriptor trims, and refuses blank or over 80 characters', () => {
+    expect(validPublicDescriptor('  A retail bank ')).toBe('A retail bank');
+    expect(() => validPublicDescriptor(' ')).toThrow('Describe the employer for candidates');
+    expect(() => validPublicDescriptor('x'.repeat(81))).toThrow('Describe the employer for candidates');
   });
 });
 

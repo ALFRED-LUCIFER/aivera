@@ -18,6 +18,8 @@ export const ACTIONS = [
   'job.created',
   'member.added',
   'workspace.purged',
+  'job.published',
+  'job.unpublished',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

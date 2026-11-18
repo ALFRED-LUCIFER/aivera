@@ -1,0 +1,3 @@
+ALTER TABLE "jobs"."job" ADD COLUMN "public_descriptor" text;--> statement-breakpoint
+ALTER TABLE "jobs"."job" ADD COLUMN "published_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "jobs"."job" ADD CONSTRAINT "job_publication_check" CHECK (not "jobs"."job"."published" or (coalesce(btrim("jobs"."job"."public_descriptor"), '') <> '' and char_length("jobs"."job"."public_descriptor") <= 80 and "jobs"."job"."published_at" is not null));

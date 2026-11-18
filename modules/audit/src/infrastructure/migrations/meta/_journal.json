@@ -57,6 +57,13 @@
       "when": 1795030138589,
       "tag": "0007_seed_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795030628819,
+      "tag": "0008_job_publication_actions",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,8 @@ export const PERMISSIONS = {
   'job.list': { scope: 'workspace', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'job.view': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'rubric.edit': { scope: 'job', roles: ['admin', 'recruiter'] },
+  // Publishing lists the job on the candidate site (AIV-P1-015).
+  'job.publish': { scope: 'job', roles: ['admin', 'recruiter'] },
   'workspace.settings': { scope: 'workspace', roles: ['admin'] },
   'client.manage': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'job_access.manage': { scope: 'workspace', roles: ['admin'] },
