@@ -56,6 +56,8 @@ Always `--mode Incremental` (the default, written out on purpose): the resource 
 
 `imageTag` is the commit SHA of images already pushed to ghcr.io by `deploy-dev.yml`. On a later run, pass the tag running now so nothing moves: `az containerapp job show -g rg-medvya-dev-in -n job-aivera-migrate-dev --query 'properties.template.containers[0].image' -o tsv`. A second `create` with the same parameters changes nothing (the what-if shows no changes).
 
+The `aivera` database already exists: it was created on 18 Nov 2026 with charset `UTF8` and collation `en_US.utf8`, the same values `modules/database.bicep` declares, so the deployment leaves it unchanged (the what-if should show no change to it).
+
 ### Database roles (once, after the first `create`)
 
 The server has password sign-in off and no public access, so the roles are created from inside the VNet by a server Entra admin (the owner):

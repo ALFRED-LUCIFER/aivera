@@ -16,6 +16,7 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' existing 
 resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
   parent: server
   name: 'aivera'
+  // Exactly the values the database was created with on 18 Nov 2026 (checked read-only): a deployment is a no-op on it.
   properties: { charset: 'UTF8', collation: 'en_US.utf8' }
 }
 
