@@ -7,6 +7,8 @@ import type { AuditContract } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
 import type { CandidatesContract } from '@aivera/candidates';
 import { createCandidates } from '@aivera/candidates/composition';
+import type { JobsContract } from '@aivera/jobs';
+import { createJobs } from '@aivera/jobs/composition';
 import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@aivera/db';
 import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
@@ -107,7 +109,8 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
     const isTenant = (p: Policy) => p.qual === expected && p.check === expected;
     if (!permissive.some((p) => isTenant(p) && p.cmd === 'ALL' && p.roles.join() === 'public'))
       violations.push(`${t.name}: no policy comparing ${keyOf(t.name)} with current_setting('app.workspace_id')`);
-    // Permissive policies are OR-ed, so any looser one opens the table to other workspaces.
+    // Permissive policies are OR-ed, so any looser one opens the table to other workspaces. Restrictive ones (the jobs
+    // job_scope policies) are AND-ed and only narrow access, so they are allowed.
     for (const loose of permissive.filter((p) => !isTenant(p)))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with app.workspace_id`);
   }
@@ -126,23 +129,36 @@ let container: StartedPostgreSqlContainer;
 let admin: Db;
 let app: Db;
 
-type Modules = { workspaces: WorkspacesContract; candidates: CandidatesContract; audit: AuditContract };
+type Modules = {
+  workspaces: WorkspacesContract;
+  candidates: CandidatesContract;
+  jobs: JobsContract;
+  audit: AuditContract;
+};
 const modulesOn = (db: Db): Modules => {
   const audit = createAudit(db);
   const workspaces = createWorkspaces(db, audit);
-  return { audit, workspaces, candidates: createCandidates(workspaces, () => NOW) };
+  return {
+    audit,
+    workspaces,
+    candidates: createCandidates(workspaces, () => NOW),
+    jobs: createJobs(workspaces, audit, () => NOW),
+  };
 };
 
-type Seeded = { workspaceId: string; personId: string; clientId: string; grantId: string };
+type Seeded = { workspaceId: string; personId: string; clientId: string; grantId: string; jobId: string };
 let w1: Seeded;
 let w2: Seeded;
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
 
-/** One workspace with a member, an agency client, a job grant, a candidate and audit entries, through the contracts. */
+/**
+ * One workspace with a member, an agency client, a job with a rubric, a job grant, a candidate and audit entries,
+ * through the contracts. A new tenant table needs a line here (the per-table check says so).
+ */
 async function seed(
-  { workspaces, candidates }: Modules,
+  { workspaces, candidates, jobs }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -162,14 +178,33 @@ async function seed(
   return workspaces.withWorkspace({ userId: creator }, workspaceId, async (ctx) => {
     await workspaces.setWorkspaceType(ctx, 'agency');
     const client = await workspaces.addClient(ctx, `${name} client`);
-    await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: crypto.randomUUID() });
+    const job = await jobs.createJob(ctx, {
+      title: 'Senior AI Engineer',
+      jobType: 'ai_llm_engineering',
+      description: 'Senior AI Engineer, synthetic demo job.',
+      synthetic: true,
+    });
+    await jobs.saveRubric(ctx, job.id, {
+      successStatement: 'Ships reliable work.',
+      competencies: [
+        {
+          name: 'Evaluation design',
+          evidenceExpected: 'A repository or a document',
+          weightPercent: 100,
+          levelNeeded: 4,
+          type: 'mandatory',
+          origin: 'from_description',
+        },
+      ],
+    });
+    await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: job.id });
     const [grant] = await workspaces.listJobGrants(ctx);
     const { personId } = await candidates.findOrCreatePerson(ctx, {
       displayName: person,
       identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
       synthetic: true,
     });
-    return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '' };
+    return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id };
   });
 }
 
@@ -279,6 +314,8 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
   // Discovered, not listed: a new tenant table is checked here, and fails until the seed gives it W2 rows.
   // SAFETY: mutation check: added permissive policy USING (true) on workspaces.client -> this test failed (saw W2 rows)
   it('in W1, a query with no WHERE clause returns only W1 rows, and an update of W2 rows touches none', async () => {
+    // W1's admin's request context, so the job-scope settings the jobs policies read are set as in production.
+    const w1Modules = modulesOn(app);
     for (const { name } of tenantTables(await listTables(admin))) {
       const [schema = '', table = ''] = name.split('.');
       const from = sql`${sql.identifier(schema)}.${sql.identifier(table)}`;
@@ -288,7 +325,7 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       );
       expect(seeded?.n, `${name} has no W2 rows: extend seed() so the leak check reaches it`).toBeGreaterThan(0);
 
-      const keys = await withWorkspace(app, w1.workspaceId, (tx) =>
+      const keys = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute<{ k: string }>(sql`select distinct ${key}::text as k from ${from}`),
       );
       expect(
@@ -297,7 +334,7 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       ).toEqual([w1.workspaceId]);
 
       // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only).
-      const updated = await withWorkspace(app, w1.workspaceId, (tx) =>
+      const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
         (result) => result.count,
@@ -321,6 +358,7 @@ const listedInW1 = async (m: Modules) => ({
     clients: (await m.workspaces.listClients(ctx)).map((r) => r.id),
     grants: (await m.workspaces.listJobGrants(ctx)).map((r) => r.id),
     people: (await m.candidates.listPeople(ctx)).map((r) => r.id),
+    jobs: (await m.jobs.listJobs(ctx)).map((r) => r.id),
   }))),
 });
 
@@ -330,14 +368,13 @@ const onlyW1 = () => ({
   clients: [w1.clientId],
   grants: [w1.grantId],
   people: [w1.personId],
+  jobs: [w1.jobId],
   ownAudit: new Set([w1.workspaceId]),
   w2Audit: [],
 });
 
 describe('Scenario: Repositories return nothing from another workspace', () => {
-  // shortcut: jobs have no repository yet; a job grant stands in for "a job" until AIV-P1-005 adds jobs, whose list
-  // functions then join listedInW1.
-  it('W1 and W2 each have a member, a client, a job grant and a candidate; every W1 list returns only W1 rows', async () => {
+  it('W1 and W2 each have a job, a candidate and a member (plus a client and a grant); every W1 list returns only W1 rows', async () => {
     expect(await listedInW1(modulesOn(app))).toEqual(onlyW1());
   });
 });
@@ -346,6 +383,16 @@ describe("Scenario: Fetching another workspace's record by id finds nothing", ()
   it('W1 asking for the W2 candidate gets null, so no field of it is returned', async () => {
     const m = modulesOn(app);
     expect(await as(m, ALEX, w1.workspaceId, (ctx) => m.candidates.getPerson(ctx, w2.personId))).toBeNull();
+  });
+
+  it('W1 asking for the W2 job, or its approved rubric, gets null', async () => {
+    const m = modulesOn(app);
+    expect(
+      await as(m, ALEX, w1.workspaceId, async (ctx) => [
+        await m.jobs.getJob(ctx, w2.jobId),
+        await m.jobs.getApprovedRubric(ctx, w2.jobId),
+      ]),
+    ).toEqual([null, null]);
   });
 
   it("W1 renaming or archiving W2's client, or revoking W2's grant, finds nothing and changes nothing", async () => {
