@@ -7,7 +7,7 @@ import type { PublicListing } from './job.ts';
 export type PublicJob = Omit<PublicListing, 'descriptor'> & {
   /** Always set: a job is published only with one. */
   descriptor: string;
-  /** The public address, e.g. "senior-ai-engineer-3f9a1c"; never the internal id. */
+  /** The public address, e.g. "senior-ai-engineer-3f9a1c0b2d4e"; never the internal id. */
   slug: string;
   postedAt: Date;
 };
@@ -19,7 +19,7 @@ export type PublicJobLookup = { open: true; job: PublicJob } | { open: false } |
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SLUG_TITLE_MAX = 60;
 
-/** "Senior Product Manager, Payments" + "3f9a1c" -> "senior-product-manager-payments-3f9a1c". */
+/** "Senior Product Manager, Payments" + "3f9a1c0b2d4e" -> "senior-product-manager-payments-3f9a1c0b2d4e". */
 export const slugFor = (title: string, suffix: string): string => {
   const words = title
     .normalize('NFKD')

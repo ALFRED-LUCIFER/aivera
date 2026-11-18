@@ -14,6 +14,8 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_app');
 SELECT 'CREATE ROLE aivera_public NOLOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_public')
 \gexec
 -- Guarded, so a rerun by another Entra admin (without ADMIN on aivera_public) does not stop the script here.
+-- A membership made before INHERIT FALSE was set would keep inheriting: then REVOKE aivera_public FROM aivera_app once
+-- and rerun.
 SELECT 'GRANT aivera_public TO aivera_app WITH INHERIT FALSE, SET TRUE'
 WHERE NOT pg_has_role('aivera_app', 'aivera_public', 'MEMBER')
 \gexec

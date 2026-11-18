@@ -193,15 +193,27 @@ describe('Feature: Public read model of published jobs', () => {
   });
 
   // Catalogue-wide, so a table any module adds later (assessment, intake) is covered without editing this test.
+  // EXECUTE on functions is left to PostgreSQL's default (PUBLIC); the guard there is that no app function is SECURITY
+  // DEFINER, checked below. TEMPORARY on the database is PUBLIC's default too and reaches no app data.
   // SAFETY: mutation check: GRANT SELECT ON workspaces.client TO aivera_public -> this test failed (named the table)
+  // SAFETY: mutation check: GRANT UPDATE (title) ON jobs.public_job TO aivera_public -> this test failed (named the column)
   it("aivera_public's only privileges are USAGE on jobs and SELECT on public_job's public columns", async () => {
     const reach = await admin.execute<{ what: string }>(sql`
+      with public_columns(name) as (values ('slug'), ('title'), ('job_type'), ('descriptor'), ('location'),
+        ('pay_min_minor'), ('pay_max_minor'), ('pay_currency'), ('competencies'), ('posted_at'), ('open'))
       select 'table ' || n.nspname || '.' || c.relname as what
         from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname not in ('pg_catalog', 'information_schema')
-          and (has_table_privilege('aivera_public', c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
-            or (has_any_column_privilege('aivera_public', c.oid, 'SELECT, INSERT, UPDATE, REFERENCES')
-              and c.oid <> 'jobs.public_job'::regclass))
+          and has_table_privilege('aivera_public', c.oid,
+            'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN')
+      union all
+      select 'column ' || n.nspname || '.' || c.relname || '.' || a.attname
+        from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+        where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname not in ('pg_catalog', 'information_schema')
+          and a.attnum > 0 and not a.attisdropped
+          and (has_column_privilege('aivera_public', c.oid, a.attnum, 'INSERT, UPDATE, REFERENCES')
+            or (has_column_privilege('aivera_public', c.oid, a.attnum, 'SELECT')
+              and not (c.oid = 'jobs.public_job'::regclass and a.attname in (select name from public_columns))))
       union all
       select 'sequence ' || n.nspname || '.' || c.relname
         from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -209,14 +221,17 @@ describe('Feature: Public read model of published jobs', () => {
         where case when c.relkind = 'S' then has_sequence_privilege('aivera_public', c.oid, 'USAGE, SELECT, UPDATE') end
       union all
       select 'schema ' || nspname from pg_namespace
-        where nspname not in ('pg_catalog', 'information_schema', 'public') and nspname not like 'pg_%'
-          and has_schema_privilege('aivera_public', nspname, 'USAGE, CREATE') and nspname <> 'jobs'
+        where nspname not in ('pg_catalog', 'information_schema') and nspname not like 'pg_%'
+          and (has_schema_privilege('aivera_public', nspname, 'CREATE')
+            or (has_schema_privilege('aivera_public', nspname, 'USAGE') and nspname not in ('jobs', 'public')))
       union all
-      select 'column jobs.public_job.' || a.attname
-        from pg_attribute a
-        where a.attrelid = 'jobs.public_job'::regclass and a.attnum > 0 and not a.attisdropped
-          and has_column_privilege('aivera_public', 'jobs.public_job'::regclass, a.attnum, 'SELECT')
-          and a.attname in ('workspace_id', 'job_id')
+      select 'database create' where has_database_privilege('aivera_public', current_database(), 'CREATE')
+      union all
+      select 'member of ' || m.roleid::regrole::text from pg_auth_members m where m.member = 'aivera_public'::regrole
+      union all
+      select 'security definer ' || p.oid::regprocedure::text
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where p.prosecdef and n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg_%'
       order by 1`);
     expect([...reach]).toEqual([]);
     expect(await asPublicRole(sql`select slug from jobs.public_job`)).toBe('none');
