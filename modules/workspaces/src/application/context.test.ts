@@ -12,6 +12,7 @@ const J2: JobResource = { jobId: 'job-2' };
 const useCases = (member: Member | null = null) =>
   contextUseCases<null>({
     inWorkspace: (_workspaceId, work) => work({ findMember: async () => member } as unknown as WorkspaceStore, null),
+    storeFor: () => ({}) as WorkspaceStore,
     grants: { covers: async (_ctx, resource) => resource.jobId === J1.jobId },
     active: { get: async () => null, set: async () => {} },
   });

@@ -21,6 +21,7 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
     ...workspacesUseCases({ inWorkspace, newId: () => uuidv7() }),
     ...contextUseCases({
       inWorkspace,
+      storeFor: (tx) => workspaceStore(tx, audit),
       grants: noJobGrants,
       active: {
         get: (userId) => db.transaction((tx) => activeWorkspaceStore(tx).get(userId)),

@@ -1,4 +1,5 @@
 import { createAudit } from '@aivera/audit/composition';
+import type { IdentityContract } from '@aivera/identity';
 import { createIdentity } from '@aivera/identity/composition';
 import {
   ForbiddenError,
@@ -10,6 +11,7 @@ import {
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
+import type { z } from 'zod';
 import { getSessionUserId } from './auth';
 import { getDb } from './db';
 
@@ -17,7 +19,9 @@ import { getDb } from './db';
 // signed-in user's active workspace, which is held server-side. The browser never names the workspace.
 
 let workspaces: WorkspacesContract | undefined;
-export const getWorkspaces = () => (workspaces ??= createWorkspaces(getDb(), createAudit(getDb())));
+const getWorkspaces = () => (workspaces ??= createWorkspaces(getDb(), createAudit(getDb())));
+let identity: IdentityContract | undefined;
+const getIdentity = () => (identity ??= createIdentity(getDb()));
 
 /**
  * Runs `fn` in the signed-in user's active workspace. No session goes to sign-in; no active workspace yet gives
@@ -37,18 +41,20 @@ export async function inActiveWorkspace<T>(fn: (ctx: WorkspaceContext) => Promis
 }
 
 /**
- * Wraps a server action or route handler: the active workspace's context, then `authorize(action, resource)`, then
- * `handler`. A refusal renders the 403 page ("You do not have access to this. Ask your workspace admin.").
- * `resource` names the record's job for job-scoped actions; it comes from the validated input, never from the role.
+ * Wraps a server action or route handler: validate the input with `input` (AGENTS.md 3.7), open the active workspace's
+ * context, `authorize(action, resource)`, then run `handler`. A refusal renders the 403 page ("You do not have access
+ * to this. Ask your workspace admin."). For a job-scoped action `resource` loads the job of the stored record through
+ * `ctx.tx`; it must never take the job id from the request, or a grant on one job would open another job's records.
  */
 export function workspaceAction<Input, Result>(
   action: Action,
   handler: (ctx: WorkspaceContext, input: Input) => Promise<Result>,
-  options: { resource?: (input: Input) => JobResource } = {},
+  options: { input: z.ZodType<Input>; resource?: (ctx: WorkspaceContext, input: Input) => Promise<JobResource> },
 ): (input: Input) => Promise<Result> {
-  return async (input) => {
+  return async (raw) => {
+    const input = options.input.parse(raw);
     const result = await inActiveWorkspace(async (ctx) => {
-      await getWorkspaces().authorize(ctx, action, options.resource?.(input));
+      await getWorkspaces().authorize(ctx, action, await options.resource?.(ctx, input));
       return handler(ctx, input);
     });
     if (!result) forbidden();
@@ -58,13 +64,14 @@ export function workspaceAction<Input, Result>(
 
 /** The signed-in member as the shell shows them, or null when they belong to no workspace yet. Once per request. */
 export const currentMembership = cache(async () => {
-  const result = await inActiveWorkspace(async ({ userId, workspaceId, role }) => ({ userId, workspaceId, role }));
+  const result = await inActiveWorkspace(async (ctx) => ({
+    userId: ctx.userId,
+    role: ctx.role,
+    workspace: await getWorkspaces().getWorkspace(ctx),
+  }));
   if (!result) return null;
-  const { userId, workspaceId, role } = result.value;
-  const [user, workspace] = await Promise.all([
-    createIdentity(getDb()).getUser(userId),
-    getWorkspaces().getWorkspace(workspaceId),
-  ]);
+  const { userId, role, workspace } = result.value;
+  const user = await getIdentity().getUser(userId);
   if (!user || !workspace) forbidden();
   return { name: user.displayName ?? user.email, role, synthetic: workspace.synthetic };
 });

@@ -1,5 +1,5 @@
 import { ForbiddenError, JOB_SCOPED_ROLES, PERMISSIONS, type Action, type JobResource } from '../domain/permissions.ts';
-import type { Role } from '../domain/workspace.ts';
+import type { Role, Workspace } from '../domain/workspace.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
 /** What every server action, route handler and worker job runs with: one workspace, its scoped transaction. */
@@ -21,11 +21,13 @@ export type ActiveWorkspaces = {
 
 export type ContextPorts<Tx> = {
   inWorkspace<T>(workspaceId: string, work: (store: WorkspaceStore, tx: Tx) => Promise<T>): Promise<T>;
+  /** The store over a context's already-scoped transaction. */
+  storeFor(tx: Tx): WorkspaceStore;
   grants: JobGrants<Tx>;
   active: ActiveWorkspaces;
 };
 
-export function contextUseCases<Tx>({ inWorkspace, grants, active }: ContextPorts<Tx>) {
+export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: ContextPorts<Tx>) {
   return {
     /**
      * Runs `fn` in `workspaceId`'s scoped transaction, after checking in that same transaction that the user is an
@@ -39,7 +41,14 @@ export function contextUseCases<Tx>({ inWorkspace, grants, active }: ContextPort
       });
     },
 
-    /** Throws `ForbiddenError` unless the context's role, and for job-scoped roles a job grant, allows `action`. */
+    /** The context's workspace, read in its checked transaction. */
+    getWorkspace: (ctx: WorkspaceContext<Tx>): Promise<Workspace | null> =>
+      storeFor(ctx.tx).findWorkspace(ctx.workspaceId),
+
+    /**
+     * Throws `ForbiddenError` unless the context's role, and for job-scoped roles a job grant, allows `action`.
+     * `ctx` must come from `withWorkspace`, which loaded the role from the member row.
+     */
     async authorize(ctx: WorkspaceContext<Tx>, action: Action, resource?: JobResource): Promise<void> {
       const permission = PERMISSIONS[action];
       if (!(permission.roles as readonly Role[]).includes(ctx.role)) throw new ForbiddenError();

@@ -115,6 +115,7 @@ describe('Scenario: Creating a workspace makes the creator its admin', () => {
       role: 'admin',
       status: 'active',
     });
+    expect(await workspaces.activeWorkspace(ALEX)).toBe(created.id);
   });
 });
 
@@ -342,7 +343,7 @@ describe('Scenario: Switching workspace re-checks membership', () => {
     const own = (await newWorkspace('Nadia Freelance', nadia.userId)).id;
     const gulf = (await newWorkspace('Gulf Talent Partners')).id;
     await addMember(gulf, nadia.userId, 'recruiter');
-    await workspaces.switchWorkspace(nadia, own);
+    expect(await workspaces.activeWorkspace(nadia.userId)).toBe(own); // the creator lands in a new workspace
 
     await workspaces.switchWorkspace(nadia, gulf);
     const active = await workspaces.activeWorkspace(nadia.userId);

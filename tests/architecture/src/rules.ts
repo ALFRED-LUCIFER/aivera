@@ -10,6 +10,8 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   intake: ['billing', 'portfolio'],
 };
 
+// shortcut: catches named imports of Db or createDb only, not `import * as` or a direct postgres/drizzle client; widen it
+// if a module ever needs another way to reach the database.
 const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);

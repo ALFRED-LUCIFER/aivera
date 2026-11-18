@@ -7,7 +7,7 @@ import type { Member, Workspace } from '../domain/workspace.ts';
 
 export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
 export type { Member, MemberStatus, Role, Workspace, WorkspaceErrorCode } from '../domain/workspace.ts';
-export { ForbiddenError, PERMISSIONS } from '../domain/permissions.ts';
+export { ForbiddenError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
 export type { Session } from '../application/context.ts';
 export type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
@@ -17,18 +17,18 @@ export type WorkspaceContext = Context<Tx>;
 
 /** Workspace ids come from the request context, never from client input (ADR-005). */
 export interface WorkspacesContract {
-  /** Creates the workspace and makes the creator its active admin, in one transaction. */
+  /** Creates the workspace, makes the creator its active admin and their active workspace, in one transaction. */
   createWorkspace(input: CreateWorkspaceInput): Promise<Workspace>;
   /** The user's active membership of the workspace; null when they are not a member, or are invited or removed. */
   getMembership(userId: string, workspaceId: string): Promise<Member | null>;
-  /** Call only after the request context checked membership. */
-  getWorkspace(workspaceId: string): Promise<Workspace | null>;
   listMembers(workspaceId: string): Promise<Member[]>;
   /** Admins only; refuses to remove the last admin. Throws `WorkspaceError` (`forbidden`, `not_found`, `last_admin`). */
   changeRole(input: ChangeRoleInput): Promise<void>;
 
   /** Runs `fn` in the workspace's scoped transaction if the user is an active member; otherwise `ForbiddenError`. */
   withWorkspace<T>(session: Session, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>): Promise<T>;
+  /** The context's workspace, read in its checked transaction. */
+  getWorkspace(ctx: WorkspaceContext): Promise<Workspace | null>;
   /** Throws `ForbiddenError` unless the role allows `action`; job-scoped roles also need a grant on `resource`. */
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** The user's active workspace id, or null when they have none yet. */

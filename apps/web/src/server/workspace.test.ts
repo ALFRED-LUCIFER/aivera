@@ -1,5 +1,6 @@
 import { ForbiddenError, type WorkspaceContext } from '@aivera/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { workspaceAction } from './workspace.ts';
 
 const W1 = '0190d4a2-0000-7000-8000-000000000001';
@@ -25,8 +26,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 const ctx: WorkspaceContext = { userId: 'u1', workspaceId: W1, role: 'interviewer', tx: {} as WorkspaceContext['tx'] };
-const handler = vi.fn(async (_ctx: WorkspaceContext, input: { jobId: string }) => `ok ${input.jobId}`);
-const viewCandidate = workspaceAction('candidate.view', handler, { resource: ({ jobId }) => ({ jobId }) });
+const handler = vi.fn(async (_ctx: WorkspaceContext, input: { candidateId: string }) => `ok ${input.candidateId}`);
+// Stands in for a lookup of the stored record's job through ctx.tx: candidate C2 is on job J2.
+const jobOf = vi.fn(async (_ctx: WorkspaceContext, { candidateId }: { candidateId: string }) => ({
+  jobId: candidateId === 'C2' ? 'J2' : 'J1',
+}));
+const viewCandidate = workspaceAction('candidate.view', handler, {
+  input: z.object({ candidateId: z.string() }),
+  resource: jobOf,
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,29 +45,36 @@ beforeEach(() => {
 });
 
 describe('workspaceAction', () => {
-  it('runs the handler in the active workspace after authorising the action on the named job', async () => {
-    expect(await viewCandidate({ jobId: 'J1' })).toBe('ok J1');
+  it("runs the handler in the active workspace after authorising the action on the record's job", async () => {
+    expect(await viewCandidate({ candidateId: 'C2' })).toBe('ok C2');
     expect(fake.withWorkspace).toHaveBeenCalledWith({ userId: 'u1' }, W1, expect.any(Function));
-    expect(fake.authorize).toHaveBeenCalledWith(ctx, 'candidate.view', { jobId: 'J1' });
+    expect(jobOf).toHaveBeenCalledWith(ctx, { candidateId: 'C2' });
+    expect(fake.authorize).toHaveBeenCalledWith(ctx, 'candidate.view', { jobId: 'J2' });
+  });
+
+  it('rejects input that fails its schema before opening any workspace', async () => {
+    await expect(viewCandidate({ candidateId: 7 } as unknown as { candidateId: string })).rejects.toThrow();
+    expect(fake.activeWorkspace).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
   });
 
   // SAFETY: mutation check: dropped the authorize call from workspaceAction -> this test failed
   it('a refused action renders the 403 page and never runs the handler', async () => {
     fake.authorize.mockRejectedValue(new ForbiddenError());
-    await expect(viewCandidate({ jobId: 'J2' })).rejects.toThrow('403');
+    await expect(viewCandidate({ candidateId: 'C2' })).rejects.toThrow('403');
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('a user who is not a member of the active workspace gets the 403 page', async () => {
     fake.withWorkspace.mockRejectedValue(new ForbiddenError());
-    await expect(viewCandidate({ jobId: 'J1' })).rejects.toThrow('403');
+    await expect(viewCandidate({ candidateId: 'C1' })).rejects.toThrow('403');
   });
 
   it('no active workspace is 403, and no session goes to sign-in', async () => {
     fake.activeWorkspace.mockResolvedValue(null);
-    await expect(viewCandidate({ jobId: 'J1' })).rejects.toThrow('403');
+    await expect(viewCandidate({ candidateId: 'C1' })).rejects.toThrow('403');
     session.mockResolvedValue(null);
-    await expect(viewCandidate({ jobId: 'J1' })).rejects.toThrow('NEXT_REDIRECT;/sign-in');
+    await expect(viewCandidate({ candidateId: 'C1' })).rejects.toThrow('NEXT_REDIRECT;/sign-in');
     expect(handler).not.toHaveBeenCalled();
   });
 });

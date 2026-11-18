@@ -29,6 +29,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId));
       return row ?? null;
     },
+    setActiveWorkspace: (userId, workspaceId) => activeWorkspaceStore(tx).set(userId, workspaceId),
     async insertMember(values) {
       await tx.insert(member).values(values);
     },
