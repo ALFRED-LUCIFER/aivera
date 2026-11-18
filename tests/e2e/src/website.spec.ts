@@ -101,3 +101,44 @@ test('the header keyboard path reaches every link in order', async ({ page }) =>
     await expect(page.getByRole('link', { name, exact: true }).first()).toBeFocused();
   }
 });
+
+// J7 step 2: how it works (AIV-P5-002).
+
+test('Scenario: The three-line contrast', async ({ page }) => {
+  await page.goto('/');
+  for (const line of [
+    'A CV tells you what someone claims.',
+    'A test tells you how they do on a test.',
+    'Their work tells you what they have done.',
+  ]) {
+    await page.getByText(line).scrollIntoViewIfNeeded();
+    await expect(page.getByText(line)).toBeVisible();
+  }
+});
+
+test('Scenario Outline: The five steps', async ({ page }) => {
+  await page.goto('/');
+  const section = page.getByRole('region', { name: 'From job description to a decision you can defend' });
+  await expect(section.getByRole('listitem').getByRole('heading', { level: 3 })).toHaveText([
+    'Agree what matters',
+    'Collect the work',
+    'See why each person ranks where they do',
+    'Interview only what is unproven',
+    'Decide with the pack in front of you',
+  ]);
+});
+
+// SAFETY: mutation check: removed tabIndex={-1} from the How it works heading -> this test failed (focus stayed on the link)
+test('Scenario: The header anchor scrolls here and moves focus to the heading', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('banner').getByRole('link', { name: 'How it works' }).click();
+  const heading = page.getByRole('heading', { level: 2, name: 'From job description to a decision you can defend' });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  // Not hidden under the sticky header.
+  const [top, header] = await Promise.all([
+    heading.evaluate((el) => el.getBoundingClientRect().top),
+    page.getByRole('banner').evaluate((el) => el.getBoundingClientRect().bottom),
+  ]);
+  expect(top).toBeGreaterThanOrEqual(header);
+});

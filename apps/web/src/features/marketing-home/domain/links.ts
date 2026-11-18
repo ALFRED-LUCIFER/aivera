@@ -10,3 +10,6 @@ export const links = {
   roles: '#roles',
   trust: '#why-trust-it',
 } as const;
+
+/** The five "How it works" steps, in order; each is `home.how.steps.<key>.title` and `.body` in packages/i18n. */
+export const howSteps = ['agree', 'collect', 'rank', 'interview', 'decide'] as const;

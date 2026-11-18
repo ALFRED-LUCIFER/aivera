@@ -1,13 +1,18 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { ReactNode } from 'react';
+import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
+import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
+import { howSteps } from '@/features/marketing-home/domain/links.ts';
 // The website's motion stylesheet: here, because a feature's components/ holds .tsx only (ADR-003).
 import './marketing.css';
 
 const mark = (chunks: ReactNode) => (
   <mark className="mk-sweep rounded-tag bg-hl px-2 text-hl-text box-decoration-clone">{chunks}</mark>
 );
+
+const sweep = (chunks: ReactNode) => <ScrollSweep>{chunks}</ScrollSweep>;
 
 // Public: the website (AIV-P5-001). It reads no session and no candidate data.
 export default async function WebsitePage() {
@@ -56,6 +61,15 @@ export default async function WebsitePage() {
           synthetic: t('home.card.synthetic'),
         },
       }}
-    />
+    >
+      <HowItWorks
+        contrast={[t('home.contrast.claims'), t('home.contrast.tests'), t.rich('home.contrast.work', { mark: sweep })]}
+        title={t('home.how.title')}
+        steps={howSteps.map((key) => ({
+          title: t(`home.how.steps.${key}.title`),
+          body: t(`home.how.steps.${key}.body`),
+        }))}
+      />
+    </MarketingHome>
   );
 }
