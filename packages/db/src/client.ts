@@ -60,12 +60,12 @@ redactErrors(PostgresJsTransaction.prototype, 'transaction');
 // shortcut: $client (raw postgres-js) is not redacted; use it only for role setup and end(); add a lint restriction once app code needs raw SQL
 /**
  * A Drizzle client over postgres-js. The caller owns the connection and closes it with `$client.end()`.
- * In Azure (a managed identity endpoint and no password in the URL) it signs in with an Entra token per connection.
+ * A URL without a password signs in with the managed identity's Entra token (Azure, ADR-008), always over verified
+ * TLS because the token travels as the password. Without an identity endpoint the first connection fails clearly.
  */
 export function createDb(url: string, options: { max?: number } = {}): Db {
-  const useEntra = !new URL(url).password && process.env['IDENTITY_ENDPOINT'];
-  const password = useEntra ? () => entraToken() : undefined;
-  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...(password && { password }) }));
+  const entra = new URL(url).password ? {} : { password: () => entraToken(), ssl: 'verify-full' as const };
+  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...entra }));
 }
 
 /** True when `select 1` answers within `timeoutMs`; never throws (readiness probes). */
