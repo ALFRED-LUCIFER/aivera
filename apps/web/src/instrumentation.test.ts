@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { register } from './instrumentation';
 
-const initTelemetry = vi.hoisted(() => vi.fn());
+const { initTelemetry, registerPersonalDataKeys } = vi.hoisted(() => ({
+  initTelemetry: vi.fn(),
+  registerPersonalDataKeys: vi.fn(),
+}));
 vi.mock('@aivera/observability/init', () => ({ initTelemetry }));
+vi.mock('@aivera/observability', () => ({ registerPersonalDataKeys }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -36,5 +40,6 @@ describe('server start-up (instrumentation register)', () => {
     await register();
 
     expect(initTelemetry).toHaveBeenCalledWith('web', 'InstrumentationKey=00000000-0000-0000-0000-000000000000');
+    expect(registerPersonalDataKeys).toHaveBeenCalledWith(expect.arrayContaining(['displayName', 'emails', 'phones']));
   });
 });

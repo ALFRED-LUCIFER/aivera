@@ -3,6 +3,9 @@
 export async function register(): Promise<void> {
   if (process.env['NEXT_RUNTIME'] !== 'nodejs') return;
   const config = (await import('./server/checkEnvOnStart')).checkEnvOnStart();
-  if (config)
-    (await import('@aivera/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
+  if (!config) return;
+  // The modules' personal-data field names are redacted in logs and telemetry even where the allowlist would keep them.
+  const { registerPersonalDataKeys } = await import('@aivera/observability');
+  registerPersonalDataKeys((await import('@aivera/candidates')).PERSONAL_DATA_FIELDS);
+  (await import('@aivera/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
 }

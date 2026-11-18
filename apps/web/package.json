@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aivera/audit": "workspace:*",
+    "@aivera/candidates": "workspace:*",
     "@aivera/db": "workspace:*",
     "@aivera/i18n": "workspace:*",
     "@aivera/identity": "workspace:*",
