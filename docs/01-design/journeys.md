@@ -8,9 +8,9 @@ Not user-visible. Repository rules, toolchain, migrations, CI, Azure dev environ
 
 ## J1 Workspace and first job (recruiter)
 
-1. Create a workspace (name, work email, company, what they hire for most, password or SSO) → lands on Add a job.
-2. Sign in (email or SSO) → My desk.
-3. Add a job: choose the job type (sets which evidence counts), title, description, team or client, location, hiring owner → **Draft competencies**: Aivera drafts those the description states (weight, level 1–5, mandatory/desirable, evidence expected) and suggests what it leaves out with a reason; keep, edit or remove each.
+1. Create a workspace (name, any email, company if there is one, in-house team or agency, what they hire for most; email and password or one-time code, Google or Microsoft) → lands on Add a job. A solo recruiter gets a one-member workspace ([ADR-009](../adr/ADR-009-identity-and-account-model.md)).
+2. Sign in (email, Google or Microsoft; company SSO per workspace later) → My desk. A person in several workspaces switches between them in the app shell.
+3. Add a job: choose the job type (sets which evidence counts), title, description, team or client (agencies), location, hiring owner → **Draft competencies**: Aivera drafts those the description states (weight, level 1–5, mandatory/desirable, evidence expected) and suggests what it leaves out with a reason; keep, edit or remove each.
 4. Save as the job's rubric (weights total 100%) → send to the hiring owner → approved (version 1). Editing a weight creates a new version that needs approval; rankings do not change until it is approved.
 5. Optionally publish the job on the candidate site (preview of what candidates see; weights, client name and scores stay hidden).
 

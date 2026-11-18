@@ -11,7 +11,17 @@
 | Hiring owner    | Head of Engineering; CPO, Payments; Head of Quality; VP Engineering; Design Director                | Rubric approval, decision pack       |
 | Interviewer     | The recruiter or the hiring owner                                                                   | Scorecard                            |
 | Client          | CPO, Payments (agency case)                                                                         | Client view of the shortlist         |
+| Solo recruiter  | Nadia Freelance (`nadia@example.com`), see below                                                    | Her own one-member workspace         |
 | Candidate       | Sara Al Qahtani and the cast below                                                                  | Candidate site, evidence upload page |
+
+## Individual recruiters and agencies ([ADR-009](../adr/ADR-009-identity-and-account-model.md))
+
+| Who or what                                | Type           | Details                                                                                                                                                                                                                              |
+| ------------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Nadia Freelance, `nadia@example.com`       | Solo recruiter | Signs up with a personal email and no company. Admin of her one-member workspace "Nadia Freelance". Also a recruiter in "Gulf Talent Partners", and switches between the two.                                                        |
+| Gulf Talent Partners                       | Agency         | Admin Omar Agency (`omar.agency@example.com`). Two clients, below. Its talent pool covers both clients.                                                                                                                              |
+| Client "Falcon Pay" (a BNPL fintech)       | Agency client  | Hiring owner Huda Client (`huda@example.com`), "CPO, Falcon Pay", granted the client's jobs. Job: Senior Product Manager, Payments.                                                                                                  |
+| Client "Dune Logistics" (a logistics firm) | Agency client  | Hiring owner Faisal Client (`faisal@example.com`), "Head of Engineering, Dune Logistics", granted one job: Staff Backend Engineer. Interviewer Lina Panel (`lina@example.com`), granted the same job. Neither sees Falcon Pay's job. |
 
 ## Demo jobs (workspace "Demo")
 
