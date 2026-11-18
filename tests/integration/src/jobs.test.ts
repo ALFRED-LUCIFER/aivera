@@ -590,6 +590,7 @@ describe('Feature: Publish a job on the candidate site', () => {
   });
 
   it('Scenario: The public listing contains only allowed fields', async () => {
+    // The ticket's pay band; later tests in this file keep it, which none of them checks.
     await rows(
       ALEX,
       demo,

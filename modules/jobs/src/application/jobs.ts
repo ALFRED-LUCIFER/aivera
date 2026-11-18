@@ -228,6 +228,8 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
       const publicDescriptor = validPublicDescriptor(input.publicDescriptor);
       // The descriptor is shown to anyone, so it must not name the client (AGENTS.md 1.9); listClients needs
       // client.manage, which the same roles hold as job.publish.
+      // shortcut: catches the literal name only, ignoring case (not "FalconPay" or an Arabic form); upgrade when clients
+      // get aliases or Arabic names.
       const client = job.clientId && (await listClients(ctx)).find((c) => c.id === job.clientId);
       if (client && publicDescriptor.toLowerCase().includes(client.name.trim().toLowerCase()))
         throw new JobError('public_descriptor');
