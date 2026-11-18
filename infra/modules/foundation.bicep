@@ -84,7 +84,6 @@ resource appInsightsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 
 output appIdentityId string = appIdentity.id
 output appIdentityClientId string = appIdentity.properties.clientId
-output appIdentityPrincipalId string = appIdentity.properties.principalId
 output cicdIdentityId string = cicdIdentity.id
 output cicdIdentityClientId string = cicdIdentity.properties.clientId
 output cicdIdentityPrincipalId string = cicdIdentity.properties.principalId

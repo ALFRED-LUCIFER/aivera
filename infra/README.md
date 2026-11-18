@@ -38,10 +38,10 @@ Every Aivera resource is tagged `product=aivera`, `env=dev`, `data=synthetic`.
 Agents never apply infrastructure (CLAUDE.md 7). Sign in with MFA first: `az login`, then `az account set -s "Subscription 1"`.
 
 ```sh
-az deployment group what-if -g rg-medvya-dev-in -f infra/main.bicep
-az deployment group create  -g rg-medvya-dev-in -f infra/main.bicep
+az deployment group what-if -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep
+az deployment group create  -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep
 ```
 
-A second `create` with the same parameters changes nothing (the what-if shows no changes).
+Always `--mode Incremental` (the default, written out on purpose): the resource group is Medvya's, and Complete mode would delete every Medvya resource the template does not declare. A second `create` with the same parameters changes nothing (the what-if shows no changes).
 
 CI builds and lints the Bicep on every pull request (`pr.yml`, step `bicep`); any linter warning fails it.

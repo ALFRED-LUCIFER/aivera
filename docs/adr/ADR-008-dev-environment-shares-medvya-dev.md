@@ -17,7 +17,7 @@ Aivera's **dev** environment shares Medvya's dev environment in Central India. A
 2. **Pilot and production are in UAE North.** Each gets its own resource group, PostgreSQL server, network, Key Vault and identities there, as AGENTS.md 1.10 requires (launch epic AIV-P5-E03, #34). Nothing in dev is promoted or replicated to them.
 3. **Medvya and Aivera stay isolated:**
    - **Database:** a separate `aivera` database on the shared server; `CONNECT` on it is revoked from `PUBLIC`.
-   - **Roles:** Aivera's own Entra-mapped roles `aivera_migrator` and `aivera_app`, which have no grant on any Medvya database or role. Neither is a server Entra admin.
+   - **Roles:** Aivera's own Entra-mapped roles `aivera_migrator` and `aivera_app`. Aivera grants them nothing on any Medvya database or role, and neither is a server Entra admin. They do inherit what Medvya's databases grant to `PUBLIC`: by PostgreSQL default that includes `CONNECT` on `medvya` (and `postgres`). Revoking `CONNECT` on `medvya` from `PUBLIC` (and granting it to Medvya's own roles) is an owner and Medvya action; `infra/scripts/bootstrap-db.sh` prints which databases the Aivera roles can reach so the owner can check.
    - **Identity:** Aivera's own managed identities (`id-aivera-dev`, `id-aivera-cicd-dev`). They hold roles on Aivera's resources only, never on the resource group or on a Medvya resource.
    - **Secrets:** Aivera's own Key Vault. Aivera's identities cannot read Medvya's vaults, and Medvya's cannot read Aivera's.
    - **No cross-database access:** no `dblink`, `postgres_fdw` or shared schemas. Shared server parameters (such as `azure.extensions`) are changed only with Medvya's agreement, and the change is recorded in the Aivera ticket that needs it.
@@ -28,5 +28,6 @@ Aivera's **dev** environment shares Medvya's dev environment in Central India. A
 - Dev runs PostgreSQL 16 while ADR-001 names 17. Dev migrations must stay PostgreSQL 16-compatible; pilot and production use 17.
 - pgvector is not in the shared server's `azure.extensions` allow-list. AIV-P0-030 adds `VECTOR` to it (owner apply, agreed with Medvya) before the first embedding migration.
 - Medvya's Container Apps environment is internal (VNet only), so the Aivera web app's default address resolves only inside that VNet. A public dev URL, Front Door and portfolio subdomains come with the launch epic, or with an owner decision to add an external environment.
+- Logs and Application Insights data land in Medvya's Log Analytics workspace, which has a shared 1 GB/day ingestion cap: noisy Aivera logging can stop Medvya's logs for the rest of the day, and the reverse.
 - A Medvya incident (server restart, quota, a full log cap) can take Aivera dev down too. That is acceptable for dev and never acceptable for pilot or production.
 - Revisit this decision when Aivera holds any real data: that is the pilot, which is in UAE North.
