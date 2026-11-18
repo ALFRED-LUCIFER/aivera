@@ -71,7 +71,7 @@ Text selection uses the highlighter. The marketing site's dark "ink" panels are 
 | **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Claim awaiting validation · Contradictory · Awaiting live defence.                 |
 | **Strength meter**       | Three segments in neutral ink, so it is not read as pass or fail: Strong · Medium · Supporting · Claim only.                                                             |
 | **Score bar**            | Solid fill for the backed score, hatched segment for the range still resting on claims, with the caption "62 backed by evidence · up to 78 if claims hold in interview". |
-| **Evidence highlight**   | `<mark>` in `--hl`, only on the exact text the assessment cites.                                                                                                         |
+| **Evidence highlight**   | `<mark>` in `--hl`, only on the exact text the assessment cites, plus an ink underline so cited text is identifiable without colour (WCAG 1.4.1).                        |
 | **Competency row**       | Name, weight and type ("Weight 20% · mandatory"), strength, provenance, source count link.                                                                               |
 | **Preview-confirm card** | Assistant and bulk actions: title "Preview: …", current versus proposed state, consequence text, Confirm / Edit / Cancel, and "Nothing changes until you confirm."       |
 

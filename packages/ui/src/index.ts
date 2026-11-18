@@ -15,7 +15,6 @@ export type { ToastProps, ToastProviderProps } from './Toast.tsx';
 export { Tooltip } from './Tooltip.tsx';
 export type { TooltipProps } from './Tooltip.tsx';
 
-// AIV-P0-022: evidence components
 export { EvidenceHighlight } from './EvidenceHighlight.tsx';
 export type { Citation, EvidenceHighlightProps } from './EvidenceHighlight.tsx';
 export { ProvenanceTag } from './ProvenanceTag.tsx';

@@ -15,8 +15,11 @@ const tokenClass = (el: Element, prefix: 'bg' | 'text') =>
 
 // Never called: tsc (pnpm typecheck) fails if `basis` becomes optional, because the expect-error goes unused.
 // SAFETY: mutation check: basis -> basis? -> pnpm typecheck failed (unused @ts-expect-error)
-// @ts-expect-error basis is required
-const withoutBasis = () => <ValueBasis label="Observed" />;
+function withoutBasis() {
+  // @ts-expect-error basis is required
+  return <ValueBasis label="Observed" />;
+}
+void withoutBasis;
 
 // SAFETY: mutation check: projection border-dashed -> border-solid -> the Projection row failed
 describe('Scenario Outline: Every value carries its basis', () => {
@@ -30,10 +33,6 @@ describe('Scenario Outline: Every value carries its basis', () => {
     expect(container.textContent).toBe(label);
     const marker = container.querySelector('[aria-hidden="true"]');
     expect(marker && classesOf(marker)).toContain(shape);
-  });
-
-  it('a metric without a basis does not compile', () => {
-    expect(withoutBasis).toBeTypeOf('function');
   });
 });
 
@@ -84,7 +83,7 @@ const strengths: [Strength, string, number][] = [
 ];
 
 describe('Scenario: Strength is neutral ink', () => {
-  // SAFETY: mutation check: filled segment bg-text -> bg-ok-text -> every row failed
+  // SAFETY: mutation check: filled segment bg-text -> bg-ok-text -> every row but Claim only failed
   it.each(strengths)('%s reads "%s" with %i of 3 segments in ink and no status colour', (strength, label, on) => {
     const { container } = render(
       <StrengthMeter strength={strength} label={label} countsAsZeroLabel="Counts as zero" />,
@@ -92,13 +91,16 @@ describe('Scenario: Strength is neutral ink', () => {
     expect(screen.getByText(label)).toBeTruthy();
     const segments = [...container.querySelectorAll('[aria-hidden="true"] > span')];
     expect(segments).toHaveLength(3);
-    expect(segments.filter((s) => classesOf(s).includes('bg-text'))).toHaveLength(on);
+    expect(segments.filter((s) => tokenClass(s, 'bg') !== '')).toHaveLength(on);
     expect(classesUnder(container).filter((c) => /-(ok|warn|err|info)-/.test(c))).toEqual([]);
   });
 
+  // SAFETY: mutation check: filled segment bg-text -> bg-border-strong -> both rows failed
   it.each(themes)('%s: a filled segment keeps at least 3:1 on the surface', (theme) => {
+    const { container } = render(<StrengthMeter strength="strong" label="Strong" />);
+    const filled = tokenClass(container.querySelector('[aria-hidden="true"] > span') as Element, 'bg');
     expect(
-      contrast(resolveColour('bg-text', theme) ?? '', resolveColour('bg-surface', theme) ?? ''),
+      contrast(resolveColour(filled, theme) ?? '', resolveColour('bg-surface', theme) ?? ''),
     ).toBeGreaterThanOrEqual(3);
   });
 
@@ -138,6 +140,8 @@ describe('Scenario: The highlighter marks cited evidence only', () => {
     expect(container.textContent).toBe(text.replace(cited, `cited evidence ${cited}`));
     expect(mark.dataset['sourceId']).toBe('src_1');
     expect(classesOf(mark)).toEqual(expect.arrayContaining(['bg-hl', 'text-hl-text']));
+    // SAFETY: mutation check: removed underline -> this test failed
+    expect(classesOf(mark)).toEqual(expect.arrayContaining(['underline', 'decoration-hl-text'])); // WCAG 1.4.1
     expect(resolveColour('bg-hl', 'light')).toBe('#FFE873');
     expect(resolveColour('bg-hl', 'dark')).toBe('#4D4208');
   });
@@ -161,31 +165,57 @@ describe('Scenario: The highlighter marks cited evidence only', () => {
     );
     expect([...container.querySelectorAll('mark')].map((m) => m.dataset['sourceId'])).toEqual(['a', 'b']);
   });
+
+  // SAFETY: mutation check: c.end <= text.length -> c.end < text.length -> the "to the last character" row failed
+  // SAFETY: mutation check: c.start >= previous end -> > -> the "from the first character" and "adjacent" rows failed
+  it.each([
+    ['from the first character', [{ start: 0, end: 2, sourceId: 'a' }], ['In']],
+    ['to the last character', [{ start: text.length - 10, end: text.length, sourceId: 'a' }], ['questions.']],
+    [
+      'adjacent',
+      [
+        { start: 0, end: 2, sourceId: 'a' },
+        { start: 2, end: 6, sourceId: 'b' },
+      ],
+      ['In', ' the'],
+    ],
+  ])('accepts a citation %s', (_, citations, expected) => {
+    const warn = vi.spyOn(console, 'warn');
+    const { container } = render(<EvidenceHighlight text={text} citations={citations} markLabel="cited evidence" />);
+    expect([...container.querySelectorAll('mark')].map((m) => m.textContent?.replace('cited evidence ', ''))).toEqual(
+      expected,
+    );
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });
 
 describe('Scenario: A citation outside the text is rejected', () => {
   afterEach(() => vi.restoreAllMocks());
 
   // SAFETY: mutation check: removed c.end <= text.length -> the beyond-the-end row failed
+  // SAFETY: mutation check: removed the surrogate check -> the splitting-a-character row failed
   // SAFETY: mutation check: logged `text` instead of textLength -> every row failed
   it.each([
-    ['beyond the end', [{ start: 10, end: text.length + 1, sourceId: 'a' }]],
+    ['beyond the end', text, [{ start: 10, end: text.length + 1, sourceId: 'a' }]],
     [
       'overlapping',
+      text,
       [
         { start: 0, end: 10, sourceId: 'a' },
         { start: 5, end: 12, sourceId: 'b' },
       ],
     ],
-    ['empty', [{ start: 4, end: 4, sourceId: 'a' }]],
-  ])('%s: renders the plain text and warns without the text content', (_, citations) => {
+    ['empty', text, [{ start: 4, end: 4, sourceId: 'a' }]],
+    ['splitting a character', 'a😀b', [{ start: 2, end: 4, sourceId: 'a' }]],
+  ])('%s: renders the plain text and warns without the text content', (_, body, citations) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { container } = render(<EvidenceHighlight text={text} citations={citations} markLabel="cited evidence" />);
+    const { container } = render(<EvidenceHighlight text={body} citations={citations} markLabel="cited evidence" />);
     expect(container.querySelector('mark')).toBeNull();
-    expect(container.textContent).toBe(text);
+    expect(container.textContent).toBe(body);
     expect(warn).toHaveBeenCalledOnce();
     const logged = JSON.stringify(warn.mock.calls);
     expect(logged).not.toContain('repository');
-    expect(logged).not.toContain(cited);
+    expect(logged).not.toContain('😀');
   });
 });

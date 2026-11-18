@@ -20,7 +20,7 @@ export type ValueBasisProps = {
 export function ValueBasis({ basis, label }: ValueBasisProps) {
   return (
     <span className="inline-flex h-6 items-center gap-1.5 rounded-tag border border-border bg-surface-subtle px-2 text-meta font-medium whitespace-nowrap text-text-2">
-      <span aria-hidden="true" data-basis={basis} className={cx('inline-block flex-none', markers[basis])} />
+      <span aria-hidden="true" className={cx('inline-block flex-none', markers[basis])} />
       {label}
     </span>
   );

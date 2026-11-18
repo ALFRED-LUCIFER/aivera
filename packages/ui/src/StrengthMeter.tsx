@@ -16,6 +16,7 @@ export type StrengthMeterProps = {
 export function StrengthMeter({ strength, label, countsAsZeroLabel }: StrengthMeterProps) {
   return (
     <span className="inline-flex items-center gap-2 text-body">
+      {/* Decorative: the word carries the meaning, so the empty segment's faint border (1.66:1) is acceptable. */}
       <span aria-hidden="true" className="inline-flex gap-0.75">
         {[0, 1, 2].map((i) => (
           <span
