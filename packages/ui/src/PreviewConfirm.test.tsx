@@ -338,6 +338,13 @@ describe('AssistantDrawer', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  // SAFETY: mutation check: removed onOpenAutoFocus -> this test failed (focus went to Close assistant)
+  it('Scenario: Opening the drawer focuses the question field', async () => {
+    render(<Drawer />);
+    await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Ask about what is on this page' }));
+  });
+
   // SAFETY: mutation check: removed the re-entry onClick -> this test failed (the drawer closed)
   it('pressing the opener again takes focus back into the open drawer instead of closing it', async () => {
     render(<Drawer />);

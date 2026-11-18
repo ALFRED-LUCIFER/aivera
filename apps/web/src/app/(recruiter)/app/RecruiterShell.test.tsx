@@ -85,7 +85,7 @@ describe('Recruiter app shell', () => {
     expect(screen.queryByText('Synthetic demo data')).toBeNull();
   });
 
-  // SAFETY: mutation check: removed the question-field focus in onAssistantOpenChange -> this test failed
+  // SAFETY: mutation check: removed onOpenAutoFocus in AssistantDrawer -> this test failed
   it('Scenario: Ask Aivera opens the assistant drawer', async () => {
     renderShell();
     const ask = screen.getByRole('button', { name: 'Ask Aivera' });
