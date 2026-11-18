@@ -21,6 +21,10 @@ export async function migrateModules(migratorUrl: string, modules: MigratableMod
         migrationsTable: module.name,
       });
     }
+    // The default privileges above also reach the migrator's journal: the app must never edit what was applied.
+    await db.execute(sql`REVOKE ALL ON ALL TABLES IN SCHEMA migrations FROM aivera_app`);
+    await db.execute(sql`REVOKE ALL ON ALL SEQUENCES IN SCHEMA migrations FROM aivera_app`);
+    await db.execute(sql`REVOKE ALL ON SCHEMA migrations FROM aivera_app`);
   } finally {
     await db.$client.end();
   }

@@ -1,4 +1,5 @@
-// AIV-P0-004: Aivera's database on Medvya's shared dev PostgreSQL server, and the in-VNet migration job (ADR-008).
+// AIV-P0-004: Aivera's database on Medvya's shared dev PostgreSQL server, and the migration job in Aivera's VNet-joined
+// environment (ADR-008).
 // The server, its network and its parameters are Medvya's: referenced, never changed. Roles: infra/sql/bootstrap-roles.sql.
 param location string
 param tags object
@@ -63,4 +64,3 @@ resource migrateJob 'Microsoft.App/jobs@2024-03-01' = {
 
 output databaseHost string = server.properties.fullyQualifiedDomainName
 output databaseName string = database.name
-output migrateJobId string = migrateJob.id
