@@ -5,9 +5,107 @@
   },
   "home": {
     "headline": "Hire on <mark>evidence</mark>, not claims.",
-    "scaffold": "Aivera workspace scaffold. Feature screens arrive with their tickets.",
+    "lead": "Aivera reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.",
     "createWorkspace": "Create your workspace",
-    "signIn": "Sign in"
+    "seeProduct": "See the product",
+    "reassurance": "No tests to sit. No automatic rejections. A person makes every hiring decision.",
+    "signIn": "Sign in",
+    "nav": {
+      "label": "Site",
+      "home": "Aivera home",
+      "howItWorks": "How it works",
+      "roles": "Roles we cover",
+      "trust": "Why trust it",
+      "candidates": "For candidates",
+      "createWorkspace": "Create workspace"
+    },
+    "card": {
+      "name": "Hessa Al Mazrouei",
+      "role": "QA Automation Engineer · rank {rank} of {total}",
+      "scoreName": "Backed score {backed}, up to {upTo} if her open claim holds",
+      "backed": "{backed} backed by evidence",
+      "caption": "{backed} backed by evidence · up to {upTo} if her open claim holds",
+      "upTo": "up to {upTo} if her open claim holds",
+      "unavailable": "Score unavailable",
+      "competency": "Test automation design",
+      "weight": "· weight {weight}%",
+      "strength": "Strong",
+      "provenance": "Independently corroborated",
+      "evidence": "In the repository checkout-e2e she wrote 148 of 171 test cases. The CI history shows the suite caught 23 regressions before release.",
+      "cited": "wrote 148 of 171 test cases",
+      "markLabel": "cited evidence",
+      "sources": "Sources",
+      "sourceRepo": "hessa.aivera.example/checkout-e2e",
+      "sourceCi": "CI history, checked 12 Nov",
+      "synthetic": "Illustrative candidate, synthetic data."
+    },
+    "contrast": {
+      "claims": "A CV tells you what someone claims.",
+      "tests": "A test tells you how they do on a test.",
+      "work": "Their work tells you <mark>what they have done</mark>."
+    },
+    "how": {
+      "title": "From job description to a decision you can defend",
+      "steps": {
+        "agree": {
+          "title": "Agree what matters",
+          "body": "Paste the job description. Aivera drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves."
+        },
+        "collect": {
+          "title": "Collect the work",
+          "body": "Repositories, test suites, design files, documents, shipped products. Where a candidate has nothing to show, Aivera asks for a short work sample and labels it as one."
+        },
+        "rank": {
+          "title": "See why each person ranks where they do",
+          "body": "Every score cites its source and says how strong the evidence is. Claims are marked as claims, and count for nothing until something supports them."
+        },
+        "interview": {
+          "title": "Interview only what is unproven",
+          "body": "Each interview gets questions tied to the gaps in that candidate’s evidence. Scorecards move the score, with the reason recorded."
+        },
+        "decide": {
+          "title": "Decide with the pack in front of you",
+          "body": "Strengths, risks and open questions for each shortlisted candidate, on one page. Aivera recommends. You decide."
+        }
+      }
+    },
+    "roleFamilies": {
+      "title": "Not only software engineers",
+      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Aivera knows which to look for.",
+      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.",
+      "family": "Role family",
+      "evidence": "Evidence that counts",
+      "more": "<strong>This list is a start.</strong> We are piecing together more role families, and the one you hire for can be next."
+    },
+    "trust": {
+      "title": "Recommendations you can check. Decisions that stay yours.",
+      "principles": {
+        "cites": {
+          "title": "Every score cites its source",
+          "body": "Open any assessment and see the exact commit, document or reference it rests on, and what it does not show."
+        },
+        "claims": {
+          "title": "Claims are labelled as claims",
+          "body": "Nothing is called verified unless a second source confirms it. Candidate-submitted, corroborated and contradictory evidence look different."
+        },
+        "human": {
+          "title": "Nobody is rejected automatically",
+          "body": "Ranking orders your attention. Lower-ranked candidates stay visible, and thin evidence is treated as a gap to close."
+        },
+        "numbers": {
+          "title": "Numbers say what they are",
+          "body": "Observed, baseline or projection. If no hire has completed, the dashboard says so instead of showing a figure."
+        }
+      }
+    },
+    "pilot": {
+      "title": "One number to judge us on: interviews per completed hire",
+      "body": "Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working."
+    },
+    "footer": {
+      "label": "Footer",
+      "copyright": "© {year} Aivera"
+    }
   },
   "candidate": {
     "shell": {
