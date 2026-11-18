@@ -11,6 +11,11 @@ const fake = {
   authorize: vi.fn(),
 };
 
+const telemetry = vi.hoisted(() => ({
+  annotateSpan: vi.fn(),
+  withSpan: vi.fn((_name: string, fn: () => Promise<unknown>) => fn()),
+}));
+vi.mock('@aivera/observability', () => telemetry);
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({}) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
 vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({}) }));
@@ -49,6 +54,13 @@ describe('workspaceAction', () => {
     expect(fake.withWorkspace).toHaveBeenCalledWith({ userId: 'u1' }, W1, expect.any(Function));
     expect(jobOf).toHaveBeenCalledWith(ctx, { candidateId: 'C2' });
     expect(fake.authorize).toHaveBeenCalledWith(ctx, 'candidate.view', { jobId: 'J2' });
+  });
+
+  // Correlation (AIV-P0-018): the span carries the workspace id, never the user's email.
+  it('runs in a span named after the action, tagged with the workspace id', async () => {
+    await viewCandidate({ candidateId: 'C1' });
+    expect(telemetry.withSpan).toHaveBeenCalledWith('action candidate.view', expect.any(Function));
+    expect(telemetry.annotateSpan).toHaveBeenCalledWith({ 'workspace.id': W1 });
   });
 
   it('rejects input that fails its schema before opening any workspace', async () => {

@@ -62,7 +62,7 @@ describe('createWorkspace (server action)', () => {
 
   // SAFETY: mutation check: logged `error.message` instead of `error.name` -> this test failed (the log held the name)
   it('on a service error keeps what was typed and logs no personal data', async () => {
-    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     workspaces.createWorkspace.mockRejectedValue(new Error('duplicate key: Demo Hiring Co, Nadia Freelance'));
     await expect(submit({ company: 'Demo Hiring Co', hiringFocus: 'sales' })).resolves.toEqual({
       error: 'failed',
