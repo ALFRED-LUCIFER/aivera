@@ -153,7 +153,7 @@
       "descriptorAndLocation": "{descriptor} · {location}",
       "posted": "{days, plural, =0 {Posted today} one {Posted # day ago} other {Posted # days ago}}",
       "viewJob": "View job",
-      "viewJobFor": ": {title}",
+      "viewJobFor": "View job: {title}",
       "empty": "No jobs match. Try a different word or clear the filters.",
       "clearFilters": "Clear filters",
       "failed": "Jobs could not load. Try again.",

@@ -75,12 +75,13 @@ export function JobsList({ q, filter, chips, jobs, page, pageCount, onFilterChan
                   <span>{t(`jobTypes.${job.jobType}.label`)}</span>
                   <span>{t('candidate.jobs.posted', { days: job.postedDays })}</span>
                 </p>
+                {/* The visible words lead the name, so voice users can say what they see (WCAG 2.5.3). */}
                 <Link
                   href={`/candidates/jobs/${job.slug}`}
+                  aria-label={t('candidate.jobs.viewJobFor', { title: job.title })}
                   className={`${link} mt-3 inline-flex min-h-10 items-center`}
                 >
                   {t('candidate.jobs.viewJob')}
-                  <span className="sr-only">{t('candidate.jobs.viewJobFor', { title: job.title })}</span>
                 </Link>
               </Card>
             </li>
