@@ -29,7 +29,7 @@ Aivera ranks job candidates on evidence of their work and holds their CVs, docum
 7. **Never weaken a guard to get green.** Do not disable lint rules, tests, audit or CI checks, or lower thresholds, to make a change pass. Fix the code. A justified, narrow suppression needs a comment with the reason.
 8. **Verify for real.** UI changes: run the app and check in a browser (layout, keyboard, axe, light and dark). Database changes: run against real PostgreSQL (Testcontainers). Never claim "done" from a passing build alone.
 9. **Comments explain why**, in one line, only where the code cannot.
-10. **Parallel agents.** Each agent works in its own git worktree on its own branch, with non-overlapping files; check `git branch --show-current` before committing. One agent at a time drives the Playwright browser. Never restart Docker or prune volumes on a shared machine. Details: [`docs/runbooks/parallel-agents.md`](docs/runbooks/parallel-agents.md).
+10. **Parallel agents.** Each agent works in its own git worktree on its own branch, with non-overlapping files; check `git branch --show-current` before committing. A ticket that depends on an unmerged ticket is built as a stacked PR on top of it (7.1). One agent at a time drives the Playwright browser. Never restart Docker or prune volumes on a shared machine. Details: [`docs/runbooks/parallel-agents.md`](docs/runbooks/parallel-agents.md).
 
 ## 3 · Back end (TypeScript, `modules/`, `apps/worker`, server code in `apps/web`)
 
@@ -101,6 +101,17 @@ The only Definition of Done; the PR template links here.
 - Commit message: what and why, with the ticket key (`AIV-P0-002: add migration runner`). The commit-msg hook rejects a message without a key.
 - PR body follows `.github/pull_request_template.md`: ticket, what changed, how verified, what is not done and which ticket covers it.
 - `main` is protected. Merge only with green CI, squash, on the owner's word.
+
+### 7.1 · Stacked PRs (dependent tickets, parallel agents)
+
+When a ticket depends on another ticket that is not merged yet, do not wait and do not fold both into one PR: **stack it**. Use GitHub's official `gh stack` extension (`gh extension install github/gh-stack`; agents also `gh skill install github/gh-stack`). Runbook: [`docs/runbooks/parallel-agents.md`](docs/runbooks/parallel-agents.md#stacked-prs).
+
+1. **One ticket per layer.** Each layer is one branch and one PR whose base is the branch below it; the bottom PR targets `main`. Reviewers see only that layer's diff. Keep a stack to at most 4 open layers.
+2. **Stack only what depends.** Tickets whose "Depends on" field names an unmerged ticket go on top of it. Independent tickets start their own stack (or a plain PR) from `main` in their own worktree, so parallel agents never wait on each other.
+3. **Every layer stands alone:** its own ticket key, its own Gherkin scenarios met, green CI on its own PR, and a `Stack:` line in its PR body (`#4 → **#181** → #2xx`).
+4. **Fix in the layer that owns the change**, then restack: `gh stack rebase` and `gh stack push` (force-with-lease on stack branches only; never `main`). Never patch a lower layer's bug in a higher layer.
+5. **Merge bottom-up, by the owner only:** `gh stack merge <pr> --squash` merges every layer up to that PR in one all-or-nothing step and cannot bypass required checks. After a merge, `gh stack sync` rebases the rest onto `main`.
+6. **Ownership:** one agent owns a stack's mutations at a time (`gh stack` serialises them per clone). Another agent may add a layer on top only after the stack's owner has pushed, and says so on the ticket.
 
 ## 8 · Where things are
 
