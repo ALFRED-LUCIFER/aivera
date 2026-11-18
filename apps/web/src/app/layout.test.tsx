@@ -7,11 +7,7 @@ let themeCookie: string | undefined;
 vi.mock('next/headers', () => ({
   cookies: async () => ({ get: () => (themeCookie === undefined ? undefined : { value: themeCookie }) }),
 }));
-vi.mock('next/font/google', () => ({
-  Bricolage_Grotesque: () => ({ variable: 'font' }),
-  Hanken_Grotesk: () => ({ variable: 'font' }),
-  JetBrains_Mono: () => ({ variable: 'font' }),
-}));
+vi.mock('next/font/local', () => ({ default: () => ({ variable: 'font' }) }));
 
 const firstPaintTheme = async () =>
   ((await RootLayout({ children: null })) as ReactElement<{ 'data-theme': string }>).props['data-theme'];
