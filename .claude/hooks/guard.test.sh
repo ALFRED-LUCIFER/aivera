@@ -1,7 +1,6 @@
 #!/bin/sh
 # Self-check for guard.sh: each forbidden input must exit 2, each allowed one 0. Run: sh .claude/hooks/guard.test.sh
 here=$(dirname "$0")
-repo=$(cd "$here/../.." && pwd)
 fail=0
 tmp=$(mktemp -d)
 git -C "$tmp" init -q -b main
@@ -26,7 +25,10 @@ draft="$tmp/migrations/0001_custom.sql"; : > "$draft"
 expect 0 "fill an uncommitted custom migration" "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$draft\"}}"
 expect 0 "new migration file" "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$tmp/migrations/0001_new.sql\"}}"
 expect 0 "normal push of a branch" '{"tool_name":"Bash","tool_input":{"command":"git push -u origin feat/AIV-P0-002-x"}}'
-expect 0 "commit on a branch" "{\"tool_name\":\"Bash\",\"cwd\":\"$repo\",\"tool_input\":{\"command\":\"git commit -m 'AIV-P0-001: x'\"}}"
+# Its own repository on a feature branch: the real checkout is main on push builds of main, where the guard rightly blocks.
+branch=$(mktemp -d); git -C "$branch" init -q -b feat/AIV-P0-001-x
+expect 0 "commit on a branch" "{\"tool_name\":\"Bash\",\"cwd\":\"$branch\",\"tool_input\":{\"command\":\"git commit -m 'AIV-P0-001: x'\"}}"
+rm -rf "$branch"
 expect 0 "write a source file" '{"tool_name":"Write","tool_input":{"file_path":"/x/src/a.ts"}}'
 
 rm -rf "$tmp"
