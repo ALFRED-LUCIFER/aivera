@@ -25,6 +25,8 @@ export class SeedRefused extends Error {
  * Returns the demo workspace id.
  */
 export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: string | undefined; reset?: boolean }) {
+  // shortcut: trusts APP_ENV, not the database; APP_ENV=local against a pilot DATABASE_URL would add (never purge) a
+  // synthetic workspace there. Check the server's environment marker once databases carry one.
   if (!SYNTHETIC_ENVS.includes(appEnv ?? '')) throw new SeedRefused();
   const identity = createIdentity(db, { trustedIssuer: SEED_ISSUER });
   const workspaces = createWorkspaces(db, createAudit(db));
@@ -42,6 +44,8 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
 
   const recruiter = await userId(RECRUITER);
   const session = { userId: recruiter };
+  // shortcut: the demo is AP's active workspace, so two seeds started at once can create two; find it by the synthetic
+  // flag under a lock if concurrent seeding ever matters.
   let workspaceId = await workspaces.activeWorkspace(recruiter);
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
@@ -54,7 +58,6 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
 
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
   await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
-    for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
     for (const c of CANDIDATES)
       await candidates.findOrCreatePerson(ctx, {
         displayName: c.displayName,
@@ -65,6 +68,8 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         location: c.location,
         synthetic: c.synthetic,
       });
+    // Last, so the audit entries of added members are the last writes before commit (AGENTS.md 3.6).
+    for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
   });
   return workspaceId;
 }

@@ -62,8 +62,7 @@ export const member = workspaces
 // The user's active workspace, held server-side because the session cookie holds only the user id (ADR-009).
 // Keyed on the user, not workspace-owned, so no tenant policy: it is read before any workspace is open and holds two
 // opaque ids. The request context re-checks membership on every request, so a stale row grants nothing.
-// shortcut: the foreign key blocks deleting a workspace that is someone's active one; workspace deletion (not built)
-// must clear these rows first or move the key to ON DELETE CASCADE.
+// Deleting a workspace clears these rows first (deleteWorkspace, used only by the synthetic purge).
 export const activeWorkspace = workspaces.table('active_workspace', {
   userId: uuid('user_id').primaryKey(),
   workspaceId: uuid('workspace_id')
@@ -73,7 +72,7 @@ export const activeWorkspace = workspaces.table('active_workspace', {
 });
 
 // An agency's client (ADR-005 point 6). Only an agency workspace adds them (enforced in the use case under a lock on the
-// workspace row). Never deleted: archived, so old jobs and audit entries keep resolving.
+// workspace row). Never deleted, only archived, so old jobs and audit entries keep resolving; the synthetic demo purge is the exception.
 export const client = workspaces
   .table(
     'client',

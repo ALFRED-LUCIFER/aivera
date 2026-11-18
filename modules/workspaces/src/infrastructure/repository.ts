@@ -53,7 +53,13 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     setActiveWorkspace: (userId, workspaceId) => activeWorkspaceStore(tx).set(userId, workspaceId),
     async insertMember(values) {
       return (
-        (await tx.insert(member).values(values).onConflictDoNothing().returning({ userId: member.userId })).length > 0
+        (
+          await tx
+            .insert(member)
+            .values(values)
+            .onConflictDoNothing({ target: [member.workspaceId, member.userId] })
+            .returning({ userId: member.userId })
+        ).length > 0
       );
     },
     async findMember(workspaceId, userId) {

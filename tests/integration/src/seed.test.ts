@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createAudit } from '@aivera/audit/composition';
+import { CandidateError } from '@aivera/candidates';
+import { createCandidates } from '@aivera/candidates/composition';
 import { createDb, type Db } from '@aivera/db';
 import { seedDemo, SEED_ISSUER } from '@aivera/seed';
 import { WorkspaceError } from '@aivera/workspaces';
@@ -189,6 +191,51 @@ describe('Scenario: Seeding a fresh database', () => {
         workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => workspaces.addSyntheticMember(ctx, ALEX, 'admin')),
       ).rejects.toThrow(WorkspaceError);
       expect(await count(sql`select count(*) as n from workspaces.workspace where id = ${real.id}`)).toBe(1);
+    });
+
+    // SAFETY: mutation check: removed the isSyntheticWorkspace check in purgeSyntheticPeople -> this test failed (resolved)
+    it('the candidates purge refuses a workspace not flagged synthetic, even when everyone in it is', async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const candidates = createCandidates(workspaces);
+      const real = await workspaces.createWorkspace({
+        name: 'Nadia Freelance',
+        company: 'Nadia Freelance',
+        hiringFocus: 'several',
+        creatorUserId: ALEX,
+      });
+      await workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) =>
+        candidates.findOrCreatePerson(ctx, {
+          displayName: 'Hala Saleh',
+          identifiers: [{ type: 'email', value: 'hala.saleh@example.com' }],
+          synthetic: true,
+        }),
+      );
+      await expect(
+        workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => candidates.purgeSyntheticPeople(ctx)),
+      ).rejects.toThrow(CandidateError);
+      expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${real.id}`)).toBe(1);
+    });
+
+    // Last: it leaves a person who is not synthetic in the demo workspace.
+    // SAFETY: mutation check: removed the synthetic = false lookup in deleteSyntheticPeople -> this test failed (resolved)
+    it('reset refuses a demo workspace holding anyone not synthetic and deletes nothing', async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const candidates = createCandidates(workspaces);
+      const [ap] = await admin.execute<{ id: string }>(
+        sql`select id from identity.user where email = 'ap@example.com'`,
+      );
+      if (!ap) throw new Error('the seed above created AP');
+      const demo = await seedDemo(app, { appEnv: 'local' });
+      await workspaces.withWorkspace({ userId: ap.id }, demo, (ctx) =>
+        candidates.findOrCreatePerson(ctx, {
+          displayName: 'Imported person',
+          identifiers: [{ type: 'email', value: 'imported@example.com' }],
+          synthetic: false,
+        }),
+      );
+      const before = await snapshot();
+      await expect(seedDemo(app, { appEnv: 'local', reset: true })).rejects.toThrow(CandidateError);
+      expect(await snapshot()).toEqual(before);
     });
   });
 });

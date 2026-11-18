@@ -13,7 +13,10 @@ try {
   const id = await seedDemo(db, { appEnv: process.env['APP_ENV'], reset: process.argv.includes('--reset') });
   console.log(`Seeded the synthetic demo workspace ${id}.`);
 } catch (error) {
-  console.error(error instanceof SeedRefused ? error.message : error);
+  // The message and name only: a database error's detail can echo row values (AGENTS.md 1.2).
+  console.error(
+    error instanceof SeedRefused ? error.message : `Seed failed: ${(error as Error).name}: ${(error as Error).message}`,
+  );
   process.exitCode = 1;
 } finally {
   await db.$client.end();
