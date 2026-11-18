@@ -35,7 +35,7 @@ test('Scenario: Google sign-in', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   // The tenant is asked to go straight to Google (domain_hint).
-  await expect(page.getByText('Provider: google')).toBeVisible();
+  await expect(page.getByText('Provider: google.com', { exact: true })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
   await page.getByRole('button', { name: 'Continue' }).click();
   await desk(page);
