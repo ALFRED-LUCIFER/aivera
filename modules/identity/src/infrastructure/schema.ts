@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { check, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const identity = pgSchema('identity');
 
@@ -27,5 +27,5 @@ export const signInMethod = identity.table(
     subject: text().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique('sign_in_method_issuer_subject_unique').on(t.issuer, t.subject)],
+  (t) => [primaryKey({ name: 'sign_in_method_pkey', columns: [t.issuer, t.subject] })],
 );

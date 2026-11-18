@@ -51,6 +51,9 @@ function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
           fetch(isDiscovery(input) ? auth.discovery : input, init),
       },
     ],
+    // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): names only.
+    // shortcut: console until the app has a pino logger; log through it then
+    logger: { error: (error) => console.error(`[auth] ${error.name}`), warn: (code) => console.warn(`[auth] ${code}`) },
     pages: { signIn: '/sign-in', error: '/sign-in' },
     session: { strategy: 'jwt', maxAge: EIGHT_HOURS },
     cookies: {

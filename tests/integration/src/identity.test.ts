@@ -133,7 +133,7 @@ describe('upsertUserFromIdToken', () => {
       app.execute(
         sql`insert into identity.sign_in_method (user_id, issuer, subject) values (${alex?.id}, ${ISSUER}, 'alex-password')`,
       ),
-    ).rejects.toMatchObject({ constraint: 'sign_in_method_issuer_subject_unique' });
+    ).rejects.toMatchObject({ constraint: 'sign_in_method_pkey' });
   });
 
   it('getUser returns null for an unknown id', async () => {

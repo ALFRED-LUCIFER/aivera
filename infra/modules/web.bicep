@@ -67,6 +67,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_CLIENT_ID', value: appIdentityClientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
             // The dev External ID tenant and its recruiter app registration (not secrets).
+            // shortcut: dev tenant values written in the module; make them params when a pilot environment is added
             { name: 'AUTH_ENTRA_TENANT_SUBDOMAIN', value: 'aiveradev' }
             { name: 'AUTH_ENTRA_TENANT_ID', value: '88c795fc-1018-45f7-8904-75e1c2991b8f' }
             { name: 'AUTH_ENTRA_CLIENT_ID', value: '463fb57b-570d-4384-b914-1078df012bd8' }

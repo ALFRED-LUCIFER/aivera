@@ -5,7 +5,7 @@ CREATE TABLE "identity"."sign_in_method" (
 	"issuer" text NOT NULL,
 	"subject" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "sign_in_method_issuer_subject_unique" UNIQUE("issuer","subject")
+	CONSTRAINT "sign_in_method_pkey" PRIMARY KEY("issuer","subject")
 );
 --> statement-breakpoint
 CREATE TABLE "identity"."user" (

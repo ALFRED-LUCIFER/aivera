@@ -1,5 +1,5 @@
 {
-  "id": "85d9d4cb-d275-4221-a0a5-93968f17957e",
+  "id": "3ee821e2-c50d-4250-849e-e78e5ed5b40e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -51,17 +51,16 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "sign_in_method_issuer_subject_unique": {
-          "name": "sign_in_method_issuer_subject_unique",
-          "nullsNotDistinct": false,
+      "compositePrimaryKeys": {
+        "sign_in_method_pkey": {
+          "name": "sign_in_method_pkey",
           "columns": [
             "issuer",
             "subject"
           ]
         }
       },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

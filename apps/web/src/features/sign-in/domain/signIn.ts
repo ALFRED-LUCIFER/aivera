@@ -44,6 +44,7 @@ export const parseSignInForm = (form: FormData) =>
  * Google, or to the Microsoft account provider (a custom OIDC provider whose issuer host is login.microsoftonline.com).
  * Email with password and email one-time code both happen on the tenant's own page, so the app never sees a password.
  */
+// shortcut: "code" opens the password user flow, since an External ID user flow offers one email method (runbook "Password or code"); until the product decision on one-time-code sign-in
 export function authorizationParams(method: Method, email: string | undefined): Record<string, string> {
   const hint: Record<string, string> = email ? { login_hint: email } : {};
   if (method === 'google') return { ...hint, domain_hint: 'google' };
