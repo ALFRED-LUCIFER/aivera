@@ -39,7 +39,15 @@ export default async function seed() {
     ).id;
 
   try {
-    await workspaceOf('Demo Hiring Co', await person('alex@example.com', 'Alex Recruiter'));
+    const demo = await workspaceOf('Demo Hiring Co', await person('alex@example.com', 'Alex Recruiter'));
+    // AIV-P1-007: the Senior AI Engineer's hiring owner, and an interviewer, who may not add jobs, in Demo Hiring Co.
+    const headOfEngineering = await person('head.engineering@example.com', 'Head of Engineering');
+    const karim = await person('karim.panel@example.com', 'Karim Panel');
+    await withWorkspace(db, demo, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${demo}, ${headOfEngineering}, 'hiring_owner', 'active'), (${demo}, ${karim}, 'interviewer', 'active')`),
+    );
+    await workspaces.switchWorkspace({ userId: karim }, demo);
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 
