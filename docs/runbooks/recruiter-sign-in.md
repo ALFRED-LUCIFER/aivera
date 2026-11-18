@@ -19,7 +19,7 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 ## How the app uses it
 
 - **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`, and "Continue with Google" sends `domain_hint=google` so the tenant goes straight to Google.
-- The page offers only what the user flow offers: **email with password** and **Google**. There is no "Email me a code" (one email method per user flow, below) and no "Continue with Microsoft" (it cannot be added to the user flow; a ticket follows for personal Microsoft accounts).
+- The page offers only what the user flow offers: **email with password** and **Google**. There is no "Email me a code" (one email method per user flow, below) and no "Continue with Microsoft" (it cannot be added to the user flow; personal Microsoft accounts are AIV-P1-058 (#243)).
 - The ID token's `iss` + `sub` become an `identity.sign_in_method`, and the user is found by **verified** email (ADR-009 point 4, amended 18 Nov 2026):
   - `email_verified: true` counts as verified.
   - So does a token from our tenant's issuer with no `email_verified` claim: the tenant's metadata lists no such claim, but the tenant verifies every email before it creates an account.
@@ -48,7 +48,7 @@ The five are all or nothing: a partial set stops the app at start-up, naming onl
 
 **Microsoft accounts are not built-in providers in External ID.** The built-in providers are email (password or one-time passcode), Google, Facebook and Apple ([identity providers](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers), read 18 Nov 2026). The owner confirmed in the portal that `recruiter-signup-signin` offers only Google to add. "Continue with Microsoft" is therefore not shown.
 
-- **Personal accounts:** a follow-up ticket covers them, as a [custom OIDC provider](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-oidc-federation-customers) on the fixed consumers issuer `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`. Medium confidence that this setup works.
+- **Personal accounts:** AIV-P1-058 (#243) covers them, as a [custom OIDC provider](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-oidc-federation-customers) on the fixed consumers issuer `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`. Medium confidence that this setup works.
 - **Work accounts from any company tenant:** these cannot be one provider. A custom provider needs one fixed issuer, and the multi-tenant endpoint issues per-tenant issuers. Each company tenant is its own federation, which is the company SSO of AIV-P1-057. Medium confidence: this is inferred from the fixed-issuer rule.
 
 ## Password or code: one per user flow

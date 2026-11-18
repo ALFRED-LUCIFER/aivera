@@ -19,7 +19,7 @@ Two identity systems would also mean two sets of user flows, secrets and sign-in
 ### 1. One identity provider for everyone
 
 - One **Microsoft Entra External ID** tenant holds recruiters, client users (hiring owners and interviewers from client companies) and candidates.
-- Sign-in methods: **email** (password or one-time code), **Google**, and **Microsoft accounts** (personal and work).
+- Sign-in methods: **email with password** and **Google** (AIV-P0-009). A user flow offers one email method, password or one-time code, and the owner chose password. **Microsoft accounts** are not built-in providers in External ID: personal accounts come as a custom OIDC provider in AIV-P1-058, and work accounts as per-workspace company SSO in AIV-P1-057.
 - **Company single sign-on** (any OIDC or SAML provider: Okta, Google Workspace, Entra ID) is added **per workspace, later**, as a federation in the same tenant (AIV-P1-057). It does not create a second identity system.
 - This **replaces** the separate Entra ID multi-tenant app for recruiters.
 - The free tier covers up to 50,000 monthly active users.
@@ -67,7 +67,7 @@ Two identity systems would also mean two sets of user flows, secrets and sign-in
 ```mermaid
 flowchart LR
   P["Person (one verified email)"] --> U["identity.user"]
-  U --> M1["Sign-in methods: email, Google, Microsoft, company SSO later"]
+  U --> M1["Sign-in methods: email, Google; Microsoft and company SSO later"]
   U --> CA["candidate-accounts.account (candidate site session)"]
   U --> WM["workspaces.member (recruiter app session), one per workspace"]
   WM --> R["Role: admin · recruiter · hiring_owner · interviewer"]
@@ -80,12 +80,12 @@ flowchart LR
 ## Consequences
 
 - **Tickets that change:**
-  - AIV-P0-009 drops the Entra ID provider and offers email, Google and Microsoft.
+  - AIV-P0-009 drops the Entra ID provider and offers email with password and Google (Microsoft accounts: AIV-P1-058).
   - AIV-P0-011 uses the same tenant, with its own app registration, user flow and session.
   - AIV-P0-010 marks job-scoped actions. AIV-P0-906 adds workspace type, clients and job grants.
   - AIV-P1-001 accepts any email.
   - AIV-P1-003 invites people to jobs, not to the whole workspace.
-- **Microsoft accounts.** If the tenant does not offer Microsoft personal and work accounts as built-in providers, they are configured as OIDC providers. AIV-P0-009 confirms which.
+- **Microsoft accounts.** AIV-P0-009 confirmed they are not built-in providers in External ID, and a user flow cannot offer them directly. Personal accounts become a custom OIDC provider (AIV-P1-058). Work accounts from any company cannot be one provider, because a custom provider needs one fixed issuer; they come as per-workspace company SSO (AIV-P1-057).
 - **Cross-workspace reads.** Listing a person's workspaces for the switcher needs a named cross-workspace read keyed on the user (ADR-005, point 4).
 - **Recruiter-side code never sees candidate accounts.** The architecture test gains a rule: no recruiter-side module imports `candidate-accounts` (AIV-P3-006).
 - **Billing.** The free External ID tier removes identity cost for the pilot. Monthly active users are watched against the 50,000 limit before launch.

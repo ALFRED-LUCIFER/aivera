@@ -106,12 +106,21 @@ describe('upsertUserFromIdToken', () => {
     expect(await usersWith('omar@example.com')).toBe(0);
   });
 
-  it('our own tenant without an email_verified claim counts as verified: the tenant verifies email at sign-up', async () => {
-    const huda = await identity.upsertUserFromIdToken(
-      token({ subject: 'huda-password', email: 'huda@example.com', emailVerified: undefined }),
+  it('our own tenant without an email_verified claim counts as verified and joins the existing user', async () => {
+    const huda = await identity.upsertUserFromIdToken(token({ subject: 'huda-password', email: 'huda@example.com' }));
+    const google = await identity.upsertUserFromIdToken(
+      token({ subject: 'huda-google', email: 'huda@example.com', emailVerified: undefined }),
     );
+    expect(google.id).toBe(huda.id);
     expect(await usersWith('huda@example.com')).toBe(1);
-    expect(await methodsOf(huda.id)).toEqual(['huda-password']);
+    expect(await methodsOf(huda.id)).toEqual(['huda-google', 'huda-password']);
+  });
+
+  it('our own tenant without the claim also creates a new user', async () => {
+    await identity.upsertUserFromIdToken(
+      token({ subject: 'omar-password', email: 'omar.agency@example.com', emailVerified: undefined }),
+    );
+    expect(await usersWith('omar.agency@example.com')).toBe(1);
   });
 
   // SAFETY: mutation check: isEmailVerified trusted a missing claim from any issuer (dropped the issuer comparison) -> this test failed

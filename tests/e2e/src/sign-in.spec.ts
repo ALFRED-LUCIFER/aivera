@@ -31,7 +31,7 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
 
 // Email one-time code and Microsoft accounts are not offered: the recruiter user flow has email with password and
 // Google only (owner decision on #241; docs/runbooks/recruiter-sign-in.md).
-test('Scenario: Social sign-in with "Continue with Google"', async ({ page }) => {
+test('Scenario: Google sign-in', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   // The tenant is asked to go straight to Google (domain_hint).
@@ -41,7 +41,7 @@ test('Scenario: Social sign-in with "Continue with Google"', async ({ page }) =>
   await desk(page);
 });
 
-test('Scenario: An unverified email never joins an existing account', async ({ page, context }) => {
+test('Scenario: A refused sign-in adds nothing (explicit email_verified false)', async ({ page, context }) => {
   await signIn(page, { email: 'omar.agency@example.com' });
   await desk(page);
   await context.clearCookies();
@@ -52,8 +52,12 @@ test('Scenario: An unverified email never joins an existing account', async ({ p
   await expect(page).toHaveURL(/\/sign-in/);
 });
 
-test('Scenario: There is no company single sign-on button yet', async ({ page }) => {
+// The password is typed on the tenant's page, never in the app, so "Password" is the note under the email field.
+test('Scenario: Only the two chosen ways in are offered', async ({ page }) => {
   await page.goto('/sign-in');
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByText('You enter your password on the next page')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   await expect(page.getByText('Continue with single sign-on')).toHaveCount(0);
   // Only what the user flow really offers.

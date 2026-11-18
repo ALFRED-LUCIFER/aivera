@@ -21,6 +21,8 @@ describe('identity domain', () => {
     expect(error.code).toBe('unverified_email');
   });
 
+  // SAFETY: mutation check: accepted an absent claim from any issuer -> the "other issuer, undefined" row failed
+  // SAFETY: mutation check: treated false like absent for our issuer -> the "our issuer, false" row failed
   it.each([
     [OURS, true, true],
     [OURS, undefined, true],

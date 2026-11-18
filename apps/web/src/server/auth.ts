@@ -8,10 +8,10 @@ import { getDb } from './db';
 import { env, type WebEnv } from './env';
 
 // Recruiter sign-in (AIV-P0-009, ADR-009): one OIDC provider, the Entra External ID tenant's recruiter app
-// registration. Email, Google and Microsoft accounts are chosen on the tenant's user flow, never in this app, so the
-// app never sees a password. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
+// registration. Email with password and Google are chosen on the tenant's user flow, never in this app, so the app
+// never sees a password. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
 
-export const SESSION_COOKIE = '__Host-aivera-session';
+const SESSION_COOKIE = '__Host-aivera-session';
 const EIGHT_HOURS = 8 * 60 * 60;
 
 // The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). `email_verified` stays undefined when absent;
@@ -28,13 +28,17 @@ const isDiscovery = (input: string | URL | Request) =>
   (input instanceof Request ? input.url : String(input)).endsWith('/.well-known/openid-configuration');
 
 let identity: IdentityContract | undefined;
-/** The app's identity module. Our own tenant's issuer is trusted without `email_verified`; with no tenant, none is. */
+/**
+ * The app's one identity module instance (also used by the workspace context, AIV-P0-010). Our own tenant's issuer is
+ * trusted without `email_verified`; with no tenant, none is.
+ */
 export const getIdentity = (): IdentityContract =>
   (identity ??= createIdentity(getDb(), { trustedIssuer: env().auth?.issuer ?? '' }));
 
 export const authConfigured = (): boolean => env().auth !== null;
 
-function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
+/** Exported for its test (auth.test.ts): the logger and the refusal path must never print personal data. */
+export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
   return {
     secret: auth.secret,
     // Container Apps ingress sets the forwarded host; the app has no fixed public URL in dev.

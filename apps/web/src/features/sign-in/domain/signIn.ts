@@ -23,7 +23,7 @@ export const signInPath = (pathname: string, search: string) =>
 
 // Email with password and Google: what the recruiter user flow offers. A user flow has one email method (password,
 // not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md).
-export const METHODS = ['password', 'google'] as const;
+const METHODS = ['password', 'google'] as const;
 export type Method = (typeof METHODS)[number];
 
 const signInForm = z.object({
@@ -46,6 +46,7 @@ export const parseSignInForm = (form: FormData) =>
  * to Google. Email and password are entered on the tenant's own page, so the app never sees a password.
  */
 export function authorizationParams(method: Method, email: string | undefined): Record<string, string> {
+  // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
   const hint: Record<string, string> = email ? { login_hint: email } : {};
   if (method === 'google') return { ...hint, domain_hint: 'google' };
   return hint;
