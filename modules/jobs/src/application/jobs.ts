@@ -7,8 +7,11 @@ import {
   assertValidPayBand,
   editsInPlace,
   JobError,
+  toPublicListing,
+  validPublicDescriptor,
   type Competency,
   type Job,
+  type PublicListing,
   type Rubric,
   type RubricVersion,
 } from '../domain/job.ts';
@@ -29,6 +32,12 @@ export type JobStore = {
   insertVersion(version: RubricVersion, competencies: Competency[]): Promise<void>;
   /** Replaces a not-yet-approved version's statement, note and competencies, and sets it back to draft. */
   replaceDraft(version: RubricVersion, competencies: Competency[]): Promise<void>;
+  /** Sets whether the job is listed on the candidate site, with its descriptor and publish time. */
+  setPublication(
+    workspaceId: string,
+    jobId: string,
+    publication: Pick<Job, 'published' | 'publicDescriptor' | 'publishedAt'>,
+  ): Promise<void>;
   setStatus(
     workspaceId: string,
     versionId: string,
@@ -55,6 +64,9 @@ export type CreateJobInput = Pick<Job, 'title' | 'jobType' | 'description' | 'sy
 
 /** A rubric as the recruiter saves it; competencies in display order. */
 export type SaveRubricInput = { successStatement: string; changeNote?: string | null; competencies: Competency[] };
+
+/** What the recruiter confirms in the publish preview. */
+export type PublishJobInput = { publicDescriptor: string };
 
 const resourceOf = (job: Job): JobResource => ({ jobId: job.id, clientId: job.clientId });
 
@@ -92,6 +104,8 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
         hiringOwnerUserId: input.hiringOwnerUserId ?? null,
         stage: 'defining_rubric',
         published: false,
+        publicDescriptor: null,
+        publishedAt: null,
         payBand,
         synthetic: input.synthetic,
         createdBy: ctx.userId,
@@ -193,6 +207,52 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
         subject: { type: 'rubric_version', id: versionId },
         before: { status: version.status, approvedVersionId: previous?.id ?? null },
         after: { status: 'approved', jobId: job.id, version: version.version },
+      });
+    },
+
+    /**
+     * What candidates would see, for the publish preview: the job with its approved rubric's competencies, through the
+     * allow-list. Null when no version is approved yet. `job.publish`, since only those who can publish preview it.
+     */
+    async getPublicListing(ctx: WorkspaceContext, jobId: string): Promise<PublicListing | null> {
+      const job = await visibleJob(ctx, jobId, 'job.publish');
+      const store = storeFor(ctx.tx);
+      const version = await store.approvedVersion(ctx.workspaceId, job.id);
+      return version && toPublicListing(job, await store.competencies(ctx.workspaceId, version.id));
+    },
+
+    /** Lists the job on the candidate site. Needs an approved rubric. Publishing again updates the descriptor. Audited. */
+    async publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void> {
+      const publicDescriptor = validPublicDescriptor(input.publicDescriptor);
+      // Locks the job row, so a concurrent approval or unpublish runs before or after, never between.
+      const job = await visibleJob(ctx, jobId, 'job.publish', true);
+      const store = storeFor(ctx.tx);
+      if (!(await store.approvedVersion(ctx.workspaceId, job.id))) throw new JobError('rubric_not_approved');
+      await store.setPublication(ctx.workspaceId, job.id, { published: true, publicDescriptor, publishedAt: now() });
+      // shortcut: JobPublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
+      await audit(ctx, {
+        action: 'job.published',
+        subject: { type: 'job', id: job.id },
+        before: { published: job.published, publicDescriptor: job.publicDescriptor },
+        after: { published: true, publicDescriptor },
+      });
+    },
+
+    /** Takes the job off the candidate site. Applications already received stay where they are. Audited. */
+    async unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void> {
+      const job = await visibleJob(ctx, jobId, 'job.publish', true);
+      if (!job.published) return;
+      await storeFor(ctx.tx).setPublication(ctx.workspaceId, job.id, {
+        published: false,
+        publicDescriptor: job.publicDescriptor,
+        publishedAt: job.publishedAt,
+      });
+      // shortcut: JobUnpublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
+      await audit(ctx, {
+        action: 'job.unpublished',
+        subject: { type: 'job', id: job.id },
+        before: { published: true },
+        after: { published: false },
       });
     },
   };

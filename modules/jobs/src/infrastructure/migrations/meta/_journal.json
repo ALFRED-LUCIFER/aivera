@@ -15,6 +15,13 @@
       "when": 1795024562144,
       "tag": "0001_force_rls_and_rubric_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795030716836,
+      "tag": "0002_job_publication",
+      "breakpoints": true
     }
   ]
 }
