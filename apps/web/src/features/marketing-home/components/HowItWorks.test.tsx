@@ -2,7 +2,7 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { howSteps } from '../domain/links.ts';
+import { howSteps } from '../domain/sections.ts';
 import { HowItWorks } from './HowItWorks.tsx';
 
 vi.stubGlobal(

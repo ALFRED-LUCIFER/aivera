@@ -135,10 +135,41 @@ test('Scenario: The header anchor scrolls here and moves focus to the heading', 
   const heading = page.getByRole('heading', { level: 2, name: 'From job description to a decision you can defend' });
   await expect(heading).toBeFocused();
   await expect(heading).toBeInViewport();
-  // Not hidden under the sticky header.
-  const [top, header] = await Promise.all([
-    heading.evaluate((el) => el.getBoundingClientRect().top),
-    page.getByRole('banner').evaluate((el) => el.getBoundingClientRect().bottom),
-  ]);
-  expect(top).toBeGreaterThanOrEqual(header);
+  // Not hidden under the sticky header, once the smooth scroll has settled.
+  const header = await page.getByRole('banner').evaluate((el) => el.getBoundingClientRect().bottom);
+  let last = Number.NaN;
+  await expect
+    .poll(async () => {
+      const top = await heading.evaluate((el) => el.getBoundingClientRect().top);
+      const settled = top === last;
+      last = top;
+      return settled;
+    })
+    .toBe(true);
+  expect(last).toBeGreaterThanOrEqual(header);
+});
+
+/** Every scroll reveal at full opacity: Playwright's toBeVisible and axe both pass over opacity 0, so read it. */
+const revealOpacities = (page: Page) =>
+  page.locator('.mk-reveal').evaluateAll((els) => [...new Set(els.map((el) => getComputedStyle(el).opacity))]);
+
+test.describe('content never waits for a reveal', () => {
+  test.describe('reduced motion', () => {
+    test.use({ reducedMotion: 'reduce' });
+    // SAFETY: mutation check: deleted the reduced-motion .mk-reveal rule in marketing.css -> this test failed (0)
+    test('every section is fully visible without scrolling', async ({ page }) => {
+      await page.goto('/');
+      await expect.poll(() => revealOpacities(page)).toEqual(['1']);
+    });
+  });
+
+  test.describe('no JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+    // SAFETY: mutation check: deleted the <noscript> style in MarketingHome.tsx -> this test failed (0)
+    test('every section is fully visible', async ({ page }) => {
+      await page.goto('/');
+      expect(await revealOpacities(page)).toEqual(['1']);
+      await expect(page.getByRole('heading', { level: 1, name: 'Hire on evidence, not claims.' })).toBeVisible();
+    });
+  });
 });

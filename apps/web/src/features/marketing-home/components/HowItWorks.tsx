@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { column } from './column.ts';
+import { column, sectionTitle } from '../domain/layout.ts';
 import { Reveal } from './Reveal.tsx';
 
 export type HowItWorksProps = {
@@ -10,8 +10,6 @@ export type HowItWorksProps = {
 };
 
 const contrastLine = 'font-display text-[clamp(22px,2.4vw,30px)] leading-tight font-semibold tracking-[-0.015em]';
-export const sectionTitle =
-  'scroll-mt-32 font-display text-[clamp(28px,3.4vw,40px)] leading-[1.15] font-bold tracking-[-0.025em] text-balance';
 
 /** The claims-tests-work contrast on an ink panel, then the five steps (Landing artboard). */
 export function HowItWorks({ contrast: [claims, tests, work], title, steps }: HowItWorksProps) {

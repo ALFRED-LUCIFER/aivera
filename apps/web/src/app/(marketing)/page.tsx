@@ -4,7 +4,7 @@ import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx'
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
 import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
-import { howSteps } from '@/features/marketing-home/domain/links.ts';
+import { howSteps } from '@/features/marketing-home/domain/sections.ts';
 // The website's motion stylesheet: here, because a feature's components/ holds .tsx only (ADR-003).
 import './marketing.css';
 

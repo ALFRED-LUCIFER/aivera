@@ -102,8 +102,8 @@
   }
 }
 
-/* Scroll reveals (Reveal.tsx) never hide content from someone who asked for less motion. */
-@media (prefers-reduced-motion: reduce) {
+/* Scroll reveals (Reveal.tsx) never hide content from someone who asked for less motion, or from paper. */
+@media (prefers-reduced-motion: reduce), print {
   .mk-reveal {
     opacity: 1 !important;
     transform: none !important;
