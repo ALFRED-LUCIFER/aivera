@@ -27,7 +27,10 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
     return (
       <AccessMessage title={t('access.noWorkspaceTitle')} body={t('access.noWorkspace')}>
         <CreateWorkspace
-          focusOptions={HIRING_FOCUS.map((value) => ({ value, label: t(`signup.focus.${value}`) }))}
+          focusOptions={HIRING_FOCUS.map((value) => ({
+            value,
+            label: t(value === 'several' || value === 'other' ? `signup.focus.${value}` : `jobTypes.${value}.label`),
+          }))}
           labels={{
             title: t('signup.title'),
             company: t('signup.company'),

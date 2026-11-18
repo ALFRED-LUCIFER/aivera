@@ -1,24 +1,14 @@
+import { JOB_TYPES } from '@aivera/jobs';
 import { z } from 'zod';
 
 // Creating a workspace after sign-in (AIV-P1-001). Pure: no React, no I/O (ADR-003). Name, email and password come
 // from the sign-in tenant (AIV-P0-009), so the form asks only for what the tenant does not know.
 
-/** The ten job families (PRODUCT.md), then the two catch-alls. Labels are `signup.focus.<key>`. */
-// shortcut: keys only; the job types catalogue with each family's starter evidence types and rubric is AIV-P1-004.
-export const HIRING_FOCUS = [
-  'software_engineering',
-  'qa_test_automation',
-  'ai_llm_engineering',
-  'forward_deployed_engineering',
-  'data_ml',
-  'devops_sre',
-  'product_management',
-  'product_design',
-  'sales',
-  'technical_writing_support',
-  'several',
-  'other',
-] as const;
+/**
+ * The ten job types from the jobs catalogue (AIV-P1-004, labels `jobTypes.<key>.label`), then the two catch-alls
+ * (labels `signup.focus.<key>`). The key is what the workspace stores.
+ */
+export const HIRING_FOCUS = [...JOB_TYPES, 'several', 'other'] as const;
 export type HiringFocus = (typeof HIRING_FOCUS)[number];
 
 const createWorkspaceForm = z.object({

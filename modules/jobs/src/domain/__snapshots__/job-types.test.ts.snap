@@ -1,0 +1,119 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`job types > is read-only and shows every change in review 1`] = `
+{
+  "catalogue": [
+    {
+      "evidenceKey": "jobTypes.software_engineering.evidence",
+      "key": "software_engineering",
+      "labelKey": "jobTypes.software_engineering.label",
+      "starterCompetencies": [
+        "System design in production",
+        "Code quality and testing",
+        "Reliability and operations",
+        "Delivery with a team",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.qa_test_automation.evidence",
+      "key": "qa_test_automation",
+      "labelKey": "jobTypes.qa_test_automation.label",
+      "starterCompetencies": [
+        "Test automation design",
+        "Defect finding and reporting",
+        "CI and release quality",
+        "Test strategy and risk",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.ai_llm_engineering.evidence",
+      "key": "ai_llm_engineering",
+      "labelKey": "jobTypes.ai_llm_engineering.label",
+      "starterCompetencies": [
+        "LLM systems in production",
+        "Retrieval and evaluation",
+        "Python service engineering",
+        "Cost and reliability",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.forward_deployed_engineering.evidence",
+      "key": "forward_deployed_engineering",
+      "labelKey": "jobTypes.forward_deployed_engineering.label",
+      "starterCompetencies": [
+        "Customer problem discovery",
+        "Shipping in the customer environment",
+        "Integration engineering",
+        "Working with AI systems",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.data_ml.evidence",
+      "key": "data_ml",
+      "labelKey": "jobTypes.data_ml.label",
+      "starterCompetencies": [
+        "Problem framing",
+        "Modelling and evaluation",
+        "Data quality and pipelines",
+        "Experimentation",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.devops_sre.evidence",
+      "key": "devops_sre",
+      "labelKey": "jobTypes.devops_sre.label",
+      "starterCompetencies": [
+        "Infrastructure as code",
+        "Incident response",
+        "Observability",
+        "Automation and tooling",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.product_management.evidence",
+      "key": "product_management",
+      "labelKey": "jobTypes.product_management.label",
+      "starterCompetencies": [
+        "Discovery to decision",
+        "Outcomes with metrics",
+        "Prioritisation",
+        "Working with engineering and design",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.product_design.evidence",
+      "key": "product_design",
+      "labelKey": "jobTypes.product_design.label",
+      "starterCompetencies": [
+        "Interaction design craft",
+        "Research to decisions",
+        "Design systems",
+        "Prototyping",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.sales.evidence",
+      "key": "sales",
+      "labelKey": "jobTypes.sales.label",
+      "starterCompetencies": [
+        "Closing sales",
+        "Prospecting and pipeline",
+        "Client relationships",
+        "Negotiation",
+      ],
+    },
+    {
+      "evidenceKey": "jobTypes.technical_writing_support.evidence",
+      "key": "technical_writing_support",
+      "labelKey": "jobTypes.technical_writing_support.label",
+      "starterCompetencies": [
+        "Clear task documentation",
+        "Understanding the product",
+        "Information structure",
+        "Working from tickets and feedback",
+      ],
+    },
+  ],
+  "version": 1,
+}
+`;
