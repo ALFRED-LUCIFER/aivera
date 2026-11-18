@@ -5,9 +5,40 @@
   },
   "home": {
     "headline": "Hire on <mark>evidence</mark>, not claims.",
-    "scaffold": "Aivera workspace scaffold. Feature screens arrive with their tickets.",
+    "lead": "Aivera reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.",
     "createWorkspace": "Create your workspace",
-    "signIn": "Sign in"
+    "seeProduct": "See the product",
+    "reassurance": "No tests to sit. No automatic rejections. A person makes every hiring decision.",
+    "signIn": "Sign in",
+    "nav": {
+      "label": "Site",
+      "home": "Aivera home",
+      "howItWorks": "How it works",
+      "roles": "Roles we cover",
+      "trust": "Why trust it",
+      "candidates": "For candidates",
+      "createWorkspace": "Create workspace"
+    },
+    "card": {
+      "name": "Hessa Al Mazrouei",
+      "role": "QA Automation Engineer · rank {rank} of {total}",
+      "scoreName": "Backed score {backed}, up to {upTo} if her open claim holds",
+      "backed": "{backed} backed by evidence",
+      "caption": "{backed} backed by evidence · up to {upTo} if her open claim holds",
+      "upTo": "up to {upTo} if her open claim holds",
+      "unavailable": "Score unavailable",
+      "competency": "Test automation design",
+      "weight": "· weight {weight}%",
+      "strength": "Strong",
+      "provenance": "Independently corroborated",
+      "evidence": "In the repository checkout-e2e she wrote 148 of 171 test cases. The CI history shows the suite caught 23 regressions before release.",
+      "cited": "wrote 148 of 171 test cases",
+      "markLabel": "cited evidence",
+      "sources": "Sources",
+      "sourceRepo": "github.com/…/checkout-e2e",
+      "sourceCi": "CI history, checked 12 Nov",
+      "synthetic": "Illustrative candidate, synthetic data."
+    }
   },
   "candidate": {
     "shell": {
