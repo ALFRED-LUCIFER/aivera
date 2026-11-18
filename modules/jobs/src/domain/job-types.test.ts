@@ -1,6 +1,6 @@
 import { getTranslations } from '@aivera/i18n';
 import { describe, expect, it } from 'vitest';
-import { JOB_TYPE_CATALOGUE, JOB_TYPES } from '../contracts/index.ts';
+import { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../contracts/index.ts';
 
 // AIV-P1-004 Gherkin, read through the contracts entry as other modules do.
 const t = await getTranslations('en', 'Asia/Dubai');
@@ -79,6 +79,6 @@ describe('job types', () => {
   it('is read-only and shows every change in review', () => {
     expect(Object.isFrozen(JOB_TYPE_CATALOGUE)).toBe(true);
     expect(JOB_TYPE_CATALOGUE.every((e) => Object.isFrozen(e) && Object.isFrozen(e.starterCompetencies))).toBe(true);
-    expect(JOB_TYPE_CATALOGUE).toMatchSnapshot();
+    expect({ version: JOB_TYPE_CATALOGUE_VERSION, catalogue: JOB_TYPE_CATALOGUE }).toMatchSnapshot();
   });
 });

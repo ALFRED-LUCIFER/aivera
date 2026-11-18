@@ -1,12 +1,11 @@
 import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
-import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, enabledFlags, loadShellCounts, readTheme } from '@/features/shell/services/request.ts';
-import { OTHER_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
+import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
@@ -28,10 +27,10 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
     return (
       <AccessMessage title={t('access.noWorkspaceTitle')} body={t('access.noWorkspace')}>
         <CreateWorkspace
-          focusOptions={[
-            ...JOB_TYPE_CATALOGUE.map(({ key, labelKey }) => ({ value: key, label: t(labelKey) })),
-            ...OTHER_FOCUS.map((value) => ({ value, label: t(`signup.focus.${value}`) })),
-          ]}
+          focusOptions={HIRING_FOCUS.map((value) => ({
+            value,
+            label: t(value === 'several' || value === 'other' ? `signup.focus.${value}` : `jobTypes.${value}.label`),
+          }))}
           labels={{
             title: t('signup.title'),
             company: t('signup.company'),

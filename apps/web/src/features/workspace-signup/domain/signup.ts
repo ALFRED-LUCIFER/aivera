@@ -4,10 +4,11 @@ import { z } from 'zod';
 // Creating a workspace after sign-in (AIV-P1-001). Pure: no React, no I/O (ADR-003). Name, email and password come
 // from the sign-in tenant (AIV-P0-009), so the form asks only for what the tenant does not know.
 
-/** The two catch-alls after the job types. Labels are `signup.focus.<key>`. */
-export const OTHER_FOCUS = ['several', 'other'] as const;
-/** The ten job types from the jobs catalogue (AIV-P1-004), then the catch-alls; the key is what the workspace stores. */
-export const HIRING_FOCUS = [...JOB_TYPES, ...OTHER_FOCUS] as const;
+/**
+ * The ten job types from the jobs catalogue (AIV-P1-004, labels `jobTypes.<key>.label`), then the two catch-alls
+ * (labels `signup.focus.<key>`). The key is what the workspace stores.
+ */
+export const HIRING_FOCUS = [...JOB_TYPES, 'several', 'other'] as const;
 export type HiringFocus = (typeof HIRING_FOCUS)[number];
 
 const createWorkspaceForm = z.object({
