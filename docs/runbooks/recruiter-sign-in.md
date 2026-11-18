@@ -18,7 +18,7 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 
 ## How the app uses it
 
-- **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`, and "Continue with Google" sends `domain_hint=google.com` so the tenant preselects its Google provider (plain `google` is refused with AADSTS90023; whether it skips the tenant page entirely is confirmed by the first real Google sign-in).
+- **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`, and "Continue with Google" opens the same tenant page, where Google is one click: no `domain_hint` is sent, because on this tenant `google` is refused (AADSTS90023) and `google.com` skips sign-up for a first-time user (AADSTS50020).
 - The page offers only what the user flow offers: **email with password** and **Google**. There is no "Email me a code" (one email method per user flow, below) and no "Continue with Microsoft" (it cannot be added to the user flow; personal Microsoft accounts are AIV-P1-058 (#243)).
 - The ID token's `iss` + `sub` become an `identity.sign_in_method`, and the user is found by **verified** email (ADR-009 point 4, amended 18 Nov 2026):
   - `email_verified: true` counts as verified.

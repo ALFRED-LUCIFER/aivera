@@ -44,15 +44,14 @@ export const parseSignInForm = (form: FormData) =>
   });
 
 /**
- * Authorisation request parameters for the External ID user flow. `domain_hint=google.com` preselects the tenant's Google
- * provider (plain `google` is refused with AADSTS90023). Email and password are entered on the tenant's own page, so
- * the app never sees a password.
+ * Authorisation request parameters for the External ID user flow. Every method opens the tenant's own page: email and
+ * password are entered there (the app never sees a password), and Google is one click on it.
+ * shortcut: no domain_hint for Google. On our tenant `google` is refused (AADSTS90023) and `google.com` skips sign-up
+ * (AADSTS50020 for a first-time user), so "Continue with Google" costs one extra click; retry a hint when Microsoft fixes it.
  */
-export function authorizationParams(method: Method, email: string | undefined): Record<string, string> {
+export function authorizationParams(email: string | undefined): Record<string, string> {
   // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
-  const hint: Record<string, string> = email ? { login_hint: email } : {};
-  if (method === 'google') return { ...hint, domain_hint: 'google.com' };
-  return hint;
+  return email ? { login_hint: email } : {};
 }
 
 type SignInError = 'unverifiedEmail' | 'unavailable' | 'failed';
