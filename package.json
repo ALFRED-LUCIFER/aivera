@@ -21,6 +21,7 @@
     "services:down": "docker compose down",
     "db:generate": "pnpm --filter @aivera/db exec node --env-file-if-exists=../../.env.local src/cli.ts generate",
     "db:migrate": "pnpm --filter @aivera/db exec node --env-file-if-exists=../../.env.local src/cli.ts migrate",
+    "db:seed": "pnpm --filter @aivera/seed exec node --env-file-if-exists=../../.env.local src/cli.ts",
     "check:links": "node tools/check-links/check.mjs",
     "check:guard": "sh .claude/hooks/guard.test.sh"
   },

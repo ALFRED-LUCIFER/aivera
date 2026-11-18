@@ -51,6 +51,7 @@ const MESSAGES = {
   client_name: "Enter the client's name.",
   client_not_found: 'No such client in this workspace',
   grant_role: 'Only hiring owners and interviewers get job access.',
+  not_synthetic: 'Only a synthetic demo workspace can be seeded or purged.',
 } as const;
 
 export type WorkspaceErrorCode = keyof typeof MESSAGES;

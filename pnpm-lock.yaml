@@ -519,6 +519,9 @@ importers:
       '@aivera/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
+      '@aivera/seed':
+        specifier: workspace:*
+        version: link:../../tools/seed
       '@aivera/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
@@ -534,6 +537,43 @@ importers:
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)
+      oxlint:
+        specifier: 1.94.0
+        version: 1.94.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  tools/seed:
+    dependencies:
+      '@aivera/audit':
+        specifier: workspace:*
+        version: link:../../modules/audit
+      '@aivera/candidates':
+        specifier: workspace:*
+        version: link:../../modules/candidates
+      '@aivera/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@aivera/identity':
+        specifier: workspace:*
+        version: link:../../modules/identity
+      '@aivera/jobs':
+        specifier: workspace:*
+        version: link:../../modules/jobs
+      '@aivera/workspaces':
+        specifier: workspace:*
+        version: link:../../modules/workspaces
+    devDependencies:
+      '@aivera/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
       oxlint:
         specifier: 1.94.0
         version: 1.94.0

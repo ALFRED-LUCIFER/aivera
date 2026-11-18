@@ -13,7 +13,8 @@ import {
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type WorkspaceStore = {
   insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
-  insertMember(member: Member): Promise<void>;
+  /** False, with nothing written, when the user is already a member. */
+  insertMember(member: Member): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
   /** Points the user's active workspace here (not workspace-owned; see the schema). */
   setActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
@@ -25,6 +26,8 @@ export type WorkspaceStore = {
   /** The workspace row, locked until commit, so a type change and an added client cannot interleave. */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
+  /** Deletes the workspace with its members, clients, job grants and active-workspace pointers. */
+  deleteWorkspace(workspaceId: string): Promise<void>;
   /** Clients that are not archived. */
   countClients(workspaceId: string): Promise<number>;
   listClients(workspaceId: string): Promise<Client[]>;
