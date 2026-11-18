@@ -25,7 +25,7 @@ TypeScript end to end, on Azure.
 | Payments       | Stripe (candidate Plus, AED)                                                                                                                                                                             |
 | Hosting        | Azure Container Apps (web, worker), Azure Front Door (custom domains, portfolio subdomains), Key Vault with managed identity, Application Insights via OpenTelemetry                                     |
 | Infrastructure | Bicep, GitHub Actions                                                                                                                                                                                    |
-| Region         | UAE North                                                                                                                                                                                                |
+| Region         | UAE North (dev shares Medvya dev in Central India with synthetic data only: [ADR-008](ADR-008-dev-environment-shares-medvya-dev.md))                                                                     |
 | Tooling        | pnpm 11 workspaces, Turborepo, Node 24 LTS, Vitest, Playwright, Testcontainers, oxlint, Prettier, lefthook (ADR-007)                                                                                     |
 
 ## Consequences
