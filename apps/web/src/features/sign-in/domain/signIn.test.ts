@@ -56,7 +56,7 @@ describe('sign-in form and request', () => {
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('sends Google straight to its provider, and email and password to the tenant page', () => {
+  it('preselects the tenant Google provider, and sends email and password to the tenant page', () => {
     expect(authorizationParams('google', undefined)).toEqual({ domain_hint: 'google.com' });
     expect(authorizationParams('google', 'alex@example.com')).toEqual({
       login_hint: 'alex@example.com',
