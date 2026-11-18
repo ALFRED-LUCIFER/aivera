@@ -13,7 +13,7 @@ expect() { # expect <code> <description> <json>
 }
 
 # SAFETY: mutation check: removed the commit-on-main block in guard.sh -> "commit on main" failed (expected 2, got 0)
-expect 2 "commit on main""{\"tool_name\":\"Bash\",\"cwd\":\"$tmp\",\"tool_input\":{\"command\":\"git commit -m x\"}}"
+expect 2 "commit on main" "{\"tool_name\":\"Bash\",\"cwd\":\"$tmp\",\"tool_input\":{\"command\":\"git commit -m x\"}}"
 expect 2 "--no-verify" '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m x"}}'
 expect 2 "force-push main" '{"tool_name":"Bash","tool_input":{"command":"git push --force origin main"}}'
 expect 2 "plus-refspec push to main" '{"tool_name":"Bash","tool_input":{"command":"git push origin +HEAD:main"}}'
