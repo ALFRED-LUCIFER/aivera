@@ -30,3 +30,6 @@ blob-report/
 
 # Playwright MCP browser output
 .playwright-mcp/
+
+# Agent and preview worktrees (AGENTS.md 2.10)
+.claude/worktrees/
