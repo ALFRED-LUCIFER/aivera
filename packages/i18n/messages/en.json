@@ -109,18 +109,50 @@
       "failed": "We could not create your workspace. Try again."
     },
     "focus": {
-      "software_engineering": "Software engineering",
-      "qa_test_automation": "QA and test automation",
-      "ai_llm_engineering": "AI and LLM engineering",
-      "forward_deployed_engineering": "Forward deployed engineering",
-      "data_ml": "Data and machine learning",
-      "devops_sre": "DevOps and SRE",
-      "product_management": "Product management",
-      "product_design": "Product design",
-      "sales": "Sales",
-      "technical_writing_support": "Technical writing and support",
       "several": "Several of these",
       "other": "Something else"
+    }
+  },
+  "jobTypes": {
+    "software_engineering": {
+      "label": "Software engineering",
+      "evidence": "Repositories, shipped products, code reviews"
+    },
+    "qa_test_automation": {
+      "label": "QA and test automation",
+      "evidence": "Test suites, bug reports, CI history, test plans"
+    },
+    "ai_llm_engineering": {
+      "label": "AI and LLM engineering",
+      "evidence": "Eval harnesses, prompt libraries, shipped assistants"
+    },
+    "forward_deployed_engineering": {
+      "label": "Forward deployed engineering",
+      "evidence": "Customer deployments, integration code, solution write-ups, customer references"
+    },
+    "data_ml": {
+      "label": "Data and machine learning",
+      "evidence": "Notebooks, evaluation sets, model cards, results write-ups"
+    },
+    "devops_sre": {
+      "label": "DevOps and SRE",
+      "evidence": "Infrastructure code, incident reviews, runbooks"
+    },
+    "product_management": {
+      "label": "Product management",
+      "evidence": "Requirement documents, discovery write-ups, before-and-after metrics"
+    },
+    "product_design": {
+      "label": "Product design",
+      "evidence": "Case studies, design files, prototypes"
+    },
+    "sales": {
+      "label": "Sales",
+      "evidence": "Closed deals, client references, pipeline records, market write-ups"
+    },
+    "technical_writing_support": {
+      "label": "Technical writing and support",
+      "evidence": "Published documentation, resolved tickets, help articles"
     }
   }
 }

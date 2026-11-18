@@ -1,0 +1,21 @@
+{
+  "name": "@aivera/jobs",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@aivera/i18n": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
