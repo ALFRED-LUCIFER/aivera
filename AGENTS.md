@@ -70,7 +70,7 @@ src/features/<feature>/components/ presentational .tsx only: props in, events ou
 - **Status colour always travels with an icon and a word.** Never colour alone.
 - **Every metric shows its value-basis marker** (observed, baseline, projection, not yet available).
 - **Evidence provenance and strength** use the shared `ProvenanceTag` and `StrengthMeter` (neutral ink, so strength is not read as pass/fail).
-- **Scores use `ScoreBar`**: solid backed score, hatched claim range, "N backed by evidence · up to M if claims hold".
+- **Scores use `ScoreWithUncertainty`**: solid backed score, hatched claim range, "N backed by evidence · up to M if claims hold".
 - **One primary button per view.** The assistant and bulk actions use the shared preview-confirm card: "Nothing changes until you confirm."
 - **Use the shared component; never build a local copy.** A new shared component is not done until it is in the `@aivera/ui` gallery in light and dark.
 - Motion: 120 ms, `cubic-bezier(.16,1,.3,1)`, named properties, never `transition-all`, off under `prefers-reduced-motion`.
