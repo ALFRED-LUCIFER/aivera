@@ -19,6 +19,7 @@ export default async function JobsPage() {
   // Workspace and job scope come from the request context and row-level security, never from the browser (ADR-005).
   const result = await inActiveWorkspace((ctx) => getJobs().listJobsForDesk(ctx));
   if (!result) notFound();
+  // shortcut: one identity read per distinct hiring owner; batch it if agency workspaces list hundreds of jobs.
   const ownerIds = [...new Set(result.value.flatMap((job) => job.hiringOwnerUserId ?? []))];
   const owners = new Map(
     await Promise.all(

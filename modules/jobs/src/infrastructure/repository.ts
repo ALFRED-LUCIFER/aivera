@@ -56,6 +56,7 @@ export function jobStore(tx: Tx): JobStore {
       const rows = await tx.select().from(job).where(jobWhere(workspaceId)).orderBy(asc(job.createdAt), asc(job.id));
       return rows.map(toJob);
     },
+    // No jobInScope here: callers look states up only for jobs listJobs returned, and RLS scopes rubric_version too.
     rubricStates(workspaceId) {
       return tx
         .select({

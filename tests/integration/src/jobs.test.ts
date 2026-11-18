@@ -574,6 +574,8 @@ describe('Database constraints (AGENTS.md 3.5)', () => {
 
 const desk = (userId: string, workspaceId: string) => as(userId, workspaceId, (ctx) => jobs.listJobsForDesk(ctx));
 
+// Builds on the scenarios above: Senior Product Designer has only a draft; Senior AI Engineer has version 2 approved and
+// version 3 awaiting approval.
 describe('The Jobs list (AIV-P1-006)', () => {
   it('Senior Product Designer has a draft: assessed 0, coverage not yet available, "Send rubric for approval"', async () => {
     const list = await desk(ALEX, demo);
@@ -591,10 +593,15 @@ describe('The Jobs list (AIV-P1-006)', () => {
     });
   });
 
+  // SAFETY: mutation check: removed the workspace filter from jobWhere and ALTER POLICY job_tenant_isolation USING (true) -> this test failed (W2's "Data Engineer" was listed)
   it('another workspace\'s "Data Engineer" never shows', async () => {
+    const w2 = await newWorkspace('Jobs list W2');
+    await as(ALEX, w2, (ctx) => jobs.createJob(ctx, job('Data Engineer', { jobType: 'data_ml' })));
+    expect((await desk(ALEX, w2)).map((j) => j.title)).toEqual(['Data Engineer']);
     expect((await desk(ALEX, demo)).map((j) => j.title)).not.toContain('Data Engineer');
   });
 
+  // SAFETY: mutation check: DROP POLICY job_scope plus jobInScope removed from jobWhere -> this test failed (Faisal listed J0, J1 and J2)
   it('a hiring owner and an interviewer list only their granted job', async () => {
     expect((await desk(FAISAL, gulf)).map((j) => j.id)).toEqual([j1]);
     expect((await desk(LINA, gulf)).map((j) => j.id)).toEqual([j1]);

@@ -150,7 +150,7 @@ export function nextAction(rubric: RubricState, progress: JobProgress): NextActi
 /** A row of the recruiter's Jobs list. */
 export type DeskJob = Job & {
   rubric: RubricState;
-  /** Null is not yet available. Zero while no rubric is approved: assessment reads only the approved version. */
+  /** Null is not yet available. Zero, observed by rule, while no rubric is approved: assessment reads only that. */
   assessed: number | null;
   /** Evidence coverage in whole percent; null is not yet available. */
   coveragePercent: number | null;
