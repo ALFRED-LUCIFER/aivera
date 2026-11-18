@@ -44,6 +44,7 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
         await store.insertMember({ workspaceId: id, userId: creatorUserId, role: 'admin', status: 'active' });
         // The creator lands in the new workspace (AIV-P0-010).
         await store.setActiveWorkspace(creatorUserId, id);
+        await store.audit(id, creatorUserId, { action: 'workspace.created', subject: { type: 'workspace', id } });
         return workspace;
       });
     },

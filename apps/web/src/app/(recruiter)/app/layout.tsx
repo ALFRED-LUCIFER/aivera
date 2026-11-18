@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, enabledFlags, loadShellCounts, readTheme } from '@/features/shell/services/request.ts';
+import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
+import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
 
 // Each section page sets its own title ("Inbox · Aivera", WCAG 2.4.2).
@@ -21,7 +23,24 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
   const member = await currentMember();
   if (!member) {
     const t = await getTranslations(defaultLocale, defaultTimeZone);
-    return <AccessMessage title={t('access.noWorkspaceTitle')} body={t('access.noWorkspace')} />;
+    // AIV-P1-001: or they create their own, and become its admin.
+    return (
+      <AccessMessage title={t('access.noWorkspaceTitle')} body={t('access.noWorkspace')}>
+        <CreateWorkspace
+          focusOptions={HIRING_FOCUS.map((value) => ({ value, label: t(`signup.focus.${value}`) }))}
+          labels={{
+            title: t('signup.title'),
+            company: t('signup.company'),
+            optional: t('signup.optional'),
+            companyHint: t('signup.companyHint'),
+            hiringFocus: t('signup.hiringFocus'),
+            choose: t('signup.choose'),
+            submit: t('signup.submit'),
+            failed: t('signup.errors.failed'),
+          }}
+        />
+      </AccessMessage>
+    );
   }
   const [counts, theme, intl] = await Promise.all([
     loadShellCounts(member),

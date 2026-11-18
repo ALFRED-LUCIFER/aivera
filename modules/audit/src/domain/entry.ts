@@ -8,6 +8,7 @@ export const ACTIONS = [
   'decision.recorded',
   'assistant.confirmed',
   'member.role_changed',
+  'workspace.created',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

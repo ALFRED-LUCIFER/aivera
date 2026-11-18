@@ -117,6 +117,31 @@ describe('Scenario: Creating a workspace makes the creator its admin', () => {
     });
     expect(await workspaces.activeWorkspace(ALEX)).toBe(created.id);
   });
+
+  // AIV-P1-001: "the audit log records 'workspace created' with my name and the time".
+  // SAFETY: mutation check: removed store.audit from createWorkspace -> this test failed (no entry)
+  it('records "workspace created" by the creator, with the time', async () => {
+    const created = await newWorkspace('Audited Hiring Co');
+    const entries = await audit.listFor(created.id, { type: 'workspace', id: created.id });
+    expect(entries).toEqual([
+      expect.objectContaining({ action: 'workspace.created', actor: { type: 'user', id: ALEX } }),
+    ]);
+    expect(entries[0]?.occurredAt).toBeInstanceOf(Date);
+  });
+
+  // SAFETY: mutation check: wrote the audit entry in a second inWorkspace transaction -> this test failed (workspace row left)
+  it('a failing step leaves no workspace, member or active-workspace row', async () => {
+    const failing = createWorkspaces(app, { ...audit, record: () => Promise.reject(new Error('audit down')) });
+    const creator = user(99);
+    await expect(
+      failing.createWorkspace({ name: 'Rolled Back Co', company: '', hiringFocus: 'sales', creatorUserId: creator }),
+    ).rejects.toThrow('audit down');
+    const left = await admin.execute<{ n: string }>(sql`
+      select (select count(*) from workspaces.workspace where name = 'Rolled Back Co')
+        + (select count(*) from workspaces.member where user_id = ${creator})
+        + (select count(*) from workspaces.active_workspace where user_id = ${creator}) as n`);
+    expect(Number(left[0]?.n)).toBe(0);
+  });
 });
 
 describe('Scenario: Members of another workspace are invisible at the database', () => {

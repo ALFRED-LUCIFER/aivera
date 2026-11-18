@@ -32,7 +32,7 @@ export const entry = audit
       check('entry_actor_id_check', sql`${t.actorType} = 'system' or ${t.actorId} is not null`),
       check(
         'entry_action_check',
-        sql`${t.action} in ('rubric.approved', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed')`,
+        sql`${t.action} in ('rubric.approved', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created')`,
       ),
       check(
         'entry_note_check',
