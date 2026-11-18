@@ -33,7 +33,7 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 
 ## Adding a module's schema change
 
-1. Edit `modules/<m>/src/infrastructure/schema.ts` (a workspace-owned table gets `workspace_id`, a `pgPolicy` on `nullif(current_setting('app.workspace_id', true), '')::uuid` and `.enableRLS()`; ADR-005).
+1. Edit `modules/<m>/src/infrastructure/schema.ts` (a workspace-owned table gets `workspace_id`, `tenantPolicy(name, t.workspaceId)` from `@aivera/db/tenant-policy` (the `nullif(current_setting('app.workspace_id', true), '')::uuid` policy) and `.enableRLS()`; ADR-005).
 2. `pnpm db:generate`, read the SQL, commit it. For a new workspace-owned table also run `pnpm --filter @aivera/db exec drizzle-kit generate --custom --name force_rls` from the module folder and add `ALTER TABLE … FORCE ROW LEVEL SECURITY;`.
 3. Add an integration test proving RLS isolates workspaces with the repository filter removed (copy `tests/integration/src/migrations-and-rls.test.ts`).
 4. A new module adds its name to `MODULES` in `packages/db/src/modules.ts`, in dependency order.
