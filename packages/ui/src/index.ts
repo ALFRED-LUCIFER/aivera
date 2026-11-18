@@ -23,3 +23,14 @@ export { StrengthMeter } from './StrengthMeter.tsx';
 export type { Strength, StrengthMeterProps } from './StrengthMeter.tsx';
 export { ValueBasis } from './ValueBasis.tsx';
 export type { ValueBasisKind, ValueBasisProps } from './ValueBasis.tsx';
+
+// AIV-P0-024: preview-confirm card and assistant drawer frame
+export { AssistantDrawer } from './AssistantDrawer.tsx';
+export type { AssistantDrawerProps } from './AssistantDrawer.tsx';
+export { PreviewBanner, PreviewConfirmCard, SuccessBanner } from './PreviewConfirm.tsx';
+export type {
+  PreviewBannerProps,
+  PreviewConfirmCardProps,
+  PreviewConfirmProps,
+  SuccessBannerProps,
+} from './PreviewConfirm.tsx';
