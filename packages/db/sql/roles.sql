@@ -10,4 +10,9 @@ DO $$ BEGIN
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO aivera_app', current_database());
 END $$;
 
+-- aivera_public reads the candidate site's published jobs (AIV-P3-002). It cannot sign in: aivera_app switches to it
+-- with SET LOCAL ROLE for public reads, so a bug there can reach only what aivera_public is granted (jobs grants.sql).
+CREATE ROLE aivera_public NOLOGIN;
+GRANT aivera_public TO aivera_app;
+
 -- Default privileges for aivera_app are set by the migrator itself on every migrate (packages/db/src/migrate.ts).

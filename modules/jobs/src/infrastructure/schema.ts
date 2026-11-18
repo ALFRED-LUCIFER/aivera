@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgPolicy,
   pgSchema,
   text,
@@ -15,7 +16,13 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { COMPETENCY_ORIGINS, COMPETENCY_TYPES, JOB_STAGES, RUBRIC_STATUSES } from '../domain/job.ts';
+import {
+  COMPETENCY_ORIGINS,
+  COMPETENCY_TYPES,
+  JOB_STAGES,
+  RUBRIC_STATUSES,
+  type PublicListing,
+} from '../domain/job.ts';
 import { JOB_TYPES } from '../domain/job-types.ts';
 
 export const jobs = pgSchema('jobs');
@@ -165,6 +172,50 @@ export const competency = jobs
         'competency_job_scope',
         sql`exists (select 1 from ${rubricVersion} where ${rubricVersion.id} = ${t.rubricVersionId})`,
       ),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * The candidate site's read model (AIV-P3-002): one row per job ever published, written in the publishing
+ * transaction. Public reads run as aivera_public, which may select only the public columns (grants.sql) and, through
+ * `public_job_public_read`, every row; the workspace and job ids stay for the writers. `open` is false once
+ * unpublished, so an old link can say "no longer open".
+ */
+export const publicJob = jobs
+  .table(
+    'public_job',
+    {
+      jobId: uuid('job_id').primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      slug: text().notNull(),
+      title: text().notNull(),
+      jobType: text('job_type', { enum: JOB_TYPES }).notNull(),
+      descriptor: text().notNull(),
+      location: text(),
+      payMinMinor: integer('pay_min_minor'),
+      payMaxMinor: integer('pay_max_minor'),
+      payCurrency: text('pay_currency'),
+      competencies: jsonb().$type<PublicListing['competencies']>().notNull(),
+      postedAt: timestamp('posted_at', { withTimezone: true }).notNull(),
+      open: boolean().notNull(),
+    },
+    (t) => [
+      foreignKey({
+        name: 'public_job_job_fk',
+        columns: [t.workspaceId, t.jobId],
+        foreignColumns: [job.workspaceId, job.id],
+      }).onDelete('cascade'),
+      unique('public_job_slug_key').on(t.slug),
+      index('public_job_open_posted_idx').on(t.open, t.postedAt),
+      tenantPolicy('public_job_tenant_isolation', t.workspaceId),
+      // The one non-tenant policy in the schema: reads only, and only as the public role (tenancy.test.ts allows
+      // exactly this one). Matching on current_user, not `TO aivera_public`, so the migration needs no such role.
+      pgPolicy('public_job_public_read', {
+        as: 'permissive',
+        for: 'select',
+        using: sql`current_user = 'aivera_public'`,
+      }),
     ],
   )
   .enableRLS();

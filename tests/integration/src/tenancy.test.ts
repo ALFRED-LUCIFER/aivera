@@ -25,6 +25,13 @@ const GLOBAL_TABLES: Record<string, string> = {
   'workspaces.active_workspace':
     'Keyed on the user and read before any workspace is open; two opaque ids, membership re-checked per request.',
 };
+/**
+ * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role
+ * alone, on the candidate site's public projection (AIV-P3-002). Each must match its expression exactly.
+ */
+const PUBLIC_READ: Record<string, { name: string; qual: string }> = {
+  'jobs.public_job': { name: 'public_job_public_read', qual: "(CURRENT_USER = 'aivera_public'::name)" },
+};
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
 
@@ -111,7 +118,9 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
       violations.push(`${t.name}: no policy comparing ${keyOf(t.name)} with current_setting('app.workspace_id')`);
     // Permissive policies are OR-ed, so any looser one opens the table to other workspaces. Restrictive ones (the jobs
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
-    for (const loose of permissive.filter((p) => !isTenant(p)))
+    const isPublicRead = (p: Policy) =>
+      PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
+    for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p)))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with app.workspace_id`);
   }
   return violations;
@@ -207,6 +216,8 @@ async function seed(
     // Approved, so the cross-workspace getApprovedRubric check has a real rubric to miss.
     await jobs.submitRubric(ctx, rubric.id);
     await jobs.approveRubric(ctx, rubric.id);
+    // Published, so the candidate site's read model (jobs.public_job, AIV-P3-002) has a row to leak.
+    await jobs.publishJob(ctx, job.id, { publicDescriptor: 'A synthetic employer' });
     await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: job.id });
     const [grant] = await workspaces.listJobGrants(ctx);
     const { personId } = await candidates.findOrCreatePerson(ctx, {

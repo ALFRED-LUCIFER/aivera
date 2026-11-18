@@ -22,6 +22,20 @@
       "when": 1795030716836,
       "tag": "0002_job_publication",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795031187756,
+      "tag": "0003_public_job",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795031187996,
+      "tag": "0004_force_rls_public_job",
+      "breakpoints": true
     }
   ]
 }

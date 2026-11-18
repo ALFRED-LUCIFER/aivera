@@ -17,6 +17,9 @@ const CANDIDATE_SITE = /[/\\]src[/\\](?:app[/\\]\(candidate\)|features[/\\]candi
 // `@/…` or a relative path resolved to src/: the session readers (server/auth, server/workspace) and the recruiter shell.
 const RECRUITER_SESSION =
   /^(?:next-auth|@auth\/)|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell(?:[/\\]|$))/;
+// AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.
+const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
+const PUBLIC_API_ALLOWED = new Set(['@aivera/jobs', '@/server/publicJobs']);
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -109,6 +112,13 @@ export function findViolations(root: string): Violation[] {
           RECRUITER_SESSION.test(spec.startsWith('.') ? resolve(dirname(file), spec) : spec)
         )
           add('candidate-site-no-recruiter-session', 'the candidate site never reads the recruiter session (ADR-009)');
+        if (
+          kind === 'apps' &&
+          PUBLIC_API.test(file) &&
+          (spec.startsWith('.') || /^@(?:aivera\/|\/)/.test(spec)) &&
+          !PUBLIC_API_ALLOWED.has(spec)
+        )
+          add('public-api-jobs-only', 'the public API imports only @aivera/jobs and @/server/publicJobs (AIV-P3-002)');
         if (kind === 'packages' && appPackages.has(spec.split('/')[0] ?? ''))
           add('package-imports-app', 'no package imports an app (AGENTS.md 9.4)');
 

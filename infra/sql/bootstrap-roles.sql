@@ -9,6 +9,12 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_migrator');
 SELECT pgaadauth_create_principal_with_oid('aivera_app', :'app_oid', 'service', false, false)
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_app');
 
+-- aivera_public (AIV-P3-002): reads the candidate site's published jobs, entered by aivera_app with SET LOCAL ROLE.
+-- No login and no identity. The migrator grants its columns on every migrate (modules/jobs grants.sql).
+SELECT 'CREATE ROLE aivera_public NOLOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_public')
+\gexec
+GRANT aivera_public TO aivera_app;
+
 -- Isolation from Medvya: only Aivera's roles may connect to the aivera database.
 REVOKE ALL ON DATABASE aivera FROM PUBLIC;
 GRANT CREATE, CONNECT, TEMPORARY ON DATABASE aivera TO aivera_migrator;
@@ -20,5 +26,5 @@ SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole,
        array_agg(d.datname ORDER BY d.datname) FILTER (WHERE has_database_privilege(r.rolname, d.datname, 'CONNECT'))
          AS can_connect_to
 FROM pg_roles r CROSS JOIN pg_database d
-WHERE r.rolname IN ('aivera_migrator', 'aivera_app') AND NOT d.datistemplate
+WHERE r.rolname IN ('aivera_migrator', 'aivera_app', 'aivera_public') AND NOT d.datistemplate
 GROUP BY r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole;

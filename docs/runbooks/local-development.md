@@ -13,6 +13,8 @@ pnpm db:seed                  # the synthetic demo workspace (needs APP_ENV=loca
 pnpm dev                     # http://localhost:3000
 ```
 
+A database volume created before AIV-P3-002 lacks the `aivera_public` role the candidate site's job pages read as. Add it once, then migrate so it gets its grants: `docker compose exec postgres psql -U aivera -d aivera -c "CREATE ROLE aivera_public NOLOGIN; GRANT aivera_public TO aivera_app;"` and `pnpm db:migrate`.
+
 Local values for `.env.local` (local-only passwords from `packages/db/sql/roles.sql`). The web app reads the same repo-root file and refuses to start if a required variable is missing, naming it (`apps/web/src/server/env.ts`):
 
 ```sh

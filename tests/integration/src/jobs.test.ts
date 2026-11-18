@@ -177,7 +177,7 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'jobs' order by name`);
     expect([...tables]).toEqual(
-      ['competency', 'job', 'rubric_version'].map((name) => ({
+      ['competency', 'job', 'public_job', 'rubric_version'].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
@@ -186,6 +186,7 @@ describe('Migrations', () => {
     );
   });
 
+  // public_job holds only what is public anyway, so it has no job scope; its read policy is for aivera_public (AIV-P3-002).
   it('each table has the tenant policy and a restrictive job-scope policy', async () => {
     const policies = await admin.execute<{ table: string; name: string; permissive: string }>(sql`
       select tablename as table, policyname as name, permissive from pg_policies where schemaname = 'jobs'
@@ -195,6 +196,8 @@ describe('Migrations', () => {
       { table: 'competency', name: 'competency_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'job', name: 'job_scope', permissive: 'RESTRICTIVE' },
       { table: 'job', name: 'job_tenant_isolation', permissive: 'PERMISSIVE' },
+      { table: 'public_job', name: 'public_job_public_read', permissive: 'PERMISSIVE' },
+      { table: 'public_job', name: 'public_job_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'rubric_version', name: 'rubric_version_job_scope', permissive: 'RESTRICTIVE' },
       { table: 'rubric_version', name: 'rubric_version_tenant_isolation', permissive: 'PERMISSIVE' },
     ]);
