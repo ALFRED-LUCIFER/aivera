@@ -78,8 +78,8 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
       // listClients checks client.manage, which allows the same roles as job.create.
       if (clientId && !(await listClients(ctx)).some((c) => c.id === clientId && !c.archivedAt))
         throw new JobError('client_not_found');
-      // shortcut: the hiring owner is not checked against the workspace's members; the new-job screen (AIV-P1-006)
-      // offers only active hiring owners, and approval re-checks the role through authorize.
+      // shortcut: the hiring owner is not checked against the workspace's members; the add-job action (AIV-P1-007,
+      // apps/web addJob) accepts only active hiring owners, and approval re-checks the role through authorize.
       const job: Job = {
         id: newId(),
         workspaceId: ctx.workspaceId,

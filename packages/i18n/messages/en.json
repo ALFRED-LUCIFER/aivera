@@ -182,5 +182,44 @@
       "label": "Technical writing and support",
       "evidence": "Published documentation, resolved tickets, help articles"
     }
+  },
+  "jobNew": {
+    "title": "Add a job",
+    "breadcrumb": "Breadcrumb",
+    "steps": "Steps",
+    "step1": "1. Job and description",
+    "step2": "2. Competencies, drafted and suggested",
+    "step3": "3. Save to the job as its rubric",
+    "step4": "4. Hiring owner approves",
+    "jobType": "Job type",
+    "jobTypeHint": "The job type sets which kinds of work count as evidence.",
+    "chooseJobType": "Choose a job type",
+    "evidence": "Evidence that counts:",
+    "jobTitle": "Job title",
+    "description": "Job description",
+    "descriptionHint": "Paste what you have, even if it is thin.",
+    "placeholderIntro": "What this person must be able to do:",
+    "team": "Team",
+    "client": "Client",
+    "location": "Location",
+    "optional": "Optional",
+    "hiringOwner": "Hiring owner",
+    "notChosen": "Not chosen yet",
+    "noHiringOwner": "This workspace has no hiring owner yet.",
+    "inviteHiringOwner": "Invite a hiring owner",
+    "submit": "Draft competencies",
+    "submitting": "Saving the job…",
+    "cancel": "Cancel",
+    "discardTitle": "Discard this job?",
+    "discardBody": "What you typed is not saved.",
+    "discard": "Discard",
+    "keepEditing": "Keep editing",
+    "close": "Close",
+    "forbidden": "You do not have access to add jobs.",
+    "errors": {
+      "title": "Add a job title.",
+      "jobType": "Choose a job type.",
+      "failed": "We could not save this job. Try again."
+    }
   }
 }

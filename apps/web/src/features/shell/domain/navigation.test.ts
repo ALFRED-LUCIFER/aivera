@@ -23,16 +23,18 @@ describe('navigation map (ADR-002 item 4)', () => {
     expect(navigation.filter(({ path }) => !routed.has(path)).map(({ path }) => path)).toEqual([]);
   });
 
-  // SAFETY: mutation check: removed the value entry from navigation -> "every page under /app has a map entry" failed
-  it('every page under /app has a map entry', () => {
+  // SAFETY: mutation check: removed the value entry from navigation -> "every section page under /app (/app/<section>) has a map entry" failed
+  it('every section page under /app (/app/<section>) has a map entry', () => {
     const mapped = new Set<string>(navigation.map(({ path }) => path));
-    expect(appPages.filter(({ path }) => !mapped.has(path)).map(({ file }) => file)).toEqual([]);
+    const sections = appPages.filter(({ path }) => path.split('/').length <= 3);
+    expect(sections.filter(({ path }) => !mapped.has(path)).map(({ file }) => file)).toEqual([]);
   });
 
   // SAFETY: mutation check: inbox page passed screen="jobs" -> this test failed
+  // A page inside a section (/app/jobs/new) guards itself with its section's entry.
   it('every page under /app guards itself with its own map entry', () => {
     for (const { file, path } of appPages) {
-      const { id } = navigation.find((s) => s.path === path) ?? { id: '?' };
+      const id = activeScreen(path) ?? '?';
       const source = readFileSync(join(appDir, file), 'utf8');
       expect(source, file).toMatch(new RegExp(`(screen=|requireScreen\\()["']${id}["']`));
     }
