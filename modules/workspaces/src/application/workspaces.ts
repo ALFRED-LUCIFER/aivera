@@ -41,7 +41,8 @@ export type WorkspaceStore = {
   insertGrant(workspaceId: string, grant: Omit<JobGrant, 'grantedAt'>): Promise<JobGrant | null>;
   /** The deleted grant, or null when there was none. */
   deleteGrant(workspaceId: string, grantId: string): Promise<JobGrant | null>;
-  deleteGrantsOf(workspaceId: string, userId: string): Promise<void>;
+  /** The member's deleted grants. */
+  deleteGrantsOf(workspaceId: string, userId: string): Promise<JobGrant[]>;
   /** Sets app.job_scope, app.job_ids and app.client_ids for this transaction only (ADR-005 point 6). */
   setJobScope(scope: 'all' | 'granted', grants: JobGrant[]): Promise<void>;
   /** Appends an audit entry in this transaction, by a user of this workspace. */
@@ -98,7 +99,13 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
         assertCanChangeRole(members, actorUserId, targetUserId, role);
         await store.updateRole(workspaceId, targetUserId, role);
         // Admins and recruiters see every job, so their grants go; a job-scoped role starts with none.
-        if (!JOB_SCOPED_ROLES.includes(role)) await store.deleteGrantsOf(workspaceId, targetUserId);
+        const revoked = JOB_SCOPED_ROLES.includes(role) ? [] : await store.deleteGrantsOf(workspaceId, targetUserId);
+        for (const grant of revoked)
+          await store.audit(workspaceId, actorUserId, {
+            action: 'job_access.revoked',
+            subject: { type: 'member', id: targetUserId },
+            before: { grantId: grant.id, jobId: grant.jobId, clientId: grant.clientId },
+          });
         await store.audit(workspaceId, actorUserId, {
           action: 'member.role_changed',
           subject: { type: 'member', id: targetUserId },

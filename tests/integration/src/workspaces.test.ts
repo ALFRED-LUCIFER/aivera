@@ -526,6 +526,10 @@ describe('AIV-P0-906: workspace type, agency clients and job-scoped access', () 
         'client.renamed',
         'client.archived',
       ]);
+      // SAFETY: mutation check: dropped the archivedAt check in grantJobAccess -> this test failed (the grant was stored)
+      await expect(
+        as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, clientId: temp.id })),
+      ).rejects.toThrow(new WorkspaceError('client_not_found'));
       for (const userId of [FAISAL, LINA])
         await expect(as(userId, gulf, (ctx) => workspaces.addClient(ctx, 'Mirage Labs'))).rejects.toBeInstanceOf(
           ForbiddenError,
@@ -616,6 +620,12 @@ describe('AIV-P0-906: workspace type, agency clients and job-scoped access', () 
       expect(await grantsOf()).toHaveLength(1);
       await workspaces.changeRole({ workspaceId: gulf, actorUserId: ALEX, targetUserId: huda, role: 'recruiter' });
       expect(await grantsOf()).toEqual([]);
+      // SAFETY: mutation check: removed the job_access.revoked entries from changeRole -> this test failed
+      expect((await audit.listFor(gulf, { type: 'member', id: huda })).map((e) => e.action)).toEqual([
+        'job_access.granted',
+        'job_access.revoked',
+        'member.role_changed',
+      ]);
       await workspaces.changeRole({ workspaceId: gulf, actorUserId: ALEX, targetUserId: huda, role: 'hiring_owner' });
       expect(await grantsOf()).toEqual([]);
       expect(await outcome(huda, J2)).toBe('403');

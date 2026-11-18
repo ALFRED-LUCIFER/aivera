@@ -6,7 +6,7 @@ import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
 import type { Client, JobGrant, Member, Workspace, WorkspaceType } from '../domain/workspace.ts';
 
-export { ROLES, MEMBER_STATUSES, WORKSPACE_TYPES, WorkspaceError } from '../domain/workspace.ts';
+export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
 export type {
   Client,
   JobGrant,

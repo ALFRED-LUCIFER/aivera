@@ -120,6 +120,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     async archiveClient(workspaceId, clientId) {
       const rows = await tx
         .update(client)
+        // shortcut: the database clock, like every created_at in this module; move to the Clock port when it has one.
         .set({ archivedAt: sql`coalesce(${client.archivedAt}, now())` })
         .where(and(eq(client.workspaceId, workspaceId), eq(client.id, clientId)))
         .returning({ id: client.id });
@@ -146,9 +147,11 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .returning(grantColumns);
       return row ?? null;
     },
-    async deleteGrantsOf(workspaceId, userId) {
-      await tx.delete(jobGrant).where(and(eq(jobGrant.workspaceId, workspaceId), eq(jobGrant.userId, userId)));
-    },
+    deleteGrantsOf: (workspaceId, userId) =>
+      tx
+        .delete(jobGrant)
+        .where(and(eq(jobGrant.workspaceId, workspaceId), eq(jobGrant.userId, userId)))
+        .returning(grantColumns),
     async setJobScope(scope, grants) {
       await tx.execute(sql`select set_config('app.job_scope', ${scope}, true),
         set_config('app.job_ids', ${uuidArray(grants.map((g) => g.jobId))}, true),

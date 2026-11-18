@@ -3,7 +3,11 @@ import { WorkspaceError, type Client, type JobGrant, type WorkspaceType } from '
 import type { WorkspaceContext } from './context.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
-/** One member's access to one job, or to all of one client's jobs. */
+/**
+ * One member's access to one job, or to all of one client's jobs. Ids are uuids; the server action validates them
+ * with zod (AGENTS.md 3.7). shortcut: a job id is not checked against the jobs module, which does not exist yet; check
+ * it through the jobs contract once AIV-P1-005 ships.
+ */
 export type GrantJobAccessInput = { userId: string } & (
   { jobId: string; clientId?: never } | { clientId: string; jobId?: never }
 );
@@ -71,6 +75,8 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
       });
     },
 
+    // shortcut: archiving keeps the client's grants, so its old jobs stay open to those members; revoke them here
+    // once jobs can be closed with their client (AIV-P1-005).
     async archiveClient(ctx: WorkspaceContext<Tx>, clientId: string): Promise<void> {
       await authorize(ctx, 'client.manage');
       const store = storeFor(ctx.tx);
@@ -91,8 +97,11 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
       );
       if (!member) throw new WorkspaceError('not_found');
       if (!JOB_SCOPED_ROLES.includes(member.role)) throw new WorkspaceError('grant_role');
-      if (input.clientId && !(await store.findClient(ctx.workspaceId, input.clientId)))
-        throw new WorkspaceError('client_not_found');
+      // An archived client takes no new grants.
+      if (input.clientId) {
+        const client = await store.findClient(ctx.workspaceId, input.clientId);
+        if (!client || client.archivedAt) throw new WorkspaceError('client_not_found');
+      }
       const grant = await store.insertGrant(ctx.workspaceId, {
         id: newId(),
         userId: input.userId,

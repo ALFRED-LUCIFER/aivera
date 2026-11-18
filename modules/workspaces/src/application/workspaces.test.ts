@@ -19,7 +19,7 @@ describe('changeRole and job grants', () => {
     const store = {
       lockMembers: async () => members,
       updateRole: vi.fn(async () => {}),
-      deleteGrantsOf: vi.fn(async () => {}),
+      deleteGrantsOf: vi.fn(async () => []),
       audit: vi.fn(async () => {}),
     };
     const { changeRole } = workspacesUseCases({

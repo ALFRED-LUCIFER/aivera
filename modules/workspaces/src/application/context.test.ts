@@ -8,7 +8,7 @@ const W1 = '0190d4a2-0000-7000-8000-0000000000w1';
 const J1: JobResource = { jobId: 'job-1' };
 const J2: JobResource = { jobId: 'job-2' };
 
-// A faked JobGrants port: every member holds a grant on job J1 only (the real lookup is AIV-P0-906).
+// A faked JobGrants port: every member holds a grant on job J1 only (the real lookup is tested in tests/integration).
 const useCases = (member: Member | null = null) =>
   contextUseCases<null>({
     inWorkspace: (_workspaceId, work) =>
