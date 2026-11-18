@@ -2,8 +2,9 @@
 import { intlConfig } from '@aivera/i18n';
 import { IntlProvider } from '@aivera/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { JobDetail, type JobDetailProps } from './JobDetail.tsx';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { JobDetail, JobDetailFailed, type JobDetailProps } from './JobDetail.tsx';
 
 afterEach(cleanup); // Vitest globals are off, so Testing Library cannot register its own cleanup.
 
@@ -78,5 +79,18 @@ describe('JobDetail (AIV-P3-005)', () => {
   it('shows no weight, client name, candidate or score', () => {
     renderDetail();
     expect(document.body.textContent).not.toMatch(/weight|%|score|candidate ranking|Falcon/i);
+  });
+
+  it('failed: an alert, Try again retries, and All jobs leads back', async () => {
+    const onRetry = vi.fn();
+    render(
+      <IntlProvider {...intl}>
+        <JobDetailFailed onRetry={onRetry} />
+      </IntlProvider>,
+    );
+    expect(screen.getByRole('alert').textContent).toBe('This job could not load. Try again.');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(screen.getByRole('link', { name: 'See all jobs' })).toHaveProperty('pathname', '/candidates/jobs');
   });
 });

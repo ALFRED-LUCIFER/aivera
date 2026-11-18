@@ -1,6 +1,6 @@
 import { useTranslations } from '@aivera/i18n/react';
 import type { JobType } from '@aivera/jobs';
-import { buttonClassName, Card, Chip } from '@aivera/ui';
+import { Button, buttonClassName, Card, Chip } from '@aivera/ui';
 import Link from 'next/link';
 
 export type JobDetailProps = {
@@ -42,11 +42,8 @@ export function JobDetail(props: JobDetailProps) {
           </h2>
           <p className="text-text-2">{t('candidate.job.needsIntro')}</p>
           <ul className="divide-y divide-border rounded-card border border-border bg-surface">
-            {competencies.map((c) => (
-              <li
-                key={c.name}
-                className="flex flex-col gap-1 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
-              >
+            {competencies.map((c, i) => (
+              <li key={i} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                 <div className="min-w-0">
                   <h3 className="text-card text-text">{c.name}</h3>
                   <p className="mt-1 text-text-2">
@@ -106,5 +103,23 @@ export function JobDetail(props: JobDetailProps) {
         </Card>
       </aside>
     </article>
+  );
+}
+
+/** The job could not be read (error.tsx): a way to try again, and back to the list. */
+export function JobDetailFailed({ onRetry }: { onRetry: () => void }) {
+  const t = useTranslations('candidate.job');
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <p role="alert" className="text-text-2">
+        {t('failed')}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={onRetry}>{t('retry')}</Button>
+        <Link href="/candidates/jobs" className={buttonClassName('ghost')}>
+          {t('allJobs')}
+        </Link>
+      </div>
+    </div>
   );
 }

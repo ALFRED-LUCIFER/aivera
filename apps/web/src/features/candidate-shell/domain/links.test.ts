@@ -28,6 +28,6 @@ describe('placeholderKey', () => {
     expect(placeholderKey(applyHref('senior-ai-engineer-3f9a1c0b2d4e'))).toBe('applyPlaceholder');
     expect(placeholderKey('/candidates/plans')).toBe('nav.plans');
     expect(placeholderKey('/candidates/jobs/x/apply/more')).toBeUndefined();
-    expect(placeholderKey('/candidates/jobs/../apply')).toBeUndefined();
+    expect(placeholderKey('/candidates/jobs/-x-/apply')).toBeUndefined();
   });
 });

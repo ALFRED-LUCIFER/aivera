@@ -1,3 +1,5 @@
+import { SLUG } from '@aivera/jobs';
+
 // URLs from docs/01-design/screens.md; each page arrives with its own ticket (AIV-P3-004, -010, -012, AIV-P4).
 export const headerLinks = [
   { key: 'jobs', href: '/candidates/jobs' },
@@ -34,6 +36,11 @@ export const sitePages = new Map<string, PageKey>([
 /** A job's apply address, linked from its page (AIV-P3-005); the form itself is AIV-P3-008. */
 export const applyHref = (slug: string) => `/candidates/jobs/${slug}/apply` as const;
 
+/** The free CV check with this job chosen (AIV-P3-005); reading `job` is AIV-P3-010's. */
+export const cvCheckHref = (slug: string) => `/candidates/cv-check?job=${slug}` as const;
+
+const APPLY_PATH = new RegExp(`^/candidates/jobs/(?:${SLUG.source.slice(1, -1)})/apply$`);
+
 /** The placeholder a path shows, if it is one of the site's pages not built yet; the apply form counts. */
 export const placeholderKey = (path: string): PageKey | undefined =>
-  sitePages.get(path) ?? (/^\/candidates\/jobs\/[a-z0-9-]+\/apply$/.test(path) ? 'applyPlaceholder' : undefined);
+  sitePages.get(path) ?? (APPLY_PATH.test(path) ? 'applyPlaceholder' : undefined);

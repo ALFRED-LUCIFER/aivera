@@ -186,7 +186,9 @@
       "gapLink": "See what Plus adds",
       "closedTitle": "This job is no longer open",
       "closedBody": "The employer is not taking applications for it, or the link is wrong.",
-      "allJobs": "See all jobs"
+      "allJobs": "See all jobs",
+      "failed": "This job could not load. Try again.",
+      "retry": "Try again"
     }
   },
   "evidence": {
