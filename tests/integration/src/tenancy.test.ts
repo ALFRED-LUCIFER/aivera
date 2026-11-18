@@ -184,7 +184,7 @@ async function seed(
       description: 'Senior AI Engineer, synthetic demo job.',
       synthetic: true,
     });
-    await jobs.saveRubric(ctx, job.id, {
+    const rubric = await jobs.saveRubric(ctx, job.id, {
       successStatement: 'Ships reliable work.',
       competencies: [
         {
@@ -197,6 +197,9 @@ async function seed(
         },
       ],
     });
+    // Approved, so the cross-workspace getApprovedRubric check has a real rubric to miss.
+    await jobs.submitRubric(ctx, rubric.id);
+    await jobs.approveRubric(ctx, rubric.id);
     await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: job.id });
     const [grant] = await workspaces.listJobGrants(ctx);
     const { personId } = await candidates.findOrCreatePerson(ctx, {
@@ -385,14 +388,14 @@ describe("Scenario: Fetching another workspace's record by id finds nothing", ()
     expect(await as(m, ALEX, w1.workspaceId, (ctx) => m.candidates.getPerson(ctx, w2.personId))).toBeNull();
   });
 
-  it('W1 asking for the W2 job, or its approved rubric, gets null', async () => {
+  it('W1 asking for the W2 job, or its approved rubric, gets null; its own approved rubric is found', async () => {
     const m = modulesOn(app);
-    expect(
-      await as(m, ALEX, w1.workspaceId, async (ctx) => [
-        await m.jobs.getJob(ctx, w2.jobId),
-        await m.jobs.getApprovedRubric(ctx, w2.jobId),
-      ]),
-    ).toEqual([null, null]);
+    const found = await as(m, ALEX, w1.workspaceId, async (ctx) => ({
+      w2Job: await m.jobs.getJob(ctx, w2.jobId),
+      w2Rubric: await m.jobs.getApprovedRubric(ctx, w2.jobId),
+      ownRubric: await m.jobs.getApprovedRubric(ctx, w1.jobId),
+    }));
+    expect(found).toEqual({ w2Job: null, w2Rubric: null, ownRubric: expect.anything() });
   });
 
   it("W1 renaming or archiving W2's client, or revoking W2's grant, finds nothing and changes nothing", async () => {
@@ -426,6 +429,7 @@ describe('Scenario: Both layers are needed', () => {
   // The repository filter alone: the same contracts on the superuser connection, which row-level security skips.
   // SAFETY: mutation check: removed inWorkspace(workspaceId) from listMembers -> this test failed (saw W2's member rows)
   // SAFETY: mutation check: removed eq(person.workspaceId, workspaceId) from listPeople -> this test failed (saw W2's person)
+  // SAFETY: mutation check: removed eq(job.workspaceId, workspaceId) from jobWhere -> this test failed (saw W2's job)
   it('with row-level security out of the way, the repository filter alone still returns no W2 rows', async () => {
     const [role] = await admin.execute<{ bypass: boolean }>(
       sql`select rolsuper or rolbypassrls as bypass from pg_roles where rolname = current_user`,
