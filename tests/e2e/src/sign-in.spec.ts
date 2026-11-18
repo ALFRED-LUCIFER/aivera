@@ -34,10 +34,10 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
 test('Scenario: Google sign-in', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  // The tenant is asked to go straight to Google (domain_hint).
-  await expect(page.getByText('Provider: google.com', { exact: true })).toBeVisible();
+  // No domain_hint: Google is chosen on the tenant's own page (see authorizationParams' shortcut).
+  await expect(page.getByText('Hint: none', { exact: true })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Sign in with Google' }).click();
   await desk(page);
 });
 

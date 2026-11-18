@@ -38,14 +38,15 @@ function idToken(grant: Grant): string {
 const signInPage = (query: URLSearchParams) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Mock tenant sign-in</title></head><body>
 <h1>Mock tenant sign-in</h1>
-<p>Provider: ${escape(query.get('domain_hint') ?? 'email')}</p>
+<p>Hint: ${escape(query.get('domain_hint') ?? 'none')}</p>
 <form method="post" action="/authorize">
-  ${['client_id', 'redirect_uri', 'state', 'nonce', 'code_challenge', 'domain_hint']
+  ${['client_id', 'redirect_uri', 'state', 'nonce', 'code_challenge']
     .map((name) => `<input type="hidden" name="${name}" value="${escape(query.get(name) ?? '')}">`)
     .join('')}
   <label>Email <input name="email" type="email" value="${escape(query.get('login_hint') ?? '')}" required></label>
   <label><input name="verified" type="checkbox" checked> Email verified</label>
   <button type="submit">Continue</button>
+  <button type="submit" name="idp" value="google">Sign in with Google</button>
 </form></body></html>`;
 
 async function readForm(request: IncomingMessage): Promise<URLSearchParams> {
@@ -94,7 +95,7 @@ createServer(async (request, response) => {
       challenge: form.get('code_challenge') ?? '',
       email: form.get('email') ?? '',
       verified: form.has('verified'),
-      idp: form.get('domain_hint') || 'email',
+      idp: form.get('idp') || 'email',
     });
     const back = new URL(form.get('redirect_uri') ?? '');
     back.searchParams.set('code', code);

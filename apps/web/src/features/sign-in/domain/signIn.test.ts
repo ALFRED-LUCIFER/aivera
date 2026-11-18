@@ -56,14 +56,9 @@ describe('sign-in form and request', () => {
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('preselects the tenant Google provider, and sends email and password to the tenant page', () => {
-    expect(authorizationParams('google', undefined)).toEqual({ domain_hint: 'google.com' });
-    expect(authorizationParams('google', 'alex@example.com')).toEqual({
-      login_hint: 'alex@example.com',
-      domain_hint: 'google.com',
-    });
-    expect(authorizationParams('password', 'alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
-    expect(authorizationParams('password', undefined)).toEqual({});
+  it('sends only the typed email to the tenant page, for every method', () => {
+    expect(authorizationParams('alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
+    expect(authorizationParams(undefined)).toEqual({});
   });
 
   it('refuses the methods the user flow does not offer', () => {

@@ -9,7 +9,7 @@ import { authorizationParams, parseSignInForm } from '../domain/signIn';
  * PKCE, state and nonce; the callback lands on the sanitised `next`, or the desk.
  */
 export async function startSignIn(form: FormData): Promise<void> {
-  const { method, email, next } = parseSignInForm(form);
+  const { email, next } = parseSignInForm(form);
   if (!authConfigured()) redirect('/sign-in?error=unavailable');
-  await signIn('entra', { redirectTo: next }, authorizationParams(method, email));
+  await signIn('entra', { redirectTo: next }, authorizationParams(email));
 }
