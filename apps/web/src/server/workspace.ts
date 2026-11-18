@@ -1,6 +1,4 @@
 import { createAudit } from '@aivera/audit/composition';
-import type { IdentityContract } from '@aivera/identity';
-import { createIdentity } from '@aivera/identity/composition';
 import {
   ForbiddenError,
   type Action,
@@ -12,7 +10,7 @@ import { createWorkspaces } from '@aivera/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
 import type { z } from 'zod';
-import { getSessionUserId } from './auth';
+import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 
 // The request context (AIV-P0-010, ADR-005): every server action, route handler and recruiter page runs in the
@@ -20,8 +18,6 @@ import { getDb } from './db';
 
 let workspaces: WorkspacesContract | undefined;
 const getWorkspaces = () => (workspaces ??= createWorkspaces(getDb(), createAudit(getDb())));
-let identity: IdentityContract | undefined;
-const getIdentity = () => (identity ??= createIdentity(getDb()));
 
 /**
  * Runs `fn` in the signed-in user's active workspace. No session goes to sign-in; no active workspace yet gives

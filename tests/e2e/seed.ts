@@ -14,7 +14,8 @@ export default async function seed() {
   const db = createDb(process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera', {
     max: 1,
   });
-  const identity = createIdentity(db);
+  // Seed sign-ins say email_verified: true, so which issuer is trusted does not matter here.
+  const identity = createIdentity(db, { trustedIssuer: 'e2e-seed' });
   const workspaces = createWorkspaces(db, createAudit(db));
   const person = async (email: string, displayName: string) =>
     (

@@ -11,10 +11,9 @@ const fake = {
   authorize: vi.fn(),
 };
 
-vi.mock('./auth', () => ({ getSessionUserId: () => session() }));
+vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({}) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
 vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({}) }));
-vi.mock('@aivera/identity/composition', () => ({ createIdentity: () => ({}) }));
 vi.mock('@aivera/workspaces/composition', () => ({ createWorkspaces: () => fake }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
