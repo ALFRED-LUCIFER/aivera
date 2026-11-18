@@ -16,6 +16,7 @@ Aivera ranks job candidates on evidence of their work and holds their CVs, docum
 8. **Paying never changes ranking.** Nothing in candidate Plus (billing, portfolio, tailoring) may be read by assessment or ranking (architecture-test-enforced). Tailoring reorders and rewords; it never adds a fact that is not in the candidate's CV or evidence.
 9. **Clients and hiring owners see summaries and sources, not raw candidate files.** Candidate contact details stay private until the candidate accepts an introduction. Candidates can ask for their data to be deleted.
 10. **Data stays in region.** Azure resources, AI inference and backups run in UAE North. No cross-region replication or inference without a new ADR.
+    Exception: the dev environment, which holds synthetic data only, shares Medvya dev in Central India ([ADR-008](docs/adr/ADR-008-dev-environment-shares-medvya-dev.md)).
 11. **Secrets** live only in Key Vault (cloud) or a local `.env.local` that is never committed. `.env.example` holds names, never values. Never commit a secret, even a test one that looks real.
 
 ## 2 · How to work

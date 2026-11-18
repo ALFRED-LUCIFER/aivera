@@ -4,7 +4,7 @@
 
 ## Current priority: one job end to end, recruiter side
 
-**Before anything else, one job must work end to end for a pilot recruiter:** create a workspace, add a job and get its rubric approved, take in applications, collect and assess evidence, see the ranking and a candidate's evidence profile, request missing evidence, run a Round 1 scorecard, and record a decision in the decision pack. It must work on the Azure dev environment in UAE North (real database, real Entra sign-in), not only locally.
+**Before anything else, one job must work end to end for a pilot recruiter:** create a workspace, add a job and get its rubric approved, take in applications, collect and assess evidence, see the ranking and a candidate's evidence profile, request missing evidence, run a Round 1 scorecard, and record a decision in the decision pack. It must work on the Azure dev environment (real database, real Entra sign-in), not only locally. Dev shares Medvya dev in Central India with synthetic data only ([ADR-008](docs/adr/ADR-008-dev-environment-shares-medvya-dev.md)); the pilot runs in UAE North.
 
 Rank every task by whether it moves a pilot recruiter closer to that flow safely. The candidate site and Plus come after the pilot gate.
 
