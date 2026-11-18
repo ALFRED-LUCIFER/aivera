@@ -1,5 +1,5 @@
 {
-  "id": "4d9c1532-a7ae-49f2-a809-7d89c6883341",
+  "id": "0d7df13f-152e-401f-bda1-3156ec73b2f9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -152,6 +152,12 @@
         "person_identifier_person_idx": {
           "name": "person_identifier_person_idx",
           "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "person_id",
               "isExpression": false,

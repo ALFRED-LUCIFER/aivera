@@ -60,7 +60,7 @@ export const personIdentifier = candidates
       }),
       // One person per identifier in a workspace; the same email in another workspace is another person.
       primaryKey({ name: 'person_identifier_pkey', columns: [t.workspaceId, t.type, t.value] }),
-      index('person_identifier_person_idx').on(t.personId),
+      index('person_identifier_person_idx').on(t.workspaceId, t.personId),
       // Must list exactly IDENTIFIER_TYPES (domain/person.ts); changing it needs a new migration.
       check('person_identifier_type_check', sql`${t.type} in ('email', 'phone', 'cv_hash', 'github_login')`),
       tenantPolicy('person_identifier_tenant_isolation', t.workspaceId),

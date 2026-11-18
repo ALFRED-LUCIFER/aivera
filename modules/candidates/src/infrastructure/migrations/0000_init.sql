@@ -26,6 +26,6 @@ CREATE TABLE "candidates"."person_identifier" (
 ALTER TABLE "candidates"."person_identifier" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "candidates"."person_identifier" ADD CONSTRAINT "person_identifier_person_fk" FOREIGN KEY ("workspace_id","person_id") REFERENCES "candidates"."person"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "person_workspace_created_idx" ON "candidates"."person" USING btree ("workspace_id","created_at","id");--> statement-breakpoint
-CREATE INDEX "person_identifier_person_idx" ON "candidates"."person_identifier" USING btree ("person_id");--> statement-breakpoint
+CREATE INDEX "person_identifier_person_idx" ON "candidates"."person_identifier" USING btree ("workspace_id","person_id");--> statement-breakpoint
 CREATE POLICY "person_tenant_isolation" ON "candidates"."person" AS PERMISSIVE FOR ALL TO public USING ("candidates"."person"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK ("candidates"."person"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid);--> statement-breakpoint
 CREATE POLICY "person_identifier_tenant_isolation" ON "candidates"."person_identifier" AS PERMISSIVE FOR ALL TO public USING ("candidates"."person_identifier"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK ("candidates"."person_identifier"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid);
