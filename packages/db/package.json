@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./drizzle-config": "./src/drizzleConfig.ts",
+    "./tenant-policy": "./src/tenantPolicy.ts",
     "./sql/roles.sql": "./sql/roles.sql"
   },
   "scripts": {
