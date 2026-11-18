@@ -108,7 +108,7 @@ export function createAiClient(options: {
         }
         try {
           const { value, usage } = await attempt(AbortSignal.timeout(settings.timeoutMs));
-          breakers.delete(deployment);
+          Object.assign(breaker, { failures: 0, openUntil: 0 }); // in place: calls in flight hold this object
           spent.set(workspaceId, spentToday(workspaceId) + usage.inputTokens + usage.outputTokens);
           const price = deployments[deployment];
           outcome('ok', {
@@ -128,7 +128,7 @@ export function createAiClient(options: {
           const transient = timedOut || (APICallError.isInstance(error) && error.isRetryable);
           // Any answer (a 4xx) means the service is up and resets the run. Once the open window ends the count stays
           // at the threshold, so one more transient failure reopens it (half-open).
-          if (!transient) breakers.delete(deployment);
+          if (!transient) Object.assign(breaker, { failures: 0, openUntil: 0 });
           else if (++breaker.failures >= circuitBreaker.failures) breaker.openUntil = now() + circuitBreaker.openMs;
           if (!transient || attempts >= maxAttempts || breaker.openUntil > now()) {
             outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': reason });
@@ -137,7 +137,7 @@ export function createAiClient(options: {
           // Azure sends retry-after-ms (and retry-after, seconds) on 429; otherwise back off 1 s, 2 s. Capped at 10 s.
           const headers = APICallError.isInstance(error) ? error.responseHeaders : undefined;
           const retryAfterMs = Number(headers?.['retry-after-ms'] ?? Number(headers?.['retry-after']) * 1000);
-          await sleep(Math.min(Number.isFinite(retryAfterMs) ? retryAfterMs : 1000 * 2 ** (attempts - 1), 10_000));
+          await sleep(Math.min(retryAfterMs > 0 ? retryAfterMs : 1000 * 2 ** (attempts - 1), 10_000));
         }
       }
     });
