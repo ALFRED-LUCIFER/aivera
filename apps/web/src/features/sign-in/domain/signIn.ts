@@ -26,7 +26,6 @@ export const signInPath = (pathname: string, search: string) =>
 // Email with password and Google: what the recruiter user flow offers. A user flow has one email method (password,
 // not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md).
 const METHODS = ['password', 'google'] as const;
-export type Method = (typeof METHODS)[number];
 
 const signInForm = z.object({
   method: z.enum(METHODS),
@@ -47,7 +46,8 @@ export const parseSignInForm = (form: FormData) =>
  * Authorisation request parameters for the External ID user flow. Every method opens the tenant's own page: email and
  * password are entered there (the app never sees a password), and Google is one click on it.
  * shortcut: no domain_hint for Google. On our tenant `google` is refused (AADSTS90023) and `google.com` skips sign-up
- * (AADSTS50020 for a first-time user), so "Continue with Google" costs one extra click; retry a hint when Microsoft fixes it.
+ * (AADSTS50020 for a first-time user), so "Continue with Google" costs one extra click; send `domain_hint=google` again
+ * once it stops returning AADSTS90023 on the dev tenant.
  */
 export function authorizationParams(email: string | undefined): Record<string, string> {
   // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
