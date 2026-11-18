@@ -1,0 +1,103 @@
+/* Website motion (Landing artboard, features/marketing-home). Every delay is a 120 ms step on the Case file ease; nothing moves under reduced
+   motion, and the server-rendered page is already in its final state, so no animation is needed to read it. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero entrance: each element rises in its own 120 ms step (--mk-step). */
+  .mk-rise {
+    animation: mk-rise 960ms var(--motion-ease) both;
+    animation-delay: calc(var(--mk-step, 0) * 120ms);
+  }
+
+  /* The highlighter is laid down like a pen stroke: over "evidence" on load, over the cited words in the card. */
+  .mk-sweep,
+  .mk-card[data-stage] mark {
+    background-color: transparent;
+    background-image: linear-gradient(var(--hl), var(--hl));
+    background-repeat: no-repeat;
+    background-position: left center;
+  }
+  [dir='rtl'] .mk-sweep,
+  [dir='rtl'] .mk-card[data-stage] mark {
+    background-position: right center;
+  }
+  .mk-sweep {
+    animation: mk-sweep 840ms var(--motion-ease) 480ms both;
+  }
+
+  /* The card waits (ready) until it is seen, then plays: bar, claim range, highlight. */
+  .mk-score .score-solid {
+    transform-origin: left center;
+  }
+  [dir='rtl'] .mk-score .score-solid {
+    transform-origin: right center;
+  }
+  .mk-card[data-stage='ready'] .mk-score .score-solid {
+    transform: scaleX(0);
+  }
+  .mk-card[data-stage='ready'] .mk-score [data-part='claimed'] {
+    clip-path: inset(0 100% 0 0);
+  }
+  [dir='rtl'] .mk-card[data-stage='ready'] .mk-score [data-part='claimed'] {
+    clip-path: inset(0 0 0 100%);
+  }
+  .mk-card[data-stage='ready'] mark {
+    background-size: 0 100%;
+  }
+  .mk-card[data-stage='play'] .mk-score .score-solid {
+    animation: mk-grow 1200ms var(--motion-ease) 720ms both;
+  }
+  .mk-card[data-stage='play'] .mk-score [data-part='claimed'] {
+    animation: mk-wipe 720ms var(--motion-ease) 1680ms both;
+  }
+  [dir='rtl'] .mk-card[data-stage='play'] .mk-score [data-part='claimed'] {
+    animation-name: mk-wipe-rtl;
+  }
+  .mk-card[data-stage='play'] mark {
+    animation: mk-sweep 840ms var(--motion-ease) 2040ms both;
+  }
+}
+
+@keyframes mk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes mk-sweep {
+  from {
+    background-size: 0 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+@keyframes mk-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes mk-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes mk-wipe-rtl {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
