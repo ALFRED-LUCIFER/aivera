@@ -3,10 +3,21 @@ import type { Tx } from '@aivera/db/client';
 import type { Session, WorkspaceContext as Context } from '../application/context.ts';
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
-import type { Member, Workspace } from '../domain/workspace.ts';
+import type { GrantJobAccessInput } from '../application/clients.ts';
+import type { Client, JobGrant, Member, Workspace, WorkspaceType } from '../domain/workspace.ts';
 
 export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
-export type { Member, MemberStatus, Role, Workspace, WorkspaceErrorCode } from '../domain/workspace.ts';
+export type {
+  Client,
+  JobGrant,
+  Member,
+  MemberStatus,
+  Role,
+  Workspace,
+  WorkspaceErrorCode,
+  WorkspaceType,
+} from '../domain/workspace.ts';
+export type { GrantJobAccessInput } from '../application/clients.ts';
 export { ForbiddenError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
 export type { Session } from '../application/context.ts';
@@ -31,6 +42,26 @@ export interface WorkspacesContract {
   getWorkspace(ctx: WorkspaceContext): Promise<Workspace | null>;
   /** Throws `ForbiddenError` unless the role allows `action`; job-scoped roles also need a grant on `resource`. */
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
+
+  // Workspace type, agency clients and job grants (AIV-P0-906). Each takes the request context, refuses with
+  // `ForbiddenError` by role and with `WorkspaceError` by rule, and audits every write in the same transaction.
+  /** Admins. Throws `has_clients` for an agency whose clients are not all archived. */
+  setWorkspaceType(ctx: WorkspaceContext, type: WorkspaceType): Promise<void>;
+  /** Admins and recruiters; archived clients included. */
+  listClients(ctx: WorkspaceContext): Promise<Client[]>;
+  /** Admins and recruiters of an agency. Throws `not_agency`, `client_name` or `client_exists` (any letter case). */
+  addClient(ctx: WorkspaceContext, name: string): Promise<Client>;
+  /** Admins and recruiters. Throws `client_not_found`, `client_name` or `client_exists`. */
+  renameClient(ctx: WorkspaceContext, clientId: string, name: string): Promise<void>;
+  /** Admins and recruiters. Throws `client_not_found`. */
+  archiveClient(ctx: WorkspaceContext, clientId: string): Promise<void>;
+  /** Admins. The member must be an active hiring owner or interviewer (`grant_role`, `not_found`). Idempotent. */
+  grantJobAccess(ctx: WorkspaceContext, input: GrantJobAccessInput): Promise<void>;
+  /** Admins. Takes effect on the member's next request. Idempotent. */
+  revokeJobAccess(ctx: WorkspaceContext, grantId: string): Promise<void>;
+  /** Admins and recruiters: every job grant in the workspace. */
+  listJobGrants(ctx: WorkspaceContext): Promise<JobGrant[]>;
+
   /** The user's active workspace id, or null when they have none yet. */
   activeWorkspace(userId: string): Promise<string | null>;
   /** Re-checks membership; throws `ForbiddenError` and keeps the current active workspace when refused. */

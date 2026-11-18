@@ -8,7 +8,7 @@ export type WorkspaceContext<Tx> = { userId: string; workspaceId: string; role: 
 /** The signed-in user, from the server-side session. */
 export type Session = { userId: string };
 
-/** Whether one of the member's job grants covers the job or its client. The real lookup is AIV-P0-906. */
+/** Whether one of the member's job grants covers the job or its client (`grantsCover`, read in `ctx.tx`). */
 export type JobGrants<Tx> = {
   covers(ctx: WorkspaceContext<Tx>, resource: JobResource): Promise<boolean>;
 };
@@ -37,6 +37,11 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
       return inWorkspace(workspaceId, async (store, tx) => {
         const member = await store.findMember(workspaceId, session.userId);
         if (member?.status !== 'active') throw new ForbiddenError();
+        const scoped = JOB_SCOPED_ROLES.includes(member.role);
+        await store.setJobScope(
+          scoped ? 'granted' : 'all',
+          scoped ? await store.listGrants(workspaceId, member.userId) : [],
+        );
         return fn({ userId: session.userId, workspaceId, role: member.role, tx });
       });
     },

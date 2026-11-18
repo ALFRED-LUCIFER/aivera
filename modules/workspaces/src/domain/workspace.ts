@@ -6,8 +6,13 @@ export type Role = (typeof ROLES)[number];
 export const MEMBER_STATUSES = ['invited', 'active', 'removed'] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/** ADR-009: an in-house team hires for itself; an agency recruits for clients. */
+export const WORKSPACE_TYPES = ['in_house', 'agency'] as const;
+export type WorkspaceType = (typeof WORKSPACE_TYPES)[number];
+
 export type Workspace = {
   id: string;
+  type: WorkspaceType;
   name: string;
   company: string;
   hiringFocus: string;
@@ -23,10 +28,29 @@ export type Member = {
   status: MemberStatus;
 };
 
+/** An agency's client (ADR-005 point 6). Not a tenant: it only scopes jobs for hiring owners and interviewers. */
+export type Client = { id: string; name: string; archivedAt: Date | null };
+
+/** Access to one job, or to every current and future job of one client. Exactly one of the two is set. */
+export type JobGrant = {
+  id: string;
+  userId: string;
+  jobId: string | null;
+  clientId: string | null;
+  grantedBy: string;
+  grantedAt: Date;
+};
+
 const MESSAGES = {
   forbidden: 'Only a workspace admin can change roles',
   not_found: 'No such member in this workspace',
   last_admin: 'A workspace needs at least one admin',
+  not_agency: 'Only agency workspaces have clients.',
+  has_clients: 'Archive every client before making this workspace an in-house team.',
+  client_exists: 'A client with this name already exists.',
+  client_name: "Enter the client's name.",
+  client_not_found: 'No such client in this workspace',
+  grant_role: 'Only hiring owners and interviewers get job access.',
 } as const;
 
 export type WorkspaceErrorCode = keyof typeof MESSAGES;
