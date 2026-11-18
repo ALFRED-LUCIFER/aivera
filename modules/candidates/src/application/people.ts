@@ -8,6 +8,8 @@ export type CandidateStore = {
   findPersonId(workspaceId: string, identifiers: Identifier[]): Promise<string | null>;
   /** Inserts the person and their identifiers; false, with nothing written, when an identifier is already taken. */
   insertPerson(person: Person, identifiers: Identifier[]): Promise<boolean>;
+  /** Adds the identifiers no person holds yet to the person, and their emails and phones to its record. */
+  attachIdentifiers(workspaceId: string, personId: string, identifiers: Identifier[]): Promise<void>;
   getPerson(workspaceId: string, personId: string): Promise<Person | null>;
   listPeople(workspaceId: string): Promise<Person[]>;
 };
@@ -20,7 +22,7 @@ export type Ports = {
   now(): Date;
 };
 
-/** What an application or import knows about the person. The server action validates its shape with zod. */
+/** What an application or import knows about the person. Its caller (a server action, route handler or job) validates the shape with zod (AGENTS.md 3.7). */
 export type FindOrCreatePersonInput = {
   displayName: string;
   identifiers: Identifier[];
@@ -40,10 +42,13 @@ export function peopleUseCases({ storeFor, authorize, newId, now }: Ports) {
       if (!displayName) throw new CandidateError('display_name');
       const store = storeFor(ctx.tx);
 
-      // shortcut: when identifiers match two different people, the earliest wins and the rest are not attached;
-      // duplicate detection and merge (AIV-P1-018) resolve it.
+      // shortcut: when identifiers match two different people, the earliest wins and keeps only the identifiers no one
+      // holds; duplicate detection and merge (AIV-P1-018) resolve the rest.
       const found = await store.findPersonId(ctx.workspaceId, identifiers);
-      if (found) return { personId: found, created: false };
+      if (found) {
+        await store.attachIdentifiers(ctx.workspaceId, found, identifiers);
+        return { personId: found, created: false };
+      }
 
       const person: Person = {
         id: newId(),
@@ -62,6 +67,7 @@ export function peopleUseCases({ storeFor, authorize, newId, now }: Ports) {
       // Another request created this person between the lookup and the insert; theirs is committed, so visible now.
       const raced = await store.findPersonId(ctx.workspaceId, identifiers);
       if (!raced) throw new Error('person identifier taken but no person holds it');
+      await store.attachIdentifiers(ctx.workspaceId, raced, identifiers);
       return { personId: raced, created: false };
     },
 

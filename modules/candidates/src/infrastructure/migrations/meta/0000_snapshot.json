@@ -1,5 +1,5 @@
 {
-  "id": "8a471d95-a645-4f70-a91b-8dee3535392c",
+  "id": "4d9c1532-a7ae-49f2-a809-7d89c6883341",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -94,7 +94,16 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "person_workspace_id_key": {
+          "name": "person_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        }
+      },
       "policies": {
         "person_tenant_isolation": {
           "name": "person_tenant_isolation",
@@ -157,15 +166,17 @@
         }
       },
       "foreignKeys": {
-        "person_identifier_person_id_person_id_fk": {
-          "name": "person_identifier_person_id_person_id_fk",
+        "person_identifier_person_fk": {
+          "name": "person_identifier_person_fk",
           "tableFrom": "person_identifier",
           "tableTo": "person",
           "schemaTo": "candidates",
           "columnsFrom": [
+            "workspace_id",
             "person_id"
           ],
           "columnsTo": [
+            "workspace_id",
             "id"
           ],
           "onDelete": "no action",

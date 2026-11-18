@@ -47,6 +47,14 @@ const sara = (identifiers: Identifier[] = [{ type: 'email', value: SARA_EMAIL }]
   synthetic: true,
 });
 
+/** True once some transaction waits on a row lock (the second create, blocked on the first one's identifier). */
+const blockedOnLock = async () =>
+  Number(
+    (
+      await admin.execute<{ n: string }>(sql`select count(*) as n from pg_stat_activity where wait_event_type = 'Lock'`)
+    )[0]?.n,
+  ) > 0;
+
 const newWorkspace = async (name: string) =>
   (await workspaces.createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId: ALEX }))
     .id;
@@ -124,7 +132,8 @@ describe('Scenario: The same email finds the same person', () => {
     const second = as(ALEX, w1, (ctx) =>
       candidates.findOrCreatePerson(ctx, { ...input, displayName: 'Tarek Mansour' }),
     );
-    await sleep(200);
+    // Wait until the second transaction is blocked on the first one's identifier, so the race path really runs.
+    while (!(await blockedOnLock())) await sleep(20);
     gate.resolve();
     const [a, b] = await Promise.all([first, second]);
     expect(a.created).toBe(true);
@@ -133,6 +142,27 @@ describe('Scenario: The same email finds the same person', () => {
       tx.execute(sql`select 1 from candidates.person where display_name = 'Tarek Mansour'`),
     );
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe('A known person who arrives with a new identifier', () => {
+  // SAFETY: mutation check: removed attachIdentifiers from findOrCreatePerson -> this test failed (phone not stored)
+  it('keeps the new phone on the existing person', async () => {
+    const email = { type: 'email' as const, value: 'arjun.menon@example.com' };
+    const { personId } = await as(ALEX, w1, (ctx) =>
+      candidates.findOrCreatePerson(ctx, { ...sara([email]), displayName: 'Arjun Menon' }),
+    );
+    const again = await as(ALEX, w1, (ctx) =>
+      candidates.findOrCreatePerson(ctx, {
+        ...sara([email, { type: 'phone', value: '+971 50 000 0003' }]),
+        displayName: 'Arjun Menon',
+      }),
+    );
+    expect(again).toEqual({ personId, created: false });
+    expect(await as(ALEX, w1, (ctx) => candidates.getPerson(ctx, personId))).toMatchObject({
+      emails: ['arjun.menon@example.com'],
+      phones: ['+971500000003'],
+    });
   });
 });
 
@@ -189,6 +219,17 @@ describe('Scenario: People are isolated by workspace', () => {
           values (${w1}, 'email', ${SARA_EMAIL}, ${personId})`),
       ),
     ).rejects.toMatchObject({ code: '23505', constraint: 'person_identifier_pkey' });
+  });
+
+  // SAFETY: mutation check: made the foreign key person_id -> person(id) only -> this test failed (the insert succeeded)
+  it("an identifier cannot point at another workspace's person", async () => {
+    const w2Person = await as(ALEX, w2, (ctx) => candidates.findOrCreatePerson(ctx, sara()));
+    await expect(
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`insert into candidates.person_identifier (workspace_id, type, value, person_id)
+          values (${w1}, 'github_login', 'stray', ${w2Person.personId})`),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it("a write into another workspace is refused by the policy's WITH CHECK", async () => {

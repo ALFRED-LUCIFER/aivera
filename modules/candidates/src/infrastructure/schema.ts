@@ -1,6 +1,17 @@
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  foreignKey,
+  index,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { IDENTIFIER_TYPES } from '../domain/person.ts';
 
 export const candidates = pgSchema('candidates');
@@ -23,6 +34,7 @@ export const person = candidates
       createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     },
     (t) => [
+      unique('person_workspace_id_key').on(t.workspaceId, t.id),
       index('person_workspace_created_idx').on(t.workspaceId, t.createdAt, t.id),
       tenantPolicy('person_tenant_isolation', t.workspaceId),
     ],
@@ -37,11 +49,15 @@ export const personIdentifier = candidates
       type: text({ enum: IDENTIFIER_TYPES }).notNull(),
       // Normalised by the domain (normaliseIdentifier) before it is stored.
       value: text().notNull(),
-      personId: uuid('person_id')
-        .notNull()
-        .references(() => person.id),
+      personId: uuid('person_id').notNull(),
     },
     (t) => [
+      // Includes the workspace, so an identifier cannot point at another workspace's person (FK checks skip RLS).
+      foreignKey({
+        name: 'person_identifier_person_fk',
+        columns: [t.workspaceId, t.personId],
+        foreignColumns: [person.workspaceId, person.id],
+      }),
       // One person per identifier in a workspace; the same email in another workspace is another person.
       primaryKey({ name: 'person_identifier_pkey', columns: [t.workspaceId, t.type, t.value] }),
       index('person_identifier_person_idx').on(t.personId),

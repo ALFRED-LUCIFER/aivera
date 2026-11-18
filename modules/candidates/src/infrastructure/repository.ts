@@ -40,6 +40,25 @@ export function candidateStore(tx: Tx): CandidateStore {
         throw error;
       }
     },
+    async attachIdentifiers(workspaceId, personId, identifiers) {
+      const added = await tx
+        .insert(personIdentifier)
+        .values(identifiers.map((i) => ({ ...i, workspaceId, personId })))
+        .onConflictDoNothing()
+        .returning({ type: personIdentifier.type, value: personIdentifier.value });
+      if (added.length === 0) return;
+      const [row] = await tx
+        .select({ emails: person.emails, phones: person.phones })
+        .from(person)
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)))
+        .for('update');
+      if (!row) throw new Error('person to attach identifiers to not found');
+      const of = (type: string) => added.filter((i) => i.type === type).map((i) => i.value);
+      await tx
+        .update(person)
+        .set({ emails: [...row.emails, ...of('email')], phones: [...row.phones, ...of('phone')] })
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)));
+    },
     async getPerson(workspaceId, personId) {
       const [row] = await tx
         .select()

@@ -9,7 +9,8 @@ CREATE TABLE "candidates"."person" (
 	"location" text,
 	"synthetic" boolean NOT NULL,
 	"merged_into_id" uuid,
-	"created_at" timestamp with time zone NOT NULL
+	"created_at" timestamp with time zone NOT NULL,
+	CONSTRAINT "person_workspace_id_key" UNIQUE("workspace_id","id")
 );
 --> statement-breakpoint
 ALTER TABLE "candidates"."person" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
@@ -23,7 +24,7 @@ CREATE TABLE "candidates"."person_identifier" (
 );
 --> statement-breakpoint
 ALTER TABLE "candidates"."person_identifier" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "candidates"."person_identifier" ADD CONSTRAINT "person_identifier_person_id_person_id_fk" FOREIGN KEY ("person_id") REFERENCES "candidates"."person"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "candidates"."person_identifier" ADD CONSTRAINT "person_identifier_person_fk" FOREIGN KEY ("workspace_id","person_id") REFERENCES "candidates"."person"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "person_workspace_created_idx" ON "candidates"."person" USING btree ("workspace_id","created_at","id");--> statement-breakpoint
 CREATE INDEX "person_identifier_person_idx" ON "candidates"."person_identifier" USING btree ("person_id");--> statement-breakpoint
 CREATE POLICY "person_tenant_isolation" ON "candidates"."person" AS PERMISSIVE FOR ALL TO public USING ("candidates"."person"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK ("candidates"."person"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid);--> statement-breakpoint
