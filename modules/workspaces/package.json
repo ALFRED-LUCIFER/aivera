@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aivera/audit": "workspace:*",
     "@aivera/db": "workspace:*",
     "drizzle-orm": "0.45.4"
   },

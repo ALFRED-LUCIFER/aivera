@@ -1,3 +1,4 @@
+import type { NewEntry } from '@aivera/audit';
 import { assertCanChangeRole, type Member, type Role, type Workspace } from '../domain/workspace.ts';
 
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
@@ -9,6 +10,8 @@ export type WorkspaceStore = {
   /** Every member, locked until commit, so two concurrent role changes cannot both remove an admin. */
   lockMembers(workspaceId: string): Promise<Member[]>;
   updateRole(workspaceId: string, userId: string, role: Role): Promise<void>;
+  /** Appends an audit entry in this transaction, by a user of this workspace. */
+  audit(workspaceId: string, actorUserId: string, entry: NewEntry): Promise<void>;
 };
 
 export type Ports = {
@@ -50,11 +53,17 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
       return inWorkspace(workspaceId, (store) => store.listMembers(workspaceId));
     },
 
-    // shortcut: no audit event for role changes, add when the audit module lands (AIV-P0-013)
     changeRole({ workspaceId, actorUserId, targetUserId, role }: ChangeRoleInput): Promise<void> {
       return inWorkspace(workspaceId, async (store) => {
-        assertCanChangeRole(await store.lockMembers(workspaceId), actorUserId, targetUserId, role);
+        const members = await store.lockMembers(workspaceId);
+        assertCanChangeRole(members, actorUserId, targetUserId, role);
         await store.updateRole(workspaceId, targetUserId, role);
+        await store.audit(workspaceId, actorUserId, {
+          action: 'member.role_changed',
+          subject: { type: 'member', id: targetUserId },
+          before: { role: members.find((m) => m.userId === targetUserId)?.role ?? null },
+          after: { role },
+        });
       });
     },
   };

@@ -1,0 +1,4 @@
+{
+  "extends": "@aivera/config/tsconfig/base.json",
+  "include": ["src"]
+}

@@ -4,8 +4,10 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { AuditContract } from '@aivera/audit';
 import { createDb, withWorkspace, type Db } from '@aivera/db';
 import { WorkspaceError, type MemberStatus, type Role, type WorkspacesContract } from '@aivera/workspaces';
+import { createAudit } from '@aivera/audit/composition';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,6 +25,7 @@ let container: StartedPostgreSqlContainer;
 let admin: Db;
 let app: Db;
 let workspaces: WorkspacesContract;
+let audit: AuditContract;
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -56,7 +59,8 @@ beforeAll(async () => {
   await admin.$client.unsafe(rolesSql);
   dbMigrate();
   app = createDb(urlFor('aivera_app'), { max: 1 }); // one connection, so the reused-connection case below is real
-  workspaces = createWorkspaces(app);
+  audit = createAudit(app);
+  workspaces = createWorkspaces(app, audit);
 });
 
 afterAll(async () => {
@@ -275,5 +279,20 @@ describe('Scenario Outline: Only admins change roles', () => {
     if (result === 'changed') await change;
     else await expect(change).rejects.toThrow(expect.objectContaining({ code: 'forbidden' }));
     expect((await workspaces.getMembership(target, id))?.role).toBe(result === 'changed' ? 'recruiter' : 'interviewer');
+    // AIV-P0-013: a role change is audited in its transaction; a refused one leaves no entry.
+    // SAFETY: mutation check: removed store.audit from changeRole -> the admin row failed (no entry)
+    const entries = await audit.listFor(id, { type: 'member', id: target });
+    expect(entries).toEqual(
+      result === 'changed'
+        ? [
+            expect.objectContaining({
+              action: 'member.role_changed',
+              actor: { type: 'user', id: ALEX },
+              before: { role: 'interviewer' },
+              after: { role: 'recruiter' },
+            }),
+          ]
+        : [],
+    );
   });
 });

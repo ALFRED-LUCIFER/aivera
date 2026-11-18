@@ -1,0 +1,80 @@
+// An audit entry: who did what to which record, when and why (AGENTS.md 1.5, 3.6). Entries are never changed.
+
+/** Adding an action also needs a migration for the `entry_action_check` constraint (infrastructure/schema.ts). */
+export const ACTIONS = [
+  'rubric.approved',
+  'score.changed',
+  'candidate.merged',
+  'decision.recorded',
+  'assistant.confirmed',
+  'member.role_changed',
+] as const;
+export type Action = (typeof ACTIONS)[number];
+
+/** Actions where a person changes an outcome, so the reason must be written down. */
+export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded'];
+
+export const ACTOR_TYPES = ['user', 'system', 'candidate', 'client'] as const;
+export type ActorType = (typeof ACTOR_TYPES)[number];
+
+/** `system` is Aivera itself and has no id; every other actor is an opaque id from its owning module. */
+export type Actor = { type: 'system' } | { type: Exclude<ActorType, 'system'>; id: string };
+
+/** The record the entry is about, by opaque id (`{ type: 'candidate', id }`). */
+export type Subject = { type: string; id: string };
+
+/** Ids, field names, enum values and numbers only: no names, contact details or free text about a candidate. */
+export type Values = Record<string, string | number | boolean | null>;
+
+export type NewEntry = {
+  action: Action;
+  subject: Subject;
+  note?: string;
+  before?: Values;
+  after?: Values;
+};
+
+export type AuditEntry = Required<Pick<NewEntry, 'action' | 'subject'>> & {
+  id: string;
+  workspaceId: string;
+  occurredAt: Date;
+  actor: Actor;
+  note: string | null;
+  before: Values | null;
+  after: Values | null;
+  correlationId: string | null;
+};
+
+const MESSAGES = {
+  unknown_action: 'Unknown audit action',
+  note_required: 'A note is required for this action',
+  personal_data: 'Audit before and after values hold ids and field names only',
+} as const;
+
+export type AuditErrorCode = keyof typeof MESSAGES;
+
+/** A refused audit write. The message never repeats the refused value (AGENTS.md 1.2). */
+export class AuditError extends Error {
+  readonly code: AuditErrorCode;
+  constructor(code: AuditErrorCode) {
+    super(MESSAGES[code]);
+    this.name = 'AuditError';
+    this.code = code;
+  }
+}
+
+const EMAIL = /@/;
+// A whole value of 7 to 15 digits once spaces, dots, dashes and brackets are removed (E.164 length).
+const PHONE = /^\+?\d{7,15}$/;
+
+// shortcut: catches email addresses and phone numbers only, not names; add a zod schema per action when actions carry richer values
+const looksPersonal = (value: Values[string]) =>
+  typeof value === 'string' && (EMAIL.test(value) || PHONE.test(value.replace(/[\s().-]/g, '')));
+
+/** Throws unless `entry` may be written: a known action, a note where required, no contact details in values. */
+export function assertValidEntry(entry: NewEntry): void {
+  if (!ACTIONS.includes(entry.action)) throw new AuditError('unknown_action');
+  if (NOTE_REQUIRED.includes(entry.action) && !entry.note?.trim()) throw new AuditError('note_required');
+  for (const values of [entry.before, entry.after])
+    if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
+}
