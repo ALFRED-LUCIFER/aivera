@@ -25,15 +25,30 @@ const profile = {
   name: 'Nadia Haddad',
 };
 
+// Everything written: console calls, and the logger's JSON lines on stdout.
+function raw() {
+  const spies = [
+    vi.mocked(console.error),
+    vi.mocked(console.warn),
+    vi.mocked(console.log),
+    vi.mocked(process.stdout.write),
+  ];
+  return spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(String).join(' ').trim())).filter(Boolean);
+}
+// Each logger line as "[area] code", anything else verbatim.
 function logged() {
-  const lines = [vi.mocked(console.error), vi.mocked(console.warn), vi.mocked(console.log)].flatMap((spy) =>
-    spy.mock.calls.map((args) => args.map(String).join(' ')),
-  );
-  return lines.join('\n');
+  return raw()
+    .map((line) => {
+      if (!line.startsWith('{')) return line;
+      const { area, code } = JSON.parse(line) as { area: string; code: string };
+      return `[${area}] ${code}`;
+    })
+    .join('\n');
 }
 
 const silence = () => {
   for (const level of ['error', 'warn', 'log'] as const) vi.spyOn(console, level).mockImplementation(() => {});
+  vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 };
 // Production minifies Auth.js class names; the stable `type` is what survives.
 const minified = (fields: object) => Object.assign(new Error('boom'), { name: 'Q' }, fields);
@@ -54,7 +69,7 @@ describe('auth logging and refusals never print personal data', () => {
     expect(config.logger?.error).toBeTypeOf('function');
     config.logger?.error?.(error);
     expect(logged()).toBe('[auth] CallbackRouteError');
-    expect(logged()).not.toMatch(PERSONAL);
+    expect(raw().join('\n')).not.toMatch(PERSONAL);
     expect(config.debug).not.toBe(true);
   });
 
@@ -91,12 +106,12 @@ describe('auth logging and refusals never print personal data', () => {
   });
 
   it('an unverified email is refused with its code and logs nothing', async () => {
-    for (const level of ['error', 'warn', 'log'] as const) vi.spyOn(console, level).mockImplementation(() => {});
+    silence();
     upsert.mockRejectedValueOnce(new IdentityError('unverified_email'));
     const user: { id?: string } = {};
     const result = await config.callbacks?.signIn?.({ user, profile, account: null } as never);
     expect(result).toBe('/sign-in?error=unverified_email');
     expect(user.id).toBeUndefined();
-    expect(logged()).not.toMatch(PERSONAL);
+    expect(raw().join('\n')).not.toMatch(PERSONAL);
   });
 });

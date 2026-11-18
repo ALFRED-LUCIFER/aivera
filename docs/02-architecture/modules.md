@@ -36,3 +36,7 @@ The back end is a modular monolith ([ADR-002](../adr/ADR-002-repository-layout.m
 - **Job grants live in `workspaces`** next to the member and role they qualify, so the request context loads role and grants in one place (ADR-005, point 6).
 - **The candidate-account link lives in `candidate-accounts`.** The account belongs to the person; recruiter-side modules (`candidates`, `intake`, `evidence`) never store an account id. Erasure reaches each linked workspace as an event carrying opaque workspace and candidate ids.
 - Only apps import `@aivera/<m>/composition`.
+
+## Tracing across the outbox ([AIV-P0-018](https://github.com/ALFRED-LUCIFER/aivera/issues/50))
+
+One operation id runs from the server action to the worker handler. The outbox envelope carries `correlationId`: the W3C `traceparent` of the span active when the event is written (`propagation.inject`). The relay and the worker start their spans with it as parent (`propagation.extract`). It holds trace and span ids only, never personal data. Built and tested by the outbox (AIV-P0-014, #46) and worker (AIV-P0-015, #47) tickets.

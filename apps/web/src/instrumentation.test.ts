@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { register } from './instrumentation';
 
+const initTelemetry = vi.hoisted(() => vi.fn());
+vi.mock('@aivera/observability/init', () => ({ initTelemetry }));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -20,5 +23,18 @@ describe('server start-up (instrumentation register)', () => {
     expect(exit).toHaveBeenCalledWith(1);
     expect(log).toHaveBeenCalledWith('Invalid configuration, missing or invalid: DATABASE_URL');
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/value-that-must-not-be-logged/);
+    expect(initTelemetry).not.toHaveBeenCalled();
+  });
+
+  // AIV-P0-018: Container Apps fills the connection string from Key Vault; locally it is unset and telemetry stays off.
+  it('starts telemetry for the web service with the configured connection string', async () => {
+    vi.stubEnv('NEXT_RUNTIME', 'nodejs');
+    vi.stubEnv('APP_ENV', 'local');
+    vi.stubEnv('DATABASE_URL', 'postgres://aivera_app@localhost:5440/aivera');
+    vi.stubEnv('APPLICATIONINSIGHTS_CONNECTION_STRING', 'InstrumentationKey=00000000-0000-0000-0000-000000000000');
+
+    await register();
+
+    expect(initTelemetry).toHaveBeenCalledWith('web', 'InstrumentationKey=00000000-0000-0000-0000-000000000000');
   });
 });

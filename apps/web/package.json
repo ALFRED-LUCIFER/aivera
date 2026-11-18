@@ -16,6 +16,7 @@
     "@aivera/i18n": "workspace:*",
     "@aivera/identity": "workspace:*",
     "@aivera/jobs": "workspace:*",
+    "@aivera/observability": "workspace:*",
     "@aivera/ui": "workspace:*",
     "@aivera/workspaces": "workspace:*",
     "next": "16.4.6",

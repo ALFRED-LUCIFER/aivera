@@ -89,4 +89,5 @@ output cicdIdentityClientId string = cicdIdentity.properties.clientId
 output cicdIdentityPrincipalId string = cicdIdentity.properties.principalId
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
+output appInsightsId string = appInsights.id
 output appInsightsSecretUri string = appInsightsSecret.properties.secretUri

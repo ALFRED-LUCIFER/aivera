@@ -1,5 +1,6 @@
 'use server';
 
+import { log } from '@aivera/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, redirect } from 'next/navigation';
 import { getIdentity, getSessionUserId } from '@/server/auth';
@@ -35,8 +36,7 @@ export async function createWorkspace(_previous: CreateWorkspaceState, form: For
     });
   } catch (error) {
     // The name only: a database error's detail can repeat the company or the person's name (AGENTS.md 1.2).
-    // shortcut: console until the app has a pino logger; log through it then
-    console.error(`[workspace-signup] create failed: ${error instanceof Error ? error.name : 'unknown'}`);
+    log.error({ area: 'workspace-signup', error: error instanceof Error ? error.name : 'unknown' }, 'create failed');
     return failed;
   }
   // The recruiter layout rendered the no-workspace page at this same path; drop it so the shell renders instead.
