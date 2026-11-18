@@ -3,9 +3,14 @@
   "extends": ["./base.json"],
   "plugins": ["typescript", "unicorn", "import", "oxc", "react", "react-hooks", "jsx-a11y", "nextjs"],
   "rules": {
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-no-literals": ["error", { "restrictedAttributes": ["aria-label", "title", "placeholder"] }]
   },
   "overrides": [
+    {
+      "files": ["**/*.test.tsx"],
+      "rules": { "react/jsx-no-literals": "off" }
+    },
     {
       "files": ["**/features/*/domain/**"],
       "rules": {
@@ -194,8 +199,7 @@
           { "object": "window", "property": "sessionStorage" },
           { "object": "window", "property": "indexedDB" },
           { "object": "window", "property": "caches" }
-        ],
-        "react/jsx-no-literals": "error"
+        ]
       }
     }
   ]

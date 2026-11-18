@@ -34,7 +34,7 @@ src/features/<feature>/index.ts  the feature's public API for other features
 | `app/`         | wiring, providers, composition root                        | business rules                                                                 |
 
 4. Server state: TanStack Query only; the cache is cleared on workspace switch and sign-out. Forms: React Hook Form + Zod. No other state library without an ADR.
-5. All user-facing text comes from `@aivera/i18n`; `react/jsx-no-literals` is on in features.
+5. All user-facing text comes from `@aivera/i18n`; `react/jsx-no-literals` is on across `apps/web` and `packages/ui` outside test files, for JSX text and for `aria-label`, `title` and `placeholder`.
 
 ## Consequences
 

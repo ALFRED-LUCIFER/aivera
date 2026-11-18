@@ -1,0 +1,26 @@
+{
+  "app": {
+    "title": "Aivera",
+    "description": "Hire on evidence, not claims."
+  },
+  "home": {
+    "headline": "Hire on <mark>evidence</mark>, not claims.",
+    "scaffold": "Aivera workspace scaffold. Feature screens arrive with their tickets.",
+    "createWorkspace": "Create your workspace",
+    "signIn": "Sign in"
+  },
+  "evidence": {
+    "request": {
+      "send": "Send request"
+    },
+    "requests": {
+      "sent": "{count, plural, one {# evidence request sent} other {# evidence requests sent}}"
+    }
+  },
+  "money": {
+    "monthly": "{amount} a month"
+  },
+  "date": {
+    "short": "{value, date, short}"
+  }
+}

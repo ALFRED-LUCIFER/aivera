@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@aivera/i18n": "workspace:*",
     "@aivera/ui": "workspace:*",
     "next": "16.4.6",
     "react": "19.3.1",
