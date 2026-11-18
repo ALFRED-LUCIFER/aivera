@@ -24,7 +24,7 @@ import { Section } from './Section.tsx';
 import { EvidenceSections } from './EvidenceSections.tsx';
 import { WorkflowSections, type WorkflowProps } from './WorkflowSections.tsx';
 
-export type GalleryProps = WorkflowProps & {
+type GalleryProps = WorkflowProps & {
   theme: 'light' | 'dark';
   onThemeChange: (theme: string) => void;
   toastOpen: boolean;

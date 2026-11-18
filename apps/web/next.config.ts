@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 
 const config: NextConfig = {
   poweredByHeader: false,
@@ -7,4 +8,7 @@ const config: NextConfig = {
   transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n'],
 };
 
-export default config;
+// `page.dev.tsx` routes (the /dev/gallery component gallery) exist only under `next dev`: a build never sees them, so
+// none of their code or demo text reaches a production bundle.
+export default (phase: string): NextConfig =>
+  phase === PHASE_DEVELOPMENT_SERVER ? { ...config, pageExtensions: ['dev.tsx', 'tsx', 'ts', 'jsx', 'js'] } : config;

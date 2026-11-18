@@ -40,9 +40,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # The image the Linux baselines are made in (`pnpm e2e:update`), so screenshots compare pixel for pixel. It ships
-    # Chromium and its system deps; keep its tag equal to @playwright/test in tests/e2e/package.json.
+    # Chromium and its system deps. Pinned by digest; keep the tag equal to @playwright/test in tests/e2e/package.json
+    # (tests/e2e/docker.sh reads the image from this line).
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
       options: --ipc=host
     steps:
       - uses: actions/checkout@v7

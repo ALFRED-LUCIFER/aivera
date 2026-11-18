@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { rows, type SampleRow } from '../domain/sample.ts';
+import { applyTheme } from '../services/dom.ts';
 
 type GalleryTheme = 'light' | 'dark';
 // The shape of @aivera/ui's DataTableSort; hooks/ may not import the UI package (ADR-003).
@@ -26,7 +27,7 @@ export function useGalleryController() {
     onThemeChange: (value: string) => {
       const next: GalleryTheme = value === 'dark' ? 'dark' : 'light';
       setTheme(next);
-      document.documentElement.dataset['theme'] = next;
+      applyTheme(next);
     },
     rows: rows.toSorted(byColumn(sort)),
     sort,

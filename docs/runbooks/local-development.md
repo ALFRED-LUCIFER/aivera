@@ -33,14 +33,14 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 
 ## End-to-end tests and the component gallery (Playwright)
 
-`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It exists only under `next dev`; every other build answers 404.
+`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`, which renders only under `next dev` too.
 
 | Command                                                            | What it does                                                                                                       |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `pnpm --filter @aivera/tests-e2e exec playwright install chromium` | Once per machine: the browser Playwright drives                                                                    |
 | `pnpm e2e`                                                         | Starts `next dev` on port 3200 (never 3000) and runs `tests/e2e`: axe in light and dark, browser checks, snapshots |
 | `pnpm e2e -g "forced colours"`                                     | Only the tests whose title matches                                                                                 |
-| `pnpm e2e:update`                                                  | Regenerates the visual baselines in the official Playwright Docker image                                           |
+| `pnpm e2e:update`                                                  | Regenerates every baseline in the Playwright image, removing orphans; add `-g "<title>"` for only some             |
 
 **Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in, on `linux/amd64` like the runner (emulated on Apple Silicon, so the update takes a few minutes; arm64 Chromium antialiases differently).
 

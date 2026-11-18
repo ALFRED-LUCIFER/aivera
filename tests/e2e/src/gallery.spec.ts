@@ -22,16 +22,15 @@ const sections = [
 
 test('Scenario: The colour table matches the tokens', async ({ page }) => {
   await openGallery(page, 'light');
-  const light = page.getByRole('table', { name: 'Light theme' });
-  const value = (token: string) => light.locator(`tr[data-token="${token}"] td`).first();
-  for (const [token, hex] of Object.entries({
-    bg: '#F6F4F1',
-    surface: '#FFFFFF',
-    text: '#1B1720',
-    hl: '#FFE873',
-    focus: '#1B1720',
-  })) {
-    await expect(value(token)).toHaveText(hex);
+  const expected = {
+    'Light theme': { bg: '#F6F4F1', surface: '#FFFFFF', text: '#1B1720', hl: '#FFE873', focus: '#1B1720' },
+    'Dark theme': { bg: '#141118', surface: '#1D1922', text: '#F4F1F6', hl: '#4D4208', focus: '#FFE873' },
+  };
+  for (const [name, rows] of Object.entries(expected)) {
+    const table = page.getByRole('table', { name });
+    for (const [token, hex] of Object.entries(rows)) {
+      await expect(table.locator(`tr[data-token="${token}"] td`).first()).toHaveText(hex);
+    }
   }
 });
 

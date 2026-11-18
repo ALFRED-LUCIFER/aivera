@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { css, openGallery, themes } from './gallery.ts';
+import { css, expectNoAxeViolations, openGallery, themes } from './gallery.ts';
 
 // Browser-only checks queued on #57 by the reviews of AIV-P0-022 (#207), AIV-P0-023 and AIV-P0-024 (#206).
 
@@ -41,11 +41,14 @@ for (const theme of themes) {
   });
 }
 
+// Depends on Radix looping focus inside the drawer; AIV-P0-920 (#224) makes it modal at this width instead.
+// mutation check: set the dialog focus scope's `loop: true` to false in @radix-ui/react-dialog -> this test failed
 test('the assistant drawer at 390 px does not hide focused page content (WCAG 2.4.11)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openGallery(page, 'light');
   await page.getByRole('button', { name: 'Ask Aivera' }).click();
   await expect(page.getByRole('dialog', { name: 'Aivera assistant' })).toBeVisible();
+  await expectNoAxeViolations(page);
   // The drawer covers the page at this width, so every Tab stop, both ways round, must be in view: Radix loops focus
   // inside the drawer, which never lets keyboard focus land on page content underneath it.
   const focusInView = () =>
@@ -62,4 +65,17 @@ test('the assistant drawer at 390 px does not hide focused page content (WCAG 2.
       expect(await focusInView()).toBe('visible');
     }
   }
+});
+
+// mutation check: removed `motion-reduce:transition-none` from AssistantDrawer -> this test failed
+test('reduced motion turns off the drawer and dialog transitions', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openGallery(page, 'light');
+  await page.getByRole('button', { name: 'Ask Aivera' }).click();
+  await expect
+    .poll(() => css(page.getByRole('dialog', { name: 'Aivera assistant' }), 'transition-property'))
+    .toBe('none');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Open dialog' }).click();
+  await expect.poll(() => css(page.getByRole('dialog', { name: 'Rename job' }), 'transition-property')).toBe('none');
 });

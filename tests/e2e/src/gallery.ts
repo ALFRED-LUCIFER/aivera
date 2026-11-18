@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export const themes = ['light', 'dark'] as const;
-export type Theme = (typeof themes)[number];
+type Theme = (typeof themes)[number];
 
 /** Opens the gallery and switches theme with its own toggle (retried until React has hydrated). */
 export async function openGallery(page: Page, theme: Theme) {

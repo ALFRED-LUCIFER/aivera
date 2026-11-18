@@ -31,6 +31,7 @@ export type AssistantDrawerProps = {
 // Non-modal on purpose: the assistant talks about the page beside it, so the recruiter must keep reading, scrolling
 // and selecting that page while it is open. A modal would hide the page from assistive tech and trap focus away
 // from it. Radix still closes it on Escape, returns focus to the trigger and names it by its title.
+// Known gap: Radix's focus scope still loops Tab inside the drawer, so Tab cannot reach the page (AIV-P0-920, issue 224).
 export function AssistantDrawer({
   title,
   context,
