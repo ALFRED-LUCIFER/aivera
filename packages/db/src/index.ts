@@ -1,4 +1,4 @@
-export { createDb } from './client.ts';
+export { createDb, DbQueryError } from './client.ts';
 export type { Db, Tx } from './client.ts';
 export { withWorkspace } from './withWorkspace.ts';
 export { uuidv7 } from './uuidv7.ts';
