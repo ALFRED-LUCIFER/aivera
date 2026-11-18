@@ -13,7 +13,7 @@ const fake = {
 
 const telemetry = vi.hoisted(() => ({
   annotateSpan: vi.fn(),
-  withSpan: vi.fn((_name: string, _attributes: object, fn: () => Promise<unknown>) => fn()),
+  withSpan: vi.fn((_name: string, fn: () => Promise<unknown>) => fn()),
 }));
 vi.mock('@aivera/observability', () => telemetry);
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({}) }));
@@ -59,7 +59,7 @@ describe('workspaceAction', () => {
   // Correlation (AIV-P0-018): the span carries the workspace id, never the user's email.
   it('runs in a span named after the action, tagged with the workspace id', async () => {
     await viewCandidate({ candidateId: 'C1' });
-    expect(telemetry.withSpan).toHaveBeenCalledWith('action candidate.view', {}, expect.any(Function));
+    expect(telemetry.withSpan).toHaveBeenCalledWith('action candidate.view', expect.any(Function));
     expect(telemetry.annotateSpan).toHaveBeenCalledWith({ 'workspace.id': W1 });
   });
 

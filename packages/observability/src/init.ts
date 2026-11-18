@@ -9,6 +9,11 @@ export function initTelemetry(service: 'web' | 'worker', connectionString: strin
   if (!connectionString) return;
   // The cloud role name in Application Insights.
   process.env['OTEL_SERVICE_NAME'] ??= `aivera-${service}`;
+  // Statsbeat (the SDK's own usage counters) goes to a West US endpoint, outside the region (AGENTS.md 1.10). The
+  // legacy name turns all of it off; the current one only the non-essential part.
+  // shortcut: the distro still polls settings.sdk.monitor.azure.com for its config; no switch exists in 1.20.1, recheck on upgrade
+  process.env['APPLICATION_INSIGHTS_NO_STATSBEAT'] ??= 'true';
+  process.env['APPLICATIONINSIGHTS_STATSBEAT_DISABLED'] ??= 'true';
   useAzureMonitor({
     azureMonitorExporterOptions: { connectionString },
     // Every trace in dev (the distro's default is a 5-per-second rate limit).

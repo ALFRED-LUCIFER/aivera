@@ -36,7 +36,10 @@ export async function createWorkspace(_previous: CreateWorkspaceState, form: For
     });
   } catch (error) {
     // The name only: a database error's detail can repeat the company or the person's name (AGENTS.md 1.2).
-    log.error({ area: 'workspace-signup', error: error instanceof Error ? error.name : 'unknown' }, 'create failed');
+    log.error(
+      { area: 'workspace-signup', 'error.type': error instanceof Error ? error.name : 'unknown' },
+      'create failed',
+    );
     return failed;
   }
   // The recruiter layout rendered the no-workspace page at this same path; drop it so the shell renders instead.

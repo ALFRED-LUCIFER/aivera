@@ -51,7 +51,7 @@ export function workspaceAction<Input, Result>(
   options: { input: z.ZodType<Input>; resource?: (ctx: WorkspaceContext, input: Input) => Promise<JobResource> },
 ): (input: Input) => Promise<Result> {
   return (raw) =>
-    withSpan(`action ${action}`, {}, async () => {
+    withSpan(`action ${action}`, async () => {
       const input = options.input.parse(raw);
       const result = await inActiveWorkspace(async (ctx) => {
         await getWorkspaces().authorize(ctx, action, await options.resource?.(ctx, input));

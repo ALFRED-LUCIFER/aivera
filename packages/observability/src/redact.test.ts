@@ -6,12 +6,12 @@ import { REDACTED, redactingLogRecordProcessor, redactingSpanProcessor, register
 // Feature: Traces and metrics in Application Insights without personal data (AIV-P0-018). Synthetic data only.
 
 // The distro's order: the redacting processor runs before the exporting one.
-function exportSpan(attributes: Record<string, string>, exception?: Error) {
+function exportSpan(attributes: Record<string, string>, exception?: Error, name = 'GET /portal/r') {
   const exporter = new InMemorySpanExporter();
   const provider = new BasicTracerProvider({
     spanProcessors: [redactingSpanProcessor, new SimpleSpanProcessor(exporter)],
   });
-  const span = provider.getTracer('test').startSpan('GET /portal/r', { attributes });
+  const span = provider.getTracer('test').startSpan(name, { attributes });
   if (exception) span.recordException(exception);
   span.end();
   return exporter.getFinishedSpans()[0];
@@ -39,8 +39,7 @@ const fixture = {
 const PERSONAL = /sara|example\.test|\+971|eval harness|evaluation design/i;
 
 describe('Scenario Outline: Personal data is redacted', () => {
-  // SAFETY: mutation check: removed 'email' from the deny-list -> both candidate.email cases, the fixture test and the logger test failed
-  // SAFETY: mutation check: removed redact(span.attributes) from onEnd -> the span cases, the fixture and URL tests failed
+  // SAFETY: mutation check: removed redact(span.attributes) from onEnd -> the span cases and the unlisted, deny-word, registered-key and URL tests failed
   it.each([
     ['candidate.email', 'sara.candidate@example.test', REDACTED],
     ['phone', '+971 50 000 0000', REDACTED],
@@ -63,7 +62,38 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(JSON.stringify(exportLog(fixture)?.attributes)).not.toMatch(PERSONAL);
   });
 
-  // SAFETY: mutation check: removed the event loop from onEnd -> this test failed
+  // Allowlist (AGENTS.md 1.2): a key nobody listed is redacted, whatever its name or type.
+  // SAFETY: mutation check: removed `|| !isAllowed(path)` from scrub -> all four unlisted-key cases failed
+  it.each([
+    ['assessment.score', 68],
+    ['candidate.headline', 'AI engineer in Dubai'],
+    ['firstname', 'Sara'],
+    ['employer', 'A BNPL fintech'],
+  ])('an unlisted key %s is redacted', (field, value) => {
+    expect(exportSpan({ [field]: value as string })?.attributes[field]).toBe(REDACTED);
+  });
+
+  it('listed semantic-convention keys keep their values', () => {
+    const attributes = {
+      'http.request.method': 'POST',
+      'http.response.status_code': 500,
+      'next.route': '/app/jobs',
+      '_MS.ProcessedByMetricExtractors': "(Name:'Requests', Ver:'1.1')",
+    };
+    expect(exportSpan(attributes as unknown as Record<string, string>)?.attributes).toEqual(attributes);
+  });
+
+  // SAFETY: mutation check: removed 'email' from the deny-list -> this test failed
+  it.each([
+    ['http.request.header.x-candidate-email', 'sara.candidate@example.test'],
+    ['http.client_ip', '192.0.2.10'],
+    ['drizzle.query.params', '["sara.candidate@example.test"]'],
+    ['messaging.message.body', 'Hi Sara'],
+  ])('a deny-listed word redacts %s even under an allowed prefix', (field, value) => {
+    expect(exportSpan({ [field]: value })?.attributes[field]).toBe(REDACTED);
+  });
+
+  // SAFETY: mutation check: removed the event-attribute redact from onEnd -> this test failed
   it("an exception's message is redacted and only its stack frames are kept", () => {
     const error = new Error('Failed query: params: sara.candidate@example.test');
     const [event] = exportSpan({}, error)?.events ?? [];
@@ -73,19 +103,17 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(JSON.stringify(event)).not.toMatch(PERSONAL);
   });
 
+  // An id-shaped key passes the allowlist; a module registers it when its value is personal data.
   it('a module can register its own personal-data field names', () => {
-    expect(exportSpan({ 'candidate.headline': 'AI engineer in Dubai' })?.attributes['candidate.headline']).toBe(
-      'AI engineer in Dubai',
-    );
-    registerPersonalDataKeys(['headline']);
-    expect(exportSpan({ 'candidate.headline': 'AI engineer in Dubai' })?.attributes['candidate.headline']).toBe(
-      REDACTED,
-    );
+    const key = 'candidate.national_id';
+    expect(exportSpan({ [key]: '784-0000-0000000-0' })?.attributes[key]).toBe('784-0000-0000000-0');
+    registerPersonalDataKeys(['national_id']);
+    expect(exportSpan({ [key]: '784-0000-0000000-0' })?.attributes[key]).toBe(REDACTED);
   });
 });
 
 describe('Scenario: URLs lose their query strings', () => {
-  // SAFETY: mutation check: returned the value unchanged from stripQuery -> both URL tests failed
+  // SAFETY: mutation check: returned the value unchanged from stripQuery -> all three URL tests failed
   it('"/portal/r?token=abc" is exported as "/portal/r"', () => {
     const span = exportSpan({
       'http.target': '/portal/r?token=abc',
@@ -97,6 +125,11 @@ describe('Scenario: URLs lose their query strings', () => {
     expect(span?.attributes['url.full']).toBe('https://app.aivera.example/portal/r');
     expect(span?.attributes).not.toHaveProperty('url.query');
     expect(JSON.stringify(span?.attributes)).not.toMatch(/abc/);
+  });
+
+  // SAFETY: mutation check: removed rename(span) from onEnd -> this test failed
+  it('a span name loses its query string', () => {
+    expect(exportSpan({}, undefined, 'GET /portal/r?token=abc')?.name).toBe('GET /portal/r');
   });
 
   it('a log body loses its query string', () => {

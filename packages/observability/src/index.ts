@@ -20,6 +20,15 @@ export { registerPersonalDataKeys } from './redact';
 export const log = pino(
   {
     timestamp: pino.stdTimeFunctions.isoTime,
+    hooks: {
+      // `msg` must stay a fixed template: `log.error(err)` would copy the error's message into it, and printf-style
+      // arguments (`log.info('for %s', email)`) would be formatted into it. An error goes under `err`, extras are dropped.
+      logMethod(args, method) {
+        const [first] = args;
+        if (first instanceof Error) return method.call(this, { err: first }, 'error');
+        return method.apply(this, args.slice(0, typeof first === 'string' ? 1 : 2) as Parameters<typeof method>);
+      },
+    },
     mixin: () => {
       const span = trace.getActiveSpan()?.spanContext();
       return span ? { trace_id: span.traceId, span_id: span.spanId } : {};
@@ -47,8 +56,8 @@ export const log = pino(
  * Runs `fn` in a new active span. A thrown error is left to the request span Next.js or the worker records, so
  * `redirect()` and `forbidden()` (thrown by design) are not counted as failures here.
  */
-export function withSpan<T>(name: string, attributes: Attributes, fn: () => Promise<T>): Promise<T> {
-  return trace.getTracer('aivera').startActiveSpan(name, { attributes }, async (span) => {
+export function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  return trace.getTracer('aivera').startActiveSpan(name, async (span) => {
     try {
       return await fn();
     } finally {
