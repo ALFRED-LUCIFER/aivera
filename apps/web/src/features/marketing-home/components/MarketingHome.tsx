@@ -29,7 +29,7 @@ export type MarketingHomeProps = {
   card: EvidenceCardProps;
   children?: ReactNode;
   /** Rendered after <main>, so it is the page's contentinfo landmark. */
-  footer?: ReactNode;
+  footer: ReactNode;
 };
 
 const step = (n: number) => ({ '--mk-step': n }) as CSSProperties;

@@ -224,11 +224,12 @@ test('Scenario Outline: The four principles', async ({ page }) => {
 
 test('Scenario: The pilot promise', async ({ page }) => {
   await page.goto('/');
-  await expect(
-    page.getByText(
-      'Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working.',
-    ),
-  ).toBeAttached();
+  const promise = page.getByText(
+    'Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working.',
+  );
+  await promise.scrollIntoViewIfNeeded();
+  await expect(promise).toBeInViewport();
+  await expect(promise.locator('xpath=ancestor::*[contains(@class,"mk-reveal")]')).toHaveCSS('opacity', '1');
 });
 
 test('Scenario: Footer', async ({ page }) => {
@@ -236,7 +237,7 @@ test('Scenario: Footer', async ({ page }) => {
   const footer = page.getByRole('contentinfo');
   await expect(footer.getByText('Aivera', { exact: true })).toBeVisible();
   await expect(footer.getByRole('link')).toHaveText(['How it works', 'Roles we cover', 'Why trust it', 'Sign in']);
-  await expect(footer.getByText('© 2026 Aivera')).toBeVisible();
+  await expect(footer.getByText(`© ${new Date().getUTCFullYear()} Aivera`)).toBeVisible();
 });
 
 test('Scenario: Anchors from the header', async ({ page }) => {
@@ -258,8 +259,11 @@ for (const theme of themes) {
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await page.goto('/');
-    await page.getByRole('contentinfo').scrollIntoViewIfNeeded();
-    await expect(page.locator('.mk-reveal').last()).toHaveCSS('opacity', '1');
+    // Scroll through every reveal, so axe checks each section's colours at full opacity, not skipped at 0.
+    for (const reveal of await page.locator('.mk-reveal').all()) {
+      await reveal.scrollIntoViewIfNeeded();
+      await expect(reveal).toHaveCSS('opacity', '1');
+    }
     await expectNoAxeViolations(page);
   });
 }

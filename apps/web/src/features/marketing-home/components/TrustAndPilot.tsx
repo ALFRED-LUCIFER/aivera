@@ -1,10 +1,9 @@
 import { buttonClassName } from '@aivera/ui';
 import { links } from '../domain/links.ts';
-import { column } from './column.ts';
-import { sectionTitle } from './HowItWorks.tsx';
+import { column, sectionTitle } from '../domain/layout.ts';
 import { DrawnRule, Reveal } from './Reveal.tsx';
 
-export type TrustAndFooterProps = {
+export type TrustAndPilotProps = {
   trustTitle: string;
   principles: readonly { title: string; body: string }[];
   pilotTitle: string;
@@ -13,20 +12,8 @@ export type TrustAndFooterProps = {
   signIn: string;
 };
 
-export type SiteFooterProps = {
-  wordmark: string;
-  footerLabel: string;
-  howItWorks: string;
-  roles: string;
-  trust: string;
-  signIn: string;
-  copyright: string;
-};
-
-const footerLink = 'inline-flex min-h-11 items-center text-text-2 hover:text-text';
-
 /** The trust principles and the pilot promise (Landing artboard). */
-export function TrustAndFooter(p: TrustAndFooterProps) {
+export function TrustAndPilot(p: TrustAndPilotProps) {
   return (
     <>
       <section
@@ -61,42 +48,16 @@ export function TrustAndFooter(p: TrustAndFooterProps) {
             <p className="max-w-[56ch] text-[17px] leading-[26px] text-text-2">{p.pilotBody}</p>
           </Reveal>
           <Reveal index={1} className="flex flex-wrap gap-3">
-            <a className={buttonClassName('primary', 'touch')} href={links.signUp}>
+            {/* Secondary: the hero holds the page's one primary (DESIGN.md). */}
+            <a className={buttonClassName('secondary', 'touch')} href={links.signUp}>
               {p.createWorkspace}
             </a>
-            <a className={buttonClassName('secondary', 'touch')} href={links.signIn}>
+            <a className={buttonClassName('ghost', 'touch')} href={links.signIn}>
               {p.signIn}
             </a>
           </Reveal>
         </div>
       </section>
     </>
-  );
-}
-
-/** The website footer (Landing artboard). */
-export function SiteFooter(p: SiteFooterProps) {
-  return (
-    <footer className="border-t border-border">
-      <div className={`${column} flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-6 text-body`}>
-        <span className="font-display text-card font-bold">{p.wordmark}</span>
-        <nav aria-label={p.footerLabel} className="flex flex-wrap gap-x-5">
-          <a className={footerLink} href={links.howItWorks}>
-            {p.howItWorks}
-          </a>
-          <a className={footerLink} href={links.roles}>
-            {p.roles}
-          </a>
-          <a className={footerLink} href={links.trust}>
-            {p.trust}
-          </a>
-          <a className={footerLink} href={links.signIn}>
-            {p.signIn}
-          </a>
-        </nav>
-        {/* shortcut: the privacy notice and terms links join this row when AIV-P5-011 publishes them. */}
-        <span className="text-meta text-text-2">{p.copyright}</span>
-      </div>
-    </footer>
   );
 }

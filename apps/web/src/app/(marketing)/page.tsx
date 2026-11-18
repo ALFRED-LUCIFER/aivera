@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
 import { RoleFamilies } from '@/features/marketing-home/components/RoleFamilies.tsx';
-import { SiteFooter, TrustAndFooter } from '@/features/marketing-home/components/TrustAndFooter.tsx';
+import { SiteFooter } from '@/features/marketing-home/components/SiteFooter.tsx';
+import { TrustAndPilot } from '@/features/marketing-home/components/TrustAndPilot.tsx';
 import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
 import { howSteps, trustPrinciples } from '@/features/marketing-home/domain/sections.ts';
@@ -32,7 +33,7 @@ export default async function WebsitePage() {
           howItWorks={t('home.nav.howItWorks')}
           roles={t('home.nav.roles')}
           trust={t('home.nav.trust')}
-          // The composition root reads the year; no Clock port exists in the web app yet.
+          // shortcut: the year is read from the system clock here; take it from the Clock port when the web app has one.
           copyright={t('home.footer.copyright', { year: new Date().getUTCFullYear() })}
         />
       }
@@ -95,7 +96,7 @@ export default async function WebsitePage() {
         rows={JOB_TYPE_CATALOGUE.map((j) => ({ key: j.key, family: t(j.labelKey), evidence: t(j.evidenceKey) }))}
         more={t.rich('home.roleFamilies.more', { strong })}
       />
-      <TrustAndFooter
+      <TrustAndPilot
         trustTitle={t('home.trust.title')}
         principles={trustPrinciples.map((key) => ({
           title: t(`home.trust.principles.${key}.title`),
