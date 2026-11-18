@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Member } from '../domain/shell.ts';
 import { loadShellCounts, requireScreen } from './request.ts';
 import { setTheme } from './theme.ts';
@@ -11,7 +11,8 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
-afterEach(() => vi.unstubAllEnvs());
+const membership = vi.fn();
+vi.mock('@/server/workspace', () => ({ currentMembership: () => membership() }));
 
 const member = (synthetic: boolean): Member => ({
   name: 'AP',
@@ -33,15 +34,17 @@ describe('Scenario: Counts fail softly', () => {
 });
 
 describe('requireScreen', () => {
-  it('lets the development stand-in recruiter open a mapped screen', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
-    expect((await requireScreen('desk')).workspace).toEqual({ synthetic: true });
+  it('lets a recruiter open a mapped screen', async () => {
+    membership.mockResolvedValueOnce({ name: 'Alex Recruiter', role: 'recruiter', synthetic: true });
+    expect(await requireScreen('desk')).toMatchObject({ initials: 'AR', workspace: { synthetic: true } });
   });
 
-  // SAFETY: mutation check: removed the NODE_ENV allow-list in devStandInMember -> this test failed
-  it('renders no recruiter page outside `next dev`, where the stand-in does not exist', async () => {
-    for (const env of ['production', 'test']) {
-      vi.stubEnv('NODE_ENV', env);
+  // SAFETY: mutation check: gave every role the recruiter capability in shellMember -> this test failed
+  it('is a 404 with no workspace, and for roles without the recruiter screens', async () => {
+    membership.mockResolvedValueOnce(null);
+    await expect(requireScreen('desk')).rejects.toThrow('NEXT_NOT_FOUND');
+    for (const role of ['hiring_owner', 'interviewer'] as const) {
+      membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
       await expect(requireScreen('desk')).rejects.toThrow('NEXT_NOT_FOUND');
     }
   });

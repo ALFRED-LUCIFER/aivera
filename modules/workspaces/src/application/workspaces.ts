@@ -5,6 +5,9 @@ import { assertCanChangeRole, type Member, type Role, type Workspace } from '../
 export type WorkspaceStore = {
   insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
   insertMember(member: Member): Promise<void>;
+  findWorkspace(workspaceId: string): Promise<Workspace | null>;
+  /** Points the user's active workspace here (not workspace-owned; see the schema). */
+  setActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
   findMember(workspaceId: string, userId: string): Promise<Member | null>;
   listMembers(workspaceId: string): Promise<Member[]>;
   /** Every member, locked until commit, so two concurrent role changes cannot both remove an admin. */
@@ -39,6 +42,8 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
         const { creatorUserId, synthetic = false, ...fields } = input;
         const workspace = await store.insertWorkspace({ id, ...fields, synthetic });
         await store.insertMember({ workspaceId: id, userId: creatorUserId, role: 'admin', status: 'active' });
+        // The creator lands in the new workspace (AIV-P0-010).
+        await store.setActiveWorkspace(creatorUserId, id);
         return workspace;
       });
     },

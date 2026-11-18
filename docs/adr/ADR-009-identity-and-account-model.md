@@ -29,7 +29,7 @@ Two identity systems would also mean two sets of user flows, secrets and sign-in
 
 - A solo recruiter signs up with any email, not only a work email. "Company" is optional.
 - Sign-up creates a workspace with one member, its admin.
-- Membership is per workspace. A person can belong to several workspaces (a freelancer working for two agencies) and switch between them. The active workspace is held server-side on the session, and switching re-checks membership (AIV-P0-010, AIV-P1-055).
+- Membership is per workspace. A person can belong to several workspaces (a freelancer working for two agencies) and switch between them. The active workspace is held server-side, and switching re-checks membership (AIV-P0-010, AIV-P1-055). It is kept per user, not per session (`workspaces.active_workspace`), because the session cookie holds only the user id: switching on one device switches the user's other sessions too. Creating a workspace makes it the creator's active workspace.
 
 ### 3. Agencies keep clients apart inside one workspace
 

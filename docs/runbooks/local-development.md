@@ -36,7 +36,7 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 
 ## End-to-end tests and the component gallery (Playwright)
 
-`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`, which renders only under `next dev` too.
+`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`; its global setup (`tests/e2e/seed.ts`) gives the synthetic cast their workspaces in the e2e database before the browser signs in.
 
 | Command                                                            | What it does                                                                                                       |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |

@@ -1,5 +1,8 @@
 // Builds the audit module for an app (ADR-002: only apps import this).
-import { uuidv7, withWorkspace, type Db } from '@aivera/db';
+// Not the @aivera/db index: it also exports the migrator, whose module paths do not resolve inside a Next.js bundle.
+import type { Db } from '@aivera/db/client';
+import { uuidv7 } from '@aivera/db/uuidv7';
+import { withWorkspace } from '@aivera/db/with-workspace';
 import { auditUseCases } from './application/audit.ts';
 import type { AuditContract } from './contracts/index.ts';
 import { auditStore } from './infrastructure/repository.ts';
