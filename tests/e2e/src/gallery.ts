@@ -21,3 +21,16 @@ export async function expectNoAxeViolations(page: Page) {
 
 export const css = (locator: Locator, property: string) =>
   locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
+
+/** Whether the focused element is the topmost thing at its centre: in view, not under the drawer (WCAG 2.4.11). */
+export const focusInView = (page: Page) =>
+  page.evaluate(() => {
+    const focused = document.activeElement;
+    if (!focused || focused === document.body) return 'nothing focused';
+    const box = focused.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return top && focused.contains(top) ? 'visible' : `hidden: ${focused.outerHTML.slice(0, 80)}`;
+  });
+/** Whether focus is inside a dialog (the assistant drawer). */
+export const focusInDrawer = (page: Page) =>
+  page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')));

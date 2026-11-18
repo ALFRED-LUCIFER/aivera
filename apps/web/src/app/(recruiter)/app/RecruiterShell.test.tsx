@@ -19,6 +19,13 @@ afterEach(cleanup); // Vitest globals are off, so Testing Library cannot registe
 
 let intl: Awaited<ReturnType<typeof intlConfig>>;
 beforeAll(async () => {
+  // jsdom has no matchMedia; the assistant drawer reads it. False for every query: desktop width.
+  vi.stubGlobal('matchMedia', (media: string) => ({
+    matches: false,
+    media,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
   intl = await intlConfig('en', 'Asia/Dubai');
 });
 

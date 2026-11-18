@@ -80,6 +80,13 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  /* AIV-P0-920: from lg up the open assistant drawer sits beside the page, so nothing on the page is under it.
+     64rem matches AssistantDrawer's modal query; 24rem is its max-w-sm. */
+  @media (width >= 64rem) {
+    body:has([data-assistant-drawer][data-state='open']) {
+      padding-inline-end: 24rem;
+    }
+  }
 }
 
 /* AIV-P0-023 score bar (Foundations artboard .score/.hatch). The claim range is a stripe pattern, not a colour, so it
