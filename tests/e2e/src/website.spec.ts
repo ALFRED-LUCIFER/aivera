@@ -20,8 +20,8 @@ test('Scenario: The hero states the promise', async ({ page }) => {
 
 // SAFETY: mutation check: removed aria-label={l.scoreName} from the score -> this test failed (no img with that name)
 test('Scenario: The score animates to its final values, under one unchanging name', async ({ page }) => {
-  // On a phone the card starts below the fold, so the intro always waits for the scroll: no timing race.
-  await page.setViewportSize({ width: 390, height: 844 });
+  // A short phone screen puts the card well below the fold, so the intro always waits for the scroll: no race.
+  await page.setViewportSize({ width: 390, height: 600 });
   await page.goto('/');
   // Hydrated and waiting below the fold; scrolling earlier would show the final card before the intro could start.
   await expect(card(page)).toHaveAttribute('data-stage', 'ready');
