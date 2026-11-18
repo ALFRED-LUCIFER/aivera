@@ -9,6 +9,34 @@
     "createWorkspace": "Create your workspace",
     "signIn": "Sign in"
   },
+  "candidate": {
+    "shell": {
+      "titleTemplate": "%s · Aivera for candidates",
+      "skipToContent": "Skip to content",
+      "wordmark": "Aivera",
+      "audience": "for candidates",
+      "siteTitle": "Aivera for candidates",
+      "nav": {
+        "label": "Candidate site",
+        "menu": "Menu",
+        "jobs": "Jobs",
+        "cvCheck": "Free CV check",
+        "plans": "Plans",
+        "portfolio": "Portfolio"
+      },
+      "createAccount": "Create account",
+      "myApplications": "My applications",
+      "footer": {
+        "label": "Site links",
+        "rule": "© 2026 Aivera. Paying never changes how recruiters rank you.",
+        "jobs": "Jobs",
+        "plans": "Plans",
+        "forRecruiters": "For recruiters"
+      },
+      "homeTitle": "Find a job that judges your work",
+      "placeholder": "This page arrives with its own ticket."
+    }
+  },
   "evidence": {
     "request": {
       "send": "Send request"
