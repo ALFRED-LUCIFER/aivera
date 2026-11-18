@@ -36,6 +36,7 @@ export const member = workspaces
     },
     (t) => [
       primaryKey({ columns: [t.workspaceId, t.userId] }),
+      // Must list exactly ROLES and MEMBER_STATUSES (domain/workspace.ts); changing either needs a new migration.
       check('member_role_check', sql`${t.role} in ('admin', 'recruiter', 'hiring_owner', 'interviewer')`),
       check('member_status_check', sql`${t.status} in ('invited', 'active', 'removed')`),
       tenantPolicy('member_tenant_isolation', t.workspaceId),

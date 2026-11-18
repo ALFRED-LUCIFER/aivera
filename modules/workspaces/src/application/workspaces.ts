@@ -40,14 +40,17 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
       });
     },
 
-    getMembership(userId: string, workspaceId: string): Promise<Member | null> {
-      return inWorkspace(workspaceId, (store) => store.findMember(workspaceId, userId));
+    async getMembership(userId: string, workspaceId: string): Promise<Member | null> {
+      const found = await inWorkspace(workspaceId, (store) => store.findMember(workspaceId, userId));
+      // Invited and removed members get null, so a caller's `!= null` check is a safe authorisation check.
+      return found?.status === 'active' ? found : null;
     },
 
     listMembers(workspaceId: string): Promise<Member[]> {
       return inWorkspace(workspaceId, (store) => store.listMembers(workspaceId));
     },
 
+    // shortcut: no audit event for role changes, add when the audit module lands (AIV-P0-013)
     changeRole({ workspaceId, actorUserId, targetUserId, role }: ChangeRoleInput): Promise<void> {
       return inWorkspace(workspaceId, async (store) => {
         assertCanChangeRole(await store.lockMembers(workspaceId), actorUserId, targetUserId, role);

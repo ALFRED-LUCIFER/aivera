@@ -4,13 +4,14 @@
 
 ## Roles
 
-| Role         | Who in the demo                                                                      | Uses                                 |
-| ------------ | ------------------------------------------------------------------------------------ | ------------------------------------ |
-| Recruiter    | The signed-in user ("AP", a talent partner)                                          | Everything in the recruiter app      |
-| Hiring owner | Head of Engineering; CPO, Payments; Head of Quality; VP Engineering; Design Director | Rubric approval, decision pack       |
-| Interviewer  | The recruiter or the hiring owner                                                    | Scorecard                            |
-| Client       | CPO, Payments (agency case)                                                          | Client view of the shortlist         |
-| Candidate    | Sara Al Qahtani and the cast below                                                   | Candidate site, evidence upload page |
+| Role            | Who in the demo                                                                                     | Uses                                 |
+| --------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Recruiter       | The signed-in user ("AP", a talent partner)                                                         | Everything in the recruiter app      |
+| Workspace admin | Alex Recruiter (`alex@example.com`), who creates workspace "Demo Hiring Co" in the workspaces tests | Workspace members and roles          |
+| Hiring owner    | Head of Engineering; CPO, Payments; Head of Quality; VP Engineering; Design Director                | Rubric approval, decision pack       |
+| Interviewer     | The recruiter or the hiring owner                                                                   | Scorecard                            |
+| Client          | CPO, Payments (agency case)                                                                         | Client view of the shortlist         |
+| Candidate       | Sara Al Qahtani and the cast below                                                                  | Candidate site, evidence upload page |
 
 ## Demo jobs (workspace "Demo")
 

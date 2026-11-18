@@ -2,9 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createDb, withWorkspace, type Db } from '@aivera/db';
-import { WorkspaceError, type Role, type WorkspacesContract } from '@aivera/workspaces';
+import { WorkspaceError, type MemberStatus, type Role, type WorkspacesContract } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -42,10 +43,10 @@ const newWorkspace = (name: string) =>
   });
 
 /** Adds a member directly, as aivera_app inside the workspace (inviting is AIV-P1-003). */
-const addMember = (workspaceId: string, userId: string, role: Role) =>
+const addMember = (workspaceId: string, userId: string, role: Role, status: MemberStatus = 'active') =>
   withWorkspace(app, workspaceId, (tx) =>
     tx.execute(
-      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${workspaceId}, ${userId}, ${role}, 'active')`,
+      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${workspaceId}, ${userId}, ${role}, ${status})`,
     ),
   );
 
@@ -142,6 +143,7 @@ describe('Scenario: Members of another workspace are invisible at the database',
     expect([...rows]).toEqual([{ id: w1 }]);
   });
 
+  // SAFETY: mutation check: ALTER POLICY member_tenant_isolation ... WITH CHECK (true) -> this test failed (the insert succeeded)
   it("a write of a member into another workspace is refused by the policy's WITH CHECK", async () => {
     await expect(
       withWorkspace(app, w1, (tx) =>
@@ -149,11 +151,23 @@ describe('Scenario: Members of another workspace are invisible at the database',
           sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w2}, ${user(99)}, 'admin', 'active')`,
         ),
       ),
-    ).rejects.toThrow();
+    ).rejects.toThrow(expect.objectContaining({ cause: expect.objectContaining({ code: '42501' }) }));
   });
 
   it('getMembership does not find a W2 member in W1', async () => {
     expect(await workspaces.getMembership(user(21), w1)).toBeNull();
+  });
+});
+
+describe('getMembership returns active memberships only', () => {
+  // SAFETY: mutation check: returned findMember's row without the status check -> this test failed (got the removed and invited rows)
+  it('a removed or invited member gets null', async () => {
+    const { id } = await newWorkspace('Statuses');
+    await addMember(id, user(71), 'recruiter', 'removed');
+    await addMember(id, user(72), 'admin', 'invited');
+    expect(await workspaces.getMembership(user(71), id)).toBeNull();
+    expect(await workspaces.getMembership(user(72), id)).toBeNull();
+    expect(await workspaces.getMembership(ALEX, id)).not.toBeNull();
   });
 });
 
@@ -183,6 +197,48 @@ describe('Scenario: The last admin cannot be removed', () => {
       workspaces.changeRole({ workspaceId: id, actorUserId: ALEX, targetUserId: ALEX, role: 'recruiter' }),
     ).rejects.toThrow('A workspace needs at least one admin');
     expect((await workspaces.getMembership(ALEX, id))?.role).toBe('admin');
+  });
+});
+
+const lockWaits = async () =>
+  Number(
+    (
+      await admin.execute<{ n: string }>(
+        sql`select count(*) as n from pg_stat_activity where usename = 'aivera_app' and wait_event_type = 'Lock'`,
+      )
+    )[0]?.n,
+  );
+
+describe('The last-admin rule holds under concurrency', () => {
+  let other: Db;
+  afterAll(() => other?.$client.end());
+
+  // SAFETY: mutation check: removed .for('update') from lockMembers -> this test failed (both demotions applied, no admin left)
+  it('while one admin demotes themselves uncommitted, the other admin stepping down waits and is then refused', async () => {
+    const { id } = await newWorkspace('Two admins');
+    const sam = user(61);
+    await addMember(id, sam, 'admin');
+    other = createDb(urlFor('aivera_app'), { max: 1 });
+
+    let change: Promise<void> | undefined;
+    await withWorkspace(other, id, async (tx) => {
+      // What a concurrent changeRole does: lock every member row, then demote Alex, not yet committed.
+      await tx.execute(
+        sql`select user_id from workspaces.member where workspace_id = ${id} order by user_id for update`,
+      );
+      await tx.execute(
+        sql`update workspaces.member set role = 'recruiter' where workspace_id = ${id} and user_id = ${ALEX}`,
+      );
+      change = workspaces.changeRole({ workspaceId: id, actorUserId: sam, targetUserId: sam, role: 'recruiter' });
+      change.catch(() => {}); // awaited below; avoids an unhandled rejection while this transaction is open
+      for (let i = 0; (await lockWaits()) === 0; i++) {
+        if (i > 200) throw new Error('changeRole never waited on the lock');
+        await sleep(25);
+      }
+    });
+
+    await expect(change).rejects.toThrow(new WorkspaceError('last_admin'));
+    expect((await workspaces.getMembership(sam, id))?.role).toBe('admin');
   });
 });
 

@@ -35,7 +35,13 @@ export function workspaceStore(tx: Tx): WorkspaceStore {
     },
     listMembers: (workspaceId) =>
       tx.select(memberColumns).from(member).where(inWorkspace(workspaceId)).orderBy(asc(member.createdAt)),
-    lockMembers: (workspaceId) => tx.select(memberColumns).from(member).where(inWorkspace(workspaceId)).for('update'),
+    lockMembers: (workspaceId) =>
+      tx
+        .select(memberColumns)
+        .from(member)
+        .where(inWorkspace(workspaceId))
+        .orderBy(asc(member.userId)) // a stable lock order, so concurrent changes cannot deadlock
+        .for('update'),
     async updateRole(workspaceId, userId, role) {
       await tx
         .update(member)

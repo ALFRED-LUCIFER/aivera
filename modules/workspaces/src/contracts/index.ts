@@ -10,7 +10,7 @@ export type { ChangeRoleInput, CreateWorkspaceInput } from '../application/works
 export interface WorkspacesContract {
   /** Creates the workspace and makes the creator its active admin, in one transaction. */
   createWorkspace(input: CreateWorkspaceInput): Promise<Workspace>;
-  /** The user's membership of the workspace, or null. */
+  /** The user's active membership of the workspace; null when they are not a member, or are invited or removed. */
   getMembership(userId: string, workspaceId: string): Promise<Member | null>;
   listMembers(workspaceId: string): Promise<Member[]>;
   /** Admins only; refuses to remove the last admin. Throws `WorkspaceError` (`forbidden`, `not_found`, `last_admin`). */
