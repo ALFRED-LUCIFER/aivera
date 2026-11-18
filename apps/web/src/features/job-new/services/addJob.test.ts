@@ -35,7 +35,7 @@ vi.mock('@/server/workspace', () => ({
   },
 }));
 vi.mock('@/server/auth', () => ({
-  getIdentity: () => ({ getUser: async (id: string) => ({ id, email: 'head.eng@example.com', displayName: null }) }),
+  getIdentity: () => ({ getUser: async (id: string) => ({ id, email: 'hassan@example.com', displayName: null }) }),
 }));
 vi.mock('@/server/jobs', () => ({ getJobs: () => ({ createJob }) }));
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));

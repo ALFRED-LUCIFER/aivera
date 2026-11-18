@@ -42,7 +42,7 @@ export default async function seed() {
     const demo = await workspaceOf('Demo Hiring Co', await person('alex@example.com', 'Alex Recruiter'));
     // AIV-P1-007: the Senior AI Engineer's hiring owner, and an interviewer, who may not add jobs, in Demo Hiring Co.
     const headOfEngineering = await person('hassan@example.com', 'Head of Engineering');
-    const rami = await person('rami.panel@example.com', 'Rami Panel');
+    const rami = await person('rami@example.com', 'Rami Panel');
     await withWorkspace(db, demo, (tx) =>
       tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
         values (${demo}, ${headOfEngineering}, 'hiring_owner', 'active'), (${demo}, ${rami}, 'interviewer', 'active')`),
