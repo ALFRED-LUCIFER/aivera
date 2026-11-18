@@ -23,6 +23,8 @@ test('Scenario: The score animates to its final values, under one unchanging nam
   // On a phone the card starts below the fold, so the intro always waits for the scroll: no timing race.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  // Hydrated and waiting below the fold; scrolling earlier would show the final card before the intro could start.
+  await expect(card(page)).toHaveAttribute('data-stage', 'ready');
   await card(page).scrollIntoViewIfNeeded();
   const score = page.getByRole('img', { name: scoreName });
   const seen = new Set<number>();
