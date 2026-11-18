@@ -131,7 +131,6 @@
         "plans": "Plans",
         "forRecruiters": "For recruiters"
       },
-      "homeTitle": "Find a job that judges your work",
       "placeholder": "This page arrives with its own ticket.",
       "applyPlaceholder": "Apply"
     },
@@ -189,6 +188,42 @@
       "allJobs": "See all jobs",
       "failed": "This job could not load. Try again.",
       "retry": "Try again"
+    },
+    "home": {
+      "title": "Get hired for what you have done.",
+      "lead": "No tests to sit. Recruiters on Aivera judge the work you have already done, and show you what they need before you apply.",
+      "findJobs": "Find jobs",
+      "checkCv": "Check my CV, free",
+      "free": "Free to browse and apply. Always.",
+      "sampleTitle": "What this job needs",
+      "sampleJob": "Example: Senior AI Engineer",
+      "sample": {
+        "llm": "LLM systems in production",
+        "retrieval": "Retrieval and evaluation",
+        "python": "Python service engineering",
+        "product": "Product judgement"
+      },
+      "principlesTitle": "How Aivera works for you",
+      "principles": {
+        "needs": {
+          "title": "Know what the job needs",
+          "body": "Every listing shows the competencies and the level each needs, before you apply."
+        },
+        "work": {
+          "title": "Your work counts",
+          "body": "Repositories, documents, references and results count. Keywords do not."
+        },
+        "person": {
+          "title": "Nobody is rejected automatically",
+          "body": "A person makes every decision. Thin evidence gets a request for more, not a silent no."
+        }
+      },
+      "newTitle": "New this week",
+      "noNew": "No new jobs this week. Check back soon.",
+      "allJobs": "All jobs",
+      "plusTitle": "Want an edge that is still honest?",
+      "plusBody": "Plus adds a portfolio at your own address, a CV tailored to each job and a gap report.",
+      "plusLink": "See what Plus adds"
     }
   },
   "evidence": {
