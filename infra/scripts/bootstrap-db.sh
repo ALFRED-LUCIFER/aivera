@@ -5,7 +5,6 @@
 # `az deployment group create` (infra/README.md). The token expires within about an hour.
 set -eu
 rg=rg-medvya-dev-in
-job=job-aivera-migrate-dev
 here=$(dirname "$0")
 
 app_oid=$(az identity show -g $rg -n id-aivera-dev --query principalId -o tsv)
@@ -29,9 +28,5 @@ jq -n --arg sql "$(cat "$here/../sql/bootstrap-roles.sql")" --arg host "$host" -
     resources: {cpu: 0.25, memory: "0.5Gi"}
   }]}' > "$template"
 
-execution=$(az containerapp job start -g $rg -n $job --yaml "$template" --query name -o tsv)
-echo "Started $execution; waiting for it to finish."
-until s=$(az containerapp job execution show -g $rg -n $job --job-execution-name "$execution" \
-  --query properties.status -o tsv) && [ "$s" != Running ] && [ "$s" != Processing ]; do sleep 5; done
-echo "Execution $execution: $s. Its output (the role check) is in Log Analytics, table ContainerAppConsoleLogs_CL."
-[ "$s" = Succeeded ]
+sh "$here/run-job.sh" job-aivera-migrate-dev "$template"
+echo "The role check output is in Log Analytics (ContainerAppConsoleLogs_CL) for that execution."
