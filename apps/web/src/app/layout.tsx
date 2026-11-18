@@ -7,9 +7,10 @@ import './globals.css';
 
 // DESIGN.md typography: Bricolage Grotesque headings, Hanken Grotesk text, JetBrains Mono for evidence.
 // Self-hosted, not next/font/google: Google Fonts serves differently instanced variable files from run to run, which
-// moved glyphs by a pixel and failed visual snapshots at random (AIV-P0-921). The files are the google/fonts OFL
-// variable fonts, Bricolage pinned with `fonttools varLib.instancer ... opsz=96 wdth=100` (Google's own pin), then
-// `pyftsubset --unicodes=<Google's latin + latin-ext ranges> --layout-features='*' --no-hinting --flavor=woff2`.
+// moved glyphs by a pixel and failed visual snapshots at random (AIV-P0-921). The files are the OFL variable fonts of
+// google/fonts@7af0d90 (ofl/<family>/*[wght].ttf), Bricolage first pinned with `fonttools varLib.instancer
+// opsz=96 wdth=100` (Google's own pin), each then converted with every glyph, feature and name kept (licence fields):
+// `pyftsubset <ttf> --unicodes='*' --layout-features='*' --name-IDs='*' --no-hinting --flavor=woff2`.
 const bricolage = localFont({
   src: './fonts/bricolage-grotesque.woff2',
   weight: '200 800',
