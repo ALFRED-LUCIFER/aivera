@@ -23,9 +23,12 @@ export type RadioGroupProps = {
   className?: string;
 };
 
-type Look = { list: string; option: string; input: string };
+export type Look = { legend: string; list: string; option: string; input: string };
+
+const visibleLegend = 'mb-2 text-meta font-semibold text-text';
 
 const radio: Look = {
+  legend: visibleLegend,
   list: 'flex flex-col',
   option:
     'inline-flex min-h-10 cursor-pointer items-center gap-2 text-body text-text pointer-coarse:min-h-11 ' +
@@ -37,6 +40,7 @@ const radio: Look = {
 // A checked option of a disabled group (a submitted scorecard) keeps readable text: ink on surface with a strong
 // border, since text-3 on the action ground is under 4.5:1. The stacked variant wins over has-disabled alone.
 const segmented: Look = {
+  legend: visibleLegend,
   list: 'inline-flex flex-wrap gap-1 rounded-control bg-surface-subtle',
   option:
     'inline-flex min-h-10 cursor-pointer items-center rounded-control border border-transparent px-3 text-meta ' +
@@ -48,7 +52,7 @@ const segmented: Look = {
   input: 'sr-only',
 };
 
-function Choices({
+export function Choices({
   legend,
   options,
   name,
@@ -64,7 +68,7 @@ function Choices({
   const groupName = useId();
   return (
     <fieldset role="radiogroup" disabled={disabled} className={cx('min-w-0', className)} {...aria}>
-      <legend className="mb-2 text-meta font-semibold text-text">{legend}</legend>
+      <legend className={look.legend}>{legend}</legend>
       <div className={look.list}>
         {options.map((option) => (
           <label key={option.value} className={look.option}>
