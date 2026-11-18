@@ -86,6 +86,7 @@ describe('Pay band', () => {
       { minMinor: 3, maxMinor: 2, currency: 'AED' },
       { minMinor: 1.5, maxMinor: 2, currency: 'AED' },
       { minMinor: 1, maxMinor: 2, currency: 'aed' },
+      { minMinor: 1, maxMinor: 2_147_483_648, currency: 'AED' },
     ])
       expect(() => assertValidPayBand(band)).toThrow('pay band');
   });

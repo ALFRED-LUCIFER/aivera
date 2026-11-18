@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P1-005 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
 // Synthetic cast only (docs/00-product/personas.md). The five demo jobs live here until the demo seed (AIV-P0-031).
+// The scenarios build on each other in file order (Senior AI Engineer v1, then v2, then v3), as Vitest runs them.
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
@@ -549,6 +550,14 @@ describe('Database constraints (AGENTS.md 3.5)', () => {
         ),
       ),
     ).toEqual({ code: '23514', constraint: 'rubric_version_frozen_check' });
+  });
+
+  // SAFETY: mutation check: removed the status clause from refuse_approved_version_change -> this test failed (superseded went back to approved)
+  it('a superseded version cannot become approved again', async () => {
+    const sae = demoJobs['Senior AI Engineer'] ?? '';
+    const swap = sql`update jobs.rubric_version set status = case status when 'approved' then 'superseded' else 'approved' end
+      where job_id = ${sae} and status in ('approved', 'superseded')`;
+    expect(await pgError(rows(ALEX, demo, swap))).toEqual({ code: '23514', constraint: 'rubric_version_frozen_check' });
   });
 
   it('an approved version records who approved it and when', async () => {

@@ -75,6 +75,7 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
       const payBand = input.payBand ?? null;
       assertValidPayBand(payBand);
       const clientId = input.clientId ?? null;
+      // listClients checks client.manage, which allows the same roles as job.create.
       if (clientId && !(await listClients(ctx)).some((c) => c.id === clientId && !c.archivedAt))
         throw new JobError('client_not_found');
       // shortcut: the hiring owner is not checked against the workspace's members; the new-job screen (AIV-P1-006)
@@ -117,10 +118,10 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
 
     /** What assessment reads: the job's approved version, never a draft; null when none is approved yet. */
     async getApprovedRubric(ctx: WorkspaceContext, jobId: string): Promise<Rubric | null> {
-      const job = await storeFor(ctx.tx).getJob(ctx.workspaceId, jobId);
+      const store = storeFor(ctx.tx);
+      const job = await store.getJob(ctx.workspaceId, jobId);
       if (!job) return null;
       await authorize(ctx, 'job.view', resourceOf(job));
-      const store = storeFor(ctx.tx);
       const version = await store.approvedVersion(ctx.workspaceId, jobId);
       return version && { ...version, competencies: await store.competencies(ctx.workspaceId, version.id) };
     },

@@ -6,7 +6,8 @@ ALTER TABLE "jobs"."rubric_version" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE "jobs"."competency" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
--- A version's competency weights total 100, checked at commit so a draft can be replaced row by row in one transaction.
+-- A version's competency weights total 100, checked at commit (a version with no competencies passes; the domain refuses
+-- an empty rubric) so a draft can be replaced row by row in one transaction.
 CREATE FUNCTION "jobs"."check_competency_weights"() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   total bigint;
@@ -40,7 +41,8 @@ CREATE TRIGGER "competency_version_frozen_check" BEFORE INSERT OR UPDATE OR DELE
 -- An approved version's content is frozen too; only its status moves on (approved -> superseded).
 CREATE FUNCTION "jobs"."refuse_approved_version_change"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF TG_OP = 'DELETE' OR (OLD.success_statement, OLD.change_note, OLD.version, OLD.job_id, OLD.workspace_id,
+  IF TG_OP = 'DELETE' OR (NEW.status IS DISTINCT FROM OLD.status AND NOT (OLD.status = 'approved' AND NEW.status = 'superseded'))
+      OR (OLD.success_statement, OLD.change_note, OLD.version, OLD.job_id, OLD.workspace_id,
       OLD.created_by, OLD.created_at, OLD.approved_by, OLD.approved_at) IS DISTINCT FROM (NEW.success_statement,
       NEW.change_note, NEW.version, NEW.job_id, NEW.workspace_id, NEW.created_by, NEW.created_at, NEW.approved_by,
       NEW.approved_at) THEN

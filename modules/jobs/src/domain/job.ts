@@ -13,7 +13,7 @@ export type RubricStatus = (typeof RUBRIC_STATUSES)[number];
 export const COMPETENCY_TYPES = ['mandatory', 'desirable'] as const;
 export const COMPETENCY_ORIGINS = ['from_description', 'suggested_by_aivera'] as const;
 
-/** Integer minor units and an ISO currency (AGENTS.md 3.8). */
+/** Integer minor units and an ISO currency (AGENTS.md 3.8). Stored as int4, so at most 2,147,483,647. */
 export type PayBand = { minMinor: number; maxMinor: number; currency: string };
 
 export type Job = {
@@ -100,11 +100,14 @@ export function assertValidCompetencies(competencies: Competency[]): void {
   if (competencies.reduce((sum, c) => sum + c.weightPercent, 0) !== 100) throw new JobError('weights_total');
 }
 
+const INT4_MAX = 2_147_483_647;
+
 export function assertValidPayBand(band: PayBand | null): void {
   if (!band) return;
   const { minMinor, maxMinor, currency } = band;
-  if (!Number.isSafeInteger(minMinor) || !Number.isSafeInteger(maxMinor) || minMinor < 0 || minMinor > maxMinor)
+  if (!Number.isInteger(minMinor) || !Number.isInteger(maxMinor) || minMinor < 0 || minMinor > maxMinor)
     throw new JobError('pay_band');
+  if (maxMinor > INT4_MAX) throw new JobError('pay_band');
   if (!/^[A-Z]{3}$/.test(currency)) throw new JobError('pay_band');
 }
 
