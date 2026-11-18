@@ -17,7 +17,6 @@ export type AppShellProps = {
   onCloseNav: () => void;
   theme: Theme;
   onToggleTheme: () => void;
-  onAssistantOpenChange: (open: boolean) => void;
   children: ReactNode;
 };
 
@@ -38,7 +37,6 @@ export function AppShell({
   onCloseNav,
   theme,
   onToggleTheme,
-  onAssistantOpenChange,
   children,
 }: AppShellProps) {
   const t = useTranslations('shell');
@@ -122,7 +120,6 @@ export function AppShell({
             closeLabel={t('assistant.close')}
             // shortcut: questions go nowhere yet; answers arrive with AIV-P2-028.
             onAsk={() => {}}
-            onOpenChange={onAssistantOpenChange}
             trigger={<Button>{t('assistant.open')}</Button>}
           />
           <span className="grid size-9 place-items-center rounded-full border border-border bg-surface-subtle text-meta font-semibold text-text-2">

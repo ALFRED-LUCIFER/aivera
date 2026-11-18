@@ -71,6 +71,11 @@ export function AssistantDrawer({
         <DialogPrimitive.Content
           // Working on the page must not dismiss the drawer; only Escape and the close button do.
           onInteractOutside={(e) => e.preventDefault()}
+          // Open on the question field, not the close button: the recruiter opens the assistant to type.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            document.getElementById(inputId)?.focus();
+          }}
           className="fixed inset-y-0 end-0 z-40 flex w-full max-w-sm flex-col border-s border-border bg-surface-raised shadow-pop transition-opacity duration-120 ease-case starting:opacity-0 motion-reduce:transition-none"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border p-4">
