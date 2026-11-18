@@ -68,6 +68,14 @@
           "body": "Strengths, risks and open questions for each shortlisted candidate, on one page. Aivera recommends. You decide."
         }
       }
+    },
+    "roleFamilies": {
+      "title": "Not only software engineers",
+      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Aivera knows which to look for.",
+      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.",
+      "family": "Role family",
+      "evidence": "Evidence that counts",
+      "more": "<strong>This list is a start.</strong> We are piecing together more role families, and the one you hire for can be next."
     }
   },
   "candidate": {

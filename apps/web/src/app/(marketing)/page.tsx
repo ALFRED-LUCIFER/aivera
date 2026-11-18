@@ -1,7 +1,9 @@
+import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
+import { RoleFamilies } from '@/features/marketing-home/components/RoleFamilies.tsx';
 import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
 import { howSteps } from '@/features/marketing-home/domain/sections.ts';
@@ -12,6 +14,7 @@ const mark = (chunks: ReactNode) => (
   <mark className="mk-sweep rounded-tag bg-hl px-2 text-hl-text box-decoration-clone">{chunks}</mark>
 );
 
+const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
 const sweep = (chunks: ReactNode) => <ScrollSweep>{chunks}</ScrollSweep>;
 
 // Public: the website (AIV-P5-001). It reads no session and no candidate data.
@@ -69,6 +72,15 @@ export default async function WebsitePage() {
           title: t(`home.how.steps.${key}.title`),
           body: t(`home.how.steps.${key}.body`),
         }))}
+      />
+      <RoleFamilies
+        title={t('home.roleFamilies.title')}
+        lead={t('home.roleFamilies.lead')}
+        noPublicWork={t('home.roleFamilies.noPublicWork')}
+        familyHeader={t('home.roleFamilies.family')}
+        evidenceHeader={t('home.roleFamilies.evidence')}
+        rows={JOB_TYPE_CATALOGUE.map((j) => ({ key: j.key, family: t(j.labelKey), evidence: t(j.evidenceKey) }))}
+        more={t.rich('home.roleFamilies.more', { strong })}
       />
     </MarketingHome>
   );
