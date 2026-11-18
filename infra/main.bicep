@@ -57,6 +57,23 @@ module database 'modules/database.bicep' = {
   }
 }
 
+module web 'modules/web.bicep' = {
+  name: 'aivera-web'
+  params: {
+    location: location
+    tags: tags
+    containerAppsEnvName: environment.outputs.environmentName
+    appIdentityId: foundation.outputs.appIdentityId
+    appIdentityClientId: foundation.outputs.appIdentityClientId
+    appInsightsSecretUri: foundation.outputs.appInsightsSecretUri
+    databaseHost: database.outputs.databaseHost
+    databaseName: database.outputs.databaseName
+    webImage: '${images}/web:${imageTag}'
+    commitSha: imageTag
+  }
+}
+
+output webFqdn string = web.outputs.webFqdn
 output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId
 output keyVaultName string = foundation.outputs.keyVaultName
