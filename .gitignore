@@ -27,3 +27,9 @@ blob-report/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Playwright MCP browser output
+.playwright-mcp/
+
+# Agent and preview worktrees (AGENTS.md 2.10)
+.claude/worktrees/

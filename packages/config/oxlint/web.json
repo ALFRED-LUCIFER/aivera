@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["./base.json"],
+  "plugins": ["typescript", "unicorn", "import", "oxc", "react", "react-hooks", "jsx-a11y", "nextjs"],
+  "rules": {
+    "react/react-in-jsx-scope": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/features/*/domain/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react", "message": "domain/ is pure TypeScript (ADR-003)." },
+              { "name": "react-dom", "message": "domain/ is pure TypeScript (ADR-003)." },
+              { "name": "@aivera/ui", "message": "domain/ is pure TypeScript (ADR-003)." }
+            ],
+            "patterns": [
+              { "group": ["next", "next/*"], "message": "domain/ is pure TypeScript (ADR-003)." },
+              {
+                "group": ["**/services/**", "**/hooks/**", "**/components/**"],
+                "message": "domain/ may not import services, hooks or components (ADR-003)."
+              },
+              {
+                "group": [
+                  "@/features/*/hooks/**",
+                  "@/features/*/services/**",
+                  "@/features/*/components/**",
+                  "../../*/hooks/**",
+                  "../../*/services/**",
+                  "../../*/components/**"
+                ],
+                "message": "Import another feature only through its index.ts or domain/ (ADR-003)."
+              },
+              {
+                "group": [
+                  "@aivera/*/src/**",
+                  "@aivera/*/infrastructure/**",
+                  "@aivera/*/domain/**",
+                  "@aivera/*/application/**"
+                ],
+                "message": "Import a module only through its contracts entry @aivera/<m> (ADR-002)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "fetch",
+          "window",
+          "document",
+          "localStorage",
+          "sessionStorage",
+          "indexedDB",
+          "caches",
+          "XMLHttpRequest"
+        ]
+      }
+    },
+    {
+      "files": ["**/features/*/services/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react", "message": "services/ is I/O only, no React (ADR-003)." },
+              { "name": "@aivera/ui", "message": "services/ is I/O only, no UI (ADR-003)." }
+            ],
+            "patterns": [
+              {
+                "group": ["**/hooks/**", "**/components/**"],
+                "message": "services/ may not import hooks or components (ADR-003)."
+              },
+              {
+                "group": [
+                  "@/features/*/hooks/**",
+                  "@/features/*/services/**",
+                  "@/features/*/components/**",
+                  "../../*/hooks/**",
+                  "../../*/services/**",
+                  "../../*/components/**"
+                ],
+                "message": "Import another feature only through its index.ts or domain/ (ADR-003)."
+              },
+              {
+                "group": [
+                  "@aivera/*/src/**",
+                  "@aivera/*/infrastructure/**",
+                  "@aivera/*/domain/**",
+                  "@aivera/*/application/**"
+                ],
+                "message": "Import a module only through its contracts entry @aivera/<m> (ADR-002)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/features/*/hooks/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "@aivera/ui", "message": "hooks/ return view models; rendering is for components/ (ADR-003)." }
+            ],
+            "patterns": [
+              { "group": ["**/components/**"], "message": "hooks/ may not import components (ADR-003)." },
+              {
+                "group": [
+                  "@/features/*/hooks/**",
+                  "@/features/*/services/**",
+                  "@/features/*/components/**",
+                  "../../*/hooks/**",
+                  "../../*/services/**",
+                  "../../*/components/**"
+                ],
+                "message": "Import another feature only through its index.ts or domain/ (ADR-003)."
+              },
+              {
+                "group": [
+                  "@aivera/*/src/**",
+                  "@aivera/*/infrastructure/**",
+                  "@aivera/*/domain/**",
+                  "@aivera/*/application/**"
+                ],
+                "message": "Import a module only through its contracts entry @aivera/<m> (ADR-002)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "fetch",
+          "localStorage",
+          "sessionStorage",
+          "indexedDB",
+          "caches",
+          "XMLHttpRequest"
+        ]
+      }
+    },
+    {
+      "files": ["**/features/*/components/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/services/**", "**/hooks/**", "@tanstack/*"],
+                "message": "components/ are presentational: props in, events out (ADR-003)."
+              },
+              {
+                "group": [
+                  "@/features/*/hooks/**",
+                  "@/features/*/services/**",
+                  "@/features/*/components/**",
+                  "../../*/hooks/**",
+                  "../../*/services/**",
+                  "../../*/components/**"
+                ],
+                "message": "Import another feature only through its index.ts or domain/ (ADR-003)."
+              },
+              {
+                "group": [
+                  "@aivera/*/src/**",
+                  "@aivera/*/infrastructure/**",
+                  "@aivera/*/domain/**",
+                  "@aivera/*/application/**"
+                ],
+                "message": "Import a module only through its contracts entry @aivera/<m> (ADR-002)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "fetch",
+          "localStorage",
+          "sessionStorage",
+          "indexedDB",
+          "caches",
+          "XMLHttpRequest"
+        ],
+        "no-restricted-properties": [
+          "error",
+          { "object": "window", "property": "fetch" },
+          { "object": "window", "property": "localStorage" },
+          { "object": "window", "property": "sessionStorage" },
+          { "object": "window", "property": "indexedDB" },
+          { "object": "window", "property": "caches" }
+        ],
+        "react/jsx-no-literals": "error"
+      }
+    }
+  ]
+}

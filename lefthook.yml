@@ -1,0 +1,15 @@
+# Git hooks (ADR-007). Never bypassed: --no-verify is blocked for agents by .claude/hooks/guard.sh.
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: '*.{js,mjs,ts,tsx}'
+      exclude: ['**/fixtures/**', '**/migrations/**']
+      run: pnpm exec oxlint --deny-warnings {staged_files}
+    format:
+      glob: '*.{js,mjs,ts,tsx,json,md,yml,yaml,css}'
+      run: pnpm exec prettier --check {staged_files}
+commit-msg:
+  commands:
+    ticket-key:
+      run: node tools/check-commit-msg/check.mjs {1}

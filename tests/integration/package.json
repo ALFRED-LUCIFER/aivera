@@ -1,0 +1,21 @@
+{
+  "name": "@aivera/tests-integration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@aivera/db": "workspace:*",
+    "@testcontainers/postgresql": "12.2.1",
+    "@types/node": "24.19.2",
+    "drizzle-kit": "0.31.11",
+    "drizzle-orm": "0.45.4",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

@@ -1,0 +1,20 @@
+# Local services only (runbook: local development). Passwords here are local-only and never used anywhere else.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: aivera
+      POSTGRES_PASSWORD: local_dev_only
+      POSTGRES_DB: aivera
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./packages/db/sql/roles.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aivera -d aivera']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  postgres-data:

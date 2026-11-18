@@ -6,16 +6,13 @@ Stack: <!-- e.g. #4 → **#181** → #2xx, or "none" (AGENTS.md 7.1) -->
 
 ## What changed
 
-
 ## How verified
 
 <!-- Commands run and their result, tests added or run (name each Gherkin scenario and its test), browser check in light and dark, axe result. -->
 
-
 ## Not done / follow-up ticket
 
 <!-- What is deliberately left out, and the ticket that covers it. "None" if nothing. -->
-
 
 ## Definition of Done ([AGENTS.md §5](../AGENTS.md#5--definition-of-done-every-pr))
 

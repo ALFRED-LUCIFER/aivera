@@ -27,8 +27,11 @@ case "$tool" in
     case "$path" in
       */.env|*/.env.local|*/.env.*.local) block "secrets never go in the repository; use Key Vault or an untracked .env.local by hand (AGENTS.md 1.11)." ;;
       */migrations/*.sql)
-        # Applied migrations are forward-only: an existing migration file is never edited (ADR-004).
-        [ -f "$path" ] && block "never edit an existing migration; generate a new one with pnpm db:generate (ADR-004)."
+        # Forward-only (ADR-004): a committed migration may already be applied, so it is never edited. A new,
+        # uncommitted one (e.g. a drizzle-kit --custom file) may be filled in.
+        if [ -f "$path" ] && git -C "$(dirname "$path")" ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+          block "never edit a committed migration; generate a new one with pnpm db:generate (ADR-004)."
+        fi
         ;;
     esac
     ;;

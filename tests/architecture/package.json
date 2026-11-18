@@ -1,0 +1,17 @@
+{
+  "name": "@aivera/tests-architecture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings --ignore-pattern 'fixtures/**' .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
