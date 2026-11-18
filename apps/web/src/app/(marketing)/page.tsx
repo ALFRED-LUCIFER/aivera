@@ -2,6 +2,8 @@ import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { ReactNode } from 'react';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
+// The website's motion stylesheet: here, because a feature's components/ holds .tsx only (ADR-003).
+import './marketing.css';
 
 const mark = (chunks: ReactNode) => (
   <mark className="mk-sweep rounded-tag bg-hl px-2 text-hl-text box-decoration-clone">{chunks}</mark>

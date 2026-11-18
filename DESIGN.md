@@ -15,7 +15,7 @@ Source of truth: the "Design system foundations" artboard in the claude.ai Desig
 | Metadata, labels       | Hanken Grotesk      | 13 / 18 · 400 (labels 600). The smallest size in the product. |
 | Evidence               | JetBrains Mono      | 13 / 18 · 400                                                 |
 
-Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site may use display sizes (`clamp()` headlines in Bricolage 700).
+Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
 
 ## Spacing, radius, controls
 
@@ -23,7 +23,7 @@ Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product 
 - Radius: 6 tags · 8 controls · 12 cards. Chips are pills (13 px radius at 26 px height).
 - Controls: compact 36 · standard 40 (default) · touch 44 (any coarse pointer). Large marketing buttons 48.
 - Focus: 2 px ring in `--focus`, offset 2 px, on every control.
-- Motion: 120 ms with `cubic-bezier(.16,1,.3,1)`, named properties only, off under reduced motion. The website's entrance and hero sequence may run longer, in 120 ms steps (every delay and duration a multiple of 120 ms), through `motion` in `features/marketing-home` only; the server-rendered page is already in its final state.
+- Motion: 120 ms with `cubic-bezier(.16,1,.3,1)`, named properties only, off under reduced motion. The website's entrance and hero sequence may run longer, in 120 ms steps (every delay and duration a multiple of 120 ms), through `motion` in `features/marketing-home` only; the server-rendered page is already in its final state. The hero card's pointer tilt is a spring (no fixed duration), mouse only and off under reduced motion.
 
 ## Colour tokens
 

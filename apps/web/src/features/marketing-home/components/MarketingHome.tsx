@@ -3,7 +3,6 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { links } from '../domain/links.ts';
 import { EvidenceCard, type EvidenceCardProps } from './EvidenceCard.tsx';
-import './marketing.css';
 
 export type MarketingHomeLabels = {
   skipToContent: string;
@@ -49,7 +48,7 @@ const arrow = (
 // The ink underline draws in from the start edge on hover, as on the artboard's .wlink.
 const navLink =
   'inline-flex min-h-11 items-center px-1.5 font-medium text-text-2 hover:text-text ' +
-  'bg-[linear-gradient(currentColor,currentColor)] bg-no-repeat bg-position-[6px_calc(100%-10px)] bg-size-[0_1.5px] ' +
+  'bg-[linear-gradient(currentColor,currentColor)] bg-no-repeat bg-position-[6px_calc(100%-10px)] rtl:bg-position-[calc(100%-6px)_calc(100%-10px)] bg-size-[0_1.5px] ' +
   'transition-[background-size,color] duration-240 ease-case hover:bg-size-[calc(100%-12px)_1.5px] motion-reduce:transition-none';
 
 /** The website (Landing artboard): header, hero and the sections the page passes as children. */

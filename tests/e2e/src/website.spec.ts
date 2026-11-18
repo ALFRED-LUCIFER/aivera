@@ -20,15 +20,17 @@ test('Scenario: The hero states the promise', async ({ page }) => {
 
 // SAFETY: mutation check: removed aria-label={l.scoreName} from the score -> this test failed (no img with that name)
 test('Scenario: The score animates to its final values, under one unchanging name', async ({ page }) => {
+  // On a phone the card starts below the fold, so the intro always waits for the scroll: no timing race.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await expect(card(page)).toHaveAttribute('data-stage', 'play');
+  await card(page).scrollIntoViewIfNeeded();
   const score = page.getByRole('img', { name: scoreName });
   const seen = new Set<number>();
   await expect
     .poll(async () => {
       seen.add(Number(await count(page).textContent()));
       await expect(score).toHaveAccessibleName(scoreName);
-      return seen.has(72);
+      return seen.has(72) && seen.size > 1;
     })
     .toBe(true);
   // It counted: some value below 72 was on screen before the final one.

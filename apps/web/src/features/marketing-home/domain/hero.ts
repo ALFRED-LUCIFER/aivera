@@ -12,8 +12,9 @@ export const citeExact = (text: string, phrase: string, sourceId: string) => {
 };
 
 /**
- * Whether the card plays its intro (score counting up, bar filling, highlight sweeping). Never under reduced motion,
- * and not when the card is already on screen once the page has settled: replaying it would flash the final state away.
+ * Whether the card plays its intro (score counting up, bar filling, highlight sweeping). Never under reduced motion.
+ * Otherwise only while nobody can see the reset to zero: the card is still below the fold, or still nearly transparent
+ * in its own entrance. A card already shown at 72 is never taken back.
  */
-export const playsIntro = (o: { reducedMotion: boolean; onScreen: boolean; msSinceStart: number }) =>
-  !o.reducedMotion && !(o.onScreen && o.msSinceStart > 900);
+export const playsIntro = (o: { reducedMotion: boolean; onScreen: boolean; entranceOpacity: number }) =>
+  !o.reducedMotion && (!o.onScreen || o.entranceOpacity < 0.35);

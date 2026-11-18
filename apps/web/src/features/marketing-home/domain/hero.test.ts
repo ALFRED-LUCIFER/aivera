@@ -11,13 +11,13 @@ describe('the hero evidence card', () => {
 
   // SAFETY: mutation check: dropped `!o.reducedMotion` -> this test failed
   it('Scenario: Reduced motion shows the final state: the intro never plays', () => {
-    expect(playsIntro({ reducedMotion: true, onScreen: false, msSinceStart: 0 })).toBe(false);
-    expect(playsIntro({ reducedMotion: true, onScreen: true, msSinceStart: 100 })).toBe(false);
+    expect(playsIntro({ reducedMotion: true, onScreen: false, entranceOpacity: 1 })).toBe(false);
+    expect(playsIntro({ reducedMotion: true, onScreen: true, entranceOpacity: 0 })).toBe(false);
   });
 
-  it('plays on load or when scrolled to, but not over a card already settled on screen', () => {
-    expect(playsIntro({ reducedMotion: false, onScreen: true, msSinceStart: 300 })).toBe(true);
-    expect(playsIntro({ reducedMotion: false, onScreen: false, msSinceStart: 5000 })).toBe(true);
-    expect(playsIntro({ reducedMotion: false, onScreen: true, msSinceStart: 2000 })).toBe(false);
+  it('plays while unseen (entering or below the fold), never over a card already showing 72', () => {
+    expect(playsIntro({ reducedMotion: false, onScreen: true, entranceOpacity: 0.1 })).toBe(true);
+    expect(playsIntro({ reducedMotion: false, onScreen: false, entranceOpacity: 1 })).toBe(true);
+    expect(playsIntro({ reducedMotion: false, onScreen: true, entranceOpacity: 0.9 })).toBe(false);
   });
 });

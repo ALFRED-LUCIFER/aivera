@@ -1,4 +1,4 @@
-/* Website motion (Landing artboard). Every delay is a 120 ms step on the Case file ease; nothing moves under reduced
+/* Website motion (Landing artboard, features/marketing-home). Every delay is a 120 ms step on the Case file ease; nothing moves under reduced
    motion, and the server-rendered page is already in its final state, so no animation is needed to read it. */
 
 @media (prefers-reduced-motion: no-preference) {

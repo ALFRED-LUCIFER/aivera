@@ -67,7 +67,9 @@ export function EvidenceCard({ backed, upTo, evidence, citations, labels: l }: E
     if (!card) return;
     const box = card.getBoundingClientRect();
     const onScreen = box.top < window.innerHeight && box.bottom > 0;
-    if (!playsIntro({ reducedMotion, onScreen, msSinceStart: performance.now() })) {
+    // The card's wrapper carries the hero entrance (mk-rise), so its opacity says whether anyone can see the card yet.
+    const entranceOpacity = Number(getComputedStyle(card.parentElement ?? card).opacity);
+    if (!playsIntro({ reducedMotion, onScreen, entranceOpacity })) {
       score.set(backed);
       setStage('final');
       return;

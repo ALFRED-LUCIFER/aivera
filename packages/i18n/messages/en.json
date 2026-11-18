@@ -35,7 +35,7 @@
       "cited": "wrote 148 of 171 test cases",
       "markLabel": "cited evidence",
       "sources": "Sources",
-      "sourceRepo": "github.com/…/checkout-e2e",
+      "sourceRepo": "hessa.aivera.example/checkout-e2e",
       "sourceCi": "CI history, checked 12 Nov",
       "synthetic": "Illustrative candidate, synthetic data."
     }
