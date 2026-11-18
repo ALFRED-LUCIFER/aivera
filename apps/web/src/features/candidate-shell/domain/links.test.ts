@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCurrent, sitePages } from './links.ts';
+import { applyHref, isCurrent, placeholderKey, sitePages } from './links.ts';
 
 describe('isCurrent', () => {
   it('matches the page and the pages under it, not a sibling that shares a prefix', () => {
@@ -20,5 +20,14 @@ describe('sitePages', () => {
       '/candidates/plus/address',
       '/candidates/signup',
     ]);
+  });
+});
+
+describe('placeholderKey', () => {
+  it("a job's apply address shows the Apply placeholder until AIV-P3-008; other job paths are not placeholders", () => {
+    expect(placeholderKey(applyHref('senior-ai-engineer-3f9a1c0b2d4e'))).toBe('applyPlaceholder');
+    expect(placeholderKey('/candidates/plans')).toBe('nav.plans');
+    expect(placeholderKey('/candidates/jobs/x/apply/more')).toBeUndefined();
+    expect(placeholderKey('/candidates/jobs/../apply')).toBeUndefined();
   });
 });

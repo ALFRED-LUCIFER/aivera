@@ -21,9 +21,19 @@ export const footerLinks = [
 /** A link is current on its own page and the pages under it (`/candidates/jobs/[slug]` keeps "Jobs" current). */
 export const isCurrent = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-type PageKey = `nav.${(typeof headerLinks)[number]['key']}` | (typeof accountLink)[keyof typeof accountLink]['key'];
+type PageKey =
+  | `nav.${(typeof headerLinks)[number]['key']}`
+  | (typeof accountLink)[keyof typeof accountLink]['key']
+  | 'applyPlaceholder';
 /** The catalogue key naming each of the site's own pages the frame links to (placeholders until their tickets). */
 export const sitePages = new Map<string, PageKey>([
   ...headerLinks.map(({ key, href }) => [href, `nav.${key}`] as const),
   ...Object.values(accountLink).map(({ key, href }) => [href, key] as const),
 ]);
+
+/** A job's apply address, linked from its page (AIV-P3-005); the form itself is AIV-P3-008. */
+export const applyHref = (slug: string) => `/candidates/jobs/${slug}/apply` as const;
+
+/** The placeholder a path shows, if it is one of the site's pages not built yet; the apply form counts. */
+export const placeholderKey = (path: string): PageKey | undefined =>
+  sitePages.get(path) ?? (/^\/candidates\/jobs\/[a-z0-9-]+\/apply$/.test(path) ? 'applyPlaceholder' : undefined);

@@ -70,6 +70,18 @@ export function formatMoney({ amountMinor, currency }: Money, locale: Locale) {
   return format.format(amountMinor / 10 ** (format.resolvedOptions().maximumFractionDigits ?? 2));
 }
 
+/** The amount alone, for the upper end of a range ("AED 35,000 to 48,000"): same digits as formatMoney, no currency. */
+export function formatAmount({ amountMinor, currency }: Money, locale: Locale) {
+  const digits =
+    new Intl.NumberFormat(intlLocale(locale), { style: 'currency', currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2;
+  return new Intl.NumberFormat(intlLocale(locale), {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+    trailingZeroDisplay: 'stripIfInteger',
+  }).format(amountMinor / 10 ** digits);
+}
+
 /** A ratio from 0 to 1 ("0.71" prints "71%"). */
 export const formatPercent = (ratio: number, locale: Locale) =>
   new Intl.NumberFormat(intlLocale(locale), { style: 'percent' }).format(ratio);

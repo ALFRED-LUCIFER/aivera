@@ -4,6 +4,7 @@ import {
   defaultTimeZone,
   dir,
   formatDate,
+  formatAmount,
   formatMoney,
   formatPercent,
   getTranslations,
@@ -34,6 +35,14 @@ describe('plurals and formats in en-AE', () => {
     expect(t('date.short', { value: lateEvening })).toBe('18 Nov 2026');
     expect(formatDate(lateEvening, 'en', 'Asia/Dubai')).toBe('18 Nov 2026');
     expect(formatDate(lateEvening, 'en', 'UTC')).toBe('17 Nov 2026');
+  });
+
+  it('money.monthlyRange reads "AED 35,000 to 48,000 a month" (a pay band, AIV-P3-005)', async () => {
+    const t = await getTranslations('en', defaultTimeZone);
+    const min = formatMoney({ amountMinor: 3_500_000, currency: 'AED' }, 'en');
+    const max = formatAmount({ amountMinor: 4_800_000, currency: 'AED' }, 'en');
+    expect(t('money.monthlyRange', { min, max })).toBe('AED\u00a035,000 to 48,000 a month');
+    expect(formatAmount({ amountMinor: 4950, currency: 'AED' }, 'en')).toBe('49.50');
   });
 
   it('formats money with cents and percentages', () => {
