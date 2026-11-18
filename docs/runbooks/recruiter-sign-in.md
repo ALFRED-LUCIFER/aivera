@@ -37,13 +37,13 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 | `AUTH_ENTRA_CLIENT_SECRET`                 | (secret)                               | Key Vault reference `entra-recruiter-client-secret`, app identity |
 | `AUTH_SECRET`                              | (secret: `openssl rand -base64 32`)    | Key Vault reference `auth-secret`, app identity                   |
 
-Azure dev also sets `AUTH_URL` to the app's public origin (built from the environment's default domain), read by Auth.js directly: the container listens on `0.0.0.0:3000`, and without it sign-in redirects go to `https://0.0.0.0:3000`. Locally it is not needed.
-
 The five are all or nothing: a partial set stops the app at start-up, naming only what is missing. `AUTH_ENTRA_ISSUER` exists only for the mocked provider of the end-to-end tests and is refused outside `APP_ENV=local`.
+
+Azure dev also sets `AUTH_URL` to the app's public origin (built from the environment's default domain), read by Auth.js directly: the container listens on `0.0.0.0:3000`, and without it sign-in redirects go to `https://0.0.0.0:3000`. Locally it is not needed.
 
 ## Owner steps still open
 
-1. **Apply `infra/main.bicep`.** It gives the web app the five settings; the app identity already has Key Vault Secrets User. `deploy-dev.yml` updates only the image, so the settings arrive with the apply. Both Key Vault secrets exist.
+1. **Apply `infra/main.bicep`.** It gives the web app the five settings and `AUTH_URL`; the app identity already has Key Vault Secrets User. `deploy-dev.yml` updates only the image, so the settings arrive with the apply. Both Key Vault secrets exist.
 2. **Wrong-password copy.** The password page belongs to the tenant. Set its error text to "That email and password do not match." under Company branding → Language customization; the default already does not say whether the email exists. Raise the password minimum to 12 characters, per the SignUp copy, if the tenant allows it.
 
 ## Microsoft accounts

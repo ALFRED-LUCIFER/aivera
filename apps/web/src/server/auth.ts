@@ -41,7 +41,7 @@ export const authConfigured = (): boolean => env().auth !== null;
 export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
   return {
     secret: auth.secret,
-    // Container Apps ingress sets the forwarded host; the app has no fixed public URL in dev.
+    // AUTH_URL sets the public origin on Azure (infra/modules/web.bicep); locally and in e2e the request host is trusted.
     trustHost: true,
     providers: [
       {

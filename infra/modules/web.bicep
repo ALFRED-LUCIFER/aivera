@@ -18,9 +18,10 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
 }
 
 var probe = { port: 3000, scheme: 'HTTP' }
+var appName = 'ca-aivera-web-dev'
 
 resource web 'Microsoft.App/containerApps@2024-03-01' = {
-  name: 'ca-aivera-web-dev'
+  name: appName
   location: location
   tags: tags
   identity: {
@@ -73,7 +74,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_ENTRA_CLIENT_SECRET', secretRef: 'entra-recruiter-client-secret' }
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
-            { name: 'AUTH_URL', value: 'https://ca-aivera-web-dev.${environment.properties.defaultDomain}' }
+            { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
           ]
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [
