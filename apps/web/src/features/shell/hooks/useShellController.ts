@@ -1,29 +1,32 @@
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { activeScreen } from '../domain/navigation.ts';
 import type { Theme } from '../domain/shell.ts';
+import { applyTheme, focusAssistantQuestion } from '../services/dom.ts';
 import { setTheme } from '../services/theme.ts';
 
 export function useShellController(initialTheme: Theme) {
   const [navOpen, setNavOpen] = useState(false);
   const [theme, setThemeState] = useState(initialTheme);
+  const showTheme = (value: Theme) => {
+    setThemeState(value);
+    applyTheme(value);
+  };
   return {
     activeId: activeScreen(usePathname()),
     navOpen,
     onToggleNav: () => setNavOpen((open) => !open),
-    onNavigate: () => setNavOpen(false),
+    // Stable, so the shell's Escape listener is not re-attached on every render.
+    onCloseNav: useCallback(() => setNavOpen(false), []),
     theme,
     onToggleTheme: () => {
       const next = theme === 'dark' ? 'light' : 'dark';
-      setThemeState(next);
-      document.documentElement.dataset['theme'] = next;
-      void setTheme(next);
+      showTheme(next);
+      // Not saved means not switched: put the page back rather than show a theme the next load will drop.
+      setTheme(next).catch(() => showTheme(theme));
     },
     onAssistantOpenChange: (open: boolean) => {
-      // shortcut: the shared drawer focuses its close button on open; the ticket wants the question field. Move this
-      // into AssistantDrawer (onOpenAutoFocus) when packages/ui is free to change.
-      if (open)
-        setTimeout(() => document.querySelector<HTMLInputElement>('[role="dialog"] input[name="question"]')?.focus());
+      if (open) focusAssistantQuestion();
     },
   };
 }

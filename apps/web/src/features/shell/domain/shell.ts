@@ -4,7 +4,7 @@ export type Member = {
   name: string;
   initials: string;
   capabilities: readonly Capability[];
-  workspace: { name: string; synthetic: boolean };
+  workspace: { synthetic: boolean };
 };
 
 /** Sidebar badges; a section without a number shows no badge. */

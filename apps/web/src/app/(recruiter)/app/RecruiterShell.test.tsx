@@ -9,7 +9,7 @@ import { RecruiterShell } from './RecruiterShell.tsx';
 
 let pathname = '/app';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
-const setTheme = vi.fn();
+const setTheme = vi.fn(async (_theme: string) => {});
 vi.mock('@/features/shell/services/theme.ts', () => ({ setTheme: (theme: string) => setTheme(theme) }));
 
 beforeEach(() => {
@@ -26,7 +26,7 @@ const member: Member = {
   name: 'AP',
   initials: 'AP',
   capabilities: ['recruiter'],
-  workspace: { name: 'Demo', synthetic: true },
+  workspace: { synthetic: true },
 };
 const seed: ShellCounts = { desk: 4, inbox: 20, jobs: 5, interviews: 5, packs: 1 };
 
@@ -35,7 +35,7 @@ const renderShell = ({ counts = seed as ShellCounts | null, synthetic = true } =
     <RecruiterShell
       intl={intl}
       theme="light"
-      member={{ ...member, workspace: { ...member.workspace, synthetic } }}
+      member={{ ...member, workspace: { synthetic } }}
       counts={counts}
       screens={navigation}
     >
@@ -132,6 +132,17 @@ describe('Recruiter app shell', () => {
     expect(screen.getByRole('button', { name: 'Open navigation' })).toBeTruthy();
   });
 
+  // SAFETY: mutation check: removed the focus effect -> this test failed; removed the Escape handler -> this test failed
+  it('the opened menu takes focus, and Escape closes it with focus back on the menu button', async () => {
+    renderShell();
+    const menu = screen.getByRole('button', { name: 'Open navigation' });
+    await userEvent.click(menu);
+    expect(document.activeElement).toBe(within(sidebar()).getByRole('link', { name: 'My desk 4' }));
+    await userEvent.keyboard('{Escape}');
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(menu);
+  });
+
   it('Scenario: Counts fail softly', () => {
     renderShell({ counts: null });
     expect(sectionNames()).toEqual([
@@ -157,12 +168,24 @@ describe('Recruiter app shell', () => {
     expect(screen.getByRole('button', { name: 'Switch to light theme' })).toBeTruthy();
   });
 
+  // SAFETY: mutation check: dropped the .catch revert in onToggleTheme -> this test failed
+  it('puts the theme back when saving it fails', async () => {
+    setTheme.mockRejectedValueOnce(new Error('offline'));
+    renderShell();
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }));
+    await waitFor(() => expect(document.documentElement.dataset['theme']).toBe('light'));
+    expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeTruthy();
+  });
+
   it('has the landmarks: banner, named navigation, main and search', () => {
     renderShell();
     expect(screen.getByRole('banner')).toBeTruthy();
     expect(sidebar()).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.getByRole('searchbox', { name: 'Search roles, candidates and evidence' })).toBeTruthy();
+    // aria-query predates <search>; browsers give it the search landmark role.
+    expect(
+      screen.getByRole('searchbox', { name: 'Search roles, candidates and evidence' }).closest('search'),
+    ).toBeTruthy();
     expect(screen.getByText('Signed in as AP')).toBeTruthy();
   });
 });

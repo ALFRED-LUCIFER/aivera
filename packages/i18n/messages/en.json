@@ -43,6 +43,7 @@
     "sources": "{count, plural, one {# source} other {# sources}}"
   },
   "shell": {
+    "titleTemplate": "%s · Aivera",
     "skipToContent": "Skip to content",
     "wordmark": "Aivera",
     "nav": {

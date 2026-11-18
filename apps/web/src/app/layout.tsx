@@ -19,6 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // The theme comes from the cookie on the server, so the first paint already has it (no flash).
+// shortcut: reading the cookie makes every route render dynamically; revisit for the marketing and candidate sites
+// (static pages with an inline theme script, or a theme read only in the /app layout).
 export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html

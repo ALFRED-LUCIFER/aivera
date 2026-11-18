@@ -1,7 +1,7 @@
 import { useTranslations } from '@aivera/i18n/react';
 import { AssistantDrawer, Button, Input, Label } from '@aivera/ui';
 import Link from 'next/link';
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { NavigationEntry, ScreenId } from '../domain/navigation.ts';
 import type { Member, ShellCounts, Theme } from '../domain/shell.ts';
 
@@ -14,7 +14,7 @@ export type AppShellProps = {
   activeId: ScreenId | undefined;
   navOpen: boolean;
   onToggleNav: () => void;
-  onNavigate: () => void;
+  onCloseNav: () => void;
   theme: Theme;
   onToggleTheme: () => void;
   onAssistantOpenChange: (open: boolean) => void;
@@ -35,7 +35,7 @@ export function AppShell({
   activeId,
   navOpen,
   onToggleNav,
-  onNavigate,
+  onCloseNav,
   theme,
   onToggleTheme,
   onAssistantOpenChange,
@@ -44,6 +44,23 @@ export function AppShell({
   const t = useTranslations('shell');
   const navId = useId();
   const searchId = useId();
+  const menuRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // The opened menu takes focus, so keyboard users land in it rather than behind it.
+  useEffect(() => {
+    if (navOpen) listRef.current?.querySelector('a')?.focus();
+  }, [navOpen]);
+  // Escape closes the opened menu and returns focus to its button.
+  useEffect(() => {
+    if (!navOpen) return;
+    const close = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      onCloseNav();
+      menuRef.current?.focus();
+    };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [navOpen, onCloseNav]);
   const activeLabel = activeId ? t(`nav.${activeId}`) : t('nav.label');
   return (
     // Under 1024px the grid falls away: header, then the opened menu, then the page stack in one column.
@@ -58,6 +75,7 @@ export function AppShell({
         <Button
           variant="ghost"
           size="iconOnly"
+          ref={menuRef}
           className="lg:hidden"
           aria-label={navOpen ? t('nav.close') : t('nav.open')}
           aria-expanded={navOpen}
@@ -118,15 +136,19 @@ export function AppShell({
         aria-label={t('nav.label')}
         className={`${navOpen ? 'flex' : 'hidden'} flex-col gap-5 border-b border-border bg-surface px-3 py-4 lg:sticky lg:top-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:flex lg:h-screen lg:overflow-y-auto lg:border-e lg:border-b-0`}
       >
-        <Link href="/app" onClick={onNavigate} className="px-2.5 font-display text-section text-text">
+        <Link
+          href="/app"
+          onClick={onCloseNav}
+          className="flex h-10 items-center px-2.5 font-display text-section text-text pointer-coarse:min-h-11"
+        >
           {t('wordmark')}
         </Link>
-        <ul className="flex flex-col gap-0.5">
+        <ul ref={listRef} className="flex flex-col gap-0.5">
           {screens.map(({ id, path }) => (
             <li key={id}>
               <Link
                 href={path}
-                onClick={onNavigate}
+                onClick={onCloseNav}
                 aria-current={id === activeId ? 'page' : undefined}
                 className={navLink}
               >
