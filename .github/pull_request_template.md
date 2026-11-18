@@ -17,6 +17,7 @@ Stack: <!-- e.g. #4 → **#181** → #2xx, or "none" (AGENTS.md 7.1) -->
 ## Definition of Done ([AGENTS.md §5](../AGENTS.md#5--definition-of-done-every-pr))
 
 - [ ] Every Gherkin scenario of the ticket passes
+- [ ] Written under the Ponytail discipline; `code-reviewer` agent and Copilot findings resolved (AGENTS.md 7.0)
 - [ ] **Synthetic data only**: no real person's data in code, tests, fixtures or logs
 - [ ] `pnpm lint`, `pnpm typecheck`, affected tests and `pnpm build` pass locally; CI green
 - [ ] Safety tests mutation-checked, each with its `// SAFETY: mutation check:` comment (name the tests):

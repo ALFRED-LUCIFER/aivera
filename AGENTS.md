@@ -22,12 +22,12 @@ Aivera ranks job candidates on evidence of their work and holds their CVs, docum
 
 1. **Work from a ticket.** Every change references its key (`AIV-P1-013`) in the branch name, commit and PR. Read its Gherkin acceptance criteria and linked docs first. **Ticket status lives on GitHub:** the issue's `status:` label plus a comment (what started, what was delivered, what is pending), **and** its Project 2 board Status. Close an issue only when every scenario passes.
 2. **Every ticket has Gherkin acceptance criteria** (a fenced `gherkin` block: Feature, user story, concrete Scenarios). A ticket without them is not ready to build; write them first (`.claude/agents/ticket-writer.md`).
-3. **Smallest complete change** (Ponytail discipline): solve the whole ticket with the least new code. Reuse before adding; no speculative abstractions or "for later" code. Finish every part the change touches: callers, tests, docs, translations.
+3. **Smallest complete change: the Ponytail discipline is mandatory for writing any code** (the `ponytail` plugin, level `full`; Claude Code loads it from `.claude/settings.json`). Solve the whole ticket with the least new code. Reuse before adding; no speculative abstractions or "for later" code. Finish every part the change touches: callers, tests, docs, translations.
 4. **Read before you write.** Find every caller, test and config your change reaches. Fix root causes in shared code, not symptoms at call sites.
 5. **Tests prove behaviour.** New logic (branch, parser, score, money, security, tenancy, consent) ships with a test. A safety-critical test must be shown to **fail when the protection is removed** (mutation check) before the PR, recorded next to the test as `// SAFETY: mutation check: <what was removed> -> <test> failed`. A test that cannot fail proves nothing.
 6. **Shortcuts are written down.** A known limit gets a code comment `shortcut: <the limit>, <when to upgrade>`. Untracked shortcuts are bugs.
 7. **Never weaken a guard to get green.** Do not disable lint rules, tests, audit or CI checks, or lower thresholds, to make a change pass. Fix the code. A justified, narrow suppression needs a comment with the reason.
-8. **Verify for real.** UI changes: run the app and check in a browser (layout, keyboard, axe, light and dark). Database changes: run against real PostgreSQL (Testcontainers). Never claim "done" from a passing build alone.
+8. **Verify for real, with Playwright.** UI changes are proven by Playwright tests that run in CI: the journey step or component story, keyboard path, `@axe-core/playwright` with no violations, and light and dark. An agent does not hand-drive a browser to verify (it costs tokens and leaves no regression test); it writes or extends the Playwright test instead, and drives a browser only to debug a failing one. Database changes: run against real PostgreSQL (Testcontainers). Never claim "done" from a passing build alone.
 9. **Comments explain why**, in one line, only where the code cannot.
 10. **Parallel agents.** Each agent works in its own git worktree on its own branch, with non-overlapping files; check `git branch --show-current` before committing. A ticket that depends on an unmerged ticket is built as a stacked PR on top of it (7.1). One agent at a time drives the Playwright browser. Never restart Docker or prune volumes on a shared machine. Details: [`docs/runbooks/parallel-agents.md`](docs/runbooks/parallel-agents.md).
 
@@ -101,6 +101,14 @@ The only Definition of Done; the PR template links here.
 - Commit message: what and why, with the ticket key (`AIV-P0-002: add migration runner`). The commit-msg hook rejects a message without a key.
 - PR body follows `.github/pull_request_template.md`: ticket, what changed, how verified, what is not done and which ticket covers it.
 - `main` is protected. Merge only with green CI, squash, on the owner's word.
+
+### 7.0 · Code review on every push
+
+Every pull request is reviewed twice, and again after every push that changes code:
+
+1. **GitHub Copilot code review** runs automatically on every PR and every push, on every branch, drafts included (repository ruleset "Copilot code review on every PR and push"). Its instructions are `.github/copilot-instructions.md`: this rulebook, the ticket's Gherkin, and the Ponytail discipline.
+2. **The `code-reviewer` agent** (`.claude/agents/code-reviewer.md`) reviews the PR against AGENTS.md, the ticket's Gherkin and the Ponytail discipline before the PR moves to "In review", and again after each push that changes code. It changes nothing; the author fixes.
+3. **Every finding is resolved before merge:** fixed in the layer that owns it (7.1), or answered on the PR with the reason it stands. Blockers are never answered away.
 
 ### 7.1 · Stacked PRs (dependent tickets, parallel agents)
 
