@@ -2,6 +2,8 @@
 
 Closes #<!-- issue number --> · AIV-
 
+Stack: <!-- e.g. #4 → **#181** → #2xx, or "none" (AGENTS.md 7.1) -->
+
 ## What changed
 
 
