@@ -184,7 +184,7 @@ test('Scenario Outline: The table lists evidence per role family', async ({ page
     ['Sales', 'Closed deals, client references, pipeline records, market write-ups'],
     ['Forward deployed engineering', 'Customer deployments, integration code, solution write-ups, customer references'],
     ['Technical writing and support', 'Published documentation, resolved tickets, help articles'],
-  ]) {
+  ] as const) {
     await expect(table.getByRole('row', { name: family })).toContainText(evidence);
   }
   await expect(table.getByRole('rowheader')).toHaveCount(10);

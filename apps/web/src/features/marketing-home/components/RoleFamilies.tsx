@@ -63,9 +63,11 @@ export function RoleFamilies(p: RoleFamiliesProps) {
             </tbody>
           </table>
         </div>
-        <p className="max-w-[46ch] border-t border-border px-5 py-4.5 text-[16px] leading-6 text-text-2 [&_strong]:font-semibold [&_strong]:text-text">
-          {p.more}
-        </p>
+        <div className="border-t border-border px-5 py-4.5">
+          <p className="max-w-[46ch] text-[16px] leading-6 text-text-2 [&_strong]:font-semibold [&_strong]:text-text">
+            {p.more}
+          </p>
+        </div>
       </Reveal>
     </section>
   );
