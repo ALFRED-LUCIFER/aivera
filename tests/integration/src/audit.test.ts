@@ -122,6 +122,41 @@ describe('Scenario: A score change is recorded with the change', () => {
   });
 });
 
+// AIV-P0-925: synthetic opaque ids for the actor and the member.
+describe('Scenario: Entries written at the same instant come back in insertion order', () => {
+  const ALEX = id(102);
+
+  // SAFETY: mutation check: ordered listFor by occurred_at, id -> this test failed (role_changed, revoked, granted)
+  it('three entries from one clock reading list as granted, revoked, role_changed', async () => {
+    const huda = { type: 'member', id: id(401) };
+    const actions = ['job_access.granted', 'job_access.revoked', 'member.role_changed'];
+    // Raw inserts with descending ids, so ordering by id instead of insertion order reverses them deterministically.
+    await withWorkspace(app, W1, async (tx) => {
+      for (const [i, action] of actions.entries())
+        await tx.execute(sql`insert into audit.entry (id, workspace_id, occurred_at, actor_type, actor_id, action, subject_type, subject_id)
+          values (${id(509 - i)}, ${W1}, '2026-11-18T09:00:00Z', 'user', ${ALEX}, ${action}, ${huda.type}, ${huda.id})`);
+    });
+    const entries = await audit.listFor(W1, huda);
+    expect(entries.map((e) => e.action)).toEqual(actions);
+    expect(new Set(entries.map((e) => e.occurredAt.toISOString()))).toEqual(new Set(['2026-11-18T09:00:00.000Z']));
+  });
+
+  it('an entry at 09:00:00Z inserted after one at 09:00:05Z still comes first', async () => {
+    const huda = { type: 'member', id: id(402) };
+    for (const iso of ['2026-11-18T09:00:05Z', '2026-11-18T09:00:00Z'])
+      await withWorkspace(app, W1, (tx) =>
+        createAudit(app, () => new Date(iso)).record(
+          { tx, workspaceId: W1, actor: { type: 'user', id: ALEX } },
+          { action: 'job_access.granted', subject: huda },
+        ),
+      );
+    expect((await audit.listFor(W1, huda)).map((e) => e.occurredAt.toISOString())).toEqual([
+      '2026-11-18T09:00:00.000Z',
+      '2026-11-18T09:00:05.000Z',
+    ]);
+  });
+});
+
 describe('Scenario: The audit entry rolls back with a failed change', () => {
   // SAFETY: mutation check: record() wrote through its own withWorkspace transaction (on a second pooled connection) instead of ctx.tx -> this test failed (the entry survived)
   it('a decision write that fails after the audit insert leaves no entry for that decision', async () => {
