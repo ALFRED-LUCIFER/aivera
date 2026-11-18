@@ -19,5 +19,7 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(email);
   if (!verified) await page.getByLabel('Email verified').uncheck();
-  await page.getByRole('button', { name: 'Continue' }).click();
+  // As on the real tenant page, Google is chosen there: the app sends no domain_hint.
+  const tenantButton = button === 'Continue with Google' ? 'Sign in with Google' : 'Continue';
+  await page.getByRole('button', { name: tenantButton }).click();
 }
