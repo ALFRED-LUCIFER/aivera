@@ -60,7 +60,7 @@ src/features/<feature>/components/ presentational .tsx only: props in, events ou
 
 - Lint enforces the layers and the boundaries between features: a feature may import another feature only through that feature's `index.ts` public API or its `domain/`. Never another feature's hooks or components. Shared query keys live in `domain/queryKeys.ts`.
 - Server Components in `app/` call module contracts through the app's composition root and pass plain data to components. Client interactivity goes through a controller hook. One controller per sub-flow (list, panel, dialog), not per page; soft budget ~200 lines per file.
-- Server state: TanStack Query. Forms: React Hook Form + Zod (schemas in `domain/`). No other state library without an ADR.
+- Server state: TanStack Query. Forms: React Hook Form + Zod (schemas in `domain/`). A small form that posts to a server action may instead be a native `<form>` with `useActionState`, validated by the same Zod schema on the server (sign-in, create workspace); add React Hook Form when a form needs client-side field state. No other state library without an ADR.
 - UI is **shadcn/ui + Radix + Tailwind 4** from `@aivera/ui`. Never add another component library. Colours, spacing, radius and type come from the Case file tokens (`@aivera/tokens`); no raw hex in features.
 - **No hard-coded user-facing text.** Every string is a key in `packages/i18n/messages/en.json`. Use logical utilities (`ms-*`, `ps-*`, `start-*`) so Arabic right-to-left works when it ships.
 - Accessibility: WCAG 2.2 AA, keyboard path, visible focus ring, real `<button>`/`<a href>`/`<label>`, `aria-label` on icon-only buttons, 200% zoom, reduced motion. Targets 40 px standard, 44 px on touch.
