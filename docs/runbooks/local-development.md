@@ -20,6 +20,8 @@ DATABASE_MIGRATOR_URL=postgres://aivera_migrator:local_dev_only@localhost:5432/a
 DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 ```
 
+Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruiter-sign-in.md)); without them `/sign-in` renders but every `/app` page redirects to it. `pnpm e2e` signs in through a mocked provider instead and needs the migrated database above (or `E2E_DATABASE_URL`).
+
 ## Everyday commands
 
 | Command                                                     | What it does                                                                         |

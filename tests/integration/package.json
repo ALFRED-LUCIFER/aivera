@@ -11,6 +11,7 @@
     "@aivera/audit": "workspace:*",
     "@aivera/config": "workspace:*",
     "@aivera/db": "workspace:*",
+    "@aivera/identity": "workspace:*",
     "@aivera/workspaces": "workspace:*",
     "@testcontainers/postgresql": "12.2.1",
     "@types/node": "24.19.2",

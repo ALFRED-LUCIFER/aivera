@@ -77,5 +77,18 @@
       "footer": "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
     },
     "placeholder": "This screen arrives with its own ticket."
+  },
+  "signIn": {
+    "title": "Sign in",
+    "email": "Email",
+    "passwordNote": "You enter your password on the next page, hosted by Aivera's sign-in service.",
+    "signIn": "Sign in",
+    "or": "or",
+    "google": "Continue with Google",
+    "errors": {
+      "unverifiedEmail": "Verify your email to continue.",
+      "unavailable": "Sign-in is not set up in this environment yet.",
+      "failed": "Sign-in did not finish. Try again."
+    }
   }
 }

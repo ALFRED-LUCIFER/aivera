@@ -1,12 +1,14 @@
 // AIV-P0-005: the Aivera web app in Aivera's external environment cae-aivera-dev (ADR-008). Consumption, scale to zero.
 // shortcut: no Front Door and no custom domain in dev; the public default FQDN serves it. Front Door, a dev host and portfolio subdomains come with the launch epic AIV-P5-E03 (#34)
-// shortcut: public with no sign-in until AIV-P0-009/010; the recruiter app's dev stand-in member exists only under `next dev`, so /app 404s in this production build, and dev holds synthetic data only
+// shortcut: the recruiter app's dev stand-in member exists only under `next dev`, so /app 404s after sign-in in this production build until AIV-P0-010; dev holds synthetic data only
 param location string
 param tags object
 param containerAppsEnvName string
 param appIdentityId string
 param appIdentityClientId string
 param appInsightsSecretUri string
+@description('Aivera Key Vault URI (ends with a slash); recruiter sign-in secrets live there (docs/runbooks/recruiter-sign-in.md).')
+param keyVaultUri string
 param databaseHost string
 param databaseName string
 param webImage string
@@ -40,6 +42,13 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
       // Every secret is a Key Vault reference read with the app identity; no literal secret lives on the app.
       secrets: [
         { name: 'appinsights-connection-string', keyVaultUrl: appInsightsSecretUri, identity: appIdentityId }
+        // Recruiter sign-in (AIV-P0-009). Both secrets must exist in the vault before an apply.
+        {
+          name: 'entra-recruiter-client-secret'
+          keyVaultUrl: '${keyVaultUri}secrets/entra-recruiter-client-secret'
+          identity: appIdentityId
+        }
+        { name: 'auth-secret', keyVaultUrl: '${keyVaultUri}secrets/auth-secret', identity: appIdentityId }
       ]
     }
     template: {
@@ -57,6 +66,13 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             }
             { name: 'AZURE_CLIENT_ID', value: appIdentityClientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
+            // The dev External ID tenant and its recruiter app registration (not secrets).
+            // shortcut: dev tenant values written in the module; make them params when a pilot environment is added
+            { name: 'AUTH_ENTRA_TENANT_SUBDOMAIN', value: 'aiveradev' }
+            { name: 'AUTH_ENTRA_TENANT_ID', value: '88c795fc-1018-45f7-8904-75e1c2991b8f' }
+            { name: 'AUTH_ENTRA_CLIENT_ID', value: '463fb57b-570d-4384-b914-1078df012bd8' }
+            { name: 'AUTH_ENTRA_CLIENT_SECRET', secretRef: 'entra-recruiter-client-secret' }
+            { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
           ]
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [
