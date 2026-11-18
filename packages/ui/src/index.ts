@@ -14,3 +14,13 @@ export { Toast, ToastProvider } from './Toast.tsx';
 export type { ToastProps, ToastProviderProps } from './Toast.tsx';
 export { Tooltip } from './Tooltip.tsx';
 export type { TooltipProps } from './Tooltip.tsx';
+
+// AIV-P0-022: evidence components
+export { EvidenceHighlight } from './EvidenceHighlight.tsx';
+export type { Citation, EvidenceHighlightProps } from './EvidenceHighlight.tsx';
+export { ProvenanceTag } from './ProvenanceTag.tsx';
+export type { Provenance, ProvenanceTagProps } from './ProvenanceTag.tsx';
+export { StrengthMeter } from './StrengthMeter.tsx';
+export type { Strength, StrengthMeterProps } from './StrengthMeter.tsx';
+export { ValueBasis } from './ValueBasis.tsx';
+export type { ValueBasisKind, ValueBasisProps } from './ValueBasis.tsx';
