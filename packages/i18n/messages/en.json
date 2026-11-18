@@ -76,6 +76,35 @@
       "family": "Role family",
       "evidence": "Evidence that counts",
       "more": "<strong>This list is a start.</strong> We are piecing together more role families, and the one you hire for can be next."
+    },
+    "trust": {
+      "title": "Recommendations you can check. Decisions that stay yours.",
+      "principles": {
+        "cites": {
+          "title": "Every score cites its source",
+          "body": "Open any assessment and see the exact commit, document or reference it rests on, and what it does not show."
+        },
+        "claims": {
+          "title": "Claims are labelled as claims",
+          "body": "Nothing is called verified unless a second source confirms it. Candidate-submitted, corroborated and contradictory evidence look different."
+        },
+        "human": {
+          "title": "Nobody is rejected automatically",
+          "body": "Ranking orders your attention. Lower-ranked candidates stay visible, and thin evidence is treated as a gap to close."
+        },
+        "numbers": {
+          "title": "Numbers say what they are",
+          "body": "Observed, baseline or projection. If no hire has completed, the dashboard says so instead of showing a figure."
+        }
+      }
+    },
+    "pilot": {
+      "title": "One number to judge us on: interviews per completed hire",
+      "body": "Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working."
+    },
+    "footer": {
+      "label": "Footer",
+      "copyright": "© {year} Aivera"
     }
   },
   "candidate": {

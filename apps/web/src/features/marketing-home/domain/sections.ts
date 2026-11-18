@@ -2,3 +2,6 @@
 
 /** `home.how.steps.<key>.title` and `.body`. */
 export const howSteps = ['agree', 'collect', 'rank', 'interview', 'decide'] as const;
+
+/** `home.trust.principles.<key>.title` and `.body`. */
+export const trustPrinciples = ['cites', 'claims', 'human', 'numbers'] as const;

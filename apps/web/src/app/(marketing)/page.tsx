@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';
 import { RoleFamilies } from '@/features/marketing-home/components/RoleFamilies.tsx';
+import { SiteFooter } from '@/features/marketing-home/components/SiteFooter.tsx';
+import { TrustAndPilot } from '@/features/marketing-home/components/TrustAndPilot.tsx';
 import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
-import { howSteps } from '@/features/marketing-home/domain/sections.ts';
+import { howSteps, trustPrinciples } from '@/features/marketing-home/domain/sections.ts';
 // The website's motion stylesheet: here, because a feature's components/ holds .tsx only (ADR-003).
 import './marketing.css';
 
@@ -23,6 +25,18 @@ export default async function WebsitePage() {
   const evidence = t('home.card.evidence');
   return (
     <MarketingHome
+      footer={
+        <SiteFooter
+          wordmark={t('app.title')}
+          signIn={t('home.signIn')}
+          footerLabel={t('home.footer.label')}
+          howItWorks={t('home.nav.howItWorks')}
+          roles={t('home.nav.roles')}
+          trust={t('home.nav.trust')}
+          // shortcut: the year is read from the system clock here; take it from the Clock port when the web app has one.
+          copyright={t('home.footer.copyright', { year: new Date().getUTCFullYear() })}
+        />
+      }
       labels={{
         skipToContent: t('shell.skipToContent'),
         wordmark: t('app.title'),
@@ -81,6 +95,17 @@ export default async function WebsitePage() {
         evidenceHeader={t('home.roleFamilies.evidence')}
         rows={JOB_TYPE_CATALOGUE.map((j) => ({ key: j.key, family: t(j.labelKey), evidence: t(j.evidenceKey) }))}
         more={t.rich('home.roleFamilies.more', { strong })}
+      />
+      <TrustAndPilot
+        trustTitle={t('home.trust.title')}
+        principles={trustPrinciples.map((key) => ({
+          title: t(`home.trust.principles.${key}.title`),
+          body: t(`home.trust.principles.${key}.body`),
+        }))}
+        pilotTitle={t('home.pilot.title')}
+        pilotBody={t('home.pilot.body')}
+        createWorkspace={t('home.createWorkspace')}
+        signIn={t('home.signIn')}
       />
     </MarketingHome>
   );

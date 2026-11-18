@@ -24,7 +24,13 @@ export type MarketingHomeLabels = {
   reassurance: string;
 };
 
-export type MarketingHomeProps = { labels: MarketingHomeLabels; card: EvidenceCardProps; children?: ReactNode };
+export type MarketingHomeProps = {
+  labels: MarketingHomeLabels;
+  card: EvidenceCardProps;
+  children?: ReactNode;
+  /** Rendered after <main>, so it is the page's contentinfo landmark. */
+  footer: ReactNode;
+};
 
 const step = (n: number) => ({ '--mk-step': n }) as CSSProperties;
 
@@ -50,7 +56,7 @@ const navLink =
   'transition-[background-size,color] duration-240 ease-case hover:bg-size-[calc(100%-12px)_1.5px] motion-reduce:transition-none';
 
 /** The website (Landing artboard): header, hero and the sections the page passes as children. */
-export function MarketingHome({ labels: l, card, children }: MarketingHomeProps) {
+export function MarketingHome({ labels: l, card, children, footer }: MarketingHomeProps) {
   return (
     <div className="mk-page flex min-h-screen flex-col bg-bg text-text">
       {/* Without JavaScript nothing waits for a scroll reveal. */}
@@ -131,6 +137,7 @@ export function MarketingHome({ labels: l, card, children }: MarketingHomeProps)
         </section>
         {children}
       </main>
+      {footer}
     </div>
   );
 }

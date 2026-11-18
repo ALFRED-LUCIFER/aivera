@@ -14,7 +14,7 @@ test('Scenario: The hero states the promise', async ({ page }) => {
   await expect(
     page.getByText('No tests to sit. No automatic rejections. A person makes every hiring decision.'),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Create your workspace' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create your workspace' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'See the product' })).toBeVisible();
 });
 
@@ -77,7 +77,7 @@ test('Scenario: The demo person is labelled synthetic', async ({ page }) => {
 
 test('Scenario: Calls to action', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Create your workspace' }).click();
+  await page.getByRole('link', { name: 'Create your workspace' }).first().click();
   // Sign-up starts on the sign-in page until /signup ships (AIV-P1-059).
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.goto('/');
@@ -206,3 +206,64 @@ test('the header "Roles we cover" link moves focus to the section heading', asyn
   await page.getByRole('banner').getByRole('link', { name: 'Roles we cover' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Not only software engineers' })).toBeFocused();
 });
+
+// J7 step 4: trust, pilot promise and footer (AIV-P5-004).
+
+test('Scenario Outline: The four principles', async ({ page }) => {
+  await page.goto('/');
+  const trust = page.getByRole('region', { name: 'Recommendations you can check. Decisions that stay yours.' });
+  for (const [title, line] of [
+    ['Every score cites its source', 'Open any assessment and see the exact commit, document or reference it rests on'],
+    ['Claims are labelled as claims', 'Nothing is called verified unless a second source confirms it.'],
+    ['Nobody is rejected automatically', 'Ranking orders your attention. Lower-ranked candidates stay visible'],
+    ['Numbers say what they are', 'Observed, baseline or projection. If no hire has completed, the dashboard says so'],
+  ] as const) {
+    await expect(trust.getByRole('listitem').filter({ hasText: title })).toContainText(line);
+  }
+});
+
+test('Scenario: The pilot promise', async ({ page }) => {
+  await page.goto('/');
+  const promise = page.getByText(
+    'Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working.',
+  );
+  await promise.scrollIntoViewIfNeeded();
+  await expect(promise).toBeInViewport();
+  await expect(promise.locator('xpath=ancestor::*[contains(@class,"mk-reveal")]')).toHaveCSS('opacity', '1');
+});
+
+test('Scenario: Footer', async ({ page }) => {
+  await page.goto('/');
+  const footer = page.getByRole('contentinfo');
+  await expect(footer.getByText('Aivera', { exact: true })).toBeVisible();
+  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Roles we cover', 'Why trust it', 'Sign in']);
+  await expect(footer.getByText(`© ${new Date().getUTCFullYear()} Aivera`)).toBeVisible();
+});
+
+test('Scenario: Anchors from the header', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('banner').getByRole('link', { name: 'Why trust it' }).click();
+  const heading = page.getByRole('heading', {
+    level: 2,
+    name: 'Recommendations you can check. Decisions that stay yours.',
+  });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+});
+
+for (const theme of themes) {
+  test(`the whole website passes axe once every section has revealed (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await page.goto('/');
+    // Scroll through every reveal, so axe checks each section's colours at full opacity, not skipped at 0.
+    for (const reveal of await page.locator('.mk-reveal').all()) {
+      await reveal.scrollIntoViewIfNeeded();
+      await expect(reveal).toHaveCSS('opacity', '1');
+    }
+    await expectNoAxeViolations(page);
+  });
+}
