@@ -3,7 +3,7 @@ import { uuidv7 } from '@aivera/db/uuidv7';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
 import type { Competency, Job, RubricStatus } from '../domain/job.ts';
-import { competency, job, jobInScope, rubricVersion } from './schema.ts';
+import { competency, job, jobInScope, publicJob, rubricVersion } from './schema.ts';
 
 const toJob = ({ payMinMinor, payMaxMinor, payCurrency, ...row }: typeof job.$inferSelect): Job => ({
   ...row,
@@ -124,6 +124,30 @@ export function jobStore(tx: Tx): JobStore {
         .update(job)
         .set(publication)
         .where(and(jobWhere(workspaceId), eq(job.id, jobId)));
+    },
+    async upsertPublicJob({ jobId, workspaceId, slug, listing, postedAt }) {
+      const values = {
+        title: listing.title,
+        jobType: listing.jobType,
+        descriptor: listing.descriptor,
+        location: listing.location,
+        payMinMinor: listing.payBand?.minMinor ?? null,
+        payMaxMinor: listing.payBand?.maxMinor ?? null,
+        payCurrency: listing.payBand?.currency ?? null,
+        competencies: listing.competencies,
+        postedAt,
+        open: true,
+      };
+      await tx
+        .insert(publicJob)
+        .values({ jobId, workspaceId, slug, ...values })
+        .onConflictDoUpdate({ target: publicJob.jobId, set: values });
+    },
+    async closePublicJob(workspaceId, jobId) {
+      await tx
+        .update(publicJob)
+        .set({ open: false })
+        .where(and(eq(publicJob.workspaceId, workspaceId), eq(publicJob.jobId, jobId)));
     },
     async setStatus(workspaceId, versionId, status, approval) {
       await tx

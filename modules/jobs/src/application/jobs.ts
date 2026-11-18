@@ -17,6 +17,7 @@ import {
   type Rubric,
   type RubricVersion,
 } from '../domain/job.ts';
+import { slugFor } from '../domain/public-job.ts';
 
 /**
  * The store over one workspace-scoped transaction. Every method filters by `workspaceId`, and every job read also by
@@ -42,6 +43,13 @@ export type JobStore = {
     jobId: string,
     publication: Pick<Job, 'published' | 'publicDescriptor' | 'publishedAt'>,
   ): Promise<void>;
+  /**
+   * Writes the job's public listing (AIV-P3-002), open. A job published before keeps its first slug, so its links
+   * keep working; everything else is replaced.
+   */
+  upsertPublicJob(row: PublicJobRow): Promise<void>;
+  /** Marks the job's public listing as no longer open. */
+  closePublicJob(workspaceId: string, jobId: string): Promise<void>;
   setStatus(
     workspaceId: string,
     versionId: string,
@@ -69,6 +77,15 @@ export type CreateJobInput = Pick<Job, 'title' | 'jobType' | 'description' | 'sy
 /** A rubric as the recruiter saves it; competencies in display order. */
 export type SaveRubricInput = { successStatement: string; changeNote?: string | null; competencies: Competency[] };
 
+/** One row of the candidate site's read model, as the publishing transaction writes it. */
+export type PublicJobRow = {
+  jobId: string;
+  workspaceId: string;
+  slug: string;
+  listing: PublicListing & { descriptor: string };
+  postedAt: Date;
+};
+
 /** What the recruiter confirms in the publish preview. */
 export type PublishJobInput = { publicDescriptor: string };
 
@@ -81,6 +98,33 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
     if (!job) throw new JobError('not_found');
     await authorize(ctx, action, resourceOf(job));
     return job;
+  }
+
+  /**
+   * Writes the published job's public listing from its approved rubric, in the same transaction (AIV-P3-002).
+   * shortcut: a job published before AIV-P3-002 has no listing until it is published again or its next rubric version
+   * is approved (no publish screen existed, so none is expected); a migration cannot backfill, as FORCE RLS hides
+   * every workspace's jobs from the migrator.
+   */
+  async function writePublicJob(
+    ctx: WorkspaceContext,
+    job: Job,
+    versionId: string,
+    publicDescriptor: string,
+    postedAt: Date,
+  ) {
+    const store = storeFor(ctx.tx);
+    const listing = toPublicListing({ ...job, publicDescriptor }, await store.competencies(ctx.workspaceId, versionId));
+    // The last 48 random bits of a fresh UUIDv7 (its head is a timestamp): unique across every workspace's same-titled
+    // jobs in practice, and says nothing about the job's id. Ignored when the job already has a listing.
+    const slug = slugFor(job.title, newId().slice(-12));
+    await store.upsertPublicJob({
+      jobId: job.id,
+      workspaceId: ctx.workspaceId,
+      slug,
+      listing: { ...listing, descriptor: publicDescriptor },
+      postedAt,
+    });
   }
 
   return {
@@ -226,6 +270,9 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
       // Superseded first: the partial unique index allows one approved version per job at any moment.
       if (previous) await store.setStatus(ctx.workspaceId, previous.id, 'superseded');
       await store.setStatus(ctx.workspaceId, versionId, 'approved', { by: ctx.userId, at: now() });
+      // A published job's listing follows the approved version at once; a draft never reaches it.
+      if (job.published && job.publicDescriptor && job.publishedAt)
+        await writePublicJob(ctx, job, versionId, job.publicDescriptor, job.publishedAt);
       // shortcut: RubricApproved.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
       await audit(ctx, {
         action: 'rubric.approved',
@@ -259,8 +306,11 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
       if (client && publicDescriptor.toLowerCase().includes(client.name.trim().toLowerCase()))
         throw new JobError('public_descriptor');
       const store = storeFor(ctx.tx);
-      if (!(await store.approvedVersion(ctx.workspaceId, job.id))) throw new JobError('rubric_not_approved');
-      await store.setPublication(ctx.workspaceId, job.id, { published: true, publicDescriptor, publishedAt: now() });
+      const approved = await store.approvedVersion(ctx.workspaceId, job.id);
+      if (!approved) throw new JobError('rubric_not_approved');
+      const publishedAt = now();
+      await store.setPublication(ctx.workspaceId, job.id, { published: true, publicDescriptor, publishedAt });
+      await writePublicJob(ctx, job, approved.id, publicDescriptor, publishedAt);
       // shortcut: JobPublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
       await audit(ctx, {
         action: 'job.published',
@@ -279,6 +329,7 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
         publicDescriptor: job.publicDescriptor,
         publishedAt: job.publishedAt,
       });
+      await storeFor(ctx.tx).closePublicJob(ctx.workspaceId, job.id);
       // shortcut: JobUnpublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
       await audit(ctx, {
         action: 'job.unpublished',

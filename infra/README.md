@@ -20,7 +20,7 @@ The dev environment lives inside Medvya's dev resource group `rg-medvya-dev-in` 
 | Managed identity (CI/CD)         | `id-aivera-cicd-dev`                                                          | AIV-P0-003 | GitHub Actions OIDC (`repo:ALFRED-LUCIFER/aivera:ref:refs/heads/main`) and the migration job                                                                                                                            |
 | Key Vault                        | `kv-aivera-dev-<6 chars>`                                                     | AIV-P0-003 | RBAC, soft delete 7 days, purge protection. Holds the App Insights connection string                                                                                                                                    |
 | Application Insights             | `appi-aivera-dev`                                                             | AIV-P0-003 | Workspace-based, on Medvya's Log Analytics workspace                                                                                                                                                                    |
-| PostgreSQL database              | `aivera` on `psql-medvya-dev-3afs7i`                                          | AIV-P0-004 | Roles `aivera_migrator` and `aivera_app` mapped to the two identities (`sql/bootstrap-roles.sql`); `CONNECT` revoked from `PUBLIC`                                                                                      |
+| PostgreSQL database              | `aivera` on `psql-medvya-dev-3afs7i`                                          | AIV-P0-004 | Roles `aivera_migrator` and `aivera_app` mapped to the two identities, and `aivera_public` (no login) for the candidate site's reads (`sql/bootstrap-roles.sql`); `CONNECT` revoked from `PUBLIC`                       |
 | Subnet                           | `snet-aivera-dev` (10.20.5.0/27) in Medvya's VNet                             | AIV-P0-004 | Delegated to `Microsoft.App/environments`; declared as its own child resource, so the PUT touches only this subnet                                                                                                      |
 | Container Apps environment       | `cae-aivera-dev`                                                              | AIV-P0-004 | External, consumption only, on `snet-aivera-dev`; logs to Medvya's workspace. Reaches PostgreSQL privately: the private DNS zone `medvya-dev-3afs7i.private.postgres.database.azure.com` is linked to the whole VNet    |
 | Container Apps job               | `job-aivera-migrate-dev`                                                      | AIV-P0-004 | In `cae-aivera-dev`. Manual trigger; runs `pnpm db:migrate` as `aivera_migrator` from inside the VNet                                                                                                                   |
@@ -91,6 +91,15 @@ sh infra/scripts/bootstrap-db.sh
 ```
 
 It borrows one execution of `job-aivera-migrate-dev` with a `postgres:16-alpine` container and the owner's own short-lived Entra token (held in a job secret for the length of the execution and removed when it ends, never in the execution template), connects with `sslmode=verify-full`, runs `infra/sql/bootstrap-roles.sql`, and prints each role's flags and the databases it can connect to. Expect `rolsuper`, `rolbypassrls` and `rolcreaterole` false. If `can_connect_to` lists `medvya`, Medvya's database still grants `CONNECT` to `PUBLIC`: agree with Medvya to revoke it (ADR-008). Rerunning is safe.
+
+**AIV-P3-002 added `aivera_public`** (no login, entered by `aivera_app` with `SET LOCAL ROLE` for the candidate site's public job reads). On a server bootstrapped before it, rerun the script once, then run the migration job so the migrator grants the role its columns (`modules/jobs/src/infrastructure/grants.sql`, re-applied on every migrate):
+
+```sh
+sh infra/scripts/bootstrap-db.sh
+az containerapp job start -g rg-medvya-dev-in -n job-aivera-migrate-dev
+```
+
+Until both have run, the public job pages on Azure dev show their "could not load" state; nothing else is affected.
 
 The roles are mapped to the identities' object ids. If `id-aivera-dev` or `id-aivera-cicd-dev` is ever deleted and recreated, its new object id no longer matches: drop the stale role (`DROP ROLE aivera_app` after reassigning what it owns) and rerun the script.
 

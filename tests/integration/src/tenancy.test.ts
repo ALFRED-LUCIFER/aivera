@@ -25,6 +25,13 @@ const GLOBAL_TABLES: Record<string, string> = {
   'workspaces.active_workspace':
     'Keyed on the user and read before any workspace is open; two opaque ids, membership re-checked per request.',
 };
+/**
+ * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role
+ * alone, on the candidate site's public projection (AIV-P3-002). Each must match its expression exactly.
+ */
+const PUBLIC_READ: Record<string, { name: string; qual: string }> = {
+  'jobs.public_job': { name: 'public_job_public_read', qual: "(CURRENT_USER = 'aivera_public'::name)" },
+};
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
 
@@ -111,7 +118,9 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
       violations.push(`${t.name}: no policy comparing ${keyOf(t.name)} with current_setting('app.workspace_id')`);
     // Permissive policies are OR-ed, so any looser one opens the table to other workspaces. Restrictive ones (the jobs
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
-    for (const loose of permissive.filter((p) => !isTenant(p)))
+    const isPublicRead = (p: Policy) =>
+      PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
+    for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p)))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with app.workspace_id`);
   }
   return violations;
@@ -207,6 +216,8 @@ async function seed(
     // Approved, so the cross-workspace getApprovedRubric check has a real rubric to miss.
     await jobs.submitRubric(ctx, rubric.id);
     await jobs.approveRubric(ctx, rubric.id);
+    // Published, so the candidate site's read model (jobs.public_job, AIV-P3-002) has a row to leak.
+    await jobs.publishJob(ctx, job.id, { publicDescriptor: 'A synthetic employer' });
     await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: job.id });
     const [grant] = await workspaces.listJobGrants(ctx);
     const { personId } = await candidates.findOrCreatePerson(ctx, {
@@ -241,6 +252,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // SAFETY: mutation check: dropped policy member_tenant_isolation on workspaces.member -> this test failed (named workspaces.member)
   // SAFETY: mutation check: ALTER TABLE candidates.person NO FORCE ROW LEVEL SECURITY -> this test failed (not forced)
   // SAFETY: mutation check: added permissive policy USING (true) on workspaces.client -> this test failed (named the policy)
+  // SAFETY: mutation check: public_job_public_read loosened to USING (true) in jobs 0003 -> this test failed (named the policy)
   // SAFETY: mutation check: GRANT aivera_migrator TO aivera_app -> this test failed (owned by a role aivera_app belongs to)
   it('every table with a workspace_id column has RLS enabled, forced, and the app.workspace_id policy', async () => {
     const tables = await listTables(admin);
@@ -258,14 +270,16 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
 
   // The migrator too: a view or function it owns would otherwise read across workspaces.
   // SAFETY: mutation check: ALTER ROLE aivera_migrator BYPASSRLS -> this test failed
-  it('aivera_app and aivera_migrator are neither superuser nor BYPASSRLS', async () => {
+  // SAFETY: mutation check: ALTER ROLE aivera_public BYPASSRLS -> this test failed (aivera_app can switch to it)
+  it('aivera_app, aivera_migrator and aivera_public are neither superuser nor BYPASSRLS', async () => {
     const roles = await admin.execute<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
-      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator')
+      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator', 'aivera_public')
         order by rolname`,
     );
     expect([...roles]).toEqual([
       { rolname: 'aivera_app', rolsuper: false, rolbypassrls: false },
       { rolname: 'aivera_migrator', rolsuper: false, rolbypassrls: false },
+      { rolname: 'aivera_public', rolsuper: false, rolbypassrls: false },
     ]);
   });
 });

@@ -2,6 +2,7 @@
 import type { WorkspaceContext } from '@aivera/workspaces';
 import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
+import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
 export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
@@ -21,6 +22,8 @@ export type {
   RubricVersion,
 } from '../domain/job.ts';
 export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
+export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
+export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 /**
  * Emitted when a hiring owner approves a rubric version. Opaque ids only (AGENTS.md 3.1).
@@ -89,4 +92,16 @@ export interface JobsContract {
   publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void>;
   /** Admins and recruiters. Unpublishing an unpublished job does nothing. Audited. */
   unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void>;
+}
+
+/**
+ * The candidate site's reads (AIV-P3-002). No workspace and no session: every call runs as the aivera_public database
+ * role, which can read the public columns of published jobs and nothing else. Results carry no weight, client name,
+ * candidate, score or id; public responses still go out through `publicJobJson`.
+ */
+export interface PublicJobsContract {
+  /** Every open job, newest first. */
+  listPublicJobs(): Promise<PublicJob[]>;
+  /** The job at this slug: open, no longer open, or null when no job ever had it. */
+  findPublicJob(slug: string): Promise<PublicJobLookup>;
 }
