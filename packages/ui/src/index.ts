@@ -29,3 +29,19 @@ export { AssistantDrawer } from './AssistantDrawer.tsx';
 export type { AssistantDrawerProps } from './AssistantDrawer.tsx';
 export { PreviewBanner, PreviewConfirmCard, SuccessBanner } from './PreviewConfirm.tsx';
 export type { PreviewConfirmCardProps, PreviewConfirmProps, SuccessBannerProps } from './PreviewConfirm.tsx';
+
+// AIV-P0-021: data table, filter tabs, status badges and bulk-action bar
+export { BulkActionBar } from './BulkActionBar.tsx';
+export type { BulkAction, BulkActionBarProps, BulkPreviewHandler } from './BulkActionBar.tsx';
+export { Chip, StatusBadge } from './Chip.tsx';
+export type { ChipProps, ChipTone, Status, StatusBadgeProps } from './Chip.tsx';
+export { DataTable } from './DataTable.tsx';
+export type {
+  DataTableColumn,
+  DataTableProps,
+  DataTableSelection,
+  DataTableSort,
+  SortDirection,
+} from './DataTable.tsx';
+export { FilterTabs } from './FilterTabs.tsx';
+export type { FilterTab, FilterTabsProps } from './FilterTabs.tsx';
