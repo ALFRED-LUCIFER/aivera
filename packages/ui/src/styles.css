@@ -81,3 +81,23 @@
     outline-offset: 2px;
   }
 }
+
+/* AIV-P0-023 score bar (Foundations artboard .score/.hatch). The claim range is a stripe pattern, not a colour, so it
+   stays distinct from the solid fill in greyscale and the dark theme. Forced colours drop author backgrounds,
+   gradients and shadows, so both parts opt out and redraw in system colours. */
+@utility score-solid {
+  background: var(--text);
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+@utility score-hatch {
+  background: repeating-linear-gradient(135deg, var(--text) 0 2px, transparent 2px 6px);
+  box-shadow: inset 0 0 0 1.5px var(--text);
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    background: repeating-linear-gradient(135deg, CanvasText 0 2px, Canvas 2px 6px);
+    box-shadow: inset 0 0 0 1.5px CanvasText;
+  }
+}

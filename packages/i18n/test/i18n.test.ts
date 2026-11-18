@@ -82,3 +82,18 @@ describe('a missing translation falls back to English', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+// AIV-P0-023: the score components take this wording through props.
+describe('score and competency wording', () => {
+  it('reads as the Foundations and Candidate artboards', async () => {
+    const t = await getTranslations('en', defaultTimeZone);
+    expect(`${t('score.backed', { backed: 62 })} · ${t('score.upTo', { upTo: 78 })}`).toBe(
+      '62 backed by evidence · up to 78 if claims hold in interview',
+    );
+    expect(t('score.level', { proven: 1, levels: 5, needed: 2 })).toBe('Proven 1 of 5 · job needs 2');
+    expect(t('score.shortClaimed', { short: 1 })).toBe('1 short, claimed');
+    expect(t('competency.weightMandatory', { weight: formatPercent(0.2, 'en') })).toBe('Weight 20% · mandatory');
+    expect(t('competency.sources', { count: 1 })).toBe('1 source');
+    expect(t('competency.sources', { count: 2 })).toBe('2 sources');
+  });
+});

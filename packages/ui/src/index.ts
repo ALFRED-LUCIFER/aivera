@@ -45,3 +45,9 @@ export type {
 } from './DataTable.tsx';
 export { FilterTabs } from './FilterTabs.tsx';
 export type { FilterTab, FilterTabsProps } from './FilterTabs.tsx';
+
+// AIV-P0-023: score with uncertainty, competency row and need-versus-proven
+export { CompetencyRow } from './CompetencyRow.tsx';
+export type { CompetencyRowProps } from './CompetencyRow.tsx';
+export { NeedVsProvenBar, ScoreWithUncertainty } from './ScoreBar.tsx';
+export type { NeedVsProvenBarProps, ScoreWithUncertaintyProps } from './ScoreBar.tsx';
