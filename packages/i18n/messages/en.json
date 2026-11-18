@@ -133,6 +133,35 @@
       },
       "homeTitle": "Find a job that judges your work",
       "placeholder": "This page arrives with its own ticket."
+    },
+    "jobs": {
+      "title": "Jobs",
+      "intro": "Posted by recruiters who hire on evidence. Every listing shows what the job needs.",
+      "searchLabel": "Job title or skill",
+      "search": "Search",
+      "filtersLabel": "Filter jobs",
+      "filters": {
+        "all": "All",
+        "engineering": "Engineering",
+        "product": "Product",
+        "sales": "Sales",
+        "support": "Writing and support",
+        "dubai": "Dubai",
+        "abu_dhabi": "Abu Dhabi",
+        "riyadh": "Riyadh"
+      },
+      "descriptorAndLocation": "{descriptor} · {location}",
+      "posted": "{days, plural, =0 {Posted today} one {Posted # day ago} other {Posted # days ago}}",
+      "viewJob": "View job",
+      "viewJobFor": ": {title}",
+      "empty": "No jobs match. Try a different word or clear the filters.",
+      "clearFilters": "Clear filters",
+      "failed": "Jobs could not load. Try again.",
+      "retry": "Try again",
+      "pages": "Pages",
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {page} of {pageCount}"
     }
   },
   "evidence": {
