@@ -1,14 +1,16 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { currentMembership } from '@/server/workspace';
 import { canOpen, navigation, type ScreenId } from '../domain/navigation.ts';
-import { parseTheme, themeCookie, type Member, type ShellCounts } from '../domain/shell.ts';
+import { parseTheme, shellMember, themeCookie, type Member, type ShellCounts } from '../domain/shell.ts';
 
-// shortcut: no sign-in yet, so `next dev` renders as the synthetic recruiter "AP" in the synthetic demo workspace
-// (docs/00-product/personas.md); every other environment renders no recruiter page at all. AIV-P0-010 replaces this
-// with the Entra session.
-export function devStandInMember(): Member | null {
-  if (process.env.NODE_ENV !== 'development') return null;
-  return { name: 'AP', initials: 'AP', capabilities: ['recruiter'], workspace: { synthetic: true } };
+/**
+ * The signed-in member in their active workspace. Null when they belong to no workspace yet; a removed member gets
+ * the 403 page and no session goes to sign-in (AIV-P0-010).
+ */
+export async function currentMember(): Promise<Member | null> {
+  const membership = await currentMembership();
+  return membership && shellMember(membership);
 }
 
 // shortcut: no feature flags exist yet; every map entry has flag null. The flag service supplies this set when it ships.
@@ -16,7 +18,7 @@ export const enabledFlags: ReadonlySet<string> = new Set();
 
 /** The route guard every recruiter page awaits: no member, no capability or flag off is a 404. */
 export async function requireScreen(id: ScreenId): Promise<Member> {
-  const member = devStandInMember();
+  const member = await currentMember();
   const screen = navigation.find((s) => s.id === id);
   if (!member || !screen || !canOpen(screen, member.capabilities, enabledFlags)) notFound();
   return member;

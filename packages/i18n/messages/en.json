@@ -90,5 +90,11 @@
       "unavailable": "Sign-in is not set up in this environment yet.",
       "failed": "Sign-in did not finish. Try again."
     }
+  },
+  "access": {
+    "forbiddenTitle": "No access",
+    "forbidden": "You do not have access to this. Ask your workspace admin.",
+    "noWorkspaceTitle": "You are not in a workspace yet",
+    "noWorkspace": "Ask your workspace admin to add you to their workspace."
   }
 }

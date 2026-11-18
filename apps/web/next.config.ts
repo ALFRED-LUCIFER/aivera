@@ -11,7 +11,17 @@ const config: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
   // Workspace packages ship TypeScript source (ADR-002).
-  transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n', '@aivera/db', '@aivera/identity'],
+  transpilePackages: [
+    '@aivera/ui',
+    '@aivera/tokens',
+    '@aivera/i18n',
+    '@aivera/db',
+    '@aivera/identity',
+    '@aivera/workspaces',
+    '@aivera/audit',
+  ],
+  // `forbidden()` and app/forbidden.tsx: a refused request context renders a 403 page (AIV-P0-010).
+  experimental: { authInterrupts: true },
   // The container image runs the standalone server; trace from the repo root so workspace packages are included.
   output: 'standalone',
   outputFileTracingRoot: join(import.meta.dirname, '..', '..'),

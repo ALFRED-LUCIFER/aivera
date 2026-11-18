@@ -1,3 +1,4 @@
+import type { Role } from '@aivera/workspaces';
 import type { Capability, ScreenId } from './navigation.ts';
 
 export type Member = {
@@ -6,6 +7,21 @@ export type Member = {
   capabilities: readonly Capability[];
   workspace: { synthetic: boolean };
 };
+
+/**
+ * The shell's view of a member. Admins and recruiters get the recruiter screens; hiring owners and interviewers get
+ * none yet (their job-scoped screens come with their tickets). The server still authorises every action.
+ */
+export function shellMember({ name, role, synthetic }: { name: string; role: Role; synthetic: boolean }): Member {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+  const capabilities: Capability[] = role === 'admin' || role === 'recruiter' ? ['recruiter'] : [];
+  return { name, initials, capabilities, workspace: { synthetic } };
+}
 
 /** Sidebar badges; a section without a number shows no badge. */
 export type ShellCounts = Partial<Record<ScreenId, number>>;
