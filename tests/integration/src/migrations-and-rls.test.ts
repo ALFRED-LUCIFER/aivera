@@ -64,6 +64,11 @@ describe('Drizzle Kit migrations per module (ADR-004)', () => {
     });
     await expect(app.execute(sql`delete from migrations.fixture_notes`)).rejects.toMatchObject({ code: '42501' });
   });
+
+  it('a failing module is named in the error, so the deploy log says what failed', async () => {
+    const broken: MigratableModule = { name: 'broken_fixture', dir: join(import.meta.dirname, 'no-such-module') };
+    await expect(migrateModules(migratorUrl, [broken])).rejects.toThrow('Migrations failed for module broken_fixture');
+  });
 });
 
 describe('workspace isolation at the database (ADR-005)', () => {

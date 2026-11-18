@@ -1,0 +1,95 @@
+name: deploy-dev
+# AIV-P0-006: every push to main (and a manual run from main) builds the images to ghcr.io, migrates, deploys the web
+# app to Azure dev and smoke-tests its public URL; a failed or cancelled smoke test rolls the web app back. OIDC only:
+# no Azure secret in GitHub. Every action is pinned to a commit SHA because this workflow can mint Azure tokens.
+# The deploy job waits for the owner to set repository variables AZURE_CLIENT_ID (id-aivera-cicd-dev), AZURE_TENANT_ID
+# and AZURE_SUBSCRIPTION_ID after the first Bicep apply (infra/README.md); until then only the images are built.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  IMAGES: ghcr.io/alfred-lucifer/aivera
+  RG: rg-medvya-dev-in
+  WEB: ca-aivera-web-dev
+  JOB: job-aivera-migrate-dev
+
+jobs:
+  images:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: log in to ghcr.io
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: build and push web and migrate
+        run: |
+          for target in web migrate; do
+            docker build --target "$target" -t "$IMAGES/$target:$GITHUB_SHA" .
+            docker push "$IMAGES/$target:$GITHUB_SHA"
+          done
+
+  deploy:
+    needs: images
+    if: github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Forward-only migrations (ADR-004) as aivera_migrator, inside the VNet. A failure stops here: web is untouched.
+      - name: migrate
+        run: |
+          az containerapp job update -g "$RG" -n "$JOB" --image "$IMAGES/migrate:$GITHUB_SHA" -o none
+          sh infra/scripts/run-job.sh "$JOB"
+
+      - name: deploy web
+        id: web
+        run: |
+          echo "previous=$(az containerapp show -g "$RG" -n "$WEB" --query 'properties.template.containers[0].image' -o tsv)" >> "$GITHUB_OUTPUT"
+          az containerapp update -g "$RG" -n "$WEB" --image "$IMAGES/web:$GITHUB_SHA" --set-env-vars "COMMIT_SHA=$GITHUB_SHA" -o none
+
+      - name: smoke test
+        run: |
+          fqdn=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
+          SMOKE_URL="https://$fqdn" COMMIT="$GITHUB_SHA" node infra/scripts/smoke.mjs
+
+      # Rolls back the image only: migrations stay applied, so they must be expand-only (ADR-004).
+      - name: roll back web
+        if: (failure() || cancelled()) && steps.web.outcome == 'success'
+        env:
+          PREVIOUS: ${{ steps.web.outputs.previous }}
+        run: |
+          az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none
+          echo "Rolled $WEB back to $PREVIOUS" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: summary
+        run: |
+          {
+            echo "Deployed commit $GITHUB_SHA to Azure dev"
+            echo "- web: $IMAGES/web:$GITHUB_SHA"
+            echo "- migrate: $IMAGES/migrate:$GITHUB_SHA (job $JOB succeeded)"
+          } >> "$GITHUB_STEP_SUMMARY"
