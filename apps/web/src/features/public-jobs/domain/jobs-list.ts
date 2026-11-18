@@ -88,3 +88,13 @@ export function jobsHref({ q, filter, page }: Partial<JobsQuery>): `/candidates/
   const query = params.toString();
   return query ? `/candidates/jobs?${query}` : '/candidates/jobs';
 }
+
+/** What a job card shows: the public listing's headline facts, with the posted age already worked out. */
+export type JobCardData = {
+  slug: string;
+  title: string;
+  descriptor: string;
+  location: string | null;
+  jobType: JobType;
+  postedDays: number;
+};

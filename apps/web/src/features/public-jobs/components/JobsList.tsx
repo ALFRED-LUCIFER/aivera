@@ -1,18 +1,9 @@
 import { useTranslations } from '@aivera/i18n/react';
-import type { JobType } from '@aivera/jobs';
 import { Button, buttonClassName, Card, FilterTabs, Input, Label } from '@aivera/ui';
 import Link from 'next/link';
 import { useId } from 'react';
-import { jobsHref, type Filter } from '../domain/jobs-list.ts';
-
-export type JobCardData = {
-  slug: string;
-  title: string;
-  descriptor: string;
-  location: string | null;
-  jobType: JobType;
-  postedDays: number;
-};
+import { jobsHref, type Filter, type JobCardData } from '../domain/jobs-list.ts';
+import { JobCard } from './JobCard.tsx';
 
 export type JobsListProps = {
   q: string;
@@ -68,25 +59,7 @@ export function JobsList({ q, filter, chips, jobs, page, pageCount, pending = fa
         <ul aria-busy={pending || undefined} className="mt-6 grid gap-3">
           {jobs.map((job) => (
             <li key={job.slug}>
-              <Card level={2} title={job.title}>
-                <p className="text-text-2">
-                  {job.location
-                    ? t('candidate.jobs.descriptorAndLocation', { descriptor: job.descriptor, location: job.location })
-                    : job.descriptor}
-                </p>
-                <p className="mt-1 flex flex-wrap gap-x-3 text-meta text-text-2">
-                  <span>{t(`jobTypes.${job.jobType}.label`)}</span>
-                  <span>{t('candidate.jobs.posted', { days: job.postedDays })}</span>
-                </p>
-                {/* The visible words lead the name, so voice users can say what they see (WCAG 2.5.3). */}
-                <Link
-                  href={`/candidates/jobs/${job.slug}`}
-                  aria-label={t('candidate.jobs.viewJobFor', { title: job.title })}
-                  className={`${link} mt-3 inline-flex min-h-10 items-center`}
-                >
-                  {t('candidate.jobs.viewJob')}
-                </Link>
-              </Card>
+              <JobCard job={job} />
             </li>
           ))}
         </ul>
