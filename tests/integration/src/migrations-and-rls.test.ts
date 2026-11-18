@@ -56,6 +56,14 @@ describe('Drizzle Kit migrations per module (ADR-004)', () => {
     await migrateModules(migratorUrl, [fixtureModule]);
     expect(await appliedCount()).toBe(2);
   });
+
+  // SAFETY: mutation check: removed the three REVOKE statements in migrateModules -> this test failed
+  it('the app role can neither read nor change the migrations journal', async () => {
+    await expect(app.execute(sql`select count(*) from migrations.fixture_notes`)).rejects.toMatchObject({
+      code: '42501',
+    });
+    await expect(app.execute(sql`delete from migrations.fixture_notes`)).rejects.toMatchObject({ code: '42501' });
+  });
 });
 
 describe('workspace isolation at the database (ADR-005)', () => {
