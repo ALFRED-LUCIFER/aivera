@@ -1,19 +1,26 @@
-// Deploy smoke test (AIV-P0-006). Runs inside the VNet as a job execution (the shared environment is internal):
-// passes when /api/health reports the expected commit and /api/ready answers 200, retrying while the app scales from
-// zero. Env: SMOKE_URL (https://<web fqdn>), COMMIT. Exit code 0 = live, 1 = roll back.
-const { SMOKE_URL: base, COMMIT: commit } = process.env;
-const deadline = Date.now() + 4 * 60_000;
+// Deploy smoke test (AIV-P0-006), run by deploy-dev.yml against the public dev URL: passes when /api/health reports
+// the expected commit and /api/ready answers 200, retrying while the app scales from zero. Exit 0 = live, 1 = roll back.
+// Usage: SMOKE_URL=https://<web fqdn> COMMIT=<sha> node infra/scripts/smoke.mjs
+import { pathToFileURL } from 'node:url';
 
-while (Date.now() < deadline) {
-  try {
-    const health = await (await fetch(`${base}/api/health`)).json();
-    const ready = await fetch(`${base}/api/ready`);
-    console.error(`health commit=${health.commit} ready=${ready.status}`);
-    if (health.commit === commit && ready.status === 200) process.exit(0);
-  } catch (error) {
-    console.error(`not reachable yet: ${error.message}`);
+/** Polls until the commit is live and ready, or the time runs out. */
+export async function smoke({ base, commit, timeoutMs = 4 * 60_000, intervalMs = 10_000, log = console.error }) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const health = await (await fetch(`${base}/api/health`)).json();
+      const ready = await fetch(`${base}/api/ready`);
+      log(`health commit=${health.commit} ready=${ready.status}`);
+      if (health.commit === commit && ready.status === 200) return true;
+    } catch (error) {
+      log(`not reachable yet: ${error.message}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
-  await new Promise((resolve) => setTimeout(resolve, 10_000));
+  log(`smoke failed: expected commit ${commit} live and ready`);
+  return false;
 }
-console.error(`smoke failed: expected commit ${commit} live and ready`);
-process.exit(1);
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  process.exit((await smoke({ base: process.env.SMOKE_URL, commit: process.env.COMMIT })) ? 0 : 1);
+}

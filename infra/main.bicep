@@ -77,7 +77,7 @@ module deployAccess 'modules/deploy-access.bicep' = {
   name: 'aivera-deploy-access'
   params: {
     cicdPrincipalId: foundation.outputs.cicdIdentityPrincipalId
-    containerAppsEnvName: shared.containerAppsEnv
+    containerAppsEnvName: environment.outputs.environmentName
   }
   dependsOn: [database, web]
 }

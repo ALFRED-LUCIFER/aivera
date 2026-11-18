@@ -1,5 +1,6 @@
 // AIV-P0-006: what GitHub Actions (id-aivera-cicd-dev, OIDC) may do, and nothing more. Every assignment is scoped to
-// one Aivera resource or to the shared environment's join action: never the resource group, never a Medvya resource.
+// one Aivera resource (the web app, the job, Aivera's own environment, Aivera's identities): never the resource group,
+// never a Medvya resource.
 param cicdPrincipalId string
 param containerAppsEnvName string
 
@@ -26,7 +27,7 @@ resource deployerRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   name: guid(resourceGroup().id, 'aivera-dev-deployer')
   properties: {
     roleName: 'Aivera dev deployer'
-    description: 'Join the shared Container Apps environment and assign Aivera identities when deploying Aivera dev.'
+    description: 'Join the Aivera dev Container Apps environment and assign Aivera identities when deploying Aivera dev.'
     type: 'CustomRole'
     assignableScopes: [resourceGroup().id]
     permissions: [

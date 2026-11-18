@@ -73,10 +73,12 @@ The `aivera` database already exists: it was created on 18 Nov 2026 with charset
 
 1. Merge the stack. `deploy-dev.yml` runs on `main` and pushes `ghcr.io/alfred-lucifer/aivera/web:<sha>` and `…/migrate:<sha>`; its deploy job is skipped because the repository variables are not set yet.
 2. Make both packages public, once (GitHub, Packages, each package's settings, Change visibility). The repository is public, so the images reveal nothing new, and the apps then pull without a registry secret.
-3. `az deployment group create -g rg-medvya-dev-in -f infra/main.bicep -p imageTag=<sha from step 1>`
+3. `az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha from step 1>` (also creates the subnet `snet-aivera-dev` and the environment `cae-aivera-dev`).
 4. `sh infra/scripts/bootstrap-db.sh` (below).
 5. Set the repository variables from the deployment outputs and the account (`gh variable set AZURE_CLIENT_ID -b <cicdIdentityClientId>`, the same for `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`).
-6. Re-run `deploy-dev` (`gh workflow run deploy-dev.yml`). It migrates, deploys web, smoke-tests from inside the VNet and rolls back on failure.
+6. Re-run `deploy-dev` (`gh workflow run deploy-dev.yml`). It migrates, deploys web, smoke-tests the public URL from the runner and rolls back the image on failure or cancellation.
+
+**Migrations must be expand-only (backward-compatible).** A rollback restores the previous web image over the already-migrated schema, so the old code must still work against it. Contract steps (drop, rename, narrow) ship in a later release, once no running image needs the old shape (ADR-004).
 
 ### Database roles (once, after the first `create`)
 
