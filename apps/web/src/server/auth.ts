@@ -28,8 +28,9 @@ const isDiscovery = (input: string | URL | Request) =>
   (input instanceof Request ? input.url : String(input)).endsWith('/.well-known/openid-configuration');
 
 let identity: IdentityContract | undefined;
-// Our own tenant's issuer: its emails are verified without the claim.
-const getIdentity = (trustedIssuer: string) => (identity ??= createIdentity(getDb(), { trustedIssuer }));
+/** The app's identity module. Our own tenant's issuer is trusted without `email_verified`; with no tenant, none is. */
+export const getIdentity = (): IdentityContract =>
+  (identity ??= createIdentity(getDb(), { trustedIssuer: env().auth?.issuer ?? '' }));
 
 export const authConfigured = (): boolean => env().auth !== null;
 
@@ -73,7 +74,7 @@ function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
         const claims = idTokenClaims.safeParse(profile);
         if (!claims.success) return false;
         try {
-          const found = await getIdentity(auth.issuer).upsertUserFromIdToken({
+          const found = await getIdentity().upsertUserFromIdToken({
             issuer: claims.data.iss,
             subject: claims.data.sub,
             email: claims.data.email,
