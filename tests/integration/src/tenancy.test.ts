@@ -146,7 +146,14 @@ const modulesOn = (db: Db): Modules => {
   };
 };
 
-type Seeded = { workspaceId: string; personId: string; clientId: string; grantId: string; jobId: string };
+type Seeded = {
+  workspaceId: string;
+  personId: string;
+  clientId: string;
+  grantId: string;
+  jobId: string;
+  rubricId: string;
+};
 let w1: Seeded;
 let w2: Seeded;
 
@@ -207,7 +214,7 @@ async function seed(
       identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
       synthetic: true,
     });
-    return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id };
+    return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id, rubricId: rubric.id };
   });
 }
 
@@ -395,7 +402,7 @@ describe("Scenario: Fetching another workspace's record by id finds nothing", ()
       w2Rubric: await m.jobs.getApprovedRubric(ctx, w2.jobId),
       ownRubric: await m.jobs.getApprovedRubric(ctx, w1.jobId),
     }));
-    expect(found).toEqual({ w2Job: null, w2Rubric: null, ownRubric: expect.anything() });
+    expect(found).toEqual({ w2Job: null, w2Rubric: null, ownRubric: expect.objectContaining({ id: w1.rubricId }) });
   });
 
   it("W1 renaming or archiving W2's client, or revoking W2's grant, finds nothing and changes nothing", async () => {
