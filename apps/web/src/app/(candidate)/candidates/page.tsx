@@ -11,10 +11,19 @@ export default async function CandidateHome() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   const jobs = await getPublicJobs()
     .listPublicJobs()
-    .catch(() => {
-      log.error({ area: 'candidate-home', code: 'public_jobs_unavailable' }, 'public jobs read failed');
+    .catch((error: unknown) => {
+      log.error(
+        {
+          area: 'candidate-home',
+          code: 'public_jobs_unavailable',
+          'error.type': error instanceof Error ? error.name : 'unknown',
+        },
+        'public jobs read failed',
+      );
       return null;
     });
+  // shortcut: the system clock, not the injected Clock port (AGENTS.md 3.9); take it from the port when the web app
+  // has one. Reading the jobs per request also relies on the root layout's cookie read keeping this page dynamic.
   const now = new Date();
   return (
     <HomeView
@@ -29,7 +38,7 @@ export default async function CandidateHome() {
           postedDays: postedDaysAgo(postedAt, now),
         }))
       }
-      // The Plus price (PRODUCT.md): AED 49 a month.
+      // shortcut: the Plus price (PRODUCT.md) as a literal until Plans and billing own it (AIV-P4-003).
       plusPrice={t('money.monthly', { amount: formatMoney({ amountMinor: 4900, currency: 'AED' }, defaultLocale) })}
     />
   );

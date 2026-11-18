@@ -196,7 +196,7 @@
       "checkCv": "Check my CV, free",
       "free": "Free to browse and apply. Always.",
       "sampleTitle": "What this job needs",
-      "sampleJob": "Senior AI Engineer",
+      "sampleJob": "Example: Senior AI Engineer",
       "sample": {
         "llm": "LLM systems in production",
         "retrieval": "Retrieval and evaluation",

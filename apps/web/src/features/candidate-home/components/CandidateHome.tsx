@@ -82,7 +82,10 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
           <h2 id="new-jobs" className={section}>
             {t('candidate.home.newTitle')}
           </h2>
-          <Link href="/candidates/jobs" className="font-semibold underline-offset-4 hover:underline">
+          <Link
+            href="/candidates/jobs"
+            className="inline-flex min-h-10 items-center font-semibold underline-offset-4 hover:underline"
+          >
             {t('candidate.home.allJobs')}
           </Link>
         </div>
