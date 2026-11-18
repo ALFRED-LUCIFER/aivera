@@ -1,0 +1,24 @@
+-- One-off, owner only (AIV-P0-004, ADR-008): Aivera's database roles on the shared Medvya dev server.
+-- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database, from inside
+-- the VNet, with psql variables app_oid and cicd_oid. The Azure counterpart of packages/db/sql/roles.sql: the roles
+-- map to managed identities (password sign-in is off on this server), so no password exists. Safe to rerun.
+-- aivera_migrator (id-aivera-cicd-dev) owns Aivera's schemas and runs migrations.
+-- aivera_app (id-aivera-dev) has data access only, is never an owner, and is always subject to row-level security.
+SELECT pgaadauth_create_principal_with_oid('aivera_migrator', :'cicd_oid', 'service', false, false)
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_migrator');
+SELECT pgaadauth_create_principal_with_oid('aivera_app', :'app_oid', 'service', false, false)
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_app');
+
+-- Isolation from Medvya: only Aivera's roles may connect to the aivera database.
+REVOKE ALL ON DATABASE aivera FROM PUBLIC;
+GRANT CREATE, CONNECT, TEMPORARY ON DATABASE aivera TO aivera_migrator;
+GRANT CONNECT ON DATABASE aivera TO aivera_app;
+
+-- Evidence for the PR and ADR-008: no superuser, no BYPASSRLS, no CREATEROLE, and which databases each role can
+-- connect to. A Medvya database listed here means it still grants CONNECT to PUBLIC: agree with Medvya to revoke it.
+SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole,
+       array_agg(d.datname ORDER BY d.datname) FILTER (WHERE has_database_privilege(r.rolname, d.datname, 'CONNECT'))
+         AS can_connect_to
+FROM pg_roles r CROSS JOIN pg_database d
+WHERE r.rolname IN ('aivera_migrator', 'aivera_app') AND NOT d.datistemplate
+GROUP BY r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole;
