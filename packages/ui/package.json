@@ -18,7 +18,8 @@
     "@radix-ui/react-tooltip": "1.4.1"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@aivera/config": "workspace:*",

@@ -83,4 +83,20 @@ describe('Button', () => {
       expect(contrast(text, ground)).toBeGreaterThanOrEqual(4.5);
     });
   });
+
+  it('iconOnly is a 40px square (44px wide on a coarse pointer) for an icon with an aria-label', () => {
+    render(
+      <Button size="iconOnly" aria-label="Close">
+        x
+      </Button>,
+    );
+    const classes = classesOf(screen.getByRole('button', { name: 'Close' }));
+    expect(classes).toEqual(expect.arrayContaining(['size-10', 'pointer-coarse:min-w-11', 'pointer-coarse:min-h-11']));
+    expect(classes.some((c) => /^p[xy]?-/.test(c))).toBe(false);
+  });
+
+  it('aria-disabled follows disabled only', () => {
+    render(<Button aria-disabled>Save</Button>);
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('aria-disabled')).toBe(false);
+  });
 });

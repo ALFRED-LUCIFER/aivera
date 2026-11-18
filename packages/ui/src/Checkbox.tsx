@@ -1,9 +1,12 @@
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cx } from './cx.ts';
 
-export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: ReactNode };
+export type CheckboxProps = Omit<ComponentProps<'input'>, 'type'> & { label: ReactNode };
 
-/** A native checkbox inside its label, so the whole row is the target; checked state is drawn in ink. */
+/**
+ * A native checkbox inside its label, so the whole row is the target; checked state is drawn in ink.
+ * `ref` and other input props go to the input; `className` styles the label row and is for layout only.
+ */
 export function Checkbox({ label, className, ...props }: CheckboxProps) {
   return (
     <label

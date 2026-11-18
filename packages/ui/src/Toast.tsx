@@ -38,6 +38,7 @@ export type ToastProps = {
   duration?: number;
 };
 
+// shortcut: no action slot, status variant or RTL swipe direction yet; add with the first screen that needs them
 export function Toast({ title, description, closeLabel, ...root }: ToastProps) {
   return (
     <ToastPrimitive.Root
@@ -49,7 +50,7 @@ export function Toast({ title, description, closeLabel, ...root }: ToastProps) {
         <ToastPrimitive.Description className="mt-1 text-meta text-text-2">{description}</ToastPrimitive.Description>
       )}
       <ToastPrimitive.Close asChild>
-        <Button variant="ghost" size="compact" aria-label={closeLabel} className="absolute end-2 top-2 w-9 px-0">
+        <Button variant="ghost" size="iconOnly" aria-label={closeLabel} className="absolute end-2 top-2">
           <CloseIcon />
         </Button>
       </ToastPrimitive.Close>

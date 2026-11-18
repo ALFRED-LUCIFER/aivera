@@ -10,7 +10,12 @@ export type TooltipProps = {
   side?: 'top' | 'right' | 'bottom' | 'left';
 };
 
-// Radix shows it on focus and hover, hides it on Escape and links it with aria-describedby (WCAG 1.4.13).
+/**
+ * Supplementary only: the same information must also be on screen or in the trigger's accessible name, because
+ * touch users never see a tooltip. Never wrap a disabled control (it cannot take focus or hover).
+ * Radix shows it on focus and hover, hides it on Escape and links it with aria-describedby (WCAG 1.4.13).
+ */
+// shortcut: Radix sides are physical (left/right), so side="left"/"right" does not flip in RTL; map start/end when Arabic ships
 export function Tooltip({ content, children, side = 'top' }: TooltipProps) {
   return (
     <TooltipPrimitive.Provider delayDuration={300}>

@@ -1,8 +1,8 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentProps } from 'react';
 import { cx } from './cx.ts';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-export type ButtonSize = 'compact' | 'standard' | 'touch';
+export type ButtonSize = 'compact' | 'standard' | 'touch' | 'iconOnly';
 
 // DESIGN.md: 36 compact, 40 standard, 44 touch and on any coarse pointer. One primary per view.
 const base =
@@ -20,27 +20,35 @@ const sizes: Record<ButtonSize, string> = {
   compact: 'h-9 px-3 text-meta',
   standard: 'h-10 px-3.5 text-body',
   touch: 'h-11 px-4 text-body',
+  // Square, for an icon with an aria-label (close, more).
+  iconOnly: 'size-10 pointer-coarse:min-w-11',
 };
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+export type ButtonProps = ComponentProps<'button'> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
 };
 
-/** A disabled button keeps a visible reason as its label, e.g. "Unavailable", never opacity alone. */
+/**
+ * A disabled button keeps a visible reason as its label, e.g. "Unavailable", never opacity alone.
+ * `aria-disabled` follows `disabled` only. `className` is for layout (margin, width, grid placement), not for
+ * overriding size, padding or colour: classes are joined, not merged, so use `size` and `variant` instead.
+ */
 export function Button({
   variant = 'secondary',
   size = 'standard',
   type = 'button',
+  disabled,
   className,
   ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
-      aria-disabled={props.disabled || undefined}
+      disabled={disabled}
       className={cx(base, variants[variant], sizes[size], className)}
       {...props}
+      aria-disabled={disabled || undefined}
     />
   );
 }

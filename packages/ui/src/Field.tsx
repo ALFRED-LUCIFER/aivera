@@ -1,39 +1,35 @@
-import type {
-  InputHTMLAttributes,
-  LabelHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cx } from './cx.ts';
 
 // Native elements keep the platform's keyboard, autofill and mobile pickers; tokens do the styling.
+// `className` on these controls is for layout (margin, width, grid placement), not for size, padding or colour.
+// shortcut: field border is 1.66:1 (WCAG 1.4.11 wants 3:1); token change pending owner decision
 const field =
   'w-full rounded-control border border-border-strong bg-surface px-3 text-body text-text placeholder:text-text-3 ' +
   'transition-colors duration-120 ease-case motion-reduce:transition-none hover:border-text-3 ' +
   'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-subtle disabled:text-text-3 ' +
   'aria-invalid:border-err-text';
 
-export type LabelProps = LabelHTMLAttributes<HTMLLabelElement>;
+export type LabelProps = ComponentProps<'label'>;
 
 export function Label({ className, ...props }: LabelProps) {
   // oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the caller passes htmlFor; this is the shared wrapper
   return <label className={cx('text-meta font-semibold text-text', className)} {...props} />;
 }
 
-export type InputProps = InputHTMLAttributes<HTMLInputElement>;
+export type InputProps = ComponentProps<'input'>;
 
 export function Input({ className, type = 'text', ...props }: InputProps) {
   return <input type={type} className={cx(field, 'h-10 pointer-coarse:min-h-11', className)} {...props} />;
 }
 
-export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
+export type TextareaProps = ComponentProps<'textarea'>;
 
 export function Textarea({ className, rows = 4, ...props }: TextareaProps) {
   return <textarea rows={rows} className={cx(field, 'py-2', className)} {...props} />;
 }
 
-export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode };
+export type SelectProps = ComponentProps<'select'> & { children: ReactNode };
 
 /** A native select: options are `<option>` children with their text from props or i18n. */
 export function Select({ className, ...props }: SelectProps) {

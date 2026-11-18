@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { contrast, resolveColour, type Theme } from '../test/theme.ts';
 import { RadioGroup, SegmentedControl, type ChoiceOption } from './RadioGroup.tsx';
 
 const shown: ChoiceOption[] = [
@@ -44,7 +45,41 @@ describe('SegmentedControl', () => {
   });
 });
 
+const segmentClasses = (name: string) =>
+  screen.getByRole('radio', { name }).closest('label')?.className.split(' ') ?? [];
+
+describe('SegmentedControl size and disabled state', () => {
+  // SAFETY: mutation check: min-h-10 -> h-8 -> failed
+  it('each segment is 40px and 44px on a coarse pointer (AGENTS.md §4)', () => {
+    render(<SegmentedControl legend="Shown in evidence" options={shown} />);
+    expect(segmentClasses('Not shown')).toEqual(expect.arrayContaining(['min-h-10', 'pointer-coarse:min-h-11']));
+    expect(segmentClasses('Not shown').some((c) => /^h-\d/.test(c))).toBe(false);
+  });
+
+  // A submitted scorecard: the chosen answer stays readable when the group is disabled.
+  // SAFETY: mutation check: removed the has-checked:has-disabled classes -> failed; their ground bg-surface -> bg-action -> failed
+  it.each<Theme>(['light', 'dark'])('a checked segment of a disabled group keeps 4.5:1 in %s', (theme) => {
+    render(<SegmentedControl legend="Shown in evidence" options={shown} value="clearly" disabled />);
+    const classes = segmentClasses('Clearly shown');
+    const pick = (prefix: string) =>
+      classes.find((c) => c.startsWith(`has-checked:has-disabled:${prefix}`))?.replace('has-checked:has-disabled:', '');
+    const text = pick('text-');
+    const ground = pick('bg-');
+    expect(text && ground).toBeTruthy();
+    const ratio = contrast(resolveColour(text ?? '', theme) ?? '', resolveColour(ground ?? '', theme) ?? '');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe('RadioGroup', () => {
+  it('passes required, aria-invalid and aria-describedby through', () => {
+    render(<RadioGroup legend="Weight" options={shown} required aria-invalid aria-describedby="weight-error" />);
+    const group = screen.getByRole('radiogroup', { name: 'Weight' });
+    expect(group.getAttribute('aria-invalid')).toBe('true');
+    expect(group.getAttribute('aria-describedby')).toBe('weight-error');
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toHaveProperty('required', true);
+  });
+
   it('is uncontrolled with a default value and names the group by its legend', async () => {
     render(<RadioGroup legend="Weight" options={shown} defaultValue="strongly" />);
     expect(screen.getByRole('radiogroup', { name: 'Weight' }).tagName).toBe('FIELDSET');

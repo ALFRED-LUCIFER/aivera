@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Button } from './Button.tsx';
 import { Dialog, DialogClose } from './Dialog.tsx';
+import { Input } from './Field.tsx';
 
 function EditRubric() {
   return (
@@ -55,5 +56,45 @@ describe('Dialog', () => {
       if (classes.some((c) => c.startsWith('animate-'))) expect(classes).toContain('motion-reduce:animate-none');
       expect(classes.filter((c) => c.startsWith('duration-'))).toEqual(['duration-120']);
     }
+  });
+
+  it('scrolls tall content inside a panel capped at the viewport', async () => {
+    render(<EditRubric />);
+    await userEvent.click(screen.getByRole('button', { name: 'Edit rubric' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className.split(' ')).toEqual(expect.arrayContaining(['max-h-full', 'overflow-y-auto']));
+    expect(dialog.parentElement?.className.split(' ')).toEqual(expect.arrayContaining(['fixed', 'inset-4']));
+  });
+
+  // SAFETY: mutation check: dropped the onOpenAutoFocus pass-through -> failed (focus went to the Note input)
+  it('lets a screen choose initial focus, focus return and Escape handling', async () => {
+    const onEscapeKeyDown = vi.fn();
+    const onCloseAutoFocus = vi.fn();
+    render(
+      <>
+        <Button>Back to list</Button>
+        <Dialog
+          defaultOpen
+          title="Withdraw request"
+          closeLabel="Close"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            screen.getByRole('button', { name: 'Keep request' }).focus();
+          }}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            onCloseAutoFocus();
+          }}
+        >
+          <Input aria-label="Note" />
+          <Button>Keep request</Button>
+        </Dialog>
+      </>,
+    );
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep request' }));
+    await userEvent.keyboard('{Escape}');
+    expect(onEscapeKeyDown).toHaveBeenCalled();
+    expect(onCloseAutoFocus).toHaveBeenCalled();
   });
 });
