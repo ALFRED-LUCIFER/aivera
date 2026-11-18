@@ -2,6 +2,7 @@ import { defaultLocale, defaultTimeZone, dir, getTranslations } from '@aivera/i1
 import type { Metadata } from 'next';
 import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { readTheme } from '@/features/shell/services/request.ts';
 import './globals.css';
 
 // DESIGN.md typography: Bricolage Grotesque headings, Hanken Grotesk text, JetBrains Mono for evidence.
@@ -17,12 +18,15 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('app.title'), description: t('app.description') };
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+// The theme comes from the cookie on the server, so the first paint already has it (no flash).
+// shortcut: reading the cookie makes every route render dynamically; revisit for the marketing and candidate sites
+// (static pages with an inline theme script, or a theme read only in the /app layout).
+export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang={locale}
       dir={dir(locale)}
-      data-theme="light"
+      data-theme={await readTheme()}
       className={`${bricolage.variable} ${hanken.variable} ${jetbrains.variable}`}
     >
       <body>{children}</body>

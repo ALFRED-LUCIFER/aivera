@@ -41,5 +41,41 @@
     "weight": "Weight {weight}",
     "weightMandatory": "Weight {weight} · mandatory",
     "sources": "{count, plural, one {# source} other {# sources}}"
+  },
+  "shell": {
+    "titleTemplate": "%s · Aivera",
+    "skipToContent": "Skip to content",
+    "wordmark": "Aivera",
+    "nav": {
+      "label": "Primary",
+      "open": "Open navigation",
+      "close": "Close navigation",
+      "desk": "My desk",
+      "inbox": "Inbox",
+      "jobs": "Jobs",
+      "candidates": "Candidates",
+      "pool": "Talent pool",
+      "interviews": "Interviews",
+      "packs": "Decision packs",
+      "value": "Value dashboard",
+      "website": "Aivera website"
+    },
+    "search": "Search roles, candidates and evidence",
+    "synthetic": "Synthetic demo data",
+    "theme": {
+      "toDark": "Switch to dark theme",
+      "toLight": "Switch to light theme"
+    },
+    "account": "Signed in as {name}",
+    "assistant": {
+      "open": "Ask Aivera",
+      "title": "Aivera assistant",
+      "context": "Context: {screen}",
+      "input": "Ask about what is on this page",
+      "ask": "Ask",
+      "close": "Close assistant",
+      "footer": "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
+    },
+    "placeholder": "This screen arrives with its own ticket."
   }
 }
