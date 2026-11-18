@@ -56,11 +56,11 @@ describe('sign-in form and request', () => {
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('sends Google straight to its provider, and email and password to the tenant page', () => {
-    expect(authorizationParams('google', undefined)).toEqual({ domain_hint: 'google' });
+  it('preselects the tenant Google provider, and sends email and password to the tenant page', () => {
+    expect(authorizationParams('google', undefined)).toEqual({ domain_hint: 'google.com' });
     expect(authorizationParams('google', 'alex@example.com')).toEqual({
       login_hint: 'alex@example.com',
-      domain_hint: 'google',
+      domain_hint: 'google.com',
     });
     expect(authorizationParams('password', 'alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
     expect(authorizationParams('password', undefined)).toEqual({});

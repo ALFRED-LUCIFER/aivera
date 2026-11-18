@@ -44,13 +44,14 @@ export const parseSignInForm = (form: FormData) =>
   });
 
 /**
- * Authorisation request parameters for the External ID user flow. `domain_hint=google` skips the tenant's picker straight
- * to Google. Email and password are entered on the tenant's own page, so the app never sees a password.
+ * Authorisation request parameters for the External ID user flow. `domain_hint=google.com` preselects the tenant's Google
+ * provider (plain `google` is refused with AADSTS90023). Email and password are entered on the tenant's own page, so
+ * the app never sees a password.
  */
 export function authorizationParams(method: Method, email: string | undefined): Record<string, string> {
   // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
   const hint: Record<string, string> = email ? { login_hint: email } : {};
-  if (method === 'google') return { ...hint, domain_hint: 'google' };
+  if (method === 'google') return { ...hint, domain_hint: 'google.com' };
   return hint;
 }
 
