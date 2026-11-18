@@ -1,11 +1,17 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
+
+// Local development keeps one .env.local at the repository root (runbook); Next.js only reads apps/web by itself.
+const rootEnv = join(import.meta.dirname, '..', '..', '.env.local');
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const config: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
   // Workspace packages ship TypeScript source (ADR-002).
-  transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n'],
+  transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n', '@aivera/db'],
 };
 
 // `page.dev.tsx` routes (the /dev/gallery component gallery) exist only under `next dev`: a build never sees them, so

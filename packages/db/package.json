@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./client": "./src/client.ts",
     "./drizzle-config": "./src/drizzleConfig.ts",
     "./tenant-policy": "./src/tenantPolicy.ts",
     "./sql/roles.sql": "./sql/roles.sql"

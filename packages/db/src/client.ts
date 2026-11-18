@@ -1,7 +1,9 @@
+import { sql } from 'drizzle-orm';
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { drizzle, PostgresJsSession, PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import { PgPreparedQuery } from 'drizzle-orm/pg-core/session';
 import postgres from 'postgres';
+import { entraToken } from './entraToken.ts';
 
 export type Db = ReturnType<typeof drizzle>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -56,7 +58,25 @@ redactErrors(PostgresJsSession.prototype, 'transaction');
 redactErrors(PostgresJsTransaction.prototype, 'transaction');
 
 // shortcut: $client (raw postgres-js) is not redacted; use it only for role setup and end(); add a lint restriction once app code needs raw SQL
-/** A Drizzle client over postgres-js. The caller owns the connection and closes it with `$client.end()`. */
+/**
+ * A Drizzle client over postgres-js. The caller owns the connection and closes it with `$client.end()`.
+ * In Azure (a managed identity endpoint and no password in the URL) it signs in with an Entra token per connection.
+ */
 export function createDb(url: string, options: { max?: number } = {}): Db {
-  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {} }));
+  const useEntra = !new URL(url).password && process.env['IDENTITY_ENDPOINT'];
+  const password = useEntra ? () => entraToken() : undefined;
+  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...(password && { password }) }));
+}
+
+/** True when `select 1` answers within `timeoutMs`; never throws (readiness probes). */
+export async function isReachable(db: Db, timeoutMs: number): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<false>((resolve) => (timer = setTimeout(resolve, timeoutMs, false)));
+  try {
+    return await Promise.race([db.execute(sql`select 1`).then(() => true), timeout]);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
