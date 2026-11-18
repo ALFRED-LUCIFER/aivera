@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   'job_access.view': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   'rubric.approve': { scope: 'job', roles: ['admin', 'hiring_owner'] },
+  'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.view': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
