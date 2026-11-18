@@ -5,6 +5,8 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 
 const scoreName = 'Backed score 72, up to 85 if her open claim holds';
 const card = (page: Page) => page.locator('.mk-card');
+// The counting number alone, not the caption beside it.
+const count = (page: Page) => card(page).getByRole('img').locator('> span').first();
 
 test('Scenario: The hero states the promise', async ({ page }) => {
   await page.goto('/');
@@ -16,7 +18,7 @@ test('Scenario: The hero states the promise', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'See the product' })).toBeVisible();
 });
 
-// SAFETY: mutation check: made the score's aria-label the counting number -> this test failed (name changed mid-count)
+// SAFETY: mutation check: removed aria-label={l.scoreName} from the score -> this test failed (no img with that name)
 test('Scenario: The score animates to its final values, under one unchanging name', async ({ page }) => {
   await page.goto('/');
   await expect(card(page)).toHaveAttribute('data-stage', 'play');
@@ -24,7 +26,7 @@ test('Scenario: The score animates to its final values, under one unchanging nam
   const seen = new Set<number>();
   await expect
     .poll(async () => {
-      seen.add(Number((await score.textContent())?.match(/^\d+/)?.[0]));
+      seen.add(Number(await count(page).textContent()));
       await expect(score).toHaveAccessibleName(scoreName);
       return seen.has(72);
     })
@@ -42,7 +44,8 @@ test.describe('reduced motion', () => {
   test('Scenario: Reduced motion shows the final state', async ({ page }) => {
     await page.goto('/');
     const score = page.getByRole('img', { name: scoreName });
-    await expect(score).toHaveText(/^72/, { timeout: 500 });
+    await expect(score).toBeVisible();
+    await expect(count(page)).toHaveText('72', { timeout: 500 });
     await expect(card(page)).toHaveAttribute('data-stage', 'final');
     expect(
       await page
@@ -53,8 +56,8 @@ test.describe('reduced motion', () => {
   });
 
   for (const theme of themes) {
-    test(`Scenario: Accessible and readable (${theme})`, async ({ page, context }) => {
-      await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    test(`Scenario: Accessible and readable (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
       await page.goto('/');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await expectNoAxeViolations(page);
