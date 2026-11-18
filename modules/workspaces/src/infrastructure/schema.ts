@@ -1,7 +1,18 @@
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { boolean, check, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { MEMBER_STATUSES, ROLES } from '../domain/workspace.ts';
+import {
+  boolean,
+  check,
+  foreignKey,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { MEMBER_STATUSES, ROLES, WORKSPACE_TYPES } from '../domain/workspace.ts';
 
 export const workspaces = pgSchema('workspaces');
 
@@ -11,13 +22,17 @@ export const workspace = workspaces
     'workspace',
     {
       id: uuid().primaryKey(),
+      type: text({ enum: WORKSPACE_TYPES }).notNull().default('in_house'),
       name: text().notNull(),
       company: text().notNull(),
       hiringFocus: text('hiring_focus').notNull(),
       synthetic: boolean().notNull().default(false),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     },
-    (t) => [tenantPolicy('workspace_tenant_isolation', t.id)],
+    (t) => [
+      check('workspace_type_check', sql`${t.type} in ('in_house', 'agency')`),
+      tenantPolicy('workspace_tenant_isolation', t.id),
+    ],
   )
   .enableRLS();
 
@@ -56,3 +71,54 @@ export const activeWorkspace = workspaces.table('active_workspace', {
     .references(() => workspace.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// An agency's client (ADR-005 point 6). Only an agency workspace adds them (enforced in the use case under a lock on the
+// workspace row). Never deleted: archived, so old jobs and audit entries keep resolving.
+export const client = workspaces
+  .table(
+    'client',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id')
+        .notNull()
+        .references(() => workspace.id),
+      name: text().notNull(),
+      archivedAt: timestamp('archived_at', { withTimezone: true }),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex('client_workspace_name_idx').on(t.workspaceId, sql`lower(${t.name})`),
+      // The target of job_grant's composite key, so a grant can only name a client of its own workspace.
+      unique('client_workspace_id_key').on(t.workspaceId, t.id),
+      check('client_name_check', sql`btrim(${t.name}) <> ''`),
+      tenantPolicy('client_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A hiring owner's or interviewer's access to one job, or to all of one client's jobs. Job ids are opaque ids of the
+// jobs module (no foreign key across modules, ADR-004 6); clients and members are keyed with the workspace, so a grant
+// never reaches another workspace's client or member even though key checks bypass row-level security.
+export const jobGrant = workspaces
+  .table(
+    'job_grant',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id')
+        .notNull()
+        .references(() => workspace.id),
+      userId: uuid('user_id').notNull(),
+      jobId: uuid('job_id'),
+      clientId: uuid('client_id'),
+      grantedBy: uuid('granted_by').notNull(),
+      grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      foreignKey({ columns: [t.workspaceId, t.userId], foreignColumns: [member.workspaceId, member.userId] }),
+      foreignKey({ columns: [t.workspaceId, t.clientId], foreignColumns: [client.workspaceId, client.id] }),
+      check('job_grant_target_check', sql`(${t.jobId} is null) <> (${t.clientId} is null)`),
+      unique('job_grant_member_target_key').on(t.workspaceId, t.userId, t.jobId, t.clientId).nullsNotDistinct(),
+      tenantPolicy('job_grant_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();

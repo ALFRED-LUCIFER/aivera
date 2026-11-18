@@ -11,7 +11,15 @@ const J2: JobResource = { jobId: 'job-2' };
 // A faked JobGrants port: every member holds a grant on job J1 only (the real lookup is AIV-P0-906).
 const useCases = (member: Member | null = null) =>
   contextUseCases<null>({
-    inWorkspace: (_workspaceId, work) => work({ findMember: async () => member } as unknown as WorkspaceStore, null),
+    inWorkspace: (_workspaceId, work) =>
+      work(
+        {
+          findMember: async () => member,
+          listGrants: async () => [],
+          setJobScope: async () => {},
+        } as unknown as WorkspaceStore,
+        null,
+      ),
     storeFor: () => ({}) as WorkspaceStore,
     grants: { covers: async (_ctx, resource) => resource.jobId === J1.jobId },
     active: { get: async () => null, set: async () => {} },
@@ -30,6 +38,10 @@ const attempt = (role: Role, action: Action, resource?: JobResource) =>
 //                      admin  recruiter hiring_owner interviewer
 const MATRIX: Record<Action, [string, string, string, string]> = {
   'job.create': ['YYY', 'YYY', '---', '---'],
+  'workspace.settings': ['YYY', '---', '---', '---'],
+  'client.manage': ['YYY', 'YYY', '---', '---'],
+  'job_access.manage': ['YYY', '---', '---', '---'],
+  'job_access.view': ['YYY', 'YYY', '---', '---'],
   'member.invite': ['YYY', '---', '---', '---'],
   'rubric.approve': ['YYY', '---', 'Y--', '---'],
   'candidate.view': ['YYY', 'YYY', 'Y--', 'Y--'],

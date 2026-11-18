@@ -22,6 +22,20 @@
       "when": 1795012397628,
       "tag": "0002_active_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795017363859,
+      "tag": "0003_job_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795017373477,
+      "tag": "0004_force_rls_job_grants",
+      "breakpoints": true
     }
   ]
 }

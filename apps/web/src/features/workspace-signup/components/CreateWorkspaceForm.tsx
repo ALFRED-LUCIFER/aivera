@@ -21,7 +21,8 @@ type CreateWorkspaceFormProps = {
   labels: CreateWorkspaceLabels;
 };
 
-// shortcut: no "In-house team or agency?" choice; every workspace is in-house until AIV-P0-906 adds the type.
+// shortcut: no "In-house team or agency?" choice; every workspace starts in-house and an admin makes it an agency with
+// setWorkspaceType (AIV-P0-906). Add the choice here once a ticket asks for it on sign-up.
 /** "Create your workspace" for a signed-in user with no workspace (SignUp artboard, AIV-P1-001). */
 export function CreateWorkspaceForm({ action, state, pending, focusOptions, labels }: CreateWorkspaceFormProps) {
   return (
