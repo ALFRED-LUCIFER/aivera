@@ -1,19 +1,22 @@
 // The only public surface of @aivera/jobs (ADR-002).
 import type { WorkspaceContext } from '@aivera/workspaces';
 import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
-import type { Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
+import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
 export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
 export { COMPETENCY_ORIGINS, COMPETENCY_TYPES, JOB_STAGES, JobError, RUBRIC_STATUSES } from '../domain/job.ts';
 export type {
   Competency,
+  DeskJob,
   Job,
   JobErrorCode,
   JobStage,
+  NextAction,
   PayBand,
   PublicListing,
   Rubric,
+  RubricState,
   RubricStatus,
   RubricVersion,
 } from '../domain/job.ts';
@@ -64,6 +67,8 @@ export interface JobsContract {
   getJob(ctx: WorkspaceContext, jobId: string): Promise<Job | null>;
   /** The jobs the context may see, oldest first. Every role; job-scoped roles get their granted jobs only. */
   listJobs(ctx: WorkspaceContext): Promise<Job[]>;
+  /** The Jobs list rows: `listJobs` with each job's rubric state, next action, and what is not yet available. */
+  listJobsForDesk(ctx: WorkspaceContext): Promise<DeskJob[]>;
   /** What assessment reads: the approved version and its competencies, or null when none is approved. */
   getApprovedRubric(ctx: WorkspaceContext, jobId: string): Promise<Rubric | null>;
   /**

@@ -4,6 +4,7 @@ import {
   assertValidCompetencies,
   assertValidPayBand,
   editsInPlace,
+  nextAction,
   RUBRIC_STATUSES,
   toPublicListing,
   validPublicDescriptor,
@@ -141,5 +142,41 @@ describe('toPublicListing (AIV-P1-015)', () => {
     expect(validPublicDescriptor('  A retail bank ')).toBe('A retail bank');
     expect(() => validPublicDescriptor(' ')).toThrow('Describe the employer for candidates');
     expect(() => validPublicDescriptor('x'.repeat(81))).toThrow('Describe the employer for candidates');
+  });
+});
+
+describe('Next action on the Jobs list (AIV-P1-006)', () => {
+  const unknown = { packReady: null, openEvidenceRequests: null };
+  const approved = { approved: true, latest: 'approved' } as const;
+
+  it.each([
+    [null, 'send_rubric'],
+    ['draft', 'send_rubric'],
+    ['returned', 'send_rubric'],
+    ['awaiting_approval', 'rubric_approval_pending'],
+  ] as const)('a latest rubric version %s gives %s', (latest, kind) => {
+    expect(nextAction({ approved: false, latest }, unknown)).toEqual({ kind });
+  });
+
+  it('a new draft is sent for approval first, even while an older version is in force', () => {
+    expect(nextAction({ approved: true, latest: 'draft' }, { packReady: true, openEvidenceRequests: 3 })).toEqual({
+      kind: 'send_rubric',
+    });
+  });
+
+  it('a ready pack asks for the Round 2 shortlist decision before chasing evidence', () => {
+    expect(nextAction(approved, { packReady: true, openEvidenceRequests: 3 })).toEqual({ kind: 'decide_shortlist' });
+  });
+
+  it('open evidence requests are chased with their count', () => {
+    expect(nextAction(approved, { packReady: false, openEvidenceRequests: 3 })).toEqual({
+      kind: 'chase_evidence',
+      count: 3,
+    });
+  });
+
+  it('an approved rubric with nothing to do, or with progress not yet available, has no action', () => {
+    expect(nextAction(approved, { packReady: false, openEvidenceRequests: 0 })).toBeNull();
+    expect(nextAction(approved, unknown)).toBeNull();
   });
 });

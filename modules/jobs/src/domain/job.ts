@@ -174,3 +174,33 @@ export function validPublicDescriptor(value: string): string {
   if (!descriptor || descriptor.length > PUBLIC_DESCRIPTOR_MAX) throw new JobError('public_descriptor');
   return descriptor;
 }
+
+/** A job's rubric as the Jobs list shows it: whether a version is in force, and the latest version's status. */
+export type RubricState = { approved: boolean; latest: RubricStatus | null };
+
+/** What the job needs next (AIV-P1-006). */
+export type NextAction =
+  { kind: 'send_rubric' | 'rubric_approval_pending' | 'decide_shortlist' } | { kind: 'chase_evidence'; count: number };
+
+/** Progress other modules report; null means not yet available, never a guessed "nothing to do" (AGENTS.md 1.7). */
+export type JobProgress = { packReady: boolean | null; openEvidenceRequests: number | null };
+
+/** The rubric comes first: nothing is assessed before the hiring owner approves it. Null when nothing is known to do. */
+export function nextAction(rubric: RubricState, progress: JobProgress): NextAction | null {
+  if (rubric.latest === null || rubric.latest === 'draft' || rubric.latest === 'returned')
+    return { kind: 'send_rubric' };
+  if (rubric.latest === 'awaiting_approval') return { kind: 'rubric_approval_pending' };
+  if (progress.packReady) return { kind: 'decide_shortlist' };
+  if (progress.openEvidenceRequests) return { kind: 'chase_evidence', count: progress.openEvidenceRequests };
+  return null;
+}
+
+/** A row of the recruiter's Jobs list. */
+export type DeskJob = Job & {
+  rubric: RubricState;
+  /** Null is not yet available. Zero, observed by rule, while no rubric is approved: assessment reads only that. */
+  assessed: number | null;
+  /** Evidence coverage in whole percent; null is not yet available. */
+  coveragePercent: number | null;
+  nextAction: NextAction | null;
+};
