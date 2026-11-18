@@ -1,0 +1,30 @@
+{
+  "name": "@aivera/ai",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/azure": "4.0.116",
+    "@aivera/observability": "workspace:*",
+    "@azure/identity": "4.14.1",
+    "ai": "7.0.162",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/context-async-hooks": "2.10.0",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
