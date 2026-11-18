@@ -73,6 +73,15 @@ module web 'modules/web.bicep' = {
   }
 }
 
+module deployAccess 'modules/deploy-access.bicep' = {
+  name: 'aivera-deploy-access'
+  params: {
+    cicdPrincipalId: foundation.outputs.cicdIdentityPrincipalId
+    containerAppsEnvName: shared.containerAppsEnv
+  }
+  dependsOn: [database, web]
+}
+
 output webFqdn string = web.outputs.webFqdn
 output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId

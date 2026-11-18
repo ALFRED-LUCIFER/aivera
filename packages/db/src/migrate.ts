@@ -15,10 +15,13 @@ export async function migrateModules(migratorUrl: string, modules: MigratableMod
     await db.execute(sql`ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aivera_app`);
     await db.execute(sql`ALTER DEFAULT PRIVILEGES GRANT USAGE, SELECT ON SEQUENCES TO aivera_app`);
     for (const module of modules) {
+      // Each module's pending migrations run in one transaction, so the module is what failed (deploy log, AIV-P0-006).
       await migrate(db, {
         migrationsFolder: migrationsFolder(module),
         migrationsSchema: 'migrations',
         migrationsTable: module.name,
+      }).catch((error: unknown) => {
+        throw new Error(`Migrations failed for module ${module.name}; nothing of it was applied.`, { cause: error });
       });
     }
     // The default privileges above also reach the migrator's journal: the app must never edit what was applied.

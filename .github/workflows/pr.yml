@@ -70,6 +70,14 @@ jobs:
           path: tests/e2e/playwright-report/
           retention-days: 14
 
+  # The deploy images build on every pull request, without pushing (AIV-P0-006).
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --target web . && docker build --target migrate .
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 5

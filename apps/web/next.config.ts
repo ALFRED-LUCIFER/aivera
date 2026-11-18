@@ -12,6 +12,9 @@ const config: NextConfig = {
   typedRoutes: true,
   // Workspace packages ship TypeScript source (ADR-002).
   transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n', '@aivera/db'],
+  // The container image runs the standalone server; trace from the repo root so workspace packages are included.
+  output: 'standalone',
+  outputFileTracingRoot: join(import.meta.dirname, '..', '..'),
 };
 
 // `page.dev.tsx` routes (the /dev/gallery component gallery) exist only under `next dev`: a build never sees them, so
