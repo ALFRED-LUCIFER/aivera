@@ -1,12 +1,21 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { sitePages } from '@/features/candidate-shell/domain/links.ts';
 
 // shortcut: the header and footer link pages that do not exist yet; each page's ticket adds its own route, which
 // Next.js matches before this catch-all. Delete this file when the last one lands.
-export default async function CandidatePlaceholder({ params }: PageProps<'/candidates/[...section]'>) {
-  const { section } = await params;
-  const key = sitePages.get(`/candidates/${section.join('/')}`);
+type Props = PageProps<'/candidates/[...section]'>;
+const pageKey = async ({ params }: Props) => sitePages.get(`/candidates/${(await params).section.join('/')}`);
+
+// Each placeholder is titled after its page ("Plans · Aivera for candidates", WCAG 2.4.2).
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const key = await pageKey(props);
+  return key ? { title: (await getTranslations(defaultLocale, defaultTimeZone))(`candidate.shell.${key}`) } : {};
+}
+
+export default async function CandidatePlaceholder(props: Props) {
+  const key = await pageKey(props);
   if (!key) notFound();
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (

@@ -37,9 +37,12 @@ test('at 375 px the links sit behind a Menu button that opens and closes with th
   await page.goto(home);
   await expect(siteNav(page)).toBeHidden();
   const menu = page.getByRole('button', { name: 'Menu' });
-  await menu.focus();
-  await page.keyboard.press('Enter');
-  await expect(menu).toHaveAttribute('aria-expanded', 'true');
+  // Retried until React has hydrated: before that, Enter reaches a button with no handler yet (next dev).
+  await expect(async () => {
+    await menu.focus();
+    await page.keyboard.press('Enter');
+    await expect(menu).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
+  }).toPass();
   await expect(siteNav(page).getByRole('link', { name: 'Jobs' })).toBeFocused();
   // No horizontal scroll with the menu open, the widest state.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);

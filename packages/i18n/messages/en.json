@@ -16,7 +16,6 @@
       "wordmark": "Aivera",
       "audience": "for candidates",
       "siteTitle": "Aivera for candidates",
-      "home": "Aivera for candidates, home",
       "nav": {
         "label": "Candidate site",
         "menu": "Menu",
@@ -28,7 +27,7 @@
       "createAccount": "Create account",
       "myApplications": "My applications",
       "footer": {
-        "label": "Footer",
+        "label": "Site links",
         "rule": "© 2026 Aivera. Paying never changes how recruiters rank you.",
         "jobs": "Jobs",
         "plans": "Plans",

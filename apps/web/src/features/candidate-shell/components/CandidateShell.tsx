@@ -61,13 +61,11 @@ export function CandidateShell({
       </a>
       <header className="border-b border-border bg-surface">
         <div className={`${container} flex flex-wrap items-center gap-x-8 gap-y-2 py-3`}>
-          {/* The visible words lead the name, so voice users can say what they see (WCAG 2.5.3). */}
           <Link
             href="/candidates"
-            aria-label={t('home')}
             className="flex h-10 items-baseline gap-2 rounded-control pt-1.5 pointer-coarse:min-h-11"
           >
-            <span className="font-display text-section font-bold tracking-tight text-text">{t('wordmark')}</span>
+            <span className="font-display text-section font-bold tracking-tight text-text">{t('wordmark')}</span>{' '}
             <span className="text-meta text-text-2">{t('audience')}</span>
           </Link>
           <Button

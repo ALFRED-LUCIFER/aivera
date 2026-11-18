@@ -7,7 +7,10 @@ import { CandidateSite } from './CandidateSite.tsx';
 
 let pathname = '/candidates';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
-afterEach(cleanup); // Vitest globals are off, so Testing Library cannot register its own cleanup.
+afterEach(() => {
+  cleanup(); // Vitest globals are off, so Testing Library cannot register its own cleanup.
+  pathname = '/candidates';
+});
 
 let intl: Awaited<ReturnType<typeof intlConfig>>;
 beforeAll(async () => {
@@ -53,7 +56,6 @@ describe('CandidateSite', () => {
     const nav = within(screen.getByRole('navigation', { name: 'Candidate site' }));
     expect(nav.getByRole('link', { name: 'Jobs' }).getAttribute('aria-current')).toBe('page');
     expect(nav.getByRole('link', { name: 'Plans' }).getAttribute('aria-current')).toBeNull();
-    pathname = '/candidates';
   });
 
   it('carries none of the recruiter chrome', () => {

@@ -14,7 +14,8 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
 // if a module ever needs another way to reach the database.
 const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
 const CANDIDATE_SITE = /[/\\]src[/\\](?:app[/\\]\(candidate\)|features[/\\]candidate-[^/\\]+)[/\\]/;
-const RECRUITER_SESSION = /^(?:@\/server\/auth|@\/features\/shell\/|next-auth)/;
+// `@/…` or a relative path resolved to src/: the session readers (server/auth, server/workspace) and the recruiter shell.
+const RECRUITER_SESSION = /^next-auth|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell[/\\])/;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -101,7 +102,11 @@ export function findViolations(root: string): Violation[] {
             add('module-no-ui', 'modules hold no UI (AGENTS.md 9.4)');
         }
         // ADR-009: the candidate site reads only its own session, never the recruiter one or the recruiter shell.
-        if (kind === 'apps' && CANDIDATE_SITE.test(file) && RECRUITER_SESSION.test(spec))
+        if (
+          kind === 'apps' &&
+          CANDIDATE_SITE.test(file) &&
+          RECRUITER_SESSION.test(spec.startsWith('.') ? resolve(dirname(file), spec) : spec)
+        )
           add('candidate-site-no-recruiter-session', 'the candidate site never reads the recruiter session (ADR-009)');
         if (kind === 'packages' && appPackages.has(spec.split('/')[0] ?? ''))
           add('package-imports-app', 'no package imports an app (AGENTS.md 9.4)');
