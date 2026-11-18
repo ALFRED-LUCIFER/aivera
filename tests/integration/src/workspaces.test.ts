@@ -9,8 +9,10 @@ import { consumeInWorkspace, createDb, withWorkspace, type Db } from '@aivera/db
 import {
   ForbiddenError,
   WorkspaceError,
+  type Client,
   type MemberStatus,
   type Role,
+  type WorkspaceContext,
   type WorkspacesContract,
 } from '@aivera/workspaces';
 import { createAudit } from '@aivera/audit/composition';
@@ -81,9 +83,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(3);
+    expect(await applied()).toBe(5);
     dbMigrate();
-    expect(await applied()).toBe(3);
+    expect(await applied()).toBe(5);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -94,6 +96,8 @@ describe('Scenario: Migrations are forward-only and per schema', () => {
     expect([...tables]).toEqual([
       // Keyed on the user, not workspace-owned (AIV-P0-010): read before any workspace is open.
       { name: 'active_workspace', owner: 'aivera_migrator', rls: false, forced: false },
+      { name: 'client', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'job_grant', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'workspace', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
@@ -212,7 +216,7 @@ describe('getMembership returns active memberships only', () => {
 
 describe('Scenario: The application role cannot switch RLS off', () => {
   // SAFETY: mutation check: ran ALTER TABLE workspaces.member OWNER TO aivera_app -> this test failed (the ALTER succeeded)
-  it.each(['member', 'workspace'])(
+  it.each(['member', 'workspace', 'client', 'job_grant'])(
     'aivera_app running DISABLE ROW LEVEL SECURITY on %s gets a permission error',
     async (table) => {
       await expect(
@@ -406,5 +410,315 @@ describe('Scenario: Worker jobs carry their workspace', () => {
     await consume({ type: 'assessment', workspaceId: 'not-a-uuid' }, deadLetter);
     expect(deadLetter).toHaveBeenCalledTimes(2);
     expect(settings).toEqual([w1]);
+  });
+});
+
+// AIV-P0-906: workspace type, agency clients and job grants. Jobs do not exist yet (AIV-P1-005), so jobs are synthetic
+// ids and `viewCandidate` stands in for a server action wrapped by workspaceAction('candidate.view', ..., { resource }):
+// the same withWorkspace -> resource -> authorize -> handler sequence (apps/web/src/server/workspace.test.ts proves the
+// wrapper runs it in that order).
+const job = (n: number) => `0190d4a2-0000-7000-9000-${String(n).padStart(12, '0')}`;
+const as = <T>(userId: string, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>) =>
+  workspaces.withWorkspace({ userId }, workspaceId, fn);
+
+const settings = (tx: WorkspaceContext['tx']) =>
+  tx
+    .execute<{ scope: string; jobs: string; clients: string }>(
+      sql`select current_setting('app.job_scope') as scope, current_setting('app.job_ids') as jobs,
+        current_setting('app.client_ids') as clients`,
+    )
+    .then((rows) => rows[0]);
+
+describe('AIV-P0-906: workspace type, agency clients and job-scoped access', () => {
+  const FAISAL = user(9061);
+  const LINA = user(9062);
+  const OMAR = user(9063);
+  const RANA = user(9064); // a second recruiter, for the refused grant
+  const [J1, J2, J3, J4] = [1, 2, 3, 4].map(job) as [string, string, string, string];
+  let gulf: string;
+  let dune: Client;
+  let falcon: Client;
+  const clientOf = new Map<string, string>(); // job id -> client id, as jobs.job will hold it (AIV-P1-005)
+  const handler = vi.fn(async (_ctx: WorkspaceContext, input: { jobId: string }) => `read ${input.jobId}`);
+  const viewCandidate = (userId: string, jobId: string) =>
+    as(userId, gulf, async (ctx) => {
+      // The resource comes from the stored record (here: the job's client), never from the request.
+      await workspaces.authorize(ctx, 'candidate.view', { jobId, clientId: clientOf.get(jobId) ?? null });
+      return handler(ctx, { jobId });
+    });
+  const outcome = (userId: string, jobId: string) =>
+    viewCandidate(userId, jobId).then(
+      () => 'allowed',
+      (error: unknown) => (error instanceof ForbiddenError ? '403' : `threw ${String(error)}`),
+    );
+
+  beforeAll(async () => {
+    gulf = (await newWorkspace('Gulf Talent Partners')).id;
+    await addMember(gulf, FAISAL, 'hiring_owner');
+    await addMember(gulf, LINA, 'interviewer');
+    await addMember(gulf, OMAR, 'recruiter');
+    await addMember(gulf, RANA, 'recruiter');
+    await as(ALEX, gulf, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+    falcon = await as(ALEX, gulf, (ctx) => workspaces.addClient(ctx, 'Falcon Pay'));
+    dune = await as(OMAR, gulf, (ctx) => workspaces.addClient(ctx, 'Dune Logistics'));
+    clientOf.set(J1, dune.id).set(J2, falcon.id).set(J4, dune.id);
+    await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: FAISAL, clientId: dune.id }));
+    await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, jobId: J1 }));
+  });
+
+  describe('Scenario: A workspace is in-house unless set to agency', () => {
+    it('"Demo Hiring Co" is an in-house team and adding a client to it is refused', async () => {
+      const { id } = await newWorkspace('Demo Hiring Co');
+      expect((await as(ALEX, id, (ctx) => workspaces.getWorkspace(ctx)))?.type).toBe('in_house');
+      await expect(as(ALEX, id, (ctx) => workspaces.addClient(ctx, 'Falcon Pay'))).rejects.toThrow(
+        new WorkspaceError('not_agency'),
+      );
+      await expect(as(ALEX, id, (ctx) => workspaces.addClient(ctx, 'Falcon Pay'))).rejects.toThrow(
+        'Only agency workspaces have clients.',
+      );
+    });
+
+    it('an agency with clients cannot become in-house; the type change is audited', async () => {
+      await expect(as(ALEX, gulf, (ctx) => workspaces.setWorkspaceType(ctx, 'in_house'))).rejects.toThrow(
+        new WorkspaceError('has_clients'),
+      );
+      expect((await as(ALEX, gulf, (ctx) => workspaces.getWorkspace(ctx)))?.type).toBe('agency');
+      expect(await audit.listFor(gulf, { type: 'workspace', id: gulf })).toContainEqual(
+        expect.objectContaining({
+          action: 'workspace.type_changed',
+          actor: { type: 'user', id: ALEX },
+          before: { type: 'in_house' },
+          after: { type: 'agency' },
+        }),
+      );
+    });
+
+    it('only an admin sets the type', async () => {
+      await expect(as(OMAR, gulf, (ctx) => workspaces.setWorkspaceType(ctx, 'in_house'))).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+    });
+  });
+
+  describe('Scenario: An agency adds clients', () => {
+    it('both clients are listed, and "falcon pay" again is refused', async () => {
+      const names = (await as(ALEX, gulf, (ctx) => workspaces.listClients(ctx))).map((c) => c.name);
+      expect(names).toEqual(['Dune Logistics', 'Falcon Pay']);
+      await expect(as(ALEX, gulf, (ctx) => workspaces.addClient(ctx, 'falcon pay'))).rejects.toThrow(
+        'A client with this name already exists.',
+      );
+      await expect(as(ALEX, gulf, (ctx) => workspaces.renameClient(ctx, dune.id, ' FALCON PAY '))).rejects.toThrow(
+        new WorkspaceError('client_exists'),
+      );
+      expect(await audit.listFor(gulf, { type: 'client', id: dune.id })).toEqual([
+        expect.objectContaining({ action: 'client.added', actor: { type: 'user', id: OMAR } }),
+      ]);
+    });
+
+    it('renaming and archiving are audited; hiring owners and interviewers cannot manage clients', async () => {
+      const temp = await as(ALEX, gulf, (ctx) => workspaces.addClient(ctx, 'Oasis Retail'));
+      await as(OMAR, gulf, (ctx) => workspaces.renameClient(ctx, temp.id, 'Oasis Retail Group'));
+      await as(ALEX, gulf, (ctx) => workspaces.archiveClient(ctx, temp.id));
+      const stored = (await as(ALEX, gulf, (ctx) => workspaces.listClients(ctx))).find((c) => c.id === temp.id);
+      expect(stored).toMatchObject({ name: 'Oasis Retail Group', archivedAt: expect.any(Date) });
+      expect((await audit.listFor(gulf, { type: 'client', id: temp.id })).map((e) => e.action)).toEqual([
+        'client.added',
+        'client.renamed',
+        'client.archived',
+      ]);
+      // SAFETY: mutation check: dropped the archivedAt check in grantJobAccess -> this test failed (the grant was stored)
+      await expect(
+        as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, clientId: temp.id })),
+      ).rejects.toThrow(new WorkspaceError('client_not_found'));
+      for (const userId of [FAISAL, LINA])
+        await expect(as(userId, gulf, (ctx) => workspaces.addClient(ctx, 'Mirage Labs'))).rejects.toBeInstanceOf(
+          ForbiddenError,
+        );
+    });
+  });
+
+  describe("Scenario: A hiring owner cannot read another client's job or candidates", () => {
+    // SAFETY: mutation check: grantsCover ignored the client (`g.jobId === jobId` only) -> this test failed (J1 was 403)
+    // SAFETY: mutation check: grantsCover matched any client grant (`g.clientId != null`) -> this test failed (J2 was allowed)
+    it("Faisal, granted all of Dune Logistics' jobs, gets 403 on J2 (Falcon Pay) and no read; J1 is allowed", async () => {
+      handler.mockClear();
+      expect(await outcome(FAISAL, J2)).toBe('403');
+      expect(handler).not.toHaveBeenCalled();
+      expect(await outcome(FAISAL, J1)).toBe('allowed');
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Scenario: A client grant covers that client's new jobs", () => {
+    it('a new job J3 for Dune Logistics opens for Faisal without a new grant', async () => {
+      clientOf.set(J3, dune.id);
+      expect(await outcome(FAISAL, J3)).toBe('allowed');
+    });
+  });
+
+  describe('Scenario: An interviewer granted one job sees only that job', () => {
+    it('Lina, granted J1 only, gets 403 on J4 of the same client', async () => {
+      expect(await outcome(LINA, J1)).toBe('allowed');
+      expect(await outcome(LINA, J4)).toBe('403');
+    });
+  });
+
+  describe('Scenario: Admins and recruiters are not job-scoped', () => {
+    it('Omar, a recruiter with no grants, opens J1 and J2', async () => {
+      expect([await outcome(OMAR, J1), await outcome(OMAR, J2)]).toEqual(['allowed', 'allowed']);
+    });
+  });
+
+  describe('Scenario: Grants are only for hiring owners and interviewers', () => {
+    // SAFETY: mutation check: removed the JOB_SCOPED_ROLES check in grantJobAccess -> this test failed (the grant was stored)
+    it('granting J1 to a recruiter is refused and stores nothing', async () => {
+      await expect(
+        as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: RANA, jobId: J1 })),
+      ).rejects.toThrow('Only hiring owners and interviewers get job access.');
+      const grants = await as(ALEX, gulf, (ctx) => workspaces.listJobGrants(ctx));
+      expect(grants.filter((g) => g.userId === RANA)).toEqual([]);
+    });
+
+    it('only an admin grants; hiring owners and interviewers cannot list grants', async () => {
+      await expect(
+        as(OMAR, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, jobId: J2 })),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(as(FAISAL, gulf, (ctx) => workspaces.listJobGrants(ctx))).rejects.toBeInstanceOf(ForbiddenError);
+    });
+  });
+
+  describe('Scenario: Revoking a grant takes effect on the next request', () => {
+    it("Lina's next request to J1 after the revocation is 403, and the audit log records who and when", async () => {
+      const panel = user(9065);
+      await addMember(gulf, panel, 'interviewer');
+      await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: panel, jobId: J1 }));
+      // Granting twice changes nothing.
+      await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: panel, jobId: J1 }));
+      const grants = (await as(ALEX, gulf, (ctx) => workspaces.listJobGrants(ctx))).filter((g) => g.userId === panel);
+      expect(grants).toEqual([expect.objectContaining({ jobId: J1, clientId: null, grantedBy: ALEX })]);
+      expect(await outcome(panel, J1)).toBe('allowed');
+
+      await as(ALEX, gulf, (ctx) => workspaces.revokeJobAccess(ctx, grants[0]?.id ?? ''));
+      expect(await outcome(panel, J1)).toBe('403');
+      const entries = await audit.listFor(gulf, { type: 'member', id: panel });
+      expect(entries.map((e) => e.action)).toEqual(['job_access.granted', 'job_access.revoked']);
+      expect(entries[1]).toMatchObject({
+        actor: { type: 'user', id: ALEX },
+        before: { grantId: grants[0]?.id, jobId: J1, clientId: null },
+        occurredAt: expect.any(Date),
+      });
+    });
+  });
+
+  describe('Changing a role to admin or recruiter deletes the grants', () => {
+    it('a hiring owner made recruiter loses their grants, and made hiring owner again starts with none', async () => {
+      const huda = user(9066);
+      await addMember(gulf, huda, 'hiring_owner');
+      await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: huda, clientId: falcon.id }));
+      const grantsOf = async () =>
+        (await as(ALEX, gulf, (ctx) => workspaces.listJobGrants(ctx))).filter((g) => g.userId === huda);
+      expect(await grantsOf()).toHaveLength(1);
+      await workspaces.changeRole({ workspaceId: gulf, actorUserId: ALEX, targetUserId: huda, role: 'recruiter' });
+      expect(await grantsOf()).toEqual([]);
+      // SAFETY: mutation check: removed the job_access.revoked entries from changeRole -> this test failed
+      expect((await audit.listFor(gulf, { type: 'member', id: huda })).map((e) => e.action)).toEqual([
+        'job_access.granted',
+        'job_access.revoked',
+        'member.role_changed',
+      ]);
+      await workspaces.changeRole({ workspaceId: gulf, actorUserId: ALEX, targetUserId: huda, role: 'hiring_owner' });
+      expect(await grantsOf()).toEqual([]);
+      expect(await outcome(huda, J2)).toBe('403');
+    });
+  });
+
+  describe('The job-scope settings for row-level security (ADR-005 point 6)', () => {
+    // SAFETY: mutation check: set app.job_scope to 'all' for every role in withWorkspace -> this test failed (Lina got 'all')
+    it('are set per role from the grants, as uuid arrays', async () => {
+      expect(await as(LINA, gulf, ({ tx }) => settings(tx))).toEqual({
+        scope: 'granted',
+        jobs: `{${J1}}`,
+        clients: '{}',
+      });
+      expect(await as(FAISAL, gulf, ({ tx }) => settings(tx))).toEqual({
+        scope: 'granted',
+        jobs: '{}',
+        clients: `{${dune.id}}`,
+      });
+      expect(await as(OMAR, gulf, ({ tx }) => settings(tx))).toEqual({ scope: 'all', jobs: '{}', clients: '{}' });
+      const [cast] = await as(FAISAL, gulf, ({ tx }) =>
+        tx.execute<{ ok: boolean }>(
+          sql`select ${dune.id}::uuid = any(nullif(current_setting('app.client_ids', true), '')::uuid[]) as ok`,
+        ),
+      );
+      expect(cast?.ok).toBe(true);
+    });
+
+    // SAFETY: mutation check: set_config(..., false) for app.job_scope -> this test failed (the setting outlived the transaction)
+    it('are transaction-local: the same pooled connection reads them empty afterwards', async () => {
+      await as(LINA, gulf, ({ tx }) => settings(tx));
+      const [after] = await app.execute<{ scope: string | null; jobs: string | null }>(
+        sql`select current_setting('app.job_scope', true) as scope, current_setting('app.job_ids', true) as jobs`,
+      );
+      expect([after?.scope ?? '', after?.jobs ?? '']).toEqual(['', '']);
+    });
+  });
+
+  describe('Scenario: Clients and grants never cross workspaces', () => {
+    let w1: string;
+    let w2Client: string;
+
+    beforeAll(async () => {
+      w1 = (await newWorkspace('Isolation W1')).id;
+      await addMember(w1, LINA, 'interviewer');
+      await as(ALEX, w1, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+      const own = await as(ALEX, w1, (ctx) => workspaces.addClient(ctx, 'Falcon Pay'));
+      await as(ALEX, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, clientId: own.id }));
+      w2Client = falcon.id; // gulf is W2: it has clients and grants
+    });
+
+    // SAFETY: mutation check: replaced policy client_tenant_isolation with USING (true) -> this test failed (saw Gulf's clients)
+    // SAFETY: mutation check: dropped policy client_tenant_isolation -> this scenario failed (default deny refused the inserts)
+    it('a query on workspaces.client with no WHERE clause in W1 returns only W1 rows', async () => {
+      const rows = await withWorkspace(app, w1, (tx) =>
+        tx.execute<{ workspace_id: string }>(sql`select workspace_id from workspaces.client`),
+      );
+      expect(rows.map((r) => r.workspace_id)).toEqual([w1]);
+    });
+
+    // SAFETY: mutation check: replaced policy job_grant_tenant_isolation with USING (true) -> this test failed (saw Gulf's grants)
+    // SAFETY: mutation check: dropped policy job_grant_tenant_isolation -> this scenario failed (default deny refused the inserts)
+    it('a query on workspaces.job_grant with no WHERE clause in W1 returns only W1 rows', async () => {
+      const rows = await withWorkspace(app, w1, (tx) =>
+        tx.execute<{ workspace_id: string }>(sql`select workspace_id from workspaces.job_grant`),
+      );
+      expect(rows.map((r) => r.workspace_id)).toEqual([w1]);
+    });
+
+    it("a W1 grant naming W2's client is refused by the workspace-keyed foreign key", async () => {
+      await expect(
+        withWorkspace(app, w1, (tx) =>
+          tx.execute(sql`insert into workspaces.job_grant (id, workspace_id, user_id, client_id, granted_by)
+            values (${user(9067)}, ${w1}, ${LINA}, ${w2Client}, ${ALEX})`),
+        ),
+      ).rejects.toThrow(expect.objectContaining({ code: '23503' }));
+      await expect(
+        as(ALEX, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, clientId: w2Client })),
+      ).rejects.toThrow(new WorkspaceError('client_not_found'));
+    });
+
+    it.each([
+      ['neither a job nor a client', null, null],
+      ['both a job and a client', job(9), 'own'],
+    ])('a grant naming %s is refused by the check constraint', async (_label, jobId, clientKind) => {
+      const [own] = await as(ALEX, w1, (ctx) => workspaces.listClients(ctx));
+      const clientId = clientKind ? (own?.id ?? null) : null;
+      await expect(
+        withWorkspace(app, w1, (tx) =>
+          tx.execute(sql`insert into workspaces.job_grant (id, workspace_id, user_id, job_id, client_id, granted_by)
+            values (${user(9068)}, ${w1}, ${LINA}, ${jobId}, ${clientId}, ${ALEX})`),
+        ),
+      ).rejects.toThrow(expect.objectContaining({ code: '23514', constraint: 'job_grant_target_check' }));
+    });
   });
 });
