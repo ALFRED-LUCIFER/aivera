@@ -22,5 +22,7 @@ export default defineConfig({
     // Never reuse: a server on this port may belong to another worktree's code.
     reuseExistingServer: false,
     timeout: 180_000,
+    // The server refuses to start without valid config (AIV-P0-007); the gallery never opens the database pool.
+    env: { APP_ENV: 'local', DATABASE_URL: 'postgres://aivera_app:local_dev_only@localhost:5432/aivera' },
   },
 });

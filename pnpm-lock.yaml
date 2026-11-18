@@ -26,6 +26,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@aivera/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@aivera/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -41,6 +44,9 @@ importers:
       react-dom:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@aivera/config':
         specifier: workspace:*
@@ -161,6 +167,9 @@ importers:
       postgres:
         specifier: 4.1.1
         version: 4.1.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@aivera/config':
         specifier: workspace:*
@@ -3178,6 +3187,9 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+
 snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
@@ -5494,3 +5506,5 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.8.0
+
+  zod@4.6.7: {}

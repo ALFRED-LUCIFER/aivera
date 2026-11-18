@@ -12,9 +12,10 @@ pnpm db:migrate
 pnpm dev                     # http://localhost:3000
 ```
 
-Local database URLs for `.env.local` (local-only passwords from `packages/db/sql/roles.sql`):
+Local values for `.env.local` (local-only passwords from `packages/db/sql/roles.sql`). The web app reads the same repo-root file and refuses to start if a required variable is missing, naming it (`apps/web/src/server/env.ts`):
 
 ```sh
+APP_ENV=local
 DATABASE_MIGRATOR_URL=postgres://aivera_migrator:local_dev_only@localhost:5432/aivera
 DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 ```
