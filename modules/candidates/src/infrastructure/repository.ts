@@ -66,6 +66,17 @@ export function candidateStore(tx: Tx): CandidateStore {
         .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)));
       return row ?? null;
     },
+    async deleteSyntheticPeople(workspaceId) {
+      const [real] = await tx
+        .select({ id: person.id })
+        .from(person)
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.synthetic, false)))
+        .limit(1);
+      if (real) return false;
+      await tx.delete(personIdentifier).where(eq(personIdentifier.workspaceId, workspaceId));
+      await tx.delete(person).where(eq(person.workspaceId, workspaceId));
+      return true;
+    },
     listPeople(workspaceId) {
       return tx
         .select()

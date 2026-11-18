@@ -1,6 +1,6 @@
 # Personas and synthetic demo cast
 
-**Every person here is synthetic.** Use only these people (or new ones added here) in code, fixtures, tests, screenshots, issues and AI evaluation sets. Emails are `firstname@example.com`; portfolio hosts are `<name>.aivera.example`. Any similarity to a real person is accidental; if one is found, rename them here and everywhere they appear.
+**Every person here is synthetic.** Use only these people (or new ones added here) in code, fixtures, tests, screenshots, issues and AI evaluation sets. Emails are `firstname@example.com`; portfolio hosts are `<name>.aivera.example`. `pnpm db:seed` loads this cast from [`tools/seed/src/cast.ts`](../../tools/seed/src/cast.ts): seeded candidates use `firstname.lastname@example.com` and phones in Ofcom's drama range `+44 7700 900xxx`. Any similarity to a real person is accidental; if one is found, rename them here and everywhere they appear.
 
 ## Roles
 

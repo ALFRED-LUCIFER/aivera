@@ -32,4 +32,9 @@ export interface CandidatesContract {
   getPerson(ctx: WorkspaceContext, personId: string): Promise<Person | null>;
   /** Every person not merged into another, oldest first. Admins and recruiters. */
   listPeople(ctx: WorkspaceContext): Promise<Person[]>;
+  /**
+   * Deletes every person in the workspace, for the demo seed's reset (AIV-P0-031); the workspaces purge follows in the
+   * same `ctx.tx` and its `workspace.purged` audit entry covers these deletes too. Admins. Throws `CandidateError('not_synthetic')`, deleting nothing, unless the workspace and everyone in it is synthetic.
+   */
+  purgeSyntheticPeople(ctx: WorkspaceContext): Promise<void>;
 }

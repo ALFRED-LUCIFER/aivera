@@ -52,7 +52,15 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     },
     setActiveWorkspace: (userId, workspaceId) => activeWorkspaceStore(tx).set(userId, workspaceId),
     async insertMember(values) {
-      await tx.insert(member).values(values);
+      return (
+        (
+          await tx
+            .insert(member)
+            .values(values)
+            .onConflictDoNothing({ target: [member.workspaceId, member.userId] })
+            .returning({ userId: member.userId })
+        ).length > 0
+      );
     },
     async findMember(workspaceId, userId) {
       const [row] = await tx
@@ -82,6 +90,14 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     },
     async updateType(workspaceId, type) {
       await tx.update(workspace).set({ type }).where(eq(workspace.id, workspaceId));
+    },
+    async deleteWorkspace(workspaceId) {
+      // Children first: grants reference members and clients, and every table references the workspace.
+      await tx.delete(jobGrant).where(eq(jobGrant.workspaceId, workspaceId));
+      await tx.delete(client).where(eq(client.workspaceId, workspaceId));
+      await tx.delete(member).where(inWorkspace(workspaceId));
+      await tx.delete(activeWorkspace).where(eq(activeWorkspace.workspaceId, workspaceId));
+      await tx.delete(workspace).where(eq(workspace.id, workspaceId));
     },
     async countClients(workspaceId) {
       const [row] = await tx

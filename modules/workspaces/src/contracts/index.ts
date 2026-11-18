@@ -4,7 +4,7 @@ import type { Session, WorkspaceContext as Context } from '../application/contex
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
-import type { Client, JobGrant, Member, Workspace, WorkspaceType } from '../domain/workspace.ts';
+import type { Client, JobGrant, Member, Role, Workspace, WorkspaceType } from '../domain/workspace.ts';
 
 export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
 export type {
@@ -66,4 +66,10 @@ export interface WorkspacesContract {
   activeWorkspace(userId: string): Promise<string | null>;
   /** Re-checks membership; throws `ForbiddenError` and keeps the current active workspace when refused. */
   switchWorkspace(session: Session, workspaceId: string): Promise<void>;
+
+  // The demo seed (AIV-P0-031). Both throw `WorkspaceError('not_synthetic')` unless the workspace is flagged synthetic.
+  /** Admins. Adds the user as an active member with `role`, without an invitation. Idempotent. */
+  addSyntheticMember(ctx: WorkspaceContext, userId: string, role: Role): Promise<void>;
+  /** Admins. Deletes the workspace and its members, clients and grants; other modules purge first in `ctx.tx`. */
+  purgeSyntheticWorkspace(ctx: WorkspaceContext): Promise<void>;
 }

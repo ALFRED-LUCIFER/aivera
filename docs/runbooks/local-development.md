@@ -9,6 +9,7 @@ pnpm install                 # also installs the lefthook Git hooks
 pnpm services:up             # PostgreSQL 17 + pgvector on localhost:5432, with the aivera_migrator and aivera_app roles
 cp .env.example .env.local   # then set the two database URLs below
 pnpm db:migrate
+pnpm db:seed                  # the synthetic demo workspace (needs APP_ENV=local)
 pnpm dev                     # http://localhost:3000
 ```
 
@@ -26,15 +27,16 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 
 ## Everyday commands
 
-| Command                                                     | What it does                                                                         |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Every package, through Turborepo                                                     |
-| `pnpm --filter <pkg> test`                                  | One package (`web`, `@aivera/ui`, `@aivera/db`, `@aivera/tests-integration`…)        |
-| `pnpm format`                                               | Prettier over the repository                                                         |
-| `pnpm db:generate`                                          | Drizzle Kit generates SQL migrations for every module whose schema changed (ADR-004) |
-| `pnpm db:migrate`                                           | Applies every module's migrations in order; a rerun applies nothing                  |
-| `pnpm --filter @aivera/tokens build`                        | Regenerates `tokens.css` after editing `tokens.json`                                 |
-| `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                          |
+| Command                                                     | What it does                                                                                                                                                                           |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Every package, through Turborepo                                                                                                                                                       |
+| `pnpm --filter <pkg> test`                                  | One package (`web`, `@aivera/ui`, `@aivera/db`, `@aivera/tests-integration`…)                                                                                                          |
+| `pnpm format`                                               | Prettier over the repository                                                                                                                                                           |
+| `pnpm db:generate`                                          | Drizzle Kit generates SQL migrations for every module whose schema changed (ADR-004)                                                                                                   |
+| `pnpm db:migrate`                                           | Applies every module's migrations in order; a rerun applies nothing                                                                                                                    |
+| `pnpm db:seed` / `pnpm db:seed --reset`                     | Seeds the demo workspace "Demo" from `tools/seed/src/cast.ts`; a rerun changes nothing; `--reset` purges and reseeds it (synthetic only). Refused unless `APP_ENV` is `local` or `dev` |
+| `pnpm --filter @aivera/tokens build`                        | Regenerates `tokens.css` after editing `tokens.json`                                                                                                                                   |
+| `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                                                                                                                            |
 
 ## End-to-end tests and the component gallery (Playwright)
 
