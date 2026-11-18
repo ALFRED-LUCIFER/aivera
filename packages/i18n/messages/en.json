@@ -96,5 +96,31 @@
     "forbidden": "You do not have access to this. Ask your workspace admin.",
     "noWorkspaceTitle": "You are not in a workspace yet",
     "noWorkspace": "Ask your workspace admin to add you to their workspace."
+  },
+  "signup": {
+    "title": "Or create your own workspace",
+    "company": "Company",
+    "optional": "Optional",
+    "companyHint": "Leave it empty if you hire for yourself: the workspace is then named after you.",
+    "hiringFocus": "What do you hire for most?",
+    "choose": "Choose one",
+    "submit": "Create workspace",
+    "errors": {
+      "failed": "We could not create your workspace. Try again."
+    },
+    "focus": {
+      "software_engineering": "Software engineering",
+      "qa_test_automation": "QA and test automation",
+      "ai_llm_engineering": "AI and LLM engineering",
+      "forward_deployed_engineering": "Forward deployed engineering",
+      "data_ml": "Data and machine learning",
+      "devops_sre": "DevOps and SRE",
+      "product_management": "Product management",
+      "product_design": "Product design",
+      "sales": "Sales",
+      "technical_writing_support": "Technical writing and support",
+      "several": "Several of these",
+      "other": "Something else"
+    }
   }
 }

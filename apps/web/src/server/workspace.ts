@@ -17,7 +17,7 @@ import { getDb } from './db';
 // signed-in user's active workspace, which is held server-side. The browser never names the workspace.
 
 let workspaces: WorkspacesContract | undefined;
-const getWorkspaces = () => (workspaces ??= createWorkspaces(getDb(), createAudit(getDb())));
+export const getWorkspaces = (): WorkspacesContract => (workspaces ??= createWorkspaces(getDb(), createAudit(getDb())));
 
 /**
  * Runs `fn` in the signed-in user's active workspace. No session goes to sign-in; no active workspace yet gives

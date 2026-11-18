@@ -26,6 +26,7 @@ export type Ports = {
 export type CreateWorkspaceInput = {
   name: string;
   company: string;
+  // shortcut: unchecked here, the web form validates it; the job-types catalogue (AIV-P1-004) owns the values.
   hiringFocus: string;
   synthetic?: boolean;
   /** The signed-in user, from the request context; becomes the workspace's first admin. */
@@ -44,6 +45,7 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
         await store.insertMember({ workspaceId: id, userId: creatorUserId, role: 'admin', status: 'active' });
         // The creator lands in the new workspace (AIV-P0-010).
         await store.setActiveWorkspace(creatorUserId, id);
+        await store.audit(id, creatorUserId, { action: 'workspace.created', subject: { type: 'workspace', id } });
         return workspace;
       });
     },
