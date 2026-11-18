@@ -1,0 +1,66 @@
+import { globSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { activeScreen, canOpen, navigation } from './navigation.ts';
+import { parseTheme } from './shell.ts';
+
+const appDir = new URL('../../../app/', import.meta.url).pathname;
+
+// "(recruiter)/app/inbox/page.tsx" -> "/app/inbox": route groups do not appear in the URL.
+const pages = globSync('**/page.tsx', { cwd: appDir }).map((file) => ({
+  file,
+  path: `/${dirname(file)
+    .split('/')
+    .filter((segment) => segment !== '.' && !/^\(.*\)$/.test(segment))
+    .join('/')}`,
+}));
+const appPages = pages.filter(({ path }) => path === '/app' || path.startsWith('/app/'));
+
+describe('navigation map (ADR-002 item 4)', () => {
+  // SAFETY: mutation check: deleted app/(recruiter)/app/pool/page.tsx -> "every map entry has a page" failed
+  it('every map entry has a page', () => {
+    const routed = new Set(pages.map(({ path }) => path));
+    expect(navigation.filter(({ path }) => !routed.has(path)).map(({ path }) => path)).toEqual([]);
+  });
+
+  // SAFETY: mutation check: removed the value entry from navigation -> "every page under /app has a map entry" failed
+  it('every page under /app has a map entry', () => {
+    const mapped = new Set<string>(navigation.map(({ path }) => path));
+    expect(appPages.filter(({ path }) => !mapped.has(path)).map(({ file }) => file)).toEqual([]);
+  });
+
+  // SAFETY: mutation check: inbox page passed screen="jobs" -> this test failed
+  it('every page under /app guards itself with its own map entry', () => {
+    for (const { file, path } of appPages) {
+      const { id } = navigation.find((s) => s.path === path) ?? { id: '?' };
+      const source = readFileSync(join(appDir, file), 'utf8');
+      expect(source, file).toMatch(new RegExp(`(screen=|requireScreen\\()["']${id}["']`));
+    }
+  });
+
+  it('marks the section a path belongs to, the longest match winning', () => {
+    expect(activeScreen('/app')).toBe('desk');
+    expect(activeScreen('/app/jobs')).toBe('jobs');
+    expect(activeScreen('/app/jobs/123/pack')).toBe('jobs');
+    expect(activeScreen('/app/candidates/abc')).toBe('candidates');
+    expect(activeScreen('/app/jobsboard')).toBe('desk');
+    expect(activeScreen('/')).toBeUndefined();
+  });
+
+  it('opens a screen only with its capability and, when it has one, its flag', () => {
+    const flagged = { ...navigation[0], flag: 'beta' };
+    expect(canOpen(navigation[0], ['recruiter'], new Set())).toBe(true);
+    expect(canOpen(navigation[0], [], new Set())).toBe(false);
+    expect(canOpen(flagged, ['recruiter'], new Set())).toBe(false);
+    expect(canOpen(flagged, ['recruiter'], new Set(['beta']))).toBe(true);
+  });
+});
+
+describe('parseTheme', () => {
+  it('accepts dark and turns anything else into light', () => {
+    expect(parseTheme('dark')).toBe('dark');
+    expect(parseTheme('light')).toBe('light');
+    expect(parseTheme('"><script>')).toBe('light');
+    expect(parseTheme(undefined)).toBe('light');
+  });
+});

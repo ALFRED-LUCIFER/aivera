@@ -38,3 +38,5 @@ Every screen is an artboard in the claude.ai Design canvas "Aivera — Evidence 
 | `CTailor.dc.html`                    | Candidate site: tailored CV                             | J6      | `/candidates/me/cv/[jobSlug]`     |
 
 Routes are planned; the ticket that builds a screen confirms its route and updates this table.
+
+Every route under `/app` is listed in `apps/web/src/features/shell/domain/navigation.ts` with its capability and flag; a test fails when the two drift (ADR-002 item 4). The sidebar sections (`/app`, `/app/inbox`, `/app/jobs`, `/app/candidates`, `/app/pool`, `/app/interviews`, `/app/packs`, `/app/value`) are placeholder pages from AIV-P0-020 until their screen tickets land. "Decision packs" in the sidebar lists open packs at `/app/packs`; each job's own pack stays at `/app/jobs/[jobId]/pack`.
