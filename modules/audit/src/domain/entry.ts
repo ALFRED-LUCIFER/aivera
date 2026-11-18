@@ -15,6 +15,7 @@ export const ACTIONS = [
   'client.archived',
   'job_access.granted',
   'job_access.revoked',
+  'job.created',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

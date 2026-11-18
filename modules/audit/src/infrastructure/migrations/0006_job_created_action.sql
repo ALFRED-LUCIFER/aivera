@@ -1,0 +1,2 @@
+ALTER TABLE "audit"."entry" DROP CONSTRAINT "entry_action_check";--> statement-breakpoint
+ALTER TABLE "audit"."entry" ADD CONSTRAINT "entry_action_check" CHECK ("audit"."entry"."action" in ('rubric.approved', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created'));

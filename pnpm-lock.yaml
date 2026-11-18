@@ -191,6 +191,19 @@ importers:
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   modules/jobs:
+    dependencies:
+      '@aivera/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@aivera/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@aivera/workspaces':
+        specifier: workspace:*
+        version: link:../workspaces
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)
     devDependencies:
       '@aivera/config':
         specifier: workspace:*
@@ -503,6 +516,9 @@ importers:
       '@aivera/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@aivera/jobs':
+        specifier: workspace:*
+        version: link:../../modules/jobs
       '@aivera/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces

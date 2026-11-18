@@ -43,6 +43,13 @@
       "when": 1795019640364,
       "tag": "0005_entry_seq",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795024549280,
+      "tag": "0006_job_created_action",
+      "breakpoints": true
     }
   ]
 }
