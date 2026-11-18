@@ -173,3 +173,34 @@ test.describe('content never waits for a reveal', () => {
     });
   });
 });
+
+// J7 step 3: role families (AIV-P5-003).
+
+test('Scenario Outline: The table lists evidence per role family', async ({ page }) => {
+  await page.goto('/');
+  const table = page.getByRole('table');
+  for (const [family, evidence] of [
+    ['QA and test automation', 'Test suites, bug reports, CI history, test plans'],
+    ['Sales', 'Closed deals, client references, pipeline records, market write-ups'],
+    ['Forward deployed engineering', 'Customer deployments, integration code, solution write-ups, customer references'],
+    ['Technical writing and support', 'Published documentation, resolved tickets, help articles'],
+  ]) {
+    await expect(table.getByRole('row', { name: family })).toContainText(evidence);
+  }
+  await expect(table.getByRole('rowheader')).toHaveCount(10);
+});
+
+test('Scenario: No public work', async ({ page }) => {
+  await page.goto('/');
+  await expect(
+    page.getByText(
+      'No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.',
+    ),
+  ).toBeAttached();
+});
+
+test('the header "Roles we cover" link moves focus to the section heading', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('banner').getByRole('link', { name: 'Roles we cover' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Not only software engineers' })).toBeFocused();
+});
