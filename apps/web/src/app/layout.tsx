@@ -1,14 +1,22 @@
 import { defaultLocale, defaultTimeZone, dir, getTranslations } from '@aivera/i18n';
 import type { Metadata } from 'next';
-import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { readTheme } from '@/features/shell/services/request.ts';
 import './globals.css';
 
 // DESIGN.md typography: Bricolage Grotesque headings, Hanken Grotesk text, JetBrains Mono for evidence.
-const bricolage = Bricolage_Grotesque({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-bricolage' });
-const hanken = Hanken_Grotesk({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-hanken' });
-const jetbrains = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-jetbrains' });
+// Self-hosted, not next/font/google: Google Fonts serves differently instanced variable files from run to run, which
+// moved glyphs by a pixel and failed visual snapshots at random (AIV-P0-921). The files are the google/fonts OFL
+// variable fonts, Bricolage pinned with `fonttools varLib.instancer ... opsz=96 wdth=100` (Google's own pin), then
+// `pyftsubset --unicodes=<Google's latin + latin-ext ranges> --layout-features='*' --no-hinting --flavor=woff2`.
+const bricolage = localFont({
+  src: './fonts/bricolage-grotesque.woff2',
+  weight: '200 800',
+  variable: '--font-bricolage',
+});
+const hanken = localFont({ src: './fonts/hanken-grotesk.woff2', weight: '100 900', variable: '--font-hanken' });
+const jetbrains = localFont({ src: './fonts/jetbrains-mono.woff2', weight: '100 800', variable: '--font-jetbrains' });
 
 // shortcut: every visitor gets the default locale and time zone, until the user setting exists (sign-in, AIV-P1).
 const locale = defaultLocale;
