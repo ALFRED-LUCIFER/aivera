@@ -13,13 +13,19 @@ here=$(dirname "$0")
 
 app_oid=$(az identity show -g $rg -n id-aivera-dev --query principalId -o tsv)
 cicd_oid=$(az identity show -g $rg -n id-aivera-cicd-dev --query principalId -o tsv)
-admin=$(az ad signed-in-user show --query userPrincipalName -o tsv)
+# The server knows its Entra admins by their registered principal name, which for a guest (#EXT#) account differs
+# from the UPN, so look it up by the signed-in user's object id.
+me=$(az ad signed-in-user show --query id -o tsv)
+admin=$(az postgres flexible-server microsoft-entra-admin list -g $rg -s psql-medvya-dev-3afs7i --query "[?objectId=='$me'].principalName | [0]" -o tsv)
+[ -n "$admin" ] || { echo "The signed-in user is not a Microsoft Entra admin on psql-medvya-dev-3afs7i." >&2; exit 1; }
 host=$(az postgres flexible-server show -g $rg -n psql-medvya-dev-3afs7i --query fullyQualifiedDomainName -o tsv)
 
 template=$(mktemp)
 cleanup() {
   rm -f "$template"
-  az containerapp job secret remove -g $rg -n $job --secret-names bootstrap-pg-token -o none 2>/dev/null || true
+  # --yes: without it the command waits for a confirmation the trap can never give, and the token stays on the job.
+  az containerapp job secret remove -g $rg -n $job --secret-names bootstrap-pg-token --yes -o none \
+    || echo "WARNING: remove the job secret bootstrap-pg-token by hand (az containerapp job secret remove ... --yes)" >&2
 }
 trap cleanup EXIT INT TERM
 az containerapp job secret set -g $rg -n $job -o none \
