@@ -1,8 +1,8 @@
 import type { Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
-import type { Competency, Job } from '../domain/job.ts';
+import type { Competency, Job, RubricStatus } from '../domain/job.ts';
 import { competency, job, jobInScope, rubricVersion } from './schema.ts';
 
 const toJob = ({ payMinMinor, payMaxMinor, payCurrency, ...row }: typeof job.$inferSelect): Job => ({
@@ -55,6 +55,17 @@ export function jobStore(tx: Tx): JobStore {
     async listJobs(workspaceId) {
       const rows = await tx.select().from(job).where(jobWhere(workspaceId)).orderBy(asc(job.createdAt), asc(job.id));
       return rows.map(toJob);
+    },
+    rubricStates(workspaceId) {
+      return tx
+        .select({
+          jobId: rubricVersion.jobId,
+          approved: sql<boolean>`bool_or(${rubricVersion.status} = 'approved')`,
+          latest: sql<RubricStatus>`(array_agg(${rubricVersion.status} order by ${rubricVersion.version} desc))[1]`,
+        })
+        .from(rubricVersion)
+        .where(eq(rubricVersion.workspaceId, workspaceId))
+        .groupBy(rubricVersion.jobId);
     },
     async latestVersion(workspaceId, jobId) {
       const [row] = await tx

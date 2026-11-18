@@ -221,5 +221,55 @@
       "jobType": "Choose a job type.",
       "failed": "We could not save this job. Try again."
     }
+  },
+  "jobsList": {
+    "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",
+    "add": "Add a job",
+    "caption": "Jobs",
+    "filterLabel": "Filter jobs",
+    "filters": {
+      "all": "All",
+      "needsAction": "Needs your action",
+      "rubricNotApproved": "Rubric not approved"
+    },
+    "columns": {
+      "job": "Job",
+      "hiringOwner": "Hiring owner",
+      "stage": "Stage",
+      "assessed": "Assessed",
+      "coverage": "Evidence coverage",
+      "rubric": "Rubric",
+      "nextAction": "Next action"
+    },
+    "stage": {
+      "defining_rubric": "Defining rubric",
+      "collecting_evidence": "Collecting evidence",
+      "round_1": "Round 1 interviews",
+      "decision": "Decision",
+      "closed": "Closed"
+    },
+    "rubric": {
+      "approved": "Approved",
+      "awaiting_approval": "Awaiting approval",
+      "draft": "Draft, needs approval",
+      "returned": "Returned, needs changes"
+    },
+    "nextAction": {
+      "send_rubric": "Send rubric for approval",
+      "rubric_approval_pending": "Rubric approval pending",
+      "decide_shortlist": "Decide on the Round 2 shortlist",
+      "chase_evidence": "Chase {count, plural, one {# evidence request} other {# evidence requests}}"
+    },
+    "count": "{count, number}",
+    "percent": "{value, number}%",
+    "observed": "Observed",
+    "notYetAvailable": "Not yet available",
+    "noHiringOwner": "Not assigned",
+    "coverageAfterApproval": "Starts after rubric approval",
+    "empty": "No jobs yet. Add a job to define what it needs.",
+    "emptyFiltered": "No jobs match this filter.",
+    "loading": "Loading jobs",
+    "error": "We could not load your jobs. Try again.",
+    "retry": "Try again"
   }
 }

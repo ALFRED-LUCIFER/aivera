@@ -571,3 +571,33 @@ describe('Database constraints (AGENTS.md 3.5)', () => {
     expect(result).toEqual({ code: '23514', constraint: 'rubric_version_approval_check' });
   });
 });
+
+const desk = (userId: string, workspaceId: string) => as(userId, workspaceId, (ctx) => jobs.listJobsForDesk(ctx));
+
+describe('The Jobs list (AIV-P1-006)', () => {
+  it('Senior Product Designer has a draft: assessed 0, coverage not yet available, "Send rubric for approval"', async () => {
+    const list = await desk(ALEX, demo);
+    expect(list.find((j) => j.title === 'Senior Product Designer')).toMatchObject({
+      rubric: { approved: false, latest: 'draft' },
+      assessed: 0,
+      coveragePercent: null,
+      nextAction: { kind: 'send_rubric' },
+    });
+    // Version 2 is in force and version 3 waits for the hiring owner.
+    expect(list.find((j) => j.title === 'Senior AI Engineer')).toMatchObject({
+      rubric: { approved: true, latest: 'awaiting_approval' },
+      assessed: null,
+      nextAction: { kind: 'rubric_approval_pending' },
+    });
+  });
+
+  it('another workspace\'s "Data Engineer" never shows', async () => {
+    expect((await desk(ALEX, demo)).map((j) => j.title)).not.toContain('Data Engineer');
+  });
+
+  it('a hiring owner and an interviewer list only their granted job', async () => {
+    expect((await desk(FAISAL, gulf)).map((j) => j.id)).toEqual([j1]);
+    expect((await desk(LINA, gulf)).map((j) => j.id)).toEqual([j1]);
+    expect((await desk(ALEX, gulf)).map((j) => j.id)).toEqual([j0, j1, j2]);
+  });
+});
