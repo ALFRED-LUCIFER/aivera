@@ -31,6 +31,7 @@ const MESSAGES = {
   invalid_identifier: 'An identifier is not a valid email, phone, CV hash or GitHub login',
   no_identifiers: 'A person needs at least one identifier',
   display_name: "Enter the person's name.",
+  not_synthetic: 'Only a synthetic workspace holding only synthetic people can be purged.',
 } as const;
 
 export type CandidateErrorCode = keyof typeof MESSAGES;

@@ -1,0 +1,29 @@
+{
+  "name": "@aivera/seed",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/seed.ts",
+    "./cast": "./src/cast.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aivera/audit": "workspace:*",
+    "@aivera/candidates": "workspace:*",
+    "@aivera/db": "workspace:*",
+    "@aivera/identity": "workspace:*",
+    "@aivera/jobs": "workspace:*",
+    "@aivera/workspaces": "workspace:*"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

@@ -10,12 +10,13 @@ import { candidateStore } from './infrastructure/repository.ts';
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one.
  */
 export function createCandidates(
-  workspaces: Pick<WorkspacesContract, 'authorize'>,
+  workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace'>,
   now: () => Date = () => new Date(),
 ): CandidatesContract {
   return peopleUseCases({
     storeFor: candidateStore,
     authorize: (ctx, action) => workspaces.authorize(ctx, action),
+    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),
     now,
   });

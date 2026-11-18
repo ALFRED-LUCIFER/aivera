@@ -3,6 +3,7 @@ packages:
   - modules/*
   - packages/*
   - tests/*
+  - tools/seed
 # Build scripts are allow-listed (AGENTS.md 6.4): approve only what needs it.
 allowBuilds:
   esbuild: true

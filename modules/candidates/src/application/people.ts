@@ -12,12 +12,16 @@ export type CandidateStore = {
   attachIdentifiers(workspaceId: string, personId: string, identifiers: Identifier[]): Promise<void>;
   getPerson(workspaceId: string, personId: string): Promise<Person | null>;
   listPeople(workspaceId: string): Promise<Person[]>;
+  /** Deletes every person and identifier in the workspace; false, with nothing deleted, if any person is not synthetic. */
+  deleteSyntheticPeople(workspaceId: string): Promise<boolean>;
 };
 
 export type Ports = {
   storeFor(tx: Tx): CandidateStore;
   /** The workspaces contract's `authorize`: role, and for job-scoped roles a job grant (ADR-005 point 6). */
   authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
+  /** Whether the context's workspace is flagged synthetic (the workspaces contract's `getWorkspace`). */
+  isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   newId(): string;
   now(): Date;
 };
@@ -33,7 +37,7 @@ export type FindOrCreatePersonInput = {
 
 export type FindOrCreatePersonResult = { personId: string; created: boolean };
 
-export function peopleUseCases({ storeFor, authorize, newId, now }: Ports) {
+export function peopleUseCases({ storeFor, authorize, isSyntheticWorkspace, newId, now }: Ports) {
   return {
     async findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<FindOrCreatePersonResult> {
       await authorize(ctx, 'candidate.create');
@@ -76,6 +80,13 @@ export function peopleUseCases({ storeFor, authorize, newId, now }: Ports) {
     async getPerson(ctx: WorkspaceContext, personId: string): Promise<Person | null> {
       await authorize(ctx, 'candidate.view');
       return storeFor(ctx.tx).getPerson(ctx.workspaceId, personId);
+    },
+
+    /** The demo seed's reset (AIV-P0-031): admins; refuses a workspace holding anyone not synthetic. */
+    async purgeSyntheticPeople(ctx: WorkspaceContext): Promise<void> {
+      await authorize(ctx, 'workspace.settings');
+      if (!(await isSyntheticWorkspace(ctx))) throw new CandidateError('not_synthetic');
+      if (!(await storeFor(ctx.tx).deleteSyntheticPeople(ctx.workspaceId))) throw new CandidateError('not_synthetic');
     },
 
     // shortcut: no paging; the people page (AIV-P1-048) adds it.

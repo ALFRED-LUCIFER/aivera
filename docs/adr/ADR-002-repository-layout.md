@@ -19,7 +19,7 @@ modules/<m>/              one bounded context, package @aivera/<m>, one PostgreS
   src/application/        use cases over narrow ports
   src/contracts/          the ONLY public surface: interfaces, zod DTOs, versioned events
   src/infrastructure/     Drizzle schema, migrations, repositories, adapters
-  src/composition.ts      builds the module for an app (apps only)
+  src/composition.ts      builds the module (apps, tools/seed, tests)
 packages/config/          shared tsconfig, oxlint and Vitest base configs
 packages/tokens/          Case file tokens.json -> CSS variables
 packages/ui/              design system (shadcn/ui + Radix + Tailwind 4) and its gallery
