@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@aivera/ui';
-import { descriptionPlaceholder, type NewJobState } from '../domain/jobNew.ts';
+import { DESCRIPTION_MAX, descriptionPlaceholder, TEXT_MAX, type NewJobState } from '../domain/jobNew.ts';
 
-export type NewJobLabels = {
+type NewJobLabels = {
   steps: string;
   stepList: readonly [string, string, string, string];
   jobType: string;
@@ -21,6 +21,7 @@ export type NewJobLabels = {
   noHiringOwner: string;
   inviteHiringOwner: string;
   submit: string;
+  submitting: string;
   cancel: string;
   discardTitle: string;
   discardBody: string;
@@ -32,7 +33,7 @@ export type NewJobLabels = {
 
 type Option = { value: string; label: string };
 
-export type NewJobFormProps = {
+type NewJobFormProps = {
   state: NewJobState;
   action: (form: FormData) => void;
   pending: boolean;
@@ -112,7 +113,7 @@ export function NewJobForm(props: NewJobFormProps) {
           {evidence && ` ${labels.evidence} ${evidence}`}
         </p>
         {state.errors.jobType && (
-          <p id={id('type-error')} className="text-meta font-semibold text-err-text">
+          <p id={id('type-error')} role="alert" className="text-meta font-semibold text-err-text">
             {labels.errors.jobType}
           </p>
         )}
@@ -121,14 +122,14 @@ export function NewJobForm(props: NewJobFormProps) {
         <Input
           id={id('title')}
           name="title"
-          maxLength={200}
+          maxLength={TEXT_MAX}
           defaultValue={state.values.title}
           aria-required="true"
           aria-invalid={state.errors.title || undefined}
           aria-describedby={state.errors.title ? id('title-error') : undefined}
         />
         {state.errors.title && (
-          <p id={id('title-error')} className="text-meta font-semibold text-err-text">
+          <p id={id('title-error')} role="alert" className="text-meta font-semibold text-err-text">
             {labels.errors.title}
           </p>
         )}
@@ -138,7 +139,7 @@ export function NewJobForm(props: NewJobFormProps) {
           id={id('description')}
           name="description"
           rows={8}
-          maxLength={20_000}
+          maxLength={DESCRIPTION_MAX}
           defaultValue={state.values.description}
           placeholder={descriptionPlaceholder(labels.placeholderIntro, jobType)}
           aria-describedby={id('description-hint')}
@@ -168,7 +169,7 @@ export function NewJobForm(props: NewJobFormProps) {
               {labels.team}
               {optional}
             </Label>
-            <Input id={id('team')} name="team" maxLength={200} defaultValue={state.values.team} />
+            <Input id={id('team')} name="team" maxLength={TEXT_MAX} defaultValue={state.values.team} />
           </>
         )}
 
@@ -176,7 +177,7 @@ export function NewJobForm(props: NewJobFormProps) {
           {labels.location}
           {optional}
         </Label>
-        <Input id={id('location')} name="location" maxLength={200} defaultValue={state.values.location} />
+        <Input id={id('location')} name="location" maxLength={TEXT_MAX} defaultValue={state.values.location} />
 
         {props.hiringOwners.length ? (
           <>
@@ -207,7 +208,7 @@ export function NewJobForm(props: NewJobFormProps) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           <Button type="submit" variant="primary" disabled={pending}>
-            {labels.submit}
+            {pending ? labels.submitting : labels.submit}
           </Button>
           <Button onClick={props.onCancel}>{labels.cancel}</Button>
         </div>

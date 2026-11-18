@@ -2,7 +2,6 @@ import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { forbidden } from 'next/navigation';
 import { newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
@@ -19,7 +18,8 @@ const MEMBERS = '/app/settings/members';
 export default async function NewJobPage() {
   // `job.create` first, so an interviewer or hiring owner gets "You do not have access to add jobs." (./forbidden.tsx).
   const result = await inActiveWorkspace(newJobOptions);
-  if (!result) forbidden();
+  // No workspace yet: the recruiter layout shows the create-workspace page instead of this one.
+  if (!result) return null;
   await requireScreen('jobs');
   const { hiringOwners, clients, defaultJobType } = result.value;
   const t = await getTranslations(defaultLocale, defaultTimeZone);
@@ -61,6 +61,7 @@ export default async function NewJobPage() {
           noHiringOwner: t('jobNew.noHiringOwner'),
           inviteHiringOwner: t('jobNew.inviteHiringOwner'),
           submit: t('jobNew.submit'),
+          submitting: t('jobNew.submitting'),
           cancel: t('jobNew.cancel'),
           discardTitle: t('jobNew.discardTitle'),
           discardBody: t('jobNew.discardBody'),

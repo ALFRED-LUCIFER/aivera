@@ -9,13 +9,14 @@ import { formValues, parseNewJobForm, type NewJobState } from '../domain/jobNew.
 import { newJobOptions } from './newJobOptions.ts';
 
 const JOBS = '/app/jobs';
-const offered = (list: { value: string }[] | null, id: string | null) => !id || !!list?.some((o) => o.value === id);
+const offered = (list: { value: string }[], id: string | null) => !id || list.some((o) => o.value === id);
 
 /**
  * "Draft competencies": validates step 1 (AGENTS.md 3.7), then, as an admin or recruiter of the active workspace
  * (`newJobOptions` authorises `job.create`; anyone else gets the 403 page), saves the job at stage "defining rubric".
  * The workspace, the creator and whether the job is synthetic come from the server, never from the form.
- * shortcut: lands on Jobs; drafting competencies for the saved job (AIV-P1-008) replaces this redirect.
+ * shortcut: lands on Jobs, which shows no confirmation and no saved job until the jobs list (AIV-P1-006) ships, and a
+ * resubmit after going back saves a second job; drafting competencies for the saved job (AIV-P1-008) replaces this.
  */
 export async function addJob(_previous: NewJobState, form: FormData): Promise<NewJobState> {
   const parsed = parseNewJobForm(form);
@@ -26,9 +27,8 @@ export async function addJob(_previous: NewJobState, form: FormData): Promise<Ne
   try {
     result = await inActiveWorkspace(async (ctx) => {
       const options = await newJobOptions(ctx);
-      // Only what the page offered: an active hiring owner, and for an agency one of its clients.
-      if (!offered(options.hiringOwners, input.hiringOwnerUserId) || !offered(options.clients, input.clientId))
-        return null;
+      // Only an active hiring owner the page offered; createJob itself checks the client is the workspace's.
+      if (!offered(options.hiringOwners, input.hiringOwnerUserId)) return null;
       return getJobs().createJob(ctx, { ...input, synthetic: options.synthetic });
     });
   } catch (error) {

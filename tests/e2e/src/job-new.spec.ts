@@ -3,7 +3,7 @@ import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
 // AIV-P1-007 J1 step 3, Add a job step 1 (seed.ts: Alex at Demo Hiring Co with hiring owner "Head of Engineering" and
-// interviewer Karim; Nadia Freelance has no hiring owner).
+// interviewer Rami; Nadia Freelance has no hiring owner).
 
 const open = async (page: Page, email = 'alex@example.com') => {
   await signIn(page, { email });
@@ -84,7 +84,7 @@ test('Scenario: Hiring owner comes from the workspace', async ({ page }) => {
   const options = await page.getByLabel('Hiring owner').locator('option').allTextContents();
   expect(options).toContain('Head of Engineering');
   expect(options).not.toContain('Alex Recruiter');
-  expect(options).not.toContain('Karim Panel');
+  expect(options).not.toContain('Rami Panel');
 });
 
 test('Scenario: No hiring owner yet', async ({ page }) => {
@@ -120,7 +120,7 @@ test('Cancel with nothing typed opens Jobs at once', async ({ page }) => {
 for (const theme of themes) {
   test(`Scenario: Only recruiters and admins can add jobs (${theme})`, async ({ page, context }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
-    await signIn(page, { email: 'karim.panel@example.com' });
+    await signIn(page, { email: 'rami@example.com' });
     const response = await page.goto('/app/jobs/new');
     expect(response?.status()).toBe(403);
     await expect(page.getByText('You do not have access to add jobs.')).toBeVisible();

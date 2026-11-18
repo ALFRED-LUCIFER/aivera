@@ -16,17 +16,20 @@ const optional = (max: number) =>
     .transform((v) => v || null);
 const optionalId = z.union([z.literal('').transform(() => null), z.uuid()]);
 
-export const newJobForm = z.object({
+export const TEXT_MAX = 200;
+export const DESCRIPTION_MAX = 20_000;
+
+const newJobForm = z.object({
   jobType: z.enum(JOB_TYPES, { error: 'jobType' }),
-  title: z.string().trim().min(1, { error: 'title' }).max(200),
+  title: z.string().trim().min(1, { error: 'title' }).max(TEXT_MAX),
   // Any description is accepted, however thin: drafting works from the job type's starters too.
-  description: z.string().trim().max(20_000),
-  team: optional(200),
+  description: z.string().trim().max(DESCRIPTION_MAX),
+  team: optional(TEXT_MAX),
   clientId: optionalId,
-  location: optional(200),
+  location: optional(TEXT_MAX),
   hiringOwnerUserId: optionalId,
 });
-export type NewJobForm = z.infer<typeof newJobForm>;
+export type NewJobInput = z.infer<typeof newJobForm>;
 
 /** The fields as posted, as strings, so a refused submit shows them again. */
 export const formValues = (form: FormData): NewJobValues =>
@@ -45,7 +48,7 @@ export const initialNewJobState = (jobType: string): NewJobState => ({
 });
 
 /** The validated form, or the state to show again (AGENTS.md 3.7). */
-export function parseNewJobForm(form: FormData): { input: NewJobForm } | { state: NewJobState } {
+export function parseNewJobForm(form: FormData): { input: NewJobInput } | { state: NewJobState } {
   const values = formValues(form);
   const parsed = newJobForm.safeParse(values);
   if (parsed.success) return { input: parsed.data };

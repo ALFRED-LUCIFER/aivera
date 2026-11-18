@@ -3,8 +3,8 @@ import { getIdentity } from '@/server/auth';
 import { getWorkspaces } from '@/server/workspace';
 import { defaultJobType } from '../domain/jobNew.ts';
 
-export type Option = { value: string; label: string };
-export type NewJobOptions = {
+type Option = { value: string; label: string };
+type NewJobOptions = {
   /** Active members with role Hiring owner, by name. */
   hiringOwners: Option[];
   /** An agency's clients that are not archived; null for an in-house team, which names a team instead. */

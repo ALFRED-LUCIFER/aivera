@@ -180,6 +180,7 @@
     "noHiringOwner": "This workspace has no hiring owner yet.",
     "inviteHiringOwner": "Invite a hiring owner",
     "submit": "Draft competencies",
+    "submitting": "Saving the job…",
     "cancel": "Cancel",
     "discardTitle": "Discard this job?",
     "discardBody": "What you typed is not saved.",

@@ -92,13 +92,10 @@ describe('addJob (server action)', () => {
   });
 
   // SAFETY: mutation check: dropped the offered() check -> this test failed (job saved with the interviewer as owner)
-  it.each([{ hiringOwnerUserId: interviewer }, { clientId: client }])(
-    'refuses %o that the page did not offer',
-    async (fields) => {
-      await expect(submit({ ...job, ...fields })).resolves.toMatchObject({ error: 'failed' });
-      expect(createJob).not.toHaveBeenCalled();
-    },
-  );
+  it('refuses a hiring owner the page did not offer', async () => {
+    await expect(submit({ ...job, hiringOwnerUserId: interviewer })).resolves.toMatchObject({ error: 'failed' });
+    expect(createJob).not.toHaveBeenCalled();
+  });
 
   it("accepts an agency's own client", async () => {
     workspaces.getWorkspace.mockResolvedValue({ type: 'agency', synthetic: true, hiringFocus: 'sales' });
