@@ -67,7 +67,7 @@ const EMAIL = /@/;
 // A whole value of 7 to 15 digits once spaces, dots, dashes and brackets are removed (E.164 length).
 const PHONE = /^\+?\d{7,15}$/;
 
-// shortcut: catches email addresses and phone numbers only, not names; add a zod schema per action when actions carry richer values
+// shortcut: catches email addresses and phone numbers only, not names; keys are not checked; any 7-15 digit value is refused, so a plain date (2026-11-18) is too; add a zod schema per action when actions carry richer values
 const looksPersonal = (value: Values[string]) =>
   typeof value === 'string' && (EMAIL.test(value) || PHONE.test(value.replace(/[\s().-]/g, '')));
 

@@ -23,7 +23,7 @@ export type AuditContext = { tx: Tx; workspaceId: string; actor: Actor; correlat
 
 export function auditUseCases({ storeFor, inWorkspace, newId, now }: Ports) {
   return {
-    async record({ tx, workspaceId, actor, correlationId }: AuditContext, input: NewEntry): Promise<AuditEntry> {
+    async record({ tx, workspaceId, actor, correlationId }: AuditContext, input: NewEntry): Promise<void> {
       assertValidEntry(input);
       const { action, subject, note, before, after } = input;
       const entry: AuditEntry = {
@@ -39,7 +39,6 @@ export function auditUseCases({ storeFor, inWorkspace, newId, now }: Ports) {
         correlationId: correlationId ?? null,
       };
       await storeFor(tx).insert(entry);
-      return entry;
     },
 
     listFor(workspaceId: string, subject: Subject): Promise<AuditEntry[]> {

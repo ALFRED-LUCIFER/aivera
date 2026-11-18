@@ -2,7 +2,7 @@
 import type { AuditContext } from '../application/audit.ts';
 import type { AuditEntry, NewEntry, Subject } from '../domain/entry.ts';
 
-export { ACTIONS, ACTOR_TYPES, NOTE_REQUIRED, AuditError } from '../domain/entry.ts';
+export { AuditError } from '../domain/entry.ts';
 export type {
   Action,
   Actor,
@@ -23,7 +23,7 @@ export interface AuditContract {
    * (`unknown_action`, `note_required`, `personal_data`). `before` and `after` hold opaque ids, field names, enum
    * values and numbers, never names, contact details or free text about a candidate (AGENTS.md 1.2).
    */
-  record(ctx: AuditContext, entry: NewEntry): Promise<AuditEntry>;
+  record(ctx: AuditContext, entry: NewEntry): Promise<void>;
   /** Every entry about `subject` in the workspace, oldest first. */
   listFor(workspaceId: string, subject: Subject): Promise<AuditEntry[]>;
 }

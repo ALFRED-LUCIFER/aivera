@@ -68,6 +68,7 @@ describe('the audit schema', () => {
   // Holds for audit tables added later: each needs the REVOKE and both triggers, or this test fails.
   // SAFETY: mutation check: dropped trigger entry_no_truncate -> this test failed (events 24, not 56)
   // SAFETY: mutation check: GRANT UPDATE ON audit.entry TO aivera_app -> this test failed (update true)
+  // SAFETY: mutation check: DISABLE TRIGGER entry_append_only -> this test failed (events 32, not 56)
   it('every table in "audit" refuses UPDATE, DELETE and TRUNCATE to aivera_app and runs refuse_change on all three', async () => {
     const rows = await admin.execute<{
       name: string;
@@ -83,7 +84,8 @@ describe('the audit schema', () => {
         has_table_privilege('aivera_app', c.oid, 'TRUNCATE') as trunc
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
-      left join pg_trigger t on t.tgrelid = c.oid and t.tgfoid = 'audit.refuse_change'::regproc
+      left join pg_trigger t
+        on t.tgrelid = c.oid and t.tgfoid = 'audit.refuse_change'::regproc and t.tgenabled = 'A' -- ENABLE ALWAYS
       where n.nspname = 'audit' and c.relkind in ('r', 'p')
       group by c.oid, c.relname`);
     expect(rows.length).toBeGreaterThan(0);
@@ -161,6 +163,22 @@ describe('Scenario Outline: Entries cannot be changed', () => {
       await expect(withWorkspace(migrator, W1, (tx) => tx.execute(statements[statement]))).rejects.toThrow(
         rejectsWith('42501', 'audit entries are append-only'),
       );
+      expect(await notes()).toEqual(before);
+    },
+  );
+
+  // The triggers are ENABLE ALWAYS, so replica mode (which skips ordinary triggers) does not get round them.
+  // SAFETY: mutation check: ALTER TABLE audit.entry ENABLE TRIGGER (not ALWAYS) on both triggers -> these failed (the superuser's statements succeeded)
+  it.each(Object.keys(statements) as (keyof typeof statements)[])(
+    'a superuser in session_replication_role = replica running %s is still refused',
+    async (statement) => {
+      const before = await notes();
+      await expect(
+        admin.transaction(async (tx) => {
+          await tx.execute(sql`set local session_replication_role = replica`);
+          await tx.execute(statements[statement]);
+        }),
+      ).rejects.toThrow(rejectsWith('42501', 'audit entries are append-only'));
       expect(await notes()).toEqual(before);
     },
   );
