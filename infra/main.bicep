@@ -69,6 +69,7 @@ module web 'modules/web.bicep' = {
     appIdentityId: foundation.outputs.appIdentityId
     appIdentityClientId: foundation.outputs.appIdentityClientId
     appInsightsSecretUri: foundation.outputs.appInsightsSecretUri
+    keyVaultUri: foundation.outputs.keyVaultUri
     databaseHost: database.outputs.databaseHost
     databaseName: database.outputs.databaseName
     webImage: '${images}/web:${imageTag}'
