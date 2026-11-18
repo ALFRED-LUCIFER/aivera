@@ -54,6 +54,7 @@ export default async function seed() {
     // AIV-P1-006: "AP", the talent partner, runs workspace "Demo" with the five demo jobs (personas.md).
     const ap = await person('ap@example.com', 'AP');
     await seedDemoJobs(await workspaceOf('Demo', ap), ap);
+    await seedCandidateSiteJobs(await person('employer@example.com', 'Employer Recruiter'));
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 
@@ -139,6 +140,102 @@ export default async function seed() {
         await jobs.submitRubric(ctx, version.id);
         await jobs.approveRubric(ctx, version.id);
         await ctx.tx.execute(sql`update jobs.job set stage = ${stage} where id = ${job.id}`);
+      });
+    }
+  }
+
+  // The candidate site's five published jobs (AIV-P3-004 Background, AIV-P3-005 Examples), in their own synthetic
+  // employer workspace so the recruiter tests above see none of them. Posted dates are set back so the list shows
+  // "Posted 2 days ago". A rerun on a reused database first unpublishes the previous run's five, so the counts hold.
+  async function seedCandidateSiteJobs(employer: string) {
+    const jobs = createJobs(workspaces, createAudit(db));
+    const previous = await workspaces.activeWorkspace(employer);
+    if (previous)
+      await workspaces.withWorkspace({ userId: employer }, previous, async (ctx) => {
+        for (const job of await jobs.listJobs(ctx)) await jobs.unpublishJob(ctx, job.id);
+      });
+    const workspaceId = await workspaceOf('Candidate site employers', employer);
+    const others: [string, string][] = [
+      ['Delivery with a team', 'Work shipped with others, and their part in it'],
+      ['Clear communication', 'A write-up, a talk or a reference'],
+      ['Ownership', 'Something they kept running after launch'],
+      ['Learning from feedback', 'A change they made after a review'],
+      ['Testing and quality', 'Tests or checks they wrote'],
+    ];
+    for (const [title, jobType, location, pay, descriptor, [name, evidence], daysAgo] of [
+      [
+        'Senior AI Engineer',
+        'ai_llm_engineering',
+        'DIFC, Dubai',
+        [3_500_000, 4_800_000],
+        'A BNPL fintech',
+        ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it'],
+        6,
+      ],
+      [
+        'QA Automation Engineer',
+        'qa_test_automation',
+        'Dubai, hybrid',
+        null,
+        'A logistics platform',
+        ['Test automation design', 'A test suite they wrote, and what it covers'],
+        9,
+      ],
+      [
+        'Senior Product Manager, Payments',
+        'product_management',
+        'Dubai Internet City',
+        [3_800_000, 5_000_000],
+        'A payments scale-up',
+        ['Discovery to decision', 'Research write-ups that show how evidence became a decision'],
+        9,
+      ],
+      [
+        'Real Estate Sales Consultant',
+        'sales',
+        'Dubai',
+        null,
+        'A property brokerage',
+        ['Closing sales', 'Deals they closed, with the value and their part confirmed'],
+        2,
+      ],
+      [
+        'Senior Software Engineer, Banking',
+        'software_engineering',
+        'Dubai',
+        null,
+        'A retail bank',
+        [
+          'System design in production',
+          'A service they designed that runs in production, and the trade-offs they made',
+        ],
+        12,
+      ],
+    ] as const) {
+      await workspaces.withWorkspace({ userId: employer }, workspaceId, async (ctx) => {
+        const job = await jobs.createJob(ctx, {
+          title,
+          jobType,
+          location,
+          payBand: pay && { minMinor: pay[0], maxMinor: pay[1], currency: 'AED' },
+          description: `${title}, synthetic demo job.`,
+          synthetic: true,
+        });
+        const competencies: Competency[] = [[name, evidence] as const, ...others].map(([n, e], i) => ({
+          name: n,
+          evidenceExpected: e,
+          weightPercent: [30, 20, 15, 15, 10, 10][i] ?? 0,
+          levelNeeded: i === 0 ? 4 : 3,
+          type: i < 2 ? 'mandatory' : 'desirable',
+          origin: 'from_description',
+        }));
+        const version = await jobs.saveRubric(ctx, job.id, { successStatement: 'Ships reliable work.', competencies });
+        await jobs.submitRubric(ctx, version.id);
+        await jobs.approveRubric(ctx, version.id);
+        await jobs.publishJob(ctx, job.id, { publicDescriptor: descriptor });
+        await ctx.tx.execute(
+          sql`update jobs.public_job set posted_at = now() - make_interval(days => ${daysAgo}) where job_id = ${job.id}`,
+        );
       });
     }
   }
