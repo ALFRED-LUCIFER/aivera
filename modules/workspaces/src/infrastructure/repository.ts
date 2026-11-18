@@ -1,8 +1,9 @@
 import type { AuditContract } from '@aivera/audit';
 import type { Tx } from '@aivera/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
-import { member, workspace } from './schema.ts';
+import { activeWorkspace, member, workspace } from './schema.ts';
 
 const memberColumns = {
   userId: member.userId,
@@ -23,6 +24,10 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       const [row] = await tx.insert(workspace).values(values).returning();
       if (!row) throw new Error('insert into workspaces.workspace returned no row');
       return row;
+    },
+    async findWorkspace(workspaceId) {
+      const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId));
+      return row ?? null;
     },
     async insertMember(values) {
       await tx.insert(member).values(values);
@@ -51,6 +56,25 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     },
     async audit(workspaceId, actorUserId, values) {
       await audit.record({ tx, workspaceId, actor: { type: 'user', id: actorUserId } }, values);
+    },
+  };
+}
+
+/** The active-workspace pointer, by user id only (it is not workspace-owned; see the schema). */
+export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
+  return {
+    async get(userId) {
+      const [row] = await tx
+        .select({ workspaceId: activeWorkspace.workspaceId })
+        .from(activeWorkspace)
+        .where(eq(activeWorkspace.userId, userId));
+      return row?.workspaceId ?? null;
+    },
+    async set(userId, workspaceId) {
+      await tx
+        .insert(activeWorkspace)
+        .values({ userId, workspaceId })
+        .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
     },
   };
 }

@@ -1,0 +1,51 @@
+import { createAudit } from '@aivera/audit/composition';
+import { createDb } from '@aivera/db/client';
+import { createIdentity } from '@aivera/identity/composition';
+import { createWorkspaces } from '@aivera/workspaces/composition';
+
+// Playwright global setup (AIV-P0-010): the synthetic cast (docs/00-product/personas.md) gets its workspaces before the
+// browser signs in. Each run adds new workspaces and points the active workspace at them, so a reused local database
+// works too. Huda signs in with no workspace at all.
+
+export default async function seed() {
+  // The same database as the dev server in playwright.config.ts.
+  const db = createDb(process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera', {
+    max: 1,
+  });
+  const identity = createIdentity(db);
+  const workspaces = createWorkspaces(db, createAudit(db));
+  const person = (email: string, displayName: string) =>
+    identity.upsertUserFromIdToken({ issuer: 'e2e-seed', subject: email, email, emailVerified: true, displayName });
+  const workspaceOf = async (name: string, userId: string) => {
+    const { id } = await workspaces.createWorkspace({
+      name,
+      company: name,
+      hiringFocus: 'AI and LLM engineering',
+      synthetic: true,
+      creatorUserId: userId,
+    });
+    await workspaces.switchWorkspace({ userId }, id);
+    return id;
+  };
+
+  try {
+    await workspaceOf('Demo Hiring Co', (await person('alex@example.com', 'Alex Recruiter')).id);
+    await workspaceOf('Nadia Freelance', (await person('nadia@example.com', 'Nadia Freelance')).id);
+    const gulf = await workspaceOf('Gulf Talent Partners', (await person('omar.agency@example.com', 'Omar Agency')).id);
+
+    // Lina was an interviewer at Gulf Talent Partners with it as her active workspace, then her membership was removed.
+    const lina = (await person('lina@example.com', 'Lina Panel')).id;
+    await db.$client.begin(async (sql) => {
+      await sql`select set_config('app.workspace_id', ${gulf}, true)`;
+      await sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${gulf}, ${lina}, 'interviewer', 'active')`;
+    });
+    await workspaces.switchWorkspace({ userId: lina }, gulf);
+    await db.$client.begin(async (sql) => {
+      await sql`select set_config('app.workspace_id', ${gulf}, true)`;
+      await sql`update workspaces.member set status = 'removed' where user_id = ${lina}`;
+    });
+  } finally {
+    await db.$client.end();
+  }
+}

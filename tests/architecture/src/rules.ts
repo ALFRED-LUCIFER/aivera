@@ -10,6 +10,7 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   intake: ['billing', 'portfolio'],
 };
 
+const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -63,6 +64,18 @@ export function findViolations(root: string): Violation[] {
         });
       }
       if (!SOURCE.test(file)) continue;
+
+      // AIV-P0-010: module code takes the workspace-scoped `tx` from the request context; only composition holds the pool.
+      if (kind === 'modules' && !/[/\\]src[/\\]composition\.ts$/.test(file)) {
+        for (const [, names = ''] of readFileSync(file, 'utf8').matchAll(RAW_POOL_IMPORT)) {
+          if (names.split(',').some((n) => /^\s*(?:type\s+)?(?:Db|createDb)\b/.test(n)))
+            violations.push({
+              rule: 'scoped-tx-only',
+              file: rel,
+              detail: 'module code takes the scoped tx, never the raw pool (Db); only composition.ts holds it',
+            });
+        }
+      }
 
       for (const match of readFileSync(file, 'utf8').matchAll(IMPORT)) {
         const spec = match[1] ?? match[2] ?? match[3] ?? '';

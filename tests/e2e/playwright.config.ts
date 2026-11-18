@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Not 3000: that is the owner's local preview. `next dev` because the gallery (and the shell's signed-in stand-in) exist
-// only when NODE_ENV=development.
+// Not 3000: that is the owner's local preview. `next dev` because the gallery exists only when
+// NODE_ENV=development.
 const port = 3200;
 const oidcPort = 3299;
 const oidc = `http://localhost:${oidcPort}`;
@@ -9,6 +9,8 @@ const ci = Boolean(process.env['CI']);
 
 export default defineConfig({
   testDir: 'src',
+  // The synthetic cast's workspaces (AIV-P0-010).
+  globalSetup: './seed.ts',
   forbidOnly: ci,
   retries: ci ? 1 : 0,
   reporter: ci ? [['github'], ['html', { open: 'never' }]] : [['list']],

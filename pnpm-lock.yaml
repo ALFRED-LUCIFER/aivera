@@ -26,6 +26,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@aivera/audit':
+        specifier: workspace:*
+        version: link:../../modules/audit
       '@aivera/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -38,6 +41,9 @@ importers:
       '@aivera/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@aivera/workspaces':
+        specifier: workspace:*
+        version: link:../../modules/workspaces
       next:
         specifier: 16.4.6
         version: 16.4.6(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -348,9 +354,21 @@ importers:
 
   tests/e2e:
     devDependencies:
+      '@aivera/audit':
+        specifier: workspace:*
+        version: link:../../modules/audit
       '@aivera/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@aivera/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@aivera/identity':
+        specifier: workspace:*
+        version: link:../../modules/identity
+      '@aivera/workspaces':
+        specifier: workspace:*
+        version: link:../../modules/workspaces
       '@axe-core/playwright':
         specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.0)

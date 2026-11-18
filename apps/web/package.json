@@ -11,10 +11,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@aivera/audit": "workspace:*",
     "@aivera/db": "workspace:*",
     "@aivera/i18n": "workspace:*",
     "@aivera/identity": "workspace:*",
     "@aivera/ui": "workspace:*",
+    "@aivera/workspaces": "workspace:*",
     "next": "16.4.6",
     "next-auth": "5.0.0-beta.32",
     "react": "19.3.1",

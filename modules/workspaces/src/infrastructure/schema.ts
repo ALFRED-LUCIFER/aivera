@@ -43,3 +43,14 @@ export const member = workspaces
     ],
   )
   .enableRLS();
+
+// The user's active workspace, held server-side because the session cookie holds only the user id (ADR-009).
+// Keyed on the user, not workspace-owned, so no tenant policy: it is read before any workspace is open and holds two
+// opaque ids. The request context re-checks membership on every request, so a stale row grants nothing.
+export const activeWorkspace = workspaces.table('active_workspace', {
+  userId: uuid('user_id').primaryKey(),
+  workspaceId: uuid('workspace_id')
+    .notNull()
+    .references(() => workspace.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

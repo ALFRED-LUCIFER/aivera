@@ -23,6 +23,7 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['module-no-ui', 'module-no-ui', 'modules/jobs/src/application/x.ts'],
     ['paid-ranking', 'paying-never-changes-ranking', 'modules/assessment/src/application/rank.ts'],
     ['components-tsx', 'components-tsx-only', 'apps/web/src/features/jobs/components/sortJobs.ts'],
+    ['raw-pool', 'scoped-tx-only', 'modules/jobs/src/infrastructure/repository.ts'],
   ])('%s is reported as %s and names the file', (name, rule, file) => {
     expect(findViolations(fixture(name))).toContainEqual(expect.objectContaining({ rule, file }));
   });

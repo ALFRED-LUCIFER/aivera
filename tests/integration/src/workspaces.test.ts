@@ -5,14 +5,21 @@ import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { AuditContract } from '@aivera/audit';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
-import { WorkspaceError, type MemberStatus, type Role, type WorkspacesContract } from '@aivera/workspaces';
+import { consumeInWorkspace, createDb, withWorkspace, type Db } from '@aivera/db';
+import {
+  ForbiddenError,
+  WorkspaceError,
+  type MemberStatus,
+  type Role,
+  type WorkspacesContract,
+} from '@aivera/workspaces';
 import { createAudit } from '@aivera/audit/composition';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-// AIV-P0-008 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
+// AIV-P0-008 and AIV-P0-010 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role
+// (ADR-004, ADR-005).
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
@@ -36,13 +43,13 @@ const dbMigrate = () =>
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
 
-const newWorkspace = (name: string) =>
+const newWorkspace = (name: string, creatorUserId = ALEX) =>
   workspaces.createWorkspace({
     name,
     company: name,
     hiringFocus: 'AI and LLM engineering',
     synthetic: true,
-    creatorUserId: ALEX,
+    creatorUserId,
   });
 
 /** Adds a member directly, as aivera_app inside the workspace (inviting is AIV-P1-003). */
@@ -74,17 +81,19 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(2);
+    expect(await applied()).toBe(3);
     dbMigrate();
-    expect(await applied()).toBe(2);
+    expect(await applied()).toBe(3);
   });
 
-  it('both tables are owned by aivera_migrator with row-level security enabled and forced', async () => {
+  it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'workspaces' order by name`);
     expect([...tables]).toEqual([
+      // Keyed on the user, not workspace-owned (AIV-P0-010): read before any workspace is open.
+      { name: 'active_workspace', owner: 'aivera_migrator', rls: false, forced: false },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'workspace', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
@@ -294,5 +303,82 @@ describe('Scenario Outline: Only admins change roles', () => {
           ]
         : [],
     );
+  });
+});
+
+// AIV-P0-010: the request context. Jobs do not exist yet (AIV-P1-005), so "lists jobs" lists the workspace's members.
+const currentSetting = async (tx: Parameters<Parameters<typeof withWorkspace>[2]>[0]) =>
+  (await tx.execute<{ id: string }>(sql`select current_setting('app.workspace_id') as id`))[0]?.id;
+
+describe("Scenario: Requests run in the user's active workspace", () => {
+  it('an active recruiter of W1 runs with app.workspace_id = W1 and sees only W1 rows', async () => {
+    const w1 = (await newWorkspace('Context W1')).id;
+    await newWorkspace('Context W2');
+    await addMember(w1, user(41), 'recruiter');
+    const seen = await workspaces.withWorkspace({ userId: user(41) }, w1, async ({ tx, role }) => {
+      const rows = await tx.execute<{ workspace_id: string }>(sql`select workspace_id from workspaces.member`);
+      return { role, setting: await currentSetting(tx), workspaces: new Set(rows.map((r) => r.workspace_id)) };
+    });
+    expect(seen).toEqual({ role: 'recruiter', setting: w1, workspaces: new Set([w1]) });
+  });
+});
+
+describe('Scenario: A forged workspace id is refused', () => {
+  // SAFETY: mutation check: skipped the membership check in withWorkspace (context.ts) -> this test failed (the handler ran)
+  it('a member of W1 only, sending W2, gets ForbiddenError and the handler never runs', async () => {
+    const w1 = (await newWorkspace('Forged W1')).id;
+    const w2 = (await newWorkspace('Forged W2')).id;
+    await addMember(w1, user(51), 'recruiter');
+    const handler = vi.fn(async () => 'ran');
+    await expect(workspaces.withWorkspace({ userId: user(51) }, w2, handler)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(handler).not.toHaveBeenCalled();
+  });
+});
+
+describe('Scenario: Switching workspace re-checks membership', () => {
+  // SAFETY: mutation check: removed the membership check in switchWorkspace -> this test failed (the active workspace became Gulf Talent Partners)
+  it('"Nadia Freelance" switches to "Gulf Talent Partners", and a refused switch keeps "Nadia Freelance"', async () => {
+    const nadia = { userId: user(61) };
+    const own = (await newWorkspace('Nadia Freelance', nadia.userId)).id;
+    const gulf = (await newWorkspace('Gulf Talent Partners')).id;
+    await addMember(gulf, nadia.userId, 'recruiter');
+    await workspaces.switchWorkspace(nadia, own);
+
+    await workspaces.switchWorkspace(nadia, gulf);
+    const active = await workspaces.activeWorkspace(nadia.userId);
+    expect(active).toBe(gulf);
+    expect(await workspaces.withWorkspace(nadia, active ?? '', ({ tx }) => currentSetting(tx))).toBe(gulf);
+
+    await workspaces.switchWorkspace(nadia, own);
+    await withWorkspace(app, gulf, (tx) =>
+      tx.execute(sql`update workspaces.member set status = 'removed' where user_id = ${nadia.userId}`),
+    );
+    await expect(workspaces.switchWorkspace(nadia, gulf)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await workspaces.activeWorkspace(nadia.userId)).toBe(own);
+  });
+
+  it('a user who never chose a workspace has none', async () => {
+    expect(await workspaces.activeWorkspace(user(62))).toBeNull();
+  });
+});
+
+describe('Scenario: Worker jobs carry their workspace', () => {
+  it('an "assessment" message for W1 runs with app.workspace_id = W1; one with no workspace id is dead-lettered', async () => {
+    const w1 = (await newWorkspace('Worker W1')).id;
+    const settings: (string | undefined)[] = [];
+    const consume = consumeInWorkspace(app, async (_message, tx) => {
+      settings.push(await currentSetting(tx));
+    });
+    const deadLetter = vi.fn(async () => {});
+
+    await consume({ type: 'assessment', workspaceId: w1 }, deadLetter);
+    expect(settings).toEqual([w1]);
+    expect(deadLetter).not.toHaveBeenCalled();
+
+    // SAFETY: mutation check: made consumeInWorkspace skip the envelope check -> this test failed (withWorkspace threw instead of dead-lettering)
+    await consume({ type: 'assessment' }, deadLetter);
+    await consume({ type: 'assessment', workspaceId: 'not-a-uuid' }, deadLetter);
+    expect(deadLetter).toHaveBeenCalledTimes(2);
+    expect(settings).toEqual([w1]);
   });
 });
