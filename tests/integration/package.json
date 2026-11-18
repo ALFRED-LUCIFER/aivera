@@ -8,6 +8,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@aivera/audit": "workspace:*",
     "@aivera/config": "workspace:*",
     "@aivera/db": "workspace:*",
     "@aivera/workspaces": "workspace:*",

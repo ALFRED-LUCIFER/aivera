@@ -1,3 +1,4 @@
+import type { AuditContract } from '@aivera/audit';
 import type { Tx } from '@aivera/db';
 import { and, asc, eq } from 'drizzle-orm';
 import type { WorkspaceStore } from '../application/workspaces.ts';
@@ -16,7 +17,7 @@ const inWorkspace = (workspaceId: string) => eq(member.workspaceId, workspaceId)
  * The workspaces store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
  * row-level security on the transaction's `app.workspace_id` is the second (ADR-005).
  */
-export function workspaceStore(tx: Tx): WorkspaceStore {
+export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
   return {
     async insertWorkspace(values) {
       const [row] = await tx.insert(workspace).values(values).returning();
@@ -47,6 +48,9 @@ export function workspaceStore(tx: Tx): WorkspaceStore {
         .update(member)
         .set({ role })
         .where(and(inWorkspace(workspaceId), eq(member.userId, userId)));
+    },
+    async audit(workspaceId, actorUserId, values) {
+      await audit.record({ tx, workspaceId, actor: { type: 'user', id: actorUserId } }, values);
     },
   };
 }
