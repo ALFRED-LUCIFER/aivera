@@ -28,9 +28,4 @@ export type { ValueBasisKind, ValueBasisProps } from './ValueBasis.tsx';
 export { AssistantDrawer } from './AssistantDrawer.tsx';
 export type { AssistantDrawerProps } from './AssistantDrawer.tsx';
 export { PreviewBanner, PreviewConfirmCard, SuccessBanner } from './PreviewConfirm.tsx';
-export type {
-  PreviewBannerProps,
-  PreviewConfirmCardProps,
-  PreviewConfirmProps,
-  SuccessBannerProps,
-} from './PreviewConfirm.tsx';
+export type { PreviewConfirmCardProps, PreviewConfirmProps, SuccessBannerProps } from './PreviewConfirm.tsx';

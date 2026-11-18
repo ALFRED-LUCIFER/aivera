@@ -23,7 +23,6 @@ export type AssistantDrawerProps = {
   /** The opener ("Ask Aivera"); focus returns to it on close. */
   trigger?: ReactNode;
   open?: boolean;
-  defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Suggested questions, answers and previews go here. */
   children?: ReactNode;
@@ -54,7 +53,19 @@ export function AssistantDrawer({
   };
   return (
     <DialogPrimitive.Root modal={false} {...root}>
-      {trigger && <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>}
+      {trigger && (
+        <DialogPrimitive.Trigger
+          asChild
+          // Re-entry: pressing the opener while the drawer is open takes you back into it instead of closing it.
+          onClick={(e) => {
+            if (e.currentTarget.dataset['state'] !== 'open') return;
+            e.preventDefault();
+            document.getElementById(inputId)?.focus();
+          }}
+        >
+          {trigger}
+        </DialogPrimitive.Trigger>
+      )}
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           // Working on the page must not dismiss the drawer; only Escape and the close button do.

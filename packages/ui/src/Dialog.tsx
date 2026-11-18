@@ -13,6 +13,8 @@ export type DialogProps = {
   description?: ReactNode;
   /** Accessible name of the close button, from i18n. */
   closeLabel: string;
+  /** Disables the close button, e.g. while a confirmed change is being applied. */
+  closeDisabled?: boolean;
   /** The element that opens the dialog, usually a Button. */
   trigger?: ReactNode;
   open?: boolean;
@@ -38,6 +40,7 @@ export function Dialog({
   title,
   description,
   closeLabel,
+  closeDisabled,
   trigger,
   onOpenAutoFocus,
   onCloseAutoFocus,
@@ -71,7 +74,13 @@ export function Dialog({
             )}
             {children && <div className="mt-4">{children}</div>}
             <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="iconOnly" aria-label={closeLabel} className="absolute end-2 top-2">
+              <Button
+                variant="ghost"
+                size="iconOnly"
+                aria-label={closeLabel}
+                disabled={closeDisabled}
+                className="absolute end-2 top-2"
+              >
                 <CloseIcon />
               </Button>
             </DialogPrimitive.Close>

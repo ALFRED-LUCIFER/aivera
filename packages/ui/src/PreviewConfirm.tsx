@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button } from './Button.tsx';
-import { Dialog } from './Dialog.tsx';
+import { Dialog, type DialogProps } from './Dialog.tsx';
 
 // AGENTS.md 1.5: every proposed change is shown first and applied only by Confirm. The card never performs the
 // action; it emits onConfirm, onEdit and onCancel. All labels come from i18n through props.
@@ -24,23 +24,40 @@ export type PreviewConfirmProps = {
   footer: ReactNode;
   /** Shown when onConfirm rejects: "That did not go through. Nothing was changed." */
   errorMessage: ReactNode;
-  /** The only path that applies the change. Called at most once until it rejects. */
+  /**
+   * The only path that applies the change. Called at most once until it rejects; after it resolves the preview stays
+   * pending until the caller closes or replaces it. It must settle: reject on a timeout, or the preview cannot be
+   * dismissed.
+   */
   onConfirm: () => unknown;
   onEdit?: () => void;
   onCancel: () => void;
 };
 
-function usePreviewConfirm(onConfirm: () => unknown) {
+// A reused card starts fresh on each opening: `active` turning on clears the state, rearm() clears the guard.
+function usePreviewConfirm(onConfirm: () => unknown, active = true) {
   const busy = useRef(false); // a ref, not state: two clicks in one tick both see the state from before
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) {
+      setPending(false);
+      setFailed(false);
+    }
+  }
+  const rearm = () => {
+    busy.current = false;
+  };
   const confirm = async () => {
-    // SAFETY: mutation check: removed this guard -> "Scenario: Only Confirm applies the change, once" failed
-    if (busy.current) return;
+    if (busy.current) return; // SAFETY: see "Scenario: Only Confirm applies the change, once"
     busy.current = true;
     setPending(true);
     setFailed(false);
     try {
+      // shortcut: callers must reject on timeout; otherwise the card stays pending and cannot be dismissed. Add a
+      // timeout here if a caller cannot guarantee one.
       await onConfirm();
       // Stays pending on success, so the change cannot be sent twice; the caller closes or replaces the card.
     } catch {
@@ -49,7 +66,7 @@ function usePreviewConfirm(onConfirm: () => unknown) {
       setFailed(true);
     }
   };
-  return { pending, failed, confirm };
+  return { pending, failed, confirm, rearm };
 }
 
 type BodyProps = Omit<PreviewConfirmProps, 'title' | 'onConfirm'> & {
@@ -74,7 +91,9 @@ function PreviewBody({ cancelRef, ...p }: BodyProps) {
         </p>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="primary" disabled={p.pending} aria-busy={p.pending || undefined} onClick={p.confirm}>
+        {/* Not `disabled` while pending: disabling the focused button drops focus to <body>, outside the dialog.
+            The guard in usePreviewConfirm makes extra presses no-ops; the label and aria-busy show the state. */}
+        <Button variant="primary" aria-busy={p.pending || undefined} onClick={p.confirm}>
           {p.pending ? p.pendingLabel : p.confirmLabel}
         </Button>
         {p.editLabel && p.onEdit && (
@@ -97,6 +116,8 @@ export type PreviewConfirmCardProps = PreviewConfirmProps & {
   onOpenChange: (open: boolean) => void;
   /** The opener; focus returns to it on close. */
   trigger?: ReactNode;
+  /** Without a trigger (assistant, bulk bar), return focus here: preventDefault, then focus the opener. */
+  onCloseAutoFocus?: DialogProps['onCloseAutoFocus'];
   /** Accessible name of the dialog's close button. */
   closeLabel: string;
 };
@@ -111,11 +132,12 @@ export function PreviewConfirmCard({
   open,
   onOpenChange,
   trigger,
+  onCloseAutoFocus,
   closeLabel,
   onCancel,
   ...body
 }: PreviewConfirmCardProps) {
-  const state = usePreviewConfirm(onConfirm);
+  const { rearm, ...state } = usePreviewConfirm(onConfirm, open);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const requestClose = () => {
     if (state.pending) return; // the change may still land; cancelling now would be a false promise
@@ -126,29 +148,29 @@ export function PreviewConfirmCard({
     <Dialog
       title={title}
       closeLabel={closeLabel}
+      closeDisabled={state.pending}
       trigger={trigger}
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}
       onOpenAutoFocus={(e) => {
         e.preventDefault();
+        rearm();
         cancelRef.current?.focus();
       }}
+      {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
     >
       <PreviewBody {...body} {...state} onCancel={requestClose} cancelRef={cancelRef} />
     </Dialog>
   );
 }
 
-export type PreviewBannerProps = PreviewConfirmProps & {
-  /** Heading level of the title. */
-  level?: 2 | 3 | 4;
-};
-
-/** The inline preview (Inbox, Candidates, Candidate): a region named by its title; Escape cancels. */
-export function PreviewBanner({ title, onConfirm, onCancel, level = 3, ...body }: PreviewBannerProps) {
+/**
+ * The inline preview (Inbox, Candidates, Candidate): a region named by its h3 title; Escape cancels. After onConfirm
+ * resolves it stays pending until the caller replaces it, usually with a SuccessBanner message.
+ */
+export function PreviewBanner({ title, onConfirm, onCancel, ...body }: PreviewConfirmProps) {
   const state = usePreviewConfirm(onConfirm);
   const id = useId();
-  const Heading = `h${level}` as const;
   const cancel = () => {
     if (!state.pending) onCancel();
   };
@@ -158,35 +180,56 @@ export function PreviewBanner({ title, onConfirm, onCancel, level = 3, ...body }
       aria-labelledby={id}
       className="rounded-card border border-border-strong bg-surface-raised p-4 shadow-1"
       onKeyDown={(e) => {
-        if (e.key === 'Escape') cancel();
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        e.stopPropagation(); // one Escape cancels this preview, not also a layer around it
+        cancel();
       }}
     >
-      <Heading id={id} className="mb-2 text-card text-text">
+      <h3 id={id} className="mb-2 text-card text-text">
         {title}
-      </Heading>
+      </h3>
       <PreviewBody {...body} {...state} onCancel={cancel} />
     </section>
   );
 }
 
-export type SuccessBannerProps = { children: ReactNode };
+export type SuccessBannerProps = { children?: ReactNode };
 
-/** After a confirmed change: "2 evidence requests sent. …". Announced politely; ok colour with an icon and words. */
+/**
+ * After a confirmed change: "2 evidence requests sent. …". Mount it empty with the page and pass the message after
+ * the confirm: a status region that mounts with its text already in it is often not announced.
+ */
 export function SuccessBanner({ children }: SuccessBannerProps) {
   return (
-    <output className="flex items-start gap-2 rounded-card border border-ok-border bg-ok-bg p-4 text-body text-ok-text">
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 16 16"
-        className="mt-0.5 size-4 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      >
-        <path d="m3.5 8.5 3 3 6-7" />
-      </svg>
-      <span>{children}</span>
+    <output
+      className={
+        children
+          ? 'flex items-start gap-2 rounded-card border border-ok-border bg-ok-bg p-4 text-body text-ok-text'
+          : undefined
+      }
+    >
+      {children && (
+        <>
+          <CheckIcon />
+          <span>{children}</span>
+        </>
+      )}
     </output>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="mt-0.5 size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="m3.5 8.5 3 3 6-7" />
+    </svg>
   );
 }
 

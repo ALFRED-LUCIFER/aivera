@@ -60,6 +60,44 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+function Reused() {
+  const [open, setOpen] = useState(false);
+  return (
+    <PreviewConfirmCard
+      {...labels}
+      title="Preview: move Sara Al Qahtani to Round 2"
+      closeLabel="Close"
+      trigger={<Button>Move to Round 2</Button>}
+      open={open}
+      onOpenChange={setOpen}
+      onConfirm={async () => setOpen(false)}
+      onCancel={() => {}}
+    />
+  );
+}
+
+function Programmatic() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Send evidence requests</Button>
+      <PreviewConfirmCard
+        {...labels}
+        title="Preview: evidence request to 3 people"
+        closeLabel="Close"
+        open={open}
+        onOpenChange={setOpen}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          screen.getByRole('button', { name: 'Send evidence requests' }).focus();
+        }}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />
+    </>
+  );
+}
+
 describe('PreviewConfirmCard', () => {
   it('Scenario: The preview shows the change and waits', async () => {
     const onConfirm = vi.fn();
@@ -77,22 +115,24 @@ describe('PreviewConfirmCard', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
   });
 
+  // SAFETY: mutation check: removed `if (busy.current) return;` -> this test failed (onConfirm called twice)
   it('Scenario: Only Confirm applies the change, once', async () => {
     const run = deferred();
     const onConfirm = vi.fn(() => run.promise);
     await openPreview({ onConfirm });
     const confirm = screen.getByRole('button', { name: 'Confirm move' });
-    // Two clicks in the same tick: React has not re-rendered the disabled button between them.
+    // Two clicks in the same tick: React has not re-rendered between them, so only the ref guard can stop the second.
     act(() => {
       fireEvent.click(confirm);
       fireEvent.click(confirm);
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(confirm.textContent).toBe('Moving…');
-    expect((confirm as HTMLButtonElement).disabled).toBe(true);
     expect(confirm.getAttribute('aria-busy')).toBe('true');
+    // Stays focusable while pending: disabling the focused button would drop focus to <body>, outside the dialog.
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
     await act(async () => run.resolve());
-    expect((confirm as HTMLButtonElement).disabled).toBe(true); // still cannot be sent twice after success
+    await userEvent.click(confirm); // still cannot be sent twice after success
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
@@ -116,7 +156,7 @@ describe('PreviewConfirmCard', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  // SAFETY: mutation check: removed busy.current = false in the catch -> this test failed (Confirm stayed disabled)
+  // SAFETY: mutation check: removed busy.current = false in the catch -> this test failed (retry ignored)
   it('Scenario: A failed confirm keeps the preview open', async () => {
     const onConfirm = vi.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(undefined);
     await openPreview({ onConfirm });
@@ -125,6 +165,7 @@ describe('PreviewConfirmCard', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
     const confirm = screen.getByRole('button', { name: 'Confirm move' }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(false);
+    expect(document.activeElement).toBe(confirm); // the person keeps their place
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('alert')).toBeNull();
@@ -143,6 +184,7 @@ describe('PreviewConfirmCard', () => {
   });
 
   // SAFETY: mutation check: removed the pending check in requestClose -> this test failed (dialog closed)
+  // SAFETY: mutation check: dropped closeDisabled={state.pending} -> this test failed (close button enabled)
   it('does not close or cancel while the change is being applied', async () => {
     const onCancel = vi.fn();
     await openPreview({ onCancel, onConfirm: () => new Promise(() => {}) });
@@ -150,6 +192,37 @@ describe('PreviewConfirmCard', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(onCancel).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // SAFETY: mutation check: removed the reopen state reset -> this test failed (Cancel disabled on reopen)
+  // SAFETY: mutation check: removed rearm() in onOpenAutoFocus -> this test failed (second Confirm ignored)
+  it('starts fresh when a reused card opens again after a successful confirm', async () => {
+    render(<Reused />);
+    const trigger = screen.getByRole('button', { name: 'Move to Round 2' });
+    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm move' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.click(trigger);
+    const cancel = screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement;
+    expect(screen.getByRole('button', { name: 'Confirm move' }).getAttribute('aria-busy')).toBeNull();
+    expect(cancel.disabled).toBe(false);
+    expect(document.activeElement).toBe(cancel);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.click(trigger); // and a new change can be confirmed: the guard is re-armed
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm move' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  // SAFETY: mutation check: dropped the onCloseAutoFocus pass-through -> this test failed (focus lost)
+  it('returns focus through onCloseAutoFocus when opened without a trigger', async () => {
+    render(<Programmatic />);
+    const opener = screen.getByRole('button', { name: 'Send evidence requests' });
+    await userEvent.click(opener);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(opener);
   });
 });
 
@@ -187,13 +260,29 @@ describe('PreviewBanner', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('confirms once and announces success with a SuccessBanner', async () => {
-    const onConfirm = vi.fn();
-    render(<Bulk onConfirm={onConfirm} />);
-    await userEvent.dblClick(screen.getByRole('button', { name: 'Send 3 requests' }));
-    expect(onConfirm).toHaveBeenCalledTimes(1);
-    render(<SuccessBanner>3 evidence requests sent.</SuccessBanner>);
-    expect(screen.getByRole('status').textContent).toBe('3 evidence requests sent.');
+  // SAFETY: mutation check: removed e.stopPropagation() -> this test failed (Escape reached the document)
+  it('one Escape cancels the banner and does not reach a layer around it', async () => {
+    const onCancel = vi.fn();
+    const outer = vi.fn();
+    document.addEventListener('keydown', outer);
+    render(<Bulk onCancel={onCancel} />);
+    screen.getByRole('button', { name: 'Send 3 requests' }).focus();
+    await userEvent.keyboard('{Escape}');
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(outer).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', outer);
+  });
+});
+
+describe('SuccessBanner', () => {
+  it('stays mounted as one status region and swaps in the message, so it is announced', () => {
+    const { rerender } = render(<SuccessBanner />);
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('');
+    rerender(<SuccessBanner>3 evidence requests sent.</SuccessBanner>);
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status.textContent).toBe('3 evidence requests sent.');
+    expect(status.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
   });
 });
 
@@ -247,6 +336,16 @@ describe('AssistantDrawer', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  // SAFETY: mutation check: removed the re-entry onClick -> this test failed (the drawer closed)
+  it('pressing the opener again takes focus back into the open drawer instead of closing it', async () => {
+    render(<Drawer />);
+    const trigger = screen.getByRole('button', { name: 'Ask Aivera' });
+    await userEvent.click(trigger);
+    await userEvent.click(trigger);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Ask about what is on this page' }));
   });
 
   it('sends the trimmed question and ignores an empty one', async () => {
