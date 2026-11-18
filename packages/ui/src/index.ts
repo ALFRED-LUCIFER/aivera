@@ -34,7 +34,7 @@ export type { PreviewConfirmCardProps, PreviewConfirmProps, SuccessBannerProps }
 export { BulkActionBar } from './BulkActionBar.tsx';
 export type { BulkAction, BulkActionBarProps, BulkPreviewHandler } from './BulkActionBar.tsx';
 export { Chip, StatusBadge } from './Chip.tsx';
-export type { ChipProps, ChipTone, Status, StatusBadgeProps } from './Chip.tsx';
+export type { ChipProps, ChipTone, StatusBadgeProps, StatusBadgeStatus } from './Chip.tsx';
 export { DataTable } from './DataTable.tsx';
 export type {
   DataTableColumn,

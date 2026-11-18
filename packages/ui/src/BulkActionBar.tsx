@@ -12,9 +12,17 @@ export type BulkPreviewHandler<P extends object> = (ids: readonly string[]) => P
 export type BulkAction<P extends object> = { id: string; label: string; preview: BulkPreviewHandler<P> };
 
 export type BulkActionBarProps<P extends object> = {
+  /** Names the bar while it shows, from i18n, e.g. "Bulk actions". */
+  label: string;
+  /** Every selected id, including rows the current filter hides: the actions act on all of them. */
   selectedIds: readonly string[];
   /** From i18n with the plural, e.g. "2 selected". */
   selectedLabel: string;
+  /**
+   * Caller contract: when the filter hides selected rows, either clear the selection on filter change or pass this,
+   * e.g. "1 hidden by the filter", so a preview never covers a row the person cannot see without saying so.
+   */
+  hiddenLabel?: string | undefined;
   /** From i18n: "Bulk actions always show a preview first." */
   previewNote: string;
   actions: BulkAction<P>[];
@@ -26,8 +34,10 @@ export type BulkActionBarProps<P extends object> = {
 
 /** Shows while rows are selected. The count is a live status, kept mounted so each change is announced. */
 export function BulkActionBar<P extends object>({
+  label,
   selectedIds,
   selectedLabel,
+  hiddenLabel,
   previewNote,
   actions,
   onPreview,
@@ -35,14 +45,16 @@ export function BulkActionBar<P extends object>({
 }: BulkActionBarProps<P>) {
   const open = selectedIds.length > 0;
   return (
-    <div
+    // Named only while open: an unnamed section has no role, so the closed bar is not announced as an empty region.
+    <section
+      aria-label={open ? label : undefined}
       className={cx(
         open && 'flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-border bg-surface p-3 shadow-1',
-        className,
+        open && className,
       )}
     >
       <output className={open ? 'text-body font-semibold text-text tabular-nums' : 'sr-only'}>
-        {open ? selectedLabel : ''}
+        {open ? [selectedLabel, hiddenLabel].filter(Boolean).join(' · ') : ''}
       </output>
       {open && (
         <>
@@ -56,6 +68,6 @@ export function BulkActionBar<P extends object>({
           <p className="text-meta text-text-2">{previewNote}</p>
         </>
       )}
-    </div>
+    </section>
   );
 }

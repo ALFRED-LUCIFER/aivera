@@ -6,7 +6,7 @@ import { Skeleton } from './Card.tsx';
 import { Checkbox } from './Checkbox.tsx';
 import { cx } from './cx.ts';
 
-/** Plain data, so a feature keeps its columns in `domain/` (ADR-003). */
+/** Built in the feature's component, where headers come from t() (ADR-003 keeps React and i18n out of `domain/`). */
 export type DataTableColumn<Row> = {
   id: string;
   header: string;
@@ -22,7 +22,11 @@ export type DataTableSort = { columnId: string; direction: SortDirection };
 export type DataTableSelection<Row> = {
   selectedIds: readonly string[];
   onSelectedIdsChange: (ids: string[]) => void;
-  /** Names the select-all checkbox, e.g. "Select all". */
+  /**
+   * Names the select-all checkbox. Select-all means "all rows shown": it ticks or clears the visible rows only, and ids
+   * the filter hides stay as they are. Say so in the label, e.g. "Select all 7 shown", and tell the bulk bar about
+   * hidden selected rows (BulkActionBar `hiddenLabel`) or clear the selection when the filter changes.
+   */
   allLabel: string;
   /** Names a row's checkbox, e.g. "Select Youssef Aziz". */
   rowLabel: (row: Row) => string;
@@ -42,6 +46,8 @@ export type DataTableProps<Row> = {
   /** Shown when there are no rows. */
   emptyMessage: ReactNode;
   loading?: boolean;
+  /** Announced while loading, e.g. "Loading applications", from i18n. */
+  loadingLabel?: string | undefined;
   error?: { message: string; retryLabel: string; onRetry: () => void };
   /** Under the table: "Showing 7 of 64 …" and the caller's "Show more" button. */
   footer?: ReactNode;
@@ -66,6 +72,7 @@ export function DataTable<Row>({
   selection,
   emptyMessage,
   loading = false,
+  loadingLabel,
   error,
   footer,
   className,
@@ -97,7 +104,9 @@ export function DataTable<Row>({
     body = (
       <tr>
         <td colSpan={span} className={cx(cellBase, 'py-6 text-center')}>
-          <p className="mb-3 text-body text-text">{error.message}</p>
+          <p role="alert" className="mb-3 text-body text-text">
+            {error.message}
+          </p>
           <Button onClick={error.onRetry}>{error.retryLabel}</Button>
         </td>
       </tr>
@@ -121,8 +130,8 @@ export function DataTable<Row>({
       </tr>
     );
   } else {
-    body = rows.map((row, i) => {
-      const id = ids[i] ?? '';
+    body = rows.map((row) => {
+      const id = getRowId(row);
       return (
         <tr key={id} className="hover:bg-surface-subtle has-checked:bg-surface-subtle">
           {showSelect && (
@@ -149,9 +158,13 @@ export function DataTable<Row>({
     <div
       className={cx('flex flex-col overflow-hidden rounded-card border border-border bg-surface shadow-1', className)}
     >
+      {/* The status stays mounted so a change of its text is announced; the table carries aria-busy. */}
+      {loadingLabel && <output className="sr-only">{loading ? loadingLabel : ''}</output>}
       <div className="min-h-0 overflow-auto">
         <table aria-busy={loading || undefined} className="w-full border-separate border-spacing-0 text-body text-text">
           <caption className="sr-only">{caption}</caption>
+          {/* shortcut: the header sticks inside the table's own scroll box only, so it stays in view only when the caller
+              gives the table a max height; upgrade to a page-level sticky header when a screen needs it without one. */}
           <thead className="sticky top-0 z-10 bg-surface-subtle text-meta font-semibold text-text-2">
             <tr>
               {showSelect && (
@@ -168,16 +181,20 @@ export function DataTable<Row>({
                 </th>
               )}
               {columns.map((column) => {
-                const active = sort?.columnId === column.id;
+                const sortable = column.sortable && onSortChange;
+                const active = sortable && sort?.columnId === column.id;
                 const align = column.numeric ? 'text-end' : 'text-start';
                 return (
                   <th
                     key={column.id}
                     scope="col"
-                    aria-sort={column.sortable ? (active ? sort.direction : 'none') : undefined}
-                    className={cx(cellBase, align, column.sortable && 'py-0')}
+                    // APG sortable table: aria-sort only on the sorted header.
+                    // shortcut: a sort change is not announced live (some screen readers ignore an aria-sort change),
+                    // upgrade with a polite status message if user testing shows people miss it.
+                    aria-sort={active ? sort?.direction : undefined}
+                    className={cx(cellBase, align, sortable && 'py-0')}
                   >
-                    {column.sortable && onSortChange ? (
+                    {sortable ? (
                       <button
                         type="button"
                         onClick={() => onSortChange(nextSort(column))}
@@ -188,7 +205,7 @@ export function DataTable<Row>({
                         )}
                       >
                         {column.header}
-                        <SortIcon direction={active ? sort.direction : undefined} />
+                        <SortIcon direction={active ? sort?.direction : undefined} />
                       </button>
                     ) : (
                       column.header

@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { contrast, resolveColour, type Theme } from '../test/theme.ts';
-import { Chip, StatusBadge, type Status } from './Chip.tsx';
+import { Chip, StatusBadge, type StatusBadgeStatus } from './Chip.tsx';
 
-const cases: [Status, string, string][] = [
+const cases: [StatusBadgeStatus, string, string][] = [
   ['supported', 'Supported', 'ok'],
   ['needsValidation', 'Needs validation', 'warn'],
   ['contradiction', 'Contradiction', 'err'],
@@ -11,7 +11,7 @@ const cases: [Status, string, string][] = [
 ];
 
 describe('Scenario Outline: Status always carries an icon and a word', () => {
-  // SAFETY: mutation check: StatusBadge dropped the icon -> every row failed
+  // SAFETY: mutation check: StatusBadge dropped the icon -> '%s shows an icon and the word "%s"' failed (all four rows)
   it.each(cases)('%s shows an icon and the word "%s"', (status, word) => {
     render(<StatusBadge status={status} label={word} />);
     const badge = screen.getByText(word);
@@ -35,9 +35,14 @@ describe('Scenario Outline: Status always carries an icon and a word', () => {
 });
 
 describe('StatusBadge tokens', () => {
-  // SAFETY: mutation check: warn text-warn-text -> text-text-3 -> both themes failed
+  // SAFETY: mutation check: warn text-warn-text -> text-text-3 -> '%s (%s) uses its own %s tokens with 4.5:1 text in %s' failed (warn, both themes)
   const themed = cases.flatMap(([status, word, tone]) =>
-    (['light', 'dark'] as const).map((theme): [Status, string, string, Theme] => [status, word, tone, theme]),
+    (['light', 'dark'] as const).map((theme): [StatusBadgeStatus, string, string, Theme] => [
+      status,
+      word,
+      tone,
+      theme,
+    ]),
   );
   it.each(themed)('%s (%s) uses its own %s tokens with 4.5:1 text in %s', (status, word, tone, theme) => {
     render(<StatusBadge status={status} label={word} />);
@@ -53,7 +58,9 @@ describe('StatusBadge tokens', () => {
   it.each<Theme>(['light', 'dark'])('a neutral Chip keeps 4.5:1 text in %s', (theme) => {
     render(<Chip>Applied to 5 roles</Chip>);
     const classes = screen.getByText('Applied to 5 roles').className.split(' ');
-    expect(classes).toEqual(expect.arrayContaining(['bg-surface-subtle', 'text-text-2', 'rounded-full', 'h-6.5']));
+    expect(classes).toEqual(
+      expect.arrayContaining(['bg-surface-subtle', 'text-text-2', 'rounded-full', 'min-h-6.5', 'max-w-full']),
+    );
     expect(
       contrast(resolveColour('text-text-2', theme) ?? '', resolveColour('bg-surface-subtle', theme) ?? ''),
     ).toBeGreaterThanOrEqual(4.5);

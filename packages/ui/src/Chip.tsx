@@ -25,7 +25,8 @@ export function Chip({ children, tone = 'neutral', icon, className }: ChipProps)
   return (
     <span
       className={cx(
-        'inline-flex h-6.5 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-meta font-semibold',
+        // min-h and max-w-full: a long flag wraps inside a narrow cell instead of overflowing it.
+        'inline-flex min-h-6.5 max-w-full items-center gap-1 rounded-full border px-2.5 py-0.5 text-meta font-semibold',
         tones[tone],
         className,
       )}
@@ -36,16 +37,23 @@ export function Chip({ children, tone = 'neutral', icon, className }: ChipProps)
   );
 }
 
-export type Status = 'supported' | 'needsValidation' | 'contradiction' | 'informational';
+export type StatusBadgeStatus = 'supported' | 'needsValidation' | 'contradiction' | 'informational';
 
 const glyph = (path: string) => (
-  <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 16 16"
+    className="size-3.5 shrink-0"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+  >
     <path d={path} />
   </svg>
 );
 
 // DESIGN.md status chip: Supported (ok), Needs validation (warn), Contradiction (err), Informational (info).
-const statuses: Record<Status, { tone: ChipTone; icon: ReactNode }> = {
+const statuses: Record<StatusBadgeStatus, { tone: ChipTone; icon: ReactNode }> = {
   supported: { tone: 'ok', icon: glyph('m3.5 8.5 3 3 6-7') },
   needsValidation: { tone: 'warn', icon: glyph('M8 2.5 14 13H2zM8 6.5v3m0 1.75v.25') },
   contradiction: { tone: 'err', icon: glyph('m4.5 4.5 7 7m0-7-7 7') },
@@ -53,7 +61,7 @@ const statuses: Record<Status, { tone: ChipTone; icon: ReactNode }> = {
 };
 
 export type StatusBadgeProps = {
-  status: Status;
+  status: StatusBadgeStatus;
   /** The word, from i18n, e.g. "Needs validation". Always shown: colour never carries the status alone. */
   label: string;
   className?: string;

@@ -43,6 +43,7 @@ function InboxHarness({ rows, onPreview }: { rows: Application[]; onPreview: (p:
     const order = a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0;
     return sort.direction === 'ascending' ? order : -order;
   });
+  const hidden = selectedIds.filter((id) => !shown.some((r) => r.id === id)).length;
   const actions: BulkAction<Preview>[] = ['Request evidence', 'Assess fully', 'Add to talent pool'].map((label) => ({
     id: label,
     label,
@@ -70,14 +71,16 @@ function InboxHarness({ rows, onPreview }: { rows: Application[]; onPreview: (p:
         selection={{
           selectedIds,
           onSelectedIdsChange: setSelectedIds,
-          allLabel: 'Select all',
+          allLabel: 'Select all shown',
           rowLabel: (r) => `Select ${r.name}`,
         }}
         emptyMessage="No applications yet."
       />
       <BulkActionBar
+        label="Bulk actions"
         selectedIds={selectedIds}
         selectedLabel={`${selectedIds.length} selected`}
+        hiddenLabel={hidden ? `${hidden} hidden by the filter` : undefined}
         previewNote="Bulk actions always show a preview first."
         actions={actions}
         onPreview={onPreview}
@@ -92,27 +95,29 @@ const bodyNames = () =>
     .map((row) => within(row).getAllByRole('cell')[1]?.textContent);
 
 describe('Scenario: Selecting rows reveals the bulk-action bar', () => {
-  // SAFETY: mutation check: rendered the bar's actions when nothing is selected -> failed
+  // SAFETY: mutation check: rendered the bar's actions when nothing is selected -> 'shows "2 selected", the three actions and the preview line' failed
   it('shows "2 selected", the three actions and the preview line', async () => {
     render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
     expect(screen.getAllByRole('row')).toHaveLength(8); // header + 7
     expect(screen.queryByRole('button', { name: 'Request evidence' })).toBeNull();
     expect(screen.queryByText('Bulk actions always show a preview first.')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull(); // the closed bar is not an empty landmark
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Select Youssef Aziz' }));
     await userEvent.click(screen.getByRole('checkbox', { name: 'Select Paolo Garcia' }));
 
     expect(screen.getByRole('status').textContent).toBe('2 selected');
+    expect(screen.getByRole('region', { name: 'Bulk actions' })).toBeTruthy();
     for (const name of ['Request evidence', 'Assess fully', 'Add to talent pool']) {
       expect(screen.getByRole('button', { name })).toBeTruthy();
     }
     expect(screen.getByText('Bulk actions always show a preview first.')).toBeTruthy();
   });
 
-  // SAFETY: mutation check: dropped the indeterminate assignment -> failed
+  // SAFETY: mutation check: dropped the indeterminate assignment -> 'select-all is mixed while some rows are ticked, then ticks and clears every row' failed
   it('select-all is mixed while some rows are ticked, then ticks and clears every row', async () => {
     render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
-    const all = screen.getByRole('checkbox', { name: 'Select all' }) as HTMLInputElement;
+    const all = screen.getByRole('checkbox', { name: 'Select all shown' }) as HTMLInputElement;
     await userEvent.click(screen.getByRole('checkbox', { name: 'Select Youssef Aziz' }));
     expect(all.indeterminate).toBe(true);
     expect(all.checked).toBe(false);
@@ -126,6 +131,23 @@ describe('Scenario: Selecting rows reveals the bulk-action bar', () => {
     expect(screen.getByRole('status').textContent).toBe('');
   });
 
+  // SAFETY: mutation check: dropped hiddenLabel from the bar's status -> 'select-all ticks only the rows shown…' failed
+  it('select-all ticks only the rows shown, and the bar says how many selected rows the filter hides', async () => {
+    render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select Youssef Aziz' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Needs your action 2' }));
+    expect(screen.getByRole('status').textContent).toBe('1 selected · 1 hidden by the filter');
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select all shown' }));
+    expect(screen.getByRole('status').textContent).toBe('3 selected · 1 hidden by the filter');
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select all shown' })); // clears the shown rows only
+    expect(screen.getByRole('status').textContent).toBe('1 selected · 1 hidden by the filter');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'All 7' }));
+    expect(screen.getByRole('status').textContent).toBe('1 selected');
+  });
+
   it('each checkbox is inside a 40px label target', () => {
     render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
     const label = screen.getByRole('checkbox', { name: 'Select Youssef Aziz' }).closest('label');
@@ -134,11 +156,18 @@ describe('Scenario: Selecting rows reveals the bulk-action bar', () => {
 });
 
 const bar = (action: BulkAction<object>) => (
-  <BulkActionBar selectedIds={['a5']} selectedLabel="1" previewNote="" actions={[action]} onPreview={vi.fn()} />
+  <BulkActionBar
+    label="Bulk actions"
+    selectedIds={['a5']}
+    selectedLabel="1"
+    previewNote=""
+    actions={[action]}
+    onPreview={vi.fn()}
+  />
 );
 
 describe('Scenario: A bulk action opens a preview, never a direct change', () => {
-  // SAFETY: mutation check: called the action handler with [] instead of selectedIds -> failed
+  // SAFETY: mutation check: called the action handler with [] instead of selectedIds -> 'hands the preview built from the selected ids to the caller and changes nothing' failed
   it('hands the preview built from the selected ids to the caller and changes nothing', async () => {
     const onPreview = vi.fn();
     render(<InboxHarness rows={inbox} onPreview={onPreview} />);
@@ -152,7 +181,7 @@ describe('Scenario: A bulk action opens a preview, never a direct change', () =>
   });
 
   // Proven by `pnpm typecheck`, which checks each @ts-expect-error.
-  // SAFETY: mutation check: dropped `& { then?: never }` from BulkPreviewHandler -> tsc failed (unused @ts-expect-error)
+  // SAFETY: mutation check: dropped `& { then?: never }` from BulkPreviewHandler -> 'the handler type returns a preview; a mutation does not type-check' failed in tsc (unused @ts-expect-error)
   it('the handler type returns a preview; a mutation does not type-check', () => {
     const createRequest = vi.fn(async (_ids: readonly string[]) => {});
     // @ts-expect-error a handler that returns a promise is a direct change, not a preview
@@ -165,11 +194,11 @@ describe('Scenario: A bulk action opens a preview, never a direct change', () =>
 });
 
 describe('Scenario: Sorting is announced', () => {
-  // SAFETY: mutation check: numeric columns sort ascending first -> failed; aria-sort removed -> failed
+  // SAFETY: mutation check: numeric columns sort ascending first, and aria-sort removed -> 'activating "Backed score" sorts descending…' failed
   it('activating "Backed score" sorts descending and sets aria-sort, a second press flips it', async () => {
     render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
     const header = screen.getByRole('columnheader', { name: 'Backed score' });
-    expect(header.getAttribute('aria-sort')).toBe('none');
+    expect(header.hasAttribute('aria-sort')).toBe(false);
 
     await userEvent.click(within(header).getByRole('button', { name: 'Backed score' }));
     expect(header.getAttribute('aria-sort')).toBe('descending');
@@ -185,7 +214,7 @@ describe('Scenario: Sorting is announced', () => {
     render(<InboxHarness rows={inbox} onPreview={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Candidate' }));
     expect(screen.getByRole('columnheader', { name: 'Candidate' }).getAttribute('aria-sort')).toBe('ascending');
-    expect(screen.getByRole('columnheader', { name: 'Backed score' }).getAttribute('aria-sort')).toBe('none');
+    expect(screen.getByRole('columnheader', { name: 'Backed score' }).hasAttribute('aria-sort')).toBe(false);
     expect(bodyNames()[0]).toBe('Anna Schmidt');
   });
 });
@@ -193,50 +222,36 @@ describe('Scenario: Sorting is announced', () => {
 describe('Scenario: Filter tabs show counts and work by keyboard', () => {
   const five = inbox.slice(0, 5);
 
-  // SAFETY: mutation check: removed the ArrowRight handler -> failed; tabIndex 0 on every tab -> failed
+  // Native radios: the browser gives one Tab stop and the arrow keys (in the reading direction); this proves the wiring.
+  // SAFETY: mutation check: dropped onValueChange from FilterTabs -> 'right arrow selects…' failed
   it('right arrow selects "Needs your action" and the table shows 2 rows', async () => {
     render(<InboxHarness rows={five} onPreview={vi.fn()} />);
-    const group = screen.getByRole('toolbar', { name: 'Filter applications' });
+    const group = screen.getByRole('radiogroup', { name: 'Filter applications' });
     const names = within(group)
-      .getAllByRole('button')
-      .map((b) => b.textContent);
+      .getAllByRole('radio')
+      .map((r) => r.closest('label')?.textContent);
     expect(names).toEqual(['All 5', 'Needs your action 2', 'Rubric not approved 1']);
 
     await userEvent.tab();
-    expect(document.activeElement).toBe(within(group).getByRole('button', { name: 'All 5' }));
+    expect(document.activeElement).toBe(within(group).getByRole('radio', { name: 'All 5' }));
     await userEvent.keyboard('{ArrowRight}');
 
-    const needs = within(group).getByRole('button', { name: 'Needs your action 2' });
-    expect(needs.getAttribute('aria-pressed')).toBe('true');
+    const needs = within(group).getByRole('radio', { name: 'Needs your action 2' });
+    expect(needs).toHaveProperty('checked', true);
     expect(document.activeElement).toBe(needs);
-    expect(within(group).getByRole('button', { name: 'All 5' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getAllByRole('row')).toHaveLength(3); // header + 2
 
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}'); // wraps to the start
-    expect(within(group).getByRole('button', { name: 'All 5' }).getAttribute('aria-pressed')).toBe('true');
-
     await userEvent.tab(); // one Tab stop: the next Tab leaves the tabs
-    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'Select all' }));
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'Select all shown' }));
   });
 
-  it('follows the reading direction in right-to-left', async () => {
-    const onValueChange = vi.fn();
-    render(
-      <div dir="rtl">
-        <FilterTabs
-          label="Filter"
-          value="b"
-          onValueChange={onValueChange}
-          tabs={[
-            { value: 'a', label: 'A', count: 1 },
-            { value: 'b', label: 'B', count: 1 },
-          ]}
-        />
-      </div>,
+  it('draws the checked tab with the ink underline and keeps the 40px target', () => {
+    render(<InboxHarness rows={five} onPreview={vi.fn()} />);
+    const tab = screen.getByRole('radio', { name: 'All 5' });
+    expect(tab.className).toContain('sr-only');
+    expect(tab.closest('label')?.className.split(' ')).toEqual(
+      expect.arrayContaining(['has-checked:border-action', 'min-h-10', 'pointer-coarse:min-h-11']),
     );
-    await userEvent.tab();
-    await userEvent.keyboard('{ArrowRight}');
-    expect(onValueChange).toHaveBeenCalledWith('a');
   });
 });
 
@@ -246,7 +261,12 @@ describe('Scenario: Empty, loading and error states', () => {
     columns,
     getRowId: (r: Application) => r.id,
     emptyMessage: 'No applications yet.',
-    selection: { selectedIds: [], onSelectedIdsChange: vi.fn(), allLabel: 'Select all', rowLabel: () => 'Select' },
+    selection: {
+      selectedIds: [],
+      onSelectedIdsChange: vi.fn(),
+      allLabel: 'Select all shown',
+      rowLabel: () => 'Select',
+    },
   };
 
   it('no rows: the caller’s empty message and no header checkbox', () => {
@@ -255,15 +275,20 @@ describe('Scenario: Empty, loading and error states', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
-  // SAFETY: mutation check: SKELETON_ROWS 5 -> 3 -> failed; dropped aria-busy -> failed
-  it('loading: 5 skeleton rows with aria-busy="true"', () => {
-    render(<DataTable {...base} rows={[]} loading />);
+  // SAFETY: mutation check: SKELETON_ROWS 5 -> 3, dropped aria-busy, and emptied the loading status -> 'loading: 5 skeleton rows…' failed
+  it('loading: 5 skeleton rows with aria-busy="true", and the loading label is announced', () => {
+    const { rerender } = render(<DataTable {...base} rows={[]} loading loadingLabel="Loading applications" />);
+    expect(screen.getByRole('status').textContent).toBe('Loading applications');
     const table = screen.getByRole('table', { name: 'Applications' });
     expect(table.getAttribute('aria-busy')).toBe('true');
     expect(within(screen.getAllByRole('rowgroup')[1] as HTMLElement).getAllByRole('row')).toHaveLength(5);
     expect(screen.queryByText('No applications yet.')).toBeNull();
+
+    rerender(<DataTable {...base} rows={inbox} loadingLabel="Loading applications" />);
+    expect(screen.getByRole('status').textContent).toBe('');
   });
 
+  // SAFETY: mutation check: dropped role="alert" from the error message -> 'error: "Could not load this list."…' failed
   it('error: "Could not load this list." with a "Try again" button', async () => {
     const onRetry = vi.fn();
     render(
@@ -273,7 +298,7 @@ describe('Scenario: Empty, loading and error states', () => {
         error={{ message: 'Could not load this list.', retryLabel: 'Try again', onRetry }}
       />,
     );
-    expect(screen.getByText('Could not load this list.')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe('Could not load this list.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
     expect(screen.queryByText('Youssef Aziz')).toBeNull();

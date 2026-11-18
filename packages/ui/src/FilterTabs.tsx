@@ -1,67 +1,54 @@
 'use client';
 
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { Choices, type Look } from './RadioGroup.tsx';
 
 export type FilterTab = { value: string; label: ReactNode; count: number };
 
 export type FilterTabsProps = {
-  /** Names the group, from i18n, e.g. "Filter applications". */
+  /** Names the group for assistive technology, from i18n, e.g. "Filter applications". */
   label: string;
   tabs: FilterTab[];
   /** The caller keeps this in the URL; the tabs only report a change. */
   value: string;
+  /** Fires on every arrow press, so update the URL with router.replace, not push, or each press adds history. */
   onValueChange: (value: string) => void;
 };
 
+// The same native radio group as SegmentedControl, drawn as an underlined tab row.
+const tabsLook: Look = {
+  legend: 'sr-only',
+  list: 'flex flex-wrap gap-1 border-b border-border',
+  option:
+    '-mb-px inline-flex min-h-10 cursor-pointer items-center gap-1.5 border-b-2 border-transparent px-3 text-body ' +
+    'font-semibold text-text-2 transition-colors duration-120 ease-case motion-reduce:transition-none ' +
+    'pointer-coarse:min-h-11 hover:text-text has-checked:border-action has-checked:text-text ' +
+    'has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus',
+  input: 'sr-only',
+};
+
 /**
- * Toggle buttons with aria-pressed and a count ("All 5 · Needs your action 2"). They filter one list, so they are a
- * toolbar, not ARIA tabs (no tab panels). One Tab stop; the arrow keys move and select, following the reading direction.
+ * Filter tabs with counts ("All 5 · Needs your action 2"). They filter one list and have no tab panels, so they are a
+ * native radio group: one Tab stop, and the arrow keys move and select in the reading direction, with no custom code.
  */
 export function FilterTabs({ label, tabs, value, onValueChange }: FilterTabsProps) {
-  const at = tabs.findIndex((tab) => tab.value === value);
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-    const rtl = event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'rtl';
-    const step = (event.key === 'ArrowRight') !== rtl ? 1 : -1;
-    const index = (at + step + tabs.length) % tabs.length;
-    const next = tabs[index];
-    if (!next) return;
-    event.preventDefault();
-    onValueChange(next.value);
-    event.currentTarget.querySelectorAll('button')[index]?.focus();
-  };
-
   return (
-    <div
-      role="toolbar"
-      aria-label={label}
-      tabIndex={-1}
-      onKeyDown={onKeyDown}
-      className="flex flex-wrap gap-1 border-b border-border"
-    >
-      {tabs.map((tab, index) => {
-        const pressed = tab.value === value;
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            aria-pressed={pressed}
-            // An unknown value still leaves one Tab stop, on the first tab.
-            tabIndex={pressed || (at === -1 && index === 0) ? 0 : -1}
-            onClick={() => onValueChange(tab.value)}
-            className={
-              '-mb-px inline-flex min-h-10 cursor-pointer items-center gap-1.5 border-b-2 px-3 text-body font-semibold ' +
-              'transition-colors duration-120 ease-case motion-reduce:transition-none pointer-coarse:min-h-11 ' +
-              (pressed ? 'border-action text-text' : 'border-transparent text-text-2 hover:text-text')
-            }
-          >
+    <Choices
+      look={tabsLook}
+      legend={label}
+      value={value}
+      onValueChange={onValueChange}
+      options={tabs.map((tab) => ({
+        value: tab.value,
+        label: (
+          <>
             {tab.label}{' '}
             <span className="rounded-full bg-surface-subtle px-1.5 text-meta tabular-nums text-text-2">
               {tab.count}
             </span>
-          </button>
-        );
-      })}
-    </div>
+          </>
+        ),
+      }))}
+    />
   );
 }
