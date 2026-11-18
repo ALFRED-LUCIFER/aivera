@@ -1,4 +1,4 @@
-export { Button } from './Button.tsx';
+export { Button, buttonClassName } from './Button.tsx';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button.tsx';
 export { Card, Skeleton } from './Card.tsx';
 export type { CardProps, SkeletonProps } from './Card.tsx';

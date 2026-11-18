@@ -24,6 +24,10 @@ const sizes: Record<ButtonSize, string> = {
   iconOnly: 'size-10 pointer-coarse:min-w-11',
 };
 
+/** The button's classes, for a link that must look like one (`<Link className={buttonClassName('secondary')}>`). */
+export const buttonClassName = (variant: ButtonVariant = 'secondary', size: ButtonSize = 'standard') =>
+  cx(base, variants[variant], sizes[size]);
+
 export type ButtonProps = ComponentProps<'button'> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -46,7 +50,7 @@ export function Button({
     <button
       type={type}
       disabled={disabled}
-      className={cx(base, variants[variant], sizes[size], className)}
+      className={cx(buttonClassName(variant, size), className)}
       {...props}
       aria-disabled={disabled || undefined}
     />
