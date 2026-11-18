@@ -7,6 +7,9 @@ targetScope = 'resourceGroup'
 @description('GitHub repository allowed to deploy with OIDC from main.')
 param githubRepo string = 'ALFRED-LUCIFER/aivera'
 
+@description('GitHub now puts immutable ids in the OIDC subject: owner@ownerId/repo@repoId. Must match exactly or azure/login fails with AADSTS700213.')
+param githubOidcRepo string = 'ALFRED-LUCIFER@95878204/aivera@1462479700'
+
 @description('Commit SHA tag of the images on ghcr.io to run. Pass the one running now so a redeploy changes nothing.')
 param imageTag string
 
@@ -27,7 +30,7 @@ module foundation 'modules/foundation.bicep' = {
     location: location
     tags: tags
     logAnalyticsName: shared.logAnalytics
-    githubRepo: githubRepo
+    githubOidcRepo: githubOidcRepo
   }
 }
 
