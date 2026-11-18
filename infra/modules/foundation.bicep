@@ -3,7 +3,7 @@
 param location string
 param tags object
 param logAnalyticsName string
-param githubRepo string
+param githubOidcRepo string
 
 // Web and worker. Reads Aivera's Key Vault; signs in to PostgreSQL as aivera_app (no DDL, row-level security applies).
 resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -23,7 +23,7 @@ resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
     name: 'github-main'
     properties: {
       issuer: 'https://token.actions.githubusercontent.com'
-      subject: 'repo:${githubRepo}:ref:refs/heads/main'
+      subject: 'repo:${githubOidcRepo}:ref:refs/heads/main'
       audiences: ['api://AzureADTokenExchange']
     }
   }
