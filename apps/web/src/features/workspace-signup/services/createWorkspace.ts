@@ -14,6 +14,9 @@ import { parseCreateWorkspaceForm, workspaceName, type CreateWorkspaceState } fr
 export async function createWorkspace(_previous: CreateWorkspaceState, form: FormData): Promise<CreateWorkspaceState> {
   const userId = await getSessionUserId();
   if (!userId) redirect('/sign-in');
+  // Creating a second workspace would silently switch the user out of their current one.
+  // shortcut: one workspace per creator; creating and switching between more is AIV-P1-055.
+  if (await getWorkspaces().activeWorkspace(userId)) forbidden();
   const user = await getIdentity().getUser(userId);
   if (!user) forbidden();
   const failed: CreateWorkspaceState = {
@@ -24,6 +27,7 @@ export async function createWorkspace(_previous: CreateWorkspaceState, form: For
   if (!input) return failed;
   try {
     await getWorkspaces().createWorkspace({
+      // No display name from the tenant: the workspace is named after the email, which only its members see.
       name: workspaceName(input.company, user.displayName ?? user.email),
       company: input.company,
       hiringFocus: input.hiringFocus,
