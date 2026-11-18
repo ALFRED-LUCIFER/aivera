@@ -1,0 +1,220 @@
+{
+  "id": "15acfa9e-59bb-412c-b425-0770b4333e54",
+  "prevId": "8a471d95-a645-4f70-a91b-8dee3535392c",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "candidates.person": {
+      "name": "person",
+      "schema": "candidates",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emails": {
+          "name": "emails",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phones": {
+          "name": "phones",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synthetic": {
+          "name": "synthetic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merged_into_id": {
+          "name": "merged_into_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "person_workspace_created_idx": {
+          "name": "person_workspace_created_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "person_tenant_isolation": {
+          "name": "person_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidates\".\"person\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"candidates\".\"person\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "candidates.person_identifier": {
+      "name": "person_identifier",
+      "schema": "candidates",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "person_identifier_person_idx": {
+          "name": "person_identifier_person_idx",
+          "columns": [
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "person_identifier_person_id_person_id_fk": {
+          "name": "person_identifier_person_id_person_id_fk",
+          "tableFrom": "person_identifier",
+          "columnsFrom": [
+            "person_id"
+          ],
+          "tableTo": "person",
+          "schemaTo": "candidates",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "person_identifier_pkey": {
+          "name": "person_identifier_pkey",
+          "columns": [
+            "workspace_id",
+            "type",
+            "value"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "person_identifier_tenant_isolation": {
+          "name": "person_identifier_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidates\".\"person_identifier\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"candidates\".\"person_identifier\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "person_identifier_type_check": {
+          "name": "person_identifier_type_check",
+          "value": "\"candidates\".\"person_identifier\".\"type\" in ('email', 'phone', 'cv_hash', 'github_login')"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "candidates": "candidates"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
