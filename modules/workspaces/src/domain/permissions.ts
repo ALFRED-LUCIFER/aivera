@@ -4,6 +4,10 @@ import type { JobGrant, Role } from './workspace.ts';
 // job grant covering the record's job (ADR-005 point 6). Screen tickets add their actions here.
 export const PERMISSIONS = {
   'job.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
+  // Listing is workspace-wide; the jobs repository and row-level security narrow it to granted jobs (AIV-P1-005).
+  'job.list': { scope: 'workspace', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'job.view': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'rubric.edit': { scope: 'job', roles: ['admin', 'recruiter'] },
   'workspace.settings': { scope: 'workspace', roles: ['admin'] },
   'client.manage': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'job_access.manage': { scope: 'workspace', roles: ['admin'] },
