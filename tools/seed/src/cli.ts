@@ -15,7 +15,11 @@ try {
 } catch (error) {
   // The message and name only: a database error's detail can echo row values (AGENTS.md 1.2).
   console.error(
-    error instanceof SeedRefused ? error.message : `Seed failed: ${(error as Error).name}: ${(error as Error).message}`,
+    error instanceof SeedRefused
+      ? error.message
+      : error instanceof Error
+        ? `Seed failed: ${error.name}: ${error.message}`
+        : 'Seed failed',
   );
   process.exitCode = 1;
 } finally {
