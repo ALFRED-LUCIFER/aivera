@@ -24,6 +24,7 @@ The dev environment lives inside Medvya's dev resource group `rg-medvya-dev-in` 
 | Subnet                     | `snet-aivera-dev` (10.20.5.0/27) in Medvya's VNet | AIV-P0-004 | Delegated to `Microsoft.App/environments`; declared as its own child resource, so the PUT touches only this subnet                                                                                                   |
 | Container Apps environment | `cae-aivera-dev`                                  | AIV-P0-004 | External, consumption only, on `snet-aivera-dev`; logs to Medvya's workspace. Reaches PostgreSQL privately: the private DNS zone `medvya-dev-3afs7i.private.postgres.database.azure.com` is linked to the whole VNet |
 | Container Apps job         | `job-aivera-migrate-dev`                          | AIV-P0-004 | In `cae-aivera-dev`. Manual trigger; runs `pnpm db:migrate` as `aivera_migrator` from inside the VNet                                                                                                                |
+| Container App (web)        | `ca-aivera-web-dev`                               | AIV-P0-005 | In `cae-aivera-dev`. Consumption, 0.5 vCPU / 1 GiB, min 0 / max 1 replicas, single revision, external HTTPS ingress. Probes `/api/health` and `/api/ready`. Secrets are Key Vault references                         |
 
 Every Aivera resource is tagged `product=aivera`, `env=dev`, `data=synthetic`.
 
@@ -31,17 +32,26 @@ Every Aivera resource is tagged `product=aivera`, `env=dev`, `data=synthetic`.
 
 **Two identities rather than one:** PostgreSQL maps one Entra identity to one role, and the server has password sign-in off. With one identity the web app could sign in as the migrator, run DDL and switch row-level security off (AGENTS.md 1.4). The CI/CD identity also carries the GitHub federated credential, so a compromised web app cannot deploy.
 
+### Web: what is not here, and why
+
+- **No worker app yet.** `apps/worker` does not exist; the ticket that creates it adds `ca-aivera-worker-dev` (no ingress, min 0) beside the web app.
+- **Public, without sign-in.** The default address `https://ca-aivera-web-dev.<cae-aivera-dev domain>` is public over HTTPS only. There is no authentication until AIV-P0-009/010; the recruiter app's development stand-in member exists only under `next dev`, so `/app` returns 404 in the deployed (production) build. Dev holds synthetic data only.
+- shortcut: no Front Door, no custom domain and no portfolio subdomains in dev; they come with the launch epic AIV-P5-E03 (#34).
+
 ## Monthly cost (dev, Central India, list prices November 2026)
 
-| Resource                   | Tier                          | Estimate | Why                                                                        |
-| -------------------------- | ----------------------------- | -------- | -------------------------------------------------------------------------- |
-| Managed identities (2)     | —                             | $0       | Free                                                                       |
-| Key Vault                  | Standard, pay per operation   | < $0.05  | $0.03 per 10,000 operations                                                |
-| Application Insights       | Workspace-based               | $0       | Ingestion counts against the shared workspace's 1 GB/day cap and free 5 GB |
-| PostgreSQL database        | On the shared B1ms server     | $0       | No new server; storage grows by megabytes of synthetic data                |
-| Container Apps environment | Consumption only              | $0       | No charge for a consumption-only environment; apps and jobs pay per use    |
-| Subnet                     | —                             | $0       | Free                                                                       |
-| Migration job              | Consumption, 0.5 vCPU / 1 GiB | $0       | Under a minute per deploy, inside the monthly free grant                   |
+| Resource                   | Tier                          | Estimate               | Why                                                                                                                                                                               |
+| -------------------------- | ----------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed identities (2)     | —                             | $0                     | Free                                                                                                                                                                              |
+| Key Vault                  | Standard, pay per operation   | < $0.05                | $0.03 per 10,000 operations                                                                                                                                                       |
+| Application Insights       | Workspace-based               | $0                     | Ingestion counts against the shared workspace's 1 GB/day cap and free 5 GB                                                                                                        |
+| PostgreSQL database        | On the shared B1ms server     | $0                     | No new server; storage grows by megabytes of synthetic data                                                                                                                       |
+| Container Apps environment | Consumption only              | $0                     | No charge for a consumption-only environment; apps and jobs pay per use                                                                                                           |
+| Subnet                     | —                             | $0                     | Free                                                                                                                                                                              |
+| Migration job              | Consumption, 0.5 vCPU / 1 GiB | $0                     | Under a minute per deploy, inside the monthly free grant                                                                                                                          |
+| Web Container App          | Consumption, scale to zero    | $0                     | The subscription's monthly free grant (180,000 vCPU-s, 360,000 GiB-s, 2 million requests, shared with Medvya) covers about 100 active hours; beyond it about $0.000024 per vCPU-s |
+| Container images           | ghcr.io, public packages      | $0                     | Free for public packages; no Azure Container Registry                                                                                                                             |
+| **Total**                  |                               | **about $0–1 / month** | Above what Medvya dev already pays                                                                                                                                                |
 
 ## Apply (owner only)
 
