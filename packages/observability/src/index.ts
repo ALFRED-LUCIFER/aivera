@@ -23,6 +23,7 @@ export const log = pino(
     hooks: {
       // `msg` must stay a fixed template: `log.error(err)` would copy the error's message into it, and printf-style
       // arguments (`log.info('for %s', email)`) would be formatted into it. An error goes under `err`, extras are dropped.
+      // shortcut: a message built at run time (`log.info(`invited ${email}`)`) still passes; add a lint rule for a literal msg when the worker starts logging
       logMethod(args, method) {
         const [first] = args;
         if (first instanceof Error) return method.call(this, { err: first }, 'error');

@@ -83,10 +83,24 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(exportSpan(attributes as unknown as Record<string, string>)?.attributes).toEqual(attributes);
   });
 
+  // SAFETY: mutation check: allowed any value under an id key (dropped the OPAQUE test) -> this test failed
+  it.each([
+    ['enduser.id', 'sara.candidate@example.test'],
+    ['user.id', 'Sara Al Qahtani'],
+    ['candidate.githubId', 'sara-alq'],
+  ])('an id key %s with a non-opaque value is redacted', (field, value) => {
+    expect(exportSpan({ [field]: value })?.attributes[field]).toBe(REDACTED);
+  });
+
+  it('client addresses are dropped, so the exporter sends no placeholder as a location', () => {
+    const attributes = exportSpan({ 'client.address': '192.0.2.10', 'http.client_ip': '192.0.2.10' })?.attributes;
+    expect(attributes).not.toHaveProperty('client.address');
+    expect(attributes).not.toHaveProperty('http.client_ip');
+  });
+
   // SAFETY: mutation check: removed 'email' from the deny-list -> this test failed
   it.each([
     ['http.request.header.x-candidate-email', 'sara.candidate@example.test'],
-    ['http.client_ip', '192.0.2.10'],
     ['drizzle.query.params', '["sara.candidate@example.test"]'],
     ['messaging.message.body', 'Hi Sara'],
   ])('a deny-listed word redacts %s even under an allowed prefix', (field, value) => {
@@ -109,6 +123,7 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(exportSpan({ [key]: '784-0000-0000000-0' })?.attributes[key]).toBe('784-0000-0000000-0');
     registerPersonalDataKeys(['national_id']);
     expect(exportSpan({ [key]: '784-0000-0000000-0' })?.attributes[key]).toBe(REDACTED);
+    // shortcut: the registered key stays for the rest of this file's tests; harmless, as no later test uses it
   });
 });
 

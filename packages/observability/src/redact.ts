@@ -42,10 +42,16 @@ const ALLOWED = [
   'err.stack',
 ];
 
-// Opaque ids are allowed: `workspace.id`, `job_id`, `jobId`, `trace_id`.
+// Id keys (`workspace.id`, `job_id`, `jobId`, `trace_id`) keep only opaque values: hex and dashes, as UUIDv7 and trace
+// ids are. `enduser.id: <an email>` or a GitHub handle under `githubId` is redacted.
 const isId = (key: string) => /(^|[._])id$|[a-z0-9]Id$/.test(key);
+const OPAQUE = /^[0-9a-f][0-9a-f-]{3,}$/i;
 const isAllowed = (key: string) =>
-  isId(key) || ALLOWED.some((entry) => key === entry || (entry.endsWith('.') && key.startsWith(entry)));
+  ALLOWED.some((entry) => key === entry || (entry.endsWith('.') && key.startsWith(entry)));
+
+// Dropped, not replaced: the exporter builds URLs and the client location from these, and a placeholder would show
+// up there (`ai.location.ip = "[redacted]"`, `?[redacted]` on a request URL).
+const DROPPED = new Set(['url.query', 'client.address', 'http.client_ip', 'network.peer.address', 'net.peer.ip']);
 
 // Words that redact a key even when the allowlist covers it (`http.request.header.cookie`, `http.client_ip`,
 // `next.span_name`). Over-redacting costs a little debugging; under-redacting leaks a candidate.
@@ -111,7 +117,9 @@ function scrub(path: string, value: unknown): unknown {
     redact(value as Record<string, unknown>, path);
     return value;
   }
-  if (isPersonalDataKey(path) || !isAllowed(path)) return REDACTED;
+  if (isPersonalDataKey(path)) return REDACTED;
+  if (isId(path)) return typeof value === 'string' && OPAQUE.test(value) ? value : REDACTED;
+  if (!isAllowed(path)) return REDACTED;
   if (typeof value !== 'string') return value;
   return words(path).some((word) => word === 'stack' || word === 'stacktrace') ? frames(value) : stripQuery(value);
 }
@@ -120,8 +128,7 @@ function scrub(path: string, value: unknown): unknown {
 export function redact(record: Record<string, unknown>, parent = ''): void {
   for (const [key, value] of Object.entries(record)) {
     const path = parent ? `${parent}.${key}` : key;
-    // The exporter rebuilds a request URL from `url.path` + `url.query`; a redacted placeholder would still be appended.
-    if (path === 'url.query') delete record[key];
+    if (DROPPED.has(path)) delete record[key];
     else record[key] = scrub(path, value);
   }
 }

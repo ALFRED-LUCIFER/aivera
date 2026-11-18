@@ -27,20 +27,23 @@ describe('logger and spans share one correlation id', () => {
   it('a log line inside a span carries its trace id, the workspace id, and no personal data', async () => {
     const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     await withSpan('action approveRubric', async () => {
-      annotateSpan({ 'workspace.id': 'ws-1' });
-      log.info({ 'workspace.id': 'ws-1', email: 'sara.candidate@example.test' }, 'rubric approved');
+      annotateSpan({ 'workspace.id': '0190d4a2-0000-7000-8000-000000000001' });
+      log.info(
+        { 'workspace.id': '0190d4a2-0000-7000-8000-000000000001', email: 'sara.candidate@example.test' },
+        'rubric approved',
+      );
     });
     const written = stdout.mock.calls.map(([chunk]) => String(chunk));
     stdout.mockRestore();
 
     const [span] = spans.getFinishedSpans();
     expect(span?.name).toBe('action approveRubric');
-    expect(span?.attributes['workspace.id']).toBe('ws-1');
+    expect(span?.attributes['workspace.id']).toBe('0190d4a2-0000-7000-8000-000000000001');
 
     const line = JSON.parse(written[0] ?? '') as Record<string, unknown>;
     expect(line).toMatchObject({
       msg: 'rubric approved',
-      'workspace.id': 'ws-1',
+      'workspace.id': '0190d4a2-0000-7000-8000-000000000001',
       trace_id: span?.spanContext().traceId,
     });
     expect(JSON.stringify(line)).not.toMatch(/example\.test/);
@@ -49,7 +52,10 @@ describe('logger and spans share one correlation id', () => {
     expect(record?.spanContext?.traceId).toBe(span?.spanContext().traceId);
     expect(record?.severityText).toBe('info');
     expect(record?.severityNumber).toBe(9);
-    expect(record?.attributes).toMatchObject({ 'workspace.id': 'ws-1', email: '[redacted]' });
+    expect(record?.attributes).toMatchObject({
+      'workspace.id': '0190d4a2-0000-7000-8000-000000000001',
+      email: '[redacted]',
+    });
   });
 });
 
