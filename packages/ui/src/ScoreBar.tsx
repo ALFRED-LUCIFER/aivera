@@ -14,12 +14,12 @@ function refuse(component: string, unavailableLabel: string) {
 /** Percentages of the track. The need mark is an upright tick; see styles.css for the forced-colours fallback. */
 function Track({ solid, upTo, mark }: { solid: number; upTo: number; mark?: number }) {
   return (
-    <span className="relative block h-2.5 min-w-22 flex-1 rounded-full bg-surface-subtle inset-ring inset-ring-border">
+    <span className="score-track relative block h-2.5 min-w-22 flex-1 rounded-full bg-surface-subtle inset-ring inset-ring-border">
       <span className="score-solid absolute inset-y-0 start-0 rounded-full" style={{ width: `${solid}%` }} />
       {upTo > solid && (
         <span
           data-part="claimed"
-          className="score-hatch absolute inset-y-0 rounded-e-full"
+          className={cx('score-hatch absolute inset-y-0 rounded-e-full', solid === 0 && 'rounded-s-full')}
           style={{ insetInlineStart: `${solid}%`, width: `${upTo - solid}%` }}
         />
       )}
@@ -39,9 +39,11 @@ export type ScoreWithUncertaintyProps = {
   backed: number;
   /** The ceiling if every open claim holds, backed to 100. */
   upTo: number;
-  /** "62 backed by evidence", from i18n. */
+  /** No open claims: "72 backed by evidence", from i18n. */
   backedLabel: (backed: number) => string;
-  /** "up to 78 if claims hold in interview" (compact: "up to 84 if claims hold"), from i18n. */
+  /** Open claims: "62 backed by evidence · up to 78 if claims hold in interview" (compact: "… if claims hold"). */
+  captionLabel: (backed: number, upTo: number) => string;
+  /** Compact visible text: "up to 84 if claims hold", from i18n. */
   upToLabel: (upTo: number) => string;
   /** "Score unavailable", shown in production when the values are inconsistent. */
   unavailableLabel: string;
@@ -53,6 +55,7 @@ export function ScoreWithUncertainty({
   backed,
   upTo,
   backedLabel,
+  captionLabel,
   upToLabel,
   unavailableLabel,
   compact,
@@ -60,12 +63,12 @@ export function ScoreWithUncertainty({
   // Written so NaN fails too.
   if (!(backed >= 0 && backed <= upTo && upTo <= 100)) return refuse('ScoreWithUncertainty', unavailableLabel);
   const open = upTo > backed;
-  // The middle dot is DESIGN.md's list separator in every language Aivera ships.
-  const caption = open ? `${backedLabel(backed)} · ${upToLabel(upTo)}` : backedLabel(backed);
+  const caption = open ? captionLabel(backed, upTo) : backedLabel(backed);
   return (
     // role="img" makes the children presentational, so the caption is read once, as the accessible name.
     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a CSS-drawn bar, not an image file; ARIA img names it
     <span role="img" aria-label={caption} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body">
+      {/* shortcut: Latin digits from the number itself; format through a label when Arabic ships (AIV-P5-007). */}
       {compact && <span className="font-semibold text-text tabular-nums">{backed}</span>}
       <Track solid={backed} upTo={upTo} />
       {compact ? (
@@ -80,6 +83,8 @@ export function ScoreWithUncertainty({
 /** Rubric levels run 0 to 5. */
 const LEVELS = 5;
 
+export type NeedLevels = { proven: number; claimed: number; needed: number; levels: number };
+
 export type NeedVsProvenBarProps = {
   /** The competency, e.g. "Cost and reliability". */
   name: string;
@@ -90,9 +95,9 @@ export type NeedVsProvenBarProps = {
   /** Level the job needs, from the rubric. */
   needed: number;
   /** "Proven 1 of 5 · job needs 2", from i18n. */
-  levelLabel: (proven: number, levels: number, needed: number) => string;
+  levelLabel: (v: NeedLevels) => string;
   /** Text equivalent of the bar: "Proven 1 of 5, claimed 4, the job needs 2", from i18n. */
-  barLabel: (proven: number, claimed: number, needed: number, levels: number) => string;
+  barLabel: (v: NeedLevels) => string;
   aboveLabel: string;
   meetsLabel: string;
   /** "1 short, claimed" when claims reach the need, "1 short" when they do not, from i18n. */
@@ -131,18 +136,17 @@ export function NeedVsProvenBar(p: NeedVsProvenBarProps) {
           ? { ok: false, icon: clock, label: p.shortLabel(short, true) }
           : { ok: false, icon: gap, label: p.shortLabel(short, false) };
   const pct = (n: number) => (n / LEVELS) * 100;
+  const levels = { proven, claimed, needed, levels: LEVELS };
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 py-3 text-body">
       <span className="min-w-0 flex-1 basis-40 font-medium text-text">
         {p.name}
-        <span className="block text-meta font-normal text-text-2 tabular-nums">
-          {p.levelLabel(proven, LEVELS, needed)}
-        </span>
+        <span className="block text-meta font-normal text-text-2 tabular-nums">{p.levelLabel(levels)}</span>
       </span>
       <span
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a CSS-drawn bar, not an image file; ARIA img names it
         role="img"
-        aria-label={p.barLabel(proven, claimed, needed, LEVELS)}
+        aria-label={p.barLabel(levels)}
         className="flex min-w-22 flex-1 basis-22"
       >
         <Track solid={pct(proven)} upTo={pct(claimed)} mark={pct(needed)} />

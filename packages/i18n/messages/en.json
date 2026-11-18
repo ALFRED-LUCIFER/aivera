@@ -27,13 +27,15 @@
     "backed": "{backed} backed by evidence",
     "upTo": "up to {upTo} if claims hold in interview",
     "upToCompact": "up to {upTo} if claims hold",
+    "backedUpTo": "{backed} backed by evidence · up to {upTo} if claims hold in interview",
+    "backedUpToCompact": "{backed} backed by evidence · up to {upTo} if claims hold",
     "unavailable": "Score unavailable",
     "level": "Proven {proven} of {levels} · job needs {needed}",
     "levelBar": "Proven {proven} of {levels}, claimed {claimed}, the job needs {needed}",
     "aboveNeed": "Above the need",
     "meetsNeed": "Meets the need",
-    "short": "{short} short",
-    "shortClaimed": "{short} short, claimed"
+    "short": "{short, plural, other {# short}}",
+    "shortClaimed": "{short, plural, other {# short, claimed}}"
   },
   "competency": {
     "weight": "Weight {weight}",

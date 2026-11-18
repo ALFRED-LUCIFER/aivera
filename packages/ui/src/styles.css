@@ -84,7 +84,13 @@
 
 /* AIV-P0-023 score bar (Foundations artboard .score/.hatch). The claim range is a stripe pattern, not a colour, so it
    stays distinct from the solid fill in greyscale and the dark theme. Forced colours drop author backgrounds,
-   gradients and shadows, so both parts opt out and redraw in system colours. */
+   gradients and shadows, so both parts opt out and redraw in system colours, and the track gets a real outline so the
+   empty part up to 100 stays visible. */
+@utility score-track {
+  @media (forced-colors: active) {
+    outline: 1px solid CanvasText;
+  }
+}
 @utility score-solid {
   background: var(--text);
   @media (forced-colors: active) {

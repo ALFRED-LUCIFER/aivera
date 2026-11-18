@@ -9,6 +9,8 @@ export type CompetencyRowProps = {
   strength: Strength;
   /** "Medium", from i18n. */
   strengthLabel: string;
+  /** "Counts as zero" next to a claim-only strength (AGENTS.md 1.6), from i18n. */
+  countsAsZeroLabel?: string;
   provenance: Provenance;
   /** "Claim awaiting validation", from i18n. */
   provenanceLabel: string;
@@ -26,7 +28,11 @@ export function CompetencyRow(p: CompetencyRowProps) {
         <div className="font-semibold text-text">{p.name}</div>
         <div className="text-meta text-text-2">{p.weightLabel}</div>
       </div>
-      <StrengthMeter strength={p.strength} label={p.strengthLabel} />
+      <StrengthMeter
+        strength={p.strength}
+        label={p.strengthLabel}
+        {...(p.countsAsZeroLabel !== undefined && { countsAsZeroLabel: p.countsAsZeroLabel })}
+      />
       <ProvenanceTag provenance={p.provenance} label={p.provenanceLabel} />
       <a
         href={p.sourcesHref}

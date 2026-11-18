@@ -2,13 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { contrast, resolveColour, stylesCss, tokens, type Theme } from '../test/theme.ts';
 import { CompetencyRow } from './CompetencyRow.tsx';
-import { NeedVsProvenBar, ScoreWithUncertainty } from './ScoreBar.tsx';
+import { NeedVsProvenBar, ScoreWithUncertainty, type NeedLevels } from './ScoreBar.tsx';
 
 const themes: Theme[] = ['light', 'dark'];
 const classesOf = (el: Element) => (el.getAttribute('class') ?? '').split(' ');
 
 const scoreLabels = {
   backedLabel: (n: number) => `${n} backed by evidence`,
+  captionLabel: (b: number, u: number) => `${b} backed by evidence · up to ${u} if claims hold in interview`,
   upToLabel: (n: number) => `up to ${n} if claims hold in interview`,
   unavailableLabel: 'Score unavailable',
 };
@@ -41,6 +42,7 @@ describe('Scenario: Backed score with a claim range', () => {
       <ScoreWithUncertainty
         {...scoreLabels}
         upToLabel={(n) => `up to ${n} if claims hold`}
+        captionLabel={(b, u) => `${b} backed by evidence · up to ${u} if claims hold`}
         backed={68}
         upTo={84}
         compact
@@ -63,6 +65,18 @@ describe('Scenario: No open claims', () => {
   it('compact: just the number', () => {
     const { container } = renderScore(72, 72, true);
     expect(container.textContent).toBe('72');
+  });
+
+  // SAFETY: mutation check: removed solid === 0 && 'rounded-s-full' -> this test failed
+  it('a hatch from 0 rounds its start corner too, so it sits inside the track', () => {
+    const { container } = renderScore(0, 40);
+    expect(classesOf(part(container, 'claimed') as Element)).toEqual(
+      expect.arrayContaining(['rounded-s-full', 'rounded-e-full']),
+    );
+    renderScore(10, 40);
+    expect(classesOf(container.ownerDocument.querySelectorAll('[data-part="claimed"]')[1] as Element)).not.toContain(
+      'rounded-s-full',
+    );
   });
 
   it.each([
@@ -116,8 +130,8 @@ describe('Scenario: Invalid input is refused', () => {
 });
 
 const needLabels = {
-  levelLabel: (p: number, of: number, n: number) => `Proven ${p} of ${of} · job needs ${n}`,
-  barLabel: (p: number, c: number, n: number, of: number) => `Proven ${p} of ${of}, claimed ${c}, the job needs ${n}`,
+  levelLabel: (v: NeedLevels) => `Proven ${v.proven} of ${v.levels} · job needs ${v.needed}`,
+  barLabel: (v: NeedLevels) => `Proven ${v.proven} of ${v.levels}, claimed ${v.claimed}, the job needs ${v.needed}`,
   aboveLabel: 'Above the need',
   meetsLabel: 'Meets the need',
   shortLabel: (n: number, claimed: boolean) => `${n} short${claimed ? ', claimed' : ''}`,
@@ -193,6 +207,24 @@ describe('Scenario: Competency row', () => {
     expect(classesOf(link)).toEqual(expect.arrayContaining(['min-h-10', 'pointer-coarse:min-h-11']));
     expect(container.querySelectorAll('[aria-hidden="true"] > span')).toHaveLength(3); // the shared StrengthMeter
   });
+
+  // SAFETY: mutation check: dropped the countsAsZeroLabel pass-through -> this test failed
+  it('a claim-only row says it counts as zero (AGENTS.md 1.6)', () => {
+    render(
+      <CompetencyRow
+        name="Arabic and bilingual NLP"
+        weightLabel="Weight 10%"
+        strength="claim"
+        strengthLabel="Claim only"
+        countsAsZeroLabel="Counts as zero"
+        provenance="claim"
+        provenanceLabel="Claim awaiting validation"
+        sourcesLabel="1 source"
+        sourcesHref="#sources"
+      />,
+    );
+    expect(screen.getByText('Counts as zero')).toBeTruthy();
+  });
 });
 
 /** The body of an `@utility` block in styles.css, nested media query included. */
@@ -213,6 +245,16 @@ describe('Scenario: Hatching is visible in dark theme and in forced colours', ()
     expect(forced).toContain('forced-color-adjust: none');
     expect(forced).toContain('CanvasText');
     if (name === 'score-hatch') expect(forced).toContain('repeating-linear-gradient(135deg, CanvasText 0 2px, Canvas');
+  });
+
+  // Forced colours turn the track's ground into Canvas and drop its inset ring; without an outline the empty part up
+  // to 100 vanishes and 62 of 100 reads as a full bar.
+  // SAFETY: mutation check: removed the score-track forced-colors outline -> this test failed
+  it('the track keeps a CanvasText outline under forced colours, so the scale to 100 stays visible', () => {
+    const forced = /@media \(forced-colors: active\) \{([\s\S]*?)\}/.exec(utility('score-track'))?.[1] ?? '';
+    expect(forced).toContain('outline: 1px solid CanvasText');
+    const { container } = renderScore(62, 78);
+    expect(container.querySelector('.score-track')).not.toBeNull();
   });
 
   // SAFETY: mutation check: score-hatch var(--text) -> var(--border-strong) -> both rows failed
