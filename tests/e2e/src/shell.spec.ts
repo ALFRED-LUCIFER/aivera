@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { css, expectNoAxeViolations, themes } from './gallery.ts';
+import { css, expectNoAxeViolations, focusInDrawer, focusInView, themes } from './gallery.ts';
 
 // Browser checks handed over from AIV-P0-020 (#52, PR #220) on #57. `/app` renders only under `next dev`, as the
 // synthetic stand-in recruiter (devStandInMember), which is what the webServer runs.
@@ -69,5 +69,45 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`shell-desk-${theme}.png`);
+  });
+}
+
+// AIV-P0-920: from lg up the assistant drawer sits beside the page; "Ask Aivera" is top right, where the drawer is.
+for (const theme of themes) {
+  // mutation check: removed the onKeyDown edge handler in AssistantDrawer -> this test failed (Tab looped inside)
+  // mutation check: removed the open-drawer padding in styles.css -> this test failed (Ask Aivera under the drawer)
+  test(`the assistant drawer at 1280 px lets Tab leave for the page and come back (${theme})`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    await page.goto('/app');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const ask = page.getByRole('button', { name: 'Ask Aivera' });
+    await ask.click();
+    const drawer = page.getByRole('dialog', { name: 'Aivera assistant' });
+    const question = drawer.getByRole('textbox', { name: 'Ask about what is on this page' });
+    await expect(question).toBeFocused();
+    await expectNoAxeViolations(page);
+    await page.keyboard.press('Tab');
+    await expect(drawer.getByRole('button', { name: 'Ask', exact: true })).toBeFocused();
+    // Tab off the drawer's last control: out to the opener on the page, in view, and the drawer stays open.
+    await page.keyboard.press('Tab');
+    await expect(ask).toBeFocused();
+    expect(await focusInView(page)).toBe('visible');
+    await expect(drawer).toBeVisible();
+    // Tab carries on through the page, not back into the drawer.
+    await page.keyboard.press('Tab');
+    expect(await focusInDrawer(page)).toBe(false);
+    expect(await focusInView(page)).toBe('visible');
+    // The documented way back: Shift+Tab to "Ask Aivera" and press it.
+    await page.keyboard.press('Shift+Tab');
+    await expect(ask).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(question).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(ask).toBeFocused();
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { css, expectNoAxeViolations, openGallery, themes } from './gallery.ts';
+import { css, expectNoAxeViolations, focusInDrawer, focusInView, openGallery, themes } from './gallery.ts';
 
 // Browser-only checks queued on #57 by the reviews of AIV-P0-022 (#207), AIV-P0-023 and AIV-P0-024 (#206).
 
@@ -41,31 +41,30 @@ for (const theme of themes) {
   });
 }
 
-// Depends on Radix looping focus inside the drawer; AIV-P0-920 (#224) makes it modal at this width instead.
-// mutation check: set the dialog focus scope's `loop: true` to false in @radix-ui/react-dialog -> this test failed
-test('the assistant drawer at 390 px does not hide focused page content (WCAG 2.4.11)', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openGallery(page, 'light');
-  await page.getByRole('button', { name: 'Ask Aivera' }).click();
-  await expect(page.getByRole('dialog', { name: 'Aivera assistant' })).toBeVisible();
-  await expectNoAxeViolations(page);
-  // The drawer covers the page at this width, so every Tab stop, both ways round, must be in view: Radix loops focus
-  // inside the drawer, which never lets keyboard focus land on page content underneath it.
-  const focusInView = () =>
-    page.evaluate(() => {
-      const focused = document.activeElement;
-      if (!focused || focused === document.body) return 'nothing focused';
-      const box = focused.getBoundingClientRect();
-      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return top && focused.contains(top) ? 'visible' : `hidden: ${focused.outerHTML.slice(0, 80)}`;
-    });
-  for (const key of ['Tab', 'Shift+Tab']) {
-    for (let i = 0; i < 8; i++) {
-      await page.keyboard.press(key);
-      expect(await focusInView()).toBe('visible');
+// AIV-P0-920: below lg the assistant drawer covers the page, so it is a modal there (1280 px: shell.spec.ts).
+for (const theme of themes) {
+  // mutation check: hard-coded modal={false} in AssistantDrawer -> this test failed (page not hidden)
+  test(`the assistant drawer at 390 px is modal while it covers the page (${theme})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openGallery(page, theme);
+    await page.getByRole('button', { name: 'Ask Aivera' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Aivera assistant' });
+    await expect(drawer).toBeVisible();
+    await expectNoAxeViolations(page);
+    // Hidden from assistive tech: the page behind is aria-hidden, so its buttons leave the accessibility tree.
+    await expect(page.getByRole('button', { name: 'Ask Aivera' })).toHaveCount(0);
+    for (const key of ['Tab', 'Shift+Tab']) {
+      for (let i = 0; i < 8; i++) {
+        await page.keyboard.press(key);
+        expect(await focusInDrawer(page)).toBe(true);
+        expect(await focusInView(page)).toBe('visible');
+      }
     }
-  }
-});
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Ask Aivera' })).toBeFocused();
+  });
+}
 
 // mutation check: removed `motion-reduce:transition-none` from AssistantDrawer -> this test failed
 test('reduced motion turns off the drawer and dialog transitions', async ({ page }) => {

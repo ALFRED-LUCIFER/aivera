@@ -355,6 +355,41 @@ describe('AssistantDrawer', () => {
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Ask about what is on this page' }));
   });
 
+  // SAFETY: mutation check: removed the onKeyDown edge handler -> this test failed (Tab looped to Close assistant)
+  it('Scenario: Desktop: Tab off either end of the drawer goes to the opener and the drawer stays open', async () => {
+    render(<Drawer />);
+    const trigger = screen.getByRole('button', { name: 'Ask Aivera' });
+    await userEvent.click(trigger);
+    await userEvent.tab(); // question field -> Ask, the drawer's last control
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ask' }));
+    await userEvent.tab();
+    expect(document.activeElement).toBe(trigger);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    screen.getByRole('button', { name: 'Close assistant' }).focus();
+    await userEvent.tab({ shift: true });
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  // SAFETY: mutation check: hard-coded modal={false} -> this test failed (page not hidden)
+  it('Scenario: Phone: the drawer is modal while it covers the page', async () => {
+    vi.stubGlobal('matchMedia', (media: string) => ({
+      matches: true,
+      media,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    try {
+      render(<Drawer />);
+      await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
+      expect(screen.getByText('Ranking for Senior AI Engineer').closest('[aria-hidden="true"]')).toBeTruthy();
+      await userEvent.tab(); // question field -> Ask
+      await userEvent.tab(); // trapped: back to the drawer's first control, never the opener
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close assistant' }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('sends the trimmed question and ignores an empty one', async () => {
     const onAsk = vi.fn();
     render(<Drawer onAsk={onAsk} />);
