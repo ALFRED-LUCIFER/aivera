@@ -5,6 +5,8 @@
 DO $$
 BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_public') THEN
+    -- Revoke first, so this file is the whole set: a column taken off the list loses its grant.
+    REVOKE ALL ON jobs.public_job FROM aivera_public;
     GRANT USAGE ON SCHEMA jobs TO aivera_public;
     GRANT SELECT (slug, title, job_type, descriptor, location, pay_min_minor, pay_max_minor, pay_currency,
       competencies, posted_at, open) ON jobs.public_job TO aivera_public;

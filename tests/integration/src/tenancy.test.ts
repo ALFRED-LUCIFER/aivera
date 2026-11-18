@@ -270,14 +270,16 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
 
   // The migrator too: a view or function it owns would otherwise read across workspaces.
   // SAFETY: mutation check: ALTER ROLE aivera_migrator BYPASSRLS -> this test failed
-  it('aivera_app and aivera_migrator are neither superuser nor BYPASSRLS', async () => {
+  // SAFETY: mutation check: ALTER ROLE aivera_public BYPASSRLS -> this test failed (aivera_app can switch to it)
+  it('aivera_app, aivera_migrator and aivera_public are neither superuser nor BYPASSRLS', async () => {
     const roles = await admin.execute<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
-      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator')
+      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator', 'aivera_public')
         order by rolname`,
     );
     expect([...roles]).toEqual([
       { rolname: 'aivera_app', rolsuper: false, rolbypassrls: false },
       { rolname: 'aivera_migrator', rolsuper: false, rolbypassrls: false },
+      { rolname: 'aivera_public', rolsuper: false, rolbypassrls: false },
     ]);
   });
 });

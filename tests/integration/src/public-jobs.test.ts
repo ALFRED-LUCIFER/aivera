@@ -135,7 +135,7 @@ describe('Feature: Public read model of published jobs', () => {
       payBand: { minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' },
       postedAt: NOW,
     });
-    expect(job?.slug).toMatch(/^senior-ai-engineer-[0-9a-f]{6}$/);
+    expect(job?.slug).toMatch(/^senior-ai-engineer-[0-9a-f]{12}$/);
     expect(job?.competencies).toHaveLength(6);
     expect(job?.competencies[0]).toEqual({
       name: 'LLM systems in production',
@@ -190,6 +190,36 @@ describe('Feature: Public read model of published jobs', () => {
     ])
       expect(await asPublicRole(query)).toBe('42501');
     expect(await asPublicRole(sql`select slug, title from jobs.public_job`)).toBe('none');
+  });
+
+  // Catalogue-wide, so a table any module adds later (assessment, intake) is covered without editing this test.
+  // SAFETY: mutation check: GRANT SELECT ON workspaces.client TO aivera_public -> this test failed (named the table)
+  it("aivera_public's only privileges are USAGE on jobs and SELECT on public_job's public columns", async () => {
+    const reach = await admin.execute<{ what: string }>(sql`
+      select 'table ' || n.nspname || '.' || c.relname as what
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname not in ('pg_catalog', 'information_schema')
+          and (has_table_privilege('aivera_public', c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+            or (has_any_column_privilege('aivera_public', c.oid, 'SELECT, INSERT, UPDATE, REFERENCES')
+              and c.oid <> 'jobs.public_job'::regclass))
+      union all
+      select 'sequence ' || n.nspname || '.' || c.relname
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        -- CASE: the planner may run the privilege check before the relkind filter, and it errors on a non-sequence.
+        where case when c.relkind = 'S' then has_sequence_privilege('aivera_public', c.oid, 'USAGE, SELECT, UPDATE') end
+      union all
+      select 'schema ' || nspname from pg_namespace
+        where nspname not in ('pg_catalog', 'information_schema', 'public') and nspname not like 'pg_%'
+          and has_schema_privilege('aivera_public', nspname, 'USAGE, CREATE') and nspname <> 'jobs'
+      union all
+      select 'column jobs.public_job.' || a.attname
+        from pg_attribute a
+        where a.attrelid = 'jobs.public_job'::regclass and a.attnum > 0 and not a.attisdropped
+          and has_column_privilege('aivera_public', 'jobs.public_job'::regclass, a.attnum, 'SELECT')
+          and a.attname in ('workspace_id', 'job_id')
+      order by 1`);
+    expect([...reach]).toEqual([]);
+    expect(await asPublicRole(sql`select slug from jobs.public_job`)).toBe('none');
   });
 
   it('the app role, in a workspace, still sees only its own workspace in the read model', async () => {

@@ -13,7 +13,10 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_app');
 -- No login and no identity. The migrator grants its columns on every migrate (modules/jobs grants.sql).
 SELECT 'CREATE ROLE aivera_public NOLOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aivera_public')
 \gexec
-GRANT aivera_public TO aivera_app;
+-- Guarded, so a rerun by another Entra admin (without ADMIN on aivera_public) does not stop the script here.
+SELECT 'GRANT aivera_public TO aivera_app WITH INHERIT FALSE, SET TRUE'
+WHERE NOT pg_has_role('aivera_app', 'aivera_public', 'MEMBER')
+\gexec
 
 -- Isolation from Medvya: only Aivera's roles may connect to the aivera database.
 REVOKE ALL ON DATABASE aivera FROM PUBLIC;

@@ -22,8 +22,8 @@ export type {
   RubricVersion,
 } from '../domain/job.ts';
 export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
-export { publicJobJson, SLUG, toPublicJobJson } from '../domain/public-job.ts';
-export type { PublicJob, PublicJobJson, PublicJobLookup } from '../domain/public-job.ts';
+export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
+export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 /**
  * Emitted when a hiring owner approves a rubric version. Opaque ids only (AGENTS.md 3.1).

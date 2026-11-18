@@ -28,7 +28,10 @@ export async function migrateModules(migratorUrl: string, modules: MigratableMod
       // A module's grants to roles made outside migrations (the public role, AIV-P3-002), re-applied on every run so
       // a role created after the migration still gets them. The file is idempotent.
       const grants = join(module.dir, 'src', 'infrastructure', 'grants.sql');
-      if (existsSync(grants)) await db.execute(sql.raw(readFileSync(grants, 'utf8')));
+      if (existsSync(grants))
+        await db.execute(sql.raw(readFileSync(grants, 'utf8'))).catch((error: unknown) => {
+          throw new Error(`Grants failed for module ${module.name}.`, { cause: error });
+        });
     }
     // The default privileges above also reach the migrator's journal: the app must never edit what was applied.
     await db.execute(sql`REVOKE ALL ON ALL TABLES IN SCHEMA migrations FROM aivera_app`);

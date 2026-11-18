@@ -100,7 +100,12 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
     return job;
   }
 
-  /** Writes the published job's public listing from its approved rubric, in the same transaction (AIV-P3-002). */
+  /**
+   * Writes the published job's public listing from its approved rubric, in the same transaction (AIV-P3-002).
+   * shortcut: a job published before AIV-P3-002 has no listing until it is published again or its next rubric version
+   * is approved (no publish screen existed, so none is expected); a migration cannot backfill, as FORCE RLS hides
+   * every workspace's jobs from the migrator.
+   */
   async function writePublicJob(
     ctx: WorkspaceContext,
     job: Job,
@@ -110,8 +115,9 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
   ) {
     const store = storeFor(ctx.tx);
     const listing = toPublicListing({ ...job, publicDescriptor }, await store.competencies(ctx.workspaceId, versionId));
-    // The random tail of a fresh UUIDv7 (its head is a timestamp), so the slug says nothing about the job's id.
-    const slug = slugFor(job.title, newId().slice(-6));
+    // The last 48 random bits of a fresh UUIDv7 (its head is a timestamp): unique across every workspace's same-titled
+    // jobs in practice, and says nothing about the job's id. Ignored when the job already has a listing.
+    const slug = slugFor(job.title, newId().slice(-12));
     await store.upsertPublicJob({
       jobId: job.id,
       workspaceId: ctx.workspaceId,

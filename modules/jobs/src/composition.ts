@@ -31,8 +31,9 @@ export function createJobs(
 
 /**
  * The candidate site's reads on the app's pool, with no workspace. Each call is its own transaction switched to
- * aivera_public (SET LOCAL ROLE, undone at commit), which can read the public columns of jobs.public_job and nothing
- * else, so a bug in a public read cannot reach another table.
+ * aivera_public (SET LOCAL ROLE, undone at commit or rollback), which can read the public columns of jobs.public_job
+ * and nothing else, so a wrong query in a public read is refused. It does not stop injected SQL (RESET ROLE); all SQL
+ * here is parameterised (AGENTS.md 3.10).
  */
 export function createPublicJobs(db: Db): PublicJobsContract {
   const asPublic = <T>(read: (tx: Tx) => Promise<T>) =>

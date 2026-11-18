@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { JOB_TYPES } from './job-types.ts';
 import type { PublicListing } from './job.ts';
 
-export type PublicJob = PublicListing & {
+export type PublicJob = Omit<PublicListing, 'descriptor'> & {
+  /** Always set: a job is published only with one. */
+  descriptor: string;
   /** The public address, e.g. "senior-ai-engineer-3f9a1c"; never the internal id. */
   slug: string;
   postedAt: Date;
@@ -21,7 +23,7 @@ const SLUG_TITLE_MAX = 60;
 export const slugFor = (title: string, suffix: string): string => {
   const words = title
     .normalize('NFKD')
-    .replaceAll(/[̀-ͯ]/g, '')
+    .replaceAll(/\p{M}/gu, '')
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')
     .slice(0, SLUG_TITLE_MAX)
@@ -37,7 +39,7 @@ export const publicJobJson = z.strictObject({
   slug: z.string().regex(SLUG),
   title: z.string(),
   jobType: z.enum(JOB_TYPES),
-  descriptor: z.string().nullable(),
+  descriptor: z.string(),
   location: z.string().nullable(),
   payBand: z.strictObject({ minMinor: z.int(), maxMinor: z.int(), currency: z.string().length(3) }).nullable(),
   competencies: z.array(
