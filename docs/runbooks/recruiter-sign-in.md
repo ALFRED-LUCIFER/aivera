@@ -37,6 +37,8 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 | `AUTH_ENTRA_CLIENT_SECRET`                 | (secret)                               | Key Vault reference `entra-recruiter-client-secret`, app identity |
 | `AUTH_SECRET`                              | (secret: `openssl rand -base64 32`)    | Key Vault reference `auth-secret`, app identity                   |
 
+Azure dev also sets `AUTH_URL` to the app's public origin (built from the environment's default domain), read by Auth.js directly: the container listens on `0.0.0.0:3000`, and without it sign-in redirects go to `https://0.0.0.0:3000`. Locally it is not needed.
+
 The five are all or nothing: a partial set stops the app at start-up, naming only what is missing. `AUTH_ENTRA_ISSUER` exists only for the mocked provider of the end-to-end tests and is refused outside `APP_ENV=local`.
 
 ## Owner steps still open
