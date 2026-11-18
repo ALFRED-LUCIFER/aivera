@@ -30,7 +30,15 @@ const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
 const tenantExpr = (column: string) =>
   `(${column} = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid)`;
 
-type Table = { name: string; owner: string; rls: boolean; forced: boolean; hasWorkspaceId: boolean };
+type Table = {
+  name: string;
+  kind: string;
+  appOwns: boolean;
+  invoker: boolean;
+  rls: boolean;
+  forced: boolean;
+  hasWorkspaceId: boolean;
+};
 type Policy = {
   table: string;
   name: string;
@@ -41,20 +49,26 @@ type Policy = {
   check: string | null;
 };
 
-/** Every application table: all schemas except PostgreSQL's own and the migrations journals. */
+/**
+ * Every application relation (tables, views, materialized views, foreign tables): all schemas except PostgreSQL's
+ * own and the migrations journals.
+ */
 const listTables = async (db: Db | Tx) => [
   ...(await db.execute<Table>(sql`
-    select n.nspname || '.' || c.relname as name, pg_get_userbyid(c.relowner) as owner,
+    select n.nspname || '.' || c.relname as name, c.relkind::text as kind,
+      pg_has_role('aivera_app', c.relowner, 'MEMBER') as "appOwns",
+      coalesce('security_invoker=true' = any (c.reloptions), false) as invoker,
       c.relrowsecurity as rls, c.relforcerowsecurity as forced,
       exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'workspace_id' and not a.attisdropped)
         as "hasWorkspaceId"
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
-    where c.relkind in ('r', 'p') and n.nspname not in ('information_schema', 'migrations')
-      and n.nspname not like 'pg\_%'
+    where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname not in ('information_schema', 'migrations')
+      and n.nspname !~ '^pg_'
     order by name`)),
 ];
 
-const tenantTables = (tables: Table[]) => tables.filter((t) => !(t.name in GLOBAL_TABLES));
+const tenantTables = (tables: Table[]) =>
+  tables.filter((t) => ['r', 'p'].includes(t.kind) && !(t.name in GLOBAL_TABLES));
 const keyOf = (table: string) => TENANT_KEY[table] ?? 'workspace_id';
 
 /** Every way a table breaks workspace isolation, as "schema.table: reason". Empty when isolation holds. */
@@ -68,8 +82,17 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
   ];
   const violations: string[] = [];
   for (const t of tables) {
-    if (t.owner === 'aivera_app') violations.push(`${t.name}: owned by aivera_app, which bypasses its policies`);
+    if (t.appOwns) violations.push(`${t.name}: owned by aivera_app, which can switch its row-level security off`);
     if (t.name in GLOBAL_TABLES) continue;
+    // A view reads as its owner unless security_invoker is set; matviews and foreign tables have no RLS at all.
+    if (t.kind === 'v') {
+      if (!t.invoker) violations.push(`${t.name}: view without security_invoker=true bypasses row-level security`);
+      continue;
+    }
+    if (t.kind === 'm' || t.kind === 'f') {
+      violations.push(`${t.name}: materialized views and foreign tables have no row-level security`);
+      continue;
+    }
     if (!t.hasWorkspaceId && !(t.name in TENANT_KEY)) {
       violations.push(`${t.name}: no workspace_id column (add one, or list it in GLOBAL_TABLES with the reason)`);
       continue;
@@ -92,7 +115,7 @@ const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
-const MIRA = '0190d4a2-0000-7000-8000-00000000a1e2'; // W2's admin only
+const OMAR = '0190d4a2-0000-7000-8000-00000000a1e2'; // Omar Agency, W2's admin only
 const LINA = '0190d4a2-0000-7000-8000-0000000011aa';
 const NOW = new Date('2026-11-18T09:00:00.000Z');
 
@@ -157,7 +180,7 @@ beforeAll(async () => {
   app = createDb(urlFor('aivera_app'), { max: 1 });
   const modules = modulesOn(app);
   w1 = await seed(modules, 'Demo Hiring Co', ALEX, 'Sara Al Qahtani');
-  w2 = await seed(modules, 'Gulf Talent Partners', MIRA, 'Arjun Menon');
+  w2 = await seed(modules, 'Gulf Talent Partners', OMAR, 'Arjun Menon');
 });
 
 afterAll(async () => {
@@ -184,11 +207,16 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
     expect(names).toEqual(expect.arrayContaining(Object.keys(GLOBAL_TABLES)));
   });
 
-  it('aivera_app is neither superuser nor BYPASSRLS', async () => {
-    const [role] = await admin.execute<{ rolsuper: boolean; rolbypassrls: boolean }>(
-      sql`select rolsuper, rolbypassrls from pg_roles where rolname = 'aivera_app'`,
+  // The migrator too: a view or function it owns would otherwise read across workspaces.
+  it('aivera_app and aivera_migrator are neither superuser nor BYPASSRLS', async () => {
+    const roles = await admin.execute<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
+      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator')
+        order by rolname`,
     );
-    expect(role).toEqual({ rolsuper: false, rolbypassrls: false });
+    expect([...roles]).toEqual([
+      { rolname: 'aivera_app', rolsuper: false, rolbypassrls: false },
+      { rolname: 'aivera_migrator', rolsuper: false, rolbypassrls: false },
+    ]);
   });
 });
 
@@ -215,6 +243,22 @@ describe('Scenario: A new table without RLS fails the build', () => {
       await tx.execute(sql`create table candidates.note (id uuid primary key)`);
       expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidates.note:'))).toEqual([
         'candidates.note: no workspace_id column (add one, or list it in GLOBAL_TABLES with the reason)',
+      ]);
+      throw new Rollback();
+    });
+    await expect(probe).rejects.toBeInstanceOf(Rollback);
+  });
+
+  it('a materialized view, or a view without security_invoker, over a tenant table is named', async () => {
+    const probe = admin.transaction(async (tx) => {
+      await tx.execute(sql`create materialized view candidates.probe_mv as select * from candidates.person`);
+      await tx.execute(sql`create view candidates.probe_v as select * from candidates.person`);
+      await tx.execute(
+        sql`create view candidates.probe_ok with (security_invoker = true) as select * from candidates.person`,
+      );
+      expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidates.probe_'))).toEqual([
+        'candidates.probe_mv: materialized views and foreign tables have no row-level security',
+        'candidates.probe_v: view without security_invoker=true bypasses row-level security',
       ]);
       throw new Rollback();
     });
@@ -254,7 +298,7 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
         (result) => result.count,
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
-      expect([0, '42501'], name).toContain(updated);
+      expect(name === 'audit.entry' ? [0, '42501'] : [0], name).toContain(updated);
     }
   });
 });
@@ -308,7 +352,7 @@ describe("Scenario: Fetching another workspace's record by id finds nothing", ()
       new WorkspaceError('client_not_found'),
     );
     await as(m, ALEX, w1.workspaceId, (ctx) => m.workspaces.revokeJobAccess(ctx, w2.grantId));
-    const w2State = await as(m, MIRA, w2.workspaceId, async (ctx) => ({
+    const w2State = await as(m, OMAR, w2.workspaceId, async (ctx) => ({
       clients: await m.workspaces.listClients(ctx),
       grants: (await m.workspaces.listJobGrants(ctx)).map((g) => g.id),
     }));
@@ -320,8 +364,8 @@ describe("Scenario: Fetching another workspace's record by id finds nothing", ()
 
   it("W2's admin is not a member of W1 and cannot open it", async () => {
     const m = modulesOn(app);
-    expect(await m.workspaces.getMembership(MIRA, w1.workspaceId)).toBeNull();
-    await expect(as(m, MIRA, w1.workspaceId, async () => 'opened')).rejects.toThrow(ForbiddenError);
+    expect(await m.workspaces.getMembership(OMAR, w1.workspaceId)).toBeNull();
+    await expect(as(m, OMAR, w1.workspaceId, async () => 'opened')).rejects.toThrow(ForbiddenError);
   });
 });
 
