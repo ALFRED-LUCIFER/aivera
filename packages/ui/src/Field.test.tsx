@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
+import { contrast, resolveColour, type Theme } from '../test/theme.ts';
 import { Checkbox } from './Checkbox.tsx';
 import { Input, Label, Select, Textarea } from './Field.tsx';
 
@@ -41,6 +42,29 @@ describe('Input and Label', () => {
     render(<Input aria-label="Locked" disabled defaultValue="Fixed" />);
     await userEvent.type(screen.getByRole('textbox', { name: 'Locked' }), 'x');
     expect(screen.getByRole('textbox', { name: 'Locked' })).toHaveProperty('value', 'Fixed');
+  });
+});
+
+// Owner decision, 18 Nov 2026: form fields use --field-border, at least 3:1 (WCAG 1.4.11) against their fill and
+// every surface they sit on; other borders keep --border / --border-strong.
+// SAFETY: mutation check: field-border set to the border-strong values (#CFC8C0 / #4A4355) -> both themes failed
+describe('field border contrast', () => {
+  it.each<Theme>(['light', 'dark'])('Input, Textarea and Select borders reach 3:1 on every surface in %s', (theme) => {
+    render(
+      <>
+        <Input aria-label="Title" />
+        <Textarea aria-label="Reason" />
+        <Select aria-label="Stage">
+          <option>Round 1</option>
+        </Select>
+      </>,
+    );
+    for (const el of [...screen.getAllByRole('textbox'), screen.getByRole('combobox')])
+      expect(el.className.split(' ')).toContain('border-field-border');
+    const border = resolveColour('border-field-border', theme) ?? '';
+    for (const ground of ['bg-surface', 'bg-bg', 'bg-surface-subtle', 'bg-surface-raised']) {
+      expect(contrast(border, resolveColour(ground, theme) ?? '')).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 

@@ -3,9 +3,9 @@ import { cx } from './cx.ts';
 
 // Native elements keep the platform's keyboard, autofill and mobile pickers; tokens do the styling.
 // `className` on these controls is for layout (margin, width, grid placement), not for size, padding or colour.
-// shortcut: field border is 1.66:1 (WCAG 1.4.11 wants 3:1); token change pending owner decision
+// Fields use --field-border (>= 3:1, WCAG 1.4.11); other borders keep --border / --border-strong.
 const field =
-  'w-full rounded-control border border-border-strong bg-surface px-3 text-body text-text placeholder:text-text-3 ' +
+  'w-full rounded-control border border-field-border bg-surface px-3 text-body text-text placeholder:text-text-3 ' +
   'transition-colors duration-120 ease-case motion-reduce:transition-none hover:border-text-3 ' +
   'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-subtle disabled:text-text-3 ' +
   'aria-invalid:border-err-text';
