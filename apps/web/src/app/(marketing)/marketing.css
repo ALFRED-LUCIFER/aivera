@@ -107,6 +107,7 @@
   .mk-reveal {
     opacity: 1 !important;
     transform: none !important;
+    scale: none !important;
   }
 }
 @media (prefers-reduced-motion: no-preference) {

@@ -30,3 +30,17 @@ export function Reveal({ children, index = 0, as = 'div', className = '' }: Reve
     </Tag>
   );
 }
+
+/** An ink rule drawn from the start edge as it scrolls into view; drawn in full under reduced motion. */
+export function DrawnRule({ index = 0 }: { index?: number }) {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className="mk-reveal block h-0.5 origin-left bg-text rtl:origin-right"
+      initial={{ scaleX: 0 }}
+      whileInView={{ scaleX: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.72, delay: index * 0.12, ease: caseEase }}
+    />
+  );
+}
