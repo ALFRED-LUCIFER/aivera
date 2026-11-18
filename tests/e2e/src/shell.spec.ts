@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './auth.ts';
 import { css, expectNoAxeViolations, themes } from './gallery.ts';
 
 // Browser checks handed over from AIV-P0-020 (#52, PR #220) on #57. `/app` renders only under `next dev`, as the
-// synthetic stand-in recruiter (devStandInMember), which is what the webServer runs.
+// synthetic stand-in recruiter (devStandInMember), which is what the webServer runs, and needs a session (AIV-P0-009).
+test.beforeEach(({ page }) => signIn(page));
 
 const nav = (name: RegExp) => ({ name });
 

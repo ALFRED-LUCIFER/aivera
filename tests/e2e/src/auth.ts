@@ -1,0 +1,23 @@
+import { expect, type Page } from '@playwright/test';
+
+type SignInOptions = {
+  email?: string;
+  /** The sign-in page's button, e.g. "Continue with Google". */
+  button?: string;
+  /** Whether the mocked provider calls the email verified. */
+  verified?: boolean;
+  /** The sign-in page URL, e.g. one with `?next=`. */
+  from?: string;
+};
+
+/** Signs in through /sign-in and the mocked tenant (tests/e2e/mock-oidc.ts). Synthetic people only. */
+export async function signIn(page: Page, options: SignInOptions = {}) {
+  const { email = 'alex@example.com', button = 'Sign in', verified = true, from = '/sign-in' } = options;
+  // Stays on a sign-in page a redirect already opened, so its `next` is kept.
+  if (options.from || !page.url().includes('/sign-in')) await page.goto(from);
+  await page.getByRole('button', { name: button, exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  if (!verified) await page.getByLabel('Email verified').uncheck();
+  await page.getByRole('button', { name: 'Continue' }).click();
+}

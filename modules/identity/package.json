@@ -1,0 +1,25 @@
+{
+  "name": "@aivera/identity",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts/index.ts",
+    "./composition": "./src/composition.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aivera/db": "workspace:*",
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

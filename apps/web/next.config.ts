@@ -11,7 +11,7 @@ const config: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
   // Workspace packages ship TypeScript source (ADR-002).
-  transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n', '@aivera/db'],
+  transpilePackages: ['@aivera/ui', '@aivera/tokens', '@aivera/i18n', '@aivera/db', '@aivera/identity'],
   // The container image runs the standalone server; trace from the repo root so workspace packages are included.
   output: 'standalone',
   outputFileTracingRoot: join(import.meta.dirname, '..', '..'),

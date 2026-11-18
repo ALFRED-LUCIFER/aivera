@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Not 3000: that is the owner's local preview. `next dev` because the gallery (and the shell's signed-in stand-in) exist
 // only when NODE_ENV=development.
 const port = 3200;
+const oidcPort = 3299;
+const oidc = `http://localhost:${oidcPort}`;
 const ci = Boolean(process.env['CI']);
 
 export default defineConfig({
@@ -16,13 +18,31 @@ export default defineConfig({
   expect: { toHaveScreenshot: { animations: 'disabled', stylePath: './hide-dev-overlay.css' } },
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
   projects: [{ name: 'gallery', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: `pnpm --filter web exec next dev --port ${port}`,
-    url: `http://localhost:${port}/dev/gallery`,
-    // Never reuse: a server on this port may belong to another worktree's code.
-    reuseExistingServer: false,
-    timeout: 180_000,
-    // The server refuses to start without valid config (AIV-P0-007); the gallery never opens the database pool.
-    env: { APP_ENV: 'local', DATABASE_URL: 'postgres://aivera_app:local_dev_only@localhost:5432/aivera' },
-  },
+  webServer: [
+    {
+      // Stands in for the Entra External ID tenant (AIV-P0-009).
+      command: `node mock-oidc.ts`,
+      url: `${oidc}/.well-known/openid-configuration`,
+      reuseExistingServer: false,
+      env: { MOCK_OIDC_PORT: String(oidcPort) },
+    },
+    {
+      command: `pnpm --filter web exec next dev --port ${port}`,
+      url: `http://localhost:${port}/dev/gallery`,
+      // Never reuse: a server on this port may belong to another worktree's code.
+      reuseExistingServer: false,
+      timeout: 180_000,
+      // The server refuses to start without valid config (AIV-P0-007). Sign-in writes identity.user, so a migrated
+      // database must be running (docker compose locally, a service container in CI).
+      env: {
+        APP_ENV: 'local',
+        DATABASE_URL: process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera',
+        // Test-only values for the mocked provider; they open nothing anywhere else.
+        AUTH_SECRET: 'e2e-only-not-a-secret-e2e-only-not-a-secret',
+        AUTH_ENTRA_ISSUER: oidc,
+        AUTH_ENTRA_CLIENT_ID: 'aivera-e2e',
+        AUTH_ENTRA_CLIENT_SECRET: 'e2e-only',
+      },
+    },
+  ],
 });

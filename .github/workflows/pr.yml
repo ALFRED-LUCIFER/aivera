@@ -54,6 +54,17 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
       options: --ipc=host
+    # Sign-in writes identity.user (AIV-P0-009), so the dev server needs a migrated database.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: aivera
+          POSTGRES_PASSWORD: local_dev_only
+          POSTGRES_DB: aivera
+        options: --health-cmd "pg_isready -U aivera -d aivera" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      E2E_DATABASE_URL: postgres://aivera_app:local_dev_only@postgres:5432/aivera
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -63,6 +74,15 @@ jobs:
           cache: pnpm
       # No build scripts: the image has no git for the lefthook hook install, and next dev needs no native builds.
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      # The local-only roles (packages/db/sql/roles.sql), then every module's migrations, as in local development.
+      - name: database
+        working-directory: packages/db
+        run: |
+          node --input-type=module -e "import postgres from 'postgres'; import { readFileSync } from 'node:fs'; const sql = postgres(process.env.ADMIN_URL); await sql.unsafe(readFileSync('sql/roles.sql', 'utf8')); await sql.end();"
+          node src/cli.ts migrate
+        env:
+          ADMIN_URL: postgres://aivera:local_dev_only@postgres:5432/aivera
+          DATABASE_MIGRATOR_URL: postgres://aivera_migrator:local_dev_only@postgres:5432/aivera
       - run: pnpm e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
