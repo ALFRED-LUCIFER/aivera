@@ -6,7 +6,7 @@ import { entry } from './schema.ts';
 
 type Row = typeof entry.$inferSelect;
 
-const toEntry = ({ actorType, actorId, subjectType, subjectId, ...rest }: Row): AuditEntry => ({
+const toEntry = ({ actorType, actorId, subjectType, subjectId, seq: _seq, ...rest }: Row): AuditEntry => ({
   ...rest,
   // entry_actor_id_check guarantees actor_id is set for every actor but system.
   actor: (actorType === 'system' ? { type: 'system' } : { type: actorType, id: actorId }) as Actor,
@@ -35,7 +35,7 @@ export function auditStore(tx: Tx): AuditStore {
         .where(
           and(eq(entry.workspaceId, workspaceId), eq(entry.subjectType, subject.type), eq(entry.subjectId, subject.id)),
         )
-        .orderBy(asc(entry.occurredAt), asc(entry.id));
+        .orderBy(asc(entry.occurredAt), asc(entry.seq));
       return rows.map(toEntry);
     },
   };

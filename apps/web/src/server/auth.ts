@@ -1,6 +1,6 @@
 import { IdentityError, type IdentityContract } from '@aivera/identity';
 import { createIdentity } from '@aivera/identity/composition';
-import NextAuth, { customFetch, type NextAuthConfig } from 'next-auth';
+import NextAuth, { customFetch, type AuthError, type NextAuthConfig } from 'next-auth';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { signInPath } from '@/features/sign-in/domain/signIn.ts';
@@ -37,6 +37,48 @@ export const getIdentity = (): IdentityContract =>
 
 export const authConfigured = (): boolean => env().auth !== null;
 
+// Auth.js's stable `type` codes (the class name is minified in production); anything else is never echoed.
+const AUTH_ERROR_TYPES: ReadonlySet<string> = new Set<AuthError['type'] | 'Configuration'>([
+  'AccessDenied',
+  'AccountNotLinked',
+  'AdapterError',
+  'CallbackRouteError',
+  'Configuration',
+  'CredentialsSignin',
+  'DuplicateConditionalUI',
+  'EmailSignInError',
+  'ErrorPageLoop',
+  'EventError',
+  'ExperimentalFeatureNotEnabled',
+  'InvalidCallbackUrl',
+  'InvalidCheck',
+  'InvalidEndpoints',
+  'InvalidProvider',
+  'JWTSessionError',
+  'MissingAdapter',
+  'MissingAdapterMethods',
+  'MissingAuthorize',
+  'MissingCSRF',
+  'MissingSecret',
+  'MissingWebAuthnAutocomplete',
+  'OAuthAccountNotLinked',
+  'OAuthCallbackError',
+  'OAuthProfileParseError',
+  'OAuthSignInError',
+  'SessionTokenError',
+  'SignOutError',
+  'UnknownAction',
+  'UnsupportedStrategy',
+  'UntrustedHost',
+  'Verification',
+  'WebAuthnVerificationError',
+]);
+
+const authErrorCode = (error: Error): string => {
+  const type: unknown = (error as { type?: unknown }).type;
+  return typeof type === 'string' && AUTH_ERROR_TYPES.has(type) ? type : 'UnknownAuthError';
+};
+
 /** Exported for its test (auth.test.ts): the logger and the refusal path must never print personal data. */
 export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
   return {
@@ -58,9 +100,12 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
           fetch(isDiscovery(input) ? auth.discovery : input, init),
       },
     ],
-    // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): names only.
-    // shortcut: console until the app has a pino logger; log through it then
-    logger: { error: (error) => console.error(`[auth] ${error.name}`), warn: (code) => console.warn(`[auth] ${code}`) },
+    // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): codes only.
+    // shortcut: console until the app has a pino logger, AIV-P0-018 (#50); log through it then
+    logger: {
+      error: (error) => console.error(`[auth] ${authErrorCode(error)}`),
+      warn: (code) => console.warn(`[auth] ${code}`),
+    },
     pages: { signIn: '/sign-in', error: '/sign-in' },
     session: { strategy: 'jwt', maxAge: EIGHT_HOURS },
     cookies: {
