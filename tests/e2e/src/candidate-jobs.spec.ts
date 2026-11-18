@@ -14,7 +14,7 @@ test('the list shows every published job with counts, and a card says who, what 
     await expect(chips(page).getByRole('radio', { name })).toBeAttached();
   const card = page.getByRole('listitem').filter({ hasText: 'Real Estate Sales Consultant' });
   await expect(card).toContainText('A property brokerage · Dubai');
-  await expect(card).toContainText('Sales');
+  await expect(card.getByText('Sales', { exact: true })).toBeVisible();
   await expect(card).toContainText('Posted 2 days ago');
   await expect(card.getByRole('link', { name: 'View job: Real Estate Sales Consultant' })).toHaveAttribute(
     'href',
@@ -25,9 +25,10 @@ test('the list shows every published job with counts, and a card says who, what 
 });
 
 test('a chip chosen with the keyboard filters the list and keeps the filter in the URL', async ({ page }) => {
-  await page.goto('/candidates/jobs');
-  // Retried until React has hydrated: before that, the arrow key moves a radio with no handler yet (next dev).
+  // Retried until React has hydrated: before that, the arrow key moves a radio with no handler yet (next dev). Each try
+  // loads the page afresh, since an early press leaves Engineering checked and a second press would change nothing.
   await expect(async () => {
+    await page.goto('/candidates/jobs');
     await chips(page).getByRole('radio', { name: 'All 5' }).focus();
     await page.keyboard.press('ArrowRight');
     await expect(page).toHaveURL(/filter=engineering/, { timeout: 1_000 });
@@ -49,6 +50,7 @@ test('searching by title, and a search with no results', async ({ page }) => {
   await expect(page.getByText('No jobs match. Try a different word or clear the filters.')).toBeVisible();
   await page.getByRole('link', { name: 'Clear filters' }).click();
   await expect(page).toHaveURL(/\/candidates\/jobs$/);
+  await expect(page.getByRole('searchbox', { name: 'Job title or skill' })).toHaveValue('');
   await expect(titles(page)).toHaveCount(5);
 });
 

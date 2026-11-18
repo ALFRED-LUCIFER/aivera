@@ -67,6 +67,13 @@ describe('Scenario: Searching by title or skill', () => {
     ]);
   });
 
+  it('the chosen chip stays, with 0, when a search leaves it empty', () => {
+    expect(jobsListView(FIVE, { q: 'QA', filter: 'sales', page: 1 }).chips).toContainEqual({
+      value: 'sales',
+      count: 0,
+    });
+  });
+
   it('chip counts follow the search', () => {
     expect(jobsListView(FIVE, { ...all, q: 'senior' }).chips).toEqual([
       { value: 'all', count: 3 },

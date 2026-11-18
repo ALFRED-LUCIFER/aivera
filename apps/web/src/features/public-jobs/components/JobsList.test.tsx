@@ -3,8 +3,9 @@ import { intlConfig } from '@aivera/i18n';
 import { IntlProvider } from '@aivera/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { JobsList, type JobsListProps } from './JobsList.tsx';
+import { JobsList, JobsListFailed, JobsListLoading, type JobsListProps } from './JobsList.tsx';
 
 afterEach(cleanup); // Vitest globals are off, so Testing Library cannot register its own cleanup.
 
@@ -35,12 +36,8 @@ const props: JobsListProps = {
   pageCount: 1,
   onFilterChange: () => {},
 };
-const renderList = (more: Partial<JobsListProps> = {}) =>
-  render(
-    <IntlProvider {...intl}>
-      <JobsList {...props} {...more} />
-    </IntlProvider>,
-  );
+const withIntl = (ui: ReactNode) => render(<IntlProvider {...intl}>{ui}</IntlProvider>);
+const renderList = (more: Partial<JobsListProps> = {}) => withIntl(<JobsList {...props} {...more} />);
 
 describe('JobsList (AIV-P3-004)', () => {
   it('shows the intro, the chips with counts and each card, with no fit badge for free visitors', () => {
@@ -85,5 +82,24 @@ describe('JobsList (AIV-P3-004)', () => {
     expect(pages.getByRole('link', { name: 'Previous page' })).toHaveProperty('search', '?q=AI&filter=engineering');
     expect(pages.getByRole('link', { name: 'Next page' })).toHaveProperty('search', '?q=AI&filter=engineering&page=3');
     expect(pages.getByText('Page 2 of 3')).toBeDefined();
+  });
+
+  it('loading: the heading and intro stay, and the list is announced as loading', () => {
+    withIntl(<JobsListLoading />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Jobs' })).toBeDefined();
+    expect(screen.getByText('Loading jobs')).toBeDefined();
+  });
+
+  it('failed: the message is an alert, and Try again retries', async () => {
+    const onRetry = vi.fn();
+    withIntl(<JobsListFailed onRetry={onRetry} />);
+    expect(screen.getByRole('alert').textContent).toBe('Jobs could not load. Try again.');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('a chip waiting for the server marks the list busy', () => {
+    renderList({ pending: true });
+    expect(screen.getByRole('list').getAttribute('aria-busy')).toBe('true');
   });
 });

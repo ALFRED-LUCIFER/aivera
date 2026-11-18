@@ -161,7 +161,8 @@
       "pages": "Pages",
       "previous": "Previous page",
       "next": "Next page",
-      "pageOf": "Page {page} of {pageCount}"
+      "pageOf": "Page {page} of {pageCount}",
+      "loading": "Loading jobs"
     }
   },
   "evidence": {

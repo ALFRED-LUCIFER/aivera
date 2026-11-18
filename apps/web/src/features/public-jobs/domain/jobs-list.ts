@@ -55,7 +55,7 @@ const matchesFilter = (job: PublicJob, filter: Filter) => {
 };
 
 export type JobsListView = {
-  /** The chips with a count over the searched jobs; families and cities with none are left out. */
+  /** The chips with a count over the searched jobs; families and cities with none are left out, unless chosen. */
   chips: { value: Filter; count: number }[];
   jobs: PublicJob[];
   page: number;
@@ -68,7 +68,7 @@ export function jobsListView(all: readonly PublicJob[], { q, filter, page }: Job
   const chips = FILTERS.map((value) => ({
     value,
     count: searched.filter((job) => matchesFilter(job, value)).length,
-  })).filter(({ value, count }) => value === 'all' || count > 0);
+  })).filter(({ value, count }) => value === 'all' || value === filter || count > 0);
   const filtered = searched.filter((job) => matchesFilter(job, filter));
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);

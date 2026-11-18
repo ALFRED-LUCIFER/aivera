@@ -14,6 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function JobsPage({ searchParams }: PageProps<'/candidates/jobs'>) {
   const query = parseJobsQuery(await searchParams);
   const view = jobsListView(await getPublicJobs().listPublicJobs(), query);
+  // shortcut: the system clock, not the injected Clock port (AGENTS.md 3.9); take it from the port when the web app
+  // has one.
   const now = new Date();
   return (
     <PublicJobs

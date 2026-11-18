@@ -1,6 +1,6 @@
 import { useTranslations } from '@aivera/i18n/react';
 import type { JobType } from '@aivera/jobs';
-import { buttonClassName, Card, FilterTabs, Input, Label } from '@aivera/ui';
+import { Button, buttonClassName, Card, FilterTabs, Input, Label } from '@aivera/ui';
 import Link from 'next/link';
 import { useId } from 'react';
 import { jobsHref, type Filter } from '../domain/jobs-list.ts';
@@ -21,12 +21,14 @@ export type JobsListProps = {
   jobs: JobCardData[];
   page: number;
   pageCount: number;
+  /** True while a chosen chip waits for the server's list. */
+  pending?: boolean;
   onFilterChange: (filter: string) => void;
 };
 
 const link = 'font-semibold text-text underline-offset-4 hover:underline';
 
-export function JobsList({ q, filter, chips, jobs, page, pageCount, onFilterChange }: JobsListProps) {
+export function JobsList({ q, filter, chips, jobs, page, pageCount, pending = false, onFilterChange }: JobsListProps) {
   const t = useTranslations();
   const searchId = useId();
   return (
@@ -38,7 +40,8 @@ export function JobsList({ q, filter, chips, jobs, page, pageCount, onFilterChan
         <form action="/candidates/jobs" className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1.5">
             <Label htmlFor={searchId}>{t('candidate.jobs.searchLabel')}</Label>
-            <Input id={searchId} type="search" name="q" defaultValue={q} maxLength={100} />
+            {/* Keyed on the query: a client navigation (Clear filters, paging) keeps this input, so its value must follow q. */}
+            <Input key={q} id={searchId} type="search" name="q" defaultValue={q} maxLength={100} />
           </div>
           {filter !== 'all' && <input type="hidden" name="filter" value={filter} />}
           <button type="submit" className={buttonClassName('primary')}>
@@ -62,7 +65,7 @@ export function JobsList({ q, filter, chips, jobs, page, pageCount, onFilterChan
           </Link>
         </div>
       ) : (
-        <ul className="mt-6 grid gap-3">
+        <ul aria-busy={pending || undefined} className="mt-6 grid gap-3">
           {jobs.map((job) => (
             <li key={job.slug}>
               <Card level={2} title={job.title}>
@@ -104,5 +107,31 @@ export function JobsList({ q, filter, chips, jobs, page, pageCount, onFilterChan
         </nav>
       )}
     </>
+  );
+}
+
+/** The list while the server reads the jobs (loading.tsx). */
+export function JobsListLoading() {
+  const t = useTranslations('candidate.jobs');
+  return (
+    <>
+      <h1 className="font-display text-title tracking-tight">{t('title')}</h1>
+      <p className="mt-2 text-text-2">{t('intro')}</p>
+      <Card className="mt-6" loading loadingLabel={t('loading')} />
+    </>
+  );
+}
+
+/** The jobs could not be read (error.tsx): the frame stays, with a way to try again. */
+export function JobsListFailed({ onRetry }: { onRetry: () => void }) {
+  const t = useTranslations('candidate.jobs');
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <h1 className="font-display text-title tracking-tight">{t('title')}</h1>
+      <p role="alert" className="text-text-2">
+        {t('failed')}
+      </p>
+      <Button onClick={onRetry}>{t('retry')}</Button>
+    </div>
   );
 }
