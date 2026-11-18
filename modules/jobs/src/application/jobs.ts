@@ -7,7 +7,9 @@ import {
   assertValidPayBand,
   editsInPlace,
   JobError,
+  nextAction,
   type Competency,
+  type DeskJob,
   type Job,
   type Rubric,
   type RubricVersion,
@@ -21,6 +23,8 @@ export type JobStore = {
   insertJob(job: Job): Promise<void>;
   getJob(workspaceId: string, jobId: string, opts?: { lock: boolean }): Promise<Job | null>;
   listJobs(workspaceId: string): Promise<Job[]>;
+  /** Per job with any rubric version: whether one is approved, and the latest version's status. */
+  rubricStates(workspaceId: string): Promise<{ jobId: string; approved: boolean; latest: RubricVersion['status'] }[]>;
   /** The job's highest-numbered version, or null when it has none. */
   latestVersion(workspaceId: string, jobId: string): Promise<RubricVersion | null>;
   getVersion(workspaceId: string, versionId: string): Promise<RubricVersion | null>;
@@ -114,6 +118,27 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
     async listJobs(ctx: WorkspaceContext): Promise<Job[]> {
       await authorize(ctx, 'job.list');
       return storeFor(ctx.tx).listJobs(ctx.workspaceId);
+    },
+
+    /** The Jobs list: every visible job with its rubric state and next action (AIV-P1-006). */
+    async listJobsForDesk(ctx: WorkspaceContext): Promise<DeskJob[]> {
+      await authorize(ctx, 'job.list');
+      const store = storeFor(ctx.tx);
+      const list = await store.listJobs(ctx.workspaceId);
+      const states = new Map((await store.rubricStates(ctx.workspaceId)).map((s) => [s.jobId, s]));
+      return list.map((job) => {
+        const state = states.get(job.id);
+        const rubric = { approved: state?.approved ?? false, latest: state?.latest ?? null };
+        // shortcut: assessed and coverage come from assessment (AIV-P1-031), open evidence requests from evidence
+        // requests (AIV-P1-037) and pack readiness from decision packs (AIV-P2-010); until then not yet available.
+        return {
+          ...job,
+          rubric,
+          assessed: rubric.approved ? null : 0,
+          coveragePercent: null,
+          nextAction: nextAction(rubric, { packReady: null, openEvidenceRequests: null }),
+        };
+      });
     },
 
     /** What assessment reads: the job's approved version, never a draft; null when none is approved yet. */

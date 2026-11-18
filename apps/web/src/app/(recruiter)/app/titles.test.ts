@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { generateMetadata as appLayout } from './layout.tsx';
 import { generateMetadata as inbox } from './inbox/page.tsx';
-import { generateMetadata as jobs } from './jobs/page.tsx';
+import { generateMetadata as jobs } from './jobs/(list)/page.tsx';
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined }) }));
 

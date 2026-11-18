@@ -33,6 +33,8 @@
 | Staff Backend Engineer           | Engineering · Riyadh, hybrid  | VP Engineering      | Collecting evidence, 31 assessed |
 | Senior Product Designer          | Design · Abu Dhabi            | Design Director     | Defining rubric                  |
 
+AP signs in as `ap@example.com` in the e2e seed. Each demo hiring owner is a user named by their title, at `head.engineering@example.com`, `cpo.payments@example.com`, `head.quality@example.com`, `vp.engineering@example.com` and `design.director@example.com`.
+
 Candidate-site listings also include Real Estate Sales Consultant (a property brokerage, Dubai) and Senior Software Engineer, Banking (a retail bank, Dubai). Employers are described generically ("A BNPL fintech"), never named.
 
 ## Candidates
