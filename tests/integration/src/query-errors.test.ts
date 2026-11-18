@@ -100,4 +100,18 @@ describe('Scenario Outline: Every failure kind is redacted', () => {
       await own.$client.end();
     }
   });
+
+  // SAFETY: mutation check: removed only the PostgresJsTransaction.transaction redaction -> this test failed (the note in the raw PostgresError's hidden parameters)
+  // postgres-js rejects a savepoint whose callback swallowed a failed query with that query's raw error.
+  it('a nested transaction (savepoint) that failed inside the outer transaction', async () => {
+    const error = await withWorkspace(app, W1, (tx) =>
+      failure(() =>
+        tx.transaction(async (savepoint) => {
+          await savepoint.execute(insert(id(304), W1, 'not.an.action')).catch(() => {});
+        }),
+      ),
+    );
+    expectNoNote(error);
+    expect(error).toMatchObject({ code: '23514', constraint: 'entry_action_check' });
+  });
 });

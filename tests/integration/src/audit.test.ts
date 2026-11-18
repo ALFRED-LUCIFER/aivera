@@ -156,10 +156,10 @@ describe('Scenario Outline: Entries cannot be changed', () => {
     },
   );
 
-  // Second layer, which holds even for the table owner: "audit entries are append-only".
+  // Second layer, which holds even for the table owner: the append-only trigger.
   // SAFETY: mutation check: dropped triggers entry_append_only and entry_no_truncate -> these failed (the owner's statements succeeded)
   it.each(Object.keys(statements) as (keyof typeof statements)[])(
-    'even the owner running %s on audit.entry gets "audit entries are append-only"',
+    "even the owner running %s on audit.entry is refused by the append-only trigger's RAISE (42501, exec_stmt_raise)",
     async (statement) => {
       const before = await notes();
       await expect(withWorkspace(migrator, W1, (tx) => tx.execute(statements[statement]))).rejects.toThrow(APPEND_ONLY);
