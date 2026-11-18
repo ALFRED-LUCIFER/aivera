@@ -37,6 +37,7 @@ Themes are set by `data-theme="light"` (default) or `data-theme="dark"` on the r
 | `--surface-raised`                            | `#FFFFFF`                                                            | `#262130`                           |
 | `--border`                                    | `#E4DFD9`                                                            | `#322C3B`                           |
 | `--border-strong`                             | `#CFC8C0`                                                            | `#4A4355`                           |
+| `--field-border`                              | `#8D868C`                                                            | `#726A7D`                           |
 | `--text`                                      | `#1B1720`                                                            | `#F4F1F6`                           |
 | `--text-2`                                    | `#55505A`                                                            | `#BDB5C6`                           |
 | `--text-3`                                    | `#6A6470`                                                            | `#9A91A5`                           |
@@ -55,6 +56,8 @@ Themes are set by `data-theme="light"` (default) or `data-theme="dark"` on the r
 | `--info-bg` / `--info-text` / `--info-border` | `#E8EFFB` / `#1D4E9E` / `#BCD0F2`                                    | `#142440` / `#A9C8FF` / `#284A80`   |
 | `--shadow-1`                                  | `0 1px 2px rgba(27,23,32,.05)`                                       | `none`                              |
 | `--shadow-pop`                                | `0 16px 36px -12px rgba(27,23,32,.22), 0 3px 8px rgba(27,23,32,.06)` | `0 18px 44px -10px rgba(0,0,0,.65)` |
+
+Form fields use `--field-border` (≥3:1, WCAG 1.4.11); every other border keeps `--border`/`--border-strong`. Owner decision, 18 Nov 2026.
 
 Text selection uses the highlighter. The marketing site's dark "ink" panels are `#1B1720` with `#F4F1F6` text.
 

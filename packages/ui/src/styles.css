@@ -11,6 +11,7 @@
   --color-surface-raised: var(--surface-raised);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-field-border: var(--field-border);
   --color-text: var(--text);
   --color-text-2: var(--text-2);
   --color-text-3: var(--text-3);
@@ -50,6 +51,12 @@
   --text-title--font-weight: 700;
   --text-section: 18px;
   --text-section--line-height: 26px;
+  --text-section--font-weight: 600;
+  --text-card: 16px;
+  --text-card--line-height: 24px;
+  --text-card--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
   --text-meta: 13px;
   --text-meta--line-height: 18px;
 
