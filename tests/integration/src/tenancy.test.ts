@@ -82,7 +82,10 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
   ];
   const violations: string[] = [];
   for (const t of tables) {
-    if (t.appOwns) violations.push(`${t.name}: owned by aivera_app, which can switch its row-level security off`);
+    if (t.appOwns)
+      violations.push(
+        `${t.name}: owned by aivera_app or a role it belongs to, which can switch its row-level security off`,
+      );
     if (t.name in GLOBAL_TABLES) continue;
     // A view reads as its owner unless security_invoker is set; matviews and foreign tables have no RLS at all.
     if (t.kind === 'v') {
@@ -193,6 +196,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // SAFETY: mutation check: dropped policy member_tenant_isolation on workspaces.member -> this test failed (named workspaces.member)
   // SAFETY: mutation check: ALTER TABLE candidates.person NO FORCE ROW LEVEL SECURITY -> this test failed (not forced)
   // SAFETY: mutation check: added permissive policy USING (true) on workspaces.client -> this test failed (named the policy)
+  // SAFETY: mutation check: GRANT aivera_migrator TO aivera_app -> this test failed (owned by a role aivera_app belongs to)
   it('every table with a workspace_id column has RLS enabled, forced, and the app.workspace_id policy', async () => {
     const tables = await listTables(admin);
     // The discovery really reaches the module schemas, so an empty catalogue cannot pass.
@@ -208,6 +212,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   });
 
   // The migrator too: a view or function it owns would otherwise read across workspaces.
+  // SAFETY: mutation check: ALTER ROLE aivera_migrator BYPASSRLS -> this test failed
   it('aivera_app and aivera_migrator are neither superuser nor BYPASSRLS', async () => {
     const roles = await admin.execute<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
       sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator')
