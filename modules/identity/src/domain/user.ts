@@ -43,4 +43,6 @@ export const isEmailVerified = (token: IdTokenIdentity, trustedIssuer: string): 
   token.emailVerified === true || (token.emailVerified === undefined && token.issuer === trustedIssuer);
 
 /** Emails compare case-insensitively; the database enforces the lower-case form (check constraint). */
+// shortcut: JS toLowerCase and PostgreSQL lower() can differ for some non-ASCII letters (e.g. U+0130), so such an email
+// could fail the lower-case check; normalise the same way in both (or compare in SQL) if internationalised emails appear
 export const normalizeEmail = (email: string): string => email.trim().toLowerCase();

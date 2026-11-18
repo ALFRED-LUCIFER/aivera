@@ -13,6 +13,7 @@ describe('safeNext (Scenario: Open redirects are refused)', () => {
   });
 
   // SAFETY: mutation check: returned `value` unchanged after the startsWith('/') check -> the //, /\ and tab cases failed
+  // SAFETY: mutation check: dropped the final `startsWith('//')` re-check -> the four dot-segment cases failed
   it.each([
     'https://evil.example',
     '//evil.example/app',
@@ -22,6 +23,10 @@ describe('safeNext (Scenario: Open redirects are refused)', () => {
     'app',
     '',
     '//[',
+    '/.//evil.example',
+    '/a/..//evil.example',
+    '/%2e//evil.example',
+    '/.\\/evil.example',
   ])('turns %j into the desk', (value) => {
     expect(safeNext(value)).toBe(DESK);
   });

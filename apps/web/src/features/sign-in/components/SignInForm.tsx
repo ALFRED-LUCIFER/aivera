@@ -1,6 +1,6 @@
 import { Button, Input, Label } from '@aivera/ui';
 
-export type SignInFormLabels = {
+type SignInFormLabels = {
   title: string;
   email: string;
   passwordNote: string;
@@ -9,7 +9,7 @@ export type SignInFormLabels = {
   google: string;
 };
 
-export type SignInFormProps = {
+type SignInFormProps = {
   /** The server action that starts the sign-in at the tenant. */
   action: (form: FormData) => Promise<void>;
   /** Already sanitised; posted back and sanitised again by the action. */

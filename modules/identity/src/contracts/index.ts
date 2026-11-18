@@ -2,7 +2,7 @@
 import type { IdTokenIdentity, User } from '../domain/user.ts';
 
 export { IdentityError } from '../domain/user.ts';
-export type { IdentityErrorCode, IdTokenIdentity, User } from '../domain/user.ts';
+export type { IdTokenIdentity, User } from '../domain/user.ts';
 
 export interface IdentityContract {
   /**

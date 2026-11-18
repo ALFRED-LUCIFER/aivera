@@ -9,12 +9,14 @@ const PROBE = 'http://aivera.invalid';
 
 /**
  * Same-origin paths only: anything else (another origin, `//host`, `/\host`, a scheme, a non-string) becomes the desk.
- * The URL parser decides, so every spelling the browser would follow off-site is caught by the origin check.
+ * The URL parser decides the origin; the result is checked again because removing dot segments (`/.//host`) can turn
+ * a same-origin input into a protocol-relative `//host`.
  */
 export function safeNext(value: unknown): string {
   if (typeof value !== 'string' || !value.startsWith('/')) return DESK;
   const url = URL.parse(value, PROBE);
-  return url?.origin === PROBE ? `${url.pathname}${url.search}${url.hash}` : DESK;
+  const path = url?.origin === PROBE ? `${url.pathname}${url.search}${url.hash}` : DESK;
+  return path.startsWith('//') ? DESK : path;
 }
 
 /** The sign-in page for a request that needs a session, remembering where it was going. */
@@ -52,7 +54,7 @@ export function authorizationParams(method: Method, email: string | undefined): 
   return hint;
 }
 
-export type SignInError = 'unverifiedEmail' | 'unavailable' | 'failed';
+type SignInError = 'unverifiedEmail' | 'unavailable' | 'failed';
 
 /** The message key for `?error=`: ours by name, anything else from Auth.js or the tenant is a generic failure. */
 export function signInError(value: string | string[] | undefined): SignInError | null {

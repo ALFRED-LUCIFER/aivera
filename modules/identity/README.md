@@ -1,6 +1,6 @@
 # @aivera/identity
 
-The identity module (AIV-P0-009, [ADR-009](../../docs/adr/ADR-009-identity-and-account-model.md)). One user per verified email; each sign-in method (the ID token's issuer and subject) maps to that user. Other code imports only `@aivera/identity` (the `IdentityContract` types); apps build it with `createIdentity(db)` from `@aivera/identity/composition`.
+The identity module (AIV-P0-009, [ADR-009](../../docs/adr/ADR-009-identity-and-account-model.md)). One user per verified email; each sign-in method (the ID token's issuer and subject) maps to that user. Other code imports only `@aivera/identity` (the `IdentityContract` types); apps build it with `createIdentity(db, { trustedIssuer })` from `@aivera/identity/composition`, where `trustedIssuer` is the app's own External ID tenant issuer.
 
 - **Tables:** `identity.user` (id, email, display name, created at) and `identity.sign_in_method` (user id, issuer, subject; primary key issuer + subject), migrations tracked in `migrations.identity` (ADR-004).
 - **Global, not workspace-owned.** A person signs in before any workspace is chosen and can belong to several workspaces, so these tables have no `workspace_id` and no row-level security. The app role `aivera_app` gets select, insert, update and delete through the migrator's default privileges. Workspaces reach a user only by the opaque id in `workspaces.member.user_id`.
