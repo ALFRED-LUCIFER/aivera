@@ -133,7 +133,7 @@ export function assertTransition(from: RubricStatus, to: RubricStatus): void {
   if (!TRANSITIONS[from]?.includes(to)) throw new JobError('version_status');
 }
 
-/** The longest public descriptor ("A BNPL fintech", "A retail bank"). */
+/** The longest public descriptor ("A BNPL fintech", "A retail bank"); job_publication_check repeats it. */
 export const PUBLIC_DESCRIPTOR_MAX = 80;
 
 /**
@@ -146,6 +146,7 @@ export type PublicListing = {
   jobType: JobType;
   descriptor: string | null;
   location: string | null;
+  // shortcut: a pay band has no period; the candidate site reads it as monthly (UAE norm), until a job states one.
   payBand: PayBand | null;
   competencies: { name: string; evidenceExpected: string; levelNeeded: number }[];
 };

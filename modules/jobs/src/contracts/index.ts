@@ -5,14 +5,7 @@ import type { Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
 export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
-export {
-  COMPETENCY_ORIGINS,
-  COMPETENCY_TYPES,
-  JOB_STAGES,
-  JobError,
-  PUBLIC_DESCRIPTOR_MAX,
-  RUBRIC_STATUSES,
-} from '../domain/job.ts';
+export { COMPETENCY_ORIGINS, COMPETENCY_TYPES, JOB_STAGES, JobError, RUBRIC_STATUSES } from '../domain/job.ts';
 export type {
   Competency,
   Job,

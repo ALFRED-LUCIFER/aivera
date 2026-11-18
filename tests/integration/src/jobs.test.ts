@@ -590,7 +590,21 @@ describe('Feature: Publish a job on the candidate site', () => {
   });
 
   it('Scenario: The public listing contains only allowed fields', async () => {
+    await rows(
+      ALEX,
+      demo,
+      sql`update jobs.job set pay_min_minor = 3500000, pay_max_minor = 4800000, pay_currency = 'AED' where id = ${sae()}`,
+    );
     const listing = await as(RANA, demo, (ctx) => jobs.getPublicListing(ctx, sae()));
+    expect(listing?.payBand).toEqual({ minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' });
+    const approved = await rows<{ name: string; evidenceExpected: string; levelNeeded: number }>(
+      ALEX,
+      demo,
+      sql`select c.name, c.evidence_expected as "evidenceExpected", c.level_needed as "levelNeeded"
+        from jobs.competency c join jobs.rubric_version v on v.id = c.rubric_version_id
+        where v.job_id = ${sae()} and v.status = 'approved' order by c.position`,
+    );
+    expect(listing?.competencies).toEqual(approved);
     expect(Object.keys(listing ?? {}).toSorted()).toEqual([
       'competencies',
       'descriptor',
@@ -610,6 +624,14 @@ describe('Feature: Publish a job on the candidate site', () => {
       as(RANA, demo, (ctx) => jobs.publishJob(ctx, designer, { publicDescriptor: 'A design studio' })),
     ).rejects.toThrow('Publish after the rubric is approved.');
     expect(await publication(designer)).toEqual([{ published: false, public_descriptor: null }]);
+  });
+
+  // SAFETY: mutation check: removed the client-name check in publishJob -> this test failed (published as "Falcon Pay")
+  it("the descriptor may not carry the client's name", async () => {
+    for (const publicDescriptor of ['Falcon Pay', 'a fintech (falcon pay)'])
+      await expect(as(ALEX, gulf, (ctx) => jobs.publishJob(ctx, j2, { publicDescriptor }))).rejects.toThrow(
+        new JobError('public_descriptor'),
+      );
   });
 
   it('a descriptor is required and at most 80 characters', async () => {

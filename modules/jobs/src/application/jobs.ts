@@ -223,9 +223,14 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
 
     /** Lists the job on the candidate site. Needs an approved rubric. Publishing again updates the descriptor. Audited. */
     async publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void> {
-      const publicDescriptor = validPublicDescriptor(input.publicDescriptor);
       // Locks the job row, so a concurrent approval or unpublish runs before or after, never between.
       const job = await visibleJob(ctx, jobId, 'job.publish', true);
+      const publicDescriptor = validPublicDescriptor(input.publicDescriptor);
+      // The descriptor is shown to anyone, so it must not name the client (AGENTS.md 1.9); listClients needs
+      // client.manage, which the same roles hold as job.publish.
+      const client = job.clientId && (await listClients(ctx)).find((c) => c.id === job.clientId);
+      if (client && publicDescriptor.toLowerCase().includes(client.name.trim().toLowerCase()))
+        throw new JobError('public_descriptor');
       const store = storeFor(ctx.tx);
       if (!(await store.approvedVersion(ctx.workspaceId, job.id))) throw new JobError('rubric_not_approved');
       await store.setPublication(ctx.workspaceId, job.id, { published: true, publicDescriptor, publishedAt: now() });

@@ -78,7 +78,7 @@ export const job = jobs
         'job_pay_band_check',
         sql`(${t.payMinMinor} is null and ${t.payMaxMinor} is null and ${t.payCurrency} is null) or (0 <= ${t.payMinMinor} and ${t.payMinMinor} <= ${t.payMaxMinor} and ${t.payCurrency} ~ '^[A-Z]{3}$')`,
       ),
-      // A published job always has its descriptor and publish time; unpublishing keeps both.
+      // A published job always has its descriptor and publish time; unpublishing keeps both. 80: PUBLIC_DESCRIPTOR_MAX.
       check(
         'job_publication_check',
         sql`not ${t.published} or (coalesce(btrim(${t.publicDescriptor}), '') <> '' and char_length(${t.publicDescriptor}) <= 80 and ${t.publishedAt} is not null)`,
