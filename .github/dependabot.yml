@@ -1,0 +1,16 @@
+version: 2
+# Weekly on Monday with a 14-day cooldown (a bad or hijacked version is usually pulled by then). Minor and patch grouped;
+# majors stay separate PRs and are upgraded deliberately with a browser check (AGENTS.md 6.2).
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 14 }
+    groups:
+      minor-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 14 }
+    groups:
+      minor-patch: { update-types: [minor, patch] }
