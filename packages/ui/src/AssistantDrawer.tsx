@@ -15,7 +15,8 @@ export type AssistantDrawerProps = {
   inputLabel: string;
   /** "Ask". */
   askLabel: string;
-  /** "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation." */
+  /** "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
+   * Text only: "Ask" is treated as the drawer's last control, so a link here would be skipped by Tab. */
   footer: ReactNode;
   closeLabel: string;
   /** Called with the trimmed question; empty questions are ignored. */
@@ -28,8 +29,9 @@ export type AssistantDrawerProps = {
   children?: ReactNode;
 };
 
-// Below the lg breakpoint the drawer covers the page, so there it is a modal: focus stays in it and the page is hidden
-// from assistive tech. From lg up it sits beside the page (styles.css pads the page by the drawer's width).
+// Below lg there is no room to sit beside the page, so the drawer overlays it and is modal: focus stays in it and the
+// page is hidden from assistive tech. From lg up it sits beside the page (styles.css pads the page by the drawer's
+// width). 64rem is Tailwind's lg and must match the media query in styles.css.
 const covers = '(width < 64rem)';
 const subscribe = (onChange: () => void) => {
   const query = matchMedia(covers);
