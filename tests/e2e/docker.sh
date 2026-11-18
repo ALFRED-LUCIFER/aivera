@@ -7,7 +7,8 @@ root=$(cd "$here/../.." && pwd)
 version=$(node -p "require('$here/node_modules/@playwright/test/package.json').version")
 
 # The repository is copied in read-only and installed fresh, so the host's macOS node_modules are never touched.
-docker run --rm --ipc=host \
+# amd64 like the CI runner: arm64 Chromium (Apple Silicon) antialiases differently, so its pixels never match CI.
+docker run --rm --ipc=host --platform linux/amd64 \
   -v "$root:/src:ro" -v "$here/src:/out" \
   "mcr.microsoft.com/playwright:v$version-noble" \
   sh -c '

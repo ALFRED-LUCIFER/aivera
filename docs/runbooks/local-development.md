@@ -42,7 +42,7 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 | `pnpm e2e -g "forced colours"`                                     | Only the tests whose title matches                                                                                 |
 | `pnpm e2e:update`                                                  | Regenerates the visual baselines in the official Playwright Docker image                                           |
 
-**Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in.
+**Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in, on `linux/amd64` like the runner (emulated on Apple Silicon, so the update takes a few minutes; arm64 Chromium antialiases differently).
 
 To approve a visual change: run `pnpm e2e:update` (needs Docker; with Colima, nothing else), look at every changed PNG under `tests/e2e/src/*-snapshots/` in the diff, and commit them with the change. Never commit a `*-darwin.png`. When CI fails on a snapshot, download the `playwright-report` artifact from the run and open `index.html` to see the expected, actual and diff images.
 
