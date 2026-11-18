@@ -15,7 +15,8 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
 const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
 const CANDIDATE_SITE = /[/\\]src[/\\](?:app[/\\]\(candidate\)|features[/\\]candidate-[^/\\]+)[/\\]/;
 // `@/…` or a relative path resolved to src/: the session readers (server/auth, server/workspace) and the recruiter shell.
-const RECRUITER_SESSION = /^next-auth|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell[/\\])/;
+const RECRUITER_SESSION =
+  /^(?:next-auth|@auth\/)|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell(?:[/\\]|$))/;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =

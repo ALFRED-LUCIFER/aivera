@@ -22,6 +22,14 @@ test('a signed-out visitor sees the candidate navigation and footer, and no recr
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0);
 });
 
+// Each page has its own title (WCAG 2.4.2); unknown candidate paths are not served.
+test('placeholder pages carry their own title, and unknown paths 404', async ({ page }) => {
+  await page.goto('/candidates/plans');
+  await expect(page).toHaveTitle('Plans · Aivera for candidates');
+  await expect(page.getByRole('heading', { level: 1, name: 'Plans' })).toBeVisible();
+  expect((await page.goto('/candidates/nowhere'))?.status()).toBe(404);
+});
+
 test('Skip to content is the first focusable element and moves focus to main', async ({ page }) => {
   await page.goto(home);
   await page.keyboard.press('Tab');
