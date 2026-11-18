@@ -192,11 +192,13 @@ test('Scenario Outline: The table lists evidence per role family', async ({ page
 
 test('Scenario: No public work', async ({ page }) => {
   await page.goto('/');
-  await expect(
-    page.getByText(
-      'No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.',
-    ),
-  ).toBeAttached();
+  const note = page.getByText(
+    'No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.',
+  );
+  await note.scrollIntoViewIfNeeded();
+  await expect(note).toBeInViewport();
+  // Its reveal has finished: visible means full opacity, which toBeVisible alone does not check.
+  await expect(note.locator('xpath=ancestor::*[contains(@class,"mk-reveal")]')).toHaveCSS('opacity', '1');
 });
 
 test('the header "Roles we cover" link moves focus to the section heading', async ({ page }) => {

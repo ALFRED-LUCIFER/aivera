@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { column } from './column.ts';
-import { sectionTitle } from './HowItWorks.tsx';
+import { column, sectionTitle } from '../domain/layout.ts';
 import { Reveal } from './Reveal.tsx';
 
 export type RoleFamiliesProps = {
@@ -47,10 +46,7 @@ export function RoleFamilies(p: RoleFamiliesProps) {
             </thead>
             <tbody>
               {p.rows.map((r) => (
-                <tr
-                  key={r.key}
-                  className="border-b border-border transition-colors duration-120 ease-case last:border-b-0 hover:bg-surface-subtle motion-reduce:transition-none"
-                >
+                <tr key={r.key} className="border-b border-border last:border-b-0">
                   <th
                     scope="row"
                     className="min-w-50 px-5 py-4 text-start align-top text-[16px] font-semibold text-text"
