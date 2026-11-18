@@ -252,6 +252,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // SAFETY: mutation check: dropped policy member_tenant_isolation on workspaces.member -> this test failed (named workspaces.member)
   // SAFETY: mutation check: ALTER TABLE candidates.person NO FORCE ROW LEVEL SECURITY -> this test failed (not forced)
   // SAFETY: mutation check: added permissive policy USING (true) on workspaces.client -> this test failed (named the policy)
+  // SAFETY: mutation check: public_job_public_read loosened to USING (true) in jobs 0003 -> this test failed (named the policy)
   // SAFETY: mutation check: GRANT aivera_migrator TO aivera_app -> this test failed (owned by a role aivera_app belongs to)
   it('every table with a workspace_id column has RLS enabled, forced, and the app.workspace_id policy', async () => {
     const tables = await listTables(admin);
