@@ -12,11 +12,11 @@ const row = (page: Page, title: string) =>
 test('Scenario: The seeded workspace shows five jobs', async ({ page }) => {
   await signIn(page, { email: AP });
   await page.goto('/app/jobs');
-  await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
-  await expect(page.getByText('Every job runs on an approved rubric.', { exact: false })).toBeVisible();
   // "Needs your action" counts only what is known: the draft rubric. Packs and evidence requests are not built yet.
   for (const name of ['All 5', 'Needs your action 1', 'Rubric not approved 1'])
     await expect(page.getByRole('radio', { name })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+  await expect(page.getByText('Every job runs on an approved rubric.', { exact: false })).toBeVisible();
 
   const sae = row(page, 'Senior AI Engineer');
   await expect(sae).toContainText('Engineering · DIFC, Dubai');
@@ -47,10 +47,11 @@ test('Scenario: A job without an approved rubric is not assessed', async ({ page
   await expect(row(page, 'Senior Product Designer').getByRole('link')).toHaveAttribute('href', /\/rubric$/);
 });
 
-// mutation check: made the rubricNotApproved filter match every row -> this test failed (5 rows listed)
+// mutation check: made the rubricNotApproved filter match every row -> this test failed (the tab read "Rubric not approved 5")
 test('Scenario: Filter to rubrics not approved, by keyboard, kept in the URL', async ({ page }) => {
   await signIn(page, { email: AP });
   await page.goto('/app/jobs');
+  await expect(page.getByRole('radio', { name: 'All 5' })).toBeChecked();
   await page.getByRole('link', { name: 'Add a job' }).focus();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('radio', { name: 'All 5' })).toBeFocused();
