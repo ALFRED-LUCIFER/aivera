@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { createAzure } from '@ai-sdk/azure';
 import { DefaultAzureCredential, getBearerTokenProvider, type TokenCredential } from '@azure/identity';
 import { APICallError, type EmbeddingModel, type LanguageModel } from 'ai';
+// The SDK's mock models carry the fake (a deliverable, selected by AI_PROVIDER); ai/test has no test-runner imports.
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from 'ai/test';
 
 /** Where a deployment name becomes a model. The client is the only caller. */

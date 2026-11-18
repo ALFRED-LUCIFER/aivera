@@ -62,7 +62,7 @@ export function createAiClient(options: {
 
   const breakers = new Map<Deployment, { failures: number; openUntil: number }>();
   // shortcut: the budget is counted in this process's memory, so web and worker each allow the full budget and a
-  // restart resets it; move it to a workspace-scoped table with RLS when the worker makes AI calls (AIV-P0-015, #47)
+  // restart resets it; persist it in a workspace-scoped table with RLS in AIV-P0-033 (#266), before the pilot gate
   let budgetDay = '';
   const spent = new Map<string, number>();
   const spentToday = (workspaceId: string) => {
@@ -99,7 +99,9 @@ export function createAiClient(options: {
       }
 
       for (let attempts = 1; ; attempts++) {
-        const breaker = breakers.get(deployment) ?? { failures: 0, openUntil: 0 };
+        // One shared object per deployment, so concurrent calls add to the same count.
+        let breaker = breakers.get(deployment);
+        if (!breaker) breakers.set(deployment, (breaker = { failures: 0, openUntil: 0 }));
         if (breaker.openUntil > now()) {
           outcome('circuit_open', { 'aivera.ai.attempts': attempts - 1 });
           throw new AiUnavailable(task, 'circuit open');
@@ -124,18 +126,18 @@ export function createAiClient(options: {
           const timedOut = error instanceof Error && error.name === 'TimeoutError';
           const reason = status ? `http ${status}` : timedOut ? 'timeout' : 'error';
           const transient = timedOut || (APICallError.isInstance(error) && error.isRetryable);
-          if (transient) {
-            breaker.failures += 1;
-            if (breaker.failures >= circuitBreaker.failures) breaker.openUntil = now() + circuitBreaker.openMs;
-            breakers.set(deployment, breaker);
-          }
+          // Any answer (a 4xx) means the service is up and resets the run. Once the open window ends the count stays
+          // at the threshold, so one more transient failure reopens it (half-open).
+          if (!transient) breakers.delete(deployment);
+          else if (++breaker.failures >= circuitBreaker.failures) breaker.openUntil = now() + circuitBreaker.openMs;
           if (!transient || attempts >= maxAttempts || breaker.openUntil > now()) {
             outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': reason });
             throw new AiUnavailable(task, reason);
           }
-          // Azure sends Retry-After on 429; otherwise back off 1 s, 2 s. Capped so a caller is not held for a minute.
-          const retryAfter = APICallError.isInstance(error) ? Number(error.responseHeaders?.['retry-after']) : NaN;
-          await sleep(Math.min(Number.isFinite(retryAfter) ? retryAfter * 1000 : 1000 * 2 ** (attempts - 1), 10_000));
+          // Azure sends retry-after-ms (and retry-after, seconds) on 429; otherwise back off 1 s, 2 s. Capped at 10 s.
+          const headers = APICallError.isInstance(error) ? error.responseHeaders : undefined;
+          const retryAfterMs = Number(headers?.['retry-after-ms'] ?? Number(headers?.['retry-after']) * 1000);
+          await sleep(Math.min(Number.isFinite(retryAfterMs) ? retryAfterMs : 1000 * 2 ** (attempts - 1), 10_000));
         }
       }
     });

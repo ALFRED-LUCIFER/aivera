@@ -30,6 +30,7 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['candidate-session', 'candidate-site-no-recruiter-session', 'apps/web/src/app/(candidate)/layout.tsx'],
     // SAFETY: mutation check: tested the raw spec instead of the resolved relative path -> this case failed
     ['candidate-session', 'candidate-site-no-recruiter-session', 'apps/web/src/features/candidate-shell/domain/x.ts'],
+    ['ai-sdk-direct', 'ai-sdk-only-in-packages-ai', 'modules/jobs/src/application/x.ts'],
   ])('%s is reported as %s and names the file', (name, rule, file) => {
     expect(findViolations(fixture(name))).toContainEqual(expect.objectContaining({ rule, file }));
   });

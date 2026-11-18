@@ -120,6 +120,8 @@ export function findViolations(root: string): Violation[] {
           !PUBLIC_API_ALLOWED.has(spec)
         )
           add('public-api-jobs-only', 'the public API imports only @aivera/jobs and @/server/publicJobs (AIV-P3-002)');
+        if (unit !== 'packages/ai' && (spec === 'ai' || spec.startsWith('ai/') || spec.startsWith('@ai-sdk/')))
+          add('ai-sdk-only-in-packages-ai', 'call a model through @aivera/ai only (ADR-006)');
         if (kind === 'packages' && appPackages.has(spec.split('/')[0] ?? ''))
           add('package-imports-app', 'no package imports an app (AGENTS.md 9.4)');
 

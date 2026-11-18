@@ -1,9 +1,11 @@
 import { context, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { APICallError } from 'ai';
+import { MockLanguageModelV4 } from 'ai/test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiUnavailable, BudgetExceeded, createAiClient, UnknownAiTask } from './client';
-import { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';
+import { azureProvider, FAKE_COMPLETION, fakeProvider, providerFromEnv, type AiProvider } from './providers';
 
 // Feature: One AI client on Azure AI Foundry (AIV-P0-027). Synthetic data only (docs/00-product/personas.md).
 
@@ -102,10 +104,61 @@ describe('Scenario: Unknown tasks are refused', () => {
 describe('Scenario: Transient failures are retried', () => {
   it('succeeds after two 429s, backing off, and telemetry records 3 attempts', async () => {
     const { ai, calls, sleeps } = setup(fakeProvider({ failures: [429, 429] }));
-    await expect(ai.generate(draft)).resolves.toEqual({ text: '[fake completion]' });
+    await expect(ai.generate(draft)).resolves.toEqual({ text: FAKE_COMPLETION });
     expect(calls).toEqual(['gpt-main', 'gpt-main', 'gpt-main']);
     expect(sleeps).toEqual([1000, 2000]);
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.attempts': 3, 'aivera.ai.outcome': 'ok' });
+  });
+
+  it("waits as long as Azure's retry-after-ms asks", async () => {
+    const headers = { 'retry-after-ms': '1500', 'retry-after': '2' };
+    const error = new APICallError({
+      message: '429',
+      url: '',
+      requestBodyValues: {},
+      statusCode: 429,
+      responseHeaders: headers,
+    });
+    let failed = false;
+    const provider: AiProvider = {
+      ...fakeProvider(),
+      languageModel: (deployment) => {
+        if (failed) return fakeProvider().languageModel(deployment);
+        failed = true;
+        return new MockLanguageModelV4({ doGenerate: () => Promise.reject(error) });
+      },
+    };
+    const { ai, sleeps } = setup(provider);
+    await ai.generate(draft);
+    expect(sleeps).toEqual([1500]);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('a timed-out attempt is aborted and retried, then reported as a timeout', async () => {
+    // AbortSignal.timeout runs on Node's internal timers, which fake timers cannot advance; fire it by hand instead.
+    const timers: AbortController[] = [];
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => {
+      const controller = new AbortController();
+      timers.push(controller);
+      return controller.signal;
+    });
+    const hanging = new MockLanguageModelV4({
+      // Never answers; rejects with the signal's reason once aborted, as fetch does.
+      doGenerate: ({ abortSignal }) =>
+        new Promise((_, reject) => {
+          if (abortSignal?.aborted) reject(abortSignal.reason);
+          abortSignal?.addEventListener('abort', () => reject(abortSignal.reason));
+        }),
+    });
+    const { ai } = setup({ ...fakeProvider(), languageModel: () => hanging });
+    const result = ai.generate(draft).catch((e: unknown) => e);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await vi.waitFor(() => expect(timers).toHaveLength(attempt + 1));
+      timers[attempt]?.abort(new DOMException('timed out', 'TimeoutError'));
+    }
+    expect(await result).toEqual(new AiUnavailable(draft.task, 'timeout'));
+    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.attempts': 3, 'error.type': 'timeout' });
   });
 
   it('does not retry a request the model refuses (400)', async () => {
@@ -129,7 +182,16 @@ describe('Scenario: The model is down', () => {
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.outcome': 'circuit_open' });
 
     clock.now += 2;
-    await expect(ai.generate(draft)).resolves.toEqual({ text: '[fake completion]' });
+    await expect(ai.generate(draft)).resolves.toEqual({ text: FAKE_COMPLETION });
+  });
+
+  // SAFETY: mutation check: stored a fresh breaker only on failure, not before the attempt -> this test failed
+  it('five concurrent failures count together and open the circuit', async () => {
+    const { ai, calls } = setup(fakeProvider({ failures: [503, 503, 503, 503, 503] }));
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => ai.generate(draft)));
+    expect(results.every((r) => r.status === 'rejected')).toBe(true);
+    await expect(ai.generate(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
+    expect(calls).toHaveLength(5);
   });
 });
 
