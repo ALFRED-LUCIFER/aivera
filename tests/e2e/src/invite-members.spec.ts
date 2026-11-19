@@ -87,10 +87,9 @@ test('Settings leads an admin to Members', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Members' })).toBeVisible();
 });
 
-test('only an admin opens Members: an interviewer gets the no-access page', async ({ page }) => {
+test('only an admin opens Members: an interviewer gets the 403 page', async ({ page }) => {
   await signIn(page, { email: 'rami@example.com' });
-  // Settings' loading.tsx streams the segment, so the refusal arrives after a 200 header; the page shows only it.
-  await page.goto(MEMBERS);
+  expect((await page.goto(MEMBERS))?.status()).toBe(403);
   await expect(page.getByRole('heading', { level: 1, name: 'Members' })).toHaveCount(0);
   await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
 });

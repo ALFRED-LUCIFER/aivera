@@ -1,5 +1,6 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { loadMembers } from '@/features/members/services/loadMembers.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
@@ -19,7 +20,16 @@ export default async function MembersPage() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
-      <PageHeader title={t('members.title')} />
+      <PageHeader
+        breadcrumb={
+          <nav aria-label={t('members.breadcrumb')} className="text-meta text-text-2">
+            <Link href="/app/settings" className="underline underline-offset-2 hover:text-text">
+              {t('shell.nav.settings')}
+            </Link>
+          </nav>
+        }
+        title={t('members.title')}
+      />
       <Members {...result.value} />
     </>
   );

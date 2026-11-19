@@ -26,8 +26,8 @@ import {
 
 const newId = () => uuidv7();
 
-/** `audit` records role, client, grant and status changes in the same transaction (AIV-P0-013). */
-export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContract {
+/** `audit` records role, client, grant and status changes in the same transaction (AIV-P0-013); `now` is the clock (AGENTS.md 3.9). */
+export function createWorkspaces(db: Db, audit: AuditContract, now: () => Date = () => new Date()): WorkspacesContract {
   const inWorkspace: ContextPorts<Tx>['inWorkspace'] = (workspaceId, work) =>
     withWorkspace(db, workspaceId, (tx) => work(workspaceStore(tx, audit), tx));
   const storeFor = (tx: Tx) => workspaceStore(tx, audit);
@@ -54,7 +54,7 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
       storeFor,
       inWorkspace,
       newId,
-      now: () => new Date(),
+      now,
       authorize: context.authorize,
       grantJobAccess: clients.grantJobAccess,
       revokeJobAccess: clients.revokeJobAccess,

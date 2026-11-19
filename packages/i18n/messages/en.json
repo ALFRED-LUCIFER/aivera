@@ -1128,6 +1128,9 @@
   },
   "members": {
     "title": "Members",
+    "breadcrumb": "Breadcrumb",
+    "error": "The members could not be loaded. Nothing was changed.",
+    "retry": "Try again",
     "roles": {
       "admin": "Workspace admin",
       "recruiter": "Recruiter",
