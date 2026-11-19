@@ -1,11 +1,6 @@
 import type { AiClient } from '../src/client.ts';
 import { z } from 'zod';
-import {
-  DRAFT_COMPETENCIES_SYSTEM,
-  DRAFT_COMPETENCIES_VERSION,
-  draftCompetenciesPrompt,
-  draftCompetenciesSchema,
-} from '../src/prompts/jobs.draftCompetencies.ts';
+import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import type { GoldenCase } from './golden.ts';
 
 const draftInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
@@ -41,15 +36,7 @@ export type Runner = (ai: AiClient, golden: GoldenCase, workspaceId: string) => 
 export const runners: Record<string, Runner> = {
   // The product's own prompt and schema (AIV-P1-008), as the jobs module calls them.
   'jobs.draftCompetencies': (ai, golden, workspaceId) =>
-    ai.generateStructured({
-      task: 'jobs.draftCompetencies',
-      workspaceId,
-      promptVersion: DRAFT_COMPETENCIES_VERSION,
-      system: DRAFT_COMPETENCIES_SYSTEM,
-      prompt: draftCompetenciesPrompt(draftInput.parse(golden.input)),
-      schema: draftCompetenciesSchema,
-      sources: golden.sources,
-    }),
+    ai.generateStructured({ ...draftCompetenciesRequest(draftInput.parse(golden.input), golden.sources), workspaceId }),
 };
 
 /** Tokens one live run may spend across all its calls; past it the remaining cases error and the run fails. */

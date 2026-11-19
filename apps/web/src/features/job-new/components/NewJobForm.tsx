@@ -43,8 +43,10 @@ type NewJobFormProps = {
   pending: boolean;
   /** The required fields to fix, from the last save or draft. */
   errors: NewJobState['errors'];
-  /** "Draft competencies" reads the form without submitting it, so nothing is saved. */
-  onDraft: (form: HTMLFormElement | null) => void;
+  /** "Draft competencies" reads the form without posting it, so nothing is saved. */
+  onDraft: (form: HTMLFormElement) => void;
+  /** Save job was submitted: the errors shown are now the save's. */
+  onSaving: () => void;
   drafting: boolean;
   /** Once competencies are drafted, saving is the step's primary action. */
   drafted: boolean;
@@ -100,6 +102,12 @@ export function NewJobForm(props: NewJobFormProps) {
         id={id('form')}
         key={JSON.stringify(state)}
         action={props.action}
+        // Draft is the form's first submit button, so Enter in a field drafts; only Save job posts the action.
+        onSubmit={(e) => {
+          if ((e.nativeEvent as SubmitEvent).submitter?.id === id('save')) return props.onSaving();
+          e.preventDefault();
+          props.onDraft(e.currentTarget);
+        }}
         onInput={props.onInput}
         noValidate
         className="flex max-w-2xl flex-col gap-3"
@@ -223,18 +231,20 @@ export function NewJobForm(props: NewJobFormProps) {
         )}
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            variant={props.drafted ? 'secondary' : 'primary'}
-            disabled={props.drafting}
-            onClick={(e) => props.onDraft(e.currentTarget.form)}
-          >
+          <Button type="submit" variant={props.drafted ? 'secondary' : 'primary'} disabled={props.drafting}>
             {props.drafting ? labels.drafting : labels.submit}
           </Button>
         </div>
       </form>
       {props.draftSection}
       <div className="mt-6 flex flex-wrap gap-2">
-        <Button type="submit" form={id('form')} variant={props.drafted ? 'primary' : 'secondary'} disabled={pending}>
+        <Button
+          type="submit"
+          id={id('save')}
+          form={id('form')}
+          variant={props.drafted ? 'primary' : 'secondary'}
+          disabled={pending}
+        >
           {pending ? labels.submitting : labels.save}
         </Button>
         <Button onClick={props.onCancel}>{labels.cancel}</Button>

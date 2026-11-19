@@ -22,6 +22,6 @@ export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from '.
 export {
   DRAFT_COMPETENCIES_SYSTEM,
   DRAFT_COMPETENCIES_VERSION,
-  draftCompetenciesPrompt,
+  draftCompetenciesRequest,
   draftCompetenciesSchema,
 } from './prompts/jobs.draftCompetencies';

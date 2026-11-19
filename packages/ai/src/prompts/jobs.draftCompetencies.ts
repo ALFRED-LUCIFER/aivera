@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cited } from '../citations';
+import { cited, type Source } from '../citations';
 
 // "Draft competencies" (AIV-P1-008, ADR-006 point 2): the prompt and schema, versioned here so every change runs the
 // eval set (evals/jobs.draftCompetencies/). The jobs module calls it; the eval runner calls the same.
@@ -19,10 +19,6 @@ export const DRAFT_COMPETENCIES_SYSTEM = [
   'Otherwise refused is false and reason is null.',
 ].join(' ');
 
-/** Only the job type, title and description reach the model: no candidate and nothing else from the workspace. */
-export const draftCompetenciesPrompt = (input: { jobType: string; title: string }) =>
-  `Job type: ${input.jobType}\nTitle: ${input.title}`;
-
 // Azure strict mode needs every property present: .nullable(), never .optional() (client.ts generateStructured).
 export const draftCompetenciesSchema = z.object({
   competencies: z
@@ -37,8 +33,23 @@ export const draftCompetenciesSchema = z.object({
         }),
       ),
     )
-    .max(12),
+    .max(8)
+    // The prompt asks for weights totalling at most 100; an answer over it is rejected, never rescaled (AGENTS.md 3.7).
+    .refine((competencies) => competencies.reduce((sum, c) => sum + c.weight, 0) <= 100),
   /** True when a line asking for something other than a skill was left out. */
   refused: z.boolean(),
   reason: z.string().max(400).nullable(),
+});
+
+/**
+ * The whole request but its workspace, so the jobs module and the eval runner send the same thing. Only the job type,
+ * title and description reach the model: no candidate and nothing else from the workspace.
+ */
+export const draftCompetenciesRequest = (input: { jobType: string; title: string }, sources: readonly Source[]) => ({
+  task: 'jobs.draftCompetencies' as const,
+  promptVersion: DRAFT_COMPETENCIES_VERSION,
+  system: DRAFT_COMPETENCIES_SYSTEM,
+  prompt: `Job type: ${input.jobType}\nTitle: ${input.title}`,
+  schema: draftCompetenciesSchema,
+  sources,
 });

@@ -163,7 +163,9 @@ for (const theme of themes) {
 
 test('Scenario: Nothing is saved by drafting', async ({ page }) => {
   await fill(page, 'Unsaved Draft Engineer', DESCRIPTION);
-  await draftButton(page).click();
+  // Enter in a field drafts (Draft is the form's default button); it never saves the job.
+  await page.getByLabel('Job title').press('Enter');
+  await expect(page).toHaveURL(/\/app\/jobs\/new$/);
   await expect(page.getByRole('heading', { name: 'From your job description · 4 competencies' })).toBeVisible();
   await page.goto('/app/jobs');
   await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();

@@ -25,8 +25,7 @@ export function useCompetencyDraftController() {
     editingId,
     drafting,
     /** A new draft replaces the rows; a failed one keeps what the recruiter already has. */
-    onDraft: (form: HTMLFormElement | null) => {
-      if (!form) return;
+    onDraft: (form: HTMLFormElement) => {
       const data = new FormData(form);
       startDrafting(async () => {
         const next = await draftCompetencies(data);
@@ -37,6 +36,8 @@ export function useCompetencyDraftController() {
         }
       });
     },
+    /** A save shows its own field errors, not the last draft's. */
+    onSaving: () => setResult((current) => (current.status === 'invalid' ? { status: 'idle' } : current)),
     onEdit: setEditingId,
     onDone: () => setEditingId(null),
     onChange: (id: string, change: Partial<DraftCompetency>) =>

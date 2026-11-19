@@ -123,14 +123,16 @@ describe('Scenario: Every drafted competency cites the description', () => {
     expect(prompts).toHaveLength(2);
   });
 
-  it('refuses a weight or level out of range rather than patching it', () => {
+  it('refuses a weight, a level or a weight total out of range rather than patching it', () => {
     const bad = { ...answer, competencies: [{ ...answer.competencies[0], level: 6 }] };
     expect(draftCompetenciesSchema.safeParse(answer).success).toBe(true);
     expect(draftCompetenciesSchema.safeParse(bad).success).toBe(false);
     expect(
       draftCompetenciesSchema.safeParse({ ...answer, competencies: [{ ...answer.competencies[0], weight: 0 }] })
         .success,
-    ).toBe(false);
+    ).toBe(false); // Weights totalling over 100, as the prompt forbids.
+    const heavy = answer.competencies.map((c) => ({ ...c, weight: 30 }));
+    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: heavy }).success).toBe(false);
   });
 });
 

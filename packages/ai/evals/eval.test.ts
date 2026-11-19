@@ -163,6 +163,20 @@ describe('the golden set', () => {
     expect(new Set(cases.map((c) => c.input['jobType'])).size).toBe(10);
   });
 
+  it('AIV-P1-008: the registered runner sends the product request, and its checked answer passes the gates', async () => {
+    const c = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    const runner = runners['jobs.draftCompetencies'];
+    if (!runner) throw new Error('no runner for jobs.draftCompetencies');
+    const ai = createAiClient({
+      provider: fakeProvider({ completion: JSON.stringify(c.recorded.output) }),
+      budget: memoryTokenBudget(),
+    });
+    const report = await run('jobs.draftCompetencies', [c], (_task, goldenCase) =>
+      runner(ai, goldenCase, 'eval-workspace'),
+    );
+    expect(report.passed).toBe(true);
+  });
+
   it('has thresholds for every task, and keeps the hard gates at 100%', () => {
     expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 });
     for (const task of [...golden.keys(), ...Object.keys(runners)]) expect(taskThresholds[task], task).toBeDefined();

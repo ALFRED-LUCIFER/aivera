@@ -42,7 +42,7 @@ const fakeFixtures = z.array(
     z.object({ when: z.string().min(1), status: z.number().int().min(400).max(599) }),
   ]),
 );
-export type FakeFixture = z.infer<typeof fakeFixtures>[number];
+type FakeFixture = z.infer<typeof fakeFixtures>[number];
 
 const FAKE_DIMENSIONS = 3072; // text-embedding-3-large
 const tokens = (text: string) => Math.ceil(text.length / 4);

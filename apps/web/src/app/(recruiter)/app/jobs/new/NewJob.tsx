@@ -13,13 +13,14 @@ type Props = Pick<
 
 export function NewJob({ defaultJobType, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
-  const { result, onDraft, onUseStarters, ...draft } = useCompetencyDraftController();
+  const { result, onDraft, onSaving, onUseStarters, ...draft } = useCompetencyDraftController();
   return (
     <NewJobForm
       {...props}
       {...job}
       errors={result.status === 'invalid' ? result.errors : job.state.errors}
       onDraft={onDraft}
+      onSaving={onSaving}
       drafting={draft.drafting}
       drafted={draft.rows.length > 0}
       draftSection={

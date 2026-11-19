@@ -1,11 +1,4 @@
-import {
-  DRAFT_COMPETENCIES_SYSTEM,
-  DRAFT_COMPETENCIES_VERSION,
-  draftCompetenciesPrompt,
-  draftCompetenciesSchema,
-  type AiClient,
-  type Citation,
-} from '@aivera/ai';
+import { draftCompetenciesRequest, type AiClient, type Citation } from '@aivera/ai';
 import type { JobType } from '../domain/job-types.ts';
 import type { Competency } from '../domain/job.ts';
 
@@ -33,13 +26,8 @@ export function competencyDrafting(ai: Pick<AiClient, 'generateStructured'>) {
   return {
     async draftCompetencies(workspaceId: string, input: DraftInput): Promise<CompetencyDraft> {
       const { competencies, refused } = await ai.generateStructured({
-        task: 'jobs.draftCompetencies',
+        ...draftCompetenciesRequest(input, [{ id: 'description', kind: 'job_description', text: input.description }]),
         workspaceId,
-        promptVersion: DRAFT_COMPETENCIES_VERSION,
-        system: DRAFT_COMPETENCIES_SYSTEM,
-        prompt: draftCompetenciesPrompt(input),
-        schema: draftCompetenciesSchema,
-        sources: [{ id: 'description', kind: 'job_description', text: input.description }],
       });
       return {
         competencies: competencies.map((c) => ({
