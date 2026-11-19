@@ -41,7 +41,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
 
   it('a draft rubric: evidence and ranking starts after approval, and the rubric is not done', () => {
     const view = jobHeaderView(header({ latest: version(1, 'draft') }), null);
-    expect(lines(header({ latest: version(1, 'draft') }))).toMatchObject({
+    expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toMatchObject({
       rubric: { key: 'draft', values: { version: 1 } },
       candidates: { key: 'afterApproval' },
     });

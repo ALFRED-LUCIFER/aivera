@@ -47,7 +47,9 @@ describe('navigation map (ADR-002 item 4)', () => {
     const jobPages = appPages.filter(({ file }) => file.includes('/(job)/[jobId]/'));
     expect(jobPages.length).toBeGreaterThan(0);
     const layout = jobPages[0]?.file.replace(/\[jobId\]\/.*$/, '[jobId]/layout.tsx') ?? '';
-    expect(readFileSync(join(appDir, layout), 'utf8')).toMatch(/await loadJob\(/);
+    const source = readFileSync(join(appDir, layout), 'utf8');
+    expect(source).toMatch(/await loadJob\(/);
+    expect(source).toMatch(/notFound\(\)/);
   });
 
   it('marks the section a path belongs to, the longest match winning', () => {

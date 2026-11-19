@@ -206,7 +206,8 @@ export default async function seed() {
       });
     }
 
-    const head = owners.get('Head of Engineering') ?? '';
+    const head = owners.get('Head of Engineering');
+    if (!head) throw new Error('The Head of Engineering was not seeded.');
     await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId: sae }));
     const sixCompetencies: [string, string, number, number][] = [
       ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4],

@@ -989,6 +989,8 @@
       "pack": "No decision pack yet. It is built from the ranking and the Round 1 scorecards."
     },
     "notFoundTitle": "Job not found",
-    "notFound": "This job does not exist or you do not have access."
+    "notFound": "This job does not exist or you do not have access.",
+    "error": "We could not load this job. Try again.",
+    "retry": "Try again"
   }
 }

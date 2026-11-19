@@ -28,7 +28,7 @@ export function JobHeader({ view, current }: { view: JobHeaderView; current: Job
             {t('shell.nav.jobs')}
           </Link>
           <span aria-hidden="true">{'/'}</span>
-          <span>{view.title}</span>
+          <span aria-current="page">{view.title}</span>
         </nav>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1.5">
