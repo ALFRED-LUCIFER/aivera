@@ -2,6 +2,10 @@
 
 /** The console's sections, filled by later tickets (AIV-P2-036 to 039, AIV-P5-015 to 018); each becomes a link then. */
 export const OPS_SECTIONS = ['workspaces', 'approvals', 'catalogue', 'requests', 'subscriptions', 'deletions'] as const;
+type OpsSection = (typeof OPS_SECTIONS)[number];
+
+/** The sections that have a page (a typed route each); the others show as "Coming soon". */
+export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces'>> = { workspaces: '/ops/workspaces' };
 
 /**
  * Marks that this browser session already recorded "ops.console_opened" for this operator: a session cookie (no

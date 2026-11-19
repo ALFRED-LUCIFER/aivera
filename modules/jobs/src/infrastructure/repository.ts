@@ -1,6 +1,6 @@
 import type { Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
 import type { Competency, Job, RubricStatus } from '../domain/job.ts';
 import { competency, job, jobInScope, publicJob, rubricVersion } from './schema.ts';
@@ -156,4 +156,14 @@ export function jobStore(tx: Tx): JobStore {
         .where(and(eq(rubricVersion.workspaceId, workspaceId), eq(rubricVersion.id, versionId)));
     },
   };
+}
+
+/**
+ * How many jobs the workspace has, every stage included, for the operator console (ADR-012 point 6). Over the
+ * workspace's scoped transaction with the job scope set to all for this transaction only: a count, never a job's fields.
+ */
+export async function countJobs(tx: Tx, workspaceId: string): Promise<number> {
+  await tx.execute(sql`select set_config('app.job_scope', 'all', true)`);
+  const [found] = await tx.select({ n: count() }).from(job).where(eq(job.workspaceId, workspaceId));
+  return found?.n ?? 0;
 }

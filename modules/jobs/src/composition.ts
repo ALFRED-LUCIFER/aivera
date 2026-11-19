@@ -2,12 +2,13 @@
 import type { AuditContract } from '@aivera/audit';
 import type { Db, Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
+import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
 import { sql } from 'drizzle-orm';
 import { jobsUseCases } from './application/jobs.ts';
-import type { JobsContract, PublicJobsContract } from './contracts/index.ts';
+import type { JobCounts, JobsContract, PublicJobsContract } from './contracts/index.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
-import { jobStore } from './infrastructure/repository.ts';
+import { countJobs, jobStore } from './infrastructure/repository.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -42,4 +43,9 @@ export function createPublicJobs(db: Db): PublicJobsContract {
       return read(tx);
     });
   return { listPublicJobs: () => asPublic(listOpen), findPublicJob: (slug) => asPublic((tx) => findBySlug(tx, slug)) };
+}
+
+/** The operator console's job count (ADR-012 point 6), each call in the workspace's own scoped transaction. */
+export function createJobCounts(db: Db): JobCounts {
+  return { countJobs: (workspaceId) => withWorkspace(db, workspaceId, (tx) => countJobs(tx, workspaceId)) };
 }

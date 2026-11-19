@@ -52,6 +52,14 @@ const everyExportChecked = (text: string) => {
   const exported = text.split(EXPORTED_FUNCTION).slice(1);
   return exported.length > 0 && exported.every((body) => PLATFORM_OPERATOR_POLICY.test(body));
 };
+// AIV-P2-036 (ADR-012 point 6): console code (the /ops area, features/ops*, server/ops*, modules/ops) reads platform
+// metadata only through these modules' contracts, and never holds the pool; server/operator.ts wires the reads.
+const OPS_READ_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)[/\\]|features[/\\]ops(?:-[^/\\]+)?[/\\]|server[/\\]ops[^/\\]*$)/;
+const OPS_CONTRACTS = new Set(['workspaces', 'jobs', 'audit']);
+const RAW_DATABASE = /^(?:@aivera\/db(?:\/.*)?|drizzle-orm(?:\/.*)?|postgres|pg)$/;
+// `@/server/…` or a relative path resolved to src/server/: of the app's server code (the pool, the full workspaces and
+// jobs contracts), console code imports only operator.ts, which holds the policy and the metadata reads.
+const APP_SERVER = /(?:^@|[/\\]src)[/\\]server[/\\]([^/\\]+?)(?:\.tsx?)?$/;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -129,6 +137,9 @@ export function findViolations(root: string): Violation[] {
         }
       }
 
+      const opsCode =
+        ((kind === 'apps' && OPS_READ_AREA.test(file)) || unit === 'modules/ops') && !/\.test\.tsx?$/.test(file);
+
       for (const match of readFileSync(file, 'utf8').matchAll(IMPORT)) {
         const spec = match[1] ?? match[2] ?? match[3] ?? '';
         const add = (rule: string, detail: string) =>
@@ -149,6 +160,19 @@ export function findViolations(root: string): Violation[] {
           }
           if (kind === 'modules' && (target === 'ui' || target === 'tokens'))
             add('module-no-ui', 'modules hold no UI (AGENTS.md 9.4)');
+        }
+        if (opsCode) {
+          const resolved = spec.startsWith('.') ? resolve(dirname(file), spec) : spec;
+          const target = scoped?.[1] ?? '';
+          if (
+            (modules.has(target) && target !== 'ops' && (!OPS_CONTRACTS.has(target) || scoped?.[2])) ||
+            (kind === 'apps' &&
+              (RAW_DATABASE.test(resolved) || (APP_SERVER.exec(resolved)?.[1] ?? 'operator') !== 'operator'))
+          )
+            add(
+              'ops-metadata-contracts-only',
+              'console code imports only the workspaces, jobs and audit contracts and server/operator, never the pool (ADR-012)',
+            );
         }
         // ADR-009: the candidate site reads only its own session, never the recruiter one or the recruiter shell.
         if (

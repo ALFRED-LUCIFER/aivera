@@ -120,3 +120,12 @@ export interface PublicJobsContract {
   /** The job at this slug: open, no longer open, or null when no job ever had it. */
   findPublicJob(slug: string): Promise<PublicJobLookup>;
 }
+
+/**
+ * The operator console's job count (ADR-012 point 6), for `/ops` only: a number per workspace, never a job's fields.
+ * Runs inside withWorkspace(<that workspace>) as the app role. Callers check the platformOperator policy first.
+ */
+export interface JobCounts {
+  /** Every job of the workspace, any stage; 0 for an unknown workspace. */
+  countJobs(workspaceId: string): Promise<number>;
+}

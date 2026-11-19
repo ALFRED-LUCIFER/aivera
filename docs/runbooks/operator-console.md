@@ -49,6 +49,12 @@ Use your own sign-in email locally, or a synthetic one with the mocked provider.
 - **403 for an operator:** check that the email in the list is the one you sign in with, and that the app restarted after the change. If the log shows `platform operator config invalid`, an entry is not an email (watch for a trailing comma or a space inside an address). The whole list is then ignored.
 - **The revision does not start after the apply:** the `platform-operator-emails` secret is missing from the vault, or the app identity cannot read it. Create it (step 1) and restart the revision.
 
+## Workspaces
+
+`/ops/workspaces` lists every workspace, newest first, 50 per page: name, type, created date (in the time zone the column header states), active members, jobs, status and plan ("No plan yet" until recruiter pricing, AIV-P5-013). Demo and test workspaces carry the "Synthetic" badge. Search matches part of the name in any case; the search is sent in the request body, so it never appears in a URL. Open a workspace for its detail page at `/ops/workspaces/<opaque id>`.
+
+The console shows platform facts and counts only, never a member, a candidate or a job's content. Each workspace is read inside its own scope under the normal tenant policies (ADR-012 point 6). The list comes from `workspaces.directory`. On Azure dev, workspaces created before AIV-P2-036 are listed only if they were someone's active workspace when it deployed (the migration backfills from that table); a dev workspace missing from the list was nobody's active workspace and holds synthetic data only. The list reads every workspace on each search, so it slows down past a few hundred workspaces; the upgrade is the `aivera_ops` role in ADR-012.
+
 ## Audit
 
-Every operator action is written to the platform audit log `audit.platform_entry` (ADR-012 point 8). The app can only insert into it. Opening the console writes `ops.console_opened` once per browser session.
+Every operator action is written to the platform audit log `audit.platform_entry` (ADR-012 point 8). The app can only insert into it. Opening the console writes `ops.console_opened` once per browser session. Opening a workspace's detail page writes `ops.workspace_viewed` with the workspace's id, on the server before the page renders.

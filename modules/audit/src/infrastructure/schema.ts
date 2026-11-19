@@ -63,7 +63,7 @@ export const platformEntry = audit.table(
   },
   (t) => [
     // Must list exactly PLATFORM_ACTIONS (domain/entry.ts); changing it needs a new migration.
-    check('platform_entry_action_check', sql`${t.action} in ('ops.console_opened')`),
+    check('platform_entry_action_check', sql`${t.action} in ('ops.console_opened', 'ops.workspace_viewed')`),
     check('platform_entry_subject_check', sql`(${t.subjectType} is null) = (${t.subjectId} is null)`),
   ],
 );

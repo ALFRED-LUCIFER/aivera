@@ -80,6 +80,27 @@ export default async function seed() {
     await withWorkspace(db, gulf, (tx) =>
       tx.execute(sql`update workspaces.member set status = 'removed' where user_id = ${lina}`),
     );
+    // AIV-P2-036 Background: Gulf Talent Partners is an agency with 4 active members (Lina's removed membership is not
+    // counted) and 2 jobs, for the operator console. Nadia and Faisal per personas.md; Rami also interviews here.
+    const nadia = await person('nadia@example.com', 'Nadia Freelance');
+    const faisal = await person('faisal@example.com', 'Faisal Client');
+    await withWorkspace(db, gulf, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${gulf}, ${nadia}, 'recruiter', 'active'), (${gulf}, ${faisal}, 'hiring_owner', 'active'),
+          (${gulf}, ${rami}, 'interviewer', 'active')`),
+    );
+    const omar = await person('omar.agency@example.com', 'Omar Agency');
+    const gulfJobs = createJobs(workspaces, createAudit(db));
+    await workspaces.withWorkspace({ userId: omar }, gulf, async (ctx) => {
+      await workspaces.setWorkspaceType(ctx, 'agency');
+      for (const title of ['Senior Product Manager, Payments', 'Staff Backend Engineer'])
+        await gulfJobs.createJob(ctx, {
+          title,
+          jobType: 'software_engineering',
+          description: `${title}, synthetic demo job.`,
+          synthetic: true,
+        });
+    });
   } finally {
     await db.$client.end();
   }

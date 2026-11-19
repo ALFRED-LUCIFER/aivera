@@ -1,0 +1,2 @@
+ALTER TABLE "audit"."platform_entry" DROP CONSTRAINT "platform_entry_action_check";--> statement-breakpoint
+ALTER TABLE "audit"."platform_entry" ADD CONSTRAINT "platform_entry_action_check" CHECK ("audit"."platform_entry"."action" in ('ops.console_opened', 'ops.workspace_viewed'));

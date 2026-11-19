@@ -4,7 +4,16 @@ import type { Session, WorkspaceContext as Context } from '../application/contex
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
-import type { Client, JobGrant, Member, Role, Workspace, WorkspaceType } from '../domain/workspace.ts';
+import type { DirectorySearch } from '../application/directory.ts';
+import type {
+  Client,
+  JobGrant,
+  Member,
+  Role,
+  Workspace,
+  WorkspaceSummary,
+  WorkspaceType,
+} from '../domain/workspace.ts';
 
 export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
 export type {
@@ -15,8 +24,10 @@ export type {
   Role,
   Workspace,
   WorkspaceErrorCode,
+  WorkspaceSummary,
   WorkspaceType,
 } from '../domain/workspace.ts';
+export type { DirectorySearch } from '../application/directory.ts';
 export type { GrantJobAccessInput } from '../application/clients.ts';
 export { ForbiddenError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
@@ -37,6 +48,19 @@ export interface AiTokenBudget {
   spentToday(workspaceId: string, day: string): Promise<number>;
   /** Adds `tokens` to the workspace's `day` in one atomic statement. */
   add(workspaceId: string, day: string, tokens: number): Promise<void>;
+}
+
+/**
+ * The operator console's workspace reads (ADR-012 point 6), for `/ops` only. Platform facts and counts, never a member,
+ * a client or candidate data. Each workspace is read inside withWorkspace(<that workspace>) as the app role, under its
+ * unchanged tenant policies; the list comes from the platform directory (workspace id and created date only).
+ * Callers check the platformOperator policy first.
+ */
+export interface WorkspaceDirectory {
+  /** Workspaces whose name contains `query` (any case; empty matches all), newest first, and how many match. */
+  listSummaries(search: DirectorySearch): Promise<{ total: number; summaries: WorkspaceSummary[] }>;
+  /** One workspace's facts; null when there is no such workspace. */
+  getSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
 }
 
 /** Workspace ids come from the request context, never from client input (ADR-005). */

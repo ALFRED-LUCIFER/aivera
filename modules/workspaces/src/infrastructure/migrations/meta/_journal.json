@@ -50,6 +50,20 @@
       "when": 1795059909586,
       "tag": "0006_force_rls_ai_token_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795062260502,
+      "tag": "0007_directory",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795062275554,
+      "tag": "0008_directory_backfill",
+      "breakpoints": true
     }
   ]
 }

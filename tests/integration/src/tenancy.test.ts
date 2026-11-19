@@ -24,6 +24,8 @@ const GLOBAL_TABLES: Record<string, string> = {
   'identity.sign_in_method': 'Belongs to identity.user: read at sign-in, before any workspace is open (ADR-009).',
   'workspaces.active_workspace':
     'Keyed on the user and read before any workspace is open; two opaque ids, membership re-checked per request.',
+  'workspaces.directory':
+    'The operator console lists workspaces from it (ADR-012): workspace id and created date only, nothing a tenant wrote.',
   'audit.platform_entry':
     'What Aivera operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
 };

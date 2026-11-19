@@ -83,9 +83,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(7);
+    expect(await applied()).toBe(9);
     dbMigrate();
-    expect(await applied()).toBe(7);
+    expect(await applied()).toBe(9);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -98,6 +98,8 @@ describe('Scenario: Migrations are forward-only and per schema', () => {
       { name: 'active_workspace', owner: 'aivera_migrator', rls: false, forced: false },
       { name: 'ai_token_usage', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'client', owner: 'aivera_migrator', rls: true, forced: true },
+      // The operator console's list (AIV-P2-036, ADR-012): workspace id and created date only, no tenant data.
+      { name: 'directory', owner: 'aivera_migrator', rls: false, forced: false },
       { name: 'job_grant', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'workspace', owner: 'aivera_migrator', rls: true, forced: true },

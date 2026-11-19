@@ -541,6 +541,47 @@
       "requests": "Requests",
       "subscriptions": "Subscriptions",
       "deletions": "Deletions"
+    },
+    "workspaces": {
+      "title": "Workspaces",
+      "caption": "Workspaces",
+      "searchLabel": "Search by workspace name",
+      "search": "Search",
+      "columns": {
+        "workspace": "Workspace",
+        "type": "Type",
+        "created": "Created ({timeZone})",
+        "members": "Members",
+        "jobs": "Jobs",
+        "status": "Status",
+        "plan": "Plan"
+      },
+      "type": {
+        "in_house": "In-house team",
+        "agency": "Agency"
+      },
+      "status": {
+        "active": "Active"
+      },
+      "synthetic": "Synthetic",
+      "noPlan": "No plan yet",
+      "createdOn": "{value, date, short}",
+      "count": "{count, number}",
+      "empty": "No workspaces yet.",
+      "noMatch": "No workspace matches \"{query}\".",
+      "loading": "Loading workspaces…",
+      "error": "We could not load workspaces. Try again.",
+      "retry": "Try again",
+      "pages": "Page {page, number} of {count, number}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "detail": {
+        "breadcrumb": "Breadcrumb",
+        "facts": "Platform facts",
+        "actions": "Operator actions",
+        "noActions": "No operator actions yet.",
+        "error": "We could not load this workspace. Try again."
+      }
     }
   }
 }

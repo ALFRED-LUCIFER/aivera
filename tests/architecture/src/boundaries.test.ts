@@ -52,6 +52,26 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ]);
   });
 
+  // AIV-P2-036 (ADR-012 point 6): the console reads metadata through allowed contracts only, never the pool.
+  // SAFETY: mutation check: removed the ops-metadata-contracts-only check -> this test failed
+  // SAFETY: mutation check: added 'candidates' to OPS_CONTRACTS -> this test failed (features/ops/services/x.ts missing)
+  // SAFETY: mutation check: allowed every app server file (only server/db refused) -> this test failed (@/server/workspace missing)
+  it('console code importing a candidate-bearing module, a composition root, the pool or app server code other than operator.ts is reported', () => {
+    expect(
+      findViolations(fixture('ops-reads'))
+        .filter((v) => v.rule === 'ops-metadata-contracts-only')
+        .map((v) => `${v.file} ${v.detail.split(':')[0]}`)
+        .toSorted(),
+    ).toEqual([
+      'apps/web/src/app/(ops)/ops/workspaces/page.tsx ../../../../server/db',
+      'apps/web/src/features/ops/services/x.ts @/server/db',
+      'apps/web/src/features/ops/services/x.ts @/server/workspace',
+      'apps/web/src/features/ops/services/x.ts @aivera/candidates',
+      'apps/web/src/server/opsReads.ts @aivera/db/client',
+      'apps/web/src/server/opsReads.ts @aivera/workspaces/composition',
+    ]);
+  });
+
   // SAFETY: mutation check: made findViolations return [] -> every case below failed
   it.each([
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],

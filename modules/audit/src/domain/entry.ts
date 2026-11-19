@@ -27,7 +27,7 @@ export type Action = (typeof ACTIONS)[number];
  * What an Aivera operator did, recorded in the platform audit log with no workspace (ADR-012). Adding one also needs a
  * migration for the `platform_entry_action_check` constraint (infrastructure/schema.ts).
  */
-export const PLATFORM_ACTIONS = ['ops.console_opened'] as const;
+export const PLATFORM_ACTIONS = ['ops.console_opened', 'ops.workspace_viewed'] as const;
 export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */

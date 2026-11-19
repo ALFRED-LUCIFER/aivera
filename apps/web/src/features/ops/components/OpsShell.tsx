@@ -1,10 +1,11 @@
+import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 export type OpsShellProps = {
   labels: { skipToContent: string; home: string; nav: string; soon: string; signOut: string };
-  /** The console's sections by label; none has a page yet, so they show as "Coming soon", not as links. */
-  sections: readonly string[];
+  /** The console's sections: a link where the section has a page, otherwise its label and "Coming soon". */
+  sections: readonly { label: string; href?: Route | undefined }[];
   /** The server action that ends the session and lands on the sign-in page. */
   signOutAction: () => Promise<void>;
   children: ReactNode;
@@ -36,13 +37,21 @@ export function OpsShell({ labels, sections, signOutAction, children }: OpsShell
           {labels.home}
         </Link>
         <ul className="flex flex-col gap-0.5">
-          {sections.map((label) => (
-            <li key={label} className={`${navItem} text-text-2`}>
-              {label}
-              {/* The space keeps the accessible name "Workspaces Coming soon". */}{' '}
-              <span className="ms-auto text-meta">{labels.soon}</span>
-            </li>
-          ))}
+          {sections.map(({ label, href }) =>
+            href ? (
+              <li key={label}>
+                <Link href={href} className={navLink}>
+                  {label}
+                </Link>
+              </li>
+            ) : (
+              <li key={label} className={`${navItem} text-text-2`}>
+                {label}
+                {/* The space keeps the accessible name "Approvals Coming soon". */}{' '}
+                <span className="ms-auto text-meta">{labels.soon}</span>
+              </li>
+            ),
+          )}
         </ul>
         <form action={signOutAction} className="mt-auto border-t border-border pt-3">
           <button type="submit" className={`${navLink} w-full cursor-pointer`}>

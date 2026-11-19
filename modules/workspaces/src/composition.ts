@@ -5,12 +5,19 @@ import type { Db, Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import { clientsUseCases } from './application/clients.ts';
+import { directoryUseCases } from './application/directory.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
 import { workspacesUseCases } from './application/workspaces.ts';
-import type { AiTokenBudget, WorkspacesContract } from './contracts/index.ts';
+import type { AiTokenBudget, WorkspaceDirectory, WorkspacesContract } from './contracts/index.ts';
 import { grantsCover } from './domain/permissions.ts';
-import { activeWorkspaceStore, aiTokenUsageStore, workspaceStore } from './infrastructure/repository.ts';
+import {
+  activeWorkspaceStore,
+  aiTokenUsageStore,
+  listDirectory,
+  readSummary,
+  workspaceStore,
+} from './infrastructure/repository.ts';
 
 const newId = () => uuidv7();
 
@@ -49,4 +56,12 @@ export function createAiTokenBudget(db: Db): AiTokenBudget {
     add: (workspaceId, day, tokens) =>
       withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).add(workspaceId, day, tokens)),
   };
+}
+
+/** The operator console's reads (ADR-012 point 6): the directory, then each workspace in its own scoped transaction. */
+export function createWorkspaceDirectory(db: Db): WorkspaceDirectory {
+  return directoryUseCases({
+    listIds: () => db.transaction(listDirectory),
+    readSummary: (workspaceId) => withWorkspace(db, workspaceId, (tx) => readSummary(tx, workspaceId)),
+  });
 }
