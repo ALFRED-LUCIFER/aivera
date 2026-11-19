@@ -50,6 +50,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
   it('the hero explains the promise, and Find jobs searches the jobs list', () => {
     renderHome();
     expect(screen.getByRole('heading', { level: 1, name: 'Get hired for what you have done.' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1 }).querySelector('mark')?.textContent).toBe('what you have done');
     expect(screen.getByText(/No tests to sit\./)).toBeDefined();
     expect(screen.getByText('Free to browse and apply. Always.')).toBeDefined();
     const search = screen.getByRole('searchbox', { name: 'Job title or skill' });
@@ -61,7 +62,9 @@ describe('CandidateHome (AIV-P3-003)', () => {
 
   it('the sample job shows what will be judged', () => {
     renderHome();
-    const card = screen.getByRole('heading', { level: 2, name: 'What this job needs' }).closest('div') as HTMLElement;
+    const card = screen.getByRole('heading', { level: 2, name: 'Senior AI Engineer' }).parentElement
+      ?.parentElement as HTMLElement;
+    expect(within(card).getByText('What this job needs')).toBeDefined();
     const rows = within(card)
       .getAllByRole('listitem')
       .map((li) => li.textContent);
@@ -110,7 +113,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
 
   it('the Plus teaser shows the price and links Plans, and promises no rank', () => {
     renderHome();
-    expect(screen.getByText('AED 49 a month')).toBeDefined();
+    expect(screen.getByText(/before you apply\. AED 49 a month\.$/)).toBeDefined();
     expect(screen.getByRole('link', { name: 'See what Plus adds' })).toHaveProperty('pathname', '/candidates/plans');
     expect(document.body.textContent).not.toMatch(/rank higher|top of the list|boost/i);
   });

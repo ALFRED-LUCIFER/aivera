@@ -4,6 +4,8 @@ import { newJobs } from '@/features/candidate-home/domain/new-jobs.ts';
 import { postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';
 import { getPublicJobs } from '@/server/publicJobs';
 import { HomeView } from './HomeView.tsx';
+// The website's hero motion (mk-rise, mk-sweep), shared with the CHome hero; a feature's components/ holds .tsx only.
+import '../../(marketing)/marketing.css';
 
 // Public: the candidate home page (AIV-P3-003), server-rendered. If the jobs cannot be read the rest still renders and
 // "New this week" says so; the log carries a code only.

@@ -13,14 +13,16 @@ export type CandidateShellProps = {
   children: ReactNode;
 };
 
-// Ink marks the current page: weight plus an underline, so it never rests on colour alone.
+// The artboard's .wlink: an ink underline draws in from the start edge on hover and stays under the current page, which
+// is also set in weight, so it never rests on colour alone.
 const navLink =
-  'flex h-10 items-center rounded-control px-2.5 font-medium text-text-2 pointer-coarse:min-h-11 ' +
-  'transition-colors duration-120 ease-case motion-reduce:transition-none hover:bg-surface-subtle hover:text-text ' +
-  'aria-[current=page]:font-semibold aria-[current=page]:text-text aria-[current=page]:underline ' +
-  'aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8';
+  'inline-flex min-h-11 items-center px-1.5 font-medium text-text-2 hover:text-text ' +
+  'bg-[linear-gradient(currentColor,currentColor)] bg-no-repeat bg-position-[6px_calc(100%-10px)] rtl:bg-position-[calc(100%-6px)_calc(100%-10px)] bg-size-[0_1.5px] ' +
+  'transition-[background-size,color] duration-240 ease-case hover:bg-size-[calc(100%-12px)_1.5px] motion-reduce:transition-none ' +
+  'aria-[current=page]:font-semibold aria-[current=page]:text-text aria-[current=page]:bg-size-[calc(100%-12px)_1.5px]';
 
-const container = 'mx-auto w-full max-w-7xl px-4 lg:px-8';
+// The artboard's 1120 px column with fluid gutters.
+const container = 'mx-auto w-full max-w-280 px-[clamp(20px,4vw,40px)]';
 
 export function CandidateShell({
   signedIn,
@@ -60,13 +62,10 @@ export function CandidateShell({
         {t('skipToContent')}
       </a>
       <header className="border-b border-border bg-surface">
-        <div className={`${container} flex flex-wrap items-center gap-x-8 gap-y-2 py-3`}>
-          <Link
-            href="/candidates"
-            className="flex h-10 items-baseline gap-2 rounded-control pt-1.5 pointer-coarse:min-h-11"
-          >
-            <span className="font-display text-section font-bold tracking-tight text-text">{t('wordmark')}</span>{' '}
-            <span className="text-meta text-text-2">{t('audience')}</span>
+        <div className={`${container} flex flex-wrap items-center gap-x-6 gap-y-2 py-3`}>
+          <Link href="/candidates" className="flex min-h-11 items-center gap-2.5 rounded-control">
+            <span className="font-display text-[20px] font-bold tracking-tight text-text">{t('wordmark')}</span>{' '}
+            <span className="border-s border-border-strong ps-2.5 text-meta text-text-2">{t('audience')}</span>
           </Link>
           <Button
             variant="ghost"
@@ -94,7 +93,7 @@ export function CandidateShell({
             aria-label={t('nav.label')}
             className={`${menuOpen ? 'flex' : 'hidden'} basis-full flex-col gap-3 pb-2 md:flex md:flex-1 md:basis-auto md:flex-row md:items-center md:pb-0`}
           >
-            <ul ref={listRef} className="flex flex-col gap-0.5 md:flex-row md:gap-1">
+            <ul ref={listRef} className="flex flex-col md:mx-auto md:flex-row md:flex-wrap md:gap-x-4">
               {headerLinks.map(({ key, href }) => (
                 <li key={key}>
                   <Link href={href} onClick={onCloseMenu} aria-current={current(href)} className={navLink}>
@@ -108,21 +107,21 @@ export function CandidateShell({
               href={account.href}
               onClick={onCloseMenu}
               aria-current={current(account.href)}
-              className={`${buttonClassName('secondary')} md:ms-auto`}
+              className={`${buttonClassName('secondary')} self-start md:self-auto`}
             >
               {t(account.key)}
             </Link>
           </nav>
         </div>
       </header>
-      <main id="content" tabIndex={-1} className={`${container} flex-1 pt-8 pb-16`}>
+      <main id="content" tabIndex={-1} className={`${container} flex-1 pt-[clamp(24px,4vw,48px)] pb-16`}>
         {children}
       </main>
-      <footer className="border-t border-border bg-surface">
+      <footer className="border-t border-border">
         <div className={`${container} flex flex-col gap-3 py-6 md:flex-row md:items-center md:justify-between`}>
           <p className="text-meta text-text-2">{t('footer.rule')}</p>
           <nav aria-label={t('footer.label')}>
-            <ul className="-mx-2.5 flex flex-wrap gap-1 text-meta">
+            <ul className="-mx-1.5 flex flex-wrap gap-x-4">
               {footerLinks.map(({ key, href }) => (
                 <li key={key}>
                   <Link href={href} className={navLink}>

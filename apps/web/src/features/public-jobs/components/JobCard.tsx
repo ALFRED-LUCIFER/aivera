@@ -5,11 +5,11 @@ import type { JobCardData } from '../domain/jobs-list.ts';
 
 const link = 'font-semibold text-text underline-offset-4 hover:underline';
 
-/** One open job: title, who and where, job type, posted age and "View job". Used by the jobs list and the home page. */
-export function JobCard({ job, level = 2 }: { job: JobCardData; level?: 2 | 3 }) {
+/** One open job: title, who and where, job type, posted age and "View job". Used by the jobs list. */
+export function JobCard({ job }: { job: JobCardData }) {
   const t = useTranslations();
   return (
-    <Card level={level} title={job.title}>
+    <Card level={2} title={job.title}>
       <p className="text-text-2">
         {job.location
           ? t('candidate.jobs.descriptorAndLocation', { descriptor: job.descriptor, location: job.location })

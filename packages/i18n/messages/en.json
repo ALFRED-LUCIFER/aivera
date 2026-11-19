@@ -190,13 +190,13 @@
       "retry": "Try again"
     },
     "home": {
-      "title": "Get hired for what you have done.",
-      "lead": "No tests to sit. Recruiters on Aivera judge the work you have already done, and show you what they need before you apply.",
+      "title": "Get hired for <mark>what you have done</mark>.",
+      "lead": "On Aivera, every job shows what it needs before you apply, and recruiters judge your work, not your keywords. No tests to sit.",
       "findJobs": "Find jobs",
       "checkCv": "Check my CV, free",
       "free": "Free to browse and apply. Always.",
-      "sampleTitle": "What this job needs",
-      "sampleJob": "Example: Senior AI Engineer",
+      "sampleTitle": "Senior AI Engineer",
+      "sampleJob": "What this job needs",
       "sample": {
         "llm": "LLM systems in production",
         "retrieval": "Retrieval and evaluation",
@@ -207,11 +207,11 @@
       "principles": {
         "needs": {
           "title": "Know what the job needs",
-          "body": "Every listing shows the competencies and the level each needs, before you apply."
+          "body": "Each job lists its competencies and the level needed. No guessing what the recruiter wants."
         },
         "work": {
           "title": "Your work counts",
-          "body": "Repositories, documents, references and results count. Keywords do not."
+          "body": "Link a repository, a document, a shipped product or a closed deal. Recruiters see exactly what it proves."
         },
         "person": {
           "title": "Nobody is rejected automatically",
@@ -222,7 +222,7 @@
       "noNew": "No new jobs this week. Check back soon.",
       "allJobs": "All jobs",
       "plusTitle": "Want an edge that is still honest?",
-      "plusBody": "Plus adds a portfolio at your own address, a CV tailored to each job and a gap report.",
+      "plusBody": "Aivera Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}.",
       "plusLink": "See what Plus adds"
     }
   },
