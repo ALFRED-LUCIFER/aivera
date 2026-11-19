@@ -28,13 +28,15 @@ test('searching from the hero opens the jobs list filtered by the words', async 
   await expect(page.getByRole('listitem').getByRole('heading', { level: 2 })).toContainText(['Senior AI Engineer']);
 });
 
-test('under reduced motion the hero is shown at once', async ({ page }) => {
+test('under reduced motion the hero is shown at once, highlighter included', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/candidates');
   const hero = page.getByRole('heading', { level: 1 });
   await expect(hero).toBeVisible();
   // Read once, not retried: a retrying opacity check would simply wait out the 1.4 s entrance and pass.
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+  await expect(hero.locator('mark')).toHaveText('what you have done');
+  await expect(hero.locator('mark')).toHaveCSS('background-color', 'rgb(255, 232, 115)'); // --hl #FFE873
 });
 
 for (const theme of themes) {
@@ -46,5 +48,19 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('region', { name: 'New this week' }).getByRole('heading', { level: 3 })).toHaveCount(3);
     await expectNoAxeViolations(page);
+  });
+
+  test(`the Plus call to action stays the bright highlighter with a visible focus ring (${theme})`, async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/candidates');
+    const plus = page.getByRole('link', { name: 'See what Plus adds' });
+    await plus.focus();
+    // #FFE873 in both themes: light tokens on the dark ink panel, and the ring in highlighter, never ink on ink.
+    await expect(plus).toHaveCSS('background-color', 'rgb(255, 232, 115)');
+    await expect(plus).toHaveCSS('outline-color', 'rgb(255, 232, 115)');
   });
 }

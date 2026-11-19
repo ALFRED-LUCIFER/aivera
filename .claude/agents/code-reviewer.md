@@ -38,7 +38,7 @@ You review one change to Aivera, an evidence-based hiring platform that holds ca
 
 - ADR-003 layers and cross-feature rules; components from `@aivera/ui`, never a local copy; tokens only, no raw hex.
 - No literals: every string a key in `packages/i18n/messages/en.json`; logical utilities.
-- One primary button per view; highlighter only on cited evidence; status with icon and word; preview-confirm card for assistant and bulk actions.
+- One primary button per view; highlighter only on cited evidence (except the website and candidate home places DESIGN.md names); status with icon and word; preview-confirm card for assistant and bulk actions.
 - States: empty, loading, error, 403. Keyboard path, focus ring, axe clean, light and dark, proven by Playwright tests (not a manual browser session).
 
 **Ponytail (smallest complete change)**
