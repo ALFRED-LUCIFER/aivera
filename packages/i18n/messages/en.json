@@ -549,7 +549,31 @@
     "notSaved": "Drafted competencies are suggestions: keep, edit or remove each. Nothing is saved until you choose Save job and rubric.",
     "nameRequired": "Every competency needs a name.",
     "weightRange": "Each weight is a whole percentage from 1 to 100.",
-    "emptyRubric": "Keep at least one competency to save the job and rubric."
+    "emptyRubric": "Keep at least one competency to save the job and rubric.",
+    "industryDetected": "Aivera read this as {key, select, ecommerce_marketplaces {an} energy_utilities {an} other {a}} <strong>{industry}</strong> job",
+    "industryChosen": "You chose {industry} for this job.",
+    "notThisIndustry": "Not this industry",
+    "addIndustry": "Add industry skills",
+    "industries": "Industries",
+    "noIndustry": "No industry",
+    "packSuggestions": "For {key, select, ecommerce_marketplaces {an} energy_utilities {an} other {a}} {industry} job · {count, plural, one {# suggestion} other {# suggestions}}",
+    "packCaption": "Suggestions from the {industry} pack",
+    "fromPack": "From the {industry} pack",
+    "packEmpty": "The {industry} pack has no suggestions for this job type. Choose another industry or add competencies yourself.",
+    "more": "More from this pack",
+    "addFromPack": "Add {name}",
+    "addAction": "Add",
+    "regions": {
+      "uae": "In the UAE",
+      "ksa": "In KSA",
+      "india": "In India"
+    },
+    "regionCaptions": {
+      "uae": "Regional suggestions for the UAE",
+      "ksa": "Regional suggestions for KSA",
+      "india": "Regional suggestions for India"
+    },
+    "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",

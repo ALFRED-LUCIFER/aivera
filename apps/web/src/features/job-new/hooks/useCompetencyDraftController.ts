@@ -1,9 +1,15 @@
 import { useState, useTransition } from 'react';
+import type { DomainKey } from '@aivera/jobs';
 import {
   blankCompetency,
+  changeRow,
+  morePackCompetencies,
+  packCompetencies,
   rowErrors,
   rubricJson,
   starterCompetencies,
+  visibleRows,
+  withPack,
   type DraftCompetency,
   type DraftResult,
   type DraftRow,
@@ -14,12 +20,20 @@ const withId = (c: DraftCompetency): DraftRow => ({ ...c, id: crypto.randomUUID(
 
 /**
  * Steps 2 and 3 of Add a job: drafts competencies and suggestions from step 1's form, holds the rows the recruiter
- * keeps, edits, removes or restores, and checks them before "Save job and rubric" posts them (AIV-P1-010). Nothing is
- * saved here: the rows live in the page until that save, and stay when it fails.
+ * keeps, edits, removes or restores, with the chosen industry's pack suggestions (AIV-P1-064), and checks them before
+ * "Save job and rubric" posts them (AIV-P1-010). Nothing is saved here: the rows live in the page until that save, and
+ * stay when it fails.
  */
 export function useCompetencyDraftController() {
   const [result, setResult] = useState<DraftResult>({ status: 'idle' });
-  const [rows, setRows] = useState<DraftRow[]>([]);
+  const [allRows, setRows] = useState<DraftRow[]>([]);
+  const [industry, setIndustry] = useState<DomainKey | null>(null);
+  // A regional hint the recruiter tried to make mandatory, until the next accepted change.
+  const [refusedId, setRefusedId] = useState<string | null>(null);
+  const rows = visibleRows(allRows, industry);
+  const drafted = result.status === 'drafted' ? result : null;
+  const pack = (key: DomainKey | null) =>
+    key && drafted ? packCompetencies(key, drafted.jobType, drafted.regions).map(withId) : [];
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafting, startDrafting] = useTransition();
   const [removedId, setRemovedId] = useState<string | null>(null);
@@ -28,6 +42,10 @@ export function useCompetencyDraftController() {
   return {
     result,
     rows,
+    industry,
+    /** "More from this pack", each with Add. */
+    more: industry && drafted ? morePackCompetencies(industry, drafted.jobType, allRows) : [],
+    refusedId,
     editingId,
     removedId,
     drafting,
@@ -43,8 +61,12 @@ export function useCompetencyDraftController() {
         const next = await draftCompetencies(data);
         setResult(next);
         if (next.status === 'drafted') {
-          setRows(next.competencies.map(withId));
+          const key = next.industry?.key ?? null;
+          const suggested = key ? packCompetencies(key, next.jobType, next.regions).map(withId) : [];
+          setRows(withPack(next.competencies.map(withId), suggested));
+          setIndustry(key);
           setEditingId(null);
+          setRefusedId(null);
         }
       });
     },
@@ -61,8 +83,19 @@ export function useCompetencyDraftController() {
     },
     onEdit: setEditingId,
     onDone: () => setEditingId(null),
-    onChange: (id: string, change: Partial<DraftCompetency>) =>
-      setRows((current) => current.map((row) => (row.id === id ? { ...row, ...change } : row))),
+    onChange: (id: string, change: Partial<DraftCompetency>) => {
+      const row = allRows.find((r) => r.id === id);
+      const next = row && changeRow(row, change);
+      setRefusedId(row && !next ? id : null);
+      if (next) setRows((current) => current.map((r) => (r.id === id ? next : r)));
+    },
+    /** "Not this industry" or "Add industry skills": the previous pack's suggestions give way to this one's, or none. */
+    onIndustry: (key: DomainKey | null) => {
+      setIndustry(key);
+      setRows((current) => withPack(current, pack(key)));
+      setEditingId(null);
+    },
+    onAddFromPack: (competency: DraftCompetency) => setRows((current) => [...current, withId(competency)]),
     /** Takes the competency out of the rubric; it stays on the page with Restore (AIV-P1-009). */
     onRemove: (id: string) => {
       setRows((current) => current.map((row) => (row.id === id ? { ...row, removed: true } : row)));

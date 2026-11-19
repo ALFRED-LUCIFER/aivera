@@ -1,5 +1,6 @@
 // A job and its own versioned rubric (AIV-P1-005). Assessment reads only the approved version; editing an approved
 // rubric starts a new version, and the approved one stays in force until the new one is approved.
+import { DOMAIN_KEYS, isRegionalHint, nameKey, type DomainKey } from './domain-packs.ts';
 import type { JobType } from './job-types.ts';
 
 /** Must list exactly the `job_stage_check` values (infrastructure/schema.ts); changing it needs a new migration. */
@@ -12,7 +13,12 @@ export type RubricStatus = (typeof RUBRIC_STATUSES)[number];
 
 export const COMPETENCY_TYPES = ['mandatory', 'desirable'] as const;
 /** Must list exactly the `competency_origin_check` values (infrastructure/schema.ts); a new one needs a migration. */
-export const COMPETENCY_ORIGINS = ['from_description', 'suggested_by_aivera', 'added_by_recruiter'] as const;
+export const COMPETENCY_ORIGINS = [
+  'from_description',
+  'suggested_by_aivera',
+  'added_by_recruiter',
+  'domain_pack',
+] as const;
 
 /** Integer minor units and an ISO currency (AGENTS.md 3.8). Stored as int4, so at most 2,147,483,647. */
 export type PayBand = { minMinor: number; maxMinor: number; currency: string };
@@ -49,6 +55,9 @@ export type Competency = {
   levelNeeded: number;
   type: (typeof COMPETENCY_TYPES)[number];
   origin: (typeof COMPETENCY_ORIGINS)[number];
+  /** The domain pack (AIV-P1-064) and catalogue version that seeded it: set exactly when `origin` is `domain_pack`. */
+  packKey?: DomainKey | null;
+  packVersion?: number | null;
 };
 
 export type RubricVersion = {
@@ -77,6 +86,8 @@ const MESSAGES = {
   weight: 'Each weight is a whole percentage from 1 to 100.',
   weights_total: 'Weights must total 100%.',
   level: 'The level needed is a whole number from 1 to 5.',
+  domain_pack: 'A competency from a domain pack names its pack and version, and no other competency does.',
+  regional_desirable: 'Regional knowledge is shown through evidence, so it can only be desirable.',
   not_found: 'That job or rubric version was not found.',
   version_status: 'This rubric version cannot move to that status.',
   rubric_not_approved: 'Publish after the rubric is approved.',
@@ -95,7 +106,10 @@ export class JobError extends Error {
   }
 }
 
-/** Throws unless the competencies form a valid rubric: named, weights 1–100 totalling 100, levels 1–5. */
+/**
+ * Throws unless the competencies form a valid rubric: named, weights 1–100 totalling 100, levels 1–5, a pack and its
+ * version exactly on `domain_pack` competencies, and a regional hint only ever desirable (AGENTS.md 1.5).
+ */
 export function assertValidCompetencies(competencies: Competency[]): void {
   if (competencies.length === 0) throw new JobError('no_competencies');
   for (const c of competencies) {
@@ -103,6 +117,10 @@ export function assertValidCompetencies(competencies: Competency[]): void {
     if (!Number.isInteger(c.weightPercent) || c.weightPercent < 1 || c.weightPercent > 100)
       throw new JobError('weight');
     if (!Number.isInteger(c.levelNeeded) || c.levelNeeded < 1 || c.levelNeeded > 5) throw new JobError('level');
+    const packed = Boolean(c.packKey && c.packVersion && DOMAIN_KEYS.includes(c.packKey));
+    if ((c.origin === 'domain_pack') !== packed) throw new JobError('domain_pack');
+    // Knowing a market's rules is evidence of a skill, never a residency requirement, so it can never be mandatory.
+    if (c.type !== 'desirable' && isRegionalHint(c.name)) throw new JobError('regional_desirable');
   }
   if (competencies.reduce((sum, c) => sum + c.weightPercent, 0) !== 100) throw new JobError('weights_total');
 }
@@ -124,8 +142,6 @@ export function rebalanceWeights(competencies: Competency[]): Competency[] {
   const remainder = 100 - scaled.reduce((sum, c) => sum + c.weightPercent, 0);
   return scaled.map((c, i) => (i === heaviest ? { ...c, weightPercent: c.weightPercent + remainder } : c));
 }
-
-const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /**
  * The suggestions that repeat no drafted competency and no earlier suggestion, comparing names without case or extra

@@ -4,7 +4,10 @@ import type { JobType } from './job-types.ts';
 /** Bump when a pack entry changes meaning; kept pack competencies record the version that seeded them. */
 export const DOMAIN_PACK_CATALOGUE_VERSION = 1;
 
-/** Keys are stored with kept competencies (AIV-P1-064), so never rename one. */
+/**
+ * Keys are stored with kept competencies (AIV-P1-064), so never rename one. Must list exactly the
+ * `competency_pack_key_check` values (infrastructure/schema.ts); a new pack needs a migration.
+ */
 export const DOMAIN_KEYS = [
   'payments_fintech',
   'banking_islamic_finance',
@@ -1867,3 +1870,14 @@ export function getDomainPack(key: DomainKey, jobType: JobType): DomainPackForJo
     hints: { uae: hintsFor('uae'), ksa: hintsFor('ksa'), india: hintsFor('india') },
   };
 }
+
+/** A competency name compared without case or extra spaces, so the same skill is never listed twice. */
+export const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+const HINT_NAMES = new Set(CATALOGUE.flatMap((p) => REGIONS.flatMap((r) => p.hints[r].map((h) => nameKey(h.name)))));
+
+/**
+ * Whether a competency is named as one of the catalogue's regional hints, without case or extra spaces.
+ * shortcut: a hint the recruiter renamed is no longer recognised; store the hint's region if a rubric editor shows that
+ * renaming is used to make one mandatory.
+ */
+export const isRegionalHint = (name: string): boolean => HINT_NAMES.has(nameKey(name));

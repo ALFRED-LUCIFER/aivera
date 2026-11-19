@@ -88,8 +88,27 @@ describe('addJob (server action)', () => {
       hiringOwnerUserId: owner,
       synthetic: true,
       // Scenario: Kept suggestions are marked (AIV-P1-009): the origin reaches the jobs module as posted.
-      competencies: [competency],
+      competencies: [{ ...competency, packKey: null, packVersion: null }],
     });
+  });
+
+  // Scenario: I decide what stays (AIV-P1-064): a kept pack competency reaches the jobs module with its pack.
+  it('saves a pack competency with origin domain_pack, its pack key and the catalogue version', async () => {
+    const pack = {
+      ...competency,
+      name: '3-D Secure and SCA flows',
+      origin: 'domain_pack',
+      packKey: 'payments_fintech',
+      packVersion: 1,
+    };
+    const data = new FormData();
+    for (const [key, value] of Object.entries(job)) data.set(key, value);
+    data.set('rubric', JSON.stringify([pack]));
+    await expect(addJob(initialNewJobState(''), data)).resolves.toMatchObject({ saved: true });
+    expect(createJobWithDraftRubric).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ competencies: [pack] }),
+    );
   });
 
   // Scenario: Validation (AIV-P1-010): the server refuses what the page would have blocked.

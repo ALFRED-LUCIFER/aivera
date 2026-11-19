@@ -50,6 +50,13 @@
       "when": 1795074975962,
       "tag": "0006_competency_added_by_recruiter",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795078136322,
+      "tag": "0007_competency_domain_pack",
+      "breakpoints": true
     }
   ]
 }

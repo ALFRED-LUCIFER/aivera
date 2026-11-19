@@ -43,6 +43,40 @@ describe('Scenario: Weights must total 100', () => {
   });
 });
 
+const one = (change: Partial<Competency>): Competency[] => rubric([100]).map((c) => ({ ...c, ...change }));
+
+describe('Domain pack competencies (AIV-P1-064)', () => {
+  const pack = { origin: 'domain_pack', packKey: 'payments_fintech', packVersion: 1 } as const;
+
+  it('a pack competency names its pack and version, and no other competency does', () => {
+    expect(() => assertValidCompetencies(one(pack))).not.toThrow();
+    for (const change of [
+      { ...pack, packKey: null },
+      { ...pack, packVersion: null },
+      { ...pack, packKey: 'crypto' as NonNullable<Competency['packKey']> },
+      { origin: 'domain_pack' as const },
+    ])
+      expect(() => assertValidCompetencies(one(change))).toThrow('A competency from a domain pack names its pack');
+    expect(() => assertValidCompetencies(one({ packKey: 'payments_fintech', packVersion: 1 }))).toThrow(
+      'A competency from a domain pack names its pack',
+    );
+  });
+
+  // SAFETY: mutation check: removed the isRegionalHint check in assertValidCompetencies -> this test failed
+  it('a regional hint is never mandatory, whatever its origin', () => {
+    const hint = { name: 'Aani instant payments', type: 'mandatory' } as const;
+    expect(() => assertValidCompetencies(one({ ...pack, ...hint }))).toThrow(
+      'Regional knowledge is shown through evidence, so it can only be desirable.',
+    );
+    expect(() => assertValidCompetencies(one({ ...hint, name: ' aani  INSTANT payments' }))).toThrow(
+      'Regional knowledge is shown through evidence',
+    );
+    expect(() => assertValidCompetencies(one({ ...pack, ...hint, type: 'desirable' }))).not.toThrow();
+    // A core pack competency may be raised to mandatory; the hiring owner approves the rubric.
+    expect(() => assertValidCompetencies(one({ ...pack, name: 'Reconciliation and settlement' }))).not.toThrow();
+  });
+});
+
 describe('Scenario: Suggestions never duplicate drafted competencies (AIV-P1-009)', () => {
   // SAFETY: mutation check: newSuggestions returned every suggestion unfiltered -> this test and the draft one failed
   it('drops a suggestion named like a drafted competency or an earlier suggestion, ignoring case and spaces', () => {
