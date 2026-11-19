@@ -1,0 +1,23 @@
+# Hessa Al Mazrouei's checkout-e2e repository maps to "Test automation", citing her share of the test cases.
+id: hessa-checkout-e2e
+people: [Hessa Al Mazrouei]
+input:
+  competencies: [Test automation, CI reliability]
+sources:
+  - id: S1
+    kind: repo
+    text: checkout-e2e - wrote 148 of 171 test cases; Playwright suite for a checkout flow, run on every merge.
+expected:
+  match:
+    competency: Test automation
+    statements[*].label: [submitted]
+recorded:
+  output:
+    competency: Test automation
+    statements:
+      - text: She wrote most of the checkout end-to-end suite.
+        label: submitted
+        citations:
+          - sourceId: S1
+            quote: wrote 148 of 171 test cases
+    rationale: One repository shows her share of the suite; flakiness and CI history are not shown.

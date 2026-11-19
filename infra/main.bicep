@@ -74,6 +74,7 @@ module ai 'modules/ai.bicep' = {
   params: {
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+    aiEvalIdentityPrincipalId: foundation.outputs.aiEvalIdentityPrincipalId
   }
 }
 
@@ -119,3 +120,4 @@ output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId
 output keyVaultName string = foundation.outputs.keyVaultName
 output aiResourceName string = ai.outputs.resourceName
+output aiEvalIdentityClientId string = foundation.outputs.aiEvalIdentityClientId

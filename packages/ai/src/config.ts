@@ -15,6 +15,8 @@ type TaskSettings = { deployment: Deployment; timeoutMs: number; maxOutputTokens
 
 export const generateTasks = {
   'jobs.draftCompetencies': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 4_000, temperature: 0.2 },
+  // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows.
+  'evals.judge': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;
 
 export const embedTasks = {

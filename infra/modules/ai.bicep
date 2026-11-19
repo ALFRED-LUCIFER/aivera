@@ -3,6 +3,7 @@
 // allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity.
 param tags object
 param appIdentityPrincipalId string
+param aiEvalIdentityPrincipalId string
 
 var location = 'uaenorth' // ADR-011: explicit, so a group created elsewhere cannot move the account.
 // The subdomain must equal the name: @ai-sdk/azure builds <AZURE_OPENAI_RESOURCE_NAME>.openai.azure.com.
@@ -55,6 +56,17 @@ resource appCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: openAiUser
     principalId: appIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The eval harness's live run (AIV-P0-029), with the same role: call deployments, nothing else.
+resource evalCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: account
+  name: guid(account.id, aiEvalIdentityPrincipalId, openAiUser)
+  properties: {
+    roleDefinitionId: openAiUser
+    principalId: aiEvalIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

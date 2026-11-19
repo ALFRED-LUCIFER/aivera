@@ -1,0 +1,37 @@
+# Sara Al Qahtani's eval harness repository maps to "Retrieval and evaluation"; the rationale states what it does not
+# show, which only a judge can check.
+id: sara-eval-harness
+people: [Sara Al Qahtani]
+input:
+  competencies: [Retrieval and evaluation, Python service engineering, Cost and reliability]
+sources:
+  - id: S1
+    kind: repo
+    text: >-
+      llm-eval-harness: authored 412 of 460 commits between March and October; adds retrieval metrics and a regression
+      gate to the release pipeline. README: the gate blocked two prompt releases that lowered answer accuracy.
+expected:
+  match:
+    competency: Retrieval and evaluation
+    statements[*].label: [submitted]
+  judge: The rationale names what the evidence does not show, such as who else reviewed the work or its effect on users.
+recorded:
+  output:
+    competency: Retrieval and evaluation
+    statements:
+      - text: She wrote most of the eval harness and its retrieval metrics.
+        label: submitted
+        citations:
+          - sourceId: S1
+            quote: authored 412 of 460 commits
+      - text: The gate changed release decisions.
+        label: submitted
+        citations:
+          - sourceId: S1
+            quote: the gate blocked two prompt releases that lowered answer accuracy
+    rationale: >-
+      Strong evidence of building evaluation. It does not show how the metrics were chosen or whether a second
+      engineer confirms her share.
+  judge:
+    pass: true
+    reason: The rationale says it does not show how metrics were chosen or a second confirmation of her share.
