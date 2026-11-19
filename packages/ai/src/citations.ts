@@ -10,9 +10,15 @@ export type SourceKind = 'cv' | 'repo' | 'document' | 'reference' | 'interview' 
 /** One piece of text the model may cite. `id` is the caller's opaque id (an evidence id); it never reaches the model. */
 export type Source = { id: string; kind: SourceKind; text: string; uri?: string };
 
-// The candidate's own account of themselves: a statement resting only on these is a claim, counting zero when backed.
+// A statement citing the candidate's own account is a claim (zero in the backed score) unless a source about the
+// candidate's work backs it too; the job description says nothing about the candidate, so it backs nothing.
+// shortcut: only `cv` counts as the candidate's words; a submitted `document` (cover letter) or interview answer does
+// not yet, decide per kind when evidence mapping (AIV-P1-027) sets provenance.
 const CANDIDATE_WORDS: ReadonlySet<SourceKind> = new Set(['cv']);
+const BACKS_NOTHING: ReadonlySet<SourceKind> = new Set(['cv', 'job_description']);
 
+// shortcut: any non-empty quote passes, so a one-word quote proves little; set a minimum if the eval set (AIV-P0-029)
+// shows short quotes slipping through.
 /** What the model returns for each citation: the source label it was shown (`S1`) and a quote from that source. */
 const citation = z.object({ sourceId: z.string(), quote: z.string().min(1) });
 
@@ -59,7 +65,10 @@ export class InvalidCitation extends Error {
 
 export const sourceLabel = (index: number) => `S${index + 1}`;
 
-/** The sources as the model sees them, numbered in order. */
+/**
+ * The sources as the model sees them, numbered in order. Text is not escaped: a source that fakes a `<source>` tag can
+ * confuse the model, but labels resolve only to the real sources and code sets `claim`, so it cannot forge backing.
+ */
 export const formatSources = (sources: readonly Source[]) =>
   sources
     .map((source, i) => `<source id="${sourceLabel(i)}" kind="${source.kind}">\n${source.text}\n</source>`)
@@ -122,7 +131,8 @@ export function checkOutput<S extends z.ZodType>(
       return { sourceId: source.id, quote: source.text.slice(span.start, span.end), ...span };
     });
     // Set here, after any `claim` the model gave, so only the sources decide it.
-    return { ...out, citations, claim: kinds.every((kind) => CANDIDATE_WORDS.has(kind)) };
+    const claim = kinds.some((kind) => CANDIDATE_WORDS.has(kind)) && kinds.every((kind) => BACKS_NOTHING.has(kind));
+    return { ...out, citations, claim };
   };
   return check(parsed.data) as Checked<z.infer<S>>;
 }

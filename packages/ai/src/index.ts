@@ -18,4 +18,4 @@ export {
   type SourceKind,
 } from './citations';
 export type { EmbedTask, GenerateTask } from './config';
-export { azureProvider, fakeProvider, FAKE_COMPLETION, providerFromEnv, type AiProvider } from './providers';
+export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';

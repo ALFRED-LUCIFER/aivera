@@ -196,7 +196,8 @@ export function createAiClient(options: {
      * the model as S1, S2, ...; every `cited()` statement must quote one of them verbatim. Output that fails the schema
      * or the contract is rejected, never patched, and asked for once more; then the call throws `SchemaMismatch`,
      * `UncitedOutput` or `InvalidCitation`. Each attempt is charged to the workspace's budget. There is no free-text
-     * call: anything that feeds the product is structured (ADR-006 point 3).
+     * call: anything that feeds the product is structured (ADR-006 point 3). Azure sends the schema in strict mode,
+     * which needs every property present: use `.nullable()` or a union, never `.optional()`.
      */
     async generateStructured<S extends z.ZodType>(input: {
       task: GenerateTask;

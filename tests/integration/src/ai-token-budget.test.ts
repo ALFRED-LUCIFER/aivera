@@ -9,6 +9,7 @@ import { createAiBudgetConsole, createAiTokenBudget, createWorkspaces } from '@a
 import { MockLanguageModelV4 } from 'ai/test';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 // AIV-P0-033: one persisted daily AI token budget per workspace, against real PostgreSQL as the non-owner aivera_app
 // role. Each "process" is its own connection pool and AI client. Synthetic data only.
@@ -48,7 +49,7 @@ function exact(inputTokens: number, outputTokens: number) {
         doGenerate: async () => {
           sent.requests++;
           return {
-            content: [{ type: 'text', text: 'ok' }],
+            content: [{ type: 'text', text: JSON.stringify({ ready: true }) }],
             finishReason: { unified: 'stop', raw: 'stop' },
             usage: {
               inputTokens: { total: inputTokens, noCache: undefined, cacheRead: 0, cacheWrite: 0 },
@@ -68,7 +69,15 @@ function processWith(provider: AiProvider, clock = { now: NINE_AM }, db = pool()
 }
 
 const draft = (workspaceId: string) =>
-  ({ task: 'jobs.draftCompetencies', workspaceId, prompt: 'Draft competencies for a data engineer.' }) as const;
+  ({
+    task: 'jobs.draftCompetencies',
+    workspaceId,
+    promptVersion: 'test.ready@1',
+    system: 'You check readiness.',
+    prompt: 'Draft competencies for a data engineer.',
+    schema: z.object({ ready: z.boolean() }),
+    sources: [],
+  }) as const;
 
 /** The usage rows of a workspace, read inside its own scoped transaction. */
 const usage = (workspaceId: string) =>
@@ -105,7 +114,7 @@ afterAll(async () => {
 describe('Scenario: A successful call adds its input and output tokens', () => {
   it('1,200 input and 300 output tokens make a 1,500-token row for 2026-11-18', async () => {
     await clear();
-    await processWith(exact(1_200, 300).provider).generate(draft(DEMO));
+    await processWith(exact(1_200, 300).provider).generateStructured(draft(DEMO));
     expect(await usage(DEMO)).toEqual([{ day: '2026-11-18', tokens: 1_500 }]);
   });
 });
@@ -116,9 +125,9 @@ describe('Scenario: Two processes share one budget', () => {
     await clear();
     const web = exact(BUDGET, 0);
     const worker = exact(1, 1);
-    await processWith(web.provider).generate(draft(DEMO));
+    await processWith(web.provider).generateStructured(draft(DEMO));
 
-    await expect(processWith(worker.provider).generate(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(processWith(worker.provider).generateStructured(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
     expect(worker.sent.requests).toBe(0);
   });
 });
@@ -128,7 +137,9 @@ describe('Scenario: A restart keeps the count', () => {
     await clear();
     await spend(DEMO, '2026-11-18', BUDGET);
     const restarted = exact(1, 1);
-    await expect(processWith(restarted.provider).generate(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(processWith(restarted.provider).generateStructured(draft(DEMO))).rejects.toBeInstanceOf(
+      BudgetExceeded,
+    );
     expect(restarted.sent.requests).toBe(0);
   });
 });
@@ -140,10 +151,10 @@ describe('Scenario: The next UTC day starts a fresh budget', () => {
     const model = exact(10, 5);
     const clock = { now: Date.parse('2026-11-18T23:59:59.999Z') };
     const ai = processWith(model.provider, clock);
-    await expect(ai.generate(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(ai.generateStructured(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
 
     clock.now = Date.parse('2026-11-19T00:00:00Z');
-    await expect(ai.generate(draft(DEMO))).resolves.toEqual({ text: 'ok' });
+    await expect(ai.generateStructured(draft(DEMO))).resolves.toEqual({ ready: true });
     expect(model.sent.requests).toBe(1);
     expect(await usage(DEMO)).toEqual([
       { day: '2026-11-18', tokens: BUDGET },
@@ -158,7 +169,7 @@ describe('Scenario: Concurrent calls do not lose increments', () => {
     await clear();
     const { provider } = exact(60, 40);
     const [web, worker] = [processWith(provider, undefined, pool(10)), processWith(provider, undefined, pool(10))];
-    await Promise.all(Array.from({ length: 20 }, (_, i) => (i % 2 ? web : worker).generate(draft(DEMO))));
+    await Promise.all(Array.from({ length: 20 }, (_, i) => (i % 2 ? web : worker).generateStructured(draft(DEMO))));
     expect(await usage(DEMO)).toEqual([{ day: '2026-11-18', tokens: 2_000 }]);
   });
 });
@@ -168,7 +179,7 @@ describe('Scenario: A failed call spends nothing', () => {
     await clear();
     await spend(DEMO, '2026-11-18', 500);
     const ai = processWith(fakeProvider({ failures: [503, 503, 503] }));
-    await expect(ai.generate(draft(DEMO))).rejects.toBeInstanceOf(AiUnavailable);
+    await expect(ai.generateStructured(draft(DEMO))).rejects.toBeInstanceOf(AiUnavailable);
     expect(await usage(DEMO)).toEqual([{ day: '2026-11-18', tokens: 500 }]);
   });
 });
@@ -181,7 +192,7 @@ describe('Scenario: The store is unavailable', () => {
     await admin.execute(sql`revoke select on workspaces.ai_token_usage from aivera_app`);
     try {
       const error = await processWith(model.provider)
-        .generate({ ...draft(DEMO), prompt })
+        .generateStructured({ ...draft(DEMO), prompt })
         .catch((e: unknown) => e);
       expect(error).toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store'));
       expect(model.sent.requests).toBe(0);
@@ -261,11 +272,11 @@ describe('AIV-P2-038: a per-workspace daily budget', () => {
       await setBudget(DEMO, 100_000);
       await spend(DEMO, '2026-11-18', 120_000);
       const model = exact(1, 1);
-      await expect(processWith(model.provider).generate(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
+      await expect(processWith(model.provider).generateStructured(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
       expect(model.sent.requests).toBe(0);
       // Another workspace keeps the platform default.
       await spend(GULF, '2026-11-18', 120_000);
-      await expect(processWith(model.provider).generate(draft(GULF))).resolves.toEqual({ text: 'ok' });
+      await expect(processWith(model.provider).generateStructured(draft(GULF))).resolves.toEqual({ ready: true });
     });
 
     it('raising it again lets the next call through', async () => {
@@ -273,7 +284,7 @@ describe('AIV-P2-038: a per-workspace daily budget', () => {
       await setBudget(DEMO, 100_000);
       await spend(DEMO, '2026-11-18', 120_000);
       await setBudget(DEMO, 200_000);
-      await expect(processWith(exact(1, 1).provider).generate(draft(DEMO))).resolves.toEqual({ text: 'ok' });
+      await expect(processWith(exact(1, 1).provider).generateStructured(draft(DEMO))).resolves.toEqual({ ready: true });
     });
   });
 
@@ -353,9 +364,9 @@ describe('AIV-P2-038: a per-workspace daily budget', () => {
 
   it("the client's check fails closed for a workspace its scope cannot see: AiUnavailable, no request", async () => {
     const model = exact(1, 1);
-    await expect(processWith(model.provider).generate(draft('0190d4a2-0000-7000-8000-0000000000ff'))).rejects.toEqual(
-      new AiUnavailable('jobs.draftCompetencies', 'budget store'),
-    );
+    await expect(
+      processWith(model.provider).generateStructured(draft('0190d4a2-0000-7000-8000-0000000000ff')),
+    ).rejects.toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store'));
     expect(model.sent.requests).toBe(0);
   });
 

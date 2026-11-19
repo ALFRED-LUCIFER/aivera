@@ -30,7 +30,6 @@ export function azureProvider(options: {
   return { languageModel: (deployment) => azure.chat(deployment), embeddingModel: (d) => azure.embedding(d) };
 }
 
-export const FAKE_COMPLETION = '[fake completion]';
 const FAKE_DIMENSIONS = 3072; // text-embedding-3-large
 const tokens = (text: string) => Math.ceil(text.length / 4);
 
@@ -57,7 +56,7 @@ export function fakeProvider(options: { completion?: string; failures?: number[]
         modelId: deployment,
         doGenerate: async ({ prompt }) => {
           failNext();
-          const text = options.completion ?? FAKE_COMPLETION;
+          const text = options.completion ?? '{}'; // callers pass output that matches their schema
           return {
             content: [{ type: 'text', text }],
             finishReason: { unified: 'stop', raw: 'stop' },

@@ -8,6 +8,7 @@ import { cited, findQuote, InvalidCitation, SchemaMismatch, UncitedOutput, type 
 import { createAiClient, memoryTokenBudget } from './client';
 import { fakeProvider, type AiProvider } from './providers';
 
+// Schemas use .nullable(), never .optional(): Azure's strict structured outputs require every property.
 // Feature: Structured output with required citations (AIV-P0-028). Synthetic data only (docs/00-product/personas.md).
 
 const spans = new InMemorySpanExporter();
@@ -33,11 +34,16 @@ const S2: Source = {
   kind: 'cv',
   text: 'CV page 2. Merchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.',
 };
-const sources = [S1, S2];
+const S3: Source = {
+  id: '0190d4a2-0000-7000-8000-0000000000e3',
+  kind: 'job_description',
+  text: 'Senior AI Engineer. You will reduce inference cost across our assistants.',
+};
+const sources = [S1, S2, S3];
 const candidateText = /sara|qahtani|412|460|cost per request|merchant|twenty/i;
 
 const schema = z.object({
-  strengths: z.array(cited(z.object({ statement: z.string(), weight: z.number(), claim: z.boolean().optional() }))),
+  strengths: z.array(cited(z.object({ statement: z.string(), weight: z.number(), claim: z.boolean().nullable() }))),
 });
 
 /** A provider whose model gives these answers in turn, recording the prompt of each request. */
@@ -80,7 +86,7 @@ function answers(...outputs: unknown[]) {
 }
 
 const statement = (citations: unknown, extra = {}) => ({
-  strengths: [{ statement: 'Owns the eval harness', weight: 25, citations, ...extra }],
+  strengths: [{ statement: 'Owns the eval harness', weight: 25, claim: null, citations, ...extra }],
 });
 const harness = { sourceId: 'S1', quote: 'authored 412 of 460 commits' };
 const structuredSpan = () => spans.getFinishedSpans().findLast((span) => span.name.startsWith('ai structured'));
@@ -173,16 +179,20 @@ describe('Scenario: A quote that is not in the source is rejected', () => {
 
 describe("Scenario: Statements resting only on the candidate's word are claims", () => {
   // SAFETY: mutation check: spread the model's fields after `claim` in checkOutput -> this test failed (claim stayed false)
-  it('a statement citing only the CV is a claim even when the model says it is not', async () => {
+  // SAFETY: mutation check: dropped the BACKS_NOTHING check (any non-CV source backs) -> this test failed (CV + job description)
+  it('a statement citing only the CV, or the CV and the job description, is a claim whatever the model says', async () => {
     const cost = { sourceId: 'S2', quote: 'cut cost per request by 40%' };
+    const need = { sourceId: 'S3', quote: 'reduce inference cost' };
     const { run } = answers({
       strengths: [
         { statement: 'Cut cost per request', weight: 15, claim: false, citations: [cost] },
+        { statement: 'Cut cost as the job needs', weight: 15, claim: false, citations: [cost, need] },
         { statement: 'Owns the eval harness', weight: 25, claim: true, citations: [harness, cost] },
+        { statement: 'The job needs lower cost', weight: 5, claim: true, citations: [need] },
       ],
     });
     const output = await run();
-    expect(output.strengths.map((s) => s.claim)).toEqual([true, false]);
+    expect(output.strengths.map((s) => s.claim)).toEqual([true, true, false, false]);
   });
 });
 
