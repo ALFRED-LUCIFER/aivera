@@ -8,6 +8,10 @@
     "completion": "{\"industry\":{\"domain\":\"none\"},\"regions\":[]}"
   },
   {
+    "when": "say which industry the hiring company is in",
+    "completion": "{\"industry\":{\"domain\":\"none\"},\"regions\":[]}"
+  },
+  {
     "when": "settles merchant payments across the Gulf",
     "completion": "{\"competencies\":[{\"name\":\"Card acquiring platform engineering\",\"evidenceExpected\":\"Payment platform services they built and ran in production\",\"weight\":40,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the card acquiring platform that settles merchant payments\"}]},{\"name\":\"TypeScript and Go services\",\"evidenceExpected\":\"Services in TypeScript or Go they wrote, with tests\",\"weight\":30,\"level\":3,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"write services in TypeScript and Go, with tests\"}]},{\"name\":\"Mentoring engineers\",\"evidenceExpected\":\"Engineers they mentored and what changed\",\"weight\":20,\"level\":3,\"type\":\"desirable\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"mentor two engineers\"}]}],\"refused\":false,\"reason\":null,\"suggestions\":[{\"name\":\"Banking and payments domain\",\"evidenceExpected\":\"Work on payment or banking systems\",\"weight\":10,\"level\":2,\"type\":\"desirable\",\"why\":\"The platform settles merchant payments, but the description asks for no payments knowledge.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"settles merchant payments across the Gulf\"}]}]}"
   },
