@@ -6,3 +6,5 @@ export { uuidv7 } from './uuidv7.ts';
 export { migrateModules } from './migrate.ts';
 export { MODULES, migrationsFolder } from './modules.ts';
 export type { MigratableModule } from './modules.ts';
+export { enqueue, outboxTable } from './outbox.ts';
+export type { Envelope, EventDefinition } from './outbox.ts';

@@ -15,6 +15,20 @@
       "when": 1795022947841,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795025421478,
+      "tag": "0002_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795025425282,
+      "tag": "0003_outbox_grants",
+      "breakpoints": true
     }
   ]
 }

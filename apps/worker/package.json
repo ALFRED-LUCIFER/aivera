@@ -1,0 +1,24 @@
+{
+  "name": "worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=../../.env.local src/main.ts",
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aivera/candidates": "workspace:*",
+    "@aivera/db": "workspace:*",
+    "@aivera/observability": "workspace:*",
+    "@azure/identity": "4.14.1",
+    "@azure/service-bus": "7.10.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@aivera/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3"
+  }
+}

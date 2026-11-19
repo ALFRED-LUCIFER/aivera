@@ -13,6 +13,7 @@ here=$(dirname "$0")
 
 app_oid=$(az identity show -g $rg -n id-aivera-dev --query principalId -o tsv)
 cicd_oid=$(az identity show -g $rg -n id-aivera-cicd-dev --query principalId -o tsv)
+relay_oid=$(az identity show -g $rg -n id-aivera-relay-dev --query principalId -o tsv)
 # The server knows its Entra admins by their registered principal name, which for a guest (#EXT#) account differs
 # from the UPN, so look it up by the signed-in user's object id.
 me=$(az ad signed-in-user show --query id -o tsv)
@@ -33,11 +34,11 @@ az containerapp job secret set -g $rg -n $job -o none \
 
 # A job execution template (JSON is valid YAML for --yaml): the SQL travels as an environment variable.
 jq -n --arg sql "$(cat "$here/../sql/bootstrap-roles.sql")" --arg host "$host" --arg user "$admin" \
-  --arg app "$app_oid" --arg cicd "$cicd_oid" '{containers: [{
+  --arg app "$app_oid" --arg cicd "$cicd_oid" --arg relay "$relay_oid" '{containers: [{
     name: "bootstrap", image: "postgres:16-alpine",
-    command: ["sh", "-c", "printf %s \"$SQL\" | psql -v ON_ERROR_STOP=1 -v app_oid=\"$APP_OID\" -v cicd_oid=\"$CICD_OID\""],
+    command: ["sh", "-c", "printf %s \"$SQL\" | psql -v ON_ERROR_STOP=1 -v app_oid=\"$APP_OID\" -v cicd_oid=\"$CICD_OID\" -v relay_oid=\"$RELAY_OID\""],
     env: [
-      {name: "SQL", value: $sql}, {name: "APP_OID", value: $app}, {name: "CICD_OID", value: $cicd},
+      {name: "SQL", value: $sql}, {name: "APP_OID", value: $app}, {name: "CICD_OID", value: $cicd}, {name: "RELAY_OID", value: $relay},
       {name: "PGHOST", value: $host}, {name: "PGUSER", value: $user}, {name: "PGDATABASE", value: "postgres"},
       {name: "PGSSLMODE", value: "verify-full"}, {name: "PGSSLROOTCERT", value: "system"},
       {name: "PGPASSWORD", secretRef: "bootstrap-pg-token"}

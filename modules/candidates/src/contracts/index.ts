@@ -1,5 +1,7 @@
 // The only public surface of @aivera/candidates (ADR-002).
+import type { EventDefinition } from '@aivera/db/outbox';
 import type { WorkspaceContext } from '@aivera/workspaces';
+import { z } from 'zod';
 import type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 import type { Person } from '../domain/person.ts';
 
@@ -8,15 +10,14 @@ export type { CandidateErrorCode, Identifier, IdentifierType, Person } from '../
 export type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 
 /**
- * Emitted once when a new person is created. Opaque ids only, never personal data (AGENTS.md 3.1).
- * shortcut: defined but not yet published; the outbox (AIV-P0-014) carries it from findOrCreatePerson.
+ * Written to `candidates.outbox` in the transaction that creates a person, and sent to the `candidates` queue.
+ * Strict and opaque ids only: an email or a name in the payload is refused (AGENTS.md 1.2, 3.1). The envelope
+ * (`Envelope` from `@aivera/db`) carries the workspace id and the time.
  */
-export type PersonCreatedV1 = {
-  type: 'PersonCreated.v1';
-  workspaceId: string;
-  personId: string;
-  occurredAt: string;
-};
+export const PersonCreatedV1 = {
+  type: 'PersonCreated.v1',
+  payload: z.strictObject({ personId: z.uuid() }),
+} satisfies EventDefinition<{ personId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,

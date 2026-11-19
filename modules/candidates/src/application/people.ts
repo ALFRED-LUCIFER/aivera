@@ -18,6 +18,8 @@ export type CandidateStore = {
 
 export type Ports = {
   storeFor(tx: Tx): CandidateStore;
+  /** Writes `PersonCreated.v1` to the outbox in `tx`, so it commits only with the person (AIV-P0-014). */
+  publishPersonCreated(tx: Tx, person: Person): Promise<void>;
   /** The workspaces contract's `authorize`: role, and for job-scoped roles a job grant (ADR-005 point 6). */
   authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
   /** Whether the context's workspace is flagged synthetic (the workspaces contract's `getWorkspace`). */
@@ -37,7 +39,7 @@ export type FindOrCreatePersonInput = {
 
 export type FindOrCreatePersonResult = { personId: string; created: boolean };
 
-export function peopleUseCases({ storeFor, authorize, isSyntheticWorkspace, newId, now }: Ports) {
+export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSyntheticWorkspace, newId, now }: Ports) {
   return {
     async findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<FindOrCreatePersonResult> {
       await authorize(ctx, 'candidate.create');
@@ -65,8 +67,10 @@ export function peopleUseCases({ storeFor, authorize, isSyntheticWorkspace, newI
         mergedIntoId: null,
         createdAt: now(),
       };
-      // shortcut: PersonCreated.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
-      if (await store.insertPerson(person, identifiers)) return { personId: person.id, created: true };
+      if (await store.insertPerson(person, identifiers)) {
+        await publishPersonCreated(ctx.tx, person);
+        return { personId: person.id, created: true };
+      }
 
       // Another request created this person between the lookup and the insert; theirs is committed, so visible now.
       const raced = await store.findPersonId(ctx.workspaceId, identifiers);

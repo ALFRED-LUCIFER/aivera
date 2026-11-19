@@ -1,7 +1,7 @@
 import { LoggerProvider, InMemoryLogRecordExporter, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { describe, expect, it } from 'vitest';
-import { REDACTED, redactingLogRecordProcessor, redactingSpanProcessor, registerPersonalDataKeys } from './redact';
+import { REDACTED, redactingLogRecordProcessor, redactingSpanProcessor, registerPersonalDataKeys } from './redact.ts';
 
 // Feature: Traces and metrics in Application Insights without personal data (AIV-P0-018). Synthetic data only.
 

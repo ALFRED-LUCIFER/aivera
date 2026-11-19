@@ -1,13 +1,16 @@
 -- Database roles for local development and integration tests (ADR-004). In Azure the infrastructure creates them
 -- mapped to managed identities (infra/sql/bootstrap-roles.sql); the password below is local-only and works nowhere else.
 -- aivera_migrator owns the module schemas and runs migrations. aivera_app has data access only, is not the owner,
--- and is therefore always subject to row-level security.
+-- and is therefore always subject to row-level security. aivera_relay (the outbox relay, AIV-P0-014) reads and marks
+-- every module's outbox rows through their relay policies and has no grant on any other table.
 CREATE ROLE aivera_migrator LOGIN PASSWORD 'local_dev_only';
 CREATE ROLE aivera_app LOGIN PASSWORD 'local_dev_only';
+CREATE ROLE aivera_relay LOGIN PASSWORD 'local_dev_only';
 
 DO $$ BEGIN
   EXECUTE format('GRANT CREATE, CONNECT ON DATABASE %I TO aivera_migrator', current_database());
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO aivera_app', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO aivera_relay', current_database());
 END $$;
 
 -- aivera_public reads the candidate site's published jobs (AIV-P3-002). It cannot sign in: aivera_app switches to it

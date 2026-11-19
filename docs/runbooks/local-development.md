@@ -6,7 +6,7 @@
 nvm use                      # Node 24 from .nvmrc
 corepack enable              # pnpm 11 from package.json
 pnpm install                 # also installs the lefthook Git hooks
-pnpm services:up             # PostgreSQL 17 + pgvector on localhost:5432, with the aivera_migrator and aivera_app roles
+pnpm services:up             # PostgreSQL 17 + pgvector on localhost:5432, with the aivera_migrator, aivera_app and aivera_relay roles
 cp .env.example .env.local   # then set the two database URLs below
 pnpm db:migrate
 pnpm db:seed                  # the synthetic demo workspace (needs APP_ENV=local)
@@ -22,6 +22,10 @@ APP_ENV=local
 DATABASE_MIGRATOR_URL=postgres://aivera_migrator:local_dev_only@localhost:5432/aivera
 DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 ```
+
+A database volume created before AIV-P0-014 lacks the outbox relay's role, so `pnpm db:migrate` fails on the candidates outbox migration (its policies name the role) and applies nothing of that module. Add it once: `docker compose exec postgres psql -U aivera -d aivera -c "CREATE ROLE aivera_relay LOGIN PASSWORD 'local_dev_only'; GRANT CONNECT ON DATABASE aivera TO aivera_relay"`.
+
+The worker (`pnpm --filter worker start`) runs the outbox relay and needs `RELAY_DATABASE_URL=postgres://aivera_relay:local_dev_only@localhost:5432/aivera` and `AZURE_SERVICE_BUS_NAMESPACE` (a real namespace, signed in with `az login`). It is not needed for the web app: events wait in the outbox until a relay sends them.
 
 Leave `APPLICATIONINSIGHTS_CONNECTION_STRING` empty locally: telemetry then stays off and `@aivera/observability`'s logger writes redacted JSON lines to stdout only. Log through `log` from `@aivera/observability` (message template plus ids, never candidate values); it redacts keys like `email`, `phone`, `name`, `text` and `prompt`, and strips query strings, before anything is written or exported.
 

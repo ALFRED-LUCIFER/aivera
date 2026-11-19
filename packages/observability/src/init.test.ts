@@ -1,7 +1,7 @@
 import { useAzureMonitor } from '@azure/monitor-opentelemetry';
 import { describe, expect, it, vi } from 'vitest';
-import { initTelemetry } from './init';
-import { redactingLogRecordProcessor, redactingSpanProcessor } from './redact';
+import { initTelemetry } from './init.ts';
+import { redactingLogRecordProcessor, redactingSpanProcessor } from './redact.ts';
 
 vi.mock('@azure/monitor-opentelemetry', () => ({ useAzureMonitor: vi.fn() }));
 
