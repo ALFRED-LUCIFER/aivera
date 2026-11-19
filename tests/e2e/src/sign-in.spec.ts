@@ -139,6 +139,11 @@ test('Scenario: Sign out', async ({ page, context }) => {
   expect((await context.cookies()).find((c) => c.name === '__Host-aivera-session')).toBeUndefined();
   await page.goto('/app');
   await expect(page).toHaveURL(/\/sign-in\?/);
+  // The tenant's own session outlives ours: the next sign-in must make the tenant ask again (shared computer).
+  // SAFETY: mutation check: dropped `prompt: 'login'` from authorizationParams -> this test failed
+  const authorize = page.waitForRequest((request) => new URL(request.url()).pathname === '/authorize');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect(new URL((await authorize).url()).searchParams.get('prompt')).toBe('login');
 });
 
 test('Scenario: The session lives only in a secure cookie', async ({ page, context }) => {

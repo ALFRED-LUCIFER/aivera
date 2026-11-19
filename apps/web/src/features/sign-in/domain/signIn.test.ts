@@ -73,8 +73,15 @@ describe('sign-in form and request', () => {
   });
 
   it('sends only the typed email to the tenant page, for every method', () => {
-    expect(authorizationParams('alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
-    expect(authorizationParams(undefined)).toEqual({});
+    expect(authorizationParams('alex@example.com')).toEqual({ prompt: 'login', login_hint: 'alex@example.com' });
+    expect(authorizationParams(undefined)).toEqual({ prompt: 'login' });
+  });
+
+  // Sign out ends only our session, so every sign-in (and "Forgot password?") makes the tenant ask again.
+  // SAFETY: mutation check: dropped `prompt: 'login'` from authorizationParams -> this test failed
+  it('every sign-in asks the tenant to sign in again (prompt=login), with or without an email', () => {
+    expect(authorizationParams('alex@example.com').prompt).toBe('login');
+    expect(authorizationParams(undefined).prompt).toBe('login');
   });
 
   // Scenario: Forgot password opens the tenant's reset without my email in the URL.
@@ -82,7 +89,7 @@ describe('sign-in form and request', () => {
   it('"Forgot password?" sends no login_hint, even with an email typed', () => {
     const { method, email } = parseSignInForm(form({ method: 'reset', email: 'nadia@example.com', next: '/app' }));
     expect(method).toBe('reset');
-    expect(authorizationParams(email)).toEqual({});
+    expect(authorizationParams(email)).toEqual({ prompt: 'login' });
   });
 
   it('refuses the methods the user flow does not offer', () => {

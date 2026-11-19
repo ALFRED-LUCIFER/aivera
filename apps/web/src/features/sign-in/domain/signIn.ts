@@ -62,8 +62,10 @@ export const parseSignInForm = (form: FormData) =>
  * once it stops returning AADSTS90023 on the dev tenant.
  */
 export function authorizationParams(email: string | undefined): Record<string, string> {
+  // `prompt=login`: the tenant always asks for the password (or Google) again. Sign out ends only our session, so
+  // without it the next person at a shared computer could land in the previous recruiter's account.
   // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
-  return email ? { login_hint: email } : {};
+  return email ? { prompt: 'login', login_hint: email } : { prompt: 'login' };
 }
 
 type SignInError = 'unverifiedEmail' | 'unavailable' | 'failed';
