@@ -133,6 +133,24 @@ describe('upsertUserFromIdToken', () => {
     expect(await usersWith('faisal@example.com')).toBe(0);
   });
 
+  // Scenario: The same person is one account on both sides (AIV-P0-011). The candidate app registration on the same
+  // tenant has the same issuer but its own (pairwise) subject, and sends no email_verified claim.
+  // SAFETY: mutation check: isEmailVerified stopped trusting our tenant without the claim -> this test failed
+  it("a candidate sign-in for an existing recruiter's verified email reuses the identity user", async () => {
+    const recruiter = await identity.upsertUserFromIdToken(
+      token({ subject: 'nadia-freelance-recruiter-app', email: 'nadia.freelance@example.com' }),
+    );
+    const candidate = await identity.upsertUserFromIdToken(
+      token({
+        subject: 'nadia-freelance-candidate-app',
+        email: 'nadia.freelance@example.com',
+        emailVerified: undefined,
+      }),
+    );
+    expect(candidate.id).toBe(recruiter.id);
+    expect(await usersWith('nadia.freelance@example.com')).toBe(1);
+  });
+
   it('updates the display name from the latest sign-in', async () => {
     const before = await identity.upsertUserFromIdToken(token({ subject: 'lina', email: 'lina@example.com' }));
     const after = await identity.upsertUserFromIdToken(

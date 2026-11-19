@@ -1,6 +1,7 @@
 import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { getCandidateSessionUserId } from '@/server/candidateAuth';
 import { CandidateSite } from './CandidateSite.tsx';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -8,13 +9,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: { template: t('candidate.shell.titleTemplate'), default: t('candidate.shell.siteTitle') } };
 }
 
-// The candidate site never reads the recruiter session (ADR-009: each surface reads only its own cookie).
+// The candidate site reads only `__Host-aivera-candidate`, never the recruiter session (ADR-009, AIV-P0-011).
 export default async function CandidateLayout({ children }: { children: ReactNode }) {
   const intl = await intlConfig(defaultLocale, defaultTimeZone);
-  // shortcut: always signed out until the candidate session exists (AIV-P0-011, sign-in AIV-P3-007); then read
-  // `__Host-aivera-candidate` here and pass the result.
+  const signedIn = (await getCandidateSessionUserId()) !== null;
   return (
-    <CandidateSite intl={intl} signedIn={false}>
+    <CandidateSite intl={intl} signedIn={signedIn}>
       {children}
     </CandidateSite>
   );

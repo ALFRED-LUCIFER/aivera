@@ -8,6 +8,8 @@ const rootEnv = join(import.meta.dirname, '..', '..', '.env.local');
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const config: NextConfig = {
+  // Set only by tests/e2e/playwright.config.ts: its second `next dev` (no candidate sign-in) needs its own folder.
+  distDir: process.env['NEXT_DIST_DIR'] ?? '.next',
   poweredByHeader: false,
   typedRoutes: true,
   // Workspace packages ship TypeScript source (ADR-002).

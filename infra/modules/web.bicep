@@ -13,6 +13,8 @@ param databaseName string
 param webImage string
 param aiResourceName string
 param commitSha string
+@description('Candidate app registration (client) id in the dev External ID tenant (docs/runbooks/candidate-sign-in.md). Empty until the owner registers it: the candidate settings are then left out and candidate sign-in stays off.')
+param entraCandidateClientId string = ''
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -20,6 +22,22 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
 
 var probe = { port: 3000, scheme: 'HTTP' }
 var appName = 'ca-aivera-web-dev'
+// Candidate sign-in (AIV-P0-011): added only once the app exists, since an apply fails on a missing Key Vault secret.
+var candidateSecrets = empty(entraCandidateClientId)
+  ? []
+  : [
+      {
+        name: 'entra-candidate-client-secret'
+        keyVaultUrl: '${keyVaultUri}secrets/entra-candidate-client-secret'
+        identity: appIdentityId
+      }
+    ]
+var candidateEnv = empty(entraCandidateClientId)
+  ? []
+  : [
+      { name: 'AUTH_ENTRA_CANDIDATE_CLIENT_ID', value: entraCandidateClientId }
+      { name: 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET', secretRef: 'entra-candidate-client-secret' }
+    ]
 
 resource web 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
@@ -41,7 +59,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       // Every secret is a Key Vault reference read with the app identity; no literal secret lives on the app.
-      secrets: [
+      secrets: concat([
         { name: 'appinsights-connection-string', keyVaultUrl: appInsightsSecretUri, identity: appIdentityId }
         // Recruiter sign-in (AIV-P0-009). Both secrets must exist in the vault before an apply.
         {
@@ -50,14 +68,14 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           identity: appIdentityId
         }
         { name: 'auth-secret', keyVaultUrl: '${keyVaultUri}secrets/auth-secret', identity: appIdentityId }
-      ]
+      ], candidateSecrets)
     }
     template: {
       containers: [
         {
           name: 'web'
           image: webImage
-          env: [
+          env: concat([
             { name: 'APP_ENV', value: 'dev' }
             { name: 'COMMIT_SHA', value: commitSha }
             // No password: packages/db signs in as aivera_app with the identity's Entra token.
@@ -78,7 +96,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
-          ]
+          ], candidateEnv)
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [
             { type: 'Liveness', httpGet: union(probe, { path: '/api/health' }), periodSeconds: 30 }

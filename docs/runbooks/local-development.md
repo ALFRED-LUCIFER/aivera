@@ -25,7 +25,7 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 
 Leave `APPLICATIONINSIGHTS_CONNECTION_STRING` empty locally: telemetry then stays off and `@aivera/observability`'s logger writes redacted JSON lines to stdout only. Log through `log` from `@aivera/observability` (message template plus ids, never candidate values); it redacts keys like `email`, `phone`, `name`, `text` and `prompt`, and strips query strings, before anything is written or exported.
 
-Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruiter-sign-in.md)); without them `/sign-in` renders but every `/app` page redirects to it. `pnpm e2e` signs in through a mocked provider instead and needs the migrated database above (or `E2E_DATABASE_URL`).
+Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruiter-sign-in.md)); without them `/sign-in` renders but every `/app` page redirects to it. Candidate sign-in works the same way with its own two settings ([candidate-sign-in.md](candidate-sign-in.md)); without them every `/candidates/me` page redirects to `/candidates/sign-in`. `pnpm e2e` signs in through a mocked provider instead and needs the migrated database above (or `E2E_DATABASE_URL`).
 
 ## Everyday commands
 
