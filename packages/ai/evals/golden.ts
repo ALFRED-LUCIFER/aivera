@@ -21,6 +21,8 @@ export type Verdict = z.infer<typeof verdict>;
 export const goldenCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
+    /** The task's case group this case is scored in (config.ts taskThresholds groups), if any. */
+    group: z.string().min(1).optional(),
     /** Every person the case names; each must be in the synthetic cast. */
     people: z.array(z.string().min(1)).default([]),
     /** The task's input besides its sources (job type, a recruiter's instruction). */

@@ -1,0 +1,29 @@
+# Mobility pack, KSA. Synthetic (AIV-P1-066).
+id: logistics-ride-pricing-riyadh
+group: domain
+input:
+  jobType: data_ml
+  title: 'Data Scientist, Ride Pricing'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will model demand and pricing for our ride-hailing app, matching riders with drivers across the city. You ship models with tests and monitor them in production.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  match:
+    industry.domain: logistics_mobility
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: logistics_mobility
+      citations:
+        - sourceId: S1
+          quote: 'You will model demand and pricing for our ride-hailing app, matching riders with drivers across the city.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

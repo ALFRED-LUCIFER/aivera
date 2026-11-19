@@ -1,5 +1,6 @@
 # The ticket's payments example (AIV-P1-063, synthetic): the domain cites the acquiring sentence, the region the location.
 id: payments-difc
+group: domain
 input:
   jobType: software_engineering
   title: 'Senior Backend Engineer, Payments'

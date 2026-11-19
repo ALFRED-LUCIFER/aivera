@@ -1,0 +1,31 @@
+# Near miss: "cash on delivery" in a courier job is logistics, never payments. Synthetic (AIV-P1-066).
+id: near-miss-cash-on-delivery
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Android Engineer, Courier App'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will build the courier app our drivers use to deliver parcels and collect cash on delivery. You write tested Kotlin code.'
+  - id: S2
+    kind: job_description
+    text: 'Sharjah'
+expected:
+  safety:
+    forbidden: ['payments_fintech']
+  match:
+    industry.domain: logistics_mobility
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: logistics_mobility
+      citations:
+        - sourceId: S1
+          quote: 'You will build the courier app our drivers use to deliver parcels and collect cash on delivery.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Sharjah'

@@ -1,0 +1,19 @@
+# No industry and no location: none, and no region. Synthetic (AIV-P1-066).
+id: none-sre-no-location
+group: none
+input:
+  jobType: devops_sre
+  title: 'Site Reliability Engineer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will keep our services fast and available. You own monitoring, alerts and incident reviews, and automate what you do twice.'
+expected:
+  match:
+    industry.domain: none
+    regions: []
+recorded:
+  output:
+    industry:
+      domain: none
+    regions: []

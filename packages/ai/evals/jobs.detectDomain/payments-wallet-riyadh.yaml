@@ -1,0 +1,30 @@
+# Payments pack, KSA, a non-engineering job: the regulator is regional knowledge, not the reason. Synthetic
+# (AIV-P1-066).
+id: payments-wallet-riyadh
+group: domain
+input:
+  jobType: product_management
+  title: 'Senior Product Manager, Wallet'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will own the mobile wallet that lets customers pay merchants and send money to family. Our wallet operates under a SAMA licence, so you plan releases with the compliance team. You write clear specs and decide what ships.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  match:
+    industry.domain: payments_fintech
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: payments_fintech
+      citations:
+        - sourceId: S1
+          quote: 'You will own the mobile wallet that lets customers pay merchants and send money to family.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

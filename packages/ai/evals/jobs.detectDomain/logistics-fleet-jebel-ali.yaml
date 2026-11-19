@@ -1,0 +1,29 @@
+# Logistics pack, UAE: the agency client from the synthetic cast. Synthetic (AIV-P1-066).
+id: logistics-fleet-jebel-ali
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Staff Backend Engineer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'Dune Logistics is hiring a backend engineer. You will build route planning and proof of delivery for our fleet of delivery vans and trucks. You write Go services with tests.'
+  - id: S2
+    kind: job_description
+    text: 'Jebel Ali, Dubai'
+expected:
+  match:
+    industry.domain: logistics_mobility
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: logistics_mobility
+      citations:
+        - sourceId: S1
+          quote: 'You will build route planning and proof of delivery for our fleet of delivery vans and trucks.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Jebel Ali, Dubai'

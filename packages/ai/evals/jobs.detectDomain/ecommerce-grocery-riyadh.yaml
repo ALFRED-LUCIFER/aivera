@@ -1,0 +1,29 @@
+# E-commerce pack, KSA, a non-engineering job. Synthetic (AIV-P1-066).
+id: ecommerce-grocery-riyadh
+group: domain
+input:
+  jobType: product_management
+  title: 'Product Manager, Online Grocery'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will own the basket and checkout of our online grocery store. You decide what ships with design and engineering and read the conversion data.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  match:
+    industry.domain: ecommerce_marketplaces
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: ecommerce_marketplaces
+      citations:
+        - sourceId: S1
+          quote: 'You will own the basket and checkout of our online grocery store.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

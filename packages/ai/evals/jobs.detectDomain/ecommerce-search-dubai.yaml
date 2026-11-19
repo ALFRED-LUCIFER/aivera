@@ -1,0 +1,29 @@
+# E-commerce pack, UAE. Synthetic (AIV-P1-066).
+id: ecommerce-search-dubai
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Senior Engineer, Marketplace Search'
+sources:
+  - id: S1
+    kind: job_description
+    text: "You will build search and ranking for our online marketplace, where thousands of sellers list products for shoppers. You write tested services and review your teammates' changes."
+  - id: S2
+    kind: job_description
+    text: 'Dubai'
+expected:
+  match:
+    industry.domain: ecommerce_marketplaces
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: ecommerce_marketplaces
+      citations:
+        - sourceId: S1
+          quote: 'You will build search and ranking for our online marketplace, where thousands of sellers list products for shoppers.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Dubai'

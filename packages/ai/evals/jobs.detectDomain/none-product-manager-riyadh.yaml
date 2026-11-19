@@ -1,0 +1,26 @@
+# No industry named. Synthetic (AIV-P1-066).
+id: none-product-manager-riyadh
+group: none
+input:
+  jobType: product_management
+  title: 'Product Manager'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will own a product area from discovery to launch. You talk to customers, write specs and decide what ships with design and engineering.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  match:
+    industry.domain: none
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: none
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

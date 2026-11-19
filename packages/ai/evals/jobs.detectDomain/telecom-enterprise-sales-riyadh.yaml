@@ -1,0 +1,29 @@
+# Telecom pack, KSA, a sales job. Synthetic (AIV-P1-066).
+id: telecom-enterprise-sales-riyadh
+group: domain
+input:
+  jobType: sales
+  title: 'Enterprise Account Executive, Connectivity'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will sell fibre, private 5G and SIM plans from our telecom operator to large companies. You build a pipeline and close multi-year contracts.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  match:
+    industry.domain: telecom
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: telecom
+      citations:
+        - sourceId: S1
+          quote: 'You will sell fibre, private 5G and SIM plans from our telecom operator to large companies.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

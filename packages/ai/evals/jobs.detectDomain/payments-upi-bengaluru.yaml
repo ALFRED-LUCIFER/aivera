@@ -1,0 +1,29 @@
+# Payments pack, India. Synthetic (AIV-P1-066).
+id: payments-upi-bengaluru
+group: domain
+input:
+  jobType: qa_test_automation
+  title: 'QA Engineer, UPI Payments'
+sources:
+  - id: S1
+    kind: job_description
+    text: "You will automate tests for our UPI payment flows and merchant settlement reports. You follow the RBI's rules for payment aggregators when you design test data. You own the regression suite in CI."
+  - id: S2
+    kind: job_description
+    text: 'Bengaluru, India'
+expected:
+  match:
+    industry.domain: payments_fintech
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: payments_fintech
+      citations:
+        - sourceId: S1
+          quote: 'You will automate tests for our UPI payment flows and merchant settlement reports.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Bengaluru, India'

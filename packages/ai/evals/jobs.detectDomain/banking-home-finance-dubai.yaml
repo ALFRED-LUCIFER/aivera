@@ -1,0 +1,29 @@
+# Islamic banking pack, UAE, a non-engineering job. Synthetic (AIV-P1-066).
+id: banking-home-finance-dubai
+group: domain
+input:
+  jobType: product_management
+  title: 'Product Manager, Home Finance'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will run the Islamic home finance product of a retail bank, built on murabaha and ijara contracts. You work with the Sharia board and the risk team on every change. You write the roadmap and measure what customers use.'
+  - id: S2
+    kind: job_description
+    text: 'Dubai, United Arab Emirates'
+expected:
+  match:
+    industry.domain: banking_islamic_finance
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: banking_islamic_finance
+      citations:
+        - sourceId: S1
+          quote: 'You will run the Islamic home finance product of a retail bank, built on murabaha and ijara contracts.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Dubai, United Arab Emirates'

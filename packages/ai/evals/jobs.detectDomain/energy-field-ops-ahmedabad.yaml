@@ -1,0 +1,29 @@
+# Energy pack, India, a non-engineering job. Synthetic (AIV-P1-066).
+id: energy-field-ops-ahmedabad
+group: domain
+input:
+  jobType: product_management
+  title: 'Product Manager, Field Operations'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will own the app our engineers use to inspect power lines, substations and transformers for our electricity distribution company. You decide what ships with design and engineering.'
+  - id: S2
+    kind: job_description
+    text: 'Ahmedabad, India'
+expected:
+  match:
+    industry.domain: energy_utilities
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: energy_utilities
+      citations:
+        - sourceId: S1
+          quote: 'You will own the app our engineers use to inspect power lines, substations and transformers for our electricity distribution company.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Ahmedabad, India'

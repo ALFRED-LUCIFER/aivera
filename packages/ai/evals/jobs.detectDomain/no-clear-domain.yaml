@@ -1,5 +1,6 @@
 # A description that names no industry (synthetic): the answer is none, with no citation and no pack.
 id: no-clear-domain
+group: none
 input:
   jobType: software_engineering
   title: Backend Engineer
