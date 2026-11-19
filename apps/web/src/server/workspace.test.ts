@@ -1,5 +1,5 @@
 import type { IdentityContract, User } from '@aivera/identity';
-import { ForbiddenError, type Member, type WorkspaceContext } from '@aivera/workspaces';
+import { ForbiddenError, WorkspacePausedError, type Member, type WorkspaceContext } from '@aivera/workspaces';
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
 import { currentMembership, workspaceAction } from './workspace.ts';
@@ -30,7 +30,13 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
-const ctx: WorkspaceContext = { userId: 'u1', workspaceId: W1, role: 'interviewer', tx: {} as WorkspaceContext['tx'] };
+const ctx: WorkspaceContext = {
+  userId: 'u1',
+  workspaceId: W1,
+  role: 'interviewer',
+  status: 'active',
+  tx: {} as WorkspaceContext['tx'],
+};
 const handler = vi.fn(async (_ctx: WorkspaceContext, input: { candidateId: string }) => `ok ${input.candidateId}`);
 // Stands in for a lookup of the stored record's job through ctx.tx: candidate C2 is on job J2.
 const jobOf = vi.fn(async (_ctx: WorkspaceContext, { candidateId }: { candidateId: string }) => ({
@@ -77,6 +83,13 @@ describe('workspaceAction', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  // AIV-P2-037: the paused refusal comes from authorize (the workspaces module's context test is the mutation check).
+  it('Scenario: Members of a suspended workspace can read but not start work: a paused refusal is the 403 page', async () => {
+    fake.authorize.mockRejectedValue(new WorkspacePausedError('suspended'));
+    await expect(viewCandidate({ candidateId: 'C2' })).rejects.toThrow('403');
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('a user who is not a member of the active workspace gets the 403 page', async () => {
     fake.withWorkspace.mockRejectedValue(new ForbiddenError());
     await expect(viewCandidate({ candidateId: 'C1' })).rejects.toThrow('403');
@@ -99,6 +112,6 @@ it('the recruiter-facing member views hold no candidate field', () => {
   expectTypeOf<keyof User>().toEqualTypeOf<'id' | 'email' | 'displayName' | 'createdAt'>();
   expectTypeOf<keyof IdentityContract>().toEqualTypeOf<'upsertUserFromIdToken' | 'getUser'>();
   expectTypeOf<keyof NonNullable<Awaited<ReturnType<typeof currentMembership>>>>().toEqualTypeOf<
-    'name' | 'role' | 'synthetic'
+    'name' | 'role' | 'synthetic' | 'status'
   >();
 });

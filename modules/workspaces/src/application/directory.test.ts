@@ -3,16 +3,17 @@ import { directoryUseCases } from './directory.ts';
 
 // AIV-P2-036: search and paging of the operator console's workspace list. Synthetic names (personas.md).
 const at = (day: number) => new Date(Date.UTC(2026, 10, day));
-const facts = (id: string, name: string, day: number) => ({
+const facts = (id: string, name: string, day: number, status: 'active' | 'suspended' = 'active') => ({
   id,
   name,
   type: 'in_house' as const,
   createdAt: at(day),
   synthetic: true,
+  status,
   activeMembers: 1,
 });
 const stored = [
-  facts('w3', 'Nadia Freelance', 3),
+  facts('w3', 'Nadia Freelance', 3, 'suspended'),
   facts('w2', 'Gulf Talent Partners', 2),
   facts('w1', 'Demo Hiring Co', 1),
 ];
@@ -25,11 +26,11 @@ const directory = (gone: string[] = []) => {
 };
 
 describe('listSummaries', () => {
-  it('lists every workspace newest first, each marked active', async () => {
+  it('lists every workspace newest first, each with its stored status', async () => {
     const { total, summaries } = await directory().listSummaries({ query: '', offset: 0, limit: 50 });
     expect(total).toBe(3);
     expect(summaries.map((s) => [s.name, s.status])).toEqual([
-      ['Nadia Freelance', 'active'],
+      ['Nadia Freelance', 'suspended'],
       ['Gulf Talent Partners', 'active'],
       ['Demo Hiring Co', 'active'],
     ]);

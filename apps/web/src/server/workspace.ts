@@ -62,7 +62,10 @@ export function workspaceAction<Input, Result>(
     });
 }
 
-/** The signed-in member as the shell shows them, or null when they belong to no workspace yet. Once per request. */
+/**
+ * The signed-in member as the shell shows them, with the workspace's status (a suspended one shows its banner), or
+ * null when they belong to no workspace yet. Once per request.
+ */
 export const currentMembership = cache(async () => {
   const result = await inActiveWorkspace(async (ctx) => ({
     userId: ctx.userId,
@@ -73,5 +76,5 @@ export const currentMembership = cache(async () => {
   const { userId, role, workspace } = result.value;
   const user = await getIdentity().getUser(userId);
   if (!user || !workspace) forbidden();
-  return { name: user.displayName ?? user.email, role, synthetic: workspace.synthetic };
+  return { name: user.displayName ?? user.email, role, synthetic: workspace.synthetic, status: workspace.status };
 });

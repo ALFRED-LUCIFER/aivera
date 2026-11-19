@@ -136,6 +136,15 @@ describe('PreviewConfirmCard', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps Confirm disabled while confirmDisabled is set', async () => {
+    const onConfirm = vi.fn();
+    await openPreview({ onConfirm, confirmDisabled: true });
+    const confirm = screen.getByRole('button', { name: 'Confirm move' }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it('Scenario: Cancel changes nothing', async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();

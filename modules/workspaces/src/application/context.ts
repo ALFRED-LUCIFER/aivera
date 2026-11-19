@@ -1,9 +1,20 @@
-import { ForbiddenError, JOB_SCOPED_ROLES, PERMISSIONS, type Action, type JobResource } from '../domain/permissions.ts';
-import type { Role, Workspace } from '../domain/workspace.ts';
+import {
+  allowedWhile,
+  ForbiddenError,
+  JOB_SCOPED_ROLES,
+  PERMISSIONS,
+  WorkspacePausedError,
+  type Action,
+  type JobResource,
+} from '../domain/permissions.ts';
+import type { Role, Workspace, WorkspaceStatus } from '../domain/workspace.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
-/** What every server action, route handler and worker job runs with: one workspace, its scoped transaction. */
-export type WorkspaceContext<Tx> = { userId: string; workspaceId: string; role: Role; tx: Tx };
+/**
+ * What every server action, route handler and worker job runs with: one workspace, its scoped transaction, and the
+ * workspace's status read in that transaction (`authorize` refuses new work unless it is active, AIV-P2-037).
+ */
+export type WorkspaceContext<Tx> = { userId: string; workspaceId: string; role: Role; status: WorkspaceStatus; tx: Tx };
 
 /** The signed-in user, from the server-side session. */
 export type Session = { userId: string };
@@ -37,12 +48,14 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
       return inWorkspace(workspaceId, async (store, tx) => {
         const member = await store.findMember(workspaceId, session.userId);
         if (member?.status !== 'active') throw new ForbiddenError();
+        const workspace = await store.findWorkspace(workspaceId);
+        if (!workspace) throw new ForbiddenError();
         const scoped = JOB_SCOPED_ROLES.includes(member.role);
         await store.setJobScope(
           scoped ? 'granted' : 'all',
           scoped ? await store.listGrants(workspaceId, member.userId) : [],
         );
-        return fn({ userId: session.userId, workspaceId, role: member.role, tx });
+        return fn({ userId: session.userId, workspaceId, role: member.role, status: workspace.status, tx });
       });
     },
 
@@ -51,12 +64,15 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
       storeFor(ctx.tx).findWorkspace(ctx.workspaceId),
 
     /**
-     * Throws `ForbiddenError` unless the context's role, and for job-scoped roles a job grant, allows `action`.
-     * `ctx` must come from `withWorkspace`, which loaded the role from the member row.
+     * Throws `ForbiddenError` unless the context's role, and for job-scoped roles a job grant, allows `action`, and
+     * `WorkspacePausedError` for anything but a read while the workspace is not active, so every action that
+     * authorises (every server entry point, AGENTS.md 1.3) inherits the suspension check. `ctx` must come from
+     * `withWorkspace`, which loaded the role and status in its transaction.
      */
     async authorize(ctx: WorkspaceContext<Tx>, action: Action, resource?: JobResource): Promise<void> {
       const permission = PERMISSIONS[action];
       if (!(permission.roles as readonly Role[]).includes(ctx.role)) throw new ForbiddenError();
+      if (!allowedWhile(ctx.status, action)) throw new WorkspacePausedError(ctx.status);
       if (permission.scope === 'workspace' || !JOB_SCOPED_ROLES.includes(ctx.role)) return;
       // Fails closed: a job-scoped role with no job named is refused.
       if (!resource || !(await grants.covers(ctx, resource))) throw new ForbiddenError();

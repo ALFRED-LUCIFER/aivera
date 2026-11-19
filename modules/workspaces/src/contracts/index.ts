@@ -5,6 +5,7 @@ import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/works
 import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
 import type { DirectorySearch } from '../application/directory.ts';
+import type { ChangeStatusInput } from '../application/status.ts';
 import type {
   AiTokenUse,
   Client,
@@ -16,7 +17,15 @@ import type {
   WorkspaceType,
 } from '../domain/workspace.ts';
 
-export { AI_DAILY_TOKEN_BUDGET, ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
+export {
+  AI_DAILY_TOKEN_BUDGET,
+  ROLES,
+  MEMBER_STATUSES,
+  MIN_REASON_LENGTH,
+  STATUS_CHANGES,
+  WORKSPACE_STATUSES,
+  WorkspaceError,
+} from '../domain/workspace.ts';
 export type {
   AiTokenUse,
   Client,
@@ -24,14 +33,17 @@ export type {
   Member,
   MemberStatus,
   Role,
+  StatusChange,
   Workspace,
   WorkspaceErrorCode,
+  WorkspaceStatus,
   WorkspaceSummary,
   WorkspaceType,
 } from '../domain/workspace.ts';
+export type { ChangeStatusInput } from '../application/status.ts';
 export type { DirectorySearch } from '../application/directory.ts';
 export type { GrantJobAccessInput } from '../application/clients.ts';
-export { ForbiddenError } from '../domain/permissions.ts';
+export { ForbiddenError, WorkspacePausedError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
 export type { Session } from '../application/context.ts';
 export type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
@@ -136,4 +148,13 @@ export interface WorkspacesContract {
   addSyntheticMember(ctx: WorkspaceContext, userId: string, role: Role): Promise<void>;
   /** Admins. Deletes the workspace and its members, clients and grants; other modules purge first in `ctx.tx`. */
   purgeSyntheticWorkspace(ctx: WorkspaceContext): Promise<void>;
+
+  /**
+   * An operator suspends or reactivates a workspace (AIV-P2-037, ADR-012 point 7). Not a member action: callers check
+   * the platformOperator policy first and pass the operator's id from the session. Runs inside withWorkspace(<the
+   * workspace>) as the app role, never through an RLS bypass; `alongside` runs in that transaction (another module's
+   * part of the change, through its contract), and both audit writes come last. Never deletes, hides or reorders a
+   * candidate. Throws `WorkspaceError` (`reason_required`, `not_found`, `status_conflict`).
+   */
+  changeStatus(input: ChangeStatusInput, alongside?: (tx: Tx) => Promise<void>): Promise<void>;
 }

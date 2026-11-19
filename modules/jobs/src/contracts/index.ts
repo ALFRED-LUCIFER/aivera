@@ -1,4 +1,5 @@
 // The only public surface of @aivera/jobs (ADR-002).
+import type { Tx } from '@aivera/db';
 import type { WorkspaceContext } from '@aivera/workspaces';
 import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
@@ -107,6 +108,11 @@ export interface JobsContract {
   publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void>;
   /** Admins and recruiters. Unpublishing an unpublished job does nothing. Audited. */
   unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void>;
+  /**
+   * Hides every public listing of the workspace from the candidate site, or shows them again (AIV-P2-037), keeping
+   * whether each is open. Only for the operator's status change, inside its withWorkspace(<workspace>) `tx`.
+   */
+  pausePublicListings(tx: Tx, workspaceId: string, paused: boolean): Promise<void>;
 }
 
 /**

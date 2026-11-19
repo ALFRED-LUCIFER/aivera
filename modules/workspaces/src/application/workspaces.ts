@@ -1,4 +1,4 @@
-import type { NewEntry } from '@aivera/audit';
+import type { NewEntry, PlatformAction } from '@aivera/audit';
 import { JOB_SCOPED_ROLES } from '../domain/permissions.ts';
 import {
   assertCanChangeRole,
@@ -7,13 +7,14 @@ import {
   type Member,
   type Role,
   type Workspace,
+  type WorkspaceStatus,
   type WorkspaceType,
 } from '../domain/workspace.ts';
 
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type WorkspaceStore = {
   /** Also adds it to the platform directory (ADR-012 point 6). */
-  insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
+  insertWorkspace(workspace: Omit<Workspace, 'createdAt' | 'status'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
   insertMember(member: Member): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
@@ -27,6 +28,7 @@ export type WorkspaceStore = {
   /** The workspace row, locked until commit, so a type change and an added client cannot interleave. */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
+  updateStatus(workspaceId: string, status: WorkspaceStatus): Promise<void>;
   /** Deletes the workspace with its members, clients, job grants, active-workspace pointers and directory row. */
   deleteWorkspace(workspaceId: string): Promise<void>;
   /** Clients that are not archived. */
@@ -51,6 +53,8 @@ export type WorkspaceStore = {
   setJobScope(scope: 'all' | 'granted', grants: JobGrant[]): Promise<void>;
   /** Appends an audit entry in this transaction, by a user of this workspace. */
   audit(workspaceId: string, actorUserId: string, entry: NewEntry): Promise<void>;
+  /** Appends an operator's action in this transaction: to the workspace's log as `operator`, and to the platform log. */
+  operatorAudit(workspaceId: string, operatorId: string, entry: NewEntry & { action: PlatformAction }): Promise<void>;
 };
 
 export type Ports = {

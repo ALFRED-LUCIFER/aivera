@@ -18,7 +18,7 @@ const member = (synthetic: boolean): Member => ({
   name: 'AP',
   initials: 'AP',
   capabilities: ['recruiter'],
-  workspace: { synthetic },
+  workspace: { synthetic, status: 'active' },
 });
 
 describe('Scenario: Counts fail softly', () => {

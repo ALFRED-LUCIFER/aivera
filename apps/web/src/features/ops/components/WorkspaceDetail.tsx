@@ -3,14 +3,25 @@
 import { useTimeZone, useTranslations } from '@aivera/i18n/react';
 import { Card } from '@aivera/ui';
 import type { ReactNode } from 'react';
-import type { WorkspaceRow } from '../domain/workspaces.ts';
+import type { OperatorActionRow, WorkspaceRow } from '../domain/workspaces.ts';
 import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
 
 /**
- * One workspace's platform facts and the operator actions on it (AIV-P2-036). Never a member or candidate. `children`
- * goes between the two: the AI token use card (AIV-P2-038).
+ * One workspace's platform facts, the operator actions taken on it with their reasons, and the status change
+ * (`statusChange`, AIV-P2-037). Never a member or candidate. `children` goes between the facts and the actions: the AI
+ * token use card (AIV-P2-038).
  */
-export function WorkspaceDetail({ workspace, children }: { workspace: WorkspaceRow; children?: ReactNode }) {
+export function WorkspaceDetail({
+  workspace,
+  history,
+  statusChange,
+  children,
+}: {
+  workspace: WorkspaceRow;
+  history: OperatorActionRow[];
+  statusChange: ReactNode;
+  children?: ReactNode;
+}) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();
   const facts: [string, ReactNode][] = [
@@ -41,9 +52,25 @@ export function WorkspaceDetail({ workspace, children }: { workspace: WorkspaceR
       </Card>
       {children}
       <Card title={t('detail.actions')} level={2}>
-        {/* shortcut: no operator action on a workspace exists yet, only access entries, so the history is always empty;
-            AIV-P2-037 adds the first action (suspend) and lists the platform audit log entries here. */}
-        <p className="text-body text-text-2">{t('detail.noActions')}</p>
+        <div className="flex flex-col gap-4">
+          {history.length === 0 ? (
+            <p className="text-body text-text-2">{t('detail.noActions')}</p>
+          ) : (
+            <ol className="flex flex-col gap-2 text-body text-text">
+              {history.map((entry) => (
+                <li key={`${entry.action} ${entry.occurredAt.toISOString()}`}>
+                  {t('detail.history', {
+                    action: t(`detail.actionNames.${entry.action}`),
+                    date: entry.occurredAt,
+                    timeZone,
+                    reason: entry.reason ?? '',
+                  })}
+                </li>
+              ))}
+            </ol>
+          )}
+          {statusChange}
+        </div>
       </Card>
     </div>
   );

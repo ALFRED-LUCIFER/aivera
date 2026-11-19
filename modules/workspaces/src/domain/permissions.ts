@@ -1,26 +1,27 @@
-import type { JobGrant, Role } from './workspace.ts';
+import type { JobGrant, Role, WorkspaceStatus } from './workspace.ts';
 
 // Which roles may take each action (AIV-P0-010). A job-scoped action also needs, for a hiring owner or interviewer, a
-// job grant covering the record's job (ADR-005 point 6). Screen tickets add their actions here.
+// job grant covering the record's job (ADR-005 point 6). Screen tickets add their actions here. `reads: true` marks an
+// action that changes nothing, so it stays open while the workspace is not active; every other action is refused then.
 export const PERMISSIONS = {
   'job.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   // Listing is workspace-wide; the jobs repository and row-level security narrow it to granted jobs (AIV-P1-005).
-  'job.list': { scope: 'workspace', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
-  'job.view': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'job.list': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'job.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'rubric.edit': { scope: 'job', roles: ['admin', 'recruiter'] },
   // Publishing lists the job on the candidate site (AIV-P1-015).
   'job.publish': { scope: 'job', roles: ['admin', 'recruiter'] },
   'workspace.settings': { scope: 'workspace', roles: ['admin'] },
   'client.manage': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'job_access.manage': { scope: 'workspace', roles: ['admin'] },
-  'job_access.view': { scope: 'workspace', roles: ['admin', 'recruiter'] },
+  'job_access.view': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   'rubric.approve': { scope: 'job', roles: ['admin', 'hiring_owner'] },
   'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
-  'candidate.view': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'candidate.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
-} as const satisfies Record<string, { scope: 'workspace' | 'job'; roles: readonly Role[] }>;
+} as const satisfies Record<string, { scope: 'workspace' | 'job'; roles: readonly Role[]; reads?: true }>;
 
 export type Action = keyof typeof PERMISSIONS;
 
@@ -41,3 +42,20 @@ export class ForbiddenError extends Error {
     this.name = 'ForbiddenError';
   }
 }
+
+/**
+ * Refused because the workspace is not active (suspended by an operator, AIV-P2-037): reads stay open, new work does
+ * not. A `ForbiddenError`, so every caller that maps a refusal to HTTP 403 maps this one too.
+ */
+export class WorkspacePausedError extends ForbiddenError {
+  readonly status: WorkspaceStatus;
+  constructor(status: WorkspaceStatus) {
+    super();
+    this.name = 'WorkspacePausedError';
+    this.status = status;
+  }
+}
+
+/** Whether `action` may run in a workspace with `status`: anything in an active one, only reads otherwise. */
+export const allowedWhile = (status: WorkspaceStatus, action: Action) =>
+  status === 'active' || 'reads' in PERMISSIONS[action];

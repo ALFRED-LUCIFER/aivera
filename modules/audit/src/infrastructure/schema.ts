@@ -34,7 +34,7 @@ export const entry = audit
       check('entry_actor_id_check', sql`${t.actorType} = 'system' or ${t.actorId} is not null`),
       check(
         'entry_action_check',
-        sql`${t.action} in ('rubric.approved', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed')`,
+        sql`${t.action} in ('rubric.approved', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated')`,
       ),
       check(
         'entry_note_check',
@@ -67,7 +67,7 @@ export const platformEntry = audit.table(
     // Must list exactly PLATFORM_ACTIONS (domain/entry.ts); changing it needs a new migration.
     check(
       'platform_entry_action_check',
-      sql`${t.action} in ('ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed')`,
+      sql`${t.action} in ('ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated')`,
     ),
     check('platform_entry_note_check', sql`${t.action} <> 'ai_budget.changed' or coalesce(btrim(${t.note}), '') <> ''`),
     check('platform_entry_subject_check', sql`(${t.subjectType} is null) = (${t.subjectId} is null)`),

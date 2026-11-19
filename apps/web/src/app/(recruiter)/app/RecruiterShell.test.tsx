@@ -35,16 +35,20 @@ const member: Member = {
   name: 'AP',
   initials: 'AP',
   capabilities: ['recruiter'],
-  workspace: { synthetic: true },
+  workspace: { synthetic: true, status: 'active' },
 };
 const seed: ShellCounts = { desk: 4, inbox: 20, jobs: 5, interviews: 5, packs: 1 };
 
-const renderShell = ({ counts = seed as ShellCounts | null, synthetic = true } = {}) =>
+const renderShell = ({
+  counts = seed as ShellCounts | null,
+  synthetic = true,
+  status = 'active' as Member['workspace']['status'],
+} = {}) =>
   render(
     <RecruiterShell
       intl={intl}
       theme="light"
-      member={{ ...member, workspace: { synthetic } }}
+      member={{ ...member, workspace: { synthetic, status } }}
       counts={counts}
       screens={navigation}
     >
@@ -99,6 +103,16 @@ describe('Recruiter app shell', () => {
     cleanup();
     renderShell({ synthetic: false });
     expect(screen.queryByText('Synthetic demo data')).toBeNull();
+  });
+
+  it('Scenario: Members of a suspended workspace can read but not start work: the banner, and never the reason', () => {
+    const banner = 'This workspace is paused by Aivera. You can read everything; new work is paused.';
+    renderShell({ status: 'suspended' });
+    expect(within(screen.getByRole('main')).getByText(banner)).toBeTruthy();
+    expect(screen.getByText('Page body')).toBeTruthy();
+    cleanup();
+    renderShell();
+    expect(screen.queryByText(banner)).toBeNull();
   });
 
   // SAFETY: mutation check: removed onOpenAutoFocus in AssistantDrawer -> this test failed
