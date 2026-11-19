@@ -1,8 +1,10 @@
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   check,
+  date,
   foreignKey,
   pgSchema,
   primaryKey,
@@ -118,6 +120,26 @@ export const jobGrant = workspaces
       check('job_grant_target_check', sql`(${t.jobId} is null) <> (${t.clientId} is null)`),
       unique('job_grant_member_target_key').on(t.workspaceId, t.userId, t.jobId, t.clientId).nullsNotDistinct(),
       tenantPolicy('job_grant_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// Input plus output AI tokens a workspace spent on one UTC day (AIV-P0-033): the store behind @aivera/ai's daily
+// budget, shared by every web replica and the worker. Read and written only through AiTokenBudget (ADR-006 point 2).
+export const aiTokenUsage = workspaces
+  .table(
+    'ai_token_usage',
+    {
+      workspaceId: uuid('workspace_id')
+        .notNull()
+        .references(() => workspace.id),
+      usageDay: date('usage_day', { mode: 'string' }).notNull(),
+      tokens: bigint({ mode: 'number' }).notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.workspaceId, t.usageDay] }),
+      check('ai_token_usage_tokens_check', sql`${t.tokens} >= 0`),
+      tenantPolicy('ai_token_usage_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

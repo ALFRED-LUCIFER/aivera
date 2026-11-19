@@ -4,7 +4,14 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { APICallError } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AiUnavailable, BudgetExceeded, createAiClient, UnknownAiTask } from './client';
+import {
+  AiUnavailable,
+  BudgetExceeded,
+  createAiClient,
+  memoryTokenBudget,
+  UnknownAiTask,
+  type TokenBudgetStore,
+} from './client';
 import { azureProvider, FAKE_COMPLETION, fakeProvider, providerFromEnv, type AiProvider } from './providers';
 
 // Feature: One AI client on Azure AI Foundry (AIV-P0-027). Synthetic data only (docs/00-product/personas.md).
@@ -36,12 +43,13 @@ function counted(provider: AiProvider) {
   };
 }
 
-function setup(provider = fakeProvider(), start = Date.parse('2026-11-18T09:00:00Z')) {
+function setup(provider = fakeProvider(), start = Date.parse('2026-11-18T09:00:00Z'), budget = memoryTokenBudget()) {
   const clock = { now: start };
   const sleeps: number[] = [];
   const spy = counted(provider);
   const ai = createAiClient({
     provider: spy.provider,
+    budget,
     now: () => clock.now,
     sleep: async (ms) => void sleeps.push(ms),
   });
@@ -72,7 +80,7 @@ describe('Scenario: A task resolves to its configured deployment', () => {
         });
       },
     });
-    const { text } = await createAiClient({ provider }).generate(draft);
+    const { text } = await createAiClient({ provider, budget: memoryTokenBudget() }).generate(draft);
 
     expect(text).toBe('ok');
     const [request] = requests;
@@ -233,7 +241,7 @@ describe('Scenario: Workspace budget', () => {
   // The fake counts one token per 4 characters: this prompt spends the whole 2,000,000-token daily budget.
   const everything = { ...draft, prompt: 'x'.repeat(8_000_000) };
 
-  // SAFETY: mutation check: removed the spentToday(workspaceId) >= dailyTokenBudgetPerWorkspace check -> this test failed
+  // SAFETY: mutation check: removed the spent >= dailyTokenBudgetPerWorkspace check -> this test failed
   it('throws BudgetExceeded and sends no model request once the day is spent', async () => {
     const { ai, calls, clock } = setup();
     await ai.generate(everything);
@@ -248,6 +256,32 @@ describe('Scenario: Workspace budget', () => {
     clock.now = Date.parse('2026-11-19T00:00:00Z');
     await expect(ai.generate(draft)).resolves.toBeDefined();
   });
+
+  it('a failed call spends nothing', async () => {
+    const budget = memoryTokenBudget();
+    const { ai } = setup(fakeProvider({ failures: [400] }), undefined, budget);
+    await expect(ai.generate(draft)).rejects.toBeInstanceOf(AiUnavailable);
+    expect(await budget.spentToday(workspaceId, '2026-11-18')).toBe(0);
+  });
+
+  // The PostgreSQL store's own failure scenario: tests/integration/src/ai-token-budget.test.ts.
+  it.each([
+    ['read', { spentToday: () => Promise.reject(new Error('Draft competencies')), add: async () => {} }, 0],
+    ['written', { spentToday: async () => 0, add: () => Promise.reject(new Error('Draft competencies')) }, 1],
+  ] satisfies [string, TokenBudgetStore, number][])(
+    'a store that cannot be %s fails closed with AiUnavailable and no prompt in the error',
+    async (_, budget, requests) => {
+      const { ai, calls } = setup(fakeProvider(), undefined, budget);
+      const error = await ai.generate(draft).catch((e: unknown) => e);
+      expect(error).toEqual(new AiUnavailable(draft.task, 'budget store'));
+      expect((error as Error).message).not.toContain('Draft competencies');
+      expect(calls).toHaveLength(requests);
+      expect(lastSpan()?.attributes).toMatchObject({
+        'aivera.ai.outcome': 'unavailable',
+        'error.type': 'budget_store',
+      });
+    },
+  );
 });
 
 describe('embed', () => {

@@ -11,7 +11,7 @@ import type { JobsContract } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
 import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@aivera/db';
 import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -213,6 +213,7 @@ async function seed(
     tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
       values (${workspaceId}, ${LINA}, 'interviewer', 'active')`),
   );
+  await createAiTokenBudget(app).add(workspaceId, '2026-11-18', 1_500);
   return workspaces.withWorkspace({ userId: creator }, workspaceId, async (ctx) => {
     await workspaces.setWorkspaceType(ctx, 'agency');
     const client = await workspaces.addClient(ctx, `${name} client`);
