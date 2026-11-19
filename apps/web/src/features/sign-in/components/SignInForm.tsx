@@ -21,11 +21,13 @@ type SignInFormProps = {
   /** A message to show, already translated, or null. */
   error: string | null;
   labels: SignInFormLabels;
+  /** Whether "Continue with Google" is offered: only when the environment has the Google settings (AIV-P0-928). */
+  google: boolean;
 };
 
 // The SignIn artboard: the promise on the left, the form on the right (stacked under 1024px). No company single
 // sign-on button until per-workspace federation ships (AIV-P1-057).
-export function SignInForm({ action, next, error, labels }: SignInFormProps) {
+export function SignInForm({ action, next, error, labels, google }: SignInFormProps) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-2">
       <aside className="flex flex-col justify-center gap-3 border-b border-border bg-surface-subtle px-6 py-10 lg:border-e lg:border-b-0 lg:px-16">
@@ -53,10 +55,14 @@ export function SignInForm({ action, next, error, labels }: SignInFormProps) {
           <Button type="submit" name="method" value="reset" variant="ghost" className="self-start">
             {labels.forgotPassword}
           </Button>
-          <p className="text-center text-meta text-text-2">{labels.or}</p>
-          <Button type="submit" name="method" value="google">
-            {labels.google}
-          </Button>
+          {google && (
+            <>
+              <p className="text-center text-meta text-text-2">{labels.or}</p>
+              <Button type="submit" name="method" value="google">
+                {labels.google}
+              </Button>
+            </>
+          )}
         </form>
       </main>
     </div>

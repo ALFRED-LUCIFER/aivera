@@ -67,11 +67,8 @@ export const parseSignInForm = (form: FormData) =>
   });
 
 /**
- * Authorisation request parameters for the External ID user flow. Every method opens the tenant's own page: email and
- * password are entered there (the app never sees a password), and Google is one click on it.
- * shortcut: no domain_hint for Google. On our tenant `google` is refused (AADSTS90023) and `google.com` skips sign-up
- * (AADSTS50020 for a first-time user), so "Continue with Google" costs one extra click; send `domain_hint=google` again
- * once it stops returning AADSTS90023 on the dev tenant.
+ * Authorisation request parameters for the External ID user flow: email and password are entered on the tenant's own
+ * page, so the app never sees a password. Google does not use the tenant (AIV-P0-928, startSignIn).
  */
 export function authorizationParams(email: string | undefined): Record<string, string> {
   // `prompt=login`: the tenant always asks for the password (or Google) again. Sign out ends only our session, so

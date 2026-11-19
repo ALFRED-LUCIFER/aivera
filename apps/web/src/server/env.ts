@@ -12,8 +12,12 @@ const AUTH_KEYS = [
   'AUTH_ENTRA_ISSUER',
   'AUTH_ENTRA_CANDIDATE_CLIENT_ID',
   'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET',
+  'AUTH_GOOGLE_CLIENT_ID',
+  'AUTH_GOOGLE_CLIENT_SECRET',
+  'AUTH_GOOGLE_ISSUER',
 ] as const;
 const CANDIDATE_KEYS = ['AUTH_ENTRA_CANDIDATE_CLIENT_ID', 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET'] as const;
+const GOOGLE_KEYS = ['AUTH_GOOGLE_CLIENT_ID', 'AUTH_GOOGLE_CLIENT_SECRET'] as const;
 
 // Aivera operators (AIV-P2-035, ADR-012): comma-separated emails, compared lower-case with the identity user's email.
 const operatorList = z
@@ -54,6 +58,11 @@ const webEnvSchema = z
     // candidate app registration. Needs the recruiter settings too; optional everywhere until the candidate site ships.
     AUTH_ENTRA_CANDIDATE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: z.string().min(1).optional(),
+    // Recruiter "Continue with Google" straight to Google (AIV-P0-928): the tenant cannot create Google users. Unset, the
+    // button is hidden. AUTH_GOOGLE_ISSUER is local only: the end-to-end tests' mocked provider.
+    AUTH_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_GOOGLE_ISSUER: z.url({ protocol: /^https?$/ }).optional(),
     // Never refuses to start: a bad list means no operators (parseOperatorEmails).
     PLATFORM_OPERATOR_EMAILS: z.string().optional(),
   })
@@ -64,11 +73,14 @@ const webEnvSchema = z
   .superRefine((e, ctx) => {
     const missing = (key: (typeof AUTH_KEYS)[number]) => ctx.addIssue({ code: 'custom', path: [key], message: '' });
     if (e.AUTH_ENTRA_ISSUER && e.APP_ENV !== 'local') missing('AUTH_ENTRA_ISSUER');
+    if (e.AUTH_GOOGLE_ISSUER && e.APP_ENV !== 'local') missing('AUTH_GOOGLE_ISSUER');
     if (!(e.APP_ENV === 'pilot' || e.APP_ENV === 'prod' || AUTH_KEYS.some((key) => e[key]))) return;
     const needed = ['AUTH_SECRET', 'AUTH_ENTRA_CLIENT_ID', 'AUTH_ENTRA_CLIENT_SECRET'] as const;
     const tenant = ['AUTH_ENTRA_TENANT_SUBDOMAIN', 'AUTH_ENTRA_TENANT_ID'] as const;
     for (const key of e.AUTH_ENTRA_ISSUER ? needed : [...needed, ...tenant]) if (!e[key]) missing(key);
     if (CANDIDATE_KEYS.some((key) => e[key])) for (const key of CANDIDATE_KEYS) if (!e[key]) missing(key);
+    if (GOOGLE_KEYS.some((key) => e[key]) || e.AUTH_GOOGLE_ISSUER)
+      for (const key of GOOGLE_KEYS) if (!e[key]) missing(key);
   })
   .transform(
     ({ AUTH_SECRET: secret, AUTH_ENTRA_CLIENT_ID: clientId, AUTH_ENTRA_CLIENT_SECRET: clientSecret, ...e }) => {
@@ -78,6 +90,9 @@ const webEnvSchema = z
         AUTH_ENTRA_ISSUER: mock,
         AUTH_ENTRA_CANDIDATE_CLIENT_ID: candidateClientId,
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: candidateClientSecret,
+        AUTH_GOOGLE_CLIENT_ID: googleClientId,
+        AUTH_GOOGLE_CLIENT_SECRET: googleClientSecret,
+        AUTH_GOOGLE_ISSUER: googleIssuer,
         PLATFORM_OPERATOR_EMAILS: operatorEmails,
         ...rest
       } = e;
@@ -91,6 +106,10 @@ const webEnvSchema = z
               clientSecret,
               issuer: mock ?? `https://${tenantId}.ciamlogin.com/${tenantId}/v2.0`,
               discovery: `${discoveryBase}/.well-known/openid-configuration`,
+              google:
+                googleClientId && googleClientSecret
+                  ? { clientId: googleClientId, clientSecret: googleClientSecret, issuer: googleIssuer }
+                  : null,
             }
           : null;
       return {
@@ -99,7 +118,8 @@ const webEnvSchema = z
         auth,
         candidateAuth:
           auth && candidateClientId && candidateClientSecret
-            ? { ...auth, clientId: candidateClientId, clientSecret: candidateClientSecret }
+            ? // No Google on the candidate side: its redirect URI is not registered (AIV-P0-928 is recruiter only).
+              { ...auth, clientId: candidateClientId, clientSecret: candidateClientSecret, google: null }
             : null,
         platformOperators: parseOperatorEmails(operatorEmails),
       };

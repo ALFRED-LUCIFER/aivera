@@ -37,8 +37,8 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
 test('Scenario: Google sign-in', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  // No domain_hint: Google is chosen on the tenant's own page (see authorizationParams' shortcut).
-  await expect(page.getByText('Hint: none', { exact: true })).toBeVisible();
+  // Straight to Google (AIV-P0-928), which asks which account every time (a shared computer).
+  await expect(page.getByText('Prompt: select_account', { exact: true })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
   await page.getByRole('button', { name: 'Sign in with Google' }).click();
   await desk(page);

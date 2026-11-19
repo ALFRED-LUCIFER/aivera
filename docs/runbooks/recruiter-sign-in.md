@@ -18,7 +18,7 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 
 ## How the app uses it
 
-- **One OIDC provider** (Auth.js id `entra`). Every sign-in method is chosen on the tenant's pages, so the app never sees a password. The sign-in page passes the typed email as `login_hint`, and "Continue with Google" opens the same tenant page, where Google is one click: no `domain_hint` is sent, because on this tenant `google` is refused (AADSTS90023) and `google.com` skips sign-up for a first-time user (AADSTS50020).
+- **Two OIDC providers.** Email with password uses the tenant (Auth.js id `entra`): the password is typed on the tenant's page, so the app never sees it, and the sign-in page passes the typed email as `login_hint`. **"Continue with Google" goes straight to Google** (Auth.js id `google`, AIV-P0-928) with `prompt=select_account`, so Google always asks which account. The tenant cannot create Google users (AADSTS50132) and refuses `domain_hint` for one click (`google`: AADSTS90023; `google.com`: AADSTS50020 for a first-time user), ADR-009. Without the Google settings below, the button is not shown.
 - **Sign-up** starts at `/signup` (the home page's "Create your workspace", AIV-P1-059): it opens the same user flow with `prompt=create`, which External ID uses to show its sign-up page, and no `login_hint`; a tenant that ignores the prompt shows the sign-in page, which offers "Sign up". It returns to `/app`, where a new user sees the no-workspace page. Signed in, `/signup` goes straight to `/app`; with no tenant configured, to the sign-in page's "not set up" message.
 - The page offers only what the user flow offers: **email with password** and **Google**. There is no "Email me a code" (one email method per user flow, below) and no "Continue with Microsoft" (it cannot be added to the user flow; personal Microsoft accounts are AIV-P1-058 (#243)).
 - The ID token's `iss` + `sub` become an `identity.sign_in_method`, and the user is found by **verified** email (ADR-009 point 4, amended 18 Nov 2026):
@@ -42,11 +42,16 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
 | `AUTH_ENTRA_CLIENT_SECRET`                 | (secret)                               | Key Vault reference `entra-recruiter-client-secret`, app identity |
 | `AUTH_SECRET`                              | (secret: `openssl rand -base64 32`)    | Key Vault reference `auth-secret`, app identity                   |
 
-The five are all or nothing: a partial set stops the app at start-up, naming only what is missing. `AUTH_ENTRA_ISSUER` exists only for the mocked provider of the end-to-end tests and is refused outside `APP_ENV=local`.
+| `AUTH_GOOGLE_CLIENT_ID` | (Google OAuth client id) | Plain setting, bicep param `googleClientId` |
+| `AUTH_GOOGLE_CLIENT_SECRET` | (secret) | Key Vault reference `google-client-secret`, app identity |
+
+The two Google settings are both or neither. The first five are all or nothing: a partial set stops the app at start-up, naming only what is missing. `AUTH_ENTRA_ISSUER` exists only for the mocked provider of the end-to-end tests and is refused outside `APP_ENV=local`.
 
 Azure dev also sets `AUTH_URL` to the app's public origin (built from the environment's default domain), read by Auth.js directly: the container listens on `0.0.0.0:3000`, and without it sign-in redirects go to `https://0.0.0.0:3000`. Locally it is not needed.
 
 ## Owner steps still open
+
+0. **Google OAuth client (AIV-P0-928).** In Google Cloud console → APIs & Services → Credentials, create an OAuth client ID (type Web application) or reuse the tenant's one, and add the authorised redirect URI `https://ca-aivera-web-dev.greenground-7c8cb7a4.centralindia.azurecontainerapps.io/api/auth/callback/google`. Write its secret to Key Vault as `google-client-secret`, then apply `infra/main.bicep` with `googleClientId` set. The OAuth consent screen must be published (or list the testers' Google accounts) for anyone outside the project to sign in.
 
 1. **Apply `infra/main.bicep`.** It gives the web app the five settings and `AUTH_URL`; the app identity already has Key Vault Secrets User. `deploy-dev.yml` updates only the image, so the settings arrive with the apply. Both Key Vault secrets exist.
 2. **Wrong-password copy.** The password page belongs to the tenant. Set its error text to "That email and password do not match." under Company branding → Language customization; the default already does not say whether the email exists. Raise the password minimum to 12 characters, per the SignUp copy, if the tenant allows it.

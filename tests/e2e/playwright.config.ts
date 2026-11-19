@@ -64,6 +64,11 @@ export default defineConfig({
         // The candidate app registration on the same mocked tenant (AIV-P0-011).
         AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'aivera-e2e-candidate',
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'e2e-only',
+        // "Continue with Google" straight to Google (AIV-P0-928), played by the same mocked provider; the unconfigured app
+        // below has no Google settings, so it shows no Google button.
+        AUTH_GOOGLE_ISSUER: oidc,
+        AUTH_GOOGLE_CLIENT_ID: 'aivera-e2e-google',
+        AUTH_GOOGLE_CLIENT_SECRET: 'e2e-only',
         // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.
         PLATFORM_OPERATOR_EMAILS: 'pia.platform@example.com,Theo.Platform@example.com',
         // AIV-P1-008: the fake model answers "Draft competencies" from recorded fixtures, by description text.
