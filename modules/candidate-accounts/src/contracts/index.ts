@@ -38,6 +38,9 @@ export interface CandidateAccountsContract {
    * Links the account to the workspace's candidate record. Throws `CandidateAccountError('consent_required')`, linking
    * nothing, unless the consent is this account's, open, for that workspace, and for the reason's purpose
    * (`applied` → `apply_to_job`). Linking the same workspace candidate again returns the existing link.
+   * `workspaceId` and `workspaceCandidateId` must be the server-side result of the apply or answer flow in the same
+   * request, never client input: the consent binds the workspace, not the candidate record. The caller audits the
+   * share in that workspace's transaction (AGENTS.md 3.6; AIV-P3-008, AIV-P3-013).
    */
   linkToWorkspace(ctx: CandidateAccountContext, input: LinkToWorkspaceInput): Promise<WorkspaceLink>;
   /** Every workspace link, oldest first (erasure, AIV-P3-014). */

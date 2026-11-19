@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CandidateAccountError, checkLinkConsent, checkNewConsent, withdrawalAt, type Consent } from './account.ts';
+import {
+  CandidateAccountError,
+  checkLinkConsent,
+  checkNewConsent,
+  withdrawalAt,
+  type CandidateAccountErrorCode,
+  type Consent,
+} from './account.ts';
 
 const WS = '0190d4a2-0000-7000-8000-000000000001';
 const JOB = '0190d4a2-0000-7000-8000-000000000101';
@@ -14,7 +21,7 @@ const consent: Consent = {
   textVersion: 'apply-v1',
   withdrawnAt: null,
 };
-const refused = (code: string) => new CandidateAccountError(code as CandidateAccountError['code']);
+const refused = (code: CandidateAccountErrorCode) => new CandidateAccountError(code);
 
 describe('a new consent', () => {
   it('needs a text version', () => {
