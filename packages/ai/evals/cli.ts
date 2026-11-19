@@ -4,12 +4,15 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { createAiClient, memoryTokenBudget } from '../src/client.ts';
+import { deployments } from '../src/config.ts';
 import { providerFromEnv } from '../src/providers.ts';
 import { liveTokenCap, runners, taskThresholds } from './config.ts';
 import { loadGolden } from './golden.ts';
 import {
   caseLines,
+  evalWorkspaceId,
   evaluateTask,
+  judgePrompt,
   liveJudge,
   recordedAnswer,
   recordedJudge,
@@ -52,7 +55,7 @@ if (values.live) {
   answer = async (task, goldenCase) => {
     const runner = runners[task];
     if (!runner) throw new Error(`no runner for ${task}`);
-    return runner(ai, goldenCase);
+    return runner(ai, goldenCase, evalWorkspaceId);
   };
   judge = liveJudge(ai);
 }
@@ -76,9 +79,9 @@ if (stepSummary) appendFileSync(stepSummary, `### AI eval (${values.live ? 'live
 if (values.out) {
   const at = new Date().toISOString();
   const mode = values.live ? 'live' : 'recorded';
-  writeFileSync(
-    values.out,
-    `${JSON.stringify({ at, mode, commit: process.env['GITHUB_SHA'], passed, reports }, null, 2)}\n`,
-  );
+  // The judge's prompt id and the deployments' models, so a trend can tell a prompt change from a model change.
+  const versions = { judge: judgePrompt.id, deployments };
+  const results = { at, mode, commit: process.env['GITHUB_SHA'], versions, passed, reports };
+  writeFileSync(values.out, `${JSON.stringify(results, null, 2)}\n`);
 }
 process.exit(passed ? 0 : 1);

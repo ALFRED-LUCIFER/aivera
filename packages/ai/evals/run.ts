@@ -10,10 +10,10 @@ export type Answer = (task: string, golden: GoldenCase) => Promise<unknown>;
 /** Judges an output against a rubric where exact match is not possible. */
 export type Judge = (rubric: string, golden: GoldenCase, output: unknown) => Promise<Verdict>;
 
-export const metrics = ['citationValidity', 'claimLabelling', 'fieldMatch', 'safety', 'judge'] as const;
-export type Metric = (typeof metrics)[number];
+const metrics = ['citationValidity', 'claimLabelling', 'fieldMatch', 'safety', 'judge'] as const;
+type Metric = (typeof metrics)[number];
 
-export type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
+type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
 export type TaskReport = {
   task: string;
   passed: boolean;
@@ -39,9 +39,10 @@ export const judgePrompt = {
 };
 
 // A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
-const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
+export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
 
 /** The LLM judge on the `evals.judge` task. A verdict that is not the schema is rejected, never patched (AGENTS.md 3.7). */
+// shortcut: free-text JSON validated with zod; switch to generateStructured once AIV-P0-028 (#60) lands it.
 export function liveJudge(ai: AiClient): Judge {
   return async (rubric, golden, output) => {
     const { text } = await ai.generate({
@@ -58,11 +59,12 @@ export function liveJudge(ai: AiClient): Judge {
 
 async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge: Judge): Promise<CaseResult> {
   const { expected, sources } = golden;
+  const { statements: statementPaths } = taskThresholds[task] ?? { statements: [] };
   try {
     const output = await answer(task, golden);
     const scores: CaseResult['scores'] = {
-      citationValidity: citationValidity(output, sources),
-      claimLabelling: claimLabelling(output, sources),
+      citationValidity: citationValidity(output, sources, statementPaths),
+      claimLabelling: claimLabelling(output, sources, statementPaths),
     };
     if (expected.match) scores.fieldMatch = fieldMatch(output, expected.match);
     if (expected.safety) scores.safety = safety(output, expected.safety);
@@ -85,7 +87,7 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
 function thresholdsOf(task: string): Record<Metric, number> {
   const own = taskThresholds[task];
   if (!own) throw new Error(`No thresholds for task ${task} in evals/config.ts`);
-  return { ...hardGates, ...own };
+  return { ...hardGates, fieldMatch: own.fieldMatch, judge: own.judge };
 }
 
 export async function evaluateTask(

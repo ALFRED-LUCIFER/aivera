@@ -1,14 +1,16 @@
 name: ai-eval
 # AIV-P0-029: the AI golden set gates every change to packages/ai, which holds the client, every prompt and the evals
-# (ADR-006 point 8). "ai-eval" scores the recorded answers: deterministic, free, no model call. "ai-eval-live" asks the
-# dev AI deployment (synthetic data only, ADR-011) and runs only once the owner sets AI_EVAL_CLIENT_ID (infra/README.md).
+# (ADR-006 point 8) or to the dev model deployment. "ai-eval" scores the recorded answers: deterministic, free, no model
+# call. "ai-eval-live" asks the dev AI deployment (synthetic data only, ADR-011) on main and on a manual run only, so no
+# pull request can spend tokens or hold the eval identity; it waits for the owner to set AI_EVAL_CLIENT_ID (infra/README.md).
 # Never weaken a step or lower a threshold to get green (AGENTS.md 2.7).
 on:
   pull_request:
-    paths: ['packages/ai/**', '.github/workflows/ai-eval.yml']
+    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
   push:
     branches: [main]
-    paths: ['packages/ai/**', '.github/workflows/ai-eval.yml']
+    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,7 +35,10 @@ jobs:
       - run: pnpm ai:eval --out "$RUNNER_TEMP/ai-eval.json"
       # The gate must fail on a bad case, or a green run proves nothing.
       - name: the gate fails on an invalid citation
-        run: if pnpm ai:eval --dir evals/fixtures/failing; then echo "the gate passed a bad case"; exit 1; fi
+        # Exactly 1 (a failed threshold); 2 would be a broken fixture, not the gate.
+        run: |
+          code=0; pnpm ai:eval --dir evals/fixtures/failing || code=$?
+          if [ "$code" -ne 1 ]; then echo "expected the gate to exit 1, got $code"; exit 1; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -42,10 +47,9 @@ jobs:
           retention-days: 90
 
   ai-eval-live:
-    # Same-repository pull requests and main only: a fork gets no Azure token.
-    if: >-
-      vars.AI_EVAL_CLIENT_ID != '' && (github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name == github.repository)
+    needs: ai-eval
+    # Main and manual runs only: a pull request's code never runs with the eval identity or its token cap.
+    if: vars.AI_EVAL_CLIENT_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # The identity's federated credential trusts this environment only, and may only call the dev AI deployments.

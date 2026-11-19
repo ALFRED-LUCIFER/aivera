@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // One golden case per YAML file in evals/<task>/ (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
 
-export const sourceKinds = ['cv', 'repo', 'document', 'reference', 'interview', 'job_description'] as const;
+const sourceKinds = ['cv', 'repo', 'document', 'reference', 'interview', 'job_description'] as const;
 
 export const verdict = z.object({ pass: z.boolean(), reason: z.string().min(1) }).strict();
 export type Verdict = z.infer<typeof verdict>;

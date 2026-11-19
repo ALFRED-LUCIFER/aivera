@@ -17,8 +17,6 @@ expected:
     mustHaves[*].label: [claim]
 recorded:
   output:
-    refused: true
-    reason: Aivera adds nothing that is not in a source. The CV names no qualification, so none is listed.
     mustHaves:
       - competency: Python service engineering
         label: claim
