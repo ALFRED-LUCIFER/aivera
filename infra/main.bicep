@@ -13,6 +13,9 @@ param githubOidcRepo string = 'ALFRED-LUCIFER@95878204/aivera@1462479700'
 @description('Email address of the team that receives dev alerts (AIV-P0-018). Not a candidate\'s address.')
 param alertEmail string
 
+@description('Aivera\'s own resource group in UAE North for the AI resource (ADR-011). Medvya\'s group allows Indian regions only.')
+param aiResourceGroup string = 'rg-aivera-ai-dev'
+
 @description('Commit SHA tag of the images on ghcr.io to run. Pass the one running now so a redeploy changes nothing.')
 param imageTag string
 
@@ -65,6 +68,7 @@ module database 'modules/database.bicep' = {
 
 module ai 'modules/ai.bicep' = {
   name: 'aivera-ai'
+  scope: resourceGroup(aiResourceGroup)
   params: {
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
