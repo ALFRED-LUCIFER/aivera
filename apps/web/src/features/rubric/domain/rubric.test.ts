@@ -61,7 +61,13 @@ describe('Rubric page view (AIV-P1-012)', () => {
 
   it('with none approved, shows the latest draft; with no versions, nothing', () => {
     expect(rubricView([version(1, 'draft')], new Map()).shown?.version).toBe(1);
-    expect(rubricView([], new Map())).toEqual({ shown: null, history: [], edit: null, review: null });
+    expect(rubricView([], new Map())).toEqual({
+      shown: null,
+      history: [],
+      edit: null,
+      review: null,
+      approvedCompetencies: 0,
+    });
   });
 
   it('edit mode opens the open version, so a second editor resumes it, or else the approved one (AIV-P1-013)', () => {

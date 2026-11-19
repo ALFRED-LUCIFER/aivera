@@ -16,15 +16,23 @@ export default async function RubricPage({ params, searchParams }: PageProps<'/a
   const [loaded, job] = await Promise.all([loadRubric(jobId), loadJob(jobId)]);
   if (!loaded) notFound();
   if (!loaded.canEdit && !loaded.approver) return <Rubric state={{ status: 'ready', rubric: loaded.rubric }} />;
-  const hiringOwner = (job && 'header' in job && job.hiringOwner) || null;
+  const loadedJob = job && 'header' in job ? job : null;
+  const header = loadedJob?.header;
   return (
     <RubricEditable
       jobId={jobId}
       rubric={loaded.rubric}
-      hiringOwner={hiringOwner}
+      hiringOwner={loadedJob?.hiringOwner ?? null}
       canEdit={loaded.canEdit}
       approver={loaded.approver}
       link={reviewLink(await searchParams)}
+      publication={{
+        published: header?.job.published ?? false,
+        approved: Boolean(header?.approved),
+        slug: header?.publicSlug ?? null,
+        descriptor: header?.job.publicDescriptor ?? null,
+        competencies: loaded.rubric.approvedCompetencies,
+      }}
     />
   );
 }

@@ -36,6 +36,8 @@ export type RubricView = {
   edit: { base: RubricBase; successStatement: string; competencies: Competency[] } | null;
   /** The version awaiting approval, or null when none is. */
   review: ReviewView | null;
+  /** How many competencies the approved version has: what the candidate site lists (AIV-P1-015). */
+  approvedCompetencies: number;
 };
 
 export type RubricBase = { versionId: string; revision: number };
@@ -111,6 +113,40 @@ export function reviewLink(params: Record<string, string | string[] | undefined>
 export const reviewPath = (jobId: string, review: { versionId: string; revision: number }) =>
   `/app/jobs/${jobId}/rubric?version=${review.versionId}&revision=${review.revision}`;
 
+/** The rubric page's Publish panel (AIV-P1-015): whether the job is listed, and what publishing needs. */
+export type PublicationView = {
+  published: boolean;
+  /** Publishing needs an approved rubric. */
+  approved: boolean;
+  /** The candidate site's slug while published, for "View public listing". */
+  slug: string | null;
+  /** How the candidate site names the employer, from the last time it was published. */
+  descriptor: string | null;
+  /** How many competencies candidates see. */
+  competencies: number;
+};
+
+/** The Publish panel's controller: the preview, the descriptor typed in it, and the outcome (AIV-P1-015). */
+export type PublishView = {
+  previewing: boolean;
+  descriptor: string;
+  pending: boolean;
+  status: 'idle' | 'published' | 'unpublished' | 'descriptor' | 'failed';
+  onPreview: () => void;
+  onCancel: () => void;
+  onDescriptor: (value: string) => void;
+  /** Rejects when nothing was published, so the preview shows why. */
+  onPublish: () => Promise<void>;
+  onUnpublish: () => void;
+  /** After Cancel, focus returns to "Publish this job" rather than dropping to the page. */
+  returnFocus: boolean;
+};
+
+export type PublishResult = { ok: true } | { error: 'descriptor' | 'failed' };
+
+/** The candidate site's page for a published job. */
+export const publicListingPath = (slug: string) => `/candidates/jobs/${slug}`;
+
 /** What saving a draft returns to the page: the saved version as the next base, or why it was not saved. */
 export type SaveResult = { base: RubricBase } | { error: 'stale' | 'failed' };
 
@@ -128,6 +164,7 @@ export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string
   const editable = open ?? approved;
   const awaiting = open?.status === 'awaiting_approval' ? open : null;
   return {
+    approvedCompetencies: approved?.competencies.length ?? 0,
     review: awaiting
       ? {
           versionId: awaiting.id,

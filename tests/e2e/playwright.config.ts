@@ -36,7 +36,19 @@ export default defineConfig({
   expect: { toHaveScreenshot: { animations: 'disabled', stylePath: './hide-dev-overlay.css' } },
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
   projects: [
-    { name: 'gallery', testIgnore: /\.unconfigured\.spec\.ts$/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'gallery',
+      testIgnore: [/\.unconfigured\.spec\.ts$/, /publish-job\.spec\.ts$/],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so it runs after them.
+    // It is skipped, not passed, when any gallery test fails: a skipped "publish" project is not green.
+    {
+      name: 'publish',
+      testMatch: /publish-job\.spec\.ts$/,
+      dependencies: ['gallery'],
+      use: { ...devices['Desktop Chrome'] },
+    },
     {
       name: 'unconfigured',
       testMatch: /\.unconfigured\.spec\.ts$/,

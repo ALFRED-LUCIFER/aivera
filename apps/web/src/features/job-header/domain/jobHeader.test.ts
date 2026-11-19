@@ -10,6 +10,7 @@ const header = (more: Partial<JobHeader>): JobHeader => ({
   approved: null,
   latest: null,
   assessed: 0,
+  publicSlug: null,
   ...more,
 });
 const lines = (h: JobHeader) => Object.fromEntries(jobHeaderView(h, null).stages.map((s) => [s.page, s.line]));

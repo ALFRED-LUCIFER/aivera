@@ -1099,6 +1099,30 @@
       "failed": "That did not go through. Nothing was changed.",
       "newer": "A newer version is waiting for you",
       "newerBody": "The link you opened was for an earlier copy of this rubric. Review version {version} below instead. Nothing from the earlier copy was approved."
+    },
+    "publish": {
+      "title": "Publish on Aivera jobs",
+      "notPublished": "Not published. Only candidates you add can apply. Publishing lists this job on the candidate site so anyone can apply directly.",
+      "publish": "Publish this job",
+      "needsApproval": "Publish after the rubric is approved.",
+      "previewTitle": "Preview: what candidates will see",
+      "shown": "Shown: title, location, pay band, {count, plural, =1 {the one competency and the level it needs} =2 {the two competencies and the level each needs} =3 {the three competencies and the level each needs} =4 {the four competencies and the level each needs} =5 {the five competencies and the level each needs} =6 {the six competencies and the level each needs} =7 {the seven competencies and the level each needs} =8 {the eight competencies and the level each needs} =9 {the nine competencies and the level each needs} =10 {the ten competencies and the level each needs} other {the # competencies and the level each needs}}.",
+      "hidden": "Hidden: weights, the client's name, other candidates and all scores.",
+      "inbox": "Applications arrive in your Inbox.",
+      "descriptorLabel": "How candidates see the employer",
+      "descriptorHint": "For example, \"A BNPL fintech\". Never the client's name; up to {max} characters.",
+      "confirm": "Publish",
+      "publishing": "Publishing…",
+      "cancel": "Cancel",
+      "footer": "Nothing changes until you confirm.",
+      "published": "Published",
+      "separator": " · ",
+      "live": "Live on the candidate site. New applications arrive in your Inbox.",
+      "view": "View public listing",
+      "unpublish": "Unpublish",
+      "unpublished": "Unpublished. The listing is off the candidate site; applications already received stay in your Inbox.",
+      "descriptorError": "Describe the employer for candidates, without its name, in up to {max} characters.",
+      "failed": "That did not go through. Nothing was changed."
     }
   },
   "emails": {

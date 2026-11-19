@@ -598,6 +598,14 @@ const publication = (jobId: string) =>
     sql`select published, public_descriptor from jobs.job where id = ${jobId}`,
   );
 
+/** The job's JobPublished.v1 and JobUnpublished.v1 events in the jobs outbox, oldest first, read as the migrator. */
+const listingEvents = async (jobId: string) =>
+  [
+    ...(await admin.execute<{ type: string }>(
+      sql`select type from jobs.outbox where payload->>'jobId' = ${jobId} and type like 'Job%' order by id`,
+    )),
+  ].map((r) => r.type);
+
 describe('Feature: Publish a job on the candidate site', () => {
   it('Scenario: Preview before publishing: the preview is the approved rubric, and the job stays unpublished', async () => {
     const listing = await as(RANA, demo, (ctx) => jobs.getPublicListing(ctx, sae()));
@@ -670,6 +678,9 @@ describe('Feature: Publish a job on the candidate site', () => {
       occurredAt: NOW,
       after: { published: true, publicDescriptor: 'A BNPL fintech' },
     });
+    // AIV-P1-015: JobPublished.v1 in the same transaction, and the header's "View public listing" slug.
+    expect(await listingEvents(sae())).toEqual(['JobPublished.v1']);
+    expect((await as(RANA, demo, (ctx) => jobs.getJobHeader(ctx, sae())))?.publicSlug).toMatch(/^senior-ai-engineer-/);
   });
 
   it('Scenario: Unpublish: the job is no longer listed, and unpublishing twice records one entry', async () => {
@@ -678,6 +689,8 @@ describe('Feature: Publish a job on the candidate site', () => {
     expect(await publication(sae())).toEqual([{ published: false, public_descriptor: 'A BNPL fintech' }]);
     const actions = (await audit.listFor(demo, { type: 'job', id: sae() })).map((e) => e.action);
     expect(actions.filter((a) => a === 'job.unpublished')).toHaveLength(1);
+    expect(await listingEvents(sae())).toEqual(['JobPublished.v1', 'JobUnpublished.v1']);
+    expect((await as(RANA, demo, (ctx) => jobs.getJobHeader(ctx, sae())))?.publicSlug).toBeNull();
   });
 
   // SAFETY: mutation check: gave 'job.publish' to interviewers and hiring owners in permissions.ts -> this test failed
