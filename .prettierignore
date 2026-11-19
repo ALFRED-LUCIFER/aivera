@@ -5,3 +5,5 @@ pnpm-lock.yaml
 **/coverage/**
 **/fixtures/**
 packages/tokens/tokens.css
+# Design artboards are copied verbatim from the claude.ai canvas; never reformat them
+docs/01-design/artboards/**

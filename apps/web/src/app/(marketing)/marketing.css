@@ -8,20 +8,15 @@
     animation-delay: calc(var(--mk-step, 0) * 120ms);
   }
 
-  /* The highlighter is laid down like a pen stroke: over "evidence" on load, over the cited words in the card. */
-  .mk-sweep,
+  /* The highlighter is laid down like a pen stroke over the cited words in the card (.mk-sweep is in globals.css). */
   .mk-card[data-stage] mark {
     background-color: transparent;
     background-image: linear-gradient(var(--hl), var(--hl));
     background-repeat: no-repeat;
     background-position: left center;
   }
-  [dir='rtl'] .mk-sweep,
   [dir='rtl'] .mk-card[data-stage] mark {
     background-position: right center;
-  }
-  .mk-sweep {
-    animation: mk-sweep 840ms var(--motion-ease) 480ms both;
   }
 
   /* The card waits (ready) until it is seen, then plays: bar, claim range, highlight. */
@@ -67,14 +62,6 @@
     opacity: 1;
     transform: none;
     filter: none;
-  }
-}
-@keyframes mk-sweep {
-  from {
-    background-size: 0 100%;
-  }
-  to {
-    background-size: 100% 100%;
   }
 }
 @keyframes mk-grow {

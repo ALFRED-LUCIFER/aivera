@@ -9,7 +9,7 @@ test('Scenario: The Google button appears only when Google is configured (unset)
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0);
   // A hand-made post of method "google" (no button exists to click) is refused, not sent to the tenant.
-  await page.locator('form').evaluate((form) => {
+  await page.locator('form', { has: page.getByLabel('Email') }).evaluate((form) => {
     const button = Object.assign(document.createElement('button'), { type: 'submit', name: 'method', value: 'google' });
     button.textContent = 'Posted google';
     form.append(button);

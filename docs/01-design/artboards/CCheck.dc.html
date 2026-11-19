@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aivera — Free CV check</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+/* Aivera "Case file" tokens. Ink carries text, actions, scores and selection; the highlighter marks cited evidence only. */
+.av{--bg:#F6F4F1;--surface:#FFFFFF;--surface-subtle:#EFECE8;--surface-raised:#FFFFFF;--border:#E4DFD9;--border-strong:#CFC8C0;--text:#1B1720;--text-2:#55505A;--text-3:#6A6470;--action:#1B1720;--action-hover:#3A3242;--on-action:#FFFFFF;--brand:#1B1720;--brand-hover:#000000;--brand-subtle:#E9E5DF;--brand-text:#1B1720;--hl:#FFE873;--hl-text:#1B1720;--focus:#1B1720;--ok-bg:#E8F3EA;--ok-text:#1F6B3A;--ok-border:#BFDCC5;--warn-bg:#FDEDE0;--warn-text:#9A3412;--warn-border:#F2C7A5;--err-bg:#FCE8E8;--err-text:#A1161D;--err-border:#F1BDBD;--info-bg:#E8EFFB;--info-text:#1D4E9E;--info-border:#BCD0F2;--shadow-1:0 1px 2px rgba(27,23,32,.05);--shadow-pop:0 16px 36px -12px rgba(27,23,32,.22),0 3px 8px rgba(27,23,32,.06)}
+.av[data-theme="dark"]{--bg:#141118;--surface:#1D1922;--surface-subtle:#18141D;--surface-raised:#262130;--border:#322C3B;--border-strong:#4A4355;--text:#F4F1F6;--text-2:#BDB5C6;--text-3:#9A91A5;--action:#F4F1F6;--action-hover:#FFFFFF;--on-action:#1B1720;--brand:#F4F1F6;--brand-hover:#FFFFFF;--brand-subtle:#2C2636;--brand-text:#F4F1F6;--hl:#4D4208;--hl-text:#FFF3B0;--focus:#FFE873;--ok-bg:#14281B;--ok-text:#8FE0A8;--ok-border:#24502F;--warn-bg:#33200F;--warn-text:#FDBA8C;--warn-border:#6A3F1C;--err-bg:#351717;--err-text:#FCA5A5;--err-border:#6E2A2A;--info-bg:#142440;--info-text:#A9C8FF;--info-border:#284A80;--shadow-1:none;--shadow-pop:0 18px 44px -10px rgba(0,0,0,.65)}
+.av{font-family:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:20px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;caret-color:var(--brand);accent-color:var(--brand);scrollbar-color:var(--border-strong) transparent}
+.av *{box-sizing:border-box}
+.av ::selection{background:var(--hl);color:var(--hl-text)}
+.av a{color:var(--brand-text);text-underline-offset:3px;text-decoration-thickness:1px}.av a:hover{color:var(--brand-hover)}
+.av :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.av h1,.av h2,.av h3,.av p{margin:0}
+.av h1,.av h2{font-family:"Bricolage Grotesque","Hanken Grotesk",system-ui,sans-serif;text-wrap:balance}
+.av h1{font-size:28px;line-height:36px;font-weight:700;letter-spacing:-0.02em}
+.av h2{font-size:18px;line-height:26px;font-weight:600;letter-spacing:-0.01em}
+.av h3{font-size:15px;line-height:22px;font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px}
+.sub{color:var(--text-2);font-size:13px;line-height:18px}
+.lab{font-size:13px;font-weight:600;color:var(--text-2)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;font-weight:600;line-height:20px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.av a.btn{color:var(--text)}
+.btn:hover{background:var(--surface-subtle)}
+.btn-primary,.av a.btn-primary{background:var(--action);border-color:var(--action);color:var(--on-action)}
+.btn-primary:hover,.av a.btn-primary:hover{background:var(--action-hover);border-color:var(--action-hover);color:var(--on-action)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.av a.btn-ghost{color:var(--text-2)}
+.btn-sm{height:36px;padding:0 12px;font-size:13px}
+.btn-icon{width:40px;padding:0}
+.btn[disabled]{background:var(--surface-subtle);border-color:var(--border);color:var(--text-3);cursor:not-allowed}
+.btn[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--on-action)}
+@media (pointer:coarse){.btn{min-height:44px}.nav a{min-height:44px}}
+.av .nav a{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:8px;color:var(--text-2);font-weight:500;text-decoration:none}
+.av .nav a:hover{background:var(--surface-subtle);color:var(--text)}
+.av .nav a[aria-current="page"]{background:var(--action);color:var(--on-action);font-weight:600}
+.av .nav a[aria-current="page"] .sub{color:var(--on-action)}
+.av .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--border)}
+.av .tabs a{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 12px;color:var(--text-2);font-weight:500;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.av .tabs a:hover{color:var(--text)}
+.av .tabs a[aria-current="page"]{color:var(--text);font-weight:600;border-bottom-color:var(--brand)}
+.tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface-subtle);color:var(--text-2);font-size:13px;font-weight:500;white-space:nowrap}
+.mk{display:inline-block;width:9px;height:9px;border-radius:2px;flex:none}
+.mk-obs{background:var(--text)}.mk-base{border:1.5px solid var(--text-2)}.mk-proj{border:1.5px dashed var(--brand-text)}.mk-na{height:0;border-top:1.5px solid var(--text-3);border-radius:0}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px 0 7px;border-radius:13px;border:1px solid var(--border);font-size:13px;font-weight:500;white-space:nowrap}
+.chip-ok{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok-border)}
+.chip-warn{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn-border)}
+.chip-err{background:var(--err-bg);color:var(--err-text);border-color:var(--err-border)}
+.chip-info{background:var(--info-bg);color:var(--info-text);border-color:var(--info-border)}
+.chip-neutral{background:var(--surface-subtle);color:var(--text-2)}
+.tbl{width:100%;border-collapse:collapse;text-align:left}
+.tbl th{padding:10px 12px;font-size:13px;font-weight:600;color:var(--text-2);border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:bottom}
+.tbl td{padding:14px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:var(--surface-subtle)}
+.tbl th:first-child,.tbl td:first-child{padding-left:20px}.tbl th:last-child,.tbl td:last-child{padding-right:20px}
+.meter{display:block;height:6px;border-radius:3px;background:var(--surface-subtle);box-shadow:inset 0 0 0 1px var(--border);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.seg{display:inline-flex;gap:3px}.seg i{width:8px;height:14px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--border-strong)}.seg i.on{background:var(--text-2);box-shadow:none}
+.str{display:inline-flex;gap:3px;vertical-align:middle}.str i{width:14px;height:8px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--border-strong)}.str i.on{background:var(--text);box-shadow:none}
+.hatch{background:repeating-linear-gradient(135deg,var(--brand) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1.5px var(--brand)}
+.score{position:relative;display:block;height:10px;border-radius:5px;background:var(--surface-subtle);box-shadow:inset 0 0 0 1px var(--border)}
+.score b{position:absolute;left:0;top:0;height:10px;border-radius:5px;background:var(--brand)}
+.score i{position:absolute;top:0;height:10px;border-radius:0 5px 5px 0}
+.av mark.hl{background:var(--hl);color:var(--hl-text);padding:1px 3px;border-radius:3px}
+.inp{width:100%;min-height:40px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;line-height:20px}
+.inp::placeholder{color:var(--text-3)}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld label,.fld legend{font-size:13px;font-weight:600;color:var(--text)}
+.row{display:flex;gap:12px;align-items:flex-start;padding:16px 20px;border-top:1px solid var(--border)}
+.ico{flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface-subtle);color:var(--text-2)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-subtle);color:var(--text-2);font-size:13px;line-height:18px}
+.note-ok{background:var(--ok-bg);border-color:var(--ok-border);color:var(--ok-text)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media (prefers-reduced-motion:no-preference){.btn,.nav a,.tabs a{transition:background-color .14s cubic-bezier(.16,1,.3,1),color .14s cubic-bezier(.16,1,.3,1)}}
+
+.av .wlink{color:var(--text-2);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
+.av .wlink:hover{color:var(--text)}
+.av .ink{background:#1B1720;color:#F4F1F6}
+.av .ink a{color:#F4F1F6}
+.btn-lg{height:48px;padding:0 20px;font-size:15px}
+.av .btn-hl,.av a.btn-hl{background:var(--hl);border-color:var(--hl);color:#1B1720}
+.av a.btn-hl:hover{background:#FFDF40;border-color:#FFDF40;color:#1B1720}
+
+@media (prefers-reduced-motion:no-preference){
+.btn svg{transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.btn:hover svg{transform:translateX(3px)}
+.btn:active{transform:scale(.98)}
+.av .wlink{background:linear-gradient(currentColor,currentColor) no-repeat 6px calc(100% - 10px)/0 1.5px;transition:background-size .3s cubic-bezier(.16,1,.3,1),color .15s}
+.av .wlink:hover{background-size:calc(100% - 12px) 1.5px}
+.rise{animation:rise .9s cubic-bezier(.16,1,.3,1) both}
+.d1{animation-delay:.08s}.d2{animation-delay:.16s}.d3{animation-delay:.24s}.d4{animation-delay:.34s}
+.av mark.sweep{background-color:transparent;background-image:linear-gradient(var(--hl),var(--hl));background-repeat:no-repeat;background-size:100% 100%;animation:sweep .9s cubic-bezier(.16,1,.3,1) .45s both}
+.av mark.sweep.late{animation-delay:2s}
+.fill b{transform-origin:left center;animation:grow 1.2s cubic-bezier(.16,1,.3,1) .7s both}
+.fill i{animation:wipe .7s cubic-bezier(.16,1,.3,1) 1.7s both}
+.lift{transition:transform .35s cubic-bezier(.16,1,.3,1),box-shadow .35s cubic-bezier(.16,1,.3,1)}
+.lift:hover{transform:translateY(-4px)}
+@supports (animation-timeline:view()){
+.rv{animation:reveal linear both;animation-timeline:view();animation-range:entry 0% entry 60%}
+.rule{animation:draw linear both;animation-timeline:view();animation-range:entry 10% entry 90%}
+.sweep2{animation:sweep2 linear both;animation-timeline:view();animation-range:entry 40% cover 35%}
+}
+}
+.rule{display:block;height:2px;background:var(--text);transform-origin:left center}
+.sweep2{background-image:linear-gradient(#FFE873,#FFE873);background-repeat:no-repeat;background-size:100% 100%;color:#1B1720;padding:0 6px;border-radius:4px}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes sweep{from{background-size:0 100%}to{background-size:100% 100%}}
+@keyframes sweep2{from{background-size:0 100%;color:#F4F1F6}60%{color:#1B1720}to{background-size:100% 100%;color:#1B1720}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:none}}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes reveal{from{opacity:.15;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:none}}
+</style>
+</helmet>
+<div class="av" data-theme="light" style="min-height: 100vh; display: flex; flex-direction: column">
+<header style="background: var(--surface); border-bottom: 1px solid var(--border)"><div style="width: 100%; max-width: 1120px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-top: 12px; padding-bottom: 12px">
+<a href="CHome.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit"><img src="/_blob/949836f67cdc790a215f3a9878d23051" alt="" width="34" height="34" style="border-radius: 9px; box-shadow: 0 0 0 1px var(--border-strong); display: block"><span style="font-family: Bricolage Grotesque, Hanken Grotesk, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em">Aivera</span><span class="sub" style="padding-left: 10px; border-left: 1px solid var(--border-strong)">for candidates</span></a>
+<nav aria-label="Candidate site" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px"><a class="wlink" href="CJobs.dc.html">Jobs</a><a class="wlink" href="CCheck.dc.html" aria-current="page" style="color: var(--text); font-weight: 600">Free CV check</a><a class="wlink" href="CPlans.dc.html">Plans</a><a class="wlink" href="CFolio.dc.html">Portfolio</a></nav>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><a class="btn" href="CSignUp.dc.html">Create account</a><a class="btn btn-primary" href="CDash.dc.html">My applications</a></div></div></header><main style="width: 100%; max-width: 1120px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(24px, 4vw, 48px); padding-bottom: 64px; display: flex; flex-direction: column; gap: 28px"><div style="display: flex; flex-direction: column; gap: 8px"><h1 style="font-size: 32px; line-height: 40px">Free CV check</h1><p style="color: var(--text-2); font-size: 16px; line-height: 24px; max-width: 68ch">Two checks in one: can hiring software read your CV, and does it show what a specific job needs? Free for one job at a time.</p></div>
+<section class="card" style="padding: 24px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px"><div style="display: flex; flex-direction: column; gap: 6px"><span class="lab" style="color: var(--text)">Your CV</span><button type="button" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"></path></svg>Upload CV</button></div><div class="fld" style="flex: 1 1 260px; max-width: 360px"><label for="cj">Check against</label><select id="cj" class="inp"><option>Senior AI Engineer</option><option>QA Automation Engineer</option><option>Staff Backend Engineer</option></select></div><button type="button" class="btn btn-primary" onClick="{{on_run}}">Run the check</button></section>
+<sc-if value="{{not_run}}" hint-placeholder-val="{{true}}"><p class="sub" style="font-size: 14px">Your CV is used for this check only. It is not shared with any recruiter unless you apply.</p></sc-if>
+<sc-if value="{{run}}" hint-placeholder-val="{{false}}"><div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+<section class="card" style="flex: 1 1 340px; min-width: 0; padding: 24px; display: flex; flex-direction: column"><h2>Can software read it?</h2><p class="sub" style="padding: 4px 0 12px">3 of 4 checks passed.</p>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--border)"><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Pass</span><span style="color: var(--text-2); flex: 1; min-width: 0">Contact details, work history and education were all found.</span></div><div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--border)"><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Pass</span><span style="color: var(--text-2); flex: 1; min-width: 0">Dates are consistent and in order.</span></div><div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--border)"><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Pass</span><span style="color: var(--text-2); flex: 1; min-width: 0">No text is locked inside images.</span></div><div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--border)"><span class="chip chip-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Fix</span><span style="color: var(--text-2); flex: 1; min-width: 0">The two-column layout may be read out of order. A single column is safer.</span></div></section>
+<section class="card" style="flex: 1.4 1 420px; min-width: 0; padding: 24px; display: flex; flex-direction: column"><h2>Does it show what Senior AI Engineer needs?</h2><p class="sub" style="padding: 4px 0 12px">Your CV mentions 5 of 6 competencies. Evidence is linked for 2.</p>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">LLM systems in production</span><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 12.5 4.5 4.5L15 8M11.5 16l1 1L22 8"></path></svg>Evidence linked</span><span class="sub" style="flex: 1 1 100%">Links to the merchant assistant write-up.</span></div><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">Retrieval and evaluation</span><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 12.5 4.5 4.5L15 8M11.5 16l1 1L22 8"></path></svg>Evidence linked</span><span class="sub" style="flex: 1 1 100%">Links to your evaluation repository.</span></div><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">Python service engineering</span><span class="chip chip-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Stated, no evidence</span><span class="sub" style="flex: 1 1 100%">Named as a skill. Link a service you wrote.</span></div><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">Cost and reliability</span><span class="chip chip-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Stated, no evidence</span><span class="sub" style="flex: 1 1 100%">"Cut cost per request by 40%" has nothing behind it. Add a dashboard export or a short note.</span></div><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">Arabic and bilingual NLP</span><span class="chip chip-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Stated, no evidence</span><span class="sub" style="flex: 1 1 100%">One line. Describe the evaluation set and link a sample.</span></div><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--border)"><span style="flex: 1 1 220px; font-weight: 600">Product judgement</span><span class="chip chip-err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21 12 12 21 3 12z"></path><path d="m9.5 9.5 5 5M14.5 9.5l-5 5"></path></svg>Not mentioned</span><span class="sub" style="flex: 1 1 100%">The job needs level 3. If you have made product trade-offs, say where.</span></div></section></div>
+<section class="card" style="padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px"><div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px"><span style="display: inline-flex; align-items: center; gap: 8px"><span class="tag" style="background: var(--hl); border-color: var(--hl); color: #1B1720; font-weight: 600">Plus</span><span style="font-weight: 600">Let Aivera tailor it for you</span></span><span class="sub">Reorders and rewords your CV for this job using only what is true, and shows every change.</span></div><div style="display: flex; flex-wrap: wrap; gap: 8px"><a class="btn" href="CTailor.dc.html">See an example</a><a class="btn btn-primary" href="CPlans.dc.html">See Plus</a></div></section></sc-if></main><footer style="margin-top: auto; border-top: 1px solid var(--border)"><div style="width: 100%; max-width: 1120px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: 24px; padding-bottom: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px"><span class="sub">© 2026 Aivera. Paying never changes how recruiters rank you.</span><nav aria-label="Footer" style="display: flex; flex-wrap: wrap; gap: 4px 16px"><a class="wlink" href="CJobs.dc.html">Jobs</a><a class="wlink" href="CPlans.dc.html">Plans</a><a class="wlink" href="Landing.dc.html">For recruiters</a></nav></div></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const FLAGS = [["run", false]]; const GROUPS = [];
+    const v = {};
+    FLAGS.forEach((f) => { const k = f[0]; const on = s[k] ?? f[1]; v[k] = on; v['not_' + k] = !on; v['on_' + k] = () => this.setState({ [k]: true }); v['off_' + k] = () => this.setState({ [k]: false }); });
+    GROUPS.forEach((g) => { const cur = s[g[0]] ?? g[2]; g[1].forEach((o) => { v[g[0] + '_' + o] = cur === o ? 'true' : 'false'; v[g[0] + '_is_' + o] = cur === o; v['set_' + g[0] + '_' + o] = () => this.setState({ [g[0]]: o }); }); });
+    return v;
+  }
+}
+</script>
+</body>
+</html>

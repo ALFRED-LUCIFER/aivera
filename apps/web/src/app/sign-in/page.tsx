@@ -1,5 +1,6 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { Metadata } from 'next';
+import { inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { SignInForm } from '@/features/sign-in/components/SignInForm.tsx';
 import { safeNext, signInError } from '@/features/sign-in/domain/signIn.ts';
 import { startSignIn } from '@/features/sign-in/services/startSignIn.ts';
@@ -23,9 +24,11 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
       error={errorKey && t(`signIn.errors.${errorKey}`)}
       google={googleConfigured()}
       labels={{
+        wordmark: t('shell.wordmark'),
+        headline: t.rich('signIn.headline', { mark: inkMark }),
+        points: [t('signIn.points.cites'), t('signIn.points.claims'), t('signIn.points.people')],
         title: t('signIn.title'),
-        panelTitle: t('signIn.panelTitle'),
-        panelBody: t('signIn.panelBody'),
+        lead: t('signIn.lead'),
         email: t('signIn.email'),
         passwordNote: t('signIn.passwordNote'),
         remember: t('signIn.remember'),
@@ -33,6 +36,8 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         forgotPassword: t('signIn.forgotPassword'),
         or: t('signIn.or'),
         google: t('signIn.google'),
+        newHere: t('signIn.newHere'),
+        createWorkspace: t('signIn.createWorkspace'),
       }}
     />
   );

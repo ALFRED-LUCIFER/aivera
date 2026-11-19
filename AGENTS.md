@@ -65,9 +65,11 @@ src/features/<feature>/components/ presentational .tsx only: props in, events ou
 - **No hard-coded user-facing text.** Every string is a key in `packages/i18n/messages/en.json`. Use logical utilities (`ms-*`, `ps-*`, `start-*`) so Arabic right-to-left works when it ships.
 - Accessibility: WCAG 2.2 AA, keyboard path, visible focus ring, real `<button>`/`<a href>`/`<label>`, `aria-label` on icon-only buttons, 200% zoom, reduced motion. Targets 40 px standard, 44 px on touch.
 
+**Build a screen from its artboard file, not from a description of it.** Every screen's spec is its artboard in [`docs/01-design/artboards/`](docs/01-design/artboards/) (map: [`screens.md`](docs/01-design/screens.md)), copied from the claude.ai Design canvas. Before you build, change or review a screen, open its `.dc.html` and port what it draws: every section and element, layout structure, panels and backgrounds, logo, copy, type sizes, control heights (44 px fields, 48 px `large` buttons on the website and sign-in pages), highlighter and ink use. Map its CSS to tokens and `@aivera/ui` (its colours are the tokens; tokens.json matches the Foundations artboard). Anything you do not port is a deviation: list each one, with its reason (a real functional constraint, a safety rule, or a later ticket), in a comment at the top of the component and in the PR body. "Matches the artboard" is checked by comparing a screenshot of the page with the artboard, not by reading the code. When the canvas changes, re-copy the files in the same PR.
+
 **Design rules** ([DESIGN.md](DESIGN.md)). New code follows them.
 
-- **Ink does the work.** Text, actions, scores and selection use ink. **The highlighter (`--hl`) marks cited evidence and nothing else**, except the website and candidate home places DESIGN.md names.
+- **Ink does the work.** Text, actions, scores and selection use ink. **The highlighter (`--hl`) marks cited evidence and nothing else**, except the website, candidate home and sign-in page places DESIGN.md names.
 - **Status colour always travels with an icon and a word.** Never colour alone.
 - **Every metric shows its value-basis marker** (observed, baseline, projection, not yet available).
 - **Evidence provenance and strength** use the shared `ProvenanceTag` and `StrengthMeter` (neutral ink, so strength is not read as pass/fail).
@@ -129,6 +131,7 @@ When a ticket depends on another ticket that is not merged yet, do not wait and 
 | What to build, acceptance criteria      | GitHub issues and [Project 2](https://github.com/users/ALFRED-LUCIFER/projects/2) |
 | Who Aivera is for, principles, surfaces | [PRODUCT.md](PRODUCT.md), [`docs/00-product/`](docs/00-product/)                  |
 | Design system and screen rules          | [DESIGN.md](DESIGN.md), [`docs/01-design/`](docs/01-design/)                      |
+| Screen artboards (the spec per screen)  | [`docs/01-design/artboards/`](docs/01-design/artboards/)                          |
 | User journeys J0–J7                     | [`docs/01-design/journeys.md`](docs/01-design/journeys.md)                        |
 | Modules and how they talk               | [`docs/02-architecture/modules.md`](docs/02-architecture/modules.md)              |
 | Decisions                               | [`docs/adr/`](docs/adr/)                                                          |
