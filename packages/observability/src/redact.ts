@@ -47,6 +47,9 @@ const ALLOWED = [
   'aivera.ai.outcome',
   'aivera.ai.attempts',
   'aivera.ai.cost_usd_micros',
+  // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@1`); not
+  // named prompt_*, which the personal-data words redact (AIV-P0-028).
+  'aivera.ai.template_version',
   'gen_ai.usage.input_tokens',
   'gen_ai.usage.output_tokens',
 ];

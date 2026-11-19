@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import { cited } from './citations';
 import { createAiClient, memoryTokenBudget } from './client';
 import { azureProvider } from './providers';
 
@@ -13,13 +15,19 @@ describe.skipIf(!process.env['AI_LIVE_SMOKE'] || !resourceName)('live Azure Open
   });
   const workspaceId = '0190d4a2-0000-7000-8000-00000000f00d';
 
-  it('generates with gpt-main and embeds with embedding-main', async () => {
-    const { text } = await ai.generate({
+  it('generates cited structured output with gpt-main and embeds with embedding-main', async () => {
+    const description = 'Senior AI Engineer. You will ship a retrieval assistant used by 9,000 merchants.';
+    const { needs } = await ai.generateStructured({
       task: 'jobs.draftCompetencies',
       workspaceId,
-      prompt: 'Reply with the single word: ready',
+      promptVersion: 'smoke.needs@1',
+      system: 'List the needs the job description states.',
+      prompt: 'List the needs.',
+      schema: z.object({ needs: z.array(cited(z.object({ need: z.string() }))) }),
+      sources: [{ id: 'jd', kind: 'job_description', text: description }],
     });
-    expect(text.length).toBeGreaterThan(0);
+    expect(needs.length).toBeGreaterThan(0);
+    expect(needs[0]?.citations[0]?.sourceId).toBe('jd');
     const { embedding } = await ai.embed({ task: 'evidence.embed', workspaceId, value: 'synthetic smoke test' });
     expect(embedding).toHaveLength(3072);
   }, 60_000);
