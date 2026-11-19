@@ -6,9 +6,16 @@ import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
 import { sql } from 'drizzle-orm';
+import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
-import type { CompetencyDrafting, JobCounts, JobsContract, PublicJobsContract } from './contracts/index.ts';
+import type {
+  CompetencyDrafting,
+  DomainDetecting,
+  JobCounts,
+  JobsContract,
+  PublicJobsContract,
+} from './contracts/index.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
 
@@ -55,3 +62,6 @@ export function createJobCounts(db: Db): JobCounts {
 /** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */
 export const createCompetencyDrafting = (ai: Pick<AiClient, 'generateStructured'>): CompetencyDrafting =>
   competencyDrafting(ai);
+
+/** "Detect the job's industry" on the app's AI client, as `createCompetencyDrafting`. */
+export const createDomainDetection = (ai: Pick<AiClient, 'generateStructured'>): DomainDetecting => domainDetection(ai);

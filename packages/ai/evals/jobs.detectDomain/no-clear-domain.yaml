@@ -1,0 +1,20 @@
+# A description that names no industry (synthetic): the answer is none, with no citation and no pack.
+id: no-clear-domain
+input:
+  jobType: software_engineering
+  title: Backend Engineer
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      You will design and run services in production. You write tested code and review your teammates' changes. You
+      join the on-call rota and fix what breaks.
+expected:
+  match:
+    industry.domain: none
+    regions: []
+recorded:
+  output:
+    industry:
+      domain: none
+    regions: []
