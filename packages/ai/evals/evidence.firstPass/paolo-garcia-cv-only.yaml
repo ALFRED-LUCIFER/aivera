@@ -1,0 +1,37 @@
+# Paolo Garcia has sent a CV only, so every must-have rests on his own word: each is a claim (AGENTS.md 1.6).
+id: paolo-garcia-cv-only
+people: [Paolo Garcia]
+input:
+  job: Senior AI Engineer
+  mustHaves: [LLM systems in production, Retrieval and evaluation, Python service engineering]
+sources:
+  - id: S1
+    kind: cv
+    text: >-
+      Built a customer support assistant on a retrieval pipeline for a travel marketplace. Designed the offline eval
+      set used before each release. Wrote the Python ingestion services and their tests.
+expected:
+  match:
+    mustHaves[*].competency: [LLM systems in production, Retrieval and evaluation, Python service engineering]
+    mustHaves[*].label: [claim]
+recorded:
+  output:
+    mustHaves:
+      - competency: LLM systems in production
+        label: claim
+        limit: CV statement only; nothing to inspect yet.
+        citations:
+          - sourceId: S1
+            quote: Built a customer support assistant on a retrieval pipeline
+      - competency: Retrieval and evaluation
+        label: claim
+        limit: CV statement only; the eval set has not been shared.
+        citations:
+          - sourceId: S1
+            quote: Designed the offline eval set used before each release
+      - competency: Python service engineering
+        label: claim
+        limit: CV statement only; no code submitted.
+        citations:
+          - sourceId: S1
+            quote: Wrote the Python ingestion services and their tests

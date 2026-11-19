@@ -29,6 +29,23 @@ resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
   }
 }
 
+// GitHub Actions' ai-eval-live job (AIV-P0-029): may call the dev AI deployments and nothing else (ai.bicep). Trusts the
+// "ai-eval" environment only, so a pull request never gets the deploy identity, and this one cannot deploy.
+resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-aivera-ai-eval-dev'
+  location: location
+  tags: tags
+
+  resource github 'federatedIdentityCredentials' = {
+    name: 'github-ai-eval'
+    properties: {
+      issuer: 'https://token.actions.githubusercontent.com'
+      subject: 'repo:${githubOidcRepo}:environment:ai-eval'
+      audiences: ['api://AzureADTokenExchange']
+    }
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: 'kv-aivera-dev-${take(uniqueString(resourceGroup().id), 6)}'
   location: location
@@ -88,6 +105,8 @@ output appIdentityPrincipalId string = appIdentity.properties.principalId
 output cicdIdentityId string = cicdIdentity.id
 output cicdIdentityClientId string = cicdIdentity.properties.clientId
 output cicdIdentityPrincipalId string = cicdIdentity.properties.principalId
+output aiEvalIdentityClientId string = aiEvalIdentity.properties.clientId
+output aiEvalIdentityPrincipalId string = aiEvalIdentity.properties.principalId
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
 output appInsightsId string = appInsights.id

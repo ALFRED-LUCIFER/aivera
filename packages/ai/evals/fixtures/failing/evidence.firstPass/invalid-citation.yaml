@@ -1,0 +1,22 @@
+# The gate's own failing case (AIV-P0-029): the recorded answer cites S9, a source it was never given. A run over this
+# directory must exit non-zero; evals/eval.test.ts and CI prove it.
+id: invalid-citation
+people: [Paolo Garcia]
+input:
+  job: Senior AI Engineer
+  mustHaves: [Python service engineering]
+sources:
+  - id: S1
+    kind: cv
+    text: Wrote the Python ingestion services and their tests.
+expected:
+  match:
+    mustHaves[*].competency: [Python service engineering]
+recorded:
+  output:
+    mustHaves:
+      - competency: Python service engineering
+        label: claim
+        citations:
+          - sourceId: S9
+            quote: Wrote the Python ingestion services

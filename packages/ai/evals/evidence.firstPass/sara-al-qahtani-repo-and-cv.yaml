@@ -1,0 +1,36 @@
+# Sara Al Qahtani's repository backs her eval work; her 40% cost cut is still only on her CV, so it stays a claim.
+id: sara-al-qahtani-repo-and-cv
+people: [Sara Al Qahtani]
+input:
+  job: Senior AI Engineer
+  mustHaves: [Retrieval and evaluation, Cost and reliability]
+sources:
+  - id: S1
+    kind: repo
+    text: >-
+      llm-eval-harness: authored 412 of 460 commits between March and October; adds retrieval metrics and a regression
+      gate to the release pipeline.
+  - id: S2
+    kind: cv
+    text: Led the merchant assistant used by about 9,000 merchants. Cut cost per request by 40% with response caching.
+expected:
+  match:
+    mustHaves[*].competency: [Retrieval and evaluation, Cost and reliability]
+    mustHaves[*].label: [submitted, claim]
+recorded:
+  output:
+    mustHaves:
+      - competency: Retrieval and evaluation
+        label: submitted
+        limit: One repository; no second source confirms her share yet.
+        citations:
+          - sourceId: S1
+            quote: authored 412 of 460 commits
+          - sourceId: S1
+            quote: adds retrieval metrics and a regression gate
+      - competency: Cost and reliability
+        label: claim
+        limit: The 40% figure is on her CV only.
+        citations:
+          - sourceId: S2
+            quote: Cut cost per request by 40%
