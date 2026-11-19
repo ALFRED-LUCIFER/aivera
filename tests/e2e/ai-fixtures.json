@@ -1,5 +1,21 @@
 [
   {
+    "when": "DIFC, Dubai",
+    "completion": "{\"industry\":{\"domain\":\"payments_fintech\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"You will build the card acquiring platform that settles merchant payments across the Gulf.\"}]},\"regions\":[{\"region\":\"uae\",\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"DIFC, Dubai\"}]}]}"
+  },
+  {
+    "when": "Al Quoz studio",
+    "completion": "{\"industry\":{\"domain\":\"none\"},\"regions\":[]}"
+  },
+  {
+    "when": "settles merchant payments across the Gulf",
+    "completion": "{\"competencies\":[{\"name\":\"Card acquiring platform engineering\",\"evidenceExpected\":\"Payment platform services they built and ran in production\",\"weight\":40,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the card acquiring platform that settles merchant payments\"}]},{\"name\":\"TypeScript and Go services\",\"evidenceExpected\":\"Services in TypeScript or Go they wrote, with tests\",\"weight\":30,\"level\":3,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"write services in TypeScript and Go, with tests\"}]},{\"name\":\"Mentoring engineers\",\"evidenceExpected\":\"Engineers they mentored and what changed\",\"weight\":20,\"level\":3,\"type\":\"desirable\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"mentor two engineers\"}]}],\"refused\":false,\"reason\":null,\"suggestions\":[{\"name\":\"Banking and payments domain\",\"evidenceExpected\":\"Work on payment or banking systems\",\"weight\":10,\"level\":2,\"type\":\"desirable\",\"why\":\"The platform settles merchant payments, but the description asks for no payments knowledge.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"settles merchant payments across the Gulf\"}]}]}"
+  },
+  {
+    "when": "internal tools our studio team uses",
+    "completion": "{\"competencies\":[{\"name\":\"Internal tools engineering\",\"evidenceExpected\":\"Internal tools they built that a team used every week\",\"weight\":100,\"level\":3,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the internal tools our studio team uses\"}]}],\"refused\":false,\"reason\":null,\"suggestions\":[]}"
+  },
+  {
     "when": "ship and run LLM assistants and retrieval systems",
     "completion": "{\"competencies\":[{\"name\":\"LLM systems in production\",\"evidenceExpected\":\"A shipped assistant or RAG system with real users, and their part in it\",\"weight\":25,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"ship and run LLM assistants and retrieval systems that real merchants use every day\"}]},{\"name\":\"Retrieval and evaluation\",\"evidenceExpected\":\"Eval sets and retrieval metrics, and how they changed decisions\",\"weight\":20,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the eval sets and retrieval metrics that decide what we ship\"}]},{\"name\":\"Python service engineering\",\"evidenceExpected\":\"Production Python they wrote: services, tests, deployment\",\"weight\":15,\"level\":3,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"write production Python services, with tests, and deploy them yourself\"}]},{\"name\":\"Cost and reliability\",\"evidenceExpected\":\"Numbers on latency, cost per request and incidents handled\",\"weight\":15,\"level\":2,\"type\":\"desirable\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"You keep latency, cost per request and incidents in check\"}]}],\"refused\":false,\"reason\":null,\"suggestions\":[{\"name\":\"Arabic and bilingual NLP\",\"evidenceExpected\":\"Work on Arabic or bilingual text: models, evals, tokenisation\",\"weight\":10,\"level\":2,\"type\":\"desirable\",\"why\":\"The assistant must answer in Arabic, but the description lists no language requirement.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"The assistant answers merchants in Arabic and English\"}]},{\"name\":\"Product judgement\",\"evidenceExpected\":\"Product decisions they shaped from evals or merchant feedback\",\"weight\":15,\"level\":3,\"type\":\"desirable\",\"why\":\"Your evals decide what ships, but the description does not ask for judging what merchants need.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the eval sets and retrieval metrics that decide what we ship\"}]}]}"
   },

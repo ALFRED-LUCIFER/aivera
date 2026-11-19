@@ -6,6 +6,7 @@ import {
   JOB_TYPES,
   REGIONS,
   getDomainPack,
+  isRegionalHint,
   listDomainPacks,
   type DomainPack,
   type RegionalHint,
@@ -236,5 +237,14 @@ describe('domain packs', () => {
     expect(Object.isFrozen(packs)).toBe(true);
     expect(packs.every((p) => Object.isFrozen(p) && Object.isFrozen(p.competencies[0]?.levels))).toBe(true);
     expect({ version: DOMAIN_PACK_CATALOGUE_VERSION, packs }).toMatchSnapshot();
+  });
+});
+
+describe('isRegionalHint (AIV-P1-064)', () => {
+  it('knows every regional hint by name, and no pack competency is named like one', () => {
+    for (const pack of listDomainPacks()) {
+      for (const region of REGIONS) for (const hint of pack.hints[region]) expect(isRegionalHint(hint.name)).toBe(true);
+      for (const c of pack.competencies) expect(isRegionalHint(c.name)).toBe(false);
+    }
   });
 });

@@ -20,6 +20,8 @@ const competencyColumns = {
   levelNeeded: competency.levelNeeded,
   type: competency.type,
   origin: competency.origin,
+  packKey: competency.packKey,
+  packVersion: competency.packVersion,
 };
 
 const jobWhere = (workspaceId: string) => and(eq(job.workspaceId, workspaceId), jobInScope(job.id, job.clientId));

@@ -840,7 +840,7 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
   // SAFETY: mutation check: insertVersion wrapped in a savepoint (ctx.tx.transaction) whose error was swallowed -> this test failed (the job stayed)
   it('Scenario: Save fails: a competency the database refuses leaves no job behind', async () => {
     const before = await jobCount();
-    const refused = draft([{ origin: 'domain_pack' as Competency['origin'] }]);
+    const refused = draft([{ origin: 'imported' as Competency['origin'] }]);
     expect(
       await pgError(
         as(RANA, w, (ctx) =>
@@ -849,6 +849,57 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
       ),
     ).toEqual({ code: '23514', constraint: 'competency_origin_check' });
     expect(await jobCount()).toBe(before);
+  });
+
+  // Feature: Suggest an industry's competencies in Add a job (AIV-P1-064), Scenario: I decide what stays.
+  it('Scenario: I decide what stays: a kept pack competency is saved with origin domain_pack, its pack and version', async () => {
+    const kept = draft([
+      {},
+      {},
+      {},
+      {},
+      { name: '3-D Secure and SCA flows', origin: 'domain_pack', packKey: 'payments_fintech', packVersion: 1 },
+    ]);
+    const { rubricVersion } = await as(RANA, w, (ctx) =>
+      jobs.createJobWithDraftRubric(ctx, { ...job('Senior Backend Engineer, Payments'), competencies: kept }),
+    );
+    const list = await rows<{ name: string; origin: string; pack_key: string | null; pack_version: number | null }>(
+      ALEX,
+      w,
+      sql`select name, origin, pack_key, pack_version from jobs.competency
+          where rubric_version_id = ${rubricVersion.id} order by position`,
+    );
+    expect(list[4]).toEqual({
+      name: '3-D Secure and SCA flows',
+      origin: 'domain_pack',
+      pack_key: 'payments_fintech',
+      pack_version: 1,
+    });
+    expect(list.map((c) => c.name)).not.toContain('Reconciliation and settlement');
+    expect(list.filter((c) => c.pack_key !== null)).toHaveLength(1);
+  });
+
+  // SAFETY: mutation check: dropped competency_domain_pack_check from migration 0007 -> this test failed (row stored)
+  it('the database refuses a domain_pack competency without its pack, and a pack on any other origin', async () => {
+    const [version] = await rows<{ id: string }>(ALEX, w, sql`select id from jobs.rubric_version limit 1`);
+    const insert = (origin: string, packKey: string | null, packVersion: number | null) =>
+      rows(
+        ALEX,
+        w,
+        sql`insert into jobs.competency (id, workspace_id, rubric_version_id, name, evidence_expected, weight_percent,
+              level_needed, type, origin, pack_key, pack_version, position)
+            values (gen_random_uuid(), ${w}, ${version?.id}, 'Ledger', '', 10, 3, 'desirable', ${origin}, ${packKey},
+              ${packVersion}, 99)`,
+      );
+    for (const [origin, key, v] of [
+      ['domain_pack', null, null],
+      ['domain_pack', 'payments_fintech', null],
+      ['added_by_recruiter', 'payments_fintech', 1],
+    ] as const)
+      expect(await pgError(insert(origin, key, v))).toEqual({
+        code: '23514',
+        constraint: 'competency_domain_pack_check',
+      });
   });
 
   it('a hiring owner cannot save a job with a rubric', async () => {

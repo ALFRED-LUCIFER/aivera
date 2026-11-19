@@ -19,6 +19,7 @@ export {
   DOMAIN_PACK_CATALOGUE_VERSION,
   REGIONS,
   getDomainPack,
+  isRegionalHint,
   listDomainPacks,
 } from '../domain/domain-packs.ts';
 export type {

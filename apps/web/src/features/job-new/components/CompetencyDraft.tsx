@@ -1,5 +1,17 @@
+import type { ReactNode } from 'react';
 import { useTranslations } from '@aivera/i18n/react';
-import { Button, Chip, DataTable, EvidenceHighlight, Input, Select, Textarea, type DataTableColumn } from '@aivera/ui';
+import { DOMAIN_KEYS, REGIONS, type DomainKey } from '@aivera/jobs';
+import {
+  Button,
+  buttonClassName,
+  Chip,
+  DataTable,
+  EvidenceHighlight,
+  Input,
+  Select,
+  Textarea,
+  type DataTableColumn,
+} from '@aivera/ui';
 import {
   RUBRIC_MAX,
   weightsTotal,
@@ -30,15 +42,24 @@ type CompetencyDraftProps = RowHandlers & {
   evidence: string | null;
   /** Fields to fix in kept rows, once a save was tried (AIV-P1-010). */
   errors: RowErrors;
+  /** The chosen industry, whose pack's suggestions are rows (AIV-P1-064); null for none. */
+  industry: DomainKey | null;
+  /** "More from this pack": the pack's other competencies, each with Add. */
+  more: readonly DraftCompetency[];
+  /** The regional hint the recruiter last tried to make mandatory. */
+  refusedId: string | null;
+  onIndustry: (key: DomainKey | null) => void;
+  onAddFromPack: (competency: DraftCompetency) => void;
   /** A save was tried with no competency kept. */
   emptyRubric: boolean;
   onAdd: () => void;
   onUseStarters: () => void;
 };
 
-type Row = DraftRow & { editing: boolean; on: RowHandlers; error: RowErrors[string] | undefined };
+type Row = DraftRow & { editing: boolean; on: RowHandlers; error: RowErrors[string] | undefined; refused: boolean };
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
+const strong = (chunks: ReactNode) => <strong className="font-semibold">{chunks}</strong>;
 // Stable, so it runs once when the field mounts (Edit or Add competency), not on every render.
 const focusOnMount = (element: HTMLInputElement | null) => element?.focus();
 
@@ -56,7 +77,8 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: 'competency' | 'weigh
 export function CompetencyDraft(props: CompetencyDraftProps) {
   const t = useTranslations('jobDraft');
   const tJob = useTranslations('jobNew');
-  const { result, rows } = props;
+  const tPack = useTranslations('domainPacks');
+  const { result, rows, industry } = props;
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
   const on = {
     onEdit: props.onEdit,
@@ -66,10 +88,19 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
     onRestore: props.onRestore,
   };
   const toRows = (list: DraftRow[]) =>
-    list.map((row) => ({ ...row, editing: row.id === props.editingId, on, error: props.errors[row.id] }));
+    list.map((row) => ({
+      ...row,
+      editing: row.id === props.editingId,
+      on,
+      error: props.errors[row.id],
+      refused: row.id === props.refusedId,
+    }));
   const suggested = rows.filter((row) => row.origin === 'suggested_by_aivera');
-  const own = rows.filter((row) => row.origin !== 'suggested_by_aivera');
+  const own = rows.filter((row) => row.origin !== 'suggested_by_aivera' && row.origin !== 'domain_pack');
+  const fromPack = rows.filter((row) => row.pack && !row.pack.region);
   const kept = (origin: DraftRow['origin']) => rows.filter((row) => row.origin === origin && !row.removed).length;
+  const industryLabel = industry && tPack(`${industry}.label`);
+  const detected = result.status === 'drafted' && result.industry?.key === industry ? result.industry : null;
   const drafted = result.status === 'drafted';
   const total = weightsTotal(rows);
   const removed = rows.find((row) => row.id === props.removedId && row.removed);
@@ -130,6 +161,109 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
           emptyMessage={t('noRows')}
         />
       )}
+      {drafted && (
+        <>
+          {detected && industryLabel && (
+            <div className="mt-3 flex flex-col gap-1">
+              <p className="text-body text-text">
+                {t.rich('industryDetected', {
+                  key: industry,
+                  industry: industryLabel,
+                  strong,
+                })}
+              </p>
+              {detected.excerpts.map((excerpt) => (
+                <p key={`${excerpt.start}-${excerpt.end}`} className="text-meta text-text-2">
+                  {t('citedFrom')}{' '}
+                  <EvidenceHighlight
+                    text={excerpt.text}
+                    citations={[{ start: excerpt.start, end: excerpt.end, sourceId: 'description' }]}
+                    markLabel={t('markLabel')}
+                  />
+                </p>
+              ))}
+            </div>
+          )}
+          {!detected && industryLabel && (
+            <p className="mt-3 text-body text-text">{t('industryChosen', { industry: industryLabel })}</p>
+          )}
+          {/* Native disclosure: it stays open after a choice, so focus stays on the pressed industry. */}
+          <details>
+            <summary className={buttonClassName('ghost', 'compact')}>
+              {industry ? t('notThisIndustry') : t('addIndustry')}
+            </summary>
+            <ul aria-label={t('industries')} className="mt-2 flex flex-wrap gap-2">
+              {[...DOMAIN_KEYS, null].map((key) => (
+                <li key={key ?? 'none'}>
+                  <Button size="compact" aria-pressed={key === industry} onClick={() => props.onIndustry(key)}>
+                    {key ? tPack(`${key}.label`) : t('noIndustry')}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </details>
+          {industryLabel && (
+            <>
+              <h3 className="mt-3 text-body font-semibold text-text">
+                {t('packSuggestions', {
+                  key: industry,
+                  industry: industryLabel,
+                  count: fromPack.filter((row) => !row.removed).length,
+                })}
+              </h3>
+              {fromPack.length > 0 && (
+                <DataTable
+                  caption={t('packCaption', { industry: industryLabel })}
+                  columns={columns}
+                  rows={toRows(fromPack)}
+                  getRowId={(row) => row.id}
+                  emptyMessage={t('noRows')}
+                />
+              )}
+              {props.more.length > 0 && (
+                <>
+                  <h3 className="mt-3 text-body font-semibold text-text">{t('more')}</h3>
+                  <ul className="flex flex-col gap-2">
+                    {props.more.map((c) => (
+                      <li key={c.name} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-semibold text-text">{c.name}</span>
+                        <span className="text-meta text-text-2">
+                          {t('evidenceExpected', { evidence: c.evidenceExpected })}
+                        </span>
+                        {rows.filter((row) => !row.removed).length < RUBRIC_MAX && (
+                          <Button
+                            size="compact"
+                            aria-label={t('addFromPack', { name: c.name })}
+                            onClick={() => props.onAddFromPack(c)}
+                          >
+                            {t('addAction')}
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {REGIONS.map((region) => {
+                const hints = rows.filter((row) => row.pack?.region === region);
+                if (hints.length === 0) return null;
+                return (
+                  <div key={region} className="flex flex-col gap-3">
+                    <h3 className="mt-3 text-body font-semibold text-text">{t(`regions.${region}`)}</h3>
+                    <DataTable
+                      caption={t(`regionCaptions.${region}`)}
+                      columns={columns}
+                      rows={toRows(hints)}
+                      getRowId={(row) => row.id}
+                      emptyMessage={t('noRows')}
+                    />
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </>
+      )}
       {rows.some((row) => !row.removed) && (
         <p className="text-meta font-semibold text-text">
           {total === 100 ? t('weightsTotal', { total }) : t('rebalance')}
@@ -173,6 +307,7 @@ function FieldError({ id, children }: { id: string; children: string }) {
 
 function CompetencyCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
+  const tPack = useTranslations('domainPacks');
   const label = useFieldLabel(row);
   const nameError = row.error?.name && <FieldError id={`${row.id}-name-error`}>{t('nameRequired')}</FieldError>;
   if (row.editing)
@@ -201,12 +336,13 @@ function CompetencyCell({ row }: { row: Row }) {
   return (
     <div className="flex max-w-xl flex-col items-start gap-1">
       {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
+      {row.pack && <Chip>{t('fromPack', { industry: tPack(`${row.pack.key}.label`) })}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
       {nameError}
       {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}
       {row.evidenceExpected && (
         <span className="text-meta text-text-2">
-          {row.origin !== 'suggested_by_aivera'
+          {row.origin !== 'suggested_by_aivera' && row.origin !== 'domain_pack'
             ? row.evidenceExpected
             : t('evidenceExpected', { evidence: row.evidenceExpected })}
         </span>
@@ -284,14 +420,23 @@ function TypeCell({ row }: { row: Row }) {
   if (row.removed) return null;
   if (!row.editing) return t(`types.${row.type}`);
   return (
-    <Select
-      {...label(t('fields.type'))}
-      value={row.type}
-      onChange={(e) => row.on.onChange(row.id, { type: e.target.value === 'desirable' ? 'desirable' : 'mandatory' })}
-    >
-      <option value="mandatory">{t('types.mandatory')}</option>
-      <option value="desirable">{t('types.desirable')}</option>
-    </Select>
+    <>
+      <Select
+        {...label(t('fields.type'))}
+        value={row.type}
+        aria-describedby={row.refused ? `${row.id}-type-error` : undefined}
+        onChange={(e) => row.on.onChange(row.id, { type: e.target.value === 'desirable' ? 'desirable' : 'mandatory' })}
+      >
+        <option value="mandatory">{t('types.mandatory')}</option>
+        <option value="desirable">{t('types.desirable')}</option>
+      </Select>
+      {/* An alert, so the refusal is read out where the recruiter is. */}
+      {row.refused && (
+        <p id={`${row.id}-type-error`} role="alert" className="text-meta font-semibold text-err-text">
+          {t('regionalDesirable')}
+        </p>
+      )}
+    </>
   );
 }
 

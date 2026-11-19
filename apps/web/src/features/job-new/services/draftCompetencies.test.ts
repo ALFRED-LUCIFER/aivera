@@ -11,6 +11,7 @@ const authorize = vi.fn(async (c: { role: Role }, action: string) => {
   if (action !== 'job.create' || (c.role !== 'admin' && c.role !== 'recruiter')) throw new ForbiddenError();
 });
 const draft = vi.fn();
+const detect = vi.fn();
 const createJob = vi.fn();
 
 vi.mock('@/server/workspace', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/server/workspace', () => ({
 }));
 vi.mock('@/server/jobs', () => ({
   getCompetencyDrafting: () => ({ draftCompetencies: draft }),
+  getDomainDetection: () => ({ detectDomain: detect }),
   getJobs: () => ({ createJob }),
 }));
 vi.mock('next/navigation', () => ({
@@ -49,6 +51,7 @@ const start = description.indexOf('build');
 beforeEach(() => {
   vi.clearAllMocks();
   role = 'recruiter';
+  detect.mockResolvedValue({ domain: 'none', citations: [], regions: [] });
   draft.mockResolvedValue({
     leftOutNonSkill: false,
     competencies: [
@@ -98,7 +101,11 @@ describe('draftCompetencies (server action)', () => {
         }),
       ],
       leftOutNonSkill: false,
+      jobType: 'ai_llm_engineering',
+      industry: null,
+      regions: [],
     });
+    expect(detect).toHaveBeenCalledWith('w1', { ...job, location: 'DIFC, Dubai' });
     // Scenario: Nothing is saved by drafting.
     expect(createJob).not.toHaveBeenCalled();
   });
@@ -108,11 +115,39 @@ describe('draftCompetencies (server action)', () => {
     role = r;
     await expect(submit(job)).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
     expect(draft).not.toHaveBeenCalled();
+    expect(detect).not.toHaveBeenCalled();
+  });
+
+  // Feature: Suggest an industry's competencies (AIV-P1-064): the detected industry, its cited sentence and regions.
+  it('returns the detected industry with its cited sentence and the regions', async () => {
+    const at = description.indexOf('decide what we ship');
+    detect.mockResolvedValueOnce({
+      domain: 'payments_fintech',
+      citations: [{ sourceId: 'description', quote: 'decide what we ship', start: at, end: at + 19 }],
+      regions: [{ region: 'uae', citations: [{ sourceId: 'location', quote: 'Dubai', start: 6, end: 11 }] }],
+    });
+    await expect(submit({ ...job, location: 'DIFC, Dubai' })).resolves.toMatchObject({
+      status: 'drafted',
+      industry: { key: 'payments_fintech', excerpts: [{ text: description, start: at, end: at + 19 }] },
+      regions: ['uae'],
+    });
+  });
+
+  it.each([
+    ['the AI service fails', new AiUnavailable('jobs.detectDomain', 'http 500')],
+    ['the daily budget is used', new BudgetExceeded('jobs.detectDomain', 'w1')],
+  ])('when detecting the industry %s, the draft still shows, with no industry', async (_case, error) => {
+    const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    detect.mockRejectedValueOnce(error);
+    await expect(submit(job)).resolves.toMatchObject({ status: 'drafted', industry: null, regions: [] });
+    expect(log.mock.calls.join('')).not.toContain('eval sets');
+    log.mockRestore();
   });
 
   it('asks for a title before drafting', async () => {
     await expect(submit({ ...job, title: ' ' })).resolves.toEqual({ status: 'invalid', errors: { title: true } });
     expect(draft).not.toHaveBeenCalled();
+    expect(detect).not.toHaveBeenCalled();
   });
 
   it('calls no model without a description', async () => {

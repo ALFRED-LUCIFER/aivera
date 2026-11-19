@@ -1867,3 +1867,13 @@ export function getDomainPack(key: DomainKey, jobType: JobType): DomainPackForJo
     hints: { uae: hintsFor('uae'), ksa: hintsFor('ksa'), india: hintsFor('india') },
   };
 }
+
+const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+const HINT_NAMES = new Set(CATALOGUE.flatMap((p) => REGIONS.flatMap((r) => p.hints[r].map((h) => nameKey(h.name)))));
+
+/**
+ * Whether a competency is named as one of the catalogue's regional hints, without case or extra spaces.
+ * shortcut: a hint the recruiter renamed is no longer recognised; store the hint's region if a rubric editor shows that
+ * renaming is used to make one mandatory.
+ */
+export const isRegionalHint = (name: string): boolean => HINT_NAMES.has(nameKey(name));

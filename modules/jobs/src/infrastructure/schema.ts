@@ -23,6 +23,7 @@ import {
   RUBRIC_STATUSES,
   type PublicListing,
 } from '../domain/job.ts';
+import { DOMAIN_KEYS } from '../domain/domain-packs.ts';
 import { JOB_TYPES } from '../domain/job-types.ts';
 
 export const jobs = pgSchema('jobs');
@@ -154,6 +155,8 @@ export const competency = jobs
       levelNeeded: integer('level_needed').notNull(),
       type: text({ enum: COMPETENCY_TYPES }).notNull(),
       origin: text({ enum: COMPETENCY_ORIGINS }).notNull(),
+      packKey: text('pack_key', { enum: DOMAIN_KEYS }),
+      packVersion: integer('pack_version'),
       position: integer().notNull(),
     },
     (t) => [
@@ -168,7 +171,11 @@ export const competency = jobs
       check('competency_type_check', sql`${t.type} in ('mandatory', 'desirable')`),
       check(
         'competency_origin_check',
-        sql`${t.origin} in ('from_description', 'suggested_by_aivera', 'added_by_recruiter')`,
+        sql`${t.origin} in ('from_description', 'suggested_by_aivera', 'added_by_recruiter', 'domain_pack')`,
+      ),
+      check(
+        'competency_domain_pack_check',
+        sql`(${t.origin} = 'domain_pack') = (${t.packKey} is not null and ${t.packVersion} is not null)`,
       ),
       tenantPolicy('competency_tenant_isolation', t.workspaceId),
       restrictive(
