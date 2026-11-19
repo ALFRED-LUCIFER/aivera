@@ -1,0 +1,29 @@
+# E-commerce pack, India, a support job. Synthetic (AIV-P1-066).
+id: ecommerce-seller-support-pune
+group: domain
+input:
+  jobType: technical_writing_support
+  title: 'Seller Support Specialist'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will help sellers on our marketplace list products, handle returns and read their payout reports. You write help articles and answer tickets.'
+  - id: S2
+    kind: job_description
+    text: 'Pune, India'
+expected:
+  match:
+    industry.domain: ecommerce_marketplaces
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: ecommerce_marketplaces
+      citations:
+        - sourceId: S1
+          quote: 'You will help sellers on our marketplace list products, handle returns and read their payout reports.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Pune, India'

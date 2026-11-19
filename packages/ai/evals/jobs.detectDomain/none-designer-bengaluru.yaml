@@ -1,0 +1,26 @@
+# No industry named. Synthetic (AIV-P1-066).
+id: none-designer-bengaluru
+group: none
+input:
+  jobType: product_design
+  title: 'Product Designer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will design flows for our mobile and web apps, from research to shipped screens. You keep the design system up to date.'
+  - id: S2
+    kind: job_description
+    text: 'Bengaluru, India'
+expected:
+  match:
+    industry.domain: none
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: none
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Bengaluru, India'

@@ -1,0 +1,29 @@
+# Telecom pack, India. Synthetic (AIV-P1-066).
+id: telecom-prepaid-gurugram
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Software Engineer, Prepaid Billing'
+sources:
+  - id: S1
+    kind: job_description
+    text: "You will build the prepaid recharge and billing services for our mobile operator's subscribers. You write tested services and join the on-call rota."
+  - id: S2
+    kind: job_description
+    text: 'Gurugram, India'
+expected:
+  match:
+    industry.domain: telecom
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: telecom
+      citations:
+        - sourceId: S1
+          quote: "You will build the prepaid recharge and billing services for our mobile operator's subscribers."
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Gurugram, India'
