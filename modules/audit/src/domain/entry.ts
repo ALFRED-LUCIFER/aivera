@@ -4,6 +4,7 @@
 export const ACTIONS = [
   'rubric.approved',
   'rubric.submitted',
+  'rubric.saved',
   'score.changed',
   'candidate.merged',
   'decision.recorded',

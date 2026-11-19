@@ -370,10 +370,20 @@ export function jobsUseCases({
           null,
         status: 'draft' as const,
       };
+      // Audited, with the status it had: saving a version awaiting approval takes it back to draft (AIV-P1-013).
+      const saved = async (version: RubricVersion) => {
+        await audit(ctx, {
+          action: 'rubric.saved',
+          subject: { type: 'rubric_version', id: version.id },
+          before: { status: open?.status ?? null, revision: open?.revision ?? null },
+          after: { status: version.status, jobId: job.id, version: version.version, revision: version.revision },
+        });
+        return version;
+      };
       if (open) {
         const version = { ...open, ...content, revision: open.revision + 1 };
         await store.replaceDraft(version, input.competencies);
-        return version;
+        return saved(version);
       }
       const version: RubricVersion = {
         id: newId(),
@@ -388,7 +398,7 @@ export function jobsUseCases({
         revision: 0,
       };
       await store.insertVersion(version, input.competencies);
-      return version;
+      return saved(version);
     },
 
     /**

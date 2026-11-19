@@ -229,6 +229,13 @@ describe('Feature: Edit an approved rubric as a new version (AIV-P1-013)', () =>
     expect(await as(ALEX, demo, (ctx) => jobs.getApprovedRubric(ctx, sae))).toMatchObject({ version: 2 });
     expect(await audit.listFor(demo, { type: 'rubric_version', id: v3 })).toMatchObject([
       {
+        action: 'rubric.saved',
+        actor: { type: 'user', id: RANA },
+        before: { status: null },
+        after: { status: 'draft', version: 3, revision: 0 },
+      },
+      { action: 'rubric.saved', actor: { type: 'user', id: ALEX }, after: { revision: 1 } },
+      {
         action: 'rubric.submitted',
         actor: { type: 'user', id: RANA },
         before: { status: 'draft' },
@@ -241,6 +248,19 @@ describe('Feature: Edit an approved rubric as a new version (AIV-P1-013)', () =>
     const edited = await save(ALEX, { versionId: v3, revision: 1 }, [50, 50]);
     expect(edited).toMatchObject({ id: v3, version: 3, status: 'draft', revision: 2 });
     expect(await versions()).toHaveLength(3);
+    // Taking it back from awaiting approval to draft is in the audit log.
+    expect((await audit.listFor(demo, { type: 'rubric_version', id: v3 })).at(-1)).toMatchObject({
+      action: 'rubric.saved',
+      before: { status: 'awaiting_approval', revision: 1 },
+      after: { status: 'draft', revision: 2 },
+    });
+  });
+
+  it("an approved version's revision is frozen, as the rest of it", async () => {
+    const update = as(ALEX, demo, (ctx) =>
+      ctx.tx.execute(sql`update jobs.rubric_version set revision = 9 where id = ${v2.versionId}`),
+    );
+    await expect(update).rejects.toMatchObject({ constraint: 'rubric_version_frozen_check' });
   });
 
   it('the database refuses a second open version for the job', async () => {

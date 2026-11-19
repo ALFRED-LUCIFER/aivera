@@ -120,6 +120,13 @@
       "when": 1795122770873,
       "tag": "0016_rubric_submitted_action",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795122800647,
+      "tag": "0017_rubric_saved_action",
+      "breakpoints": true
     }
   ]
 }

@@ -54,7 +54,7 @@ export async function saveRubricDraft(raw: z.input<typeof input>): Promise<SaveR
       {
         area: 'rubric',
         'error.type': error instanceof Error ? error.name : 'unknown',
-        'error.code': (error as JobError).code,
+        'error.code': error instanceof JobError ? error.code : undefined,
       },
       'save failed',
     );
