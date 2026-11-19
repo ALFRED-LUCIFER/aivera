@@ -40,7 +40,7 @@ export type WorkspaceStore = {
   lockWorkspaceStatus(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
   updateStatus(workspaceId: string, status: WorkspaceStatus): Promise<void>;
-  /** Deletes the workspace with its members, clients, job grants, active-workspace pointers and directory row. */
+  /** Deletes the workspace with its members, clients, job grants, settings, active-workspace pointers and directory row. */
   deleteWorkspace(workspaceId: string): Promise<void>;
   /** Clients that are not archived. */
   countClients(workspaceId: string): Promise<number>;
@@ -52,6 +52,9 @@ export type WorkspaceStore = {
   renameClient(workspaceId: string, clientId: string, name: string): Promise<boolean>;
   /** Archives the client (keeps the first archive time); false when there is no such client. */
   archiveClient(workspaceId: string, clientId: string): Promise<boolean>;
+  /** The stored settings value (AIV-P1-051), or null when the workspace has never changed one. */
+  readSettings(workspaceId: string): Promise<Record<string, unknown> | null>;
+  writeSettings(workspaceId: string, value: Record<string, unknown>, updatedBy: string): Promise<void>;
   /** Every grant in the workspace, or only one member's. */
   listGrants(workspaceId: string, userId?: string): Promise<JobGrant[]>;
   /** Null when the member already holds this grant. */

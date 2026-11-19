@@ -85,6 +85,20 @@
       "when": 1795066819812,
       "tag": "0011_approval_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795119034296,
+      "tag": "0012_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795119041928,
+      "tag": "0013_force_rls_settings",
+      "breakpoints": true
     }
   ]
 }

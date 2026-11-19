@@ -7,6 +7,7 @@ import {
   date,
   foreignKey,
   integer,
+  jsonb,
   pgSchema,
   primaryKey,
   text,
@@ -164,6 +165,27 @@ export const aiTokenUsage = workspaces
       primaryKey({ columns: [t.workspaceId, t.usageDay] }),
       check('ai_token_usage_tokens_check', sql`${t.tokens} >= 0`),
       tenantPolicy('ai_token_usage_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A workspace's settings (AIV-P1-051): one row, written on the first change; no row means every default. The value is
+// validated by settingsSchema (domain/settings.ts) on every write and read.
+export const settings = workspaces
+  .table(
+    'settings',
+    {
+      workspaceId: uuid('workspace_id')
+        .primaryKey()
+        .references(() => workspace.id),
+      value: jsonb().$type<Record<string, unknown>>().notNull(),
+      updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+      // Opaque id of the identity module's user who last changed a value.
+      updatedBy: uuid('updated_by').notNull(),
+    },
+    (t) => [
+      check('settings_value_check', sql`jsonb_typeof(${t.value}) = 'object'`),
+      tenantPolicy('settings_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

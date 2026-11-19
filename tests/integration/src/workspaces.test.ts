@@ -7,7 +7,9 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import type { AuditContract } from '@aivera/audit';
 import { consumeInWorkspace, createDb, withWorkspace, type Db } from '@aivera/db';
 import {
+  DEFAULT_SETTINGS,
   ForbiddenError,
+  SettingsError,
   WorkspaceError,
   type Client,
   type MemberStatus,
@@ -83,9 +85,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(12);
+    expect(await applied()).toBe(14);
     dbMigrate();
-    expect(await applied()).toBe(12);
+    expect(await applied()).toBe(14);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -102,6 +104,7 @@ describe('Scenario: Migrations are forward-only and per schema', () => {
       { name: 'directory', owner: 'aivera_migrator', rls: false, forced: false },
       { name: 'job_grant', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'settings', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'workspace', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });
@@ -219,7 +222,7 @@ describe('getMembership returns active memberships only', () => {
 
 describe('Scenario: The application role cannot switch RLS off', () => {
   // SAFETY: mutation check: ran ALTER TABLE workspaces.member OWNER TO aivera_app -> this test failed (the ALTER succeeded)
-  it.each(['member', 'workspace', 'client', 'job_grant', 'ai_token_usage'])(
+  it.each(['member', 'workspace', 'client', 'job_grant', 'ai_token_usage', 'settings'])(
     'aivera_app running DISABLE ROW LEVEL SECURITY on %s gets a permission error',
     async (table) => {
       await expect(
@@ -723,5 +726,101 @@ describe('AIV-P0-906: workspace type, agency clients and job-scoped access', () 
         ),
       ).rejects.toThrow(expect.objectContaining({ code: '23514', constraint: 'job_grant_target_check' }));
     });
+  });
+});
+
+const settingsEntries = (workspaceId: string) => audit.listFor(workspaceId, { type: 'workspace', id: workspaceId });
+
+describe('AIV-P1-051: workspace settings with approved defaults', () => {
+  const RECRUITER = user(5101);
+  const OWNER = user(5102);
+  const PANEL = user(5103);
+  let w1: string;
+  let w2: string;
+
+  beforeAll(async () => {
+    w1 = (await newWorkspace('Settings W1')).id;
+    w2 = (await newWorkspace('Settings W2')).id;
+    await addMember(w1, RECRUITER, 'recruiter');
+    await addMember(w1, OWNER, 'hiring_owner');
+    await addMember(w1, PANEL, 'interviewer');
+  });
+
+  it('Scenario: A new workspace gets every approved default', async () => {
+    const { id } = await newWorkspace('Demo Hiring Co');
+    expect(await as(ALEX, id, (ctx) => workspaces.getSettings(ctx))).toEqual(DEFAULT_SETTINGS);
+    expect(DEFAULT_SETTINGS).toMatchObject({ clientShareLinkDays: 14, sessionIdleHours: 12, pilotPassLinePercent: 70 });
+  });
+
+  // SAFETY: mutation check: removed store.audit from updateSettings -> this test failed (no settings entry)
+  it('Scenario: An admin changes a setting and it is audited', async () => {
+    const saved = await as(ALEX, w1, (ctx) => workspaces.updateSettings(ctx, { clientShareLinkDays: 7 }));
+    expect(saved).toEqual({ ...DEFAULT_SETTINGS, clientShareLinkDays: 7 });
+    expect(await as(RECRUITER, w1, (ctx) => workspaces.getSettings(ctx))).toEqual(saved);
+    const changes = (await settingsEntries(w1)).filter((e) => e.action === 'workspace.settings_changed');
+    expect(changes).toHaveLength(1);
+    const [entry] = changes;
+    expect(entry).toMatchObject({
+      actor: { type: 'user', id: ALEX },
+      before: { clientShareLinkDays: 14 },
+      after: { clientShareLinkDays: 7 },
+    });
+    expect(entry?.occurredAt).toBeInstanceOf(Date);
+  });
+
+  it('a patch that changes nothing writes no audit entry', async () => {
+    const before = (await settingsEntries(w1)).length;
+    await as(ALEX, w1, (ctx) => workspaces.updateSettings(ctx, { clientShareLinkDays: 7 }));
+    expect(await settingsEntries(w1)).toHaveLength(before);
+  });
+
+  // SAFETY: mutation check: used the patch without parseSettingsPatch -> every row failed (the value was saved)
+  it.each([
+    ['clientShareLinkDays', 0, 1, 30],
+    ['sessionIdleHours', 24, 1, 12],
+    ['evidenceFollowUpMax', 5, 0, 3],
+    ['pilotPassLinePercent', 40, 50, 95],
+  ] as const)('Scenario Outline: %s = %i is refused, nothing saved or audited', async (key, value, min, max) => {
+    const [stored, entries] = [await as(ALEX, w1, (ctx) => workspaces.getSettings(ctx)), await settingsEntries(w1)];
+    await expect(as(ALEX, w1, (ctx) => workspaces.updateSettings(ctx, { [key]: value }))).rejects.toThrow(
+      new SettingsError(`${key} must be between ${min} and ${max}`),
+    );
+    expect(await as(ALEX, w1, (ctx) => workspaces.getSettings(ctx))).toEqual(stored);
+    expect(await settingsEntries(w1)).toHaveLength(entries.length);
+  });
+
+  // SAFETY: mutation check: removed authorize from updateSettings -> the recruiter, hiring_owner and interviewer rows failed (changed)
+  it.each([
+    ['admin', 'changed', ALEX],
+    ['recruiter', '403', RECRUITER],
+    ['hiring_owner', '403', OWNER],
+    ['interviewer', '403', PANEL],
+  ])('Scenario Outline: a member with role %s updating a setting gets "%s"', async (_role, expected, userId) => {
+    const result = await as(userId, w1, (ctx) => workspaces.updateSettings(ctx, { invitationDays: 10 })).then(
+      () => 'changed',
+      (error: unknown) => (error instanceof ForbiddenError ? '403' : String(error)),
+    );
+    expect(result).toBe(expected);
+  });
+
+  // SAFETY: mutation check: dropped policy settings_tenant_isolation -> this test failed (default deny refused the W1 write)
+  // SAFETY: mutation check: replaced policy settings_tenant_isolation with USING (true) -> this test failed (saw both rows)
+  it("Scenario: Another workspace's settings are invisible at the database", async () => {
+    await as(ALEX, w2, (ctx) => workspaces.updateSettings(ctx, { mergeUndoDays: 60 }));
+    const rows = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ workspace_id: string }>(sql`select workspace_id from workspaces.settings`),
+    );
+    expect(rows.map((r) => r.workspace_id)).toEqual([w1]);
+    expect([...(await app.execute(sql`select * from workspaces.settings`))]).toEqual([]);
+  });
+
+  // The rule that issued links keep their expiry is tested where links are issued (AIV-P2-013): here, a read returns
+  // the value in force at the time of the call, and nothing is cached.
+  it('Scenario: A change applies going forward only (getSettings reads at call time)', async () => {
+    const { id } = await newWorkspace('Forward Only Co');
+    const issuedWith = await as(ALEX, id, (ctx) => workspaces.getSettings(ctx));
+    await as(ALEX, id, (ctx) => workspaces.updateSettings(ctx, { clientShareLinkDays: 7 }));
+    expect(issuedWith.clientShareLinkDays).toBe(14);
+    expect((await as(ALEX, id, (ctx) => workspaces.getSettings(ctx))).clientShareLinkDays).toBe(7);
   });
 });

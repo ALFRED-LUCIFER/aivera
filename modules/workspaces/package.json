@@ -14,7 +14,8 @@
   "dependencies": {
     "@aivera/audit": "workspace:*",
     "@aivera/db": "workspace:*",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@aivera/config": "workspace:*",

@@ -6,6 +6,7 @@ import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
 import type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 import type { ChangeStatusInput } from '../application/status.ts';
+import type { SettingsPatch, WorkspaceSettings } from '../domain/settings.ts';
 import type {
   AiTokenUse,
   Client,
@@ -43,6 +44,14 @@ export type {
 export type { ChangeStatusInput } from '../application/status.ts';
 export type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 export type { GrantJobAccessInput } from '../application/clients.ts';
+export {
+  DEFAULT_SETTINGS,
+  SETTING_BOUNDS,
+  SettingsError,
+  settingsPatchSchema,
+  settingsSchema,
+} from '../domain/settings.ts';
+export type { NumberSetting, SettingsPatch, WorkspaceSettings } from '../domain/settings.ts';
 export { ForbiddenError, WorkspacePausedError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
 export type { Session } from '../application/context.ts';
@@ -139,6 +148,17 @@ export interface WorkspacesContract {
   revokeJobAccess(ctx: WorkspaceContext, grantId: string): Promise<void>;
   /** Admins and recruiters: every job grant in the workspace. */
   listJobGrants(ctx: WorkspaceContext): Promise<JobGrant[]>;
+
+  // Workspace settings (AIV-P1-051). Read at call time: a change applies to what is issued after it; links,
+  // invitations and sessions already issued keep the expiry they were issued with.
+  /** Every member: the stored values over the approved defaults (a workspace that changed none gets every default). */
+  getSettings(ctx: WorkspaceContext): Promise<WorkspaceSettings>;
+  /**
+   * Admins. Validates every value against `SETTING_BOUNDS` (`SettingsError`, "clientShareLinkDays must be between 1
+   * and 30", nothing saved or audited), saves, and audits `workspace.settings_changed` with each changed key's old and
+   * new value, last. Returns the settings now in force; a patch that changes nothing writes nothing.
+   */
+  updateSettings(ctx: WorkspaceContext, patch: SettingsPatch): Promise<WorkspaceSettings>;
 
   /** The user's active workspace id, or null when they have none yet. */
   activeWorkspace(userId: string): Promise<string | null>;

@@ -222,6 +222,7 @@ async function seed(
   await createAiTokenBudget(app).add(workspaceId, '2026-11-18', 1_500);
   return workspaces.withWorkspace({ userId: creator }, workspaceId, async (ctx) => {
     await workspaces.setWorkspaceType(ctx, 'agency');
+    await workspaces.updateSettings(ctx, { clientShareLinkDays: 7 });
     const client = await workspaces.addClient(ctx, `${name} client`);
     const job = await jobs.createJob(ctx, {
       title: 'Senior AI Engineer',

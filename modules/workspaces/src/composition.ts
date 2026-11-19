@@ -6,6 +6,7 @@ import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import { clientsUseCases } from './application/clients.ts';
 import { directoryUseCases } from './application/directory.ts';
+import { settingsUseCases } from './application/settings.ts';
 import { statusUseCases } from './application/status.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
@@ -48,6 +49,7 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
     ...context,
     ...clientsUseCases({ storeFor, newId, authorize: context.authorize }),
     ...syntheticUseCases({ storeFor, authorize: context.authorize }),
+    ...settingsUseCases({ storeFor, authorize: context.authorize }),
     ...statusUseCases({ inWorkspace }),
   };
 }
