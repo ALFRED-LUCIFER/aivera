@@ -30,6 +30,7 @@ export type WorkspaceContext = Context<Tx>;
  * Input plus output AI tokens per workspace and UTC day (`YYYY-MM-DD`), shared by every process (AIV-P0-033). The store
  * behind `@aivera/ai`'s daily budget; apps wire it into `createAiClient`. Server-side only: the workspace id comes from
  * the caller's checked context or job envelope, and each call runs in that workspace's scoped transaction.
+ * Mirrors `@aivera/ai`'s `TokenBudgetStore` structurally, so this module needs no dependency on the AI package.
  */
 export interface AiTokenBudget {
   /** Tokens the workspace has spent on `day`; 0 when it has made no call that day. */
