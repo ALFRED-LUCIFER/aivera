@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
-import { currentMember, enabledFlags, loadShellCounts, readTheme } from '@/features/shell/services/request.ts';
+import { currentMember, loadShellCounts, readTheme } from '@/features/shell/services/request.ts';
 import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
+import { enabledFlags } from '@/server/flags';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
 

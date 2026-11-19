@@ -1,4 +1,6 @@
 import { Button } from '@aivera/ui';
+import Link from 'next/link';
+import { CANDIDATE_SIGN_UP } from '@/features/candidate-account/domain/signup.ts';
 
 type Props = {
   /** The server action that starts the candidate sign-in at the tenant. */
@@ -7,11 +9,11 @@ type Props = {
   next: string;
   /** A message to show, already translated, or null. */
   error: string | null;
-  labels: { title: string; signIn: string; or: string; google: string };
+  labels: { title: string; signIn: string; or: string; google: string; noAccount: string; createAccount: string };
 };
 
-// shortcut: minimal candidate sign-in inside the candidate shell; the full CSignUp sign-up and sign-in pages are
-// AIV-P3-007. "Continue with Google" sends no domain_hint, for the reason in authorizationParams' shortcut (signIn.ts),
+// The candidate sign-in inside the candidate shell, sized like the CSignUp form column (there is no separate artboard).
+// "Continue with Google" sends no domain_hint, for the reason in authorizationParams' shortcut (signIn.ts),
 // so Google is one click on the tenant's page. No email field: the email is typed on the tenant's page, so it never
 // travels in a URL (AGENTS.md 1.2).
 export function CandidateSignInForm({ action, next, error, labels }: Props) {
@@ -31,6 +33,12 @@ export function CandidateSignInForm({ action, next, error, labels }: Props) {
         <p className="text-center text-meta text-text-2">{labels.or}</p>
         <Button type="submit">{labels.google}</Button>
       </form>
+      <p className="text-text-2">
+        {labels.noAccount}{' '}
+        <Link href={CANDIDATE_SIGN_UP} className="font-semibold text-text underline underline-offset-3">
+          {labels.createAccount}
+        </Link>
+      </p>
     </div>
   );
 }

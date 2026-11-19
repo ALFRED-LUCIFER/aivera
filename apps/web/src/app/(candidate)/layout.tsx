@@ -1,6 +1,7 @@
 import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { candidateSignOut } from '@/features/candidate-sign-in/services/candidateSignOut.ts';
 import { getCandidateSessionUserId } from '@/server/candidateAuth';
 import { CandidateSite } from './CandidateSite.tsx';
 
@@ -14,7 +15,7 @@ export default async function CandidateLayout({ children }: { children: ReactNod
   const intl = await intlConfig(defaultLocale, defaultTimeZone);
   const signedIn = (await getCandidateSessionUserId()) !== null;
   return (
-    <CandidateSite intl={intl} signedIn={signedIn}>
+    <CandidateSite intl={intl} signedIn={signedIn} signOutAction={candidateSignOut}>
       {children}
     </CandidateSite>
   );

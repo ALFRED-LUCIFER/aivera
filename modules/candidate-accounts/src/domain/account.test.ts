@@ -3,6 +3,8 @@ import {
   CandidateAccountError,
   checkLinkConsent,
   checkNewConsent,
+  isSignedUp,
+  signUpName,
   withdrawalAt,
   type CandidateAccountErrorCode,
   type Consent,
@@ -62,5 +64,18 @@ describe('a workspace link needs an open consent', () => {
     ['a consent for another purpose', consent, WS, 'answered_evidence_request'],
   ])('%s refuses it', (_, c, workspaceId, reason) => {
     expect(() => checkLinkConsent(c, workspaceId, reason)).toThrow(refused('consent_required'));
+  });
+});
+
+describe('sign-up (AIV-P3-007)', () => {
+  it('stores the full name trimmed and refuses a blank one', () => {
+    expect(signUpName('  Layla Haddad ')).toBe('Layla Haddad');
+    expect(() => signUpName('   ')).toThrow(refused('full_name'));
+  });
+
+  it('counts an account as signed up only with both full name and work type', () => {
+    expect(isSignedUp({ fullName: null, workType: null })).toBe(false);
+    expect(isSignedUp({ fullName: 'Layla Haddad', workType: null })).toBe(false);
+    expect(isSignedUp({ fullName: 'Layla Haddad', workType: 'ai_llm_engineering' })).toBe(true);
   });
 });

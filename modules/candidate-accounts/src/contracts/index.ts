@@ -1,14 +1,21 @@
 // The only public surface of @aivera/candidate-accounts (ADR-002). Recruiter-side modules never import it (ADR-009).
 import type { CandidateAccountContext, LinkToWorkspaceInput, RecordConsentInput } from '../application/accounts.ts';
-import type { Account, Consent, WorkspaceLink } from '../domain/account.ts';
+import type { Account, Consent, SignUpInput, WorkspaceLink } from '../domain/account.ts';
 
-export { CandidateAccountError, CONSENT_PURPOSES, LINK_REASONS, PERSONAL_DATA_FIELDS } from '../domain/account.ts';
+export {
+  CandidateAccountError,
+  CONSENT_PURPOSES,
+  isSignedUp,
+  LINK_REASONS,
+  PERSONAL_DATA_FIELDS,
+} from '../domain/account.ts';
 export type {
   Account,
   CandidateAccountErrorCode,
   Consent,
   ConsentPurpose,
   LinkReason,
+  SignUpInput,
   WorkspaceLink,
 } from '../domain/account.ts';
 export type { CandidateAccountContext, LinkToWorkspaceInput, RecordConsentInput } from '../application/accounts.ts';
@@ -24,6 +31,12 @@ export interface CandidateAccountsContract {
    */
   withAccount<T>(identityUserId: string, work: (ctx: CandidateAccountContext) => Promise<T>): Promise<T>;
   getMyAccount(ctx: CandidateAccountContext): Promise<Account>;
+  /**
+   * Records the full name (trimmed) and work type at sign-up (AIV-P3-007); the account itself already exists from
+   * `withAccount`, so the identity user gets no second user or account. Throws `CandidateAccountError` (`full_name` when
+   * blank, `already_signed_up` when this account has signed up before; nothing changes).
+   */
+  signUp(ctx: CandidateAccountContext, input: SignUpInput): Promise<Account>;
   /**
    * Records what the candidate agreed to, with the consent text's version. Throws `CandidateAccountError`
    * (`text_version`, `consent_target`: apply and answer name a workspace and job, a CV check neither).

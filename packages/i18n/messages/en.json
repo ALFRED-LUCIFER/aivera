@@ -132,7 +132,8 @@
         "forRecruiters": "For recruiters"
       },
       "placeholder": "This page arrives with its own ticket.",
-      "applyPlaceholder": "Apply"
+      "applyPlaceholder": "Apply",
+      "signOut": "Sign out"
     },
     "jobs": {
       "title": "Jobs",
@@ -225,6 +226,38 @@
       "plusTitle": "Want an edge that is still honest?",
       "plusBody": "Aivera Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}.",
       "plusLink": "See what Plus adds"
+    },
+    "signup": {
+      "title": "Create your free account",
+      "lead": "Apply, follow each stage, and answer evidence requests in one place.",
+      "free": "Free, with no card needed.",
+      "create": "Create free account",
+      "google": "Continue with Google",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "fullName": "Full name",
+      "workType": "What kind of work do you do?",
+      "workTypeHint": "Used to show you jobs that fit.",
+      "choose": "Choose one",
+      "createWithPlus": "Create account and start Plus, AED 49 a month",
+      "perks": {
+        "title": "What you get, free",
+        "jobs": "Every job, with what it needs shown before you apply.",
+        "applications": "Direct applications, with status at each stage.",
+        "cvCheck": "A CV check against one job at a time.",
+        "requests": "Evidence requests in one place, answered in minutes."
+      },
+      "sharing": "Your CV and work are shared with a recruiter only when you apply to their job or answer their request.",
+      "errors": {
+        "fullNameRequired": "Enter your full name.",
+        "fullNameTooLong": "Use 200 characters or fewer.",
+        "workTypeRequired": "Choose the kind of work you do.",
+        "failed": "Your account could not be created. Try again."
+      }
+    },
+    "signIn": {
+      "noAccount": "New to Aivera?",
+      "createAccount": "Create free account"
     }
   },
   "evidence": {

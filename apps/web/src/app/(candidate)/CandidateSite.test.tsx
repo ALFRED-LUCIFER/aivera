@@ -19,10 +19,11 @@ beforeAll(async () => {
 
 const renderSite = (signedIn: boolean) =>
   render(
-    <CandidateSite intl={intl} signedIn={signedIn}>
+    <CandidateSite intl={intl} signedIn={signedIn} signOutAction={signOut}>
       <p>Page body</p>
     </CandidateSite>,
   );
+const signOut = vi.fn(async () => undefined);
 const header = () => within(screen.getByRole('banner'));
 
 describe('CandidateSite', () => {
@@ -41,6 +42,12 @@ describe('CandidateSite', () => {
     renderSite(true);
     expect(header().getByRole('link', { name: 'My applications' })).toHaveProperty('pathname', '/candidates/me');
     expect(screen.queryByRole('link', { name: 'Create account' })).toBeNull();
+    expect(header().getByRole('button', { name: 'Sign out' })).toBeDefined();
+  });
+
+  it('offers Sign out only when signed in', () => {
+    renderSite(false);
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 
   it('states the ranking rule and links Jobs, Plans and For recruiters in the footer', () => {

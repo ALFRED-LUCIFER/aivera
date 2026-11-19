@@ -1,4 +1,6 @@
 import { createAudit } from '@aivera/audit/composition';
+import { CandidateAccountError } from '@aivera/candidate-accounts';
+import { createCandidateAccounts } from '@aivera/candidate-accounts/composition';
 import { createDb } from '@aivera/db/client';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import { createIdentity } from '@aivera/identity/composition';
@@ -55,6 +57,16 @@ export default async function seed() {
     const ap = await person('ap@example.com', 'AP');
     await seedDemoJobs(await workspaceOf('Demo', ap), ap);
     await seedCandidateSiteJobs(await person('employer@example.com', 'Employer Recruiter'));
+    // AIV-P3-007: Sara has signed up on the candidate site, so her sign-in lands on My applications.
+    const accounts = createCandidateAccounts(db);
+    await accounts
+      .withAccount(await person('sara@example.com', 'Sara Al Qahtani'), (ctx) =>
+        accounts.signUp(ctx, { fullName: 'Sara Al Qahtani', workType: 'ai_llm_engineering' }),
+      )
+      .catch((error: unknown) => {
+        // A reused local database: she signed up on an earlier run.
+        if (!(error instanceof CandidateAccountError && error.code === 'already_signed_up')) throw error;
+      });
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 

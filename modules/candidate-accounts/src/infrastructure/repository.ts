@@ -32,6 +32,14 @@ export function accountStore(tx: Tx): AccountStore {
         .where(eq(account.identityUserId, accountId));
       return row ?? null;
     },
+    async setSignUp(accountId, { fullName, workType }, now) {
+      const updated = await tx
+        .update(account)
+        .set({ fullName, workType, updatedAt: now })
+        .where(and(eq(account.identityUserId, accountId), isNull(account.fullName)))
+        .returning({ id: account.identityUserId });
+      return updated.length === 1;
+    },
     async insertConsent(values) {
       await tx.insert(consent).values(values);
     },

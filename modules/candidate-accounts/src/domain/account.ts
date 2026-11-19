@@ -61,6 +61,8 @@ const MESSAGES = {
   consent_not_found: 'No such consent on this account.',
   already_withdrawn: 'This consent is already withdrawn.',
   consent_required: 'Linking to a workspace needs an open consent for that workspace and purpose.',
+  full_name: 'A sign-up needs a full name.',
+  already_signed_up: 'This account has already signed up.',
 } as const;
 
 export type CandidateAccountErrorCode = keyof typeof MESSAGES;
@@ -73,6 +75,20 @@ export class CandidateAccountError extends Error {
     this.name = 'CandidateAccountError';
     this.code = code;
   }
+}
+
+/** What sign-up records (AIV-P3-007). Its caller (a server action) validates the shape with zod (AGENTS.md 3.7). */
+export type SignUpInput = { fullName: string; workType: JobType };
+
+/** Signed up once full name and work type are set; until then the account exists only from `withAccount`. */
+export const isSignedUp = (account: Pick<Account, 'fullName' | 'workType'>): boolean =>
+  account.fullName !== null && account.workType !== null;
+
+/** The full name to store, trimmed; throws when blank. */
+export function signUpName(fullName: string): string {
+  const name = fullName.trim();
+  if (!name) throw new CandidateAccountError('full_name');
+  return name;
 }
 
 /** Throws unless the consent is well formed: a text version, and a workspace and job exactly when it reaches one. */
