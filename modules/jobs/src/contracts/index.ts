@@ -6,6 +6,21 @@ import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
 export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
+export {
+  DOMAIN_KEYS,
+  DOMAIN_PACK_CATALOGUE_VERSION,
+  REGIONS,
+  getDomainPack,
+  listDomainPacks,
+} from '../domain/domain-packs.ts';
+export type {
+  DomainCompetency,
+  DomainKey,
+  DomainPack,
+  DomainPackForJobType,
+  Region,
+  RegionalHint,
+} from '../domain/domain-packs.ts';
 export { COMPETENCY_ORIGINS, COMPETENCY_TYPES, JOB_STAGES, JobError, RUBRIC_STATUSES } from '../domain/job.ts';
 export type {
   Competency,

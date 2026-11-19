@@ -379,6 +379,14 @@
       "evidence": "Published documentation, resolved tickets, help articles"
     }
   },
+  "domainPacks": {
+    "payments_fintech": {
+      "label": "Payments and fintech"
+    },
+    "healthcare": {
+      "label": "Healthcare"
+    }
+  },
   "jobNew": {
     "title": "Add a job",
     "breadcrumb": "Breadcrumb",
