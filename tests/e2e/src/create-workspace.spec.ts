@@ -81,6 +81,8 @@ for (const theme of themes) {
     ])
       await expect(panel.getByRole('listitem').filter({ hasText: point })).toBeVisible();
     expect(await css(panel, 'background-color')).toBe('rgb(29, 25, 34)');
+    const title = page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' });
+    expect(await css(title.locator('..').locator('..'), 'max-width')).toBe('440px');
     expect((await page.getByLabel('Company').boundingBox())?.height).toBe(44);
     expect((await page.getByLabel('What do you hire for most?').boundingBox())?.height).toBe(44);
     expect((await page.getByRole('button', { name: 'Create workspace' }).boundingBox())?.height).toBe(48);

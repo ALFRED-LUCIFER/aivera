@@ -261,6 +261,14 @@ for (const theme of themes) {
     for (const name of ['Sign in', 'Continue with Google'])
       expect((await page.getByRole('button', { name, exact: true }).boundingBox())?.height).toBe(48);
     expect(await css(title.locator('..').locator('..'), 'max-width')).toBe('440px');
+    // "Keep me signed in" and "Forgot password?" share one row.
+    const [remember, forgot] = [
+      await page.getByRole('checkbox', { name: 'Keep me signed in' }).boundingBox(),
+      await page.getByRole('button', { name: 'Forgot password?' }).boundingBox(),
+    ];
+    expect(
+      Math.abs((remember?.y ?? 0) + (remember?.height ?? 0) / 2 - (forgot?.y ?? 0) - (forgot?.height ?? 0) / 2),
+    ).toBeLessThan(12);
     expect(await css(page.getByRole('complementary'), 'background-color')).toBe('rgb(29, 25, 34)');
   });
 }
