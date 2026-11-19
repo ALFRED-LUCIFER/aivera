@@ -1,11 +1,5 @@
 import type { Action } from '../domain/permissions.ts';
-import {
-  parseSettingsPatch,
-  settingsSchema,
-  withDefaults,
-  type SettingsPatch,
-  type WorkspaceSettings,
-} from '../domain/settings.ts';
+import { parseSettingsPatch, withDefaults, type SettingsPatch, type WorkspaceSettings } from '../domain/settings.ts';
 import type { WorkspaceContext } from './context.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
@@ -36,7 +30,7 @@ export function settingsUseCases<Tx>({ storeFor, authorize }: SettingsPorts<Tx>)
       if (changed.length === 0) return current;
       const only = (s: SettingsPatch) =>
         Object.fromEntries(changed.map((k) => [k, s[k]])) as Record<string, number | boolean>;
-      const next = settingsSchema.parse({ ...current, ...only(changes) });
+      const next: WorkspaceSettings = { ...current, ...only(changes) };
       await store.writeSettings(ctx.workspaceId, next, ctx.userId);
       await store.audit(ctx.workspaceId, ctx.userId, {
         action: 'workspace.settings_changed',

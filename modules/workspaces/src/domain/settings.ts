@@ -6,7 +6,8 @@ import { z } from 'zod';
 export const SETTING_BOUNDS = {
   clientShareLinkDays: { default: 14, min: 1, max: 30 },
   invitationDays: { default: 7, min: 1, max: 30 },
-  // Can only shorten the platform's own session limits (AIV-P0-009).
+  // The owner-approved 12 is above the platform's 8-hour recruiter idle limit (apps/web/src/server/auth.ts), so a
+  // consumer must apply min(setting, platform limit): a workspace may only shorten its sessions (AIV-P1-002).
   sessionIdleHours: { default: 12, min: 1, max: 12 },
   sessionMaxDays: { default: 30, min: 1, max: 30 },
   mergeUndoDays: { default: 30, min: 1, max: 90 },

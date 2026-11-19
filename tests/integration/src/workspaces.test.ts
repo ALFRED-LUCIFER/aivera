@@ -757,7 +757,9 @@ describe('AIV-P1-051: workspace settings with approved defaults', () => {
     const saved = await as(ALEX, w1, (ctx) => workspaces.updateSettings(ctx, { clientShareLinkDays: 7 }));
     expect(saved).toEqual({ ...DEFAULT_SETTINGS, clientShareLinkDays: 7 });
     expect(await as(RECRUITER, w1, (ctx) => workspaces.getSettings(ctx))).toEqual(saved);
-    const entry = (await settingsEntries(w1)).find((e) => e.action === 'workspace.settings_changed');
+    const changes = (await settingsEntries(w1)).filter((e) => e.action === 'workspace.settings_changed');
+    expect(changes).toHaveLength(1);
+    const [entry] = changes;
     expect(entry).toMatchObject({
       actor: { type: 'user', id: ALEX },
       before: { clientShareLinkDays: 14 },
