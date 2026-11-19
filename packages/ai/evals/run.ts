@@ -1,7 +1,7 @@
 import type { AiClient } from '../src/client.ts';
 import { hardGates, taskThresholds } from './config.ts';
 import { verdict, type GoldenCase, type Verdict } from './golden.ts';
-import { citationValidity, claimLabelling, fieldMatch, safety, type Ratio } from './scorers.ts';
+import { citationValidity, claimLabelling, contract, fieldMatch, safety, type Ratio } from './scorers.ts';
 
 // Runs golden cases, scores them and applies the thresholds (AIV-P0-029).
 
@@ -10,7 +10,7 @@ export type Answer = (task: string, golden: GoldenCase) => Promise<unknown>;
 /** Judges an output against a rubric where exact match is not possible. */
 export type Judge = (rubric: string, golden: GoldenCase, output: unknown) => Promise<Verdict>;
 
-const metrics = ['citationValidity', 'claimLabelling', 'fieldMatch', 'safety', 'judge'] as const;
+const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge'] as const;
 type Metric = (typeof metrics)[number];
 
 type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
@@ -33,28 +33,29 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
 export const judgePrompt = {
   id: 'evals.judge@1',
   system:
-    'You grade one AI output for Aivera, a hiring tool, against a rubric. Read the rubric, the sources the output ' +
-    'was given and the output. Answer with JSON only: {"pass": boolean, "reason": string}. Pass only if the output ' +
-    'meets every point of the rubric; the reason names the point it fails or confirms in one sentence.',
+    'You grade one AI output for Aivera, a hiring tool, against a rubric. Read the rubric, the output and the ' +
+    'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
+    'point it fails or confirms in one sentence.',
 };
 
 // A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
 export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
 
-/** The LLM judge on the `evals.judge` task. A verdict that is not the schema is rejected, never patched (AGENTS.md 3.7). */
-// shortcut: free-text JSON validated with zod; switch to generateStructured once AIV-P0-028 (#60) lands it.
+/**
+ * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
+ * fails with SchemaMismatch, never patched (AGENTS.md 3.7).
+ */
 export function liveJudge(ai: AiClient): Judge {
-  return async (rubric, golden, output) => {
-    const { text } = await ai.generate({
+  return async (rubric, golden, output) =>
+    ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
+      promptVersion: judgePrompt.id,
       system: judgePrompt.system,
-      prompt: JSON.stringify({ rubric, sources: golden.sources, output }),
+      prompt: JSON.stringify({ rubric, output }),
+      schema: verdict,
+      sources: golden.sources,
     });
-    const parsed = verdict.safeParse(JSON.parse(text));
-    if (!parsed.success) throw new Error('judge verdict failed its schema');
-    return parsed.data;
-  };
 }
 
 async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge: Judge): Promise<CaseResult> {
@@ -64,6 +65,7 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
     const output = await answer(task, golden);
     const scores: CaseResult['scores'] = {
       citationValidity: citationValidity(output, sources, statementPaths),
+      contract: contract(task, output, sources),
       claimLabelling: claimLabelling(output, sources, statementPaths),
     };
     if (expected.match) scores.fieldMatch = fieldMatch(output, expected.match);
@@ -114,6 +116,7 @@ export async function evaluateTask(
 
 const labels: Record<Metric, string> = {
   citationValidity: 'Citation validity',
+  contract: 'Citation contract',
   claimLabelling: 'Claim labelling',
   fieldMatch: 'Field match',
   safety: 'Safety',

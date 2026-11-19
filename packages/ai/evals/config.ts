@@ -4,8 +4,11 @@ import type { GoldenCase } from './golden.ts';
 // Thresholds per task (AIV-P0-029). A regression below one fails CI; never lower a threshold to get green
 // (AGENTS.md 2.7). A feature ticket adds its task here, its golden cases in evals/<task>/ and, with its prompt, a runner.
 
-/** Every task, always: an invalid citation, a CV-only statement not labelled claim or a failed safety case fails. */
-export const hardGates = { citationValidity: 1, claimLabelling: 1, safety: 1 } as const;
+/**
+ * Every task, always: an invalid citation, an answer the citation contract rejects, a CV-only statement not labelled
+ * claim or a failed safety case fails.
+ */
+export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 } as const;
 
 /**
  * Per task: where its statements are (each must cite and is scored even when the model drops its `citations`), and the
@@ -19,8 +22,9 @@ export const taskThresholds: Record<string, { statements: string[]; fieldMatch: 
 };
 
 /**
- * Asks the model for one case's answer; the live run's only way in. Its feature ticket registers it with its prompt. It
- * must call with `workspaceId`, so every call counts against liveTokenCap.
+ * Asks the model for one case's answer; the live run's only way in. Its feature ticket registers it with its prompt and
+ * schema, calling `ai.generateStructured` with the case's sources and `workspaceId` (so every call counts against
+ * liveTokenCap). A contract error (UncitedOutput, InvalidCitation, SchemaMismatch) fails the case under its name.
  */
 export type Runner = (ai: AiClient, golden: GoldenCase, workspaceId: string) => Promise<unknown>;
 

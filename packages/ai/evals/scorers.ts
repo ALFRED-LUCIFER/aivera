@@ -1,4 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
+import { z } from 'zod';
+import { checkOutput, findQuote, type SourceKind } from '../src/citations.ts';
 import type { GoldenCase } from './golden.ts';
 
 // Pure scorers over one model output (AIV-P0-029). They read the raw answer, before the product's own validation, so
@@ -12,7 +14,6 @@ type Json = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-const normalise = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 /**
  * The statements in an output, with their paths: every object at one of the task's statement paths, cited or not, and
@@ -33,10 +34,10 @@ const citationsOf = (statement: Json) => (Array.isArray(statement['citations']) 
 
 /**
  * A statement is valid when it cites at least one source, every cited id was given, and every quote occurs in that
- * source (whitespace-normalised). Must be 100% (AGENTS.md 1.6).
+ * source, matched as the citation contract matches it (citations.ts findQuote). Must be 100% (AGENTS.md 1.6).
  */
 export function citationValidity(output: unknown, sources: Sources, statementPaths: string[] = []): Ratio {
-  const byId = new Map(sources.map((source) => [source.id, normalise(source.text)]));
+  const byId = new Map(sources.map((source) => [source.id, source.text]));
   const perStatement = statements(output, statementPaths).map(({ path, statement }) => {
     const citations = citationsOf(statement);
     if (citations.length === 0) return [`${path}: cites nothing`];
@@ -45,7 +46,7 @@ export function citationValidity(output: unknown, sources: Sources, statementPat
       const quote = isRecord(citation) ? citation['quote'] : undefined;
       const text = typeof sourceId === 'string' ? byId.get(sourceId) : undefined;
       if (text === undefined) return [`${path}.citations[${i}]: unknown source ${String(sourceId)}`];
-      if (typeof quote !== 'string' || !normalise(quote) || !text.includes(normalise(quote)))
+      if (typeof quote !== 'string' || !findQuote(text, quote))
         return [`${path}.citations[${i}]: quote not in ${sourceId}`];
       return [];
     });
@@ -55,19 +56,39 @@ export function citationValidity(output: unknown, sources: Sources, statementPat
 }
 
 /**
- * A statement resting only on the candidate's own CV is a claim, whatever else the model calls it (AGENTS.md 1.6).
+ * A statement resting only on the candidate's own CV (with at most the job description beside it) is a claim, whatever
+ * else the model calls it (AGENTS.md 1.6). The same rule as the citation contract (citations.ts), checked here on its
+ * own so a change to either is caught. A checked answer carries `claim: true` from code; a raw one, `label: 'claim'`.
  * Statements citing an unknown source are left to citation validity.
  */
+const backsNothing: ReadonlySet<SourceKind | undefined> = new Set(['cv', 'job_description']);
+
 export function claimLabelling(output: unknown, sources: Sources, statementPaths: string[] = []): Ratio {
   const kinds = new Map(sources.map((source) => [source.id, source.kind]));
   const cvOnly = statements(output, statementPaths).filter(({ statement }) => {
     const cited = citationsOf(statement).map((c) => (isRecord(c) ? kinds.get(String(c['sourceId'])) : undefined));
-    return cited.length > 0 && cited.every((kind) => kind === 'cv');
+    return cited.includes('cv') && cited.every((kind) => backsNothing.has(kind));
   });
   const failures = cvOnly
-    .filter(({ statement }) => statement['label'] !== 'claim')
+    .filter(
+      ({ statement }) =>
+        statement['label'] !== 'claim' && !(statement['label'] === undefined && statement['claim'] === true),
+    )
     .map(({ path, statement }) => `${path}: CV only but labelled ${String(statement['label'])}`);
   return { n: cvOnly.length - failures.length, total: cvOnly.length, failures };
+}
+
+/**
+ * The answer passes the product's citation contract (citations.ts checkOutput): every citation resolves to a source
+ * label the model was given and quotes it. Fails with the contract's error name, never its content.
+ */
+export function contract(task: string, output: unknown, sources: Sources): Ratio {
+  try {
+    checkOutput(task, JSON.stringify(output), z.unknown(), sources);
+    return { n: 1, total: 1, failures: [] };
+  } catch (error) {
+    return { n: 0, total: 1, failures: [`contract: ${error instanceof Error ? error.name : 'error'}`] };
+  }
 }
 
 /** Values at a dotted path; a `[*]` segment fans out over an array. */

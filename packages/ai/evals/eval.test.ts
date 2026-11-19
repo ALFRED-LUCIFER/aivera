@@ -9,7 +9,7 @@ import { fakeProvider } from '../src/providers.ts';
 import { hardGates, runners, taskThresholds } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
 import { evaluateTask, liveJudge, recordedAnswer, recordedJudge, type Answer } from './run.ts';
-import { citationValidity, claimLabelling, fieldMatch, safety } from './scorers.ts';
+import { citationValidity, claimLabelling, contract, fieldMatch, safety } from './scorers.ts';
 
 // Feature: AI eval harness with a golden set (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
 
@@ -93,6 +93,23 @@ describe('scorers', () => {
     });
   });
 
+  it('accepts the claim flag the citation contract sets on a checked answer', () => {
+    const checked = {
+      a: { claim: true, citations: [cite('S2', 'Cut cost')] },
+      b: { claim: false, citations: [cite('S2', 'Cut cost')] },
+    };
+    expect(claimLabelling(checked, sources).failures).toEqual(['$.b: CV only but labelled undefined']);
+  });
+
+  it('runs the answer through the product citation contract and names its error', () => {
+    expect(
+      contract('evidence.firstPass', { s: { citations: [cite('S1', 'authored 412 of 460 commits')] } }, sources).n,
+    ).toBe(1);
+    expect(contract('evidence.firstPass', { s: { citations: [cite('S9', 'authored')] } }, sources).failures).toEqual([
+      'contract: InvalidCitation',
+    ]);
+  });
+
   it('matches plain paths by equality and [*] paths by membership', () => {
     const output = { domain: 'payments', items: [{ name: 'A' }, { name: 'B' }] };
     expect(fieldMatch(output, { domain: 'payments', 'items[*].name': ['A', 'C'] })).toEqual({
@@ -140,7 +157,7 @@ describe('the golden set', () => {
   });
 
   it('has thresholds for every task, and keeps the hard gates at 100%', () => {
-    expect(hardGates).toEqual({ citationValidity: 1, claimLabelling: 1, safety: 1 });
+    expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 });
     for (const task of [...golden.keys(), ...Object.keys(runners)]) expect(taskThresholds[task], task).toBeDefined();
   });
 
@@ -156,7 +173,9 @@ describe('Feature: AI eval harness with a golden set', () => {
       const { status, stdout } = cli(['--task', 'jobs.draftCompetencies']);
       expect(status).toBe(0);
       expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 4/4');
-      expect(stdout).toMatch(/\| Task \| Cases \| Citation validity \| Claim labelling \| Field match \|/);
+      expect(stdout).toMatch(
+        /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
+      );
       expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 2 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
@@ -164,6 +183,7 @@ describe('Feature: AI eval harness with a golden set', () => {
 
   // SAFETY: mutation check: hardGates.citationValidity set to 0 in config.ts -> both hard-gate tests below failed
   // SAFETY: mutation check: citationValidity scorer removed from scoreCase in run.ts -> both tests below failed
+  // SAFETY: mutation check: contract scorer removed from scoreCase in run.ts -> the dry-run test below failed
   it('Scenario: Citation validity is a hard gate', async () => {
     const good = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
     const output = structuredClone(good.recorded.output) as { competencies: { citations: unknown[] }[] };
@@ -179,6 +199,7 @@ describe('Feature: AI eval harness with a golden set', () => {
     () => {
       const { status, stdout } = cli(['--dir', 'evals/fixtures/failing']);
       expect(stdout).toContain('unknown source S9');
+      expect(stdout).toContain('contract: InvalidCitation');
       expect(status).toBe(1);
     },
     cliTimeout,
@@ -283,7 +304,7 @@ describe('Feature: AI eval harness with a golden set', () => {
     expect(fail.cases[0]?.scores.judge?.failures).toEqual(['judge: no limit']);
     expect(fail.passed).toBe(false);
     const garbled = await judged('{"pass":"yes"}');
-    expect(garbled.cases[0]?.error).toBe('Error');
+    expect(garbled.cases[0]?.error).toBe('SchemaMismatch');
     expect(garbled.passed).toBe(false);
   });
 });

@@ -2,10 +2,18 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
+import type { SourceKind } from '../src/citations.ts';
 
 // One golden case per YAML file in evals/<task>/ (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
 
-const sourceKinds = ['cv', 'repo', 'document', 'reference', 'interview', 'job_description'] as const;
+const sourceKinds = [
+  'cv',
+  'repo',
+  'document',
+  'reference',
+  'interview',
+  'job_description',
+] as const satisfies readonly SourceKind[];
 
 export const verdict = z.object({ pass: z.boolean(), reason: z.string().min(1) }).strict();
 export type Verdict = z.infer<typeof verdict>;
@@ -20,7 +28,9 @@ export const goldenCase = z
     sources: z
       .array(z.object({ id: z.string().min(1), kind: z.enum(sourceKinds), text: z.string().min(1) }).strict())
       .min(1)
-      .refine((sources) => new Set(sources.map((s) => s.id)).size === sources.length, 'source ids must be unique'),
+      // The labels the model is shown (citations.ts sourceLabel), so a recorded raw answer and a live checked one cite
+      // the same ids.
+      .refine((sources) => sources.every((s, i) => s.id === `S${i + 1}`), 'source ids must be S1, S2, ... in order'),
     expected: z
       .object({
         /** Path to expected value; `a[*].b` collects across an array and expects every listed value to be present. */
