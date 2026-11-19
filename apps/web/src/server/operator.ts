@@ -146,6 +146,8 @@ export async function listOperatorActions(workspaceId: string): Promise<Operator
  */
 export async function applyStatusChange(workspaceId: string, change: StatusChange, reason: string) {
   const { userId } = await platformOperator();
+  // shortcut: no "approved" / "not approved" email to the creator (AIV-P2-039) until @aivera/notifications exists
+  // (AIV-P0-017); operators email the creator by hand (docs/runbooks/operator-console.md). Send it here then.
   // Approve and reject touch no listing: a workspace waiting for approval could never publish one.
   const pause = change === 'suspend' ? true : change === 'reactivate' ? false : null;
   await getWorkspaces().changeStatus(

@@ -11,7 +11,7 @@ export function StatusChange(view: StatusChangeView) {
     <ReasonedChange
       labels={{
         open: t(`${view.change}.open`),
-        openSuffix: view.name,
+        openLabel: t(`${view.change}.openLabel`, { name: view.name }),
         title: t(`${view.change}.title`, { name: view.name }),
         body: t(`${view.change}.body`),
         confirm: t('confirm'),
@@ -21,11 +21,13 @@ export function StatusChange(view: StatusChangeView) {
         footer: t('footer'),
         failed: t('failed'),
         reason: t('reason'),
-        hint: t(`${view.change}.hint`),
       }}
       open={view.open}
       onOpenChange={view.onOpenChange}
-      {...(view.needsReason && { reason: { value: view.reason, onChange: view.onReasonChange } })}
+      {...(view.needsReason &&
+        view.change !== 'approve' && {
+          reason: { value: view.reason, onChange: view.onReasonChange, hint: t(`${view.change}.hint`) },
+        })}
       canConfirm={view.canConfirm}
       onConfirm={view.onConfirm}
       done={view.done && t(`${view.done}.done`)}

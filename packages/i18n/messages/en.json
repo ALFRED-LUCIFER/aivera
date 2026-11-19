@@ -644,6 +644,7 @@
       "change": {
         "suspend": {
           "open": "Suspend workspace",
+          "openLabel": "Suspend workspace {name}",
           "title": "Suspend {name}?",
           "body": "Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.",
           "pending": "Suspending…",
@@ -652,6 +653,7 @@
         },
         "reactivate": {
           "open": "Reactivate",
+          "openLabel": "Reactivate {name}",
           "title": "Reactivate {name}?",
           "body": "Members can start new work again. Nothing they hold has changed.",
           "pending": "Reactivating…",
@@ -666,14 +668,15 @@
         "failed": "That did not go through. Nothing was changed.",
         "approve": {
           "open": "Approve",
+          "openLabel": "Approve {name}",
           "title": "Approve {name}?",
           "body": "The workspace becomes active: its members can add jobs and candidates.",
           "pending": "Approving…",
-          "done": "Workspace approved.",
-          "hint": ""
+          "done": "Workspace approved."
         },
         "reject": {
           "open": "Reject",
+          "openLabel": "Reject {name}",
           "title": "Reject {name}?",
           "body": "The workspace stays closed to new work. Its creator sees your reason. Nothing is deleted.",
           "pending": "Rejecting…",

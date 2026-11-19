@@ -86,7 +86,9 @@ describe('Scenario: Changing the switch is audited and approves nothing (the car
     expect(dialog.textContent).toContain('Workspaces already waiting stay waiting until you decide each one.');
     expect(dialog.textContent).toContain('Nothing changes until you confirm.');
     const confirm = within(dialog).getByRole('button', { name: 'Confirm' }) as HTMLButtonElement;
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Reason' }), 'Pilot open');
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Reason' }), 'Pilot ope');
+    expect(confirm.disabled).toBe(true);
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Reason' }), 'n');
     expect(confirm.disabled).toBe(false);
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledOnce();

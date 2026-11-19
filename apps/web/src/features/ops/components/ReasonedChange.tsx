@@ -7,8 +7,8 @@ export type ReasonedChangeProps = {
   labels: {
     /** The trigger's visible word, e.g. "Approve". */
     open: string;
-    /** Added after `open` in the accessible name only, so rows of "Approve" buttons stay distinct: the workspace name. */
-    openSuffix?: string;
+    /** The trigger's accessible name when it must say more than `open`, e.g. "Approve Nadia Freelance". */
+    openLabel?: string;
     title: string;
     body: string;
     confirm: string;
@@ -18,12 +18,11 @@ export type ReasonedChangeProps = {
     footer: string;
     failed: string;
     reason: string;
-    hint: string;
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Omit for a change that needs no reason: the card then has no reason field. */
-  reason?: { value: string; onChange: (value: string) => void };
+  reason?: { value: string; onChange: (value: string) => void; hint: string };
   canConfirm: boolean;
   onConfirm: () => Promise<void>;
   /** The success message once confirmed; null before. */
@@ -50,11 +49,8 @@ export function ReasonedChange({
       <PreviewConfirmCard
         title={labels.title}
         trigger={
-          // The visible word starts the accessible name (WCAG 2.5.3); the suffix tells rows of "Approve" apart.
-          <Button
-            className="self-start"
-            aria-label={labels.openSuffix ? `${labels.open} ${labels.openSuffix}` : undefined}
-          >
+          // openLabel starts with the visible word (WCAG 2.5.3) and tells rows of "Approve" apart.
+          <Button className="self-start" aria-label={labels.openLabel}>
             {labels.open}
           </Button>
         }
@@ -84,7 +80,7 @@ export function ReasonedChange({
               onChange={(e) => reason.onChange(e.target.value)}
             />
             <p id={hintId} className="text-meta text-text-2">
-              {labels.hint}
+              {reason.hint}
             </p>
           </div>
         )}

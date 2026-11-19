@@ -14,9 +14,12 @@ export function settingsStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform
     },
     async setApprovalRequired(required, operatorId) {
       // shortcut: the database clock, as for created_at elsewhere; move to the Clock port when this module has one.
-      await tx
+      const changed = await tx
         .update(platformSetting)
-        .set({ approvalRequired: required, updatedBy: operatorId, updatedAt: sql`now()` });
+        .set({ approvalRequired: required, updatedBy: operatorId, updatedAt: sql`now()` })
+        .returning({ id: platformSetting.id });
+      // No row means migration 0001 did not run: fail rather than audit a change that did not happen.
+      if (changed.length === 0) throw new Error('ops.platform_setting has no row');
     },
     recordPlatform: (entry) => audit.recordPlatform(entry, tx),
   };

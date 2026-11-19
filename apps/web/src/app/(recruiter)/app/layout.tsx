@@ -53,7 +53,7 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
   if (status === 'pending_approval' || status === 'rejected') {
     const [gate, t] = await Promise.all([workspaceGate(), getTranslations(defaultLocale, defaultTimeZone)]);
     return (
-      <AccessMessage title={gate?.title ?? ''} body={gate?.body ?? ''}>
+      <AccessMessage title={gate?.title ?? t('access.waitingTitle')} body={gate?.body ?? t('access.waiting')}>
         <form action={signOut}>
           <Button type="submit">{t('access.signOut')}</Button>
         </form>

@@ -31,11 +31,10 @@ export function ApprovalMode(view: ApprovalModeView) {
             footer: c('footer'),
             failed: c('failed'),
             reason: c('reason'),
-            hint: t('hint'),
           }}
           open={view.open}
           onOpenChange={view.onOpenChange}
-          reason={{ value: view.reason, onChange: view.onReasonChange }}
+          reason={{ value: view.reason, onChange: view.onReasonChange, hint: t('hint') }}
           canConfirm={view.canConfirm}
           onConfirm={view.onConfirm}
           done={view.done === null ? null : view.done ? t('doneOn') : t('doneOff')}

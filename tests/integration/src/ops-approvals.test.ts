@@ -75,6 +75,7 @@ const platformLog = () =>
   );
 
 let demo: string;
+let gulf: string;
 let nadia: string;
 
 beforeAll(async () => {
@@ -98,6 +99,15 @@ beforeAll(async () => {
       hiringFocus: 'several',
       synthetic: true,
       creatorUserId: ALEX,
+    })
+  ).id;
+  gulf = (
+    await workspaces.createWorkspace({
+      name: 'Gulf Talent Partners',
+      company: 'Gulf Talent Partners',
+      hiringFocus: 'several',
+      synthetic: true,
+      creatorUserId: user(7),
     })
   ).id;
 });
@@ -181,7 +191,7 @@ describe('Feature: Approve new workspaces during the pilot', () => {
 
   it('Scenario: Existing and seeded workspaces are unaffected, and joining one asks for no approval', async () => {
     await settings.setApprovalRequired({ operatorId: PIA, required: true, reason: 'Pilot needs approval again' });
-    expect(await statusOf(demo)).toBe('active');
+    expect([await statusOf(demo), await statusOf(gulf)]).toEqual(['active', 'active']);
     // Rami joins Demo Hiring Co (invitations are AIV-P1-003; a membership row is what accepting one writes).
     await withWorkspace(app, demo, (tx) =>
       tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)

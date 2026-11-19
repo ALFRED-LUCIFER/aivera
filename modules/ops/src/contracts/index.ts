@@ -1,7 +1,7 @@
 // The only public surface of @aivera/ops (ADR-002, ADR-012 point 9). No ranking module may import it (AGENTS.md 1.8).
 import type { SetApprovalRequiredInput } from '../application/settings.ts';
 
-export { DEFAULT_APPROVAL_REQUIRED, MIN_REASON_LENGTH, OpsError } from '../domain/settings.ts';
+export { OpsError } from '../domain/settings.ts';
 export type { OpsErrorCode } from '../domain/settings.ts';
 export type { SetApprovalRequiredInput } from '../application/settings.ts';
 

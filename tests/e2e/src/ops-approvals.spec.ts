@@ -75,34 +75,44 @@ for (const theme of themes) {
   });
 }
 
-test('Scenario: The operator rejects with a reason, and the creator sees it', async ({ browser, page, baseURL }) => {
-  const base = baseURL ?? '';
-  const stamp = Date.now();
-  const name = `Turned Away ${stamp}`;
-  const creator = await signUpWorkspace(browser, base, `nadia+reject-${stamp}@example.com`, name);
-  await signIn(page, { email: PIA });
-  await page.goto('/ops/approvals');
-  await approvalRow(page, name)
-    .getByRole('button', { name: `Reject ${name}` })
-    .click();
-  const dialog = page.getByRole('dialog', { name: `Reject ${name}?` });
-  const confirm = dialog.getByRole('button', { name: 'Confirm' });
-  await expect(confirm).toBeDisabled();
-  await dialog.getByRole('textbox', { name: 'Reason' }).fill('Too short');
-  await expect(confirm).toBeDisabled();
-  await dialog.getByRole('textbox', { name: 'Reason' }).fill("Outside the pilot's agreed teams");
-  await confirm.click();
-  await expect(dialog).toBeHidden();
-  await expect(approvalRow(page, name)).toHaveCount(0);
+for (const theme of themes) {
+  test(`Scenario: The operator rejects with a reason, and the creator sees it (${theme})`, async ({
+    browser,
+    page,
+    baseURL,
+  }) => {
+    const base = baseURL ?? '';
+    const stamp = `${theme}-${Date.now()}`;
+    const name = `Turned Away ${stamp}`;
+    const creator = await signUpWorkspace(browser, base, `nadia+reject-${stamp}@example.com`, name);
+    await creator.context.addCookies([{ name: 'theme', value: theme, url: base }]);
+    await signIn(page, { email: PIA });
+    await page.goto('/ops/approvals');
+    await approvalRow(page, name)
+      .getByRole('button', { name: `Reject ${name}` })
+      .click();
+    const dialog = page.getByRole('dialog', { name: `Reject ${name}?` });
+    const confirm = dialog.getByRole('button', { name: 'Confirm' });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByRole('textbox', { name: 'Reason' }).fill('Too short');
+    await expect(confirm).toBeDisabled();
+    await dialog.getByRole('textbox', { name: 'Reason' }).fill("Outside the pilot's agreed teams");
+    await confirm.click();
+    await expect(dialog).toBeHidden();
+    await expect(approvalRow(page, name)).toHaveCount(0);
 
-  await creator.page.goto('/app/jobs');
-  await expect(creator.page.getByRole('heading', { level: 1, name: 'Your workspace was not approved' })).toBeVisible();
-  await expect(
-    creator.page.getByText("Your workspace was not approved. Reason: Outside the pilot's agreed teams"),
-  ).toBeVisible();
-  await expectNoAxeViolations(creator.page);
-  await creator.context.close();
-});
+    await creator.page.goto('/app/jobs');
+    await expect(
+      creator.page.getByRole('heading', { level: 1, name: 'Your workspace was not approved' }),
+    ).toBeVisible();
+    await expect(
+      creator.page.getByText("Your workspace was not approved. Reason: Outside the pilot's agreed teams"),
+    ).toBeVisible();
+    await expect(creator.page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expectNoAxeViolations(creator.page);
+    await creator.context.close();
+  });
+}
 
 test('Scenario: Changing the switch: the preview says pending workspaces stay pending, and Cancel changes nothing', async ({
   page,
