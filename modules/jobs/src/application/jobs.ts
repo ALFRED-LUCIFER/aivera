@@ -1,6 +1,6 @@
 import type { NewEntry } from '@aivera/audit';
 import type { Tx } from '@aivera/db';
-import type { Action, Client, JobResource, WorkspaceContext } from '@aivera/workspaces';
+import type { Action, Client, JobResource, SetJobOwnerInput, WorkspaceContext } from '@aivera/workspaces';
 import {
   assertTransition,
   assertValidCompetencies,
@@ -38,6 +38,7 @@ export type JobStore = {
   insertVersion(version: RubricVersion, competencies: Competency[]): Promise<void>;
   /** Replaces a not-yet-approved version's statement, note and competencies, and sets it back to draft. */
   replaceDraft(version: RubricVersion, competencies: Competency[]): Promise<void>;
+  setHiringOwner(workspaceId: string, jobId: string, hiringOwnerUserId: string | null): Promise<void>;
   /** Sets whether the job is listed on the candidate site, with its descriptor and publish time. */
   setPublication(
     workspaceId: string,
@@ -69,6 +70,11 @@ export type Ports = {
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** The workspaces contract's `listClients`, to check a job's client belongs to the workspace. */
   listClients(ctx: WorkspaceContext): Promise<Client[]>;
+  /**
+   * The workspaces contract's `setJobOwner` (AIV-P1-056): the hiring owner gets the job's grant, the previous one loses
+   * it. Refuses an owner who is not an active hiring owner.
+   */
+  setJobOwner(ctx: WorkspaceContext, input: SetJobOwnerInput): Promise<void>;
   /** Whether the context's workspace is flagged synthetic (AGENTS.md 1.1). */
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   /** The audit contract's `record` in `ctx.tx`; always the last write before commit (AGENTS.md 3.6). */
@@ -101,7 +107,16 @@ export type PublishJobInput = { publicDescriptor: string };
 
 const resourceOf = (job: Job): JobResource => ({ jobId: job.id, clientId: job.clientId });
 
-export function jobsUseCases({ storeFor, authorize, listClients, isSyntheticWorkspace, audit, newId, now }: Ports) {
+export function jobsUseCases({
+  storeFor,
+  authorize,
+  listClients,
+  setJobOwner,
+  isSyntheticWorkspace,
+  audit,
+  newId,
+  now,
+}: Ports) {
   /** The job if the context may see it (row-level security and the repository hide the rest), else `not_found`. */
   async function visibleJob(ctx: WorkspaceContext, jobId: string, action: Action, lock = false): Promise<Job> {
     const job = await storeFor(ctx.tx).getJob(ctx.workspaceId, jobId, { lock });
@@ -147,8 +162,6 @@ export function jobsUseCases({ storeFor, authorize, listClients, isSyntheticWork
     // listClients checks client.manage, which allows the same roles as job.create.
     if (clientId && !(await listClients(ctx)).some((c) => c.id === clientId && !c.archivedAt))
       throw new JobError('client_not_found');
-    // shortcut: the hiring owner is not checked against the workspace's members; the add-job action (AIV-P1-007,
-    // apps/web addJob) accepts only active hiring owners, and approval re-checks the role through authorize.
     const job: Job = {
       id: newId(),
       workspaceId: ctx.workspaceId,
@@ -169,6 +182,9 @@ export function jobsUseCases({ storeFor, authorize, listClients, isSyntheticWork
       createdAt: now(),
     };
     await storeFor(ctx.tx).insertJob(job);
+    // The hiring owner sees this job, and only it (AIV-P1-056); setJobOwner refuses anyone but an active hiring owner.
+    if (job.hiringOwnerUserId)
+      await setJobOwner(ctx, { jobId: job.id, previousOwnerId: null, ownerId: job.hiringOwnerUserId });
     return job;
   }
 
@@ -217,6 +233,17 @@ export function jobsUseCases({ storeFor, authorize, listClients, isSyntheticWork
         after: { clientId: job.clientId, rubricVersionId: rubricVersion.id, rubricStatus: rubricVersion.status },
       });
       return { job, rubricVersion };
+    },
+
+    /**
+     * Admins and recruiters (AIV-P1-056): the job's hiring owner becomes `ownerId` (null: none). The new owner gets a
+     * grant on the job and the previous one loses theirs, audited by the workspaces module as the last writes.
+     */
+    async changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void> {
+      const job = await visibleJob(ctx, jobId, 'job.assign_owner', true);
+      if (job.hiringOwnerUserId === ownerId) return;
+      await storeFor(ctx.tx).setHiringOwner(ctx.workspaceId, job.id, ownerId);
+      await setJobOwner(ctx, { jobId: job.id, previousOwnerId: job.hiringOwnerUserId, ownerId });
     },
 
     /** Null when the job does not exist or the context's job scope does not reach it. */

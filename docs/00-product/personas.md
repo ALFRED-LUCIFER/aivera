@@ -14,7 +14,7 @@
 | Solo recruiter                | Nadia Freelance (`nadia@example.com`), see below                                                                                                                                                      | Her own one-member workspace         |
 | Recruiter (AI drafting tests) | Mira Recruiter (`mira@example.com`), admin of "Draft Studio"; Karim Recruiter (`karim@example.com`), admin of "Spent Budget Co", whose daily AI budget is used up                                     | Draft competencies (AIV-P1-008)      |
 | Candidate                     | Sara Al Qahtani and the cast below                                                                                                                                                                    | Candidate site, evidence upload page |
-| Recruiter (not an admin)      | Zaid Recruiter (`zaid@example.com`), recruiter in "Oasis Talent", whose admin is Leila Agency (`leila@example.com`)                                                                                   | Read-only settings (AIV-P1-052)      |
+| Recruiter (not an admin)      | Zaid Recruiter (`zaid@example.com`), recruiter in the agency "Oasis Talent", whose admin is Leila Agency (`leila@example.com`) and where Faisal Client is also a hiring owner                         | Read-only settings (AIV-P1-052)      |
 | Platform operator             | Pia Platform (`pia.platform@example.com`) and Theo Platform (`theo.platform@example.com`), in tests and the e2e config only; never a workspace member ([ADR-012](../adr/ADR-012-operator-console.md)) | Operator console `/ops`              |
 
 ## Individual recruiters and agencies ([ADR-009](../adr/ADR-009-identity-and-account-model.md))

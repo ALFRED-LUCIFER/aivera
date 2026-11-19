@@ -56,8 +56,12 @@ describe('Rows', () => {
           coveragePercent: null,
           nextAction: { kind: 'chase_evidence', count: 2 },
           hiringOwner: null,
+          client: null,
         },
       ],
+      clients: null,
+      client: '',
+      onClientChange: () => {},
     });
     const [, row] = screen.getAllByRole('row');
     const cells = within(row as HTMLElement).getAllByRole('cell');
@@ -70,5 +74,42 @@ describe('Rows', () => {
       'Approved',
       'Chase 2 evidence requests',
     ]);
+  });
+});
+
+describe("AIV-P1-056: an agency sees each job's client", () => {
+  it('shows a Client column, "Our team" for its own jobs, and a client filter', async () => {
+    const onClientChange = vi.fn();
+    const job = {
+      title: 'Staff Backend Engineer',
+      team: null,
+      location: null,
+      stage: 'defining_rubric',
+      rubric: { approved: false, latest: 'draft' },
+      assessed: null,
+      coveragePercent: null,
+      nextAction: null,
+      hiringOwner: 'Faisal Client',
+    } as const;
+    show({
+      status: 'ready',
+      total: 2,
+      filter: 'all',
+      counts: { all: 2, needsAction: 0, rubricNotApproved: 2 },
+      onFilterChange: () => {},
+      rows: [
+        { ...job, id: 'j1', client: 'Dune Logistics' },
+        { ...job, id: 'j2', title: 'Recruitment Coordinator', client: null },
+      ],
+      clients: ['Dune Logistics'],
+      client: '',
+      onClientChange,
+    });
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toContain('Client');
+    const [, first, second] = screen.getAllByRole('row');
+    expect(within(first as HTMLElement).getAllByRole('cell')[1]?.textContent).toBe('Dune Logistics');
+    expect(within(second as HTMLElement).getAllByRole('cell')[1]?.textContent).toBe('Our team');
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'Dune Logistics');
+    expect(onClientChange).toHaveBeenCalledWith('Dune Logistics');
   });
 });

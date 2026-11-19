@@ -15,6 +15,8 @@ type NewJobLabels = {
   placeholderIntro: string;
   team: string;
   client: string;
+  /** The client picker's first option: the job is the agency's own (AIV-P1-056). */
+  ourTeam: string;
   location: string;
   optional: string;
   hiringOwner: string;
@@ -180,12 +182,9 @@ export function NewJobForm(props: NewJobFormProps) {
 
         {props.clients ? (
           <>
-            <Label htmlFor={id('client')}>
-              {labels.client}
-              {optional}
-            </Label>
+            <Label htmlFor={id('client')}>{labels.client}</Label>
             <Select id={id('client')} name="clientId" defaultValue={state.values.clientId}>
-              <option value="">{labels.notChosen}</option>
+              <option value="">{labels.ourTeam}</option>
               {props.clients.map(({ value, label }) => (
                 <option key={value} value={value}>
                   {label}

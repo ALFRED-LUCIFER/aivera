@@ -61,6 +61,8 @@ export type WorkspaceStore = {
   insertGrant(workspaceId: string, grant: Omit<JobGrant, 'grantedAt'>): Promise<JobGrant | null>;
   /** The deleted grant, or null when there was none. */
   deleteGrant(workspaceId: string, grantId: string): Promise<JobGrant | null>;
+  /** The member's grant on that one job, deleted; null when there was none. Client grants are untouched. */
+  deleteJobGrant(workspaceId: string, userId: string, jobId: string): Promise<JobGrant | null>;
   /** The member's deleted grants. */
   deleteGrantsOf(workspaceId: string, userId: string): Promise<JobGrant[]>;
   /** Sets app.job_scope, app.job_ids and app.client_ids for this transaction only (ADR-005 point 6). */

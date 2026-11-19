@@ -8,7 +8,13 @@ import { createAudit } from '@aivera/audit/composition';
 import { createDb, withWorkspace, type Db } from '@aivera/db';
 import { JobError, type Competency, type CreateJobInput, type JobsContract } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
-import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
+import {
+  ForbiddenError,
+  WorkspaceError,
+  type Role,
+  type WorkspaceContext,
+  type WorkspacesContract,
+} from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -919,5 +925,100 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     await expect(
       as(HEAD, w, (ctx) => jobs.createJobWithDraftRubric(ctx, { ...job('Data Engineer'), competencies: draft() })),
     ).rejects.toThrow(ForbiddenError);
+  });
+});
+
+describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056)', () => {
+  const OWNER_A = '0190d4a2-0000-7000-8000-0000000056a1'; // Faisal Client, hiring owner with no grants
+  const OWNER_B = '0190d4a2-0000-7000-8000-0000000056a2'; // Huda Client, hiring owner of Falcon Pay
+  const PANEL = '0190d4a2-0000-7000-8000-0000000056a3'; // an interviewer
+  let w: string;
+  let dune: string;
+  let falcon: string;
+  let backend: string;
+  let payments: string;
+  const grantsOf = async (userId: string) =>
+    (await as(ALEX, w, (ctx) => workspaces.listJobGrants(ctx)))
+      .filter((g) => g.userId === userId)
+      .map((g) => g.jobId ?? `client:${g.clientId}`);
+  const canOpen = (userId: string, jobId: string, clientId: string) =>
+    as(userId, w, (ctx) => workspaces.authorize(ctx, 'job.view', { jobId, clientId })).then(
+      () => 'allowed',
+      (error: unknown) => (error instanceof ForbiddenError ? '403' : String(error)),
+    );
+
+  beforeAll(async () => {
+    w = await newWorkspace('Gulf Agency 056');
+    await addMember(w, RANA, 'recruiter');
+    await addMember(w, OWNER_A, 'hiring_owner');
+    await addMember(w, OWNER_B, 'hiring_owner');
+    await addMember(w, PANEL, 'interviewer');
+    await as(ALEX, w, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+    dune = (await as(RANA, w, (ctx) => workspaces.addClient(ctx, 'Dune Logistics'))).id;
+    falcon = (await as(RANA, w, (ctx) => workspaces.addClient(ctx, 'Falcon Pay'))).id;
+    payments = (
+      await as(RANA, w, (ctx) =>
+        jobs.createJobWithDraftRubric(ctx, {
+          ...job('Senior Product Manager, Payments', { clientId: falcon }),
+          competencies: competencies([100]),
+        }),
+      )
+    ).job.id;
+  });
+
+  it('Scenario: Picking the hiring owner grants only that job', async () => {
+    const { job: saved } = await as(RANA, w, (ctx) =>
+      jobs.createJobWithDraftRubric(ctx, {
+        ...job('Staff Backend Engineer', { clientId: dune, hiringOwnerUserId: OWNER_A }),
+        competencies: competencies([100]),
+      }),
+    );
+    backend = saved.id;
+    expect(saved.clientId).toBe(dune);
+    expect(await grantsOf(OWNER_A)).toEqual([backend]);
+    expect(await canOpen(OWNER_A, backend, dune)).toBe('allowed');
+    expect(await canOpen(OWNER_A, payments, falcon)).toBe('403');
+    expect((await as(OWNER_A, w, (ctx) => jobs.listJobs(ctx))).map((j) => j.id)).toEqual([backend]);
+    // The grant's audit entry is written in the same request, by the recruiter who saved the job.
+    expect((await audit.listFor(w, { type: 'member', id: OWNER_A })).map((e) => e.action)).toEqual([
+      'job_access.granted',
+    ]);
+  });
+
+  // SAFETY: mutation check: skipped the revoke in setJobOwner -> this test failed (the previous owner kept the job)
+  it('changing the hiring owner revokes the previous owner’s grant for that job', async () => {
+    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_B));
+    expect(await grantsOf(OWNER_A)).toEqual([]);
+    expect(await grantsOf(OWNER_B)).toEqual([backend]);
+    expect(await canOpen(OWNER_A, backend, dune)).toBe('403');
+    expect((await as(ALEX, w, (ctx) => jobs.getJob(ctx, backend)))?.hiringOwnerUserId).toBe(OWNER_B);
+  });
+
+  it('a previous owner who holds a client grant keeps the client’s jobs', async () => {
+    await as(ALEX, w, (ctx) => workspaces.grantJobAccess(ctx, { userId: OWNER_A, clientId: dune }));
+    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_A));
+    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, null));
+    expect(await grantsOf(OWNER_A)).toEqual([`client:${dune}`]);
+    expect(await canOpen(OWNER_A, backend, dune)).toBe('allowed');
+  });
+
+  it('a hiring owner who is not an active hiring owner is refused and no job is saved', async () => {
+    const before = (await as(ALEX, w, (ctx) => jobs.listJobs(ctx))).length;
+    await expect(
+      as(RANA, w, (ctx) => jobs.createJob(ctx, job('Data Engineer', { hiringOwnerUserId: PANEL }))),
+    ).rejects.toThrow(new WorkspaceError('owner_role'));
+    expect(await as(ALEX, w, (ctx) => jobs.listJobs(ctx))).toHaveLength(before);
+  });
+
+  it('a hiring owner cannot change who owns a job, nor add a client', async () => {
+    // Faisal still sees the job through his client grant; seeing it is not owning it.
+    await expect(as(OWNER_A, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_A))).rejects.toThrow(
+      ForbiddenError,
+    );
+    await expect(as(OWNER_B, w, (ctx) => workspaces.addClient(ctx, 'Oasis Freight'))).rejects.toThrow(ForbiddenError);
+    expect((await as(ALEX, w, (ctx) => workspaces.listClients(ctx))).map((c) => c.name)).toEqual([
+      'Dune Logistics',
+      'Falcon Pay',
+    ]);
   });
 });

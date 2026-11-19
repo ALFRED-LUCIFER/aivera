@@ -109,15 +109,18 @@ export default async function seed() {
         });
     });
 
-    // AIV-P1-052: Zaid is a recruiter (not an admin) in Oasis Talent, her active workspace. Its own workspace, so the
+    // AIV-P1-052: Zaid is a recruiter (not an admin) in Oasis Talent, his active workspace. Its own workspace, so the
     // operator console's figures for the workspaces above do not change.
-    const oasis = await workspaceOf('Oasis Talent', await person('leila@example.com', 'Leila Agency'));
+    const leila = await person('leila@example.com', 'Leila Agency');
+    const oasis = await workspaceOf('Oasis Talent', leila);
     const zaid = await person('zaid@example.com', 'Zaid Recruiter');
     await withWorkspace(db, oasis, (tx) =>
       tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
-        values (${oasis}, ${zaid}, 'recruiter', 'active')`),
+        values (${oasis}, ${zaid}, 'recruiter', 'active'), (${oasis}, ${faisal}, 'hiring_owner', 'active')`),
     );
     await workspaces.switchWorkspace({ userId: zaid }, oasis);
+    // AIV-P1-056: Oasis Talent is an agency with no clients yet; Faisal is its hiring owner with no grants.
+    await workspaces.withWorkspace({ userId: leila }, oasis, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
   } finally {
     await db.$client.end();
   }

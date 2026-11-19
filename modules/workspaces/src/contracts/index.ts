@@ -3,7 +3,7 @@ import type { Tx } from '@aivera/db/client';
 import type { Session, WorkspaceContext as Context } from '../application/context.ts';
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
-import type { GrantJobAccessInput } from '../application/clients.ts';
+import type { GrantJobAccessInput, SetJobOwnerInput } from '../application/clients.ts';
 import type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 import type { ChangeStatusInput } from '../application/status.ts';
 import type { SettingsPatch, WorkspaceSettings } from '../domain/settings.ts';
@@ -43,7 +43,7 @@ export type {
 } from '../domain/workspace.ts';
 export type { ChangeStatusInput } from '../application/status.ts';
 export type { DirectorySearch, PendingApproval } from '../application/directory.ts';
-export type { GrantJobAccessInput } from '../application/clients.ts';
+export type { GrantJobAccessInput, SetJobOwnerInput } from '../application/clients.ts';
 export {
   DEFAULT_SETTINGS,
   SETTING_BOUNDS,
@@ -144,6 +144,12 @@ export interface WorkspacesContract {
   archiveClient(ctx: WorkspaceContext, clientId: string): Promise<void>;
   /** Admins. The member must be an active hiring owner or interviewer (`grant_role`, `not_found`). Idempotent. */
   grantJobAccess(ctx: WorkspaceContext, input: GrantJobAccessInput): Promise<void>;
+  /**
+   * Admins and recruiters, when a job is saved with a hiring owner (AIV-P1-056): the owner gets a grant on that job and
+   * the previous owner loses theirs (a client grant they hold stays). Throws `owner_role` unless the new owner is an
+   * active hiring owner. Audited as `job_access.granted` / `job_access.revoked`.
+   */
+  setJobOwner(ctx: WorkspaceContext, input: SetJobOwnerInput): Promise<void>;
   /** Admins. Takes effect on the member's next request. Idempotent. */
   revokeJobAccess(ctx: WorkspaceContext, grantId: string): Promise<void>;
   /** Admins and recruiters: every job grant in the workspace. */

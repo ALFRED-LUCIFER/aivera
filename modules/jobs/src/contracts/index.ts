@@ -101,7 +101,10 @@ export type JobUnpublishedV1 = {
  * workspaces `authorize`; refusals throw `ForbiddenError`, rule failures `JobError`.
  */
 export interface JobsContract {
-  /** Admins and recruiters. A client id must be one of the workspace's clients that is not archived. Audited. */
+  /**
+   * Admins and recruiters. A client id must be one of the workspace's clients that is not archived; a hiring owner gets
+   * a grant on the job (`changeHiringOwner`'s rule). Audited.
+   */
   createJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job>;
   /**
    * Admins and recruiters (AIV-P1-010): the job and rubric version 1 as a draft, with its competencies, in one
@@ -113,6 +116,12 @@ export interface JobsContract {
     ctx: WorkspaceContext,
     input: CreateJobWithDraftRubricInput,
   ): Promise<{ job: Job; rubricVersion: RubricVersion }>;
+  /**
+   * Admins and recruiters (AIV-P1-056): sets the job's hiring owner (null: none). The new owner gets a grant on the job,
+   * the previous one loses theirs (a client grant stays). Throws `ForbiddenError`, `JobError('not_found')`, or the
+   * workspaces module's `WorkspaceError('owner_role')` when the owner is not an active hiring owner.
+   */
+  changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void>;
   /** The job, or null when it does not exist or the context's job scope does not reach it. Every role. */
   getJob(ctx: WorkspaceContext, jobId: string): Promise<Job | null>;
   /** The jobs the context may see, oldest first. Every role; job-scoped roles get their granted jobs only. */
