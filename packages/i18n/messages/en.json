@@ -582,6 +582,31 @@
         "noActions": "No operator actions yet.",
         "error": "We could not load this workspace. Try again."
       }
+    },
+    "catalogue": {
+      "title": "Catalogue",
+      "readOnly": "The catalogue changes only through a reviewed pull request.",
+      "jobTypesSource": "Job types file on GitHub",
+      "domainPacksSource": "Domain packs file on GitHub",
+      "jobTypes": "Job types · version {version, number}",
+      "columns": {
+        "jobType": "Job type",
+        "starters": "Starter competencies"
+      },
+      "evidence": "Evidence that counts",
+      "domainPacks": "Domain packs · version {version, number}",
+      "packSummary": "Version {version, number} · {count, plural, one {# job type} other {# job types}}",
+      "competencies": "{count, plural, one {# competency} other {# competencies}}",
+      "core": "Default suggestions",
+      "more": "More from this pack",
+      "hints": {
+        "uae": "Regional hints for the UAE",
+        "ksa": "Regional hints for KSA",
+        "india": "Regional hints for India"
+      },
+      "desirable": "Desirable",
+      "levelNeeded": "Level {level, number} needed",
+      "level": "Level {level, number}"
     }
   }
 }

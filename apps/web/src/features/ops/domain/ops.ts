@@ -5,7 +5,10 @@ export const OPS_SECTIONS = ['workspaces', 'approvals', 'catalogue', 'requests',
 type OpsSection = (typeof OPS_SECTIONS)[number];
 
 /** The sections that have a page (a typed route each); the others show as "Coming soon". */
-export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces'>> = { workspaces: '/ops/workspaces' };
+export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces' | '/ops/catalogue'>> = {
+  workspaces: '/ops/workspaces',
+  catalogue: '/ops/catalogue',
+};
 
 /**
  * Marks that this browser session already recorded "ops.console_opened" for this operator: a session cookie (no
