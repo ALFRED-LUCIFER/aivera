@@ -1,6 +1,6 @@
 import { IdentityError } from '@aivera/identity';
 import { decode } from 'next-auth/jwt';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authConfig, tokenMaxAge } from './auth';
 
 // Scenario: A refused sign-in adds nothing (AIV-P0-009): the log line holds no email, name or token (AGENTS.md 1.2).
@@ -115,6 +115,44 @@ describe('auth logging and refusals never print personal data', () => {
     expect(result).toBe('/sign-in?error=unverified_email');
     expect(user.id).toBeUndefined();
     expect(raw().join('\n')).not.toMatch(PERSONAL);
+  });
+});
+
+describe('ID token claims', () => {
+  beforeEach(() => upsert.mockReset());
+
+  // Scenario: An explicit email_verified false from another issuer is still not trusted.
+  // SAFETY: mutation check: mapped false to undefined in idTokenClaims -> this test failed
+  // SAFETY: mutation check: mapped every value except false to true (so 'false' or 0 counted as verified) -> this test failed
+  it.each([false, 'false', 0])(
+    'passes email_verified %j on as false and refuses as unverified_email',
+    async (claim) => {
+      upsert.mockRejectedValueOnce(new IdentityError('unverified_email'));
+      const foreign = { ...profile, iss: 'https://login.other.aivera.example/v2.0', email_verified: claim };
+      const result = await config.callbacks?.signIn?.({ user: {}, profile: foreign, account: null } as never);
+      expect(result).toBe('/sign-in?error=unverified_email');
+      expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({ emailVerified: false }));
+    },
+  );
+
+  // Scenario: A token from our tenant without email_verified signs the recruiter in (External ID never sends it).
+  // SAFETY: mutation check: removed `.optional()` from email_verified in idTokenClaims -> this test failed
+  it('accepts a token with no email_verified and passes it on as undefined', async () => {
+    upsert.mockResolvedValueOnce({ id: 'user-1' });
+    const { email_verified: _omitted, ...withoutClaim } = profile;
+    const user: { id?: string } = {};
+    const result = await config.callbacks?.signIn?.({ user, profile: withoutClaim, account: null } as never);
+    expect(result).toBe(true);
+    expect(user.id).toBe('user-1');
+    expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({ emailVerified: undefined }));
+  });
+
+  // Scenario: A token missing its email is still refused.
+  it('refuses a token with no email', async () => {
+    const { email: _omitted, ...withoutEmail } = profile;
+    const result = await config.callbacks?.signIn?.({ user: {}, profile: withoutEmail, account: null } as never);
+    expect(result).toBe(false);
+    expect(upsert).not.toHaveBeenCalled();
   });
 });
 

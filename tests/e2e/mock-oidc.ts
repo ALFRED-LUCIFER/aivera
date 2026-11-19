@@ -27,7 +27,8 @@ function idToken(grant: Grant): string {
     exp: now + 600,
     nonce: grant.nonce,
     email: grant.email,
-    email_verified: grant.verified,
+    // Like External ID: a verified email sends no email_verified claim at all; only the refusal case sends false.
+    ...(grant.verified ? {} : { email_verified: false }),
     name: grant.email.split('@')[0],
     idp: grant.idp,
   };
