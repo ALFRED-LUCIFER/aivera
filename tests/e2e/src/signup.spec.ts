@@ -1,0 +1,81 @@
+import { expect, test, type Page } from '@playwright/test';
+import { signIn } from './auth.ts';
+import { css, expectNoAxeViolations, themes } from './gallery.ts';
+
+// AIV-P1-059 J1 step 0: from the home page through the (mocked) External ID sign-up to the no-workspace page.
+
+const noWorkspace = async (page: Page) => {
+  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Or create your own workspace' })).toBeVisible();
+};
+
+for (const theme of themes) {
+  // SAFETY: mutation check: sent login_hint=nadia@example.com in SIGN_UP_PARAMS -> the URL check failed
+  test(`Scenario: A visitor goes from the home page to the workspace form, with no personal data in a URL (${theme})`, async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    const urls: string[] = [];
+    page.on('request', (request) => {
+      if (request.isNavigationRequest()) urls.push(decodeURIComponent(request.url()));
+    });
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Create your workspace' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
+    await expect(page.getByText('Prompt: create', { exact: true })).toBeVisible();
+    await page.getByLabel('Email', { exact: true }).fill(`nadia+signup-${theme}-${Date.now()}@example.com`);
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page).toHaveURL(/\/app$/);
+    await noWorkspace(page);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expectNoAxeViolations(page);
+    expect(urls.length).toBeGreaterThan(2);
+    for (const url of urls) expect(url).not.toMatch(/nadia|example\.com/i);
+  });
+
+  test(`"Create your workspace" and "Sign in" are links reached by keyboard with a focus ring (${theme})`, async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    await page.goto('/');
+    const header = page.getByRole('banner');
+    for (const [name, href] of [
+      ['Sign in', '/sign-in'],
+      ['Create workspace', '/signup'],
+    ] as const) {
+      const link = header.getByRole('link', { name, exact: true });
+      await expect(link).toHaveAttribute('href', href);
+      for (let i = 0; i < 12 && !(await link.evaluate((el) => el === document.activeElement)); i++)
+        await page.keyboard.press('Tab');
+      await expect(link).toBeFocused();
+      expect(await css(link, 'outline-style')).toBe('solid');
+    }
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
+  });
+}
+
+test('Scenario: Sign in on the home page opens Sign in', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('banner').getByRole('link', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test('Scenario Outline: A signed-in user not in any workspace opening /signup sees the create form', async ({
+  page,
+}) => {
+  await signIn(page, { email: `nadia+signed-in-${Date.now()}@example.com` });
+  await noWorkspace(page);
+  await page.goto('/signup');
+  await expect(page).toHaveURL(/\/app$/);
+  await noWorkspace(page);
+});
+
+test('Scenario Outline: An admin of "Demo Hiring Co" opening /signup sees My desk', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/signup');
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
+});

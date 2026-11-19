@@ -77,10 +77,9 @@ test('Scenario: The demo person is labelled synthetic', async ({ page }) => {
 
 test('Scenario: Calls to action', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Create your workspace' }).first().click();
-  // Sign-up starts on the sign-in page until /signup ships (AIV-P1-059).
-  await expect(page).toHaveURL(/\/sign-in$/);
-  await page.goto('/');
+  // Where sign-up leads is signup.spec.ts (AIV-P1-059).
+  for (const link of await page.getByRole('link', { name: 'Create your workspace' }).all())
+    await expect(link).toHaveAttribute('href', '/signup');
   await page.getByRole('banner').getByRole('link', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 });

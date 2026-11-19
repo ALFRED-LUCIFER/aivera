@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { authorizationParams, DESK, parseSignInForm, safeNext, signInError, signInPath } from './signIn';
+import {
+  authorizationParams,
+  DESK,
+  parseSignInForm,
+  safeNext,
+  SIGN_UP_PARAMS,
+  signInError,
+  signInPath,
+  signUpStep,
+} from './signIn';
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -70,5 +79,21 @@ describe('sign-in form and request', () => {
     expect(signInError('unverified_email')).toBe('unverifiedEmail');
     expect(signInError('unavailable')).toBe('unavailable');
     expect(signInError('AccessDenied')).toBe('failed');
+  });
+});
+
+describe('signUpStep (AIV-P1-059)', () => {
+  // SAFETY: mutation check: checked signedIn before configured -> the not-configured signed-in case failed
+  it.each([
+    [false, false, 'unavailable'],
+    [false, true, 'unavailable'],
+    [true, true, 'desk'],
+    [true, false, 'tenant'],
+  ] as const)('configured %s, signed in %s: %s', (configured, signedIn, step) => {
+    expect(signUpStep(configured, signedIn)).toBe(step);
+  });
+
+  it('opens the sign-up page with no personal data', () => {
+    expect(SIGN_UP_PARAMS).toEqual({ prompt: 'create' });
   });
 });
