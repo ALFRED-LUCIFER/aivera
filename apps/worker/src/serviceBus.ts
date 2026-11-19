@@ -1,0 +1,51 @@
+// The Service Bus side of the worker host (AIV-P0-015): the message shape, scheduled enqueue, and the adapter from a
+// received message to the consumer's Delivery. The consumer logic itself is SDK-free (@aivera/db/consumer).
+import type { Delivery, Scheduler } from '@aivera/db/consumer';
+import type { Envelope } from '@aivera/db';
+import { envelopeSchema } from '@aivera/db';
+import { log } from '@aivera/observability';
+import type { ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender } from '@azure/service-bus';
+import Long from 'long';
+
+/** The envelope as a Service Bus message; `messageId` is the event id, which the consumer's inbox deduplicates on. */
+export const toMessage = (envelope: Envelope) => ({
+  messageId: envelope.id,
+  body: envelope,
+  contentType: 'application/json',
+  subject: envelope.type,
+});
+
+/** Scheduled enqueue: not delivered before `at`; the returned sequence number cancels it. */
+export function createScheduler(senderFor: (queue: string) => ServiceBusSender): Scheduler {
+  return {
+    async schedule(queue, envelope, at) {
+      const [sequenceNumber] = await senderFor(queue).scheduleMessages(toMessage(envelopeSchema.parse(envelope)), at);
+      if (!sequenceNumber) throw new Error('Service Bus returned no sequence number for the scheduled message');
+      return sequenceNumber.toString();
+    },
+    cancel: (queue, sequenceNumber) => senderFor(queue).cancelScheduledMessages(Long.fromString(sequenceNumber)),
+  };
+}
+
+/** A received message as the consumer's Delivery, settled on `receiver`. */
+export const toDelivery = (receiver: ServiceBusReceiver, message: ServiceBusReceivedMessage): Delivery => ({
+  body: message.body,
+  // AMQP counts earlier failed deliveries, so the first delivery reads 0.
+  deliveryCount: (message.deliveryCount ?? 0) + 1,
+  complete: () => receiver.completeMessage(message),
+  abandon: () => receiver.abandonMessage(message),
+  // Both fields hold the fixed code, so nothing from the payload or an error message reaches the dead-letter metadata.
+  deadLetter: (reason) =>
+    receiver.deadLetterMessage(message, { deadLetterReason: reason, deadLetterErrorDescription: reason }),
+});
+
+/** Streams `receiver`'s messages to `handle`, settling manually; close the returned subscription to stop receiving. */
+export const subscribe = (receiver: ServiceBusReceiver, handle: (delivery: Delivery) => Promise<void>) =>
+  receiver.subscribe(
+    {
+      processMessage: (message) => handle(toDelivery(receiver, message)),
+      processError: async ({ error, errorSource, entityPath }) =>
+        log.error({ err: error, area: errorSource, 'messaging.destination': entityPath }, 'service bus receive failed'),
+    },
+    { autoCompleteMessages: false, maxConcurrentCalls: 4 },
+  );

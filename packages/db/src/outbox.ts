@@ -1,7 +1,18 @@
 import { context, propagation } from '@opentelemetry/api';
 import { sql } from 'drizzle-orm';
-import { index, integer, jsonb, pgPolicy, text, timestamp, unique, uuid, type PgSchema } from 'drizzle-orm/pg-core';
-import type { z } from 'zod';
+import {
+  index,
+  integer,
+  jsonb,
+  pgPolicy,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uuid,
+  type PgSchema,
+} from 'drizzle-orm/pg-core';
+import { z } from 'zod';
 import type { Tx } from './client.ts';
 import { tenantPolicy } from './tenantPolicy.ts';
 import { uuidv7 } from './uuidv7.ts';
@@ -17,6 +28,16 @@ export type Envelope = {
   /** The W3C `traceparent` of the span active at enqueue, or null with tracing off (docs/02-architecture/modules.md). */
   correlationId: string | null;
 };
+
+/** The envelope as a consumer receives it: parsed before any handler runs (AGENTS.md 3.7). */
+export const envelopeSchema = z.strictObject({
+  id: z.uuid(),
+  type: z.string().min(1),
+  workspaceId: z.uuid(),
+  occurredAt: z.iso.datetime(),
+  payload: z.unknown(),
+  correlationId: z.string().nullable(),
+});
 
 /**
  * A versioned event in a module's contracts. Use `z.strictObject` of opaque ids, so a field the schema does not name
@@ -74,6 +95,49 @@ export function outboxTable(schema: PgSchema) {
 export type OutboxTable = ReturnType<typeof outboxTable>;
 
 /**
+ * The consuming module's `<schema>.inbox` (AIV-P0-015): one row per handled message and consumer, written in the
+ * handler's transaction, so a redelivered message is skipped. Export it from the module's `schema.ts`, generate the
+ * migration, and add a custom migration with `ALTER TABLE "<m>"."inbox" FORCE ROW LEVEL SECURITY;`.
+ * shortcut: rows are kept forever; prune those older than the queue's 14-day TTL once the table grows (AIV-P5-E03, #34)
+ */
+export function inboxTable(schema: PgSchema) {
+  return schema
+    .table(
+      'inbox',
+      {
+        consumer: text().notNull(),
+        messageId: uuid('message_id').notNull(),
+        workspaceId: uuid('workspace_id').notNull(),
+        handledAt: timestamp('handled_at', tz).notNull(),
+      },
+      (t) => [
+        primaryKey({ columns: [t.consumer, t.messageId] }),
+        tenantPolicy('inbox_tenant_isolation', t.workspaceId),
+      ],
+    )
+    .enableRLS();
+}
+
+export type InboxTable = ReturnType<typeof inboxTable>;
+
+/** A new envelope for `event`, its payload validated and the active trace as its correlation id. */
+export function newEnvelope<P>(
+  event: EventDefinition<P>,
+  input: { workspaceId: string; payload: P; occurredAt: Date },
+): Envelope {
+  const carrier: { traceparent?: string } = {};
+  propagation.inject(context.active(), carrier);
+  return {
+    id: uuidv7(),
+    type: event.type,
+    workspaceId: input.workspaceId,
+    occurredAt: input.occurredAt.toISOString(),
+    payload: event.payload.parse(input.payload),
+    correlationId: carrier.traceparent ?? null,
+  };
+}
+
+/**
  * Writes the event to the module's outbox in the caller's transaction, so it commits or rolls back with the change.
  * Throws before writing when the payload fails the event's schema. The same `dedupeKey` in a workspace is written once.
  */
@@ -83,17 +147,15 @@ export async function enqueue<P>(
   event: EventDefinition<P>,
   input: { workspaceId: string; payload: P; dedupeKey: string; occurredAt: Date },
 ): Promise<void> {
-  const payload = event.payload.parse(input.payload);
-  const carrier: { traceparent?: string } = {};
-  propagation.inject(context.active(), carrier);
+  const { id, type, payload, correlationId } = newEnvelope(event, input);
   await tx
     .insert(outbox)
     .values({
-      id: uuidv7(),
+      id,
       workspaceId: input.workspaceId,
-      type: event.type,
+      type,
       payload,
-      correlationId: carrier.traceparent ?? null,
+      correlationId,
       dedupeKey: input.dedupeKey,
       occurredAt: input.occurredAt,
       nextAttemptAt: input.occurredAt,

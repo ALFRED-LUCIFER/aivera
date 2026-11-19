@@ -155,7 +155,7 @@ describe('Scenario: An event is sent after its change commits', () => {
     ]);
     expect((await rows()).find((r) => r.id === row?.id)?.sent_at).not.toBeNull();
 
-    // One trace from the server action through the relay (the worker handler half is AIV-P0-015).
+    // One trace from the server action through the relay (the worker handler hop: worker.test.ts).
     const relaySpan = spans.getFinishedSpans().find((s) => s.name === 'outbox.relay PersonCreated.v1');
     expect(relaySpan?.spanContext().traceId).toBe(actionSpan.traceId);
     expect(relaySpan?.parentSpanContext?.spanId).toBe(actionSpan.spanId);

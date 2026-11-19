@@ -20,6 +20,7 @@ env:
   IMAGES: ghcr.io/alfred-lucifer/aivera
   RG: rg-medvya-dev-in
   WEB: ca-aivera-web-dev
+  WORKER: ca-aivera-worker-dev
   JOB: job-aivera-migrate-dev
 
 jobs:
@@ -37,9 +38,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
         run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
-      - name: build and push web and migrate
+      - name: build and push web, migrate and worker
         run: |
-          for target in web migrate; do
+          for target in web migrate worker; do
             docker build --target "$target" -t "$IMAGES/$target:$GITHUB_SHA" .
             docker push "$IMAGES/$target:$GITHUB_SHA"
           done
@@ -72,6 +73,16 @@ jobs:
           echo "previous=$(az containerapp show -g "$RG" -n "$WEB" --query 'properties.template.containers[0].image' -o tsv)" >> "$GITHUB_OUTPUT"
           az containerapp update -g "$RG" -n "$WEB" --image "$IMAGES/web:$GITHUB_SHA" --set-env-vars "COMMIT_SHA=$GITHUB_SHA" -o none
 
+      # After web: the worker runs no migrations and serves no traffic. Skipped until the owner's apply creates it
+      # (infra/modules/worker.bicep), so a deploy before that apply does not fail and roll web back.
+      - name: deploy worker
+        run: |
+          if az containerapp show -g "$RG" -n "$WORKER" -o none 2>/dev/null; then
+            az containerapp update -g "$RG" -n "$WORKER" --image "$IMAGES/worker:$GITHUB_SHA" -o none
+          else
+            echo "Skipped $WORKER: not created yet (owner's Bicep apply)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: smoke test
         run: |
           fqdn=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
@@ -91,5 +102,6 @@ jobs:
           {
             echo "Deployed commit $GITHUB_SHA to Azure dev"
             echo "- web: $IMAGES/web:$GITHUB_SHA"
+            echo "- worker: $IMAGES/worker:$GITHUB_SHA"
             echo "- migrate: $IMAGES/migrate:$GITHUB_SHA (job $JOB succeeded)"
           } >> "$GITHUB_STEP_SUMMARY"

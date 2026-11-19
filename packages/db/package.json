@@ -11,7 +11,8 @@
     "./with-workspace": "./src/withWorkspace.ts",
     "./sql/roles.sql": "./sql/roles.sql",
     "./outbox": "./src/outbox.ts",
-    "./relay": "./src/relay.ts"
+    "./relay": "./src/relay.ts",
+    "./consumer": "./src/consumer.ts"
   },
   "scripts": {
     "lint": "oxlint --deny-warnings .",

@@ -1,6 +1,7 @@
 # Images for Azure dev (AIV-P0-006), built by .github/workflows/deploy-dev.yml:
 #   docker build --target web .       Next.js standalone server, non-root, port 3000
 #   docker build --target migrate .   `pnpm db:migrate` (node packages/db/src/cli.ts migrate), non-root
+#   docker build --target worker .    the worker host (node apps/worker/src/main.ts), non-root, probes on 8080
 FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS source
 WORKDIR /repo
 RUN corepack enable
@@ -20,7 +21,13 @@ USER node
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
 
-# shortcut: the migrate image is the whole install stage (about 1.3 GB with dev tooling) because cli.ts finds modules/*/migrations through the repo layout; slim it with `pnpm deploy --filter @aivera/db --prod` plus the migration folders when pull time or image scanning matters (AIV-P5-E03, #34)
+# shortcut: the migrate and worker images are the whole install stage (about 1.3 GB with dev tooling) because cli.ts finds modules/*/migrations through the repo layout; slim it with `pnpm deploy --filter @aivera/db --prod` plus the migration folders when pull time or image scanning matters (AIV-P5-E03, #34)
 FROM source AS migrate
 USER node
 CMD ["node", "packages/db/src/cli.ts", "migrate"]
+
+FROM source AS worker
+ENV NODE_ENV=production
+USER node
+EXPOSE 8080
+CMD ["node", "apps/worker/src/main.ts"]
