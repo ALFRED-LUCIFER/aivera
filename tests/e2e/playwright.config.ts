@@ -6,6 +6,8 @@ const port = 3200;
 const oidcPort = 3299;
 const oidc = `http://localhost:${oidcPort}`;
 const ci = Boolean(process.env['CI']);
+/** Test-only session secret for the mocked provider; it opens nothing anywhere else. sign-in.spec.ts reads tokens with it. */
+export const e2eAuthSecret = 'e2e-only-not-a-secret-e2e-only-not-a-secret';
 
 export default defineConfig({
   testDir: 'src',
@@ -40,7 +42,7 @@ export default defineConfig({
         APP_ENV: 'local',
         DATABASE_URL: process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera',
         // Test-only values for the mocked provider; they open nothing anywhere else.
-        AUTH_SECRET: 'e2e-only-not-a-secret-e2e-only-not-a-secret',
+        AUTH_SECRET: e2eAuthSecret,
         AUTH_ENTRA_ISSUER: oidc,
         AUTH_ENTRA_CLIENT_ID: 'aivera-e2e',
         AUTH_ENTRA_CLIENT_SECRET: 'e2e-only',

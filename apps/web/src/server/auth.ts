@@ -2,9 +2,10 @@ import { IdentityError, type IdentityContract } from '@aivera/identity';
 import { createIdentity } from '@aivera/identity/composition';
 import { log } from '@aivera/observability';
 import NextAuth, { customFetch, type AuthError, type NextAuthConfig } from 'next-auth';
+import { encode } from 'next-auth/jwt';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { signInPath } from '@/features/sign-in/domain/signIn.ts';
+import { REMEMBER_COOKIE, signInPath } from '@/features/sign-in/domain/signIn.ts';
 import { getDb } from './db';
 import { env, type WebEnv } from './env';
 
@@ -14,6 +15,7 @@ import { env, type WebEnv } from './env';
 
 const SESSION_COOKIE = '__Host-aivera-session';
 const EIGHT_HOURS = 8 * 60 * 60;
+const THIRTY_DAYS = 30 * 24 * 60 * 60;
 
 // The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). `email_verified` stays undefined when absent;
 // identity decides what counts as verified (ADR-009 point 4).
@@ -80,8 +82,11 @@ const authErrorCode = (error: Error): string => {
   return typeof type === 'string' && AUTH_ERROR_TYPES.has(type) ? type : 'UnknownAuthError';
 };
 
-/** Exported for its test (auth.test.ts): the logger and the refusal path must never print personal data. */
-export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
+/**
+ * Exported for its test (auth.test.ts): the logger and the refusal path must never print personal data, and the
+ * session length follows "Keep me signed in". `remember` is that choice, read from the sign-in request.
+ */
+export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false): NextAuthConfig {
   return {
     secret: auth.secret,
     // AUTH_URL sets the public origin on Azure (infra/modules/web.bicep); locally and in e2e the request host is trusted.
@@ -107,7 +112,11 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
       warn: (code) => log.warn({ area: 'auth', code }, 'auth warning'),
     },
     pages: { signIn: '/sign-in', error: '/sign-in' },
-    session: { strategy: 'jwt', maxAge: EIGHT_HOURS },
+    // The cookie lives as long as the longest session; the token inside expires on its own clock (jwt.encode below).
+    session: { strategy: 'jwt', maxAge: THIRTY_DAYS },
+    // Every re-issue (each proxied request) restarts the token's clock: 30 days with "Keep me signed in", else 8 hours
+    // with no request (idle). An expired token fails decode and Auth.js drops the cookie.
+    jwt: { encode: (params) => encode({ ...params, maxAge: params.token?.['remember'] ? THIRTY_DAYS : EIGHT_HOURS }) },
     cookies: {
       sessionToken: {
         name: SESSION_COOKIE,
@@ -138,23 +147,24 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>): NextAuthConfig {
           throw error;
         }
       },
-      // Only the identity user id goes into the cookie: no name, email or provider token.
-      jwt: ({ token, user }) => (user?.id ? { sub: user.id } : token),
+      // Only the identity user id and the "Keep me signed in" choice go into the cookie: no name, email or token.
+      jwt: ({ token, user }) => (user?.id ? { sub: user.id, remember } : token),
       session: ({ session, token }) => ({ expires: session.expires, user: { id: token.sub ?? '' } }),
     },
   };
 }
 
-export const { handlers, auth, signIn } = NextAuth(() => {
+export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
   const settings = env().auth;
   // Callers check authConfigured() first; reaching here without settings is a bug, not a user error.
   if (!settings) throw new Error('Recruiter sign-in is not configured.');
-  return authConfig(settings);
+  // Only the sign-in callback request uses it (startSignIn sets it); everywhere else the token already holds the choice.
+  return authConfig(settings, request?.cookies.get(REMEMBER_COOKIE)?.value === '1');
 });
 
 /**
- * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, so the 8-hour limit
- * counts from the last request (idle).
+ * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, so the session length
+ * (8 hours, or 30 days with "Keep me signed in") counts from the last request.
  */
 // next-auth's overloads do not type the (request, event) middleware call it supports at runtime.
 export const sessionProxy = auth as unknown as (request: NextRequest, event: NextFetchEvent) => Promise<Response>;

@@ -286,6 +286,7 @@
       "toLight": "Switch to light theme"
     },
     "account": "Signed in as {name}",
+    "signOut": "Sign out",
     "assistant": {
       "open": "Ask Aivera",
       "title": "Aivera assistant",
@@ -299,9 +300,13 @@
   },
   "signIn": {
     "title": "Sign in",
+    "panelTitle": "Hire on evidence, not claims.",
+    "panelBody": "Every score cites the work it rests on. Claims are labelled as claims. Nobody is rejected automatically.",
     "email": "Email",
     "passwordNote": "You enter your password on the next page, hosted by Aivera's sign-in service.",
+    "remember": "Keep me signed in",
     "signIn": "Sign in",
+    "forgotPassword": "Forgot password?",
     "or": "or",
     "google": "Continue with Google",
     "errors": {

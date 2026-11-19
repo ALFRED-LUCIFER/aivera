@@ -1,8 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { decode } from '@auth/core/jwt';
+import { expect, test, type BrowserContext } from '@playwright/test';
+import { e2eAuthSecret } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
-// AIV-P0-009 J0 smoke: recruiter sign-in against a mocked OIDC provider standing in for the External ID tenant.
+// AIV-P0-009 J0 smoke and AIV-P1-002 J1 step: recruiter sign-in against a mocked OIDC provider standing in for the
+// External ID tenant.
 // "/desk" in the ticket is My desk at /app; "/jobs" is /app/jobs.
 
 const desk = async (page: import('@playwright/test').Page) => {
@@ -53,8 +56,16 @@ test('Scenario: A refused sign-in adds nothing (explicit email_verified false)',
 });
 
 // The password is typed on the tenant's page, never in the app, so "Password" is the note under the email field.
-test('Scenario: Only the two chosen ways in are offered', async ({ page }) => {
+test('Scenario: The page offers only the two ways in and the artboard copy', async ({ page }) => {
   await page.goto('/sign-in');
+  await expect(page.getByText('Hire on evidence, not claims.')).toBeVisible();
+  await expect(
+    page.getByText(
+      'Every score cites the work it rests on. Claims are labelled as claims. Nobody is rejected automatically.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Keep me signed in' })).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.getByLabel('Email')).toBeVisible();
   await expect(page.getByText('You enter your password on the next page')).toBeVisible();
@@ -65,9 +76,65 @@ test('Scenario: Only the two chosen ways in are offered', async ({ page }) => {
   await expect(page.getByText('Continue with Microsoft')).toHaveCount(0);
 });
 
-test('Scenario: Open redirects are refused', async ({ page }) => {
-  await signIn(page, { from: '/sign-in?next=https://evil.example' });
+// SAFETY: mutation check: replaced safeNext's final /app check with `!path.startsWith('//')` -> the /candidates/jobs
+// row failed
+for (const next of ['https://evil.example', '//evil.example', '/candidates/jobs']) {
+  test(`Scenario Outline: Return-to refuses anything outside the recruiter app (${next})`, async ({ page }) => {
+    await signIn(page, { from: `/sign-in?next=${encodeURIComponent(next)}` });
+    await desk(page);
+  });
+}
+
+// SAFETY: mutation check: removed the `method === 'reset'` transform in parseSignInForm -> this test failed
+test("Scenario: Forgot password opens the tenant's reset without my email in the URL", async ({ page }) => {
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill('nadia@example.com');
+  const authorize = page.waitForRequest((request) => new URL(request.url()).pathname === '/authorize');
+  await page.getByRole('button', { name: 'Forgot password?' }).click();
+  const url = new URL((await authorize).url());
+  expect(url.origin).toBe('http://localhost:3299');
+  expect(url.searchParams.has('login_hint')).toBe(false);
+  expect(decodeURIComponent(url.href)).not.toMatch(/nadia|@example\.com/);
+  await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
+  await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
+});
+
+// The session token's own lifetime, read with the e2e-only secret: the cookie lives 30 days either way.
+async function sessionLifetime(context: BrowserContext) {
+  const salt = '__Host-aivera-session';
+  const token = (await context.cookies()).find((c) => c.name === salt)?.value ?? '';
+  const payload = await decode({ token, secret: e2eAuthSecret, salt });
+  return (payload?.exp ?? 0) - (payload?.iat ?? 0);
+}
+
+// SAFETY: mutation check: read the remember cookie under another name in auth.ts's NextAuth(request) -> the ticked row
+// failed
+for (const [choice, ticked, length] of [
+  ['ticked', true, 30 * 24 * 60 * 60],
+  ['unticked', false, 8 * 60 * 60],
+] as const) {
+  test(`Scenario Outline: Session length follows "Keep me signed in" (${choice})`, async ({ page, context }) => {
+    await page.goto('/sign-in');
+    await page.getByRole('checkbox', { name: 'Keep me signed in' }).setChecked(ticked);
+    await signIn(page);
+    await desk(page);
+    expect(await sessionLifetime(context)).toBe(length);
+    // The next request re-issues the token with the same length (8 hours counts from the last request).
+    await page.goto('/app/jobs');
+    await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+    expect(await sessionLifetime(context)).toBe(length);
+  });
+}
+
+test('Scenario: Sign out', async ({ page, context }) => {
+  await signIn(page);
   await desk(page);
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+  expect((await context.cookies()).find((c) => c.name === '__Host-aivera-session')).toBeUndefined();
+  await page.goto('/app');
+  await expect(page).toHaveURL(/\/sign-in\?/);
 });
 
 test('Scenario: The session lives only in a secure cookie', async ({ page, context }) => {
@@ -81,8 +148,20 @@ test('Scenario: The session lives only in a secure cookie', async ({ page, conte
 
 test('the sign-in form works from the keyboard', async ({ page }) => {
   await page.goto('/sign-in');
-  await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Email')).toBeFocused();
+  for (const control of [
+    page.getByLabel('Email'),
+    page.getByRole('checkbox', { name: 'Keep me signed in' }),
+    page.getByRole('button', { name: 'Sign in', exact: true }),
+    page.getByRole('button', { name: 'Forgot password?' }),
+    page.getByRole('button', { name: 'Continue with Google' }),
+  ]) {
+    await page.keyboard.press('Tab');
+    await expect(control).toBeFocused();
+  }
+  await page.getByRole('checkbox', { name: 'Keep me signed in' }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('checkbox', { name: 'Keep me signed in' })).toBeChecked();
+  await page.getByLabel('Email').focus();
   await page.keyboard.type('alex@example.com');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();

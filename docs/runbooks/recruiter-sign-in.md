@@ -1,6 +1,6 @@
 # Recruiter sign-in on Entra External ID
 
-AIV-P0-009. Recruiters sign in on the dev External ID tenant through its recruiter app registration ([ADR-009](../adr/ADR-009-identity-and-account-model.md)). Changing tenant settings, Key Vault and applying infrastructure are owner actions (CLAUDE.md).
+AIV-P0-009, AIV-P1-002. Recruiters sign in on the dev External ID tenant through its recruiter app registration ([ADR-009](../adr/ADR-009-identity-and-account-model.md)). Changing tenant settings, Key Vault and applying infrastructure are owner actions (CLAUDE.md).
 
 ## What exists (dev)
 
@@ -25,7 +25,11 @@ The tenant's metadata, `https://aiveradev.ciamlogin.com/88c795fc-1018-45f7-8904-
   - `email_verified: true` counts as verified.
   - So does a token from our tenant's issuer with no `email_verified` claim: the tenant's metadata lists no such claim, but the tenant verifies every email before it creates an account.
   - An explicit `false`, or any other issuer without `true`, never creates or joins a user ("Verify your email to continue.").
-- The session cookie `__Host-aivera-session` holds only the identity user id, encrypted with `AUTH_SECRET`.
+- The session cookie `__Host-aivera-session` holds only the identity user id and the "Keep me signed in" choice, encrypted with `AUTH_SECRET`.
+- **Session length** (AIV-P1-002): unticked, the session ends after 8 hours with no request; ticked, after 30 days with no request. Each request through the proxy re-issues the token and restarts its clock. The choice travels to the tenant and back in a 15-minute HTTP-only cookie `__Host-aivera-remember` (never in a URL), and is then held in the session token. The cookie itself lives 30 days; an expired token inside it is refused and dropped.
+- **Forgot password?** (AIV-P1-002) opens the same user flow with no `login_hint`, so the typed email never travels in a URL. The tenant's page has its own "Forgot password?" link, which runs self-service password reset; the app shows no reset message of its own.
+- **Return-to** (`?next=`) keeps only same-origin paths under `/app`; anything else lands on My desk.
+- **Sign out** in the sidebar calls Auth.js `signOut`: it clears `__Host-aivera-session` and lands on `/sign-in`. The tenant's own session is not ended, so the next sign-in may skip the password page on the same browser.
 - With no sign-in settings the app still starts, `/api/health` and `/api/ready` still answer, and the deploy smoke test passes; `/sign-in` says "Sign-in is not set up in this environment yet." and every `/app` page redirects to `/sign-in` (fails closed). `pilot` and `prod` refuse to start without the settings.
 
 ## Settings
@@ -46,6 +50,18 @@ Azure dev also sets `AUTH_URL` to the app's public origin (built from the enviro
 
 1. **Apply `infra/main.bicep`.** It gives the web app the five settings and `AUTH_URL`; the app identity already has Key Vault Secrets User. `deploy-dev.yml` updates only the image, so the settings arrive with the apply. Both Key Vault secrets exist.
 2. **Wrong-password copy.** The password page belongs to the tenant. Set its error text to "That email and password do not match." under Company branding → Language customization; the default already does not say whether the email exists. Raise the password minimum to 12 characters, per the SignUp copy, if the tenant allows it.
+3. **Run the owner checks below** and record the results.
+
+## Owner checks (AIV-P1-002)
+
+The password page, its lockout and password reset belong to the tenant, so they are checked by hand on the dev tenant's `recruiter-signup-signin` user flow, not by the app's tests. Record each result with its date.
+
+| Check                                                                                                                                                         | Result and date |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| A wrong password for `nadia@example.com` shows "That email and password do not match." (or the tenant's equivalent) and does not say whether the email exists | Not yet run     |
+| Repeated wrong passwords are slowed by the tenant's own lockout (smart lockout), not by the app                                                               | Not yet run     |
+| "Forgot password?" on the tenant's page sends a reset code to the email and lets the owner set a new password                                                 | Not yet run     |
+| "Forgot password?" on Aivera's page opens the tenant's page with an empty email field and no `login_hint` in the URL                                          | Not yet run     |
 
 ## Microsoft accounts
 
