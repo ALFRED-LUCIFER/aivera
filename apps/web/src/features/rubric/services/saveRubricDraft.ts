@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import type { SaveResult } from '../domain/rubric.ts';
+import { queueApprovalRequest } from './rubricEmails.ts';
 
 const input = z.object({
   jobId: z.uuid(),
@@ -31,7 +32,7 @@ const input = z.object({
 });
 
 /**
- * "Save draft" and "Send changes for approval" (AIV-P1-013), in one transaction. The jobs module authorises
+ * "Save draft" and "Send changes for approval" (AIV-P1-013), in one transaction with the approval email (AIV-P1-014). The jobs module authorises
  * `rubric.edit` (admins and recruiters; anyone else gets the 403 page), saves the open version or starts the next one,
  * and refuses a save from an older copy (`stale`) without changing anything. The approved version stays in force.
  */
@@ -43,7 +44,8 @@ export async function saveRubricDraft(raw: z.input<typeof input>): Promise<SaveR
   try {
     result = await inActiveWorkspace(async (ctx) => {
       const version = await getJobs().saveRubric(ctx, jobId, { successStatement, competencies, base });
-      if (submit) await getJobs().submitRubric(ctx, version.id);
+      if (submit)
+        await getJobs().submitRubric(ctx, version.id, async (sent) => void (await queueApprovalRequest(ctx, sent)));
       return version;
     });
   } catch (error) {

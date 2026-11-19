@@ -41,6 +41,8 @@ export type NewJobState = {
   error: 'failed' | null;
   /** The job and rubric version 1 were saved (AIV-P1-010): the page shows what happens next. */
   saved: boolean;
+  /** Version 1, which "Send rubric for approval" sends (AIV-P1-014); set once saved. */
+  rubricVersionId?: string;
   values: NewJobValues;
 };
 export const initialNewJobState = (jobType: string): NewJobState => ({

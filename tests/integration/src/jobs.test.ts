@@ -145,8 +145,9 @@ beforeAll(async () => {
     ['Senior Product Designer', 'product_design'],
   ] as const)
     demoJobs[title] = (await as(RANA, demo, (ctx) => jobs.createJob(ctx, job(title, { jobType })))).id;
+  // HEAD owns these two jobs, so approves their rubrics (AIV-P1-014); owning a job grants it.
   for (const title of ['Senior AI Engineer', 'Staff Backend Engineer'])
-    await as(ALEX, demo, (ctx) => workspaces.grantJobAccess(ctx, { userId: HEAD, jobId: demoJobs[title] ?? '' }));
+    await as(ALEX, demo, (ctx) => jobs.changeHiringOwner(ctx, demoJobs[title] ?? '', HEAD));
 
   gulf = await newWorkspace('Gulf Talent Partners');
   await as(ALEX, gulf, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
@@ -183,7 +184,7 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'jobs' order by name`);
     expect([...tables]).toEqual(
-      ['competency', 'job', 'public_job', 'rubric_version'].map((name) => ({
+      ['competency', 'job', 'outbox', 'public_job', 'rubric_version'].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
@@ -193,6 +194,7 @@ describe('Migrations', () => {
   });
 
   // public_job holds only what is public anyway, so it has no job scope; its read policy is for aivera_public (AIV-P3-002).
+  // The outbox holds opaque ids only, read by the relay (AIV-P0-014, AIV-P1-014).
   it('each table has the tenant policy and a restrictive job-scope policy', async () => {
     const policies = await admin.execute<{ table: string; name: string; permissive: string }>(sql`
       select tablename as table, policyname as name, permissive from pg_policies where schemaname = 'jobs'
@@ -202,6 +204,9 @@ describe('Migrations', () => {
       { table: 'competency', name: 'competency_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'job', name: 'job_scope', permissive: 'RESTRICTIVE' },
       { table: 'job', name: 'job_tenant_isolation', permissive: 'PERMISSIVE' },
+      { table: 'outbox', name: 'outbox_relay_mark', permissive: 'PERMISSIVE' },
+      { table: 'outbox', name: 'outbox_relay_read', permissive: 'PERMISSIVE' },
+      { table: 'outbox', name: 'outbox_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'public_job', name: 'public_job_public_read', permissive: 'PERMISSIVE' },
       { table: 'public_job', name: 'public_job_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'rubric_version', name: 'rubric_version_job_scope', permissive: 'RESTRICTIVE' },

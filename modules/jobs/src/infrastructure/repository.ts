@@ -1,6 +1,6 @@
 import type { Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, or, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
 import type { Competency, Job, RubricStatus } from '../domain/job.ts';
 import { competency, job, jobInScope, publicJob, rubricVersion } from './schema.ts';
@@ -133,6 +133,30 @@ export function jobStore(tx: Tx): JobStore {
         .where(and(eq(competency.workspaceId, version.workspaceId), eq(competency.rubricVersionId, version.id)));
       await insertCompetencies(version.workspaceId, version.id, list);
     },
+    rubricApprovals(workspaceId, approvedSince) {
+      return tx
+        .select({
+          jobId: job.id,
+          title: job.title,
+          hiringOwnerUserId: job.hiringOwnerUserId,
+          versionId: rubricVersion.id,
+          version: rubricVersion.version,
+          status: rubricVersion.status,
+          approvedAt: rubricVersion.approvedAt,
+        })
+        .from(rubricVersion)
+        .innerJoin(job, and(eq(job.workspaceId, rubricVersion.workspaceId), eq(job.id, rubricVersion.jobId)))
+        .where(
+          and(
+            jobWhere(workspaceId),
+            or(
+              eq(rubricVersion.status, 'awaiting_approval'),
+              and(eq(rubricVersion.status, 'approved'), gte(rubricVersion.approvedAt, approvedSince)),
+            ),
+          ),
+        )
+        .orderBy(asc(job.createdAt), asc(job.id), asc(rubricVersion.version));
+    },
     async setHiringOwner(workspaceId, jobId, hiringOwnerUserId) {
       await tx
         .update(job)
@@ -172,10 +196,10 @@ export function jobStore(tx: Tx): JobStore {
     async pausePublicJobs(workspaceId, paused) {
       await tx.update(publicJob).set({ paused }).where(eq(publicJob.workspaceId, workspaceId));
     },
-    async setStatus(workspaceId, versionId, status, approval) {
+    async setStatus(workspaceId, versionId, status, change) {
       await tx
         .update(rubricVersion)
-        .set({ status, ...(approval && { approvedBy: approval.by, approvedAt: approval.at }) })
+        .set({ status, ...change })
         .where(and(eq(rubricVersion.workspaceId, workspaceId), eq(rubricVersion.id, versionId)));
     },
     // shortcut: an approved or superseded rubric version cannot be deleted (rubric_version_frozen_check), so a purge of

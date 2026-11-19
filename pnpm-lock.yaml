@@ -135,6 +135,9 @@ importers:
       '@aivera/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@aivera/jobs':
+        specifier: workspace:*
+        version: link:../../modules/jobs
       '@aivera/notifications':
         specifier: workspace:*
         version: link:../../modules/notifications

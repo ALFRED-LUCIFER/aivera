@@ -78,6 +78,7 @@ describe('addJob (server action)', () => {
   it('saves the job and its rubric, synthetic from the workspace, never the form, and shows the saved state', async () => {
     await expect(submit({ ...job, hiringOwnerUserId: owner, synthetic: 'false' })).resolves.toMatchObject({
       saved: true,
+      rubricVersionId: 'v1',
       error: null,
     });
     expect(createJobWithDraftRubric).toHaveBeenCalledWith(expect.objectContaining({ role: 'recruiter' }), {

@@ -1,6 +1,6 @@
 import type { Rubric } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
-import { canSave, newCompetency, rubricView, weightsTotal } from './rubric.ts';
+import { approverView, canSave, newCompetency, reviewLink, reviewPath, rubricView, weightsTotal } from './rubric.ts';
 
 const HEAD = 'head-id';
 const at = new Date('2026-11-12T08:00:00.000Z');
@@ -61,7 +61,7 @@ describe('Rubric page view (AIV-P1-012)', () => {
 
   it('with none approved, shows the latest draft; with no versions, nothing', () => {
     expect(rubricView([version(1, 'draft')], new Map()).shown?.version).toBe(1);
-    expect(rubricView([], new Map())).toEqual({ shown: null, history: [], edit: null });
+    expect(rubricView([], new Map())).toEqual({ shown: null, history: [], edit: null, review: null });
   });
 
   it('edit mode opens the open version, so a second editor resumes it, or else the approved one (AIV-P1-013)', () => {
@@ -69,6 +69,49 @@ describe('Rubric page view (AIV-P1-012)', () => {
     expect(rubricView([approved], new Map()).edit?.base).toEqual({ versionId: 'v2', revision: 0 });
     const open = version(3, 'awaiting_approval', { id: 'v3', revision: 4 });
     expect(rubricView([open, approved], new Map()).edit?.base).toEqual({ versionId: 'v3', revision: 4 });
+  });
+
+  it('the version awaiting approval is what the approver reviews, with what changed since the approved one (AIV-P1-014)', () => {
+    const approved = version(2, 'approved', { id: 'v2', approvedBy: HEAD, approvedAt: at, successStatement: 'old' });
+    const awaiting = version(3, 'awaiting_approval', {
+      id: 'v3',
+      revision: 2,
+      changeNote: 'Arabic NLP changed to desirable.',
+    });
+    const view = rubricView([awaiting, approved], new Map());
+    expect(view.review).toMatchObject({ versionId: 'v3', revision: 2, version: 3, approvedVersion: 2 });
+    // The recruiter keeps reading the approved version; the approver reads the one they decide on.
+    expect(view.shown?.version).toBe(2);
+    expect(approverView(view, null).rubric.shown?.version).toBe(3);
+    expect(rubricView([version(3, 'draft'), approved], new Map()).review).toBeNull();
+  });
+
+  it('Scenario: Approving an outdated version is refused: an older link than the copy awaiting approval is outdated', () => {
+    const view = rubricView([version(3, 'awaiting_approval', { id: 'v3', revision: 2 })], new Map());
+    expect(approverView(view, { versionId: 'v3', revision: 2 }).outdatedLink).toBe(false);
+    expect(approverView(view, { versionId: 'v3', revision: 1 }).outdatedLink).toBe(true);
+    expect(approverView(view, { versionId: 'v2', revision: 2 }).outdatedLink).toBe(true);
+    expect(approverView(view, null).outdatedLink).toBe(false);
+  });
+
+  it('the approval link carries opaque ids only, and a malformed one is ignored', () => {
+    const versionId = '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+    const path = reviewPath('job', { versionId, revision: 3 });
+    expect(path).toBe(`/app/jobs/job/rubric?version=${versionId}&revision=3`);
+    expect(reviewLink(Object.fromEntries(new URL(path, 'https://aivera.example').searchParams))).toEqual({
+      versionId,
+      revision: 3,
+    });
+    expect(reviewLink({ version: 'x', revision: '1' })).toBeNull();
+    expect(reviewLink({})).toBeNull();
+  });
+
+  it("a returned version shows the hiring owner's note", () => {
+    const [entry] = rubricView(
+      [version(2, 'returned', { returnNote: 'Arabic NLP should be desirable' })],
+      new Map(),
+    ).history;
+    expect(entry?.returnNote).toBe('Arabic NLP should be desirable');
   });
 
   it('saving needs weights totalling 100, each 1 to 100, and every competency named', () => {

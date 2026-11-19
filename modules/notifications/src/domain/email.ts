@@ -46,10 +46,47 @@ export const memberInvitationData = z.strictObject({
 });
 export type MemberInvitationData = z.infer<typeof memberInvitationData>;
 
+/** A member's link into the app (a job's rubric page): opaque ids only. http only for a local or end-to-end origin. */
+const appLink = z.url({ protocol: /^https?$/ });
+const rubricVersion = { jobTitle: z.string().min(1), version: z.int().min(1), link: appLink };
+
+/** A rubric version sent for the hiring owner's approval (ERubric artboard, AIV-P1-014). Sent to a member. */
+export const rubricApprovalData = z.strictObject({
+  ...rubricVersion,
+  competencies: z
+    .array(
+      z.strictObject({
+        name: z.string().min(1),
+        weightPercent: z.int().min(1).max(100),
+        levelNeeded: z.int().min(1).max(5),
+      }),
+    )
+    .min(1),
+  /** What changed since the approved version it would replace; null when none is approved yet or nothing is noted. */
+  changes: z.strictObject({ since: z.int().min(1), note: z.string().min(1) }).nullable(),
+});
+export type RubricApprovalData = z.infer<typeof rubricApprovalData>;
+
+/** The hiring owner approved the version the recruiter sent (EApproved artboard, AIV-P1-014). */
+export const rubricApprovedData = z.strictObject({ ...rubricVersion, approvedAt: z.date() });
+export type RubricApprovedData = z.infer<typeof rubricApprovedData>;
+
+/** The hiring owner returned the version with a note (EReturned artboard, AIV-P1-014). */
+export const rubricReturnedData = z.strictObject({
+  ...rubricVersion,
+  note: z.string().min(1).max(1000),
+  /** Whether an earlier approved version stays in force. */
+  inForce: z.boolean(),
+});
+export type RubricReturnedData = z.infer<typeof rubricReturnedData>;
+
 /** Each template's data schema. A later ticket adds its template here and in infrastructure/templates. */
 export const TEMPLATES = {
   'evidence-request': evidenceRequestData,
   'member-invitation': memberInvitationData,
+  'rubric-approval': rubricApprovalData,
+  'rubric-approved': rubricApprovedData,
+  'rubric-returned': rubricReturnedData,
 } as const;
 export type TemplateName = keyof typeof TEMPLATES;
 export type TemplateData = { [T in TemplateName]: z.infer<(typeof TEMPLATES)[T]> };

@@ -6,6 +6,7 @@ import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';
 import { NewJobForm } from '@/features/job-new/components/NewJobForm.tsx';
 import { useCompetencyDraftController } from '@/features/job-new/hooks/useCompetencyDraftController.ts';
 import { useNewJobController } from '@/features/job-new/hooks/useNewJobController.ts';
+import { useSendRubricController } from '@/features/job-new/hooks/useSendRubricController.ts';
 
 type Props = Pick<
   ComponentProps<typeof NewJobForm>,
@@ -15,7 +16,8 @@ type Props = Pick<
 export function NewJob({ defaultJobType, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
   const { result, onDraft, onSaving, onUseStarters, rubric, ...draft } = useCompetencyDraftController();
-  if (job.state.saved) return <JobSaved />;
+  const send = useSendRubricController(job.state.rubricVersionId);
+  if (job.state.saved) return <JobSaved {...send} />;
   return (
     <NewJobForm
       {...props}

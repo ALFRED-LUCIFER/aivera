@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  approvesAs,
   assertTransition,
   assertValidCompetencies,
   assertValidPayBand,
@@ -11,6 +12,7 @@ import {
   RUBRIC_STATUSES,
   toPublicListing,
   validPublicDescriptor,
+  validReturnNote,
   type Competency,
   type Job,
 } from './job.ts';
@@ -181,7 +183,7 @@ describe('Versions', () => {
     expect(editsInPlace(null)).toBe(false);
   });
 
-  it('only a version awaiting approval can be approved, and only an approved one superseded', () => {
+  it('only a version awaiting approval can be approved or returned, and only an approved one superseded', () => {
     const allowed = RUBRIC_STATUSES.flatMap((from) =>
       RUBRIC_STATUSES.flatMap((to) => {
         try {
@@ -195,9 +197,31 @@ describe('Versions', () => {
     expect(allowed).toEqual([
       'draft->awaiting_approval',
       'awaiting_approval->approved',
+      'awaiting_approval->returned',
       'approved->superseded',
       'returned->awaiting_approval',
     ]);
+  });
+});
+
+describe('Scenario: Only the hiring owner approves (AIV-P1-014)', () => {
+  const job = { hiringOwnerUserId: 'owner' };
+
+  // SAFETY: mutation check: let any hiring owner approve (dropped the owner id comparison) -> this test failed
+  it("is the job's own hiring owner, or an admin acting as owner; no one else", () => {
+    expect(approvesAs('hiring_owner', 'owner', job)).toBe('owner');
+    expect(approvesAs('admin', 'someone', job)).toBe('admin_as_owner');
+    expect(approvesAs('hiring_owner', 'another-owner', job)).toBeNull();
+    expect(approvesAs('recruiter', 'someone', job)).toBeNull();
+    expect(approvesAs('interviewer', 'someone', { hiringOwnerUserId: null })).toBeNull();
+    // An owner moved to another role since no longer decides.
+    expect(approvesAs('interviewer', 'owner', job)).toBeNull();
+  });
+
+  it('a return needs a note of 1 to 1,000 characters', () => {
+    expect(validReturnNote('  Arabic NLP should be desirable ')).toBe('Arabic NLP should be desirable');
+    expect(() => validReturnNote('   ')).toThrow('Write a note');
+    expect(() => validReturnNote('x'.repeat(1001))).toThrow('Write a note');
   });
 });
 

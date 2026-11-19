@@ -2,6 +2,7 @@
 import type { AiClient } from '@aivera/ai';
 import type { AuditContract } from '@aivera/audit';
 import type { Db, Tx } from '@aivera/db/client';
+import { enqueue } from '@aivera/db/outbox';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
@@ -9,15 +10,17 @@ import { sql } from 'drizzle-orm';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
-import type {
-  CompetencyDrafting,
-  DomainDetecting,
-  JobCounts,
-  JobsContract,
-  PublicJobsContract,
+import {
+  RubricApprovedV1,
+  type CompetencyDrafting,
+  type DomainDetecting,
+  type JobCounts,
+  type JobsContract,
+  type PublicJobsContract,
 } from './contracts/index.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
+import { outbox } from './infrastructure/schema.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -34,6 +37,13 @@ export function createJobs(
     listClients: (ctx) => workspaces.listClients(ctx),
     setJobOwner: (ctx, input) => workspaces.setJobOwner(ctx, input),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
+    publishRubricApproved: (ctx, { occurredAt, ...payload }) =>
+      enqueue(ctx.tx, outbox, RubricApprovedV1, {
+        workspaceId: ctx.workspaceId,
+        payload,
+        dedupeKey: `rubric-approved:${payload.rubricVersionId}`,
+        occurredAt,
+      }),
     audit: (ctx, entry) =>
       audit.record({ tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } }, entry),
     newId: () => uuidv7(),

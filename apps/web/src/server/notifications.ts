@@ -1,6 +1,9 @@
-import type { NotificationsContract } from '@aivera/notifications';
+import type { NotificationsContract, Sender } from '@aivera/notifications';
 import { createNotifications } from '@aivera/notifications/composition';
+import type { WorkspaceContext } from '@aivera/workspaces';
+import { getIdentity } from './auth';
 import { env } from './env';
+import { getWorkspaces } from './workspace';
 
 let notifications: NotificationsContract | undefined;
 
@@ -15,4 +18,12 @@ export function getNotifications(): { notifications: NotificationsContract; orig
   const synthetic = APP_ENV !== 'pilot' && APP_ENV !== 'prod';
   notifications ??= createNotifications({ encryptionKey, origin, synthetic });
   return { notifications, origin };
+}
+
+/** The member an email is from: named in it, and its replies go to their work email. */
+export async function senderFor(ctx: WorkspaceContext): Promise<Sender> {
+  const [user, workspace] = [await getIdentity().getUser(ctx.userId), await getWorkspaces().getWorkspace(ctx)];
+  if (!user || !workspace) throw new Error('sender or workspace not found');
+  const name = user.displayName ?? user.email;
+  return { name, shortName: name.split(' ')[0] ?? name, email: user.email, workspace: workspace.name };
 }

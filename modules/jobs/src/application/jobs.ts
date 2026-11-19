@@ -1,7 +1,15 @@
 import type { NewEntry } from '@aivera/audit';
 import type { Tx } from '@aivera/db';
-import type { Action, Client, JobResource, SetJobOwnerInput, WorkspaceContext } from '@aivera/workspaces';
 import {
+  ForbiddenError,
+  type Action,
+  type Client,
+  type JobResource,
+  type SetJobOwnerInput,
+  type WorkspaceContext,
+} from '@aivera/workspaces';
+import {
+  approvesAs,
   assertTransition,
   assertValidCompetencies,
   assertValidPayBand,
@@ -12,12 +20,14 @@ import {
   rebalanceWeights,
   toPublicListing,
   validPublicDescriptor,
+  validReturnNote,
   type Competency,
   type DeskJob,
   type Job,
   type JobHeader,
   type PublicListing,
   type Rubric,
+  type RubricApproval,
   type RubricVersion,
 } from '../domain/job.ts';
 import { slugFor } from '../domain/public-job.ts';
@@ -62,8 +72,13 @@ export type JobStore = {
     workspaceId: string,
     versionId: string,
     status: RubricVersion['status'],
-    approval?: { by: string; at: Date },
+    change?: Partial<Pick<RubricVersion, 'approvedBy' | 'approvedAt' | 'submittedBy' | 'returnNote'>>,
   ): Promise<void>;
+  /** Per visible job: the version awaiting approval, and any version approved at or after `approvedSince`. */
+  rubricApprovals(
+    workspaceId: string,
+    approvedSince: Date,
+  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status'] })[]>;
   /** Deletes every job of the workspace and its rubrics and listings; false, deleting nothing, if any is not synthetic. */
   deleteSyntheticJobs(workspaceId: string): Promise<boolean>;
 };
@@ -81,6 +96,11 @@ export type Ports = {
   setJobOwner(ctx: WorkspaceContext, input: SetJobOwnerInput): Promise<void>;
   /** Whether the context's workspace is flagged synthetic (AGENTS.md 1.1). */
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
+  /**
+   * Writes `RubricApproved.v1` to the jobs outbox in `ctx.tx`, so it commits only with the approval; it is what starts
+   * assessment (AIV-P1-031). Nothing else publishes it.
+   */
+  publishRubricApproved(ctx: WorkspaceContext, event: RubricApprovedEvent): Promise<void>;
   /** The audit contract's `record` in `ctx.tx`; always the last write before commit (AGENTS.md 3.6). */
   audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
   newId(): string;
@@ -115,6 +135,17 @@ export type PublicJobRow = {
   postedAt: Date;
 };
 
+/** RubricApproved.v1's payload: opaque ids only (AGENTS.md 3.1). */
+export type RubricApprovedEvent = {
+  jobId: string;
+  rubricVersionId: string;
+  supersededVersionId: string | null;
+  occurredAt: Date;
+};
+
+/** How long an approval stays on the desk as done. shortcut: fixed at a week; desk queues (AIV-P2-017) replace it. */
+const DONE_ON_DESK_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** What the recruiter confirms in the publish preview. */
 export type PublishJobInput = { publicDescriptor: string };
 
@@ -126,6 +157,7 @@ export function jobsUseCases({
   listClients,
   setJobOwner,
   isSyntheticWorkspace,
+  publishRubricApproved,
   audit,
   newId,
   now,
@@ -163,6 +195,24 @@ export function jobsUseCases({
       listing: { ...listing, descriptor: publicDescriptor },
       postedAt,
     });
+  }
+
+  /**
+   * A version the context may approve or return, locked through its job row so decisions on one job run one after the
+   * other: `rubric.approve` (admins and granted hiring owners), then only the job's own hiring owner or an admin.
+   */
+  async function decidable(ctx: WorkspaceContext, versionId: string, to: 'approved' | 'returned', revision?: number) {
+    const store = storeFor(ctx.tx);
+    const found = await store.getVersion(ctx.workspaceId, versionId);
+    if (!found) throw new JobError('not_found');
+    const job = await visibleJob(ctx, found.jobId, 'rubric.approve', true);
+    const actingAs = approvesAs(ctx.role, ctx.userId, job);
+    if (!actingAs) throw new ForbiddenError();
+    const version = await store.getVersion(ctx.workspaceId, versionId);
+    if (!version) throw new JobError('not_found');
+    if (revision !== undefined && version.revision !== revision) throw new JobError('stale');
+    assertTransition(version.status, to);
+    return { job, version, actingAs };
   }
 
   /** Validates and inserts a new job at stage "defining rubric"; the caller has authorised `job.create` and audits. */
@@ -245,6 +295,8 @@ export function jobsUseCases({
         createdAt: job.createdAt,
         approvedBy: null,
         approvedAt: null,
+        submittedBy: null,
+        returnNote: null,
         revision: 0,
       };
       await storeFor(ctx.tx).insertVersion(rubricVersion, competencies);
@@ -395,6 +447,8 @@ export function jobsUseCases({
         createdAt: now(),
         approvedBy: null,
         approvedAt: null,
+        submittedBy: null,
+        returnNote: null,
         revision: 0,
       };
       await store.insertVersion(version, input.competencies);
@@ -403,9 +457,14 @@ export function jobsUseCases({
 
     /**
      * Sends a draft for the hiring owner's approval (AIV-P1-013). The approved version stays in force, so assessment
-     * and ranking do not change until this one is approved. Audited.
+     * and ranking do not change until this one is approved. Records who sent it, whom the decision is reported to
+     * (AIV-P1-014), and clears a previous return note. Audited.
      */
-    async submitRubric(ctx: WorkspaceContext, versionId: string): Promise<void> {
+    async submitRubric(
+      ctx: WorkspaceContext,
+      versionId: string,
+      alongside?: (sent: RubricVersion) => Promise<void>,
+    ): Promise<RubricVersion> {
       const store = storeFor(ctx.tx);
       const found = await store.getVersion(ctx.workspaceId, versionId);
       if (!found) throw new JobError('not_found');
@@ -413,39 +472,95 @@ export function jobsUseCases({
       const version = await store.getVersion(ctx.workspaceId, versionId);
       if (!version) throw new JobError('not_found');
       assertTransition(version.status, 'awaiting_approval');
-      await store.setStatus(ctx.workspaceId, versionId, 'awaiting_approval');
+      await store.setStatus(ctx.workspaceId, versionId, 'awaiting_approval', {
+        submittedBy: ctx.userId,
+        returnNote: null,
+      });
+      const sent: RubricVersion = {
+        ...version,
+        status: 'awaiting_approval',
+        submittedBy: ctx.userId,
+        returnNote: null,
+      };
+      await alongside?.(sent);
       await audit(ctx, {
         action: 'rubric.submitted',
         subject: { type: 'rubric_version', id: versionId },
         before: { status: version.status },
         after: { status: 'awaiting_approval', jobId: version.jobId, version: version.version },
       });
+      return sent;
     },
 
-    /** The hiring owner approves a version awaiting approval; the previously approved version becomes superseded. */
-    async approveRubric(ctx: WorkspaceContext, versionId: string): Promise<void> {
+    /**
+     * The job's hiring owner, or an admin acting as owner (recorded as such), approves the version awaiting approval
+     * (AIV-P1-014). The previously approved version becomes superseded and RubricApproved.v1 is written to the outbox,
+     * which starts assessment, in this transaction. `revision` is the copy the approver read; an older copy throws
+     * `JobError('stale')`.
+     */
+    async approveRubric(
+      ctx: WorkspaceContext,
+      versionId: string,
+      revision?: number,
+      alongside?: () => Promise<void>,
+    ): Promise<void> {
+      const { job, version, actingAs } = await decidable(ctx, versionId, 'approved', revision);
       const store = storeFor(ctx.tx);
-      const found = await store.getVersion(ctx.workspaceId, versionId);
-      if (!found) throw new JobError('not_found');
-      // Locks the job row, so two approvals of one job run one after the other.
-      const job = await visibleJob(ctx, found.jobId, 'rubric.approve', true);
-      const version = await store.getVersion(ctx.workspaceId, versionId);
-      if (!version) throw new JobError('not_found');
-      assertTransition(version.status, 'approved');
       const previous = await store.approvedVersion(ctx.workspaceId, job.id);
       // Superseded first: the partial unique index allows one approved version per job at any moment.
       if (previous) await store.setStatus(ctx.workspaceId, previous.id, 'superseded');
-      await store.setStatus(ctx.workspaceId, versionId, 'approved', { by: ctx.userId, at: now() });
+      const at = now();
+      await store.setStatus(ctx.workspaceId, versionId, 'approved', { approvedBy: ctx.userId, approvedAt: at });
       // A published job's listing follows the approved version at once; a draft never reaches it.
       if (job.published && job.publicDescriptor && job.publishedAt)
         await writePublicJob(ctx, job, versionId, job.publicDescriptor, job.publishedAt);
-      // shortcut: RubricApproved.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
+      await publishRubricApproved(ctx, {
+        jobId: job.id,
+        rubricVersionId: versionId,
+        supersededVersionId: previous?.id ?? null,
+        occurredAt: at,
+      });
+      await alongside?.();
       await audit(ctx, {
         action: 'rubric.approved',
         subject: { type: 'rubric_version', id: versionId },
         before: { status: version.status, approvedVersionId: previous?.id ?? null },
-        after: { status: 'approved', jobId: job.id, version: version.version },
+        after: { status: 'approved', jobId: job.id, version: version.version, actingAs },
       });
+    },
+
+    /**
+     * The job's hiring owner, or an admin acting as owner, returns the version awaiting approval with a note
+     * (AIV-P1-014). The approved version stays in force. `revision` as `approveRubric`. Audited with the note.
+     */
+    async returnRubric(
+      ctx: WorkspaceContext,
+      versionId: string,
+      note: string,
+      revision?: number,
+      alongside?: () => Promise<void>,
+    ): Promise<void> {
+      // Authorised first: a refused caller gets 403, never a note error.
+      const { job, version, actingAs } = await decidable(ctx, versionId, 'returned', revision);
+      const returnNote = validReturnNote(note);
+      await storeFor(ctx.tx).setStatus(ctx.workspaceId, versionId, 'returned', { returnNote });
+      await alongside?.();
+      await audit(ctx, {
+        action: 'rubric.returned',
+        subject: { type: 'rubric_version', id: versionId },
+        before: { status: version.status },
+        after: { status: 'returned', jobId: job.id, version: version.version, note: returnNote, actingAs },
+      });
+    },
+
+    /** The recruiter's desk (AIV-P1-014): versions awaiting their hiring owner, and those approved in the past week. */
+    async listRubricApprovals(ctx: WorkspaceContext): Promise<RubricApproval[]> {
+      await authorize(ctx, 'job.list');
+      const since = new Date(now().getTime() - DONE_ON_DESK_MS);
+      const rows = await storeFor(ctx.tx).rubricApprovals(ctx.workspaceId, since);
+      return rows.flatMap(({ status, ...row }) =>
+        status === 'awaiting_approval' || status === 'approved' ? [{ ...row, status }] : [],
+      );
     },
 
     /**

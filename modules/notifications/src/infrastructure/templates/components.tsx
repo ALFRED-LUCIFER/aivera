@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 // The email components of the "Email: shared layout", "Email: components" and "Email style sheet" artboards
 // (docs/01-design/artboards/ELayout, EComponents, EStyle): nested tables, 600 px at most, inline light colours with
 // the dark ones in a prefers-color-scheme block, logical alignment from `dir`. Only the components a template uses
-// are built; StatusLine, TextLink, QuotedNote, ChangeList, DetailTable and CompetencyTable come with their templates.
+// are built; TextLink and DetailTable come with their templates.
 
 // The EStyle colour tokens. Mail clients need literal values, and modules may not import @aivera/tokens (AGENTS.md
 // 9.4), so they are written here; each equals its Case file token (packages/tokens/src/tokens.json).
@@ -21,6 +21,8 @@ export const color = {
     onButton: '#FFFFFF',
     highlight: '#FFE873',
     onHighlight: '#1B1720',
+    ok: '#1F6B3A',
+    warn: '#9A3412',
   },
   dark: {
     bg: '#141118',
@@ -34,6 +36,8 @@ export const color = {
     onButton: '#1B1720',
     highlight: '#4D4208',
     onHighlight: '#FFF3B0',
+    ok: '#8FE0A8',
+    warn: '#FDBA8C',
   },
 };
 const c = color.light;
@@ -56,6 +60,10 @@ const css = `
 .e-button a{color:${color.dark.onButton}!important}
 .e-hl{background-color:${color.dark.highlight}!important;color:${color.dark.onHighlight}!important}
 .e-logo{border-color:${color.dark.logoBorder}!important}
+.e-ok{color:${color.dark.ok}!important}
+.e-ok svg{stroke:${color.dark.ok}!important}
+.e-warn{color:${color.dark.warn}!important}
+.e-warn svg{stroke:${color.dark.warn}!important}
 }
 @media (max-width:480px){
 .e-outer{padding:12px!important}
@@ -218,6 +226,209 @@ export function CopyLink({ dir, label, href }: { dir: Direction; label: string; 
         >
           {href}
         </span>
+      </td>
+    </tr>
+  );
+}
+
+const icon = (stroke: string, children: ReactNode, size = 18) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{ verticalAlign: '-3px' }}
+  >
+    {children}
+  </svg>
+);
+
+const STATUS = {
+  approved: { colour: c.ok, className: 'e-ok', path: <path d="m5 12.5 4.5 4.5L19 7.5" /> },
+  returned: {
+    colour: c.warn,
+    className: 'e-warn',
+    path: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7.5V12l3 2" />
+      </>
+    ),
+  },
+};
+
+/** "✓ Approved  Version 2": a status always travels with its icon and its word, never colour alone (DESIGN.md). */
+export function StatusLine({
+  dir,
+  status,
+  label,
+  detail,
+}: {
+  dir: Direction;
+  status: keyof typeof STATUS;
+  label: string;
+  detail: string;
+}) {
+  const { colour, className, path } = STATUS[status];
+  return (
+    <Block dir={dir}>
+      <span className={className} style={{ color: colour, fontWeight: 700 }}>
+        {icon(colour, path)} {label}
+      </span>
+      <span className="e-muted" style={{ color: c.textMuted }}>
+        {'  '}
+        {detail}
+      </span>
+    </Block>
+  );
+}
+
+const cell = (dir: Direction, end: boolean) => ({
+  padding: '10px 0',
+  borderTop: `1px solid ${c.border}`,
+  fontFamily: font,
+  fontSize: '16px',
+  lineHeight: '22px',
+  color: c.text,
+  textAlign: end ? (dir === 'rtl' ? 'left' : 'right') : startOf(dir),
+  whiteSpace: end ? ('nowrap' as const) : ('normal' as const),
+  paddingInlineStart: end ? '12px' : '0px',
+});
+
+/** The competencies of a rubric version: name, then weight and level aligned to the end (ERubric artboard). */
+export function CompetencyTable({
+  dir,
+  headers,
+  rows,
+}: {
+  dir: Direction;
+  headers: [string, string, string];
+  rows: [string, string, string][];
+}) {
+  const head = (end: boolean) => ({
+    padding: '0 0 8px',
+    fontFamily: font,
+    fontSize: '14px',
+    lineHeight: '20px',
+    color: c.textMuted,
+    textAlign: end ? (dir === 'rtl' ? 'left' : 'right') : startOf(dir),
+    fontWeight: 700,
+  });
+  return (
+    <tr>
+      <td className="e-pad" style={{ padding: '0 32px 16px' }}>
+        <table
+          width="100%"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          className="e-rule"
+          style={{ borderBottom: `1px solid ${c.border}` }}
+        >
+          <thead>
+            <tr>
+              {headers.map((h, i) => (
+                <th key={h} scope="col" className="e-muted" style={head(i > 0)}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row[0]}>
+                {row.map((value, i) => (
+                  <td key={i} className="e-text e-rule" style={cell(dir, i > 0)}>
+                    {value}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  );
+}
+
+/** What changed between versions, one row each with its word ("Changed") and arrow (ERubric, ENewer artboards). */
+export function ChangeList({ dir, label, items }: { dir: Direction; label: string; items: string[] }) {
+  return (
+    <tr>
+      <td className="e-pad" style={{ padding: '0 32px 16px' }}>
+        <table
+          role="presentation"
+          width="100%"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          className="e-rule"
+          style={{ borderBottom: `1px solid ${c.border}` }}
+        >
+          <tbody>
+            {items.map((item) => (
+              <tr key={item}>
+                <td
+                  className="e-text e-rule"
+                  style={{ padding: '12px 0', borderTop: `1px solid ${c.border}`, ...body(dir) }}
+                >
+                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {icon(c.text, <path d="M5 12h14M13 6l6 6-6 6" />, 16)} {label}
+                  </span>
+                  {'  '}
+                  {item}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  );
+}
+
+/** A person's own words, quoted under who wrote them (EReturned artboard). */
+export function QuotedNote({ dir, label, note }: { dir: Direction; label: string; note: string }) {
+  return (
+    <tr>
+      <td className="e-pad" style={{ padding: '0 32px 16px' }}>
+        <table role="presentation" width="100%" cellPadding={0} cellSpacing={0} border={0}>
+          <tbody>
+            <tr>
+              <td
+                className="e-rule"
+                style={{
+                  padding: '16px',
+                  border: `1px solid ${c.border}`,
+                  borderRadius: '8px',
+                  fontFamily: font,
+                  textAlign: startOf(dir),
+                }}
+              >
+                <div
+                  className="e-muted"
+                  style={{
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    fontWeight: 700,
+                    color: c.textMuted,
+                    paddingBottom: '6px',
+                  }}
+                >
+                  {label}
+                </div>
+                <div className="e-text" style={{ fontSize: '16px', lineHeight: '24px', color: c.text }}>
+                  {note}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </td>
     </tr>
   );

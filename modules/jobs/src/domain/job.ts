@@ -72,6 +72,10 @@ export type RubricVersion = {
   createdAt: Date;
   approvedBy: string | null;
   approvedAt: Date | null;
+  /** Who last sent it for approval (AIV-P1-014); the approval or return is reported to them. */
+  submittedBy: string | null;
+  /** The hiring owner's note when they returned it; cleared when it is sent again. */
+  returnNote: string | null;
   /** Bumped on every save of a version not yet approved; a save from an older copy is refused (AIV-P1-013). */
   revision: number;
 };
@@ -93,6 +97,7 @@ const MESSAGES = {
   not_found: 'That job or rubric version was not found.',
   version_status: 'This rubric version cannot move to that status.',
   stale: 'This rubric changed since you opened it. Reload to see the latest.',
+  return_note: 'Write a note of up to 1,000 characters saying what to change.',
   rubric_not_approved: 'Publish after the rubric is approved.',
   not_synthetic: 'Only a synthetic workspace holding only synthetic jobs can be purged.',
   public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
@@ -199,17 +204,44 @@ export function describeChanges(before: readonly Competency[], after: readonly C
   return all.length > 0 ? `${all.join('; ')}.` : null;
 }
 
-// shortcut: only submit and approve; returning a version and its notifications come with AIV-P1-014.
 const TRANSITIONS: Partial<Record<RubricStatus, RubricStatus[]>> = {
   draft: ['awaiting_approval'],
   returned: ['awaiting_approval'],
-  awaiting_approval: ['approved'],
+  awaiting_approval: ['approved', 'returned'],
   approved: ['superseded'],
 };
 
 export function assertTransition(from: RubricStatus, to: RubricStatus): void {
   if (!TRANSITIONS[from]?.includes(to)) throw new JobError('version_status');
 }
+
+/** The longest note a hiring owner returns a version with; rubric_version_return_note_check repeats it. */
+export const RETURN_NOTE_MAX = 1000;
+
+/** Throws unless the note is 1 to 1,000 characters after trimming; returns it trimmed. */
+export function validReturnNote(value: string): string {
+  const note = value.trim();
+  if (!note || note.length > RETURN_NOTE_MAX) throw new JobError('return_note');
+  return note;
+}
+
+/**
+ * Who may approve or return a job's rubric (AIV-P1-014): the job's own hiring owner, or an admin, who acts as the owner
+ * and is recorded as such. A hiring owner granted the job through its client, but not its owner, may not. The role and
+ * job grant are checked by `rubric.approve` first; this narrows hiring owners to the one named on the job.
+ */
+export const approvesAs = (
+  role: string,
+  userId: string,
+  job: Pick<Job, 'hiringOwnerUserId'>,
+): 'owner' | 'admin_as_owner' | null =>
+  role === 'admin'
+    ? job.hiringOwnerUserId === userId
+      ? 'owner'
+      : 'admin_as_owner'
+    : role === 'hiring_owner' && job.hiringOwnerUserId === userId
+      ? 'owner'
+      : null;
 
 /** The longest public descriptor ("A BNPL fintech", "A retail bank"); job_publication_check repeats it. */
 export const PUBLIC_DESCRIPTOR_MAX = 80;
@@ -252,6 +284,20 @@ export function validPublicDescriptor(value: string): string {
   if (!descriptor || descriptor.length > PUBLIC_DESCRIPTOR_MAX) throw new JobError('public_descriptor');
   return descriptor;
 }
+
+/**
+ * A rubric approval on the recruiter's desk (AIV-P1-014): waiting while the version awaits its hiring owner, done once
+ * approved.
+ */
+export type RubricApproval = {
+  jobId: string;
+  title: string;
+  hiringOwnerUserId: string | null;
+  versionId: string;
+  version: number;
+  status: Extract<RubricStatus, 'awaiting_approval' | 'approved'>;
+  approvedAt: Date | null;
+};
 
 /** A job's rubric as the Jobs list shows it: whether a version is in force, and the latest version's status. */
 export type RubricState = { approved: boolean; latest: RubricStatus | null };

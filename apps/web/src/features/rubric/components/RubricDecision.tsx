@@ -1,0 +1,103 @@
+'use client';
+
+import { useTranslations } from '@aivera/i18n/react';
+import { RETURN_NOTE_MAX } from '@aivera/jobs';
+import { Button, Card, Label, SuccessBanner, Textarea } from '@aivera/ui';
+import { useId } from 'react';
+import type { ReviewView, RubricDecisionView } from '../domain/rubric.ts';
+
+type Props = {
+  review: ReviewView | null;
+  decision: RubricDecisionView;
+  /** The approval email pointed to an older copy than the one awaiting approval now. */
+  outdatedLink: boolean;
+  /** An admin who is not the job's hiring owner decides on the owner's behalf, and it is recorded so. */
+  actingAsAdmin: boolean;
+};
+
+/**
+ * The hiring owner's approval panel on the rubric page (AIV-P1-014): what changed, "Approve version N" and "Return with
+ * a note". No artboard draws it; it follows the Rubric artboard's publish panel and the ERubric and ENewer emails' words.
+ */
+export function RubricDecision({ review, decision, outdatedLink, actingAsAdmin }: Props) {
+  const t = useTranslations('rubric.decide');
+  const noteId = useId();
+  const { status } = decision;
+  const done = status === 'approved' || status === 'returned' ? status : null;
+  const problem = status === 'stale' || status === 'failed' ? status : null;
+
+  return (
+    <Card title={review ? t('title', { version: review.version }) : t('doneTitle')} level={2}>
+      <div className="flex flex-col gap-3">
+        {/* Mounted empty with the panel, so the message after a decision is announced (SuccessBanner). */}
+        <SuccessBanner>
+          {done &&
+            decision.decided !== null &&
+            t(done, { version: decision.decided.version, inForce: decision.decided.inForce ? 'yes' : 'no' })}
+        </SuccessBanner>
+        {review && (
+          <>
+            {outdatedLink && (
+              <div className="rounded-control border border-border bg-surface-subtle px-3 py-2">
+                <p className="font-semibold">{t('newer')}</p>
+                <p className="text-meta text-text-2">{t('newerBody', { version: review.version })}</p>
+              </div>
+            )}
+            <p className="text-text-2">{t('intro')}</p>
+            {review.changeNote && (
+              <div className="flex flex-col gap-1">
+                <h3 className="text-card">
+                  {review.approvedVersion === null
+                    ? t('changedNone')
+                    : t('changed', { version: review.approvedVersion })}
+                </h3>
+                <p className="text-meta text-text-2">{review.changeNote}</p>
+              </div>
+            )}
+            {actingAsAdmin && <p className="text-meta text-text-2">{t('actingAsAdmin')}</p>}
+            {decision.returning ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={noteId} className="text-card">
+                  {t('noteLabel')}
+                </Label>
+                <Textarea
+                  id={noteId}
+                  value={decision.note}
+                  maxLength={RETURN_NOTE_MAX}
+                  onChange={(e) => decision.onNote(e.target.value)}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="primary"
+                    disabled={decision.pending || !decision.note.trim()}
+                    onClick={decision.onReturn}
+                  >
+                    {t('confirmReturn', { version: review.version })}
+                  </Button>
+                  <Button variant="ghost" disabled={decision.pending} onClick={decision.onCancelReturn}>
+                    {t('cancel')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" disabled={decision.pending} onClick={decision.onApprove}>
+                  {t('approve', { version: review.version })}
+                </Button>
+                <Button disabled={decision.pending} onClick={decision.onStartReturn}>
+                  {t('return')}
+                </Button>
+              </div>
+            )}
+            <p className="text-meta text-text-2">{t('footer')}</p>
+          </>
+        )}
+        {problem && (
+          <p role="alert" className="rounded-control border border-err-border bg-err-bg p-3 text-err-text">
+            {t(problem)}
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
