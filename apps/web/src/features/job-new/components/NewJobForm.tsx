@@ -38,15 +38,17 @@ type Option = { value: string; label: string };
 
 type NewJobFormProps = {
   state: NewJobState;
-  /** Saves the job (step 1 only; the rubric is saved with it from AIV-P1-010). */
+  /** "Save job and rubric": saves the job with rubric version 1 as a draft (AIV-P1-010). */
   action: (form: FormData) => void;
   pending: boolean;
   /** The required fields to fix, from the last save or draft. */
   errors: NewJobState['errors'];
   /** "Draft competencies" reads the form without posting it, so nothing is saved. */
   onDraft: (form: HTMLFormElement) => void;
-  /** Save job was submitted: the errors shown are now the save's. */
-  onSaving: () => void;
+  /** Save was chosen: false blocks it (a competency to fix). The errors shown are now the save's. */
+  onSaving: () => boolean;
+  /** The kept competencies, posted with the job as `rubric`. */
+  rubric: string;
   drafting: boolean;
   /** Once competencies are drafted, saving is the step's primary action. */
   drafted: boolean;
@@ -102,9 +104,12 @@ export function NewJobForm(props: NewJobFormProps) {
         id={id('form')}
         key={JSON.stringify(state)}
         action={props.action}
-        // Draft is the form's first submit button, so Enter in a field drafts; only Save job posts the action.
+        // Draft is the form's first submit button, so Enter in a field drafts; only Save posts the action.
         onSubmit={(e) => {
-          if ((e.nativeEvent as SubmitEvent).submitter?.id === id('save')) return props.onSaving();
+          if ((e.nativeEvent as SubmitEvent).submitter?.id === id('save')) {
+            if (!props.onSaving()) e.preventDefault();
+            return;
+          }
           e.preventDefault();
           props.onDraft(e.currentTarget);
         }}
@@ -112,6 +117,7 @@ export function NewJobForm(props: NewJobFormProps) {
         noValidate
         className="flex max-w-2xl flex-col gap-3"
       >
+        <input type="hidden" name="rubric" value={props.rubric} />
         <Label htmlFor={id('type')}>{labels.jobType}</Label>
         <Select
           id={id('type')}

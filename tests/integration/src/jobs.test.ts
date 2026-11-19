@@ -720,3 +720,140 @@ describe('The Jobs list (AIV-P1-006)', () => {
     expect((await desk(ALEX, gulf)).map((j) => j.id)).toEqual([j0, j1, j2]);
   });
 });
+
+// The Senior AI Engineer draft as kept: "Product judgement" removed, a competency of the recruiter's own added.
+const draft = (overrides: Partial<Competency>[] = []): Competency[] =>
+  [
+    {
+      name: 'LLM systems in production',
+      weightPercent: 25,
+      levelNeeded: 4,
+      type: 'mandatory',
+      origin: 'from_description',
+    },
+    {
+      name: 'Retrieval and evaluation',
+      weightPercent: 20,
+      levelNeeded: 4,
+      type: 'mandatory',
+      origin: 'from_description',
+    },
+    {
+      name: 'Python service engineering',
+      weightPercent: 15,
+      levelNeeded: 3,
+      type: 'mandatory',
+      origin: 'from_description',
+    },
+    {
+      name: 'Cost and reliability',
+      weightPercent: 15,
+      levelNeeded: 2,
+      type: 'desirable',
+      origin: 'from_description',
+    },
+    {
+      name: 'Arabic and bilingual NLP',
+      weightPercent: 10,
+      levelNeeded: 2,
+      type: 'desirable',
+      origin: 'suggested_by_aivera',
+    },
+    {
+      name: 'Assistant operations',
+      weightPercent: 10,
+      levelNeeded: 3,
+      type: 'desirable',
+      origin: 'added_by_recruiter',
+    },
+  ].map((c, i) => ({ evidenceExpected: 'A repository or a document', ...c, ...overrides[i] }) as Competency);
+
+describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', () => {
+  let w: string;
+  const stored = (versionId: string) =>
+    rows<{ name: string; weight: number; level: number; type: string; origin: string }>(
+      ALEX,
+      w,
+      sql`select name, weight_percent as weight, level_needed as level, type, origin from jobs.competency
+          where rubric_version_id = ${versionId} order by position`,
+    );
+  const jobCount = async () =>
+    (await rows<{ n: number }>(ALEX, w, sql`select count(*)::int as n from jobs.job`))[0]?.n ?? -1;
+
+  beforeAll(async () => {
+    w = await newWorkspace('Rubric v1 Studio');
+    await addMember(w, RANA, 'recruiter');
+    await addMember(w, HEAD, 'hiring_owner');
+  });
+
+  it('Scenario: Weights rebalance when a suggestion was removed: job, version 1 draft, competencies and audit together', async () => {
+    // "Product judgement" (15%) removed: the kept weights total 95, as the recruiter left them; level and type edited.
+    const kept = draft([{}, {}, {}, { levelNeeded: 3, type: 'mandatory' }]);
+    const { job: saved, rubricVersion } = await as(RANA, w, (ctx) =>
+      jobs.createJobWithDraftRubric(ctx, {
+        ...job('Senior AI Engineer', { jobType: 'ai_llm_engineering' }),
+        competencies: kept,
+      }),
+    );
+    expect(rubricVersion).toMatchObject({ jobId: saved.id, version: 1, status: 'draft', createdBy: RANA });
+    const list = await stored(rubricVersion.id);
+    expect(list.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
+    expect(list.map((c) => c.weight)).toEqual([29, 21, 15, 15, 10, 10]);
+    // Scenario: Edit a level and type.
+    expect(list[3]).toMatchObject({ name: 'Cost and reliability', level: 3, type: 'mandatory' });
+    // Scenario: Kept suggestions are marked (AIV-P1-009), and a recruiter's own competency says so.
+    expect(list.map((c) => c.origin)).toEqual([
+      'from_description',
+      'from_description',
+      'from_description',
+      'from_description',
+      'suggested_by_aivera',
+      'added_by_recruiter',
+    ]);
+    const entries = await audit.listFor(w, { type: 'job', id: saved.id });
+    expect(entries).toMatchObject([
+      { action: 'job.created', actor: { type: 'user', id: RANA }, after: { rubricVersionId: rubricVersion.id } },
+    ]);
+    // Scenario: Nothing is assessed from a draft: assessment reads only an approved version.
+    expect(await as(RANA, w, (ctx) => jobs.getApprovedRubric(ctx, saved.id))).toBeNull();
+    expect((await desk(RANA, w)).find((j) => j.id === saved.id)).toMatchObject({
+      rubric: { approved: false, latest: 'draft' },
+      assessed: 0,
+    });
+  });
+
+  it('Scenario: Validation: no name or a level outside 1 to 5 stores nothing', async () => {
+    const before = await jobCount();
+    for (const [bad, code] of [
+      [{ name: '  ' }, 'competency_name'],
+      [{ levelNeeded: 6 }, 'level'],
+      [{ levelNeeded: 0 }, 'level'],
+    ] as const)
+      await expect(
+        as(RANA, w, (ctx) =>
+          jobs.createJobWithDraftRubric(ctx, { ...job('Refused Engineer'), competencies: draft([bad]) }),
+        ),
+      ).rejects.toThrow(new JobError(code));
+    expect(await jobCount()).toBe(before);
+  });
+
+  // SAFETY: mutation check: insertVersion wrapped in a savepoint (ctx.tx.transaction) whose error was swallowed -> this test failed (the job stayed)
+  it('Scenario: Save fails: a competency the database refuses leaves no job behind', async () => {
+    const before = await jobCount();
+    const refused = draft([{ origin: 'domain_pack' as Competency['origin'] }]);
+    expect(
+      await pgError(
+        as(RANA, w, (ctx) =>
+          jobs.createJobWithDraftRubric(ctx, { ...job('Half Saved Engineer'), competencies: refused }),
+        ),
+      ),
+    ).toEqual({ code: '23514', constraint: 'competency_origin_check' });
+    expect(await jobCount()).toBe(before);
+  });
+
+  it('a hiring owner cannot save a job with a rubric', async () => {
+    await expect(
+      as(HEAD, w, (ctx) => jobs.createJobWithDraftRubric(ctx, { ...job('Data Engineer'), competencies: draft() })),
+    ).rejects.toThrow(ForbiddenError);
+  });
+});

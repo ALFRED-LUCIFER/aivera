@@ -2,6 +2,7 @@
 
 import type { ComponentProps } from 'react';
 import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
+import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';
 import { NewJobForm } from '@/features/job-new/components/NewJobForm.tsx';
 import { useCompetencyDraftController } from '@/features/job-new/hooks/useCompetencyDraftController.ts';
 import { useNewJobController } from '@/features/job-new/hooks/useNewJobController.ts';
@@ -13,7 +14,8 @@ type Props = Pick<
 
 export function NewJob({ defaultJobType, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
-  const { result, onDraft, onSaving, onUseStarters, ...draft } = useCompetencyDraftController();
+  const { result, onDraft, onSaving, onUseStarters, rubric, ...draft } = useCompetencyDraftController();
+  if (job.state.saved) return <JobSaved />;
   return (
     <NewJobForm
       {...props}
@@ -21,6 +23,7 @@ export function NewJob({ defaultJobType, ...props }: Props) {
       errors={result.status === 'invalid' ? result.errors : job.state.errors}
       onDraft={onDraft}
       onSaving={onSaving}
+      rubric={rubric}
       drafting={draft.drafting}
       drafted={draft.rows.length > 0}
       draftSection={

@@ -1,6 +1,13 @@
 import { useTranslations } from '@aivera/i18n/react';
 import { Button, Chip, DataTable, EvidenceHighlight, Input, Select, Textarea, type DataTableColumn } from '@aivera/ui';
-import { weightsTotal, type DraftCompetency, type DraftResult, type DraftRow } from '../domain/draft.ts';
+import {
+  RUBRIC_MAX,
+  weightsTotal,
+  type DraftCompetency,
+  type DraftResult,
+  type DraftRow,
+  type RowErrors,
+} from '../domain/draft.ts';
 
 type RowHandlers = {
   onEdit: (id: string) => void;
@@ -21,11 +28,15 @@ type CompetencyDraftProps = RowHandlers & {
   title: string;
   /** The chosen job type's "Evidence that counts" line, translated; null before a job type is chosen. */
   evidence: string | null;
+  /** Fields to fix in kept rows, once a save was tried (AIV-P1-010). */
+  errors: RowErrors;
+  /** A save was tried with no competency kept. */
+  emptyRubric: boolean;
   onAdd: () => void;
   onUseStarters: () => void;
 };
 
-type Row = DraftRow & { editing: boolean; on: RowHandlers };
+type Row = DraftRow & { editing: boolean; on: RowHandlers; error: RowErrors[string] | undefined };
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
 // Stable, so it runs once when the field mounts (Edit or Add competency), not on every render.
@@ -54,7 +65,8 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
     onRemove: props.onRemove,
     onRestore: props.onRestore,
   };
-  const toRows = (list: DraftRow[]) => list.map((row) => ({ ...row, editing: row.id === props.editingId, on }));
+  const toRows = (list: DraftRow[]) =>
+    list.map((row) => ({ ...row, editing: row.id === props.editingId, on, error: props.errors[row.id] }));
   const suggested = rows.filter((row) => row.origin === 'suggested_by_aivera');
   const own = rows.filter((row) => row.origin !== 'suggested_by_aivera');
   const kept = (origin: DraftRow['origin']) => rows.filter((row) => row.origin === origin && !row.removed).length;
@@ -131,9 +143,14 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       )}
       {result.status !== 'idle' && result.status !== 'invalid' && (
         <div className="flex flex-wrap gap-2">
-          <Button onClick={props.onAdd}>{t('add')}</Button>
+          {rows.filter((row) => !row.removed).length < RUBRIC_MAX && <Button onClick={props.onAdd}>{t('add')}</Button>}
           {rows.every((row) => row.removed) && <Button onClick={props.onUseStarters}>{t('useStarters')}</Button>}
         </div>
+      )}
+      {props.emptyRubric && (
+        <p role="alert" className="text-meta font-semibold text-err-text">
+          {t('emptyRubric')}
+        </p>
       )}
       {rows.length > 0 && <p className="text-meta text-text-2">{t('notSaved')}</p>}
     </section>
@@ -145,19 +162,32 @@ function useFieldLabel(row: Row) {
   return (label: string) => ({ 'aria-label': `${label}, ${row.name || t('newCompetency')}` });
 }
 
+/** A kept row's field to fix before saving (AIV-P1-010), shown in edit and view mode. */
+function FieldError({ id, children }: { id: string; children: string }) {
+  return (
+    <p id={id} className="text-meta font-semibold text-err-text">
+      {children}
+    </p>
+  );
+}
+
 function CompetencyCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
   const label = useFieldLabel(row);
+  const nameError = row.error?.name && <FieldError id={`${row.id}-name-error`}>{t('nameRequired')}</FieldError>;
   if (row.editing)
     return (
       <div className="flex min-w-60 flex-col gap-2">
         <Input
           {...label(t('fields.name'))}
-          ref={focusOnMount}
+          ref={row.error?.weight && !row.error.name ? undefined : focusOnMount}
           value={row.name}
           maxLength={120}
+          aria-invalid={row.error?.name}
+          aria-describedby={row.error?.name ? `${row.id}-name-error` : undefined}
           onChange={(e) => row.on.onChange(row.id, { name: e.target.value })}
         />
+        {nameError}
         <Textarea
           {...label(t('fields.evidence'))}
           rows={2}
@@ -172,6 +202,7 @@ function CompetencyCell({ row }: { row: Row }) {
     <div className="flex max-w-xl flex-col items-start gap-1">
       {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
+      {nameError}
       {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}
       {row.evidenceExpected && (
         <span className="text-meta text-text-2">
@@ -198,18 +229,32 @@ function WeightCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
   const label = useFieldLabel(row);
   if (row.removed) return null;
-  if (!row.editing) return t('weight', { weight: row.weightPercent });
+  const error = row.error?.weight && <FieldError id={`${row.id}-weight-error`}>{t('weightRange')}</FieldError>;
+  if (!row.editing)
+    return (
+      <>
+        {t('weight', { weight: row.weightPercent })}
+        {error}
+      </>
+    );
   return (
-    <Input
-      {...label(t('fields.weight'))}
-      type="number"
-      inputMode="numeric"
-      min={1}
-      max={100}
-      className="w-20"
-      value={row.weightPercent}
-      onChange={(e) => row.on.onChange(row.id, { weightPercent: e.target.valueAsNumber || 0 })}
-    />
+    <>
+      <Input
+        {...label(t('fields.weight'))}
+        // The field to fix gets focus when the row opens for it (AIV-P1-010); otherwise the name does.
+        ref={row.error?.weight && !row.error.name ? focusOnMount : undefined}
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={100}
+        className="w-20"
+        value={row.weightPercent}
+        aria-invalid={row.error?.weight}
+        aria-describedby={row.error?.weight ? `${row.id}-weight-error` : undefined}
+        onChange={(e) => row.on.onChange(row.id, { weightPercent: e.target.valueAsNumber || 0 })}
+      />
+      {error}
+    </>
   );
 }
 

@@ -3,7 +3,12 @@ import type { Tx } from '@aivera/db';
 import type { WorkspaceContext } from '@aivera/workspaces';
 import type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
-import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
+import type {
+  CreateJobInput,
+  CreateJobWithDraftRubricInput,
+  PublishJobInput,
+  SaveRubricInput,
+} from '../application/jobs.ts';
 import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
@@ -39,7 +44,12 @@ export type {
   RubricStatus,
   RubricVersion,
 } from '../domain/job.ts';
-export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
+export type {
+  CreateJobInput,
+  CreateJobWithDraftRubricInput,
+  PublishJobInput,
+  SaveRubricInput,
+} from '../application/jobs.ts';
 export type {
   CompetencyDraft,
   DraftedCompetency,
@@ -91,6 +101,16 @@ export type JobUnpublishedV1 = {
 export interface JobsContract {
   /** Admins and recruiters. A client id must be one of the workspace's clients that is not archived. Audited. */
   createJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job>;
+  /**
+   * Admins and recruiters (AIV-P1-010): the job and rubric version 1 as a draft, with its competencies, in one
+   * transaction. Weights that do not total 100 are rebalanced proportionally; a competency with no name, a weight
+   * outside 1–100 or a level outside 1–5 throws `JobError` and nothing is stored. Nothing is assessed from a draft.
+   * Audited as `job.created`, with the version id.
+   */
+  createJobWithDraftRubric(
+    ctx: WorkspaceContext,
+    input: CreateJobWithDraftRubricInput,
+  ): Promise<{ job: Job; rubricVersion: RubricVersion }>;
   /** The job, or null when it does not exist or the context's job scope does not reach it. Every role. */
   getJob(ctx: WorkspaceContext, jobId: string): Promise<Job | null>;
   /** The jobs the context may see, oldest first. Every role; job-scoped roles get their granted jobs only. */

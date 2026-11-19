@@ -37,6 +37,7 @@ describe('parseNewJobForm', () => {
       state: {
         errors: { title: true, jobType: true },
         error: null,
+        saved: false,
         values: {
           jobType: '',
           title: '  ',

@@ -8,6 +8,7 @@ import {
   editsInPlace,
   JobError,
   nextAction,
+  rebalanceWeights,
   toPublicListing,
   validPublicDescriptor,
   type Competency,
@@ -76,6 +77,9 @@ export type Ports = {
 export type CreateJobInput = Pick<Job, 'title' | 'jobType' | 'description' | 'synthetic'> &
   Partial<Pick<Job, 'team' | 'clientId' | 'location' | 'hiringOwnerUserId' | 'payBand'>>;
 
+/** A new job with its first rubric's competencies, in display order (AIV-P1-010). */
+export type CreateJobWithDraftRubricInput = CreateJobInput & { competencies: Competency[] };
+
 /** A rubric as the recruiter saves it; competencies in display order. */
 export type SaveRubricInput = { successStatement: string; changeNote?: string | null; competencies: Competency[] };
 
@@ -129,41 +133,86 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
     });
   }
 
+  /** Validates and inserts a new job at stage "defining rubric"; the caller has authorised `job.create` and audits. */
+  async function insertNewJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job> {
+    const title = input.title.trim();
+    if (!title) throw new JobError('title');
+    const payBand = input.payBand ?? null;
+    assertValidPayBand(payBand);
+    const clientId = input.clientId ?? null;
+    // listClients checks client.manage, which allows the same roles as job.create.
+    if (clientId && !(await listClients(ctx)).some((c) => c.id === clientId && !c.archivedAt))
+      throw new JobError('client_not_found');
+    // shortcut: the hiring owner is not checked against the workspace's members; the add-job action (AIV-P1-007,
+    // apps/web addJob) accepts only active hiring owners, and approval re-checks the role through authorize.
+    const job: Job = {
+      id: newId(),
+      workspaceId: ctx.workspaceId,
+      title,
+      jobType: input.jobType,
+      description: input.description.trim(),
+      team: input.team?.trim() || null,
+      clientId,
+      location: input.location?.trim() || null,
+      hiringOwnerUserId: input.hiringOwnerUserId ?? null,
+      stage: 'defining_rubric',
+      published: false,
+      publicDescriptor: null,
+      publishedAt: null,
+      payBand,
+      synthetic: input.synthetic,
+      createdBy: ctx.userId,
+      createdAt: now(),
+    };
+    await storeFor(ctx.tx).insertJob(job);
+    return job;
+  }
+
   return {
     async createJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job> {
       await authorize(ctx, 'job.create');
-      const title = input.title.trim();
-      if (!title) throw new JobError('title');
-      const payBand = input.payBand ?? null;
-      assertValidPayBand(payBand);
-      const clientId = input.clientId ?? null;
-      // listClients checks client.manage, which allows the same roles as job.create.
-      if (clientId && !(await listClients(ctx)).some((c) => c.id === clientId && !c.archivedAt))
-        throw new JobError('client_not_found');
-      // shortcut: the hiring owner is not checked against the workspace's members; the add-job action (AIV-P1-007,
-      // apps/web addJob) accepts only active hiring owners, and approval re-checks the role through authorize.
-      const job: Job = {
+      const job = await insertNewJob(ctx, input);
+      await audit(ctx, {
+        action: 'job.created',
+        subject: { type: 'job', id: job.id },
+        after: { clientId: job.clientId },
+      });
+      return job;
+    },
+
+    /**
+     * Saves a new job with its first rubric (AIV-P1-010), in the one transaction: the job, version 1 as a draft and its
+     * competencies in display order, weights rebalanced to total 100. Nothing is written when any of it is refused.
+     */
+    async createJobWithDraftRubric(
+      ctx: WorkspaceContext,
+      input: CreateJobWithDraftRubricInput,
+    ): Promise<{ job: Job; rubricVersion: RubricVersion }> {
+      await authorize(ctx, 'job.create');
+      const competencies = rebalanceWeights(input.competencies);
+      assertValidCompetencies(competencies);
+      const job = await insertNewJob(ctx, input);
+      const rubricVersion: RubricVersion = {
         id: newId(),
         workspaceId: ctx.workspaceId,
-        title,
-        jobType: input.jobType,
-        description: input.description.trim(),
-        team: input.team?.trim() || null,
-        clientId,
-        location: input.location?.trim() || null,
-        hiringOwnerUserId: input.hiringOwnerUserId ?? null,
-        stage: 'defining_rubric',
-        published: false,
-        publicDescriptor: null,
-        publishedAt: null,
-        payBand,
-        synthetic: input.synthetic,
+        jobId: job.id,
+        version: 1,
+        status: 'draft',
+        // The success statement is written on the rubric page (AIV-P1-012), before approval.
+        successStatement: '',
+        changeNote: null,
         createdBy: ctx.userId,
-        createdAt: now(),
+        createdAt: job.createdAt,
+        approvedBy: null,
+        approvedAt: null,
       };
-      await storeFor(ctx.tx).insertJob(job);
-      await audit(ctx, { action: 'job.created', subject: { type: 'job', id: job.id }, after: { clientId } });
-      return job;
+      await storeFor(ctx.tx).insertVersion(rubricVersion, competencies);
+      await audit(ctx, {
+        action: 'job.created',
+        subject: { type: 'job', id: job.id },
+        after: { clientId: job.clientId, rubricVersionId: rubricVersion.id, rubricStatus: rubricVersion.status },
+      });
+      return { job, rubricVersion };
     },
 
     /** Null when the job does not exist or the context's job scope does not reach it. */

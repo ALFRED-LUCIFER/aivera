@@ -39,11 +39,14 @@ export const formValues = (form: FormData): NewJobValues =>
 export type NewJobState = {
   errors: { title?: true; jobType?: true };
   error: 'failed' | null;
+  /** The job and rubric version 1 were saved (AIV-P1-010): the page shows what happens next. */
+  saved: boolean;
   values: NewJobValues;
 };
 export const initialNewJobState = (jobType: string): NewJobState => ({
   errors: {},
   error: null,
+  saved: false,
   values: { ...Object.fromEntries(FIELDS.map((f) => [f, ''])), jobType } as NewJobValues,
 });
 
@@ -55,7 +58,7 @@ export function parseNewJobForm(form: FormData): { input: NewJobInput } | { stat
   const errors: NewJobState['errors'] = {};
   for (const issue of parsed.error.issues)
     if (issue.message === 'title' || issue.message === 'jobType') errors[issue.message] = true;
-  return { state: { errors, error: Object.keys(errors).length ? null : 'failed', values } };
+  return { state: { errors, error: Object.keys(errors).length ? null : 'failed', saved: false, values } };
 }
 
 /** "What this person must be able to do:" then the job type's four starter competencies as a list. */

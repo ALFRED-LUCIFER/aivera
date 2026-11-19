@@ -474,19 +474,22 @@
     "inviteHiringOwner": "Invite a hiring owner",
     "submit": "Draft competencies",
     "drafting": "Drafting competencies…",
-    "save": "Save job",
-    "submitting": "Saving the job…",
-    "cancel": "Cancel",
+    "save": "Save job and rubric",
+    "submitting": "Saving the job and rubric…",
+    "cancel": "Discard draft",
     "discardTitle": "Discard this job?",
     "discardBody": "What you typed is not saved.",
     "discard": "Discard",
     "keepEditing": "Keep editing",
     "close": "Close",
+    "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
+    "savedNext": "Next: the hiring owner approves the rubric. Candidates are assessed only after that.",
+    "backToJobs": "Back to Jobs",
     "forbidden": "You do not have access to add jobs.",
     "errors": {
       "title": "Add a job title.",
       "jobType": "Choose a job type.",
-      "failed": "We could not save this job. Try again."
+      "failed": "We could not save the job. Your edits are still here."
     }
   },
   "jobDraft": {
@@ -543,7 +546,10 @@
     "failed": "Aivera could not draft competencies. You can try again or add them yourself.",
     "budget": "This workspace has used today's AI allowance. You can add competencies yourself, or draft them tomorrow.",
     "empty": "Add a job description to draft competencies from it, or add them yourself.",
-    "notSaved": "Drafted competencies are suggestions: keep, edit or remove each. Save job keeps the job details only; the competencies are not saved yet."
+    "notSaved": "Drafted competencies are suggestions: keep, edit or remove each. Nothing is saved until you choose Save job and rubric.",
+    "nameRequired": "Every competency needs a name.",
+    "weightRange": "Each weight is a whole percentage from 1 to 100.",
+    "emptyRubric": "Keep at least one competency to save the job and rubric."
   },
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",

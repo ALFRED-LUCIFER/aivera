@@ -11,7 +11,8 @@ export const RUBRIC_STATUSES = ['draft', 'awaiting_approval', 'approved', 'super
 export type RubricStatus = (typeof RUBRIC_STATUSES)[number];
 
 export const COMPETENCY_TYPES = ['mandatory', 'desirable'] as const;
-export const COMPETENCY_ORIGINS = ['from_description', 'suggested_by_aivera'] as const;
+/** Must list exactly the `competency_origin_check` values (infrastructure/schema.ts); a new one needs a migration. */
+export const COMPETENCY_ORIGINS = ['from_description', 'suggested_by_aivera', 'added_by_recruiter'] as const;
 
 /** Integer minor units and an ISO currency (AGENTS.md 3.8). Stored as int4, so at most 2,147,483,647. */
 export type PayBand = { minMinor: number; maxMinor: number; currency: string };
@@ -104,6 +105,24 @@ export function assertValidCompetencies(competencies: Competency[]): void {
     if (!Number.isInteger(c.levelNeeded) || c.levelNeeded < 1 || c.levelNeeded > 5) throw new JobError('level');
   }
   if (competencies.reduce((sum, c) => sum + c.weightPercent, 0) !== 100) throw new JobError('weights_total');
+}
+
+/**
+ * Weights scaled proportionally to total 100 (AIV-P1-010): each rounded down to a whole percent and at least 1, and the
+ * rounding remainder given to the heaviest competency. Rounded down, so the heaviest only gains and stays the heaviest.
+ * Weights that already total 100 are kept as they are.
+ */
+export function rebalanceWeights(competencies: Competency[]): Competency[] {
+  const total = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
+  if (total === 100) return competencies;
+  const scaled = competencies.map((c) => ({
+    ...c,
+    weightPercent: Math.max(1, Math.floor((c.weightPercent * 100) / total)),
+  }));
+  const weights = competencies.map((c) => c.weightPercent);
+  const heaviest = weights.indexOf(Math.max(...weights));
+  const remainder = 100 - scaled.reduce((sum, c) => sum + c.weightPercent, 0);
+  return scaled.map((c, i) => (i === heaviest ? { ...c, weightPercent: c.weightPercent + remainder } : c));
 }
 
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();

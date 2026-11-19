@@ -1,7 +1,16 @@
-import { JOB_TYPE_CATALOGUE, type DraftedCompetency, type SuggestedCompetency } from '@aivera/jobs';
+import {
+  COMPETENCY_ORIGINS,
+  COMPETENCY_TYPES,
+  JOB_TYPE_CATALOGUE,
+  type Competency,
+  type DraftedCompetency,
+  type SuggestedCompetency,
+} from '@aivera/jobs';
+import { z } from 'zod';
 import type { NewJobState } from './jobNew.ts';
 
-// Add a job, step 2 "Competencies, drafted and suggested" (AIV-P1-008, AIV-P1-009). Pure: no React, no I/O (ADR-003).
+// Add a job, steps 2 and 3 "Competencies, drafted and suggested" and "Save to the job as its rubric" (AIV-P1-008 to
+// AIV-P1-010). Pure: no React, no I/O (ADR-003).
 
 /** Where a drafted competency came from in the description: the sentence (or list line) and the quoted span in it. */
 export type Excerpt = { text: string; start: number; end: number };
@@ -11,7 +20,7 @@ export type DraftCompetency = Pick<
   'name' | 'evidenceExpected' | 'weightPercent' | 'levelNeeded' | 'type'
 > & {
   /** Drafted from the description, suggested by Aivera, or added by the recruiter (by hand or from the starters). */
-  origin: DraftedCompetency['origin'] | SuggestedCompetency['origin'] | 'added_by_recruiter';
+  origin: Competency['origin'];
   /** A suggestion's "Why:" sentence; null for any other competency. */
   why: string | null;
   /** Empty for a competency the recruiter added or took from the job type's starters. */
@@ -89,3 +98,58 @@ export const blankCompetency = (): DraftCompetency => ({
 /** What the weights of the competencies still in the rubric add up to; anything but 100 rebalances on save. */
 export const weightsTotal = (rows: readonly DraftRow[]) =>
   rows.reduce((sum, row) => (row.removed ? sum : sum + row.weightPercent), 0);
+
+/** At most this many competencies in a rubric: 8 drafted, 2 suggested, room for the recruiter's own. */
+export const RUBRIC_MAX = 20;
+
+const competency = z.object({
+  name: z.string().trim().min(1).max(120),
+  evidenceExpected: z.string().trim().max(400),
+  weightPercent: z.number().int().min(1).max(100),
+  levelNeeded: z.number().int().min(1).max(5),
+  type: z.enum(COMPETENCY_TYPES),
+  origin: z.enum(COMPETENCY_ORIGINS),
+});
+
+/** The posted `rubric` field: the kept competencies in display order (AGENTS.md 3.7). Null when it is not valid. */
+export function parseRubric(value: FormDataEntryValue | null): Competency[] | null {
+  try {
+    const parsed = z
+      .array(competency)
+      .min(1)
+      .max(RUBRIC_MAX)
+      .safeParse(JSON.parse(String(value)));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The kept competencies as the `rubric` field posts them: no ids, excerpts, why or removed rows. */
+export const rubricJson = (rows: readonly DraftRow[]) =>
+  JSON.stringify(
+    rows
+      .filter((row) => !row.removed)
+      .map(({ name, evidenceExpected, weightPercent, levelNeeded, type, origin }) => ({
+        name,
+        evidenceExpected,
+        weightPercent,
+        levelNeeded,
+        type,
+        origin,
+      })),
+  );
+
+export type RowErrors = Record<string, { name?: true; weight?: true }>;
+
+/** The kept rows' fields to fix before saving: a name, and a weight that is a whole percent from 1 to 100. */
+export function rowErrors(rows: readonly DraftRow[]): RowErrors {
+  const errors: RowErrors = {};
+  for (const row of rows) {
+    if (row.removed) continue;
+    const weight = Number.isInteger(row.weightPercent) && row.weightPercent >= 1 && row.weightPercent <= 100;
+    if (!row.name.trim() || !weight)
+      errors[row.id] = { ...(!row.name.trim() && { name: true }), ...(!weight && { weight: true }) };
+  }
+  return errors;
+}
