@@ -8,12 +8,12 @@ import { CANDIDATE_HOME, candidateSafeNext } from '@/features/candidate-sign-in/
 
 export const CANDIDATE_SIGN_UP = '/candidates/signup';
 /**
- * Where sign-up ends: the sanitised candidate page the person was going to (the apply form, say), never sign-up itself
- * (that would loop); My applications by default.
+ * Where sign-up ends: the sanitised candidate page the person was going to (the apply form, say), never sign-up or
+ * sign-in (that would loop); My applications by default.
  */
 export function signUpNext(value: unknown): string {
   const next = candidateSafeNext(value);
-  return /^\/candidates\/signup(?:[/?#]|$)/.test(next) ? CANDIDATE_HOME : next;
+  return /^\/candidates\/(?:signup|sign-in)(?:[/?#]|$)/.test(next) ? CANDIDATE_HOME : next;
 }
 
 /** Sign-up, remembering where to go after it; the plain address when that is My applications. */

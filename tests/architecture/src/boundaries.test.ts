@@ -42,10 +42,12 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     expect(
       findViolations(fixture('candidate-data'))
         .filter((v) => v.rule === 'recruiter-app-no-candidate-data')
-        .map((v) => v.file),
+        .map((v) => v.file)
+        .toSorted(),
     ).toEqual([
       'apps/web/src/app/(recruiter)/app/page.tsx',
       'apps/web/src/features/shell/domain/y.ts',
+      'apps/web/src/features/shell/proxy.ts',
       'apps/web/src/features/shell/services/x.ts',
     ]);
   });

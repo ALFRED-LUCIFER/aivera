@@ -62,13 +62,15 @@ describe('signUpNext and signUpHref', () => {
     expect(signUpNext(new URL(signUpHref(apply), 'http://x').searchParams.get('next'))).toBe(apply);
   });
 
-  // SAFETY: mutation check: returned candidateSafeNext(value) without the sign-up check -> this test failed
-  it('never returns to the recruiter app, another site or sign-up itself', () => {
+  // SAFETY: mutation check: returned candidateSafeNext(value) without the sign-up and sign-in check -> this test failed
+  it('never returns to the recruiter app, another site, sign-up or sign-in', () => {
     for (const value of [
       '/app',
       'https://evil.example/candidates',
       '/candidates/signup',
       '/candidates/signup?next=x',
+      '/candidates/sign-in',
+      '/candidates/sign-in?next=%2Fcandidates%2Fme',
       null,
     ])
       expect(signUpNext(value)).toBe('/candidates/me');

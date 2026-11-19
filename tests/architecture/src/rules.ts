@@ -32,8 +32,7 @@ const RECRUITER_SESSION =
   /^(?:next-auth|@auth\/)|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell(?:[/\\]|$))/;
 // AIV-P3-007, ADR-009: the candidate account and session reach only the candidate site, its server readers
 // (src/server/candidate*), and the roots that wire them (the proxy, instrumentation, the candidate Auth.js route).
-const CANDIDATE_DATA =
-  /^@aivera\/candidate-accounts(?:\/|$)|(?:^@|[/\\]src)[/\\]server[/\\]candidate(?:Accounts|Auth)\b/;
+const CANDIDATE_DATA = /^@aivera\/candidate-accounts(?:\/|$)|(?:^@|[/\\]src)[/\\]server[/\\]candidate[^/\\.]*/;
 const CANDIDATE_DATA_READERS =
   /[/\\]src[/\\](?:app[/\\]\(candidate\)[/\\]|features[/\\]candidate-[^/\\]+[/\\]|server[/\\]candidate[^/\\]*$|app[/\\]api[/\\]candidate-auth[/\\]|proxy\.ts$|instrumentation\.ts$)/;
 // AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.

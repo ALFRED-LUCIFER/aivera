@@ -11,7 +11,8 @@ import { parseSignUpForm, signUpNext, type SignUpState } from '../domain/signup.
 
 /**
  * Candidate session only: records the full name and work type on the signed-in candidate's account and lands where the
- * candidate was going (the sanitised `next`), else My applications. The account is always the session user's, never an id from the form.
+ * candidate was going (the sanitised `next`), else My applications. The account is always the session user's, never
+ * an id from the form.
  */
 export async function completeSignUp(_previous: SignUpState, form: FormData): Promise<SignUpState> {
   const userId = await getCandidateSessionUserId();
