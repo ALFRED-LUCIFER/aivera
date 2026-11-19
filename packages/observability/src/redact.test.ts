@@ -83,6 +83,25 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(exportSpan(attributes as unknown as Record<string, string>)?.attributes).toEqual(attributes);
   });
 
+  it('AI call telemetry keeps its values, and any other AI key is redacted', () => {
+    const attributes = {
+      'aivera.ai.operation': 'chat',
+      'aivera.ai.task': 'jobs.draftCompetencies',
+      'aivera.ai.deployment': 'gpt-main',
+      'aivera.ai.outcome': 'ok',
+      'aivera.ai.attempts': 3,
+      'aivera.ai.cost_usd_micros': 41,
+      'gen_ai.usage.input_tokens': 90,
+      'gen_ai.usage.output_tokens': 4,
+    };
+    const leaky = { 'aivera.ai.prompt': 'Sara Al Qahtani', 'gen_ai.completion': 'Sara Al Qahtani' };
+    expect(exportSpan({ ...attributes, ...leaky } as unknown as Record<string, string>)?.attributes).toEqual({
+      ...attributes,
+      'aivera.ai.prompt': REDACTED,
+      'gen_ai.completion': REDACTED,
+    });
+  });
+
   // SAFETY: mutation check: allowed any value under an id key (dropped the OPAQUE test) -> this test failed
   it.each([
     ['enduser.id', 'sara.candidate@example.test'],

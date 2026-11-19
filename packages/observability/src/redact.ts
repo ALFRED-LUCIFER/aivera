@@ -40,6 +40,15 @@ const ALLOWED = [
   'code',
   'err.type',
   'err.stack',
+  // Per-call AI telemetry (packages/ai): exact keys, so nothing else under these prefixes passes (AIV-P0-027).
+  'aivera.ai.operation',
+  'aivera.ai.task',
+  'aivera.ai.deployment',
+  'aivera.ai.outcome',
+  'aivera.ai.attempts',
+  'aivera.ai.cost_usd_micros',
+  'gen_ai.usage.input_tokens',
+  'gen_ai.usage.output_tokens',
 ];
 
 // Id keys (`workspace.id`, `job_id`, `jobId`, `trace_id`) keep only opaque values: hex and dashes, as UUIDv7 and trace

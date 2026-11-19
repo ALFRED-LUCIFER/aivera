@@ -45,7 +45,7 @@ Aivera ranks job candidates on evidence of their work and holds their CVs, docum
 9. Time is UTC `Date`/ISO strings from the injected clock (`Clock` port). Display in the viewer's workspace time zone, always explicit.
 10. Raw SQL only through Drizzle's `sql` template (parameterised), never string-built.
 11. **Webhooks** (Stripe and others) are explicitly public routes that verify the signature over the raw body before parsing, are idempotent on the provider's event id, never trust an amount or account from the payload, and never log the payload.
-12. **AI calls** go through the AI platform module only ([ADR-006](docs/adr/ADR-006-ai-on-azure-foundry.md)): structured output with a zod schema, every claim in the output must cite an evidence id that exists, prompts versioned in code, and every prompt change runs the eval set.
+12. **AI calls** go through the AI platform package `@aivera/ai` only ([ADR-006](docs/adr/ADR-006-ai-on-azure-foundry.md)): structured output with a zod schema, every claim in the output must cite an evidence id that exists, prompts versioned in code, and every prompt change runs the eval set.
 13. Logging is structured (`pino`) with message templates and ids only; never candidate values. TypeScript `strict`, no `any`, no non-null assertions without a reason comment.
 
 ## 4 · Front end (Next.js 16 App Router, `apps/web`): hard rule, [ADR-003](docs/adr/ADR-003-frontend-feature-layers.md)
