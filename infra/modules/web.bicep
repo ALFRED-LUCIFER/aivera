@@ -11,6 +11,7 @@ param keyVaultUri string
 param databaseHost string
 param databaseName string
 param webImage string
+param aiResourceName string
 param commitSha string
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
@@ -65,6 +66,8 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'postgres://aivera_app@${databaseHost}:5432/${databaseName}?sslmode=verify-full'
             }
             { name: 'AZURE_CLIENT_ID', value: appIdentityClientId }
+            // @aivera/ai calls https://<name>.openai.azure.com with the identity's token (AIV-P0-034).
+            { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
             // The dev External ID tenant and its recruiter app registration (not secrets).
             // shortcut: dev tenant values written in the module; make them params when a pilot environment is added

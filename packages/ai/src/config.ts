@@ -1,6 +1,6 @@
 // The one place a task picks its model (AIV-P0-027, ADR-006). Modules name a task; they never name a deployment.
-// Deployments live on the Azure OpenAI resource the client is created with: UAE North for the pilot, the shared
-// Central India resource for dev (ADR-008). A model goes here only once it is confirmed deployable in UAE North.
+// Deployments live on the Azure AI resource the client is created with. Dev's is in UAE North, gpt-main on Global
+// Standard (ADR-011); the pilot's must infer in region. A model goes here only once it is deployable in UAE North.
 
 // Prices are list prices in USD micros per million tokens, for the telemetry's cost estimate only (not billing).
 // shortcut: hand-copied list prices, November 2026; recheck when a deployment or its model changes

@@ -18,6 +18,8 @@ resource subnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' = {
   name: 'snet-aivera-dev'
   properties: {
     addressPrefix: subnetPrefix
+    // Pinned to the live value (checked 19 Nov 2026): left out, a re-apply would flip it to Enabled.
+    privateEndpointNetworkPolicies: 'Disabled'
     delegations: [
       { name: 'containerapps', properties: { serviceName: 'Microsoft.App/environments' } }
     ]

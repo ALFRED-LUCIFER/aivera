@@ -19,6 +19,8 @@ param imageTag string
 var location = resourceGroup().location
 var tags = { product: 'aivera', env: 'dev', data: 'synthetic' }
 var images = 'ghcr.io/${toLower(githubRepo)}'
+// Aivera's own group in UAE North for the AI resource (ADR-011): Medvya's group allows Indian regions only.
+var aiResourceGroup = 'rg-aivera-ai-dev'
 
 // Shared Medvya dev resources, referenced with `existing` and never changed.
 var shared = {
@@ -63,6 +65,15 @@ module database 'modules/database.bicep' = {
   }
 }
 
+module ai 'modules/ai.bicep' = {
+  name: 'aivera-ai'
+  scope: resourceGroup(aiResourceGroup)
+  params: {
+    tags: tags
+    appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+  }
+}
+
 module web 'modules/web.bicep' = {
   name: 'aivera-web'
   params: {
@@ -76,6 +87,7 @@ module web 'modules/web.bicep' = {
     databaseHost: database.outputs.databaseHost
     databaseName: database.outputs.databaseName
     webImage: '${images}/web:${imageTag}'
+    aiResourceName: ai.outputs.resourceName
     commitSha: imageTag
   }
 }
@@ -102,3 +114,4 @@ output webFqdn string = web.outputs.webFqdn
 output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId
 output keyVaultName string = foundation.outputs.keyVaultName
+output aiResourceName string = ai.outputs.resourceName
