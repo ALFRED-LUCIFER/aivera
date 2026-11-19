@@ -107,7 +107,7 @@ test('Scenario: No operator email reaches URLs', async ({ page }) => {
   expect(urls.filter((url) => /pia\.platform|example\.com/i.test(decodeURIComponent(url)))).toEqual([]);
 });
 
-test('the keyboard path: skip link to the page, then the console link, Workspaces, Catalogue and Sign out', async ({
+test('the keyboard path: skip link to the page, then the console link, Workspaces, Approvals, Catalogue and Sign out', async ({
   page,
 }) => {
   await signIn(page, { email: PIA });
@@ -124,6 +124,8 @@ test('the keyboard path: skip link to the page, then the console link, Workspace
   await expect(page.getByRole('link', { name: 'Aivera operations' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Workspaces' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Approvals' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Catalogue' })).toBeFocused();
   await page.keyboard.press('Tab');

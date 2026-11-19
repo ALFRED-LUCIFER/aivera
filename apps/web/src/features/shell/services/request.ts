@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { enabledFlags } from '@/server/flags';
-import { currentMembership } from '@/server/workspace';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { currentMembership, rejectionReason } from '@/server/workspace';
 import { canOpen, navigation, type ScreenId } from '../domain/navigation.ts';
 import { parseTheme, shellMember, themeCookie, type Member, type ShellCounts } from '../domain/shell.ts';
 
@@ -39,4 +40,19 @@ export async function loadShellCounts(member: Member, read = seedCounts): Promis
   } catch {
     return null;
   }
+}
+
+/**
+ * Why the member's workspace takes no new work, as a page title and text: suspended (AIV-P2-037), waiting for approval
+ * or not approved with the operator's reason (AIV-P2-039); null when it is active or there is no membership. Never
+ * throws, so a 403 page can use it.
+ */
+export async function workspaceGate(): Promise<{ title: string; body: string } | null> {
+  const status = (await currentMembership().catch(() => null))?.status;
+  if (!status || status === 'active') return null;
+  const t = await getTranslations(defaultLocale, defaultTimeZone);
+  if (status === 'suspended') return { title: t('access.pausedTitle'), body: t('access.paused') };
+  if (status === 'pending_approval') return { title: t('access.waitingTitle'), body: t('access.waiting') };
+  const reason = (await rejectionReason().catch(() => null)) ?? '';
+  return { title: t('access.rejectedTitle'), body: t('access.rejected', { reason }) };
 }

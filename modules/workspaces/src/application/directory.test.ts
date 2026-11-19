@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { WorkspaceStatus } from '../domain/workspace.ts';
 import { directoryUseCases } from './directory.ts';
 
 // AIV-P2-036: search and paging of the operator console's workspace list. Synthetic names (personas.md).
 const at = (day: number) => new Date(Date.UTC(2026, 10, day));
-const facts = (id: string, name: string, day: number, status: 'active' | 'suspended' = 'active') => ({
+const facts = (id: string, name: string, day: number, status: WorkspaceStatus = 'active') => ({
   id,
   name,
   type: 'in_house' as const,
@@ -22,7 +23,14 @@ const directory = (gone: string[] = []) => {
   const readSummary = vi.fn(async (id: string) =>
     gone.includes(id) ? null : (stored.find((s) => s.id === id) ?? null),
   );
-  return { readSummary, ...directoryUseCases({ listIds: async () => stored.map((s) => s.id), readSummary }) };
+  return {
+    readSummary,
+    ...directoryUseCases({
+      listIds: async () => stored.map((s) => s.id),
+      readSummary,
+      readCreator: async (id) => `creator of ${id}`,
+    }),
+  };
 };
 
 describe('listSummaries', () => {
@@ -68,5 +76,25 @@ describe('getSummary', () => {
     expect(await d.getSummary('w2')).toEqual({ ...stored[1], status: 'active' });
     expect(await d.getSummary('missing')).toBeNull();
     expect(d.readSummary).toHaveBeenCalledWith('w2');
+  });
+});
+
+describe('listPending (AIV-P2-039)', () => {
+  it('lists only workspaces waiting for approval, oldest first, with their creator', async () => {
+    const waiting = [
+      facts('w5', 'Late Sign-up', 5, 'pending_approval'),
+      facts('w4', 'Early Sign-up', 4, 'pending_approval'),
+      facts('w6', 'Turned Away', 6, 'rejected'),
+    ];
+    const all = [...waiting, ...stored];
+    const d = directoryUseCases({
+      listIds: async () => all.map((s) => s.id),
+      readSummary: async (id) => all.find((s) => s.id === id) ?? null,
+      readCreator: async (id) => `creator of ${id}`,
+    });
+    expect((await d.listPending()).map((p) => [p.summary.name, p.creatorUserId])).toEqual([
+      ['Early Sign-up', 'creator of w4'],
+      ['Late Sign-up', 'creator of w5'],
+    ]);
   });
 });

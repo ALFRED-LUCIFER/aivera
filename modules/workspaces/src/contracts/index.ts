@@ -4,7 +4,7 @@ import type { Session, WorkspaceContext as Context } from '../application/contex
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
-import type { DirectorySearch } from '../application/directory.ts';
+import type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 import type { ChangeStatusInput } from '../application/status.ts';
 import type {
   AiTokenUse,
@@ -41,7 +41,7 @@ export type {
   WorkspaceType,
 } from '../domain/workspace.ts';
 export type { ChangeStatusInput } from '../application/status.ts';
-export type { DirectorySearch } from '../application/directory.ts';
+export type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 export type { GrantJobAccessInput } from '../application/clients.ts';
 export { ForbiddenError, WorkspacePausedError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
@@ -78,6 +78,8 @@ export interface WorkspaceDirectory {
   listSummaries(search: DirectorySearch): Promise<{ total: number; summaries: WorkspaceSummary[] }>;
   /** One workspace's facts; null when there is no such workspace. */
   getSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
+  /** Workspaces waiting for approval, oldest first, each with its creator's opaque user id (AIV-P2-039). */
+  listPending(): Promise<PendingApproval[]>;
 }
 
 /**

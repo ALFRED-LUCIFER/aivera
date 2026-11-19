@@ -5,9 +5,10 @@ export type Violation = { rule: string; file: string; detail: string };
 
 /** Pairs a module may never import: paying never changes ranking (AGENTS.md 1.8). */
 export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
-  assessment: ['billing', 'portfolio'],
-  jobs: ['billing', 'portfolio'],
-  intake: ['billing', 'portfolio'],
+  // ops holds platform settings (ADR-012 point 9): nothing that ranks may read them either.
+  assessment: ['billing', 'portfolio', 'ops'],
+  jobs: ['billing', 'portfolio', 'ops'],
+  intake: ['billing', 'portfolio', 'ops'],
 };
 
 /** Recruiter-side modules never import candidate-accounts, so none can tell a recruiter is also a candidate (ADR-009). */

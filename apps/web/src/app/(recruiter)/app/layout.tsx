@@ -1,10 +1,12 @@
 import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
+import { Button } from '@aivera/ui';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
-import { currentMember, loadShellCounts, readTheme } from '@/features/shell/services/request.ts';
+import { currentMember, loadShellCounts, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
+import { signOut } from '@/features/sign-in/services/signOut.ts';
 import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
 import { enabledFlags } from '@/server/flags';
@@ -43,6 +45,18 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
             failed: t('signup.errors.failed'),
           }}
         />
+      </AccessMessage>
+    );
+  }
+  // AIV-P2-039: a workspace waiting for approval, or not approved, shows only why, on every recruiter route.
+  const { status } = member.workspace;
+  if (status === 'pending_approval' || status === 'rejected') {
+    const [gate, t] = await Promise.all([workspaceGate(), getTranslations(defaultLocale, defaultTimeZone)]);
+    return (
+      <AccessMessage title={gate?.title ?? ''} body={gate?.body ?? ''}>
+        <form action={signOut}>
+          <Button type="submit">{t('access.signOut')}</Button>
+        </form>
       </AccessMessage>
     );
   }

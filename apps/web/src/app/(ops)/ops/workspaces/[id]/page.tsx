@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { WorkspaceDetail } from '@/features/ops/components/WorkspaceDetail.tsx';
+import { nextChange } from '@/features/ops/domain/workspaces.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { getAudit, getWorkspaceFacts, listOperatorActions, platformOperator } from '@/server/operator';
 import { AiBudgetClient } from './AiBudgetClient.tsx';
-import { StatusChangeClient } from './StatusChangeClient.tsx';
+import { StatusChangeClient } from '../../StatusChangeClient.tsx';
 
 export async function generateMetadata(): Promise<Metadata> {
   await platformOperator();
@@ -27,6 +28,7 @@ export default async function WorkspacePage({ params }: PageProps<'/ops/workspac
     action: 'ops.workspace_viewed',
     subject: { type: 'workspace', id: workspace.id },
   });
+  const change = nextChange(workspace.status);
   const [t, history] = await Promise.all([
     getTranslations(defaultLocale, defaultTimeZone),
     listOperatorActions(workspace.id),
@@ -47,7 +49,7 @@ export default async function WorkspacePage({ params }: PageProps<'/ops/workspac
         workspace={workspace}
         history={history}
         statusChange={
-          <StatusChangeClient workspace={{ id: workspace.id, name: workspace.name, status: workspace.status }} />
+          change && <StatusChangeClient workspace={{ id: workspace.id, name: workspace.name }} change={change} />
         }
       >
         <AiBudgetClient workspaceId={workspace.id} ai={workspace.ai} />

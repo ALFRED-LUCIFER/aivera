@@ -4,7 +4,12 @@ import { useTranslations } from '@aivera/i18n/react';
 import { Chip, StatusBadge, type StatusBadgeStatus } from '@aivera/ui';
 import type { WorkspaceRow } from '../domain/workspaces.ts';
 
-const badges: Record<WorkspaceRow['status'], StatusBadgeStatus> = { active: 'supported', suspended: 'needsValidation' };
+const badges: Record<WorkspaceRow['status'], StatusBadgeStatus> = {
+  active: 'supported',
+  suspended: 'needsValidation',
+  pending_approval: 'informational',
+  rejected: 'contradiction',
+};
 
 /** The workspace's status with its icon and word, never colour alone (AGENTS.md 4). */
 export function WorkspaceStatus({ status }: Pick<WorkspaceRow, 'status'>) {

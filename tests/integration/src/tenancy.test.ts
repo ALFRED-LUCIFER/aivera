@@ -28,6 +28,8 @@ const GLOBAL_TABLES: Record<string, string> = {
     'The operator console lists workspaces from it (ADR-012): workspace id and created date only, nothing a tenant wrote.',
   'audit.platform_entry':
     'What Aivera operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
+  'ops.platform_setting':
+    'One row of platform settings the operators change (ADR-012 point 9, AIV-P2-039): no tenant data, no personal data.',
 };
 /**
  * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role

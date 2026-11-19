@@ -83,9 +83,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(11);
+    expect(await applied()).toBe(12);
     dbMigrate();
-    expect(await applied()).toBe(11);
+    expect(await applied()).toBe(12);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {

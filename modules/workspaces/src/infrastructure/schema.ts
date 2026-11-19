@@ -30,7 +30,8 @@ export const workspace = workspaces
       company: text().notNull(),
       hiringFocus: text('hiring_focus').notNull(),
       synthetic: boolean().notNull().default(false),
-      // Changed only by an operator (AIV-P2-037); request contexts refuse new work unless it is active.
+      // Set at sign-up (AIV-P2-039), then changed only by an operator (AIV-P2-037); request contexts refuse new work
+      // unless it is active.
       status: text({ enum: WORKSPACE_STATUSES }).notNull().default('active'),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
       // An operator's daily AI token budget for this workspace (AIV-P2-038); null means the platform default.
@@ -44,7 +45,7 @@ export const workspace = workspaces
         sql`${t.aiDailyTokenBudget} is null or ${t.aiDailyTokenBudget} between 100000 and 10000000`,
       ),
       // Must list exactly WORKSPACE_STATUSES (domain/workspace.ts); changing it needs a new migration.
-      check('workspace_status_check', sql`${t.status} in ('active', 'suspended')`),
+      check('workspace_status_check', sql`${t.status} in ('active', 'suspended', 'pending_approval', 'rejected')`),
       tenantPolicy('workspace_tenant_isolation', t.id),
     ],
   )

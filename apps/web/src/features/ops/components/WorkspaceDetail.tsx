@@ -24,6 +24,11 @@ export function WorkspaceDetail({
 }) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();
+  const when = (entry: OperatorActionRow) => ({
+    action: t(`detail.actionNames.${entry.action}`),
+    date: entry.occurredAt,
+    timeZone,
+  });
   const facts: [string, ReactNode][] = [
     [t('columns.type'), t(`type.${workspace.type}`)],
     [t('columns.created', { timeZone }), t('createdOn', { value: workspace.createdAt })],
@@ -59,12 +64,9 @@ export function WorkspaceDetail({
             <ol className="flex flex-col gap-2 text-body text-text">
               {history.map((entry) => (
                 <li key={`${entry.action} ${entry.occurredAt.toISOString()}`}>
-                  {t('detail.history', {
-                    action: t(`detail.actionNames.${entry.action}`),
-                    date: entry.occurredAt,
-                    timeZone,
-                    reason: entry.reason ?? '',
-                  })}
+                  {entry.reason
+                    ? t('detail.history', { ...when(entry), reason: entry.reason })
+                    : t('detail.historyNoReason', when(entry))}
                 </li>
               ))}
             </ol>

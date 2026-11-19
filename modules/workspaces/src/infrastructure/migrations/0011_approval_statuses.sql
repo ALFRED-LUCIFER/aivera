@@ -1,0 +1,2 @@
+ALTER TABLE "workspaces"."workspace" DROP CONSTRAINT "workspace_status_check";--> statement-breakpoint
+ALTER TABLE "workspaces"."workspace" ADD CONSTRAINT "workspace_status_check" CHECK ("workspaces"."workspace"."status" in ('active', 'suspended', 'pending_approval', 'rejected'));

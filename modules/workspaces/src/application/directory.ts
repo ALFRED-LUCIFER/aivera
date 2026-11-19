@@ -5,15 +5,28 @@ export type DirectoryPorts = {
   listIds(): Promise<string[]>;
   /** The workspace's facts, read inside withWorkspace(<that workspace>); null when it no longer exists. */
   readSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
+  /** The workspace's first admin (its creator), read inside withWorkspace(<that workspace>); null when there is none. */
+  readCreator(workspaceId: string): Promise<string | null>;
 };
+
+/** A workspace waiting for approval (AIV-P2-039), with its creator's identity user id so the console can contact them. */
+export type PendingApproval = { summary: WorkspaceSummary; creatorUserId: string | null };
 
 export type DirectorySearch = { query: string; offset: number; limit: number };
 
 /** The operator console's workspace reads (ADR-012 point 6): platform facts only, never through an RLS bypass. */
-export function directoryUseCases({ listIds, readSummary }: DirectoryPorts) {
+export function directoryUseCases({ listIds, readSummary, readCreator }: DirectoryPorts) {
   const getSummary = readSummary;
   return {
     getSummary,
+    async listPending(): Promise<PendingApproval[]> {
+      // shortcut: reads every workspace, as listSummaries does; fine up to a few hundred (ADR-012 point 6).
+      const all = await Promise.all((await listIds()).map(getSummary));
+      const pending = all
+        .filter((s): s is WorkspaceSummary => s?.status === 'pending_approval')
+        .toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      return Promise.all(pending.map(async (summary) => ({ summary, creatorUserId: await readCreator(summary.id) })));
+    },
     async listSummaries({ query, offset, limit }: DirectorySearch) {
       // shortcut: one transaction per workspace, and the name match runs here, because names are read only inside each
       // workspace's own scope (ADR-012 point 6); fine up to a few hundred workspaces. Upgrade to the aivera_ops role with

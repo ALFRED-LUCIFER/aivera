@@ -263,6 +263,17 @@ export async function readSummary(tx: Tx, workspaceId: string): Promise<Workspac
   return { ...found, activeMembers: members?.n ?? 0 };
 }
 
+/** The workspace's first admin, its creator (createWorkspace adds them first), over its own scoped transaction. */
+export async function readCreator(tx: Tx, workspaceId: string): Promise<string | null> {
+  const [found] = await tx
+    .select({ userId: member.userId })
+    .from(member)
+    .where(and(inWorkspace(workspaceId), eq(member.role, 'admin')))
+    .orderBy(asc(member.createdAt), asc(member.userId))
+    .limit(1);
+  return found?.userId ?? null;
+}
+
 const budgetOf = (override: number | null) => override ?? AI_DAILY_TOKEN_BUDGET.default;
 
 /** Daily AI token use (AIV-P0-033) and its budget (AIV-P2-038), over a workspace-scoped transaction; the filter and RLS both apply. */

@@ -31,8 +31,20 @@ describe('changeWorkspaceStatus (server action)', () => {
     expect(applyStatusChange).not.toHaveBeenCalled();
   });
 
+  it('Scenario: The operator approves: approving needs no reason', async () => {
+    await changeWorkspaceStatus({ workspaceId: GULF, change: 'approve', reason: '' });
+    expect(applyStatusChange).toHaveBeenCalledWith(GULF, 'approve', '');
+  });
+
+  it('Scenario: The operator rejects with a reason: under 10 characters is refused, nothing changes', async () => {
+    await expect(changeWorkspaceStatus({ workspaceId: GULF, change: 'reject', reason: 'No' })).rejects.toThrow();
+    expect(applyStatusChange).not.toHaveBeenCalled();
+    await changeWorkspaceStatus({ workspaceId: GULF, change: 'reject', reason: "Outside the pilot's agreed teams" });
+    expect(applyStatusChange).toHaveBeenCalledWith(GULF, 'reject', "Outside the pilot's agreed teams");
+  });
+
   // SAFETY: mutation check: removed `await platformOperator()` from changeWorkspaceStatus -> this test failed
-  it('Scenario: Non-operators cannot suspend: a direct call is a 403 and the status is unchanged', async () => {
+  it('Scenario: Non-operators cannot suspend (AIV-P2-037) or decide (AIV-P2-039): a direct call is a 403, status unchanged', async () => {
     operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
     await expect(
       changeWorkspaceStatus({ workspaceId: GULF, change: 'suspend', reason: 'Pilot ended on 30 Nov 2026' }),
