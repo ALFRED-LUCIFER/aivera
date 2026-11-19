@@ -12,10 +12,11 @@ const noAccess = 'You do not have access to this. Ask your workspace admin.';
 const ID = /\/ops\/workspaces\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const table = (page: Page) => page.getByRole('table', { name: 'Workspaces' });
+// The seeded row: every seeded workspace is synthetic, while create-workspace.spec.ts adds a real "Demo Hiring Co".
 const rowOf = (page: Page, name: string) =>
   table(page)
     .getByRole('row')
-    .filter({ has: page.getByRole('link', { name, exact: true }) })
+    .filter({ has: page.getByRole('link', { name, exact: true }), hasText: 'Synthetic' })
     .first();
 
 async function openList(page: Page) {
