@@ -1,6 +1,6 @@
 import type { Rubric } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
-import { rubricView, weightsTotal } from './rubric.ts';
+import { canSave, newCompetency, rubricView, weightsTotal } from './rubric.ts';
 
 const HEAD = 'head-id';
 const at = new Date('2026-11-12T08:00:00.000Z');
@@ -15,6 +15,8 @@ const version = (n: number, status: Rubric['status'], more: Partial<Rubric> = {}
     competencies: [],
     ...more,
   }) as Rubric;
+
+const named = (weightPercent: number) => ({ ...newCompetency(), name: 'Delivery', weightPercent });
 
 describe('Rubric page view (AIV-P1-012)', () => {
   it('shows the approved version; a superseded version carries the change that replaced it', () => {
@@ -59,7 +61,22 @@ describe('Rubric page view (AIV-P1-012)', () => {
 
   it('with none approved, shows the latest draft; with no versions, nothing', () => {
     expect(rubricView([version(1, 'draft')], new Map()).shown?.version).toBe(1);
-    expect(rubricView([], new Map())).toEqual({ shown: null, history: [] });
+    expect(rubricView([], new Map())).toEqual({ shown: null, history: [], edit: null });
+  });
+
+  it('edit mode opens the open version, so a second editor resumes it, or else the approved one (AIV-P1-013)', () => {
+    const approved = version(2, 'approved', { id: 'v2', revision: 0 });
+    expect(rubricView([approved], new Map()).edit?.base).toEqual({ versionId: 'v2', revision: 0 });
+    const open = version(3, 'awaiting_approval', { id: 'v3', revision: 4 });
+    expect(rubricView([open, approved], new Map()).edit?.base).toEqual({ versionId: 'v3', revision: 4 });
+  });
+
+  it('saving needs weights totalling 100, each 1 to 100, and every competency named', () => {
+    expect(canSave([named(60), named(40)])).toBe(true);
+    expect(canSave([named(60), named(35)])).toBe(false);
+    expect(canSave([named(100), { ...named(0) }])).toBe(false);
+    expect(canSave([named(60), { ...named(40), name: ' ' }])).toBe(false);
+    expect(canSave([])).toBe(false);
   });
 
   it('totals the weights', () => {

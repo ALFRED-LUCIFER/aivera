@@ -1041,6 +1041,27 @@
     "error": "We could not load this rubric. Try again.",
     "retry": "Try again",
     "separator": " · ",
-    "approvedOn": "{date, date, short}"
+    "approvedOn": "{date, date, short}",
+    "edit": {
+      "start": "Edit rubric",
+      "cancel": "Cancel",
+      "add": "Add competency",
+      "remove": "Remove {name}",
+      "unnamed": "the new competency",
+      "name": "Name of competency {number}",
+      "evidence": "Evidence expected for competency {number}",
+      "weight": "Weight for {name}",
+      "level": "Level needed for {name}",
+      "type": "Type for {name}",
+      "save": "Save draft",
+      "send": "Send changes for approval",
+      "weightsWrong": "Weights total {total}%. They must total 100%.",
+      "saved": "Draft saved. The approved rubric stays in force until the new version is approved.",
+      "sent": "Sent to {name}. The approved rubric stays in force, and rankings do not change until the new version is approved.",
+      "sentNoOwner": "Sent for approval. The approved rubric stays in force, and rankings do not change until the new version is approved.",
+      "stale": "This rubric changed since you opened it. Reload to see the latest.",
+      "failed": "We could not save the rubric. Check each competency has a name, a weight from 1 to 100 and a level, then try again."
+    },
+    "percentSign": "%"
   }
 }

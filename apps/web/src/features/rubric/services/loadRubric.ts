@@ -8,12 +8,17 @@ import { rubricView, type RubricView } from '../domain/rubric.ts';
  * The rubric page (AIV-P1-012): every version through `listRubricVersions`, which checks `job.view` and the member's
  * job scope, with approvers' names. Null when the job is not visible or there is no workspace.
  */
-export async function loadRubric(jobId: string): Promise<RubricView | null> {
+export async function loadRubric(jobId: string): Promise<{ rubric: RubricView; canEdit: boolean } | null> {
   // The layout runs alongside this page, so a malformed id must not reach the database from here either.
   if (!z.uuid().safeParse(jobId).success) return null;
-  const result = await inActiveWorkspace((ctx) => getJobs().listRubricVersions(ctx, jobId));
-  if (!result?.value) return null;
-  const approvers = [...new Set(result.value.flatMap((v) => v.approvedBy ?? []))];
+  const result = await inActiveWorkspace(async (ctx) => ({
+    versions: await getJobs().listRubricVersions(ctx, jobId),
+    // Who sees edit mode; saving checks rubric.edit again in the jobs module.
+    canEdit: ctx.role === 'admin' || ctx.role === 'recruiter',
+  }));
+  const versions = result?.value.versions;
+  if (!result || !versions) return null;
+  const approvers = [...new Set(versions.flatMap((v) => v.approvedBy ?? []))];
   const names = new Map(
     await Promise.all(
       approvers.map(async (id) => {
@@ -22,5 +27,5 @@ export async function loadRubric(jobId: string): Promise<RubricView | null> {
       }),
     ),
   );
-  return rubricView(result.value, names);
+  return { rubric: rubricView(versions, names), canEdit: result.value.canEdit };
 }

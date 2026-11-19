@@ -121,7 +121,12 @@ export function jobStore(tx: Tx): JobStore {
       const where = and(eq(rubricVersion.workspaceId, version.workspaceId), eq(rubricVersion.id, version.id));
       await tx
         .update(rubricVersion)
-        .set({ successStatement: version.successStatement, changeNote: version.changeNote, status: version.status })
+        .set({
+          successStatement: version.successStatement,
+          changeNote: version.changeNote,
+          status: version.status,
+          revision: version.revision,
+        })
         .where(where);
       await tx
         .delete(competency)

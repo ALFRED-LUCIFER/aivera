@@ -3,6 +3,8 @@
 /** Adding an action also needs a migration for the `entry_action_check` constraint (infrastructure/schema.ts). */
 export const ACTIONS = [
   'rubric.approved',
+  'rubric.submitted',
+  'rubric.saved',
   'score.changed',
   'candidate.merged',
   'decision.recorded',

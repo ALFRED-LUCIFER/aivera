@@ -5,6 +5,7 @@ import {
   assertTransition,
   assertValidCompetencies,
   assertValidPayBand,
+  describeChanges,
   editsInPlace,
   JobError,
   nextAction,
@@ -39,7 +40,7 @@ export type JobStore = {
   approvedVersion(workspaceId: string, jobId: string): Promise<RubricVersion | null>;
   competencies(workspaceId: string, versionId: string): Promise<Competency[]>;
   insertVersion(version: RubricVersion, competencies: Competency[]): Promise<void>;
-  /** Replaces a not-yet-approved version's statement, note and competencies, and sets it back to draft. */
+  /** Replaces a not-yet-approved version's statement, note, revision and competencies, and sets it back to draft. */
   replaceDraft(version: RubricVersion, competencies: Competency[]): Promise<void>;
   setHiringOwner(workspaceId: string, jobId: string, hiringOwnerUserId: string | null): Promise<void>;
   /** Sets whether the job is listed on the candidate site, with its descriptor and publish time. */
@@ -93,8 +94,17 @@ export type CreateJobInput = Pick<Job, 'title' | 'jobType' | 'description' | 'sy
 /** A new job with its first rubric's competencies, in display order (AIV-P1-010). */
 export type CreateJobWithDraftRubricInput = CreateJobInput & { competencies: Competency[] };
 
-/** A rubric as the recruiter saves it; competencies in display order. */
-export type SaveRubricInput = { successStatement: string; changeNote?: string | null; competencies: Competency[] };
+/**
+ * A rubric as the recruiter saves it; competencies in display order. `base` is the version the editor opened (the open
+ * draft, or the approved version when none is open) and its revision; a save from an older copy is refused. With no
+ * `changeNote`, the note is written from the changes to the approved version.
+ */
+export type SaveRubricInput = {
+  successStatement: string;
+  changeNote?: string | null;
+  competencies: Competency[];
+  base?: { versionId: string; revision: number };
+};
 
 /** One row of the candidate site's read model, as the publishing transaction writes it. */
 export type PublicJobRow = {
@@ -235,6 +245,7 @@ export function jobsUseCases({
         createdAt: job.createdAt,
         approvedBy: null,
         approvedAt: null,
+        revision: 0,
       };
       await storeFor(ctx.tx).insertVersion(rubricVersion, competencies);
       await grantOwner(ctx, job);
@@ -344,15 +355,35 @@ export function jobsUseCases({
       assertValidCompetencies(input.competencies);
       const store = storeFor(ctx.tx);
       const latest = await store.latestVersion(ctx.workspaceId, job.id);
+      // One open version per job (rubric_version_one_open_idx): editing resumes it.
+      const open = latest && editsInPlace(latest) ? latest : null;
+      const approved = await store.approvedVersion(ctx.workspaceId, job.id);
+      // Optimistic concurrency: the job row lock orders saves, and an editor's copy must still be the latest.
+      const expected = open ?? approved;
+      if (input.base && (expected?.id !== input.base.versionId || expected.revision !== input.base.revision))
+        throw new JobError('stale');
       const content = {
         successStatement: input.successStatement.trim(),
-        changeNote: input.changeNote?.trim() || null,
+        changeNote:
+          input.changeNote?.trim() ||
+          (approved && describeChanges(await store.competencies(ctx.workspaceId, approved.id), input.competencies)) ||
+          null,
         status: 'draft' as const,
       };
-      if (latest && editsInPlace(latest)) {
-        const version = { ...latest, ...content };
-        await store.replaceDraft(version, input.competencies);
+      // Audited, with the status it had: saving a version awaiting approval takes it back to draft (AIV-P1-013).
+      const saved = async (version: RubricVersion) => {
+        await audit(ctx, {
+          action: 'rubric.saved',
+          subject: { type: 'rubric_version', id: version.id },
+          before: { status: open?.status ?? null, revision: open?.revision ?? null },
+          after: { status: version.status, jobId: job.id, version: version.version, revision: version.revision },
+        });
         return version;
+      };
+      if (open) {
+        const version = { ...open, ...content, revision: open.revision + 1 };
+        await store.replaceDraft(version, input.competencies);
+        return saved(version);
       }
       const version: RubricVersion = {
         id: newId(),
@@ -364,12 +395,16 @@ export function jobsUseCases({
         createdAt: now(),
         approvedBy: null,
         approvedAt: null,
+        revision: 0,
       };
       await store.insertVersion(version, input.competencies);
-      return version;
+      return saved(version);
     },
 
-    /** Sends a draft for the hiring owner's approval. */
+    /**
+     * Sends a draft for the hiring owner's approval (AIV-P1-013). The approved version stays in force, so assessment
+     * and ranking do not change until this one is approved. Audited.
+     */
     async submitRubric(ctx: WorkspaceContext, versionId: string): Promise<void> {
       const store = storeFor(ctx.tx);
       const found = await store.getVersion(ctx.workspaceId, versionId);
@@ -379,6 +414,12 @@ export function jobsUseCases({
       if (!version) throw new JobError('not_found');
       assertTransition(version.status, 'awaiting_approval');
       await store.setStatus(ctx.workspaceId, versionId, 'awaiting_approval');
+      await audit(ctx, {
+        action: 'rubric.submitted',
+        subject: { type: 'rubric_version', id: versionId },
+        before: { status: version.status },
+        after: { status: 'awaiting_approval', jobId: version.jobId, version: version.version },
+      });
     },
 
     /** The hiring owner approves a version awaiting approval; the previously approved version becomes superseded. */
