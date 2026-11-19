@@ -209,6 +209,8 @@ export default async function seed() {
     const head = owners.get('Head of Engineering');
     if (!head) throw new Error('The Head of Engineering was not seeded.');
     await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId: sae }));
+    // AIV-P1-012: the hiring owner signs in to this workspace to read the rubric.
+    await workspaces.switchWorkspace({ userId: head }, workspaceId);
     const sixCompetencies: [string, string, number, number][] = [
       ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4],
       ['Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4],
