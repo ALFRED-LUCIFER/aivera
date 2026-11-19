@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
-// AIV-P1-052 J1: the workspace settings screen. seed.ts: Alex is the admin of Demo Hiring Co (all defaults); Rana is a
+// AIV-P1-052 J1: the workspace settings screen. seed.ts: Alex is the admin of Demo Hiring Co (all defaults); Zaid is a
 // recruiter in Oasis Talent.
 
 const SAVED = 'Settings saved. New links, invitations and sessions use them; existing ones keep their expiry.';
@@ -78,7 +78,7 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
 });
 
 test('Scenario: Other roles can read but not change', async ({ page }) => {
-  await openFromSidebar(page, 'rana@example.com');
+  await openFromSidebar(page, 'zaid@example.com');
   await expect(page.getByText('Only an admin can change these settings')).toBeVisible();
   await expect(shortlist(page)).toHaveValue('14');
   await expect(shortlist(page)).toHaveAttribute('readonly', '');

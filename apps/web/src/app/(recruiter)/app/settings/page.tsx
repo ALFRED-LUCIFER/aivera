@@ -1,4 +1,5 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { ForbiddenError } from '@aivera/workspaces';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
@@ -13,7 +14,16 @@ export default async function SettingsPage() {
   await requireScreen('settings');
   const result = await inActiveWorkspace(async (ctx) => ({
     settings: await getWorkspaces().getSettings(ctx),
-    canEdit: ctx.role === 'admin',
+    // The module's own rule for saving, so the page cannot drift from it.
+    canEdit: await getWorkspaces()
+      .authorize(ctx, 'workspace.settings')
+      .then(
+        () => true,
+        (error: unknown) => {
+          if (error instanceof ForbiddenError) return false;
+          throw error;
+        },
+      ),
   }));
   if (!result) notFound();
   const t = await getTranslations(defaultLocale, defaultTimeZone);

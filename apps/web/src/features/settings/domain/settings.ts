@@ -41,11 +41,11 @@ export const SETTING_UNITS: Record<NumberSetting, 'days' | 'hours' | 'times' | '
 };
 
 /** What the form holds: numbers as typed, so "24" or "" can be shown and explained before anything is sent. */
-export type SettingsForm = Record<NumberSetting, string> & { candidateFeedbackEnabled: boolean };
+export type SettingsFormValues = Record<NumberSetting, string> & { candidateFeedbackEnabled: boolean };
 
 export const isNumberSetting = (key: SettingKey): key is NumberSetting => key in SETTING_BOUNDS;
 
-export const toForm = (settings: WorkspaceSettings): SettingsForm => ({
+export const toForm = (settings: WorkspaceSettings): SettingsFormValues => ({
   ...(Object.fromEntries(
     (Object.keys(SETTING_BOUNDS) as NumberSetting[]).map((key) => [key, String(settings[key])]),
   ) as Record<NumberSetting, string>),
@@ -53,7 +53,7 @@ export const toForm = (settings: WorkspaceSettings): SettingsForm => ({
 });
 
 /** The settings to save, or the numeric fields out of range (each shown "Enter a number from <min> to <max>"). */
-export function parseForm(form: SettingsForm): { settings: WorkspaceSettings } | { invalid: NumberSetting[] } {
+export function parseForm(form: SettingsFormValues): { settings: WorkspaceSettings } | { invalid: NumberSetting[] } {
   const invalid = (Object.keys(SETTING_BOUNDS) as NumberSetting[]).filter((key) => {
     const text = form[key].trim();
     return !/^\d+$/.test(text) || !settingsSchema.shape[key].safeParse(Number(text)).success;
@@ -65,14 +65,14 @@ export function parseForm(form: SettingsForm): { settings: WorkspaceSettings } |
 }
 
 /** Whether the field differs from the approved default, so it shows "Default: N" and "Use default". */
-export const changedFromDefault = (form: SettingsForm, key: SettingKey) =>
+export const changedFromDefault = (form: SettingsFormValues, key: SettingKey) =>
   String(form[key]).trim() !== String(DEFAULT_SETTINGS[key]);
 
 export type SettingsStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
 /** The form's view model: the values as typed, the fields out of range, the save state and the handlers. */
 export type SettingsView = {
-  form: SettingsForm;
+  form: SettingsFormValues;
   invalid: NumberSetting[];
   status: SettingsStatus;
   onChange: (key: SettingKey, value: string | boolean) => void;

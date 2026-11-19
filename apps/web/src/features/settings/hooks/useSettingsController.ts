@@ -5,7 +5,7 @@ import {
   toForm,
   type NumberSetting,
   type SettingKey,
-  type SettingsForm,
+  type SettingsFormValues,
   type SettingsStatus,
   type SettingsView,
   type WorkspaceSettings,
@@ -17,10 +17,15 @@ import { saveSettings } from '../services/saveSettings.ts';
  * explained and nothing is sent; a failed save keeps the edits in the form.
  */
 export function useSettingsController(saved: WorkspaceSettings, save = saveSettings): SettingsView {
-  const [form, setForm] = useState<SettingsForm>(() => toForm(saved));
+  const [form, setForm] = useState<SettingsFormValues>(() => toForm(saved));
   const [invalid, setInvalid] = useState<NumberSetting[]>([]);
   const [status, setStatus] = useState<SettingsStatus>('idle');
-  const set = (key: SettingKey, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
+  // An edit clears the last save's message and the field's own error, which described the old value.
+  const set = (key: SettingKey, value: string | boolean) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setInvalid((keys) => keys.filter((k) => k !== key));
+    setStatus('idle');
+  };
 
   return {
     form,

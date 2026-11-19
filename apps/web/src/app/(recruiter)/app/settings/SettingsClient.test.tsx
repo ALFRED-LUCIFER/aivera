@@ -34,7 +34,7 @@ function Settings(props: {
 
 const shortlist = () => screen.getByLabelText('Client shortlist link lasts');
 
-describe('SettingsForm', () => {
+describe('Settings screen: SettingsForm with its controller', () => {
   it('Scenario: An admin sees every setting with its current value and range', () => {
     render(<Settings />);
     for (const group of [
@@ -63,6 +63,9 @@ describe('SettingsForm', () => {
     expect(await screen.findByText(SAVED)).toBeTruthy();
     expect(shortlist()).toHaveProperty('value', '7');
     expect(screen.getByText('Default: 14')).toBeTruthy();
+    // The next edit clears the message: it described the values as saved.
+    await userEvent.type(shortlist(), '0');
+    expect(screen.queryByText(SAVED)).toBeNull();
   });
 
   // SAFETY: mutation check: parseForm accepted any number (no bounds check) -> this test failed (save was called)
