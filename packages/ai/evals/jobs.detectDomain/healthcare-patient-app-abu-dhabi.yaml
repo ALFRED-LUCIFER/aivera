@@ -1,0 +1,29 @@
+# Healthcare pack, UAE, a design job: the health regulator is regional knowledge. Synthetic (AIV-P1-066).
+id: healthcare-patient-app-abu-dhabi
+group: domain
+input:
+  jobType: product_design
+  title: 'Product Designer, Patient App'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will design the app patients use to book appointments at our clinics and see their lab results. You test designs with patients and doctors. You follow the Department of Health rules for patient data.'
+  - id: S2
+    kind: job_description
+    text: 'Abu Dhabi, United Arab Emirates'
+expected:
+  match:
+    industry.domain: healthcare
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: healthcare
+      citations:
+        - sourceId: S1
+          quote: 'You will design the app patients use to book appointments at our clinics and see their lab results.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Abu Dhabi, United Arab Emirates'

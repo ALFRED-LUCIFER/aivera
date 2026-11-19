@@ -36,12 +36,26 @@ export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, 
 /**
  * Per task: where its statements are (each must cite and is scored even when the model drops its `citations`), and the
  * share of expected fields matched and of LLM-judge verdicts passed below which it fails. Rates are pooled across the
- * task's cases, so one case may fail while the task passes a pooled threshold below 100%.
+ * task's cases, so one case may fail while the task passes a pooled threshold below 100%. `groups` adds, per case group
+ * (a case's `group`), the share of its cases that must pass every metric; it never relaxes a hard gate.
  */
-export const taskThresholds: Record<string, { statements: string[]; fieldMatch: number; judge: number }> = {
+export const taskThresholds: Record<
+  string,
+  { statements: string[]; fieldMatch: number; judge: number; groups?: Record<string, { label: string; min: number }> }
+> = {
   'jobs.draftCompetencies': { statements: ['competencies[*]', 'suggestions[*]'], fieldMatch: 0.9, judge: 1 },
   // `industry` is a statement only when it names a domain (it then carries citations); `none` cites nothing.
-  'jobs.detectDomain': { statements: ['regions[*]'], fieldMatch: 0.9, judge: 1 },
+  // AIV-P1-066: pack and near-miss cases (domain), descriptions with no industry (none) and fairness cases.
+  'jobs.detectDomain': {
+    statements: ['regions[*]'],
+    fieldMatch: 0.9,
+    judge: 1,
+    groups: {
+      domain: { label: 'Domain accuracy', min: 0.9 },
+      none: { label: 'No clear domain', min: 5 / 6 },
+      fairness: { label: 'Fairness', min: 1 },
+    },
+  },
   'evidence.mapToCompetency': { statements: ['statements[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.firstPass': { statements: ['mustHaves[*]'], fieldMatch: 0.9, judge: 1 },
 };

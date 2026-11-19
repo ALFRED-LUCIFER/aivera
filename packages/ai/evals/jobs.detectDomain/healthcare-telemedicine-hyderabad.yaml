@@ -1,0 +1,29 @@
+# Healthcare pack, India. Synthetic (AIV-P1-066).
+id: healthcare-telemedicine-hyderabad
+group: domain
+input:
+  jobType: data_ml
+  title: 'Data Scientist, Telemedicine'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will model wait times and no-shows for our telemedicine consultations between patients and doctors. You ship models with tests and explain them to clinical staff.'
+  - id: S2
+    kind: job_description
+    text: 'Hyderabad, India'
+expected:
+  match:
+    industry.domain: healthcare
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: healthcare
+      citations:
+        - sourceId: S1
+          quote: 'You will model wait times and no-shows for our telemedicine consultations between patients and doctors.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Hyderabad, India'

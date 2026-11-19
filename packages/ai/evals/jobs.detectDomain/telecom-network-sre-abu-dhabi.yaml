@@ -1,0 +1,29 @@
+# Telecom pack, UAE. Synthetic (AIV-P1-066).
+id: telecom-network-sre-abu-dhabi
+group: domain
+input:
+  jobType: devops_sre
+  title: 'Site Reliability Engineer, Mobile Network'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will run the systems behind our mobile network: the 5G core, SIM provisioning and billing for millions of subscribers. You own alerts, runbooks and incident reviews.'
+  - id: S2
+    kind: job_description
+    text: 'Abu Dhabi'
+expected:
+  match:
+    industry.domain: telecom
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: telecom
+      citations:
+        - sourceId: S1
+          quote: 'You will run the systems behind our mobile network: the 5G core, SIM provisioning and billing for millions of subscribers.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Abu Dhabi'

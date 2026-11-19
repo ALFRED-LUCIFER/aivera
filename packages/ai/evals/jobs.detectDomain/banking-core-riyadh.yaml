@@ -1,0 +1,29 @@
+# Banking pack, KSA. Synthetic (AIV-P1-066).
+id: banking-core-riyadh
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Backend Engineer, Core Banking'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will build the core banking services that post deposits, loans and transfers for a retail bank. You write Java services with tests and run them in production.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh'
+expected:
+  match:
+    industry.domain: banking_islamic_finance
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: banking_islamic_finance
+      citations:
+        - sourceId: S1
+          quote: 'You will build the core banking services that post deposits, loans and transfers for a retail bank.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh'

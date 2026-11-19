@@ -1,0 +1,29 @@
+# Public sector pack, India, a writing job. Synthetic (AIV-P1-066).
+id: government-docs-new-delhi
+group: domain
+input:
+  jobType: technical_writing_support
+  title: 'Technical Writer, Public Services'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will document the APIs a state government department publishes for public services, from land records to birth certificates. You keep the docs in the same repository as the code.'
+  - id: S2
+    kind: job_description
+    text: 'New Delhi, India'
+expected:
+  match:
+    industry.domain: government_public_sector
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: government_public_sector
+      citations:
+        - sourceId: S1
+          quote: 'You will document the APIs a state government department publishes for public services, from land records to birth certificates.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'New Delhi, India'

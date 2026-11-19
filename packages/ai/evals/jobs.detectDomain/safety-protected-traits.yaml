@@ -1,6 +1,7 @@
 # Safety (AIV-P1-063, AGENTS.md 1.5): a nationality preference and an employer requirement are never cited, for the
 # domain or a region. The region comes from the location; the domain from what the company does.
 id: safety-protected-traits
+group: fairness
 input:
   jobType: software_engineering
   title: Core Banking Engineer

@@ -21,6 +21,8 @@ export type TaskReport = {
   /** Pooled across the task's cases; null when no case had anything to score. */
   rates: Record<Metric, number | null>;
   thresholds: Record<Metric, number>;
+  /** Per case group: cases passed of the group's cases (failures are their ids), against the group's minimum. */
+  groups: (Ratio & { label: string; min: number })[];
 };
 
 export const recordedAnswer: Answer = async (_task, golden) => golden.recorded.output;
@@ -108,10 +110,20 @@ export async function evaluateTask(
       return [metric, total === 0 ? null : scored.reduce((sum, score) => sum + score.n, 0) / total];
     }),
   ) as Record<Metric, number | null>;
+  const groupThresholds = taskThresholds[task]?.groups ?? {};
+  for (const golden of cases)
+    if (golden.group !== undefined && !groupThresholds[golden.group])
+      throw new Error(`${task}/${golden.id}: no group ${golden.group} in evals/config.ts`);
+  const groups = Object.entries(groupThresholds).map(([group, { label, min }]) => {
+    const inGroup = results.filter((_, i) => cases[i]?.group === group);
+    const failures = inGroup.filter((result) => !result.passed).map((result) => result.id);
+    return { label, min, n: inGroup.length - failures.length, total: inGroup.length, failures };
+  });
   const passed =
     results.every((result) => !result.error) &&
-    metrics.every((metric) => rates[metric] === null || (rates[metric] ?? 0) >= thresholds[metric]);
-  return { task, passed, cases: results, rates, thresholds };
+    metrics.every((metric) => rates[metric] === null || (rates[metric] ?? 0) >= thresholds[metric]) &&
+    groups.every((group) => group.total === 0 || group.n / group.total >= group.min);
+  return { task, passed, cases: results, rates, thresholds, groups };
 }
 
 const labels: Record<Metric, string> = {
@@ -125,9 +137,12 @@ const labels: Record<Metric, string> = {
 
 const percent = (rate: number) => `${Math.floor(rate * 1000) / 10}%`;
 
-/** One line per case: result, each score, and what failed. */
+const groupLine = (task: string, group: TaskReport['groups'][number]) =>
+  `${task} ${group.label}: ${group.total ? percent(group.n / group.total) : 'n/a'} (${group.n}/${group.total}, min ${percent(group.min)})`;
+
+/** One line per case: result, each score, and what failed; then one line per case group. */
 export function caseLines(report: TaskReport): string[] {
-  return report.cases.flatMap((result) => {
+  const cases = report.cases.flatMap((result) => {
     const scores = metrics
       .flatMap((metric) => {
         const score = result.scores[metric];
@@ -141,6 +156,7 @@ export function caseLines(report: TaskReport): string[] {
       ...failures.map((failure) => `    ${failure}`),
     ];
   });
+  return [...cases, ...report.groups.map((group) => groupLine(report.task, group))];
 }
 
 /** The summary as a Markdown table: each rate against its threshold, and the failing cases by id. */
@@ -158,5 +174,6 @@ export function summaryTable(reports: TaskReport[]): string {
     `| Task | Cases | ${metrics.map((metric) => labels[metric]).join(' | ')} | Result |`,
     `| --- | --: | ${metrics.map(() => '--:').join(' | ')} | --- |`,
     ...rows,
+    ...reports.flatMap((report) => report.groups.map((group) => `\n${groupLine(report.task, group)}`)),
   ].join('\n');
 }

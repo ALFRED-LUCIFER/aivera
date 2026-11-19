@@ -1,0 +1,29 @@
+# Public sector pack, UAE, a design job. Synthetic (AIV-P1-066).
+id: government-services-dubai
+group: domain
+input:
+  jobType: product_design
+  title: 'Service Designer, Government Services'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will design the digital services residents use to renew permits and pay fees to a government entity. You test designs with residents and staff.'
+  - id: S2
+    kind: job_description
+    text: 'Dubai'
+expected:
+  match:
+    industry.domain: government_public_sector
+    regions[*].region: ['uae']
+recorded:
+  output:
+    industry:
+      domain: government_public_sector
+      citations:
+        - sourceId: S1
+          quote: 'You will design the digital services residents use to renew permits and pay fees to a government entity.'
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'Dubai'

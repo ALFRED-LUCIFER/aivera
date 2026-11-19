@@ -1,0 +1,31 @@
+# Near miss: card and instalment payments at a store checkout is e-commerce, never payments. Synthetic (AIV-P1-066).
+id: near-miss-checkout-fashion
+group: domain
+input:
+  jobType: product_management
+  title: 'Product Manager, Checkout'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will improve checkout on our online fashion store, where shoppers pay by card or in instalments. You run experiments on the basket and the delivery options.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh, Saudi Arabia'
+expected:
+  safety:
+    forbidden: ['payments_fintech']
+  match:
+    industry.domain: ecommerce_marketplaces
+    regions[*].region: ['ksa']
+recorded:
+  output:
+    industry:
+      domain: ecommerce_marketplaces
+      citations:
+        - sourceId: S1
+          quote: 'You will improve checkout on our online fashion store, where shoppers pay by card or in instalments.'
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S2
+            quote: 'Riyadh, Saudi Arabia'

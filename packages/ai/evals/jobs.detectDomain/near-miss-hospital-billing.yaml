@@ -1,0 +1,31 @@
+# Near miss: billing and insurance claims at a hospital group is healthcare, never payments. Synthetic (AIV-P1-066).
+id: near-miss-hospital-billing
+group: domain
+input:
+  jobType: software_engineering
+  title: 'Backend Engineer, Hospital Billing'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer approvals. You write tested services.'
+  - id: S2
+    kind: job_description
+    text: 'Kochi, India'
+expected:
+  safety:
+    forbidden: ['payments_fintech']
+  match:
+    industry.domain: healthcare
+    regions[*].region: ['india']
+recorded:
+  output:
+    industry:
+      domain: healthcare
+      citations:
+        - sourceId: S1
+          quote: 'You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer approvals.'
+    regions:
+      - region: india
+        citations:
+          - sourceId: S2
+            quote: 'Kochi, India'
