@@ -16,23 +16,32 @@ const t = await getTranslations('en', 'Asia/Dubai');
 const names = (list: readonly { name: string }[]) => list.map((c) => c.name).join('; ');
 const payments = listDomainPacks().find((p) => t(p.labelKey) === 'Payments and fintech');
 
-// Proxies, never skills (AGENTS.md 1.5, 1.6): employers, "worked at", nationality, residency, age, gender.
+// Proxies, never skills (AGENTS.md 1.5, 1.6): employers, "worked at", nationality, residency, permits, language as
+// origin, age, gender, religion and marital status.
 const PROXIES: RegExp[] = [
-  /\b(worked|working) (at|for)\b/i,
-  /\bemployed (at|by)\b/i,
-  /\bex-[A-Za-z]/,
-  /\balumn(i|us|a)\b/i,
+  /\b(worked|working|previously|formerly) (at|for)\b|\bemployed (at|by)\b|\bformer\b|\bex-[A-Za-z]/i,
+  /\balumn(i|us|a)\b|\bgraduated? (of|from)\b|\brecent graduates?\b|\bfresh(ers?| graduates?)\b/i,
   /\btop[- ]tier\b|\btier[- ]?(1|one)\b|\bbig (four|4|tech)\b|\bfaang\b|\bblue[- ]chip\b|\bfortune 500\b|\breputed\b/i,
   /\b(inc|ltd|llc|pjsc|plc|gmbh)\b/i,
-  /\b(visa|mastercard|american express|amex|unionpay|jcb|stripe|adyen|checkout\.com|paypal|worldpay|braintree|network international|razorpay|paytm|phonepe|tabby|tamara|hyperpay|moyasar|paytabs|epic|cerner|oracle|meditech|allscripts|intersystems|google|amazon|microsoft|apple|meta|hsbc|citi(bank)?|jp ?morgan|goldman)\b/i,
-  /\bnationals\b|\bnationality\b|\bcitizen(s|ship)?\b|\bpassport\b/i,
-  /\bresiden(t|ts|ce|cy)\b|\bexpat(s|riates?)?\b|\blocals\b|\blocal (candidates?|hires?|talent)\b/i,
-  /\bemiratis?\b|\b(emiratisation|emiratization|saudisation|saudization|nitaqat)\b/i,
-  /\bnative[- ](speaker|arabic|english|hindi|language)\b|\bmother tongue\b/i,
-  /\blives? in\b|\bbased in\b|\bborn\b|\bcomes? from\b|\bfrom (the )?(uae|ksa|india|gcc)\b/i,
-  /\bage[ds]?\b|\byears old\b|\b(young|youthful|energetic)\b|\b(under|over) \d\d\b|\bfresh(ers?| graduates?)\b/i,
-  /\b(gender|male|female|man|woman|men|women|he|she|his|her|hers|him)\b/i,
+  /\bnationals\b|\b(a|an|gcc|uae|ksa|local) nationals?\b|\bnationality\b|\bcitizen(s|ship)?\b|\bpassport\b/i,
+  /\b(saudi|emirati|indian|arab|expat|expatriate)s?\b|\b(emiratisation|emiratization|saudisation|saudization|nitaqat)\b/i,
+  /\bresid(e|es|ing|ent|ents|ence|ency)\b|\blocals\b|\blocal (candidates?|hires?|talent)\b|\bin-country\b|\bcommut/i,
+  /\blives? in\b|\bliving in\b|\bbased in\b|\bborn\b|\bcomes? from\b|\bfrom (the )?(uae|ksa|india|gcc)\b/i,
+  /\bvisa\b|\biqama\b|\bemirates id\b|\bwork permit\b|\bsponsorship\b/i,
+  /\bnative\b(?!-)|\bmother tongue\b|\b(arabic|english|hindi|urdu)[- ]?(speak(er|ers|ing)|native)\b|\bfluent\b/i,
+  /\bage[ds]?\b|\byears old\b|\b(young|youthful|energetic)\b|\b(under|over|below|above) \d\d\b/i,
+  /\b(gender|male|female|man|woman|men|women|he|she|his|her|hers|him|ladies|gentlem[ae]n|girls?|boys?)\b/i,
+  /\b(married|marital|religion|religious|muslim|christian|hindu)\b/i,
 ];
+// Every capitalised word after a string's first is a known standard, acronym or regional name, so an employer or
+// brand fails until a reviewer adds it here on purpose.
+// shortcut: a lowercase or sentence-initial company name escapes this; widen with a reviewed dictionary if a pack PR
+// slips one past review.
+const PROPER_NOUNS = new Set(
+  'ABDM ABHA ADT API APIs Aani CBUAE CPT D DHA DSS DoH EMR EMRs FHIR HL7 ICD-10 ID IDs ISO Malaffi NABIDH NPCI NPHIES ORU PCI R4 RBI REST SADAD SAMA SCA SMART Secure UAE UPI'.split(
+    ' ',
+  ),
+);
 // Regional regulators, schemes and exchanges: knowledge shown with evidence, so only inside regional hints.
 const REGIONAL_NAMES = /\b(CBUAE|Aani|SAMA|mada|SADAD|NPCI|UPI|RBI|RuPay|DHA|DoH|NABIDH|Malaffi|NPHIES|ABDM|ABHA)\b/;
 
@@ -43,7 +52,9 @@ const stringsOf = (value: unknown): string[] =>
       ? Object.values(value).flatMap(stringsOf)
       : [];
 const catalogueStrings = (packs: readonly DomainPack[]) => [...stringsOf(packs), ...packs.map((p) => t(p.labelKey))];
-const fairnessViolations = (strings: string[]) => strings.filter((s) => PROXIES.some((re) => re.test(s)));
+const unknownProperNouns = (s: string) => [...s.matchAll(/(?<=.)\b[A-Z][\w-]*/g)].some(([w]) => !PROPER_NOUNS.has(w));
+const fairnessViolations = (strings: string[]) =>
+  strings.filter((s) => PROXIES.some((re) => re.test(s)) || unknownProperNouns(s));
 
 describe('domain packs', () => {
   it('gives software engineering in payments niche core competencies, and the rest as more from this pack', () => {
@@ -93,16 +104,32 @@ describe('domain packs', () => {
   });
 
   it('keeps every catalogue string a skill, never a proxy', () => {
-    // SAFETY: mutation check: added a payments competency named "Worked at a top-tier bank", then one named
-    // "UAE nationals" -> 'keeps every catalogue string a skill, never a proxy' failed both times.
+    // SAFETY: mutation check: renamed a payments competency to "Worked at a top-tier bank", then "UAE nationals",
+    // then "Payments at Emirates NBD" -> 'keeps every catalogue string a skill, never a proxy' failed each time.
     expect(fairnessViolations(catalogueStrings(listDomainPacks()))).toEqual([]);
   });
 
-  it('fails the fairness check when a pack names an employer, a nationality or an age', () => {
+  it('fails the fairness check when a pack names an employer, a nationality, residency or an age', () => {
     const [first, ...rest] = listDomainPacks();
     const template = first?.competencies[0];
     if (!first || !template) throw new Error('catalogue is empty');
-    for (const proxy of ['Worked at a top-tier bank', 'UAE nationals', 'Native Arabic speaker', 'Under 35'])
+    for (const proxy of [
+      'Worked at a top-tier bank',
+      'UAE nationals',
+      'Saudi national',
+      'Native Arabic speaker',
+      'Fluent Arabic speaker',
+      'Residing in Dubai',
+      'Living in Riyadh',
+      'Holds a valid Iqama',
+      'Previously at Emirates NBD',
+      'Payments experience at Careem Pay',
+      'Graduated from a top university',
+      'Under 35',
+      'Below 30',
+      'Ladies only',
+      'Married',
+    ])
       expect(
         fairnessViolations(
           catalogueStrings([

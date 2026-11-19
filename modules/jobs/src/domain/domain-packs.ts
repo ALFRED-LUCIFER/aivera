@@ -46,8 +46,6 @@ export type DomainPackForJobType = {
   readonly hints: Readonly<Record<Region, readonly RegionalHint[]>>;
 };
 
-const desirable = 'desirable' as const;
-
 const PAYMENTS_HINTS_APPLY_TO: JobType[] = [
   'software_engineering',
   'qa_test_automation',
@@ -74,7 +72,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering', 'devops_sre'],
         core: ['software_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -90,7 +88,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'data_ml'],
         core: ['software_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -106,7 +104,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'data_ml', 'devops_sre'],
         core: ['software_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -116,13 +114,13 @@ const PACKS: DomainPack[] = [
         evidence:
           'Architecture diagrams that mark the cardholder data environment; tokenisation or vault integration code; assessment or self-assessment work',
         levels: {
-          1: 'Can explain which card data is in scope and why it must never be logged or stored',
+          1: 'Can explain which card data is in scope, why card numbers must never be logged, and why security codes must never be stored after authorisation',
           3: 'Built a flow where raw card numbers never reach the team’s own servers, using tokens or hosted fields',
           5: 'Led a scope reduction that took systems out of the cardholder data environment, with the assessment evidence to show it',
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering', 'devops_sre'],
         core: ['software_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -134,7 +132,7 @@ const PACKS: DomainPack[] = [
         levels: {
           1: 'Has integrated a checkout that triggers a 3-D Secure challenge',
           3: 'Handled challenge, frictionless, failed and abandoned authentication, with the liability shift recorded per payment',
-          5: 'Designed an exemption and retry strategy across markets that raised approval rates within SCA rules, with before-and-after data',
+          5: 'Designed an exemption and retry strategy across markets that raised approval rates within each market’s authentication rules, with before-and-after data',
         },
         appliesTo: [
           'software_engineering',
@@ -144,7 +142,7 @@ const PACKS: DomainPack[] = [
           'product_design',
         ],
         core: [],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -160,7 +158,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'data_ml', 'ai_llm_engineering', 'product_management'],
         core: ['data_ml'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -176,7 +174,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering', 'devops_sre'],
         core: [],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -192,7 +190,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering'],
         core: [],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -207,7 +205,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['product_management', 'data_ml'],
         core: ['product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -223,7 +221,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['product_management'],
         core: ['product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -238,7 +236,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['product_management', 'sales'],
         core: ['product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -253,7 +251,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['product_management', 'data_ml', 'technical_writing_support'],
         core: ['product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -269,7 +267,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['qa_test_automation', 'forward_deployed_engineering'],
         core: ['qa_test_automation'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
     ],
@@ -287,7 +285,7 @@ const PACKS: DomainPack[] = [
             5: 'Led a product’s compliance with these rules through licensing or inspection, with the evidence pack',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -302,7 +300,7 @@ const PACKS: DomainPack[] = [
             5: 'Took an Aani integration live and owned its reconciliation and incident handling',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -316,7 +314,7 @@ const PACKS: DomainPack[] = [
             5: 'Ran several such acquirer integrations in production, with routing and reconciliation across them',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],
@@ -331,7 +329,7 @@ const PACKS: DomainPack[] = [
             5: 'Owned mada acceptance in production across channels, with approval and reconciliation data',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -345,7 +343,7 @@ const PACKS: DomainPack[] = [
             5: 'Ran a SADAD biller integration in production, with reconciliation and exception handling owned',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -359,7 +357,7 @@ const PACKS: DomainPack[] = [
             5: 'Led a product’s compliance with SAMA payment rules through licensing or inspection, with the evidence pack',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],
@@ -376,7 +374,7 @@ const PACKS: DomainPack[] = [
             5: 'Ran UPI payments in production at volume, with success-rate, dispute and reconciliation data owned',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -391,7 +389,7 @@ const PACKS: DomainPack[] = [
             5: 'Led a product’s compliance with the guidelines through authorisation or audit, with the evidence pack',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -406,7 +404,7 @@ const PACKS: DomainPack[] = [
             5: 'Led a migration of stored cards to tokens with no loss of repeat payments, with the data to show it',
           },
           appliesTo: PAYMENTS_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],
@@ -435,7 +433,7 @@ const PACKS: DomainPack[] = [
           'ai_llm_engineering',
         ],
         core: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -459,13 +457,13 @@ const PACKS: DomainPack[] = [
           'product_design',
         ],
         core: ['software_engineering', 'data_ml', 'ai_llm_engineering', 'devops_sre', 'product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
         name: 'Clinical coding (ICD-10, CPT) and claims',
         meaning:
-          'Works with diagnosis and procedure codes and the claim lifecycle, from eligibility and coding to submission, rejection and resubmission.',
+          'Works with diagnosis and procedure codes, or the market’s own code sets, and the claim lifecycle, from eligibility and coding to submission, rejection and resubmission.',
         evidence: 'Claims or coding logic with tests; rejection analyses; data models for code sets and their versions',
         levels: {
           1: 'Can explain how a diagnosis code and a procedure code support a claim',
@@ -481,7 +479,7 @@ const PACKS: DomainPack[] = [
           'product_management',
         ],
         core: ['data_ml', 'product_management'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
       {
@@ -497,7 +495,7 @@ const PACKS: DomainPack[] = [
         },
         appliesTo: ['software_engineering', 'qa_test_automation', 'forward_deployed_engineering', 'product_management'],
         core: ['software_engineering', 'forward_deployed_engineering'],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 3,
       },
       {
@@ -526,7 +524,7 @@ const PACKS: DomainPack[] = [
           'ai_llm_engineering',
           'product_management',
         ],
-        type: desirable,
+        type: 'desirable',
         levelNeeded: 2,
       },
     ],
@@ -543,7 +541,7 @@ const PACKS: DomainPack[] = [
             5: 'Led NABIDH onboarding for several facilities, with go-live and support records',
           },
           appliesTo: HEALTHCARE_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
         {
@@ -557,7 +555,7 @@ const PACKS: DomainPack[] = [
             5: 'Led Malaffi onboarding for several facilities, with go-live and support records',
           },
           appliesTo: HEALTHCARE_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],
@@ -570,10 +568,10 @@ const PACKS: DomainPack[] = [
           levels: {
             1: 'Can explain the NPHIES transaction types and how they map to FHIR resources',
             3: 'Built NPHIES eligibility or claim transactions that passed validation, with tests',
-            5: 'Ran a NPHIES integration in production, with rejection rates and reprocessing owned',
+            5: 'Ran an NPHIES integration in production, with rejection rates and reprocessing owned',
           },
           appliesTo: HEALTHCARE_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],
@@ -589,7 +587,7 @@ const PACKS: DomainPack[] = [
             5: 'Took an ABDM integration live as a health information provider or user, with consent and audit records owned',
           },
           appliesTo: HEALTHCARE_HINTS_APPLY_TO,
-          type: desirable,
+          type: 'desirable',
           levelNeeded: 2,
         },
       ],

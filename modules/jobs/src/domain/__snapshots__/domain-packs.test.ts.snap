@@ -80,7 +80,7 @@ exports[`domain packs > is read-only and shows every change in review 1`] = `
           "evidence": "Architecture diagrams that mark the cardholder data environment; tokenisation or vault integration code; assessment or self-assessment work",
           "levelNeeded": 3,
           "levels": {
-            "1": "Can explain which card data is in scope and why it must never be logged or stored",
+            "1": "Can explain which card data is in scope, why card numbers must never be logged, and why security codes must never be stored after authorisation",
             "3": "Built a flow where raw card numbers never reach the team’s own servers, using tokens or hosted fields",
             "5": "Led a scope reduction that took systems out of the cardholder data environment, with the assessment evidence to show it",
           },
@@ -102,7 +102,7 @@ exports[`domain packs > is read-only and shows every change in review 1`] = `
           "levels": {
             "1": "Has integrated a checkout that triggers a 3-D Secure challenge",
             "3": "Handled challenge, frictionless, failed and abandoned authentication, with the liability shift recorded per payment",
-            "5": "Designed an exemption and retry strategy across markets that raised approval rates within SCA rules, with before-and-after data",
+            "5": "Designed an exemption and retry strategy across markets that raised approval rates within each market’s authentication rules, with before-and-after data",
           },
           "meaning": "Integrates cardholder authentication so challenges, frictionless approvals, exemptions and failures are handled without losing good payments.",
           "name": "3-D Secure and SCA flows",
@@ -510,7 +510,7 @@ exports[`domain packs > is read-only and shows every change in review 1`] = `
             "3": "Built claim validation or submission that reduced rejections, with the rejection data to show it",
             "5": "Designed a claims platform for several payers’ rules and code set updates, with measured rejection and turnaround rates",
           },
-          "meaning": "Works with diagnosis and procedure codes and the claim lifecycle, from eligibility and coding to submission, rejection and resubmission.",
+          "meaning": "Works with diagnosis and procedure codes, or the market’s own code sets, and the claim lifecycle, from eligibility and coding to submission, rejection and resubmission.",
           "name": "Clinical coding (ICD-10, CPT) and claims",
           "type": "desirable",
         },
@@ -601,7 +601,7 @@ exports[`domain packs > is read-only and shows every change in review 1`] = `
             "levels": {
               "1": "Can explain the NPHIES transaction types and how they map to FHIR resources",
               "3": "Built NPHIES eligibility or claim transactions that passed validation, with tests",
-              "5": "Ran a NPHIES integration in production, with rejection rates and reprocessing owned",
+              "5": "Ran an NPHIES integration in production, with rejection rates and reprocessing owned",
             },
             "meaning": "Integrates with NPHIES for eligibility, prior authorisation and claims, using its FHIR profiles and code sets.",
             "name": "NPHIES eligibility, prior authorisation and claims",
