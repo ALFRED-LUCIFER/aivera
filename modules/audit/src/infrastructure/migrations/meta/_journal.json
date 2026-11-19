@@ -64,6 +64,20 @@
       "when": 1795030628819,
       "tag": "0008_job_publication_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795060092822,
+      "tag": "0009_platform_entry",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795060096488,
+      "tag": "0010_platform_entry_append_only",
+      "breakpoints": true
     }
   ]
 }

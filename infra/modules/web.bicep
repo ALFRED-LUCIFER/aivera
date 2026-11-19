@@ -68,6 +68,13 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           identity: appIdentityId
         }
         { name: 'auth-secret', keyVaultUrl: '${keyVaultUri}secrets/auth-secret', identity: appIdentityId }
+        // Operator console (AIV-P2-035, ADR-012): the operators' emails. Must exist in the vault before an apply, or the
+        // revision fails to start (docs/runbooks/operator-console.md).
+        {
+          name: 'platform-operator-emails'
+          keyVaultUrl: '${keyVaultUri}secrets/platform-operator-emails'
+          identity: appIdentityId
+        }
       ], candidateSecrets)
     }
     template: {
@@ -94,6 +101,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_ENTRA_CLIENT_ID', value: '463fb57b-570d-4384-b914-1078df012bd8' }
             { name: 'AUTH_ENTRA_CLIENT_SECRET', secretRef: 'entra-recruiter-client-secret' }
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
+            { name: 'PLATFORM_OPERATOR_EMAILS', secretRef: 'platform-operator-emails' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
           ], candidateEnv)

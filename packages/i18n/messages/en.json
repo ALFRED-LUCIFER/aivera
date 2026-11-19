@@ -475,5 +475,19 @@
     "loading": "Loading jobs",
     "error": "We could not load your jobs. Try again.",
     "retry": "Try again"
+  },
+  "ops": {
+    "title": "Aivera operations",
+    "signedIn": "Signed in as an Aivera operator.",
+    "nav": {
+      "label": "Operations",
+      "soon": "Coming soon",
+      "workspaces": "Workspaces",
+      "approvals": "Approvals",
+      "catalogue": "Catalogue",
+      "requests": "Requests",
+      "subscriptions": "Subscriptions",
+      "deletions": "Deletions"
+    }
   }
 }

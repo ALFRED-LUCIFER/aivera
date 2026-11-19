@@ -16,9 +16,12 @@ const form = (fields: Record<string, string>) => {
 };
 
 describe('safeNext (Scenario Outline: Return-to refuses anything outside the recruiter app)', () => {
-  it.each(['/app', '/app/jobs', '/app/jobs?tab=open#top'])('keeps the same-origin path %s', (path) => {
-    expect(safeNext(path)).toBe(path);
-  });
+  it.each(['/app', '/app/jobs', '/app/jobs?tab=open#top', '/ops', '/ops/workspaces'])(
+    'keeps the same-origin path %s',
+    (path) => {
+      expect(safeNext(path)).toBe(path);
+    },
+  );
 
   // SAFETY: mutation check: returned `value` unchanged after the startsWith('/') check -> the //, /\ and tab cases failed
   // SAFETY: mutation check: replaced the final /app check with `!path.startsWith('//')` (any same-origin path) -> the
@@ -28,6 +31,8 @@ describe('safeNext (Scenario Outline: Return-to refuses anything outside the rec
     '/candidates/jobs',
     '/',
     '/apples',
+    '/opsx',
+    '/ops/../candidates',
     '/app/../candidates',
     '/app/..//evil.example',
     '//evil.example/app',

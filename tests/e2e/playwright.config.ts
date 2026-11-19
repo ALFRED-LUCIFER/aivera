@@ -3,8 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Not 3000: that is the owner's local preview. `next dev` because the gallery exists only when
 // NODE_ENV=development.
 const port = 3200;
-// A second app with recruiter sign-in but no candidate sign-in settings, as on Azure dev today (AIV-P0-011): the
-// unconfigured project's fail-closed checks.
+// A second app with recruiter sign-in but no candidate sign-in settings, as on Azure dev today (AIV-P0-011), and no
+// operator list (AIV-P2-035): the unconfigured project's fail-closed checks.
 const unconfiguredPort = 3201;
 const oidcPort = 3299;
 const databaseUrl = process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera';
@@ -63,6 +63,8 @@ export default defineConfig({
         // The candidate app registration on the same mocked tenant (AIV-P0-011).
         AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'aivera-e2e-candidate',
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'e2e-only',
+        // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.
+        PLATFORM_OPERATOR_EMAILS: 'pia.platform@example.com,Theo.Platform@example.com',
       },
     },
     {

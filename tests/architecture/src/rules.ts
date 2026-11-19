@@ -33,6 +33,20 @@ const RECRUITER_SESSION =
 // AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.
 const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
 const PUBLIC_API_ALLOWED = new Set(['@aivera/jobs', '@/server/publicJobs']);
+// AIV-P2-035 (ADR-012): the operator console's pages, layouts and route handlers, and its server action files.
+const OPS_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)|features[/\\]ops(?:-[^/\\]+)?)[/\\]/;
+// template and default render children like a layout; loading, error and not-found render no console data.
+const ROUTE_FILE = /[/\\](?:page|layout|template|default|route)\.tsx?$/;
+const USE_SERVER = /^\s*['"]use server['"]/;
+const PLATFORM_OPERATOR_POLICY = /\bawait platformOperator\(\)/;
+// shortcut: sees `export [default] [async] function` only, not `export const x = async () =>`; widen it if the console
+// ever exports an entry point that way.
+const EXPORTED_FUNCTION = /\bexport\s+(?:default\s+)?(?:async\s+)?function\b/;
+/** Every exported function of the file (each page, metadata, action or handler) awaits the policy; at least one. */
+const everyExportChecked = (text: string) => {
+  const exported = text.split(EXPORTED_FUNCTION).slice(1);
+  return exported.length > 0 && exported.every((body) => PLATFORM_OPERATOR_POLICY.test(body));
+};
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -86,6 +100,17 @@ export function findViolations(root: string): Violation[] {
         });
       }
       if (!SOURCE.test(file)) continue;
+
+      if (kind === 'apps' && OPS_AREA.test(file) && !/\.test\.tsx?$/.test(file)) {
+        const text = readFileSync(file, 'utf8');
+        if ((ROUTE_FILE.test(file) || USE_SERVER.test(text)) && !everyExportChecked(text))
+          violations.push({
+            rule: 'ops-platform-operator-policy',
+            file: rel,
+            detail:
+              'every exported /ops page, layout, metadata, route handler and server action awaits platformOperator() (ADR-012)',
+          });
+      }
 
       // AIV-P0-010: module code takes the workspace-scoped `tx` from the request context; only composition holds the pool.
       if (kind === 'modules' && !/[/\\]src[/\\]composition\.ts$/.test(file)) {

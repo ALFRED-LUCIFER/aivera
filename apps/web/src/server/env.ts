@@ -1,3 +1,4 @@
+import { log } from '@aivera/observability';
 import { z } from 'zod';
 
 // Runtime configuration (AIV-P0-007). In Azure, Container Apps fills these from plain settings and Key Vault
@@ -13,6 +14,24 @@ const AUTH_KEYS = [
   'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET',
 ] as const;
 const CANDIDATE_KEYS = ['AUTH_ENTRA_CANDIDATE_CLIENT_ID', 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET'] as const;
+
+// Aivera operators (AIV-P2-035, ADR-012): comma-separated emails, compared lower-case with the identity user's email.
+const operatorList = z
+  .string()
+  .transform((value) => value.split(',').map((email) => email.trim().toLowerCase()))
+  .pipe(z.array(z.email()).min(1));
+
+/**
+ * The operator emails, or none when unset, empty or invalid (fails closed, and the app still starts). An invalid list
+ * is logged without its value: it holds the operators' emails (AGENTS.md 1.2). Exported for its test.
+ */
+export function parseOperatorEmails(value: string | undefined): ReadonlySet<string> {
+  if (!value?.trim()) return new Set();
+  const parsed = operatorList.safeParse(value);
+  if (parsed.success) return new Set(parsed.data);
+  log.warn({ area: 'ops' }, 'platform operator config invalid');
+  return new Set();
+}
 
 const webEnvSchema = z
   .object({
@@ -35,6 +54,8 @@ const webEnvSchema = z
     // candidate app registration. Needs the recruiter settings too; optional everywhere until the candidate site ships.
     AUTH_ENTRA_CANDIDATE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: z.string().min(1).optional(),
+    // Never refuses to start: a bad list means no operators (parseOperatorEmails).
+    PLATFORM_OPERATOR_EMAILS: z.string().optional(),
   })
   // Deployed environments must say which commit runs (health and the deploy smoke test rely on it).
   .refine((e) => e.APP_ENV === 'local' || e.COMMIT_SHA, { path: ['COMMIT_SHA'] })
@@ -57,6 +78,7 @@ const webEnvSchema = z
         AUTH_ENTRA_ISSUER: mock,
         AUTH_ENTRA_CANDIDATE_CLIENT_ID: candidateClientId,
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: candidateClientSecret,
+        PLATFORM_OPERATOR_EMAILS: operatorEmails,
         ...rest
       } = e;
       // External ID serves its metadata on the subdomain host but names the tenant-id host as the issuer.
@@ -79,6 +101,7 @@ const webEnvSchema = z
           auth && candidateClientId && candidateClientSecret
             ? { ...auth, clientId: candidateClientId, clientSecret: candidateClientSecret }
             : null,
+        platformOperators: parseOperatorEmails(operatorEmails),
       };
     },
   );

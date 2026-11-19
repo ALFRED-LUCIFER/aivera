@@ -4,15 +4,16 @@
 
 ## Roles
 
-| Role            | Who in the demo                                                                                                             | Uses                                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Recruiter       | The signed-in user ("AP", a talent partner)                                                                                 | Everything in the recruiter app      |
-| Workspace admin | Alex Recruiter (`alex@example.com`), who creates workspace "Demo Hiring Co" in the workspaces tests                         | Workspace members and roles          |
-| Hiring owner    | Head of Engineering (`hassan@example.com`, Demo Hiring Co); CPO, Payments; Head of Quality; VP Engineering; Design Director | Rubric approval, decision pack       |
-| Interviewer     | The recruiter or the hiring owner; Rami Panel (`rami@example.com`, Demo Hiring Co)                                          | Scorecard                            |
-| Client          | CPO, Payments (agency case)                                                                                                 | Client view of the shortlist         |
-| Solo recruiter  | Nadia Freelance (`nadia@example.com`), see below                                                                            | Her own one-member workspace         |
-| Candidate       | Sara Al Qahtani and the cast below                                                                                          | Candidate site, evidence upload page |
+| Role              | Who in the demo                                                                                                                                                                                       | Uses                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Recruiter         | The signed-in user ("AP", a talent partner)                                                                                                                                                           | Everything in the recruiter app      |
+| Workspace admin   | Alex Recruiter (`alex@example.com`), who creates workspace "Demo Hiring Co" in the workspaces tests                                                                                                   | Workspace members and roles          |
+| Hiring owner      | Head of Engineering (`hassan@example.com`, Demo Hiring Co); CPO, Payments; Head of Quality; VP Engineering; Design Director                                                                           | Rubric approval, decision pack       |
+| Interviewer       | The recruiter or the hiring owner; Rami Panel (`rami@example.com`, Demo Hiring Co)                                                                                                                    | Scorecard                            |
+| Client            | CPO, Payments (agency case)                                                                                                                                                                           | Client view of the shortlist         |
+| Solo recruiter    | Nadia Freelance (`nadia@example.com`), see below                                                                                                                                                      | Her own one-member workspace         |
+| Candidate         | Sara Al Qahtani and the cast below                                                                                                                                                                    | Candidate site, evidence upload page |
+| Platform operator | Pia Platform (`pia.platform@example.com`) and Theo Platform (`theo.platform@example.com`), in tests and the e2e config only; never a workspace member ([ADR-012](../adr/ADR-012-operator-console.md)) | Operator console `/ops`              |
 
 ## Individual recruiters and agencies ([ADR-009](../adr/ADR-009-identity-and-account-model.md))
 

@@ -24,6 +24,8 @@ const GLOBAL_TABLES: Record<string, string> = {
   'identity.sign_in_method': 'Belongs to identity.user: read at sign-in, before any workspace is open (ADR-009).',
   'workspaces.active_workspace':
     'Keyed on the user and read before any workspace is open; two opaque ids, membership re-checked per request.',
+  'audit.platform_entry':
+    'What Aivera operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
 };
 /**
  * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role

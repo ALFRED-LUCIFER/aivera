@@ -1,8 +1,8 @@
 import type { Tx } from '@aivera/db';
 import { and, asc, eq } from 'drizzle-orm';
 import type { AuditStore } from '../application/audit.ts';
-import type { Actor, AuditEntry } from '../domain/entry.ts';
-import { entry } from './schema.ts';
+import type { Actor, AuditEntry, PlatformEntry } from '../domain/entry.ts';
+import { entry, platformEntry } from './schema.ts';
 
 type Row = typeof entry.$inferSelect;
 
@@ -39,4 +39,11 @@ export function auditStore(tx: Tx): AuditStore {
       return rows.map(toEntry);
     },
   };
+}
+
+/** Inserts one platform entry; aivera_app may only insert into `audit.platform_entry`, never read or change it. */
+export async function insertPlatformEntry(tx: Tx, { subject, ...rest }: PlatformEntry): Promise<void> {
+  await tx
+    .insert(platformEntry)
+    .values({ ...rest, subjectType: subject?.type ?? null, subjectId: subject?.id ?? null });
 }

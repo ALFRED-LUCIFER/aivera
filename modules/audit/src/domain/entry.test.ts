@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { AuditError, assertValidEntry, type Action, type NewEntry, type Values } from './entry.ts';
+import {
+  AuditError,
+  assertValidEntry,
+  assertValidPlatformEntry,
+  type Action,
+  type NewEntry,
+  type PlatformAction,
+  type Values,
+} from './entry.ts';
 
 const CANDIDATE = { type: 'candidate', id: '0190d4a2-0000-7000-8000-00000000d001' };
 const entry = (action: Action, extra: Partial<NewEntry> = {}): NewEntry => ({ action, subject: CANDIDATE, ...extra });
@@ -8,6 +16,16 @@ const merged = (before: Values, after: Values) => entry('candidate.merged', { be
 describe('the action list', () => {
   it('refuses an action that is not on the list', () => {
     expect(() => assertValidEntry(entry('score.deleted' as Action))).toThrow(new AuditError('unknown_action'));
+  });
+});
+
+describe('the platform action list (ADR-012)', () => {
+  const actorId = '0190d4a2-0000-7000-8000-00000000a001';
+  it('accepts ops.console_opened and refuses an action that is not on the list', () => {
+    expect(() => assertValidPlatformEntry({ actorId, action: 'ops.console_opened' })).not.toThrow();
+    expect(() => assertValidPlatformEntry({ actorId, action: 'rubric.approved' as PlatformAction })).toThrow(
+      new AuditError('unknown_action'),
+    );
   });
 });
 
