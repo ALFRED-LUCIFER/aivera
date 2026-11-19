@@ -992,5 +992,53 @@
     "notFound": "This job does not exist or you do not have access.",
     "error": "We could not load this job. Try again.",
     "retry": "Try again"
+  },
+  "rubric": {
+    "competencies": "Agreed competencies",
+    "intro": "This rubric belongs to this job only; every job has its own. Candidates are judged against the level each competency needs, not against each other. Weights must total 100%.",
+    "columns": {
+      "competency": "Competency and evidence expected",
+      "weight": "Weight",
+      "level": "Level the job needs",
+      "type": "Type"
+    },
+    "weight": "{weight}%",
+    "level": "{level} of 5",
+    "type": {
+      "mandatory": "Mandatory",
+      "desirable": "Desirable"
+    },
+    "suggestedAccepted": "Suggested by Aivera, accepted",
+    "weightsTotal": "Weights total {total}%",
+    "noRubric": "No rubric yet.",
+    "success": "What success means",
+    "successEmpty": "Not written yet.",
+    "scoring": "Scoring definitions",
+    "strength": {
+      "strong": "Strong",
+      "medium": "Medium",
+      "supporting": "Supporting",
+      "claim": "Claim only"
+    },
+    "strengthMeaning": {
+      "strong": "Real work, authorship clear, checked by a second source.",
+      "medium": "Real work, but authorship or scale is unclear.",
+      "supporting": "Indirect signal: a reference, a talk, a public post.",
+      "claim": "Stated, with nothing to inspect. Counts as zero."
+    },
+    "approval": "Approval",
+    "version": "Version {version}, {status}",
+    "status": {
+      "approved": "approved",
+      "superseded": "superseded",
+      "draft": "draft",
+      "awaiting_approval": "awaiting approval",
+      "returned": "returned"
+    },
+    "approvedBy": "{name} · {date, date, short}",
+    "editNote": "Editing a weight creates a new version that needs approval again.",
+    "loading": "Loading the rubric",
+    "error": "We could not load this rubric. Try again.",
+    "retry": "Try again"
   }
 }

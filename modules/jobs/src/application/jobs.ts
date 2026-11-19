@@ -34,6 +34,8 @@ export type JobStore = {
   /** The job's highest-numbered version, or null when it has none. */
   latestVersion(workspaceId: string, jobId: string): Promise<RubricVersion | null>;
   getVersion(workspaceId: string, versionId: string): Promise<RubricVersion | null>;
+  /** Every version of the job, newest first. */
+  listVersions(workspaceId: string, jobId: string): Promise<RubricVersion[]>;
   approvedVersion(workspaceId: string, jobId: string): Promise<RubricVersion | null>;
   competencies(workspaceId: string, versionId: string): Promise<Competency[]>;
   insertVersion(version: RubricVersion, competencies: Competency[]): Promise<void>;
@@ -307,6 +309,19 @@ export function jobsUseCases({
       // shortcut: assessed comes from assessment (AIV-P1-031) as in listJobsForDesk; interviews (AIV-P2-001) and the
       // decision pack (AIV-P2-010) report nothing yet, so the header shows them as not started.
       return { job, approved, latest, assessed: approved ? null : 0 };
+    },
+
+    /** The rubric page (AIV-P1-012): every version with its competencies, newest first; null as `getJob`. */
+    async listRubricVersions(ctx: WorkspaceContext, jobId: string): Promise<Rubric[] | null> {
+      const store = storeFor(ctx.tx);
+      const job = await store.getJob(ctx.workspaceId, jobId);
+      if (!job) return null;
+      await authorize(ctx, 'job.view', resourceOf(job));
+      // shortcut: one competency read per version; a job has a handful of versions. Join them if that grows.
+      const versions = await store.listVersions(ctx.workspaceId, jobId);
+      return Promise.all(
+        versions.map(async (v) => ({ ...v, competencies: await store.competencies(ctx.workspaceId, v.id) })),
+      );
     },
 
     /** What assessment reads: the job's approved version, never a draft; null when none is approved yet. */

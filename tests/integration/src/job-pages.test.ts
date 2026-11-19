@@ -145,3 +145,26 @@ describe('Feature: Job header with its five stages (AIV-P1-011)', () => {
     expect(await as(HEAD, demo, (ctx) => jobs.getJobHeader(ctx, spd))).toBeNull();
   });
 });
+
+describe('Feature: Job rubric (AIV-P1-012)', () => {
+  it('the read model returns the approved version and the full history, newest first, with competencies', async () => {
+    const versions = await as(ALEX, demo, (ctx) => jobs.listRubricVersions(ctx, sae));
+    expect(versions?.map((v) => [v.version, v.status, v.approvedBy])).toEqual([
+      [2, 'approved', HEAD],
+      [1, 'superseded', HEAD],
+    ]);
+    expect(versions?.map((v) => v.competencies.map((c) => c.weightPercent))).toEqual([
+      [50, 50],
+      [60, 40],
+    ]);
+  });
+
+  it('Hiring owner can read: the granted hiring owner reads the rubric', async () => {
+    expect(await as(HEAD, demo, (ctx) => jobs.listRubricVersions(ctx, sae))).toHaveLength(2);
+  });
+
+  it('an interviewer not on this job, and another workspace, read nothing', async () => {
+    expect(await as(LINA, demo, (ctx) => jobs.listRubricVersions(ctx, sae))).toBeNull();
+    expect(await as(ALEX, demo, (ctx) => jobs.listRubricVersions(ctx, elsewhere))).toBeNull();
+  });
+});

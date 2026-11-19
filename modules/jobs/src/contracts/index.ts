@@ -131,6 +131,11 @@ export interface JobsContract {
   listJobsForDesk(ctx: WorkspaceContext): Promise<DeskJob[]>;
   /** The job page header (AIV-P1-011), or null when the job does not exist or the context's job scope does not reach it. */
   getJobHeader(ctx: WorkspaceContext, jobId: string): Promise<JobHeader | null>;
+  /**
+   * Every rubric version of the job with its competencies, newest first, for the rubric page and its approval history
+   * (AIV-P1-012). Null as `getJob`. Every role that may view the job.
+   */
+  listRubricVersions(ctx: WorkspaceContext, jobId: string): Promise<Rubric[] | null>;
   /** What assessment reads: the approved version and its competencies, or null when none is approved. */
   getApprovedRubric(ctx: WorkspaceContext, jobId: string): Promise<Rubric | null>;
   /**

@@ -86,6 +86,13 @@ export function jobStore(tx: Tx): JobStore {
         .where(and(eq(rubricVersion.workspaceId, workspaceId), eq(rubricVersion.id, versionId)));
       return row ?? null;
     },
+    listVersions(workspaceId, jobId) {
+      return tx
+        .select()
+        .from(rubricVersion)
+        .where(and(eq(rubricVersion.workspaceId, workspaceId), eq(rubricVersion.jobId, jobId)))
+        .orderBy(desc(rubricVersion.version));
+    },
     async approvedVersion(workspaceId, jobId) {
       const [row] = await tx
         .select()
