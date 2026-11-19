@@ -46,7 +46,27 @@ describe('toDraftCompetency', () => {
       weightPercent: 25,
       levelNeeded: 4,
       type: 'mandatory',
+      origin: 'from_description',
+      why: null,
       excerpts: [{ text: 'You will ship and run LLM assistants that real merchants use.', start: 9, end: 21 }],
+    });
+  });
+
+  it('keeps a suggestion its origin and its why (AIV-P1-009)', () => {
+    const start = description.indexOf('real merchants');
+    const suggested = toDraftCompetency(description, {
+      name: 'Product judgement',
+      evidenceExpected: 'Product decisions',
+      weightPercent: 15,
+      levelNeeded: 3,
+      type: 'desirable',
+      origin: 'suggested_by_aivera',
+      why: 'Merchants use it, but the description asks for no product judgement.',
+      citations: [{ sourceId: 'description', quote: 'real merchants', start, end: start + 14 }],
+    });
+    expect(suggested).toMatchObject({
+      origin: 'suggested_by_aivera',
+      why: 'Merchants use it, but the description asks for no product judgement.',
     });
   });
 });

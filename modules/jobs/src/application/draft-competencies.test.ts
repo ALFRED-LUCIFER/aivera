@@ -17,6 +17,7 @@ const description = [
   'You will build the eval sets and retrieval metrics that decide what we ship.',
   'You will write production Python services, with tests, and deploy them yourself.',
   'You keep latency, cost per request and incidents in check.',
+  'The assistant answers merchants in Arabic and English.',
 ].join(' ');
 const input = { jobType: 'ai_llm_engineering', title: 'Senior AI Engineer', description } as const;
 
@@ -65,6 +66,30 @@ const answer = {
   ],
   refused: false,
   reason: null,
+  suggestions: [
+    {
+      ...row(
+        'Arabic and bilingual NLP',
+        'Work on Arabic or bilingual text: models, evals, tokenisation',
+        10,
+        2,
+        'desirable',
+        'The assistant answers merchants in Arabic and English',
+      ),
+      why: 'The assistant must answer in Arabic, but the description lists no language requirement.',
+    },
+    {
+      ...row(
+        'Product judgement',
+        'Product decisions they shaped from evals or merchant feedback',
+        15,
+        3,
+        'desirable',
+        'build the eval sets and retrieval metrics that decide what we ship',
+      ),
+      why: 'Your evals decide what ships, but the description does not ask for judging what merchants need.',
+    },
+  ],
 };
 
 /** The fake model, recording every prompt it was sent. */
@@ -164,5 +189,63 @@ describe('Fairness: a line asking for something that is not a skill', () => {
     const refused = { ...answer, refused: true, reason: 'Nationality is not evidence of work, so it was left out.' };
     const draft = await setup(refused).drafting.draftCompetencies(workspaceId, input);
     expect(draft.leftOutNonSkill).toBe(true);
+  });
+});
+
+describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
+  it('returns the suggestions with why, evidence expected, weight, level and type, marked Suggested by Aivera', async () => {
+    const { suggestions } = await setup(answer).drafting.draftCompetencies(workspaceId, input);
+    expect(suggestions.map((s) => [s.name, s.why, s.evidenceExpected, s.weightPercent, s.levelNeeded, s.type])).toEqual(
+      [
+        [
+          'Arabic and bilingual NLP',
+          'The assistant must answer in Arabic, but the description lists no language requirement.',
+          'Work on Arabic or bilingual text: models, evals, tokenisation',
+          10,
+          2,
+          'desirable',
+        ],
+        [
+          'Product judgement',
+          'Your evals decide what ships, but the description does not ask for judging what merchants need.',
+          'Product decisions they shaped from evals or merchant feedback',
+          15,
+          3,
+          'desirable',
+        ],
+      ],
+    );
+    // Scenario: Kept suggestions are marked: the origin the rubric stores (AIV-P1-010 saves it).
+    expect(suggestions.map((s) => s.origin)).toEqual(['suggested_by_aivera', 'suggested_by_aivera']);
+    const [citation] = suggestions[0]?.citations ?? [];
+    expect(description.slice(citation?.start, citation?.end)).toBe(
+      'The assistant answers merchants in Arabic and English',
+    );
+  });
+
+  it('Scenario: Suggestions never duplicate drafted competencies', async () => {
+    const duplicate = { ...answer, suggestions: [{ ...answer.suggestions[1], name: 'Cost and reliability' }] };
+    const { suggestions } = await setup(duplicate).drafting.draftCompetencies(workspaceId, input);
+    expect(suggestions).toEqual([]);
+  });
+
+  it('Scenario: No suggestions', async () => {
+    const { suggestions } = await setup({ ...answer, suggestions: [] }).drafting.draftCompetencies(workspaceId, input);
+    expect(suggestions).toEqual([]);
+  });
+
+  // SAFETY: mutation check: removed cited() from the suggestions in draftCompetenciesSchema -> this test failed
+  it('rejects a suggestion citing no line of the description, after one retry', async () => {
+    const uncited = { ...answer, suggestions: [{ ...answer.suggestions[0], citations: [] }] };
+    const { drafting, prompts } = setup(uncited);
+    await expect(drafting.draftCompetencies(workspaceId, input)).rejects.toBeInstanceOf(UncitedOutput);
+    expect(prompts).toHaveLength(2);
+  });
+
+  it('refuses more than two suggestions, or weights over 100 with the suggestions, rather than trimming', () => {
+    const three = { ...answer, suggestions: [...answer.suggestions, { ...answer.suggestions[0], name: 'Third' }] };
+    expect(draftCompetenciesSchema.safeParse(three).success).toBe(false);
+    const heavy = { ...answer, suggestions: answer.suggestions.map((s) => ({ ...s, weight: 20 })) };
+    expect(draftCompetenciesSchema.safeParse(heavy).success).toBe(false);
   });
 });

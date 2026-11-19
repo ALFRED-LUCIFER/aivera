@@ -106,6 +106,20 @@ export function assertValidCompetencies(competencies: Competency[]): void {
   if (competencies.reduce((sum, c) => sum + c.weightPercent, 0) !== 100) throw new JobError('weights_total');
 }
 
+const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * The suggestions that repeat no drafted competency and no earlier suggestion, comparing names without case or extra
+ * spaces (AIV-P1-009). The prompt asks for this too; code makes sure.
+ */
+export function newSuggestions<T extends { name: string }>(
+  drafted: readonly { name: string }[],
+  suggestions: T[],
+): T[] {
+  const seen = new Set(drafted.map((c) => nameKey(c.name)));
+  return suggestions.filter((s) => !seen.has(nameKey(s.name)) && seen.add(nameKey(s.name)));
+}
+
 const INT4_MAX = 2_147_483_647;
 
 export function assertValidPayBand(band: PayBand | null): void {

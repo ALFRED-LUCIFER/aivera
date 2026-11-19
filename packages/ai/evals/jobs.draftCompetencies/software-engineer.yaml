@@ -6,13 +6,18 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will design and run services that settle merchant payments in production. You write tested code and review your teammates' changes. You join the on-call rota and fix what breaks."
+    text:
+      "You will design and run services that settle merchant payments in production. You write tested code and review
+      your teammates' changes. You join the on-call rota and fix what breaks."
 expected:
   match:
     competencies[*].name:
       - 'System design in production'
       - 'Code quality and testing'
       - 'Reliability and operations'
+    suggestions[*].name:
+      - Banking and payments domain
+      - Working under regulation
 recorded:
   output:
     {
@@ -46,4 +51,25 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Banking and payments domain,
+            evidenceExpected: 'Payment, ledger or settlement systems they built or ran',
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why: 'The services settle merchant payments, but the description asks for no payments or banking knowledge.',
+            citations: [{ sourceId: S1, quote: settle merchant payments in production }],
+          },
+          {
+            name: Working under regulation,
+            evidenceExpected: Systems they built to meet a regulator's or auditor's rules,
+            weight: 10,
+            level: 2,
+            type: desirable,
+            why: 'Settling payments is regulated work, but the description names no regulation or audit duties.',
+            citations: [{ sourceId: S1, quote: settle merchant payments in production }],
+          },
+        ],
     }

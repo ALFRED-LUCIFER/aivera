@@ -6,13 +6,17 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will work on site with logistics customers to find the problem worth solving. You ship integrations into their systems and APIs. You deploy and tune our AI agents for each customer.'
+    text: 'You will work on site with logistics customers to find the problem worth solving. You ship integrations into
+      their systems and APIs. You deploy and tune our AI agents for each customer.'
 expected:
   match:
     competencies[*].name:
       - 'Customer problem discovery'
       - 'Integration engineering'
       - 'Working with AI systems'
+    suggestions[*].name:
+      - Logistics operations
+      - Customer communication
 recorded:
   output:
     {
@@ -51,4 +55,27 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Logistics operations,
+            evidenceExpected: 'Systems they built for warehouses, fleets or shipping, and the operations they changed',
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why:
+              'You work on site with logistics customers, but the description asks for no knowledge of how logistics operations
+              run.',
+            citations: [{ sourceId: S1, quote: work on site with logistics customers }],
+          },
+          {
+            name: Customer communication,
+            evidenceExpected: 'Proposals, demos or write-ups that a customer acted on',
+            weight: 10,
+            level: 3,
+            type: desirable,
+            why: 'You find the problem with the customer, but the description does not ask you to explain trade-offs to them.',
+            citations: [{ sourceId: S1, quote: find the problem worth solving }],
+          },
+        ],
     }
