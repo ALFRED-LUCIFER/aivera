@@ -28,6 +28,8 @@ const run = (task: string, cases: GoldenCase[], answer: Answer = recordedAnswer)
 const judgeWith = (completion: string) =>
   liveJudge(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
 
+// Each case spawns the CLI (tsx compiles on start): seconds on a busy CI runner, well past Vitest's 5 s default.
+const cliTimeout = 60_000;
 const tsx = join(import.meta.dirname, '..', 'node_modules', '.bin', 'tsx');
 const cli = (args: string[], env: Record<string, string> = {}) =>
   spawnSync(tsx, ['evals/cli.ts', ...args], {
@@ -148,13 +150,17 @@ describe('the golden set', () => {
 });
 
 describe('Feature: AI eval harness with a golden set', () => {
-  it('Scenario: Running the evals locally prints per-case results and a summary', () => {
-    const { status, stdout } = cli(['--task', 'jobs.draftCompetencies']);
-    expect(status).toBe(0);
-    expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 4/4');
-    expect(stdout).toMatch(/\| Task \| Cases \| Citation validity \| Claim labelling \| Field match \|/);
-    expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 2 \| 100% \(min 100%\) \|/);
-  });
+  it(
+    'Scenario: Running the evals locally prints per-case results and a summary',
+    () => {
+      const { status, stdout } = cli(['--task', 'jobs.draftCompetencies']);
+      expect(status).toBe(0);
+      expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 4/4');
+      expect(stdout).toMatch(/\| Task \| Cases \| Citation validity \| Claim labelling \| Field match \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 2 \| 100% \(min 100%\) \|/);
+    },
+    cliTimeout,
+  );
 
   // SAFETY: mutation check: hardGates.citationValidity set to 0 in config.ts -> both hard-gate tests below failed
   // SAFETY: mutation check: citationValidity scorer removed from scoreCase in run.ts -> both tests below failed
@@ -168,11 +174,15 @@ describe('Feature: AI eval harness with a golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('Scenario: Citation validity is a hard gate: the run exits non-zero (fake provider dry run)', () => {
-    const { status, stdout } = cli(['--dir', 'evals/fixtures/failing']);
-    expect(stdout).toContain('unknown source S9');
-    expect(status).toBe(1);
-  });
+  it(
+    'Scenario: Citation validity is a hard gate: the run exits non-zero (fake provider dry run)',
+    () => {
+      const { status, stdout } = cli(['--dir', 'evals/fixtures/failing']);
+      expect(stdout).toContain('unknown source S9');
+      expect(status).toBe(1);
+    },
+    cliTimeout,
+  );
 
   // SAFETY: mutation check: claimLabelling scorer removed from scoreCase in run.ts -> this test failed
   it('Scenario: CV-only statements must be claims (Paolo Garcia)', async () => {
@@ -234,27 +244,35 @@ describe('Feature: AI eval harness with a golden set', () => {
       });
   });
 
-  it('Scenario: CI runs only when AI code changes, and posts the summary', () => {
-    const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));
-    const paths: string[] = workflow.on.pull_request.paths;
-    const runs = (file: string) => paths.some((glob) => matchesGlob(file, glob));
-    expect(runs('apps/web/src/features/jobs/components/RoleNew.tsx')).toBe(false);
-    expect(runs('packages/ai/src/prompts/jobs.draftCompetencies.ts')).toBe(true);
-    expect(runs('packages/ai/evals/jobs.draftCompetencies/senior-ai-engineer.yaml')).toBe(true);
+  it(
+    'Scenario: CI runs only when AI code changes, and posts the summary',
+    () => {
+      const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));
+      const paths: string[] = workflow.on.pull_request.paths;
+      const runs = (file: string) => paths.some((glob) => matchesGlob(file, glob));
+      expect(runs('apps/web/src/features/jobs/components/RoleNew.tsx')).toBe(false);
+      expect(runs('packages/ai/src/prompts/jobs.draftCompetencies.ts')).toBe(true);
+      expect(runs('packages/ai/evals/jobs.draftCompetencies/senior-ai-engineer.yaml')).toBe(true);
 
-    const summary = join(mkdtempSync(join(tmpdir(), 'ai-eval-')), 'summary.md');
-    execFileSync('touch', [summary]);
-    expect(cli(['--task', 'evidence.firstPass'], { GITHUB_STEP_SUMMARY: summary }).status).toBe(0);
-    expect(readFileSync(summary, 'utf8')).toMatch(
-      /### AI eval \(recorded\)\n\n\| Task \|[^]*\| evidence\.firstPass \| 4 \|/,
-    );
-  });
+      const summary = join(mkdtempSync(join(tmpdir(), 'ai-eval-')), 'summary.md');
+      execFileSync('touch', [summary]);
+      expect(cli(['--task', 'evidence.firstPass'], { GITHUB_STEP_SUMMARY: summary }).status).toBe(0);
+      expect(readFileSync(summary, 'utf8')).toMatch(
+        /### AI eval \(recorded\)\n\n\| Task \|[^]*\| evidence\.firstPass \| 4 \|/,
+      );
+    },
+    cliTimeout,
+  );
 
-  it('refuses a live run outside dev and local', () => {
-    const { status, stderr } = cli(['--live'], { APP_ENV: 'pilot' });
-    expect(stderr).toContain('--live needs APP_ENV=dev or local');
-    expect(status).toBe(2);
-  });
+  it(
+    'refuses a live run outside dev and local',
+    () => {
+      const { status, stderr } = cli(['--live'], { APP_ENV: 'pilot' });
+      expect(stderr).toContain('--live needs APP_ENV=dev or local');
+      expect(status).toBe(2);
+    },
+    cliTimeout,
+  );
 
   it('the LLM judge reads a verdict, and rejects one that fails its schema', async () => {
     const c = caseOf('evidence.mapToCompetency', 'sara-eval-harness');
