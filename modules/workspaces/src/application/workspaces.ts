@@ -1,4 +1,4 @@
-import type { NewEntry } from '@aivera/audit';
+import type { NewEntry, PlatformAction } from '@aivera/audit';
 import { JOB_SCOPED_ROLES } from '../domain/permissions.ts';
 import {
   assertCanChangeRole,
@@ -7,16 +7,22 @@ import {
   type Member,
   type Role,
   type Workspace,
+  type WorkspaceStatus,
   type WorkspaceType,
 } from '../domain/workspace.ts';
 
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type WorkspaceStore = {
   /** Also adds it to the platform directory (ADR-012 point 6). */
-  insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
+  insertWorkspace(workspace: Omit<Workspace, 'createdAt' | 'status'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
   insertMember(member: Member): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
+  /**
+   * The workspace row under FOR KEY SHARE until commit: every request context holds it, so an operator's status change
+   * (which locks FOR UPDATE) waits for work in flight to finish, and work that starts later reads the new status.
+   */
+  shareWorkspace(workspaceId: string): Promise<Workspace | null>;
   /** Points the user's active workspace here (not workspace-owned; see the schema). */
   setActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
   findMember(workspaceId: string, userId: string): Promise<Member | null>;
@@ -24,9 +30,16 @@ export type WorkspaceStore = {
   /** Every member, locked until commit, so two concurrent role changes cannot both remove an admin. */
   lockMembers(workspaceId: string): Promise<Member[]>;
   updateRole(workspaceId: string, userId: string, role: Role): Promise<void>;
-  /** The workspace row, locked until commit, so a type change and an added client cannot interleave. */
+  /**
+   * The workspace row under FOR NO KEY UPDATE until commit, so a type change and an added client cannot interleave. Not
+   * FOR UPDATE: that would conflict with the KEY SHARE every request context holds, and two such requests would
+   * deadlock.
+   */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
+  /** The workspace row under FOR UPDATE until commit, for a status change: it waits for every request in flight. */
+  lockWorkspaceStatus(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
+  updateStatus(workspaceId: string, status: WorkspaceStatus): Promise<void>;
   /** Deletes the workspace with its members, clients, job grants, active-workspace pointers and directory row. */
   deleteWorkspace(workspaceId: string): Promise<void>;
   /** Clients that are not archived. */
@@ -51,6 +64,8 @@ export type WorkspaceStore = {
   setJobScope(scope: 'all' | 'granted', grants: JobGrant[]): Promise<void>;
   /** Appends an audit entry in this transaction, by a user of this workspace. */
   audit(workspaceId: string, actorUserId: string, entry: NewEntry): Promise<void>;
+  /** Appends an operator's action in this transaction: to the workspace's log as `operator`, and to the platform log. */
+  operatorAudit(workspaceId: string, operatorId: string, entry: NewEntry & { action: PlatformAction }): Promise<void>;
 };
 
 export type Ports = {

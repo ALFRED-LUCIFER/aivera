@@ -3,12 +3,14 @@ import { createAudit } from '@aivera/audit/composition';
 import type { JobCounts } from '@aivera/jobs';
 import { log } from '@aivera/observability';
 import { createJobCounts } from '@aivera/jobs/composition';
-import type {
-  AiBudgetConsole,
-  AiTokenUse,
-  DirectorySearch,
-  WorkspaceDirectory,
-  WorkspaceSummary,
+import {
+  STATUS_CHANGES,
+  type AiBudgetConsole,
+  type AiTokenUse,
+  type DirectorySearch,
+  type StatusChange,
+  type WorkspaceDirectory,
+  type WorkspaceSummary,
 } from '@aivera/workspaces';
 import { createAiBudgetConsole, createWorkspaceDirectory } from '@aivera/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
@@ -16,6 +18,8 @@ import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
+import { getJobs } from './jobs';
+import { getWorkspaces } from './workspace';
 
 // The platformOperator policy (AIV-P2-035, ADR-012): the operator console at /ops is for the people who run Aivera,
 // named in PLATFORM_OPERATOR_EMAILS. It is not a workspace role and grants nothing inside any workspace.
@@ -110,4 +114,38 @@ export async function setWorkspaceAiBudget(input: {
 }): Promise<void> {
   const { userId } = await platformOperator();
   await opsReads().ai.setDailyBudget({ operatorId: userId, ...input });
+}
+
+type OperatorActionName = (typeof STATUS_CHANGES)[StatusChange]['action'] | 'ai_budget.changed';
+const OPERATOR_ACTIONS: readonly string[] = [
+  ...Object.values(STATUS_CHANGES).map((c) => c.action),
+  'ai_budget.changed',
+];
+const isOperatorAction = (action: string): action is OperatorActionName => OPERATOR_ACTIONS.includes(action);
+
+/** An operator's action on a workspace, as its detail page lists it: what, when and the operator's reason. */
+export type OperatorAction = { action: OperatorActionName; occurredAt: Date; reason: string | null };
+
+/**
+ * The status and AI budget changes operators made to a workspace, oldest first, from its own audit log (`listOperatorEntries`, read
+ * inside withWorkspace(<it>) as the app role, ADR-012 points 6 and 8). Never a member's entry. Checks the policy too.
+ */
+export async function listOperatorActions(workspaceId: string): Promise<OperatorAction[]> {
+  await platformOperator();
+  const entries = await getAudit().listOperatorEntries(workspaceId);
+  return entries.flatMap(({ action, occurredAt, note }) =>
+    isOperatorAction(action) ? [{ action, occurredAt, reason: note }] : [],
+  );
+}
+
+/**
+ * Suspends or reactivates a workspace (AIV-P2-037) as the signed-in operator: through the workspaces contract inside
+ * withWorkspace(<it>), with its public listings hidden or shown in the same transaction, and audited in both logs.
+ * Checks the policy itself too. Throws `WorkspaceError` from the contract.
+ */
+export async function applyStatusChange(workspaceId: string, change: StatusChange, reason: string) {
+  const { userId } = await platformOperator();
+  await getWorkspaces().changeStatus({ operatorId: userId, workspaceId, change, reason }, (tx) =>
+    getJobs().pausePublicListings(tx, workspaceId, change === 'suspend'),
+  );
 }

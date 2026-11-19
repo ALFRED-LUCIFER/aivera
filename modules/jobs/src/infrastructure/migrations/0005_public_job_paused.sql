@@ -1,0 +1,1 @@
+ALTER TABLE "jobs"."public_job" ADD COLUMN "paused" boolean DEFAULT false NOT NULL;

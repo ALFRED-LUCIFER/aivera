@@ -4,17 +4,14 @@ export type DirectoryPorts = {
   /** Every workspace id, newest first. */
   listIds(): Promise<string[]>;
   /** The workspace's facts, read inside withWorkspace(<that workspace>); null when it no longer exists. */
-  readSummary(workspaceId: string): Promise<Omit<WorkspaceSummary, 'status'> | null>;
+  readSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
 };
 
 export type DirectorySearch = { query: string; offset: number; limit: number };
 
 /** The operator console's workspace reads (ADR-012 point 6): platform facts only, never through an RLS bypass. */
 export function directoryUseCases({ listIds, readSummary }: DirectoryPorts) {
-  const getSummary = async (workspaceId: string): Promise<WorkspaceSummary | null> => {
-    const found = await readSummary(workspaceId);
-    return found && { ...found, status: 'active' };
-  };
+  const getSummary = readSummary;
   return {
     getSummary,
     async listSummaries({ query, offset, limit }: DirectorySearch) {

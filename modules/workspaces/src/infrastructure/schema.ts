@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { MEMBER_STATUSES, ROLES, WORKSPACE_TYPES } from '../domain/workspace.ts';
+import { MEMBER_STATUSES, ROLES, WORKSPACE_STATUSES, WORKSPACE_TYPES } from '../domain/workspace.ts';
 
 export const workspaces = pgSchema('workspaces');
 
@@ -30,6 +30,8 @@ export const workspace = workspaces
       company: text().notNull(),
       hiringFocus: text('hiring_focus').notNull(),
       synthetic: boolean().notNull().default(false),
+      // Changed only by an operator (AIV-P2-037); request contexts refuse new work unless it is active.
+      status: text({ enum: WORKSPACE_STATUSES }).notNull().default('active'),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
       // An operator's daily AI token budget for this workspace (AIV-P2-038); null means the platform default.
       aiDailyTokenBudget: integer('ai_daily_token_budget'),
@@ -41,6 +43,8 @@ export const workspace = workspaces
         'workspace_ai_daily_token_budget_check',
         sql`${t.aiDailyTokenBudget} is null or ${t.aiDailyTokenBudget} between 100000 and 10000000`,
       ),
+      // Must list exactly WORKSPACE_STATUSES (domain/workspace.ts); changing it needs a new migration.
+      check('workspace_status_check', sql`${t.status} in ('active', 'suspended')`),
       tenantPolicy('workspace_tenant_isolation', t.id),
     ],
   )

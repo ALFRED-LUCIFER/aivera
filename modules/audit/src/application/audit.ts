@@ -14,6 +14,8 @@ import {
 export type AuditStore = {
   insert(entry: AuditEntry): Promise<void>;
   listFor(workspaceId: string, subject: Subject): Promise<AuditEntry[]>;
+  /** Entries about the workspace itself written by an operator, oldest first. */
+  listOperatorEntries(workspaceId: string): Promise<AuditEntry[]>;
 };
 
 export type Ports = {
@@ -54,6 +56,10 @@ export function auditUseCases({ storeFor, inWorkspace, insertPlatform, newId, no
 
     listFor(workspaceId: string, subject: Subject): Promise<AuditEntry[]> {
       return inWorkspace(workspaceId, (store) => store.listFor(workspaceId, subject));
+    },
+
+    listOperatorEntries(workspaceId: string): Promise<AuditEntry[]> {
+      return inWorkspace(workspaceId, (store) => store.listOperatorEntries(workspaceId));
     },
 
     async recordPlatform(input: NewPlatformEntry, tx?: Tx): Promise<void> {

@@ -1,8 +1,10 @@
 import type { User } from '@aivera/identity';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  applyStatusChange,
   getWorkspaceFacts,
   isPlatformOperator,
+  listOperatorActions,
   listWorkspaceFacts,
   platformOperator,
   setWorkspaceAiBudget,
@@ -66,7 +68,12 @@ vi.mock('./env', async (actual) => {
 });
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({ getUser }) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
-vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({}) }));
+const listOperatorEntries = vi.fn();
+vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries }) }));
+const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
+const pausePublicListings = vi.fn(async () => {});
+vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));
+vi.mock('./jobs', () => ({ getJobs: () => ({ pausePublicListings }) }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');
@@ -175,5 +182,53 @@ describe('AI token use and the daily budget (AIV-P2-038)', () => {
       'NEXT_HTTP_ERROR_FALLBACK;403',
     );
     expect(ai.setDailyBudget).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-037: the status change and its history, as the signed-in operator only. Synthetic ids.
+const GULF = '0190d4a2-0000-7000-8000-0000000000b2';
+
+describe('applyStatusChange', () => {
+  it("Scenario: A suspension is applied and audited: as her user id, hiding the workspace's public jobs with it", async () => {
+    session.mockResolvedValue(PIA);
+    await applyStatusChange(GULF, 'suspend', 'Pilot ended on 30 Nov 2026');
+    expect(changeStatus).toHaveBeenCalledWith(
+      { operatorId: PIA, workspaceId: GULF, change: 'suspend', reason: 'Pilot ended on 30 Nov 2026' },
+      expect.any(Function),
+    );
+    expect(pausePublicListings).toHaveBeenCalledWith('tx', GULF, true);
+  });
+
+  it('Scenario: Reactivating shows the public jobs again', async () => {
+    session.mockResolvedValue(THEO);
+    await applyStatusChange(GULF, 'reactivate', 'Pilot extended to 31 Dec 2026');
+    expect(pausePublicListings).toHaveBeenCalledWith('tx', GULF, false);
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from applyStatusChange -> this test failed
+  it('Scenario: Non-operators cannot suspend: 403 and nothing changes', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(applyStatusChange(GULF, 'suspend', 'Pilot ended on 30 Nov 2026')).rejects.toThrow('403');
+    expect(changeStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('listOperatorActions', () => {
+  it("lists the operators' status changes from the workspace's own log, with the reason", async () => {
+    session.mockResolvedValue(PIA);
+    const at = new Date('2026-11-19T09:00:00Z');
+    listOperatorEntries.mockResolvedValue([
+      { action: 'workspace.suspended', actor: { type: 'operator', id: PIA }, occurredAt: at, note: 'Pilot ended' },
+    ]);
+    expect(await listOperatorActions(GULF)).toEqual([
+      { action: 'workspace.suspended', occurredAt: at, reason: 'Pilot ended' },
+    ]);
+    expect(listOperatorEntries).toHaveBeenCalledWith(GULF);
+  });
+
+  it('refuses a non-operator before reading anything', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(listOperatorActions(GULF)).rejects.toThrow('403');
+    expect(listOperatorEntries).not.toHaveBeenCalled();
   });
 });

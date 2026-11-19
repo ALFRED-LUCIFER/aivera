@@ -10,6 +10,23 @@ export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 export const WORKSPACE_TYPES = ['in_house', 'agency'] as const;
 export type WorkspaceType = (typeof WORKSPACE_TYPES)[number];
 
+/**
+ * Only an active workspace takes new work. An operator suspends one with a reason (AIV-P2-037); its members still read
+ * everything, and nothing is deleted, hidden or reordered (AGENTS.md 1.5, 1.8).
+ */
+export const WORKSPACE_STATUSES = ['active', 'suspended'] as const;
+export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
+
+/** An operator's reason for a status change: at least this many characters once trimmed. */
+export const MIN_REASON_LENGTH = 10;
+
+/** What an operator may do to a workspace's status, from which status to which, and the audit action it records. */
+export const STATUS_CHANGES = {
+  suspend: { from: 'active', to: 'suspended', action: 'workspace.suspended' },
+  reactivate: { from: 'suspended', to: 'active', action: 'workspace.reactivated' },
+} as const satisfies Record<string, { from: WorkspaceStatus; to: WorkspaceStatus; action: string }>;
+export type StatusChange = keyof typeof STATUS_CHANGES;
+
 export type Workspace = {
   id: string;
   type: WorkspaceType;
@@ -18,6 +35,7 @@ export type Workspace = {
   hiringFocus: string;
   /** Demo and test workspaces hold only synthetic people (AGENTS.md 1.1). */
   synthetic: boolean;
+  status: WorkspaceStatus;
   createdAt: Date;
 };
 
@@ -31,8 +49,7 @@ export type WorkspaceSummary = {
   type: WorkspaceType;
   createdAt: Date;
   synthetic: boolean;
-  /** Every workspace is active until suspension exists (AIV-P2-037). */
-  status: 'active';
+  status: WorkspaceStatus;
   /** Members whose status is active; invited and removed members are not counted. */
   activeMembers: number;
 };
@@ -96,6 +113,8 @@ const MESSAGES = {
   grant_role: 'Only hiring owners and interviewers get job access.',
   not_synthetic: 'Only a synthetic demo workspace can be seeded or purged.',
   no_workspace: 'No such workspace',
+  status_conflict: 'The workspace status has changed. Reload and try again.',
+  reason_required: 'Give a reason of at least 10 characters.',
 } as const;
 
 export type WorkspaceErrorCode = keyof typeof MESSAGES;

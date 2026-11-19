@@ -331,7 +331,8 @@
       "close": "Close assistant",
       "footer": "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
     },
-    "placeholder": "This screen arrives with its own ticket."
+    "placeholder": "This screen arrives with its own ticket.",
+    "paused": "This workspace is paused by Aivera. You can read everything; new work is paused."
   },
   "signIn": {
     "title": "Sign in",
@@ -354,7 +355,9 @@
     "forbiddenTitle": "No access",
     "forbidden": "You do not have access to this. Ask your workspace admin.",
     "noWorkspaceTitle": "You are not in a workspace yet",
-    "noWorkspace": "Ask your workspace admin to add you to their workspace."
+    "noWorkspace": "Ask your workspace admin to add you to their workspace.",
+    "pausedTitle": "This workspace is paused.",
+    "paused": "You can read everything; new work is paused until Aivera reactivates the workspace."
   },
   "signup": {
     "title": "Or create your own workspace",
@@ -562,7 +565,8 @@
         "agency": "Agency"
       },
       "status": {
-        "active": "Active"
+        "active": "Active",
+        "suspended": "Suspended"
       },
       "synthetic": "Synthetic",
       "noPlan": "No plan yet",
@@ -581,7 +585,17 @@
         "facts": "Platform facts",
         "actions": "Operator actions",
         "noActions": "No operator actions yet.",
-        "error": "We could not load this workspace. Try again."
+        "error": "We could not load this workspace. Try again.",
+        "history": "{action} on {date, date, short} at {date, time, ::HHmm} ({timeZone}): {reason}",
+        "actionNames": {
+          "workspace": {
+            "suspended": "Suspended",
+            "reactivated": "Reactivated"
+          },
+          "ai_budget": {
+            "changed": "Daily AI budget changed"
+          }
+        }
       },
       "ai": {
         "title": "AI token use",
@@ -616,6 +630,29 @@
         "failed": "That did not go through. Nothing was changed.",
         "saved": "Daily AI budget set to {budget, number}.",
         "savedDefault": "Daily AI budget reset to the platform default."
+      },
+      "change": {
+        "suspend": {
+          "open": "Suspend workspace",
+          "title": "Suspend {name}?",
+          "body": "Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.",
+          "pending": "Suspending…",
+          "done": "Workspace suspended."
+        },
+        "reactivate": {
+          "open": "Reactivate",
+          "title": "Reactivate {name}?",
+          "body": "Members can start new work again. Nothing they hold has changed.",
+          "pending": "Reactivating…",
+          "done": "Workspace reactivated."
+        },
+        "confirm": "Confirm",
+        "reason": "Reason",
+        "reasonHint": "At least 10 characters. Recorded in the audit logs; members do not see it.",
+        "cancel": "Cancel",
+        "close": "Close",
+        "footer": "Nothing changes until you confirm.",
+        "failed": "That did not go through. Nothing was changed."
       }
     },
     "catalogue": {

@@ -50,6 +50,8 @@ export type JobStore = {
   upsertPublicJob(row: PublicJobRow): Promise<void>;
   /** Marks the job's public listing as no longer open. */
   closePublicJob(workspaceId: string, jobId: string): Promise<void>;
+  /** Hides (or shows again) every public listing of the workspace, open or not, without changing `open`. */
+  pausePublicJobs(workspaceId: string, paused: boolean): Promise<void>;
   setStatus(
     workspaceId: string,
     versionId: string,
@@ -337,6 +339,11 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
         before: { published: true },
         after: { published: false },
       });
+    },
+
+    /** The workspace's public listings leave (or return to) the candidate site; `tx` is withWorkspace(<it>)'s. */
+    pausePublicListings(tx: Tx, workspaceId: string, paused: boolean): Promise<void> {
+      return storeFor(tx).pausePublicJobs(workspaceId, paused);
     },
   };
 }

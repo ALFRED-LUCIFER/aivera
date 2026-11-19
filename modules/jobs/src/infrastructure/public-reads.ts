@@ -1,5 +1,5 @@
 import type { Tx } from '@aivera/db/client';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 import { publicJob } from './schema.ts';
 
@@ -27,23 +27,26 @@ const toPublicJob = ({ payMinMinor, payMaxMinor, payCurrency, ...row }: Row): Pu
       : null,
 });
 
-/** Every open job, newest first. `tx` must be running as aivera_public (composition.ts). */
+/** Every open job of a workspace that is not suspended, newest first. `tx` runs as aivera_public (composition.ts). */
 export const listOpen = async (tx: Tx): Promise<PublicJob[]> =>
   (
     await tx
       .select(columns)
       .from(publicJob)
-      .where(eq(publicJob.open, true))
+      .where(and(eq(publicJob.open, true), eq(publicJob.paused, false)))
       .orderBy(desc(publicJob.postedAt), publicJob.slug)
   ).map(toPublicJob);
 
-/** The job at this slug, open or no longer open; null when no job ever had it. `tx` runs as aivera_public. */
+/**
+ * The job at this slug, open or no longer open (a suspended workspace's job reads as no longer open); null when no job
+ * ever had it. `tx` runs as aivera_public.
+ */
 export async function findBySlug(tx: Tx, slug: string): Promise<PublicJobLookup> {
   const [row] = await tx
-    .select({ ...columns, open: publicJob.open })
+    .select({ ...columns, open: publicJob.open, paused: publicJob.paused })
     .from(publicJob)
     .where(eq(publicJob.slug, slug));
   if (!row) return null;
-  const { open, ...listing } = row;
-  return open ? { open: true, job: toPublicJob(listing) } : { open: false };
+  const { open, paused, ...listing } = row;
+  return open && !paused ? { open: true, job: toPublicJob(listing) } : { open: false };
 }

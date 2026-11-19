@@ -91,12 +91,23 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .set({ role })
         .where(and(inWorkspace(workspaceId), eq(member.userId, userId)));
     },
+    async shareWorkspace(workspaceId) {
+      const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('key share');
+      return row ?? null;
+    },
     async lockWorkspace(workspaceId) {
+      const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('no key update');
+      return row ?? null;
+    },
+    async lockWorkspaceStatus(workspaceId) {
       const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('update');
       return row ?? null;
     },
     async updateType(workspaceId, type) {
       await tx.update(workspace).set({ type }).where(eq(workspace.id, workspaceId));
+    },
+    async updateStatus(workspaceId, status) {
+      await tx.update(workspace).set({ status }).where(eq(workspace.id, workspaceId));
     },
     async deleteWorkspace(workspaceId) {
       // Children first: grants reference members and clients, and every table references the workspace.
@@ -185,6 +196,21 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     async audit(workspaceId, actorUserId, values) {
       await audit.record({ tx, workspaceId, actor: { type: 'user', id: actorUserId } }, values);
     },
+    async operatorAudit(workspaceId, operatorId, values) {
+      await audit.record({ tx, workspaceId, actor: { type: 'operator', id: operatorId } }, values);
+      const { action, subject, note, before, after } = values;
+      await audit.recordPlatform(
+        {
+          actorId: operatorId,
+          action,
+          subject,
+          ...(note && { note }),
+          ...(before && { before }),
+          ...(after && { after }),
+        },
+        tx,
+      );
+    },
   };
 }
 
@@ -217,7 +243,7 @@ export async function listDirectory(tx: Tx): Promise<string[]> {
 }
 
 /** The workspace's platform facts, over its own scoped transaction; the filter and RLS both apply. */
-export async function readSummary(tx: Tx, workspaceId: string): Promise<Omit<WorkspaceSummary, 'status'> | null> {
+export async function readSummary(tx: Tx, workspaceId: string): Promise<WorkspaceSummary | null> {
   const [found] = await tx
     .select({
       id: workspace.id,
@@ -225,6 +251,7 @@ export async function readSummary(tx: Tx, workspaceId: string): Promise<Omit<Wor
       type: workspace.type,
       createdAt: workspace.createdAt,
       synthetic: workspace.synthetic,
+      status: workspace.status,
     })
     .from(workspace)
     .where(eq(workspace.id, workspaceId));
@@ -295,7 +322,8 @@ export function aiTokenUsageStore(tx: Tx) {
         .select({ override: workspace.aiDailyTokenBudget })
         .from(workspace)
         .where(eq(workspace.id, workspaceId))
-        .for('update');
+        // Serialises budget changes without waiting behind every request's KEY SHARE (only a status change needs that).
+        .for('no key update');
       if (!found) return null;
       await tx.update(workspace).set({ aiDailyTokenBudget: override }).where(eq(workspace.id, workspaceId));
       return budgetOf(found.override);

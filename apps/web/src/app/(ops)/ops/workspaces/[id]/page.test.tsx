@@ -14,6 +14,7 @@ vi.mock('@/server/operator', () => ({
   platformOperator: () => operator(),
   getWorkspaceFacts: (id: string) => getWorkspaceFacts(id),
   getAudit: () => ({ recordPlatform }),
+  listOperatorActions: async () => [],
 }));
 vi.mock('next/navigation', () => ({
   notFound: () => {

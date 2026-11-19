@@ -200,7 +200,7 @@ describe('Feature: Public read model of published jobs', () => {
   it("aivera_public's only privileges are USAGE on jobs and SELECT on public_job's public columns", async () => {
     const reach = await admin.execute<{ what: string }>(sql`
       with public_columns(name) as (values ('slug'), ('title'), ('job_type'), ('descriptor'), ('location'),
-        ('pay_min_minor'), ('pay_max_minor'), ('pay_currency'), ('competencies'), ('posted_at'), ('open'))
+        ('pay_min_minor'), ('pay_max_minor'), ('pay_currency'), ('competencies'), ('posted_at'), ('open'), ('paused'))
       select 'table ' || n.nspname || '.' || c.relname as what
         from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname not in ('pg_catalog', 'information_schema')

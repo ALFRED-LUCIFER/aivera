@@ -149,6 +149,9 @@ export function jobStore(tx: Tx): JobStore {
         .set({ open: false })
         .where(and(eq(publicJob.workspaceId, workspaceId), eq(publicJob.jobId, jobId)));
     },
+    async pausePublicJobs(workspaceId, paused) {
+      await tx.update(publicJob).set({ paused }).where(eq(publicJob.workspaceId, workspaceId));
+    },
     async setStatus(workspaceId, versionId, status, approval) {
       await tx
         .update(rubricVersion)

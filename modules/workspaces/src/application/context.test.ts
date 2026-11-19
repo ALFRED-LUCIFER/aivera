@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ForbiddenError, PERMISSIONS, type Action, type JobResource } from '../domain/permissions.ts';
-import { ROLES, type Member, type Role } from '../domain/workspace.ts';
+import {
+  ForbiddenError,
+  PERMISSIONS,
+  WorkspacePausedError,
+  type Action,
+  type JobResource,
+} from '../domain/permissions.ts';
+import { ROLES, type Member, type Role, type WorkspaceStatus } from '../domain/workspace.ts';
 import { contextUseCases, type WorkspaceContext } from './context.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
@@ -9,12 +15,13 @@ const J1: JobResource = { jobId: 'job-1' };
 const J2: JobResource = { jobId: 'job-2' };
 
 // A faked JobGrants port: every member holds a grant on job J1 only (the real lookup is tested in tests/integration).
-const useCases = (member: Member | null = null) =>
+const useCases = (member: Member | null = null, status: WorkspaceStatus | null = 'active') =>
   contextUseCases<null>({
     inWorkspace: (_workspaceId, work) =>
       work(
         {
           findMember: async () => member,
+          shareWorkspace: async () => status && { id: W1, status },
           listGrants: async () => [],
           setJobScope: async () => {},
         } as unknown as WorkspaceStore,
@@ -25,13 +32,20 @@ const useCases = (member: Member | null = null) =>
     active: { get: async () => null, set: async () => {} },
   });
 
-const ctx = (role: Role): WorkspaceContext<null> => ({ userId: 'u', workspaceId: W1, role, tx: null });
-const attempt = (role: Role, action: Action, resource?: JobResource) =>
+const ctx = (role: Role, status: WorkspaceStatus = 'active'): WorkspaceContext<null> => ({
+  userId: 'u',
+  workspaceId: W1,
+  role,
+  status,
+  tx: null,
+});
+const attempt = (role: Role, action: Action, resource?: JobResource, status: WorkspaceStatus = 'active') =>
   useCases()
-    .authorize(ctx(role), action, resource)
+    .authorize(ctx(role, status), action, resource)
     .then(
       () => 'allowed',
-      (error: unknown) => (error instanceof ForbiddenError ? '403' : 'threw'),
+      (error: unknown) =>
+        error instanceof WorkspacePausedError ? 'paused' : error instanceof ForbiddenError ? '403' : 'threw',
     );
 
 // Every action × every role, on a job the member is granted, a job they are not, and no job: Y allowed, - 403.
@@ -92,6 +106,34 @@ describe("Scenario Outline: Job-scoped roles need a grant on the record's job", 
     ['admin', undefined, 'allowed'],
   ] as const)('%s viewing a candidate on %o is %s', async (role, resource, result) => {
     expect(await attempt(role, 'candidate.view', resource)).toBe(result);
+  });
+});
+
+// AIV-P2-037: a suspended workspace keeps its reads and refuses every other action, for every role allowed it.
+describe('Scenario: Members of a suspended workspace can read but not start work', () => {
+  const reads: Action[] = ['job.list', 'job.view', 'job_access.view', 'candidate.view'];
+
+  // SAFETY: mutation check: removed the allowedWhile check from authorize -> this test failed (writes allowed)
+  it.each(Object.keys(PERMISSIONS) as Action[])('%s as admin while suspended', async (action) => {
+    expect(await attempt('admin', action, J1, 'suspended')).toBe(reads.includes(action) ? 'allowed' : 'paused');
+  });
+
+  it('a role refusal still comes first, as a plain 403', async () => {
+    expect(await attempt('interviewer', 'job.create', J1, 'suspended')).toBe('403');
+  });
+
+  it('withWorkspace hands the status read in its transaction to the context', async () => {
+    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active' };
+    expect(await useCases(member, 'suspended').withWorkspace({ userId: 'u' }, W1, async (c) => c.status)).toBe(
+      'suspended',
+    );
+  });
+
+  it('refuses when the workspace itself is gone', async () => {
+    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active' };
+    await expect(useCases(member, null).withWorkspace({ userId: 'u' }, W1, async () => 'ran')).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
   });
 });
 

@@ -17,6 +17,8 @@ export type PreviewConfirmProps = {
   confirmLabel: string;
   /** Shown on the Confirm button while onConfirm runs, e.g. "Moving…". */
   pendingLabel: string;
+  /** Keeps Confirm disabled until the body is complete, e.g. a required reason (never set it while pending). */
+  confirmDisabled?: boolean;
   /** Omit to hide Edit. */
   editLabel?: string;
   cancelLabel: string;
@@ -93,7 +95,12 @@ function PreviewBody({ cancelRef, ...p }: BodyProps) {
       <div className="mt-4 flex flex-wrap gap-2">
         {/* Not `disabled` while pending: disabling the focused button drops focus to <body>, outside the dialog.
             The guard in usePreviewConfirm makes extra presses no-ops; the label and aria-busy show the state. */}
-        <Button variant="primary" aria-busy={p.pending || undefined} onClick={p.confirm}>
+        <Button
+          variant="primary"
+          aria-busy={p.pending || undefined}
+          disabled={!p.pending && p.confirmDisabled}
+          onClick={p.confirm}
+        >
           {p.pending ? p.pendingLabel : p.confirmLabel}
         </Button>
         {p.editLabel && p.onEdit && (

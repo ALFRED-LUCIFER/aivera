@@ -30,6 +30,11 @@ export interface AuditContract {
   /** Every entry about `subject` in the workspace, oldest first. */
   listFor(workspaceId: string, subject: Subject): Promise<AuditEntry[]>;
   /**
+   * The operator console's history of one workspace (ADR-012 points 6 and 8): only entries about the workspace itself
+   * whose actor is an operator, oldest first, read inside that workspace's scope. Never a member's entry.
+   */
+  listOperatorEntries(workspaceId: string): Promise<AuditEntry[]>;
+  /**
    * Appends an operator's action to the platform audit log (ADR-012): no workspace id, its own transaction. Throws
    * `AuditError('unknown_action')`. The actor is the operator's identity user id from the session, never client input.
    * An action on a workspace is also recorded there with `record`, inside `withWorkspace(<that workspace>)`: pass that

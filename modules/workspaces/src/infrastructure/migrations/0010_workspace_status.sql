@@ -1,0 +1,2 @@
+ALTER TABLE "workspaces"."workspace" ADD COLUMN "status" text DEFAULT 'active' NOT NULL;--> statement-breakpoint
+ALTER TABLE "workspaces"."workspace" ADD CONSTRAINT "workspace_status_check" CHECK ("workspaces"."workspace"."status" in ('active', 'suspended'));

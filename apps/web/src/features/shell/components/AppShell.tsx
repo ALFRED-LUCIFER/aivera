@@ -175,6 +175,16 @@ export function AppShell({
         </div>
       </nav>
       <main id="content" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 pt-6 pb-14 lg:col-start-2 lg:px-8">
+        {/* AIV-P2-037: the operator's reason is never shown to members; the server refuses new work on its own. */}
+        {member.workspace.status === 'suspended' && (
+          <p className="mb-6 flex items-start gap-2 rounded-card border border-warn-border bg-warn-bg p-4 text-body text-warn-text">
+            <svg {...icon} className="mt-0.5 size-5 shrink-0">
+              <rect x="7" y="5" width="3" height="14" rx="1" />
+              <rect x="14" y="5" width="3" height="14" rx="1" />
+            </svg>
+            {t('paused')}
+          </p>
+        )}
         {children}
       </main>
     </div>

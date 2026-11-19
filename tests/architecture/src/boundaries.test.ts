@@ -37,6 +37,16 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ]);
   });
 
+  // AIV-P2-037: the operator-only workspace changes are called from server/operator.ts and nowhere else in an app.
+  // SAFETY: mutation check: removed the operator-only-writes check -> this test failed
+  it('a call to changeStatus or pausePublicListings outside server/operator.ts is reported', () => {
+    expect(
+      findViolations(fixture('operator-writes'))
+        .filter((v) => v.rule === 'operator-only-writes')
+        .map((v) => v.file),
+    ).toEqual(['apps/web/src/features/jobs/services/x.ts']);
+  });
+
   // SAFETY: mutation check: removed the recruiter-app-no-candidate-data check -> this test failed
   it('only the candidate site, its server readers and the wiring roots import candidate accounts or sessions', () => {
     expect(

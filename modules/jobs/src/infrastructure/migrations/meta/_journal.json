@@ -36,6 +36,13 @@
       "when": 1795031187996,
       "tag": "0004_force_rls_public_job",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795065776321,
+      "tag": "0005_public_job_paused",
+      "breakpoints": true
     }
   ]
 }

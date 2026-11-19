@@ -6,6 +6,7 @@ import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import { clientsUseCases } from './application/clients.ts';
 import { directoryUseCases } from './application/directory.ts';
+import { statusUseCases } from './application/status.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
 import { workspacesUseCases } from './application/workspaces.ts';
@@ -22,7 +23,7 @@ import {
 
 const newId = () => uuidv7();
 
-/** `audit` records role changes, client and grant changes in the same transaction (AIV-P0-013). */
+/** `audit` records role, client, grant and status changes in the same transaction (AIV-P0-013). */
 export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContract {
   const inWorkspace: ContextPorts<Tx>['inWorkspace'] = (workspaceId, work) =>
     withWorkspace(db, workspaceId, (tx) => work(workspaceStore(tx, audit), tx));
@@ -46,6 +47,7 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
     ...context,
     ...clientsUseCases({ storeFor, newId, authorize: context.authorize }),
     ...syntheticUseCases({ storeFor, authorize: context.authorize }),
+    ...statusUseCases({ inWorkspace }),
   };
 }
 

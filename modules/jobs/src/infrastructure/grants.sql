@@ -9,6 +9,6 @@ BEGIN
     REVOKE ALL ON jobs.public_job FROM aivera_public;
     GRANT USAGE ON SCHEMA jobs TO aivera_public;
     GRANT SELECT (slug, title, job_type, descriptor, location, pay_min_minor, pay_max_minor, pay_currency,
-      competencies, posted_at, open) ON jobs.public_job TO aivera_public;
+      competencies, posted_at, open, paused) ON jobs.public_job TO aivera_public;
   END IF;
 END $$;

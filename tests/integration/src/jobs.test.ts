@@ -475,7 +475,7 @@ describe('Scenario: A hiring owner sees only granted jobs, even at the database'
     const listed = await admin.transaction(async (tx) => {
       await tx.execute(sql`select set_config('app.workspace_id', ${gulf}, true), set_config('app.job_scope', 'granted', true),
         set_config('app.job_ids', '{}', true), set_config('app.client_ids', ${`{${duneId}}`}, true)`);
-      return jobs.listJobs({ userId: FAISAL, workspaceId: gulf, role: 'hiring_owner', tx });
+      return jobs.listJobs({ userId: FAISAL, workspaceId: gulf, role: 'hiring_owner', status: 'active', tx });
     });
     expect(listed.map((j) => j.id)).toEqual([j1]);
   });

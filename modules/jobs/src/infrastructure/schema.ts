@@ -180,7 +180,7 @@ export const competency = jobs
  * The candidate site's read model (AIV-P3-002): one row per job ever published, written in the publishing
  * transaction. Public reads run as aivera_public, which may select only the public columns (grants.sql) and, through
  * `public_job_public_read`, every row; the workspace and job ids stay for the writers. `open` is false once
- * unpublished, so an old link can say "no longer open".
+ * unpublished, so an old link can say "no longer open". `paused` hides every listing of a suspended workspace.
  */
 export const publicJob = jobs
   .table(
@@ -199,6 +199,8 @@ export const publicJob = jobs
       competencies: jsonb().$type<PublicListing['competencies']>().notNull(),
       postedAt: timestamp('posted_at', { withTimezone: true }).notNull(),
       open: boolean().notNull(),
+      // The workspace is suspended (AIV-P2-037): hidden from the candidate site until it is reactivated, `open` kept.
+      paused: boolean().notNull().default(false),
     },
     (t) => [
       foreignKey({

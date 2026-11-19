@@ -128,7 +128,13 @@ describe('Scenario Outline: States', () => {
 
 describe('Scenario: Opening a workspace', () => {
   it('shows type "Agency", 4 members, 2 jobs and "No operator actions yet."', () => {
-    show(<WorkspaceDetail workspace={row('Gulf Talent Partners', { type: 'agency', activeMembers: 4, jobs: 2 })} />);
+    show(
+      <WorkspaceDetail
+        workspace={row('Gulf Talent Partners', { type: 'agency', activeMembers: 4, jobs: 2 })}
+        history={[]}
+        statusChange={null}
+      />,
+    );
     const facts = Object.fromEntries(
       screen.getAllByRole('term').map((term) => [term.textContent, term.nextElementSibling?.textContent]),
     );
