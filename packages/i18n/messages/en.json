@@ -591,6 +591,9 @@
           "workspace": {
             "suspended": "Suspended",
             "reactivated": "Reactivated"
+          },
+          "ai_budget": {
+            "changed": "Daily AI budget changed"
           }
         }
       },

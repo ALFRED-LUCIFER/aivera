@@ -116,22 +116,25 @@ export async function setWorkspaceAiBudget(input: {
   await opsReads().ai.setDailyBudget({ operatorId: userId, ...input });
 }
 
-type StatusAction = (typeof STATUS_CHANGES)[StatusChange]['action'];
-const STATUS_ACTIONS: readonly string[] = Object.values(STATUS_CHANGES).map((c) => c.action);
-const isStatusAction = (action: string): action is StatusAction => STATUS_ACTIONS.includes(action);
+type OperatorActionName = (typeof STATUS_CHANGES)[StatusChange]['action'] | 'ai_budget.changed';
+const OPERATOR_ACTIONS: readonly string[] = [
+  ...Object.values(STATUS_CHANGES).map((c) => c.action),
+  'ai_budget.changed',
+];
+const isOperatorAction = (action: string): action is OperatorActionName => OPERATOR_ACTIONS.includes(action);
 
 /** An operator's action on a workspace, as its detail page lists it: what, when and the operator's reason. */
-export type OperatorAction = { action: StatusAction; occurredAt: Date; reason: string | null };
+export type OperatorAction = { action: OperatorActionName; occurredAt: Date; reason: string | null };
 
 /**
- * The status changes operators made to a workspace, oldest first, from its own audit log (`listOperatorEntries`, read
+ * The status and AI budget changes operators made to a workspace, oldest first, from its own audit log (`listOperatorEntries`, read
  * inside withWorkspace(<it>) as the app role, ADR-012 points 6 and 8). Never a member's entry. Checks the policy too.
  */
 export async function listOperatorActions(workspaceId: string): Promise<OperatorAction[]> {
   await platformOperator();
   const entries = await getAudit().listOperatorEntries(workspaceId);
   return entries.flatMap(({ action, occurredAt, note }) =>
-    isStatusAction(action) ? [{ action, occurredAt, reason: note }] : [],
+    isOperatorAction(action) ? [{ action, occurredAt, reason: note }] : [],
   );
 }
 

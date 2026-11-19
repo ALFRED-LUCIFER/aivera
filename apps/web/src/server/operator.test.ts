@@ -182,6 +182,9 @@ describe('AI token use and the daily budget (AIV-P2-038)', () => {
       'NEXT_HTTP_ERROR_FALLBACK;403',
     );
     expect(ai.setDailyBudget).not.toHaveBeenCalled();
+  });
+});
+
 // AIV-P2-037: the status change and its history, as the signed-in operator only. Synthetic ids.
 const GULF = '0190d4a2-0000-7000-8000-0000000000b2';
 

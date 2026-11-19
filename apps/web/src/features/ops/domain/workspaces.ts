@@ -71,7 +71,7 @@ export const reasonReady = (reason: string) => reason.trim().length >= MIN_REASO
 
 /** An operator action on the workspace, from its own audit log: what, when, and the operator's reason. */
 export type OperatorActionRow = {
-  action: (typeof STATUS_CHANGES)[StatusChange]['action'];
+  action: (typeof STATUS_CHANGES)[StatusChange]['action'] | 'ai_budget.changed';
   occurredAt: Date;
   reason: string | null;
 };

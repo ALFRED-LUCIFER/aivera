@@ -80,6 +80,7 @@ describe('Scenario: A suspension is applied and audited', () => {
     status: 'suspended',
     activeMembers: 4,
     jobs: 2,
+    ai: null,
   };
 
   it('shows status "Suspended" with its icon and word, and the action with its time and reason', () => {

@@ -71,6 +71,13 @@
       "when": 1795064592733,
       "tag": "0009_ai_daily_token_budget",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795066612793,
+      "tag": "0010_workspace_status",
+      "breakpoints": true
     }
   ]
 }
