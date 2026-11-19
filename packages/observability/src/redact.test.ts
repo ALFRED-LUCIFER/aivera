@@ -91,6 +91,7 @@ describe('Scenario Outline: Personal data is redacted', () => {
       'aivera.ai.outcome': 'ok',
       'aivera.ai.attempts': 3,
       'aivera.ai.cost_usd_micros': 41,
+      'aivera.ai.template_version': 'jobs.draftCompetencies@1+citations@1',
       'gen_ai.usage.input_tokens': 90,
       'gen_ai.usage.output_tokens': 4,
     };

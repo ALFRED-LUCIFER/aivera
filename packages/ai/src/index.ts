@@ -7,5 +7,15 @@ export {
   type AiClient,
   type TokenBudgetStore,
 } from './client';
+export {
+  cited,
+  InvalidCitation,
+  SchemaMismatch,
+  UncitedOutput,
+  type Checked,
+  type Citation,
+  type Source,
+  type SourceKind,
+} from './citations';
 export type { EmbedTask, GenerateTask } from './config';
 export { azureProvider, fakeProvider, FAKE_COMPLETION, providerFromEnv, type AiProvider } from './providers';

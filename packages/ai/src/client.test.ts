@@ -3,6 +3,7 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { APICallError } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
+import { z } from 'zod';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AiUnavailable,
@@ -12,7 +13,7 @@ import {
   UnknownAiTask,
   type TokenBudgetStore,
 } from './client';
-import { azureProvider, FAKE_COMPLETION, fakeProvider, providerFromEnv, type AiProvider } from './providers';
+import { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';
 
 // Feature: One AI client on Azure AI Foundry (AIV-P0-027). Synthetic data only (docs/00-product/personas.md).
 
@@ -29,7 +30,8 @@ afterAll(() => {
 beforeEach(() => spans.reset());
 
 const workspaceId = '0190d4a2-0000-7000-8000-000000000001';
-const lastSpan = () => spans.getFinishedSpans().at(-1);
+// The last model call's span; generateStructured's own span around its calls is checked in citations.test.ts.
+const lastSpan = () => spans.getFinishedSpans().findLast((span) => !span.name.startsWith('ai structured'));
 
 /** The fake provider, counting the deployments each attempt asked for. */
 function counted(provider: AiProvider) {
@@ -43,7 +45,7 @@ function counted(provider: AiProvider) {
   };
 }
 
-function setup(provider = fakeProvider(), start = Date.parse('2026-11-18T09:00:00Z'), budget = memoryTokenBudget()) {
+function setup(provider = fake(), start = Date.parse('2026-11-18T09:00:00Z'), budget = memoryTokenBudget()) {
   const clock = { now: start };
   const sleeps: number[] = [];
   const spy = counted(provider);
@@ -56,10 +58,18 @@ function setup(provider = fakeProvider(), start = Date.parse('2026-11-18T09:00:0
   return { ai, clock, sleeps, calls: spy.calls };
 }
 
+const READY = JSON.stringify({ ready: true });
+/** The fake provider answering with output that matches the draft's schema. */
+const fake = (options: Parameters<typeof fakeProvider>[0] = {}) => fakeProvider({ completion: READY, ...options });
+
 const draft = {
   task: 'jobs.draftCompetencies',
   workspaceId,
+  promptVersion: 'test.ready@1',
+  system: 'You check readiness.',
   prompt: 'Draft competencies for a data engineer.',
+  schema: z.object({ ready: z.boolean() }),
+  sources: [],
 } as const;
 
 describe('Scenario: A task resolves to its configured deployment', () => {
@@ -75,19 +85,22 @@ describe('Scenario: A task resolves to its configured deployment', () => {
           object: 'chat.completion',
           created: 0,
           model: 'gpt-4.1-mini',
-          choices: [{ index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          choices: [{ index: 0, message: { role: 'assistant', content: READY }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 7, completion_tokens: 1, total_tokens: 8 },
         });
       },
     });
-    const { text } = await createAiClient({ provider, budget: memoryTokenBudget() }).generate(draft);
+    const output = await createAiClient({ provider, budget: memoryTokenBudget() }).generateStructured(draft);
 
-    expect(text).toBe('ok');
+    expect(output).toEqual({ ready: true });
     const [request] = requests;
     expect(request?.url).toBe('https://oai-aivera-test.openai.azure.com/openai/v1/chat/completions?api-version=v1');
     expect(request?.headers.get('authorization')).toBe('Bearer entra-token');
     expect(request?.headers.get('api-key')).toBeNull();
-    expect(await request?.json()).toMatchObject({ model: 'gpt-main' });
+    expect(await request?.json()).toMatchObject({
+      model: 'gpt-main',
+      response_format: { type: 'json_schema', json_schema: { schema: { properties: { ready: { type: 'boolean' } } } } },
+    });
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.deployment': 'gpt-main', 'aivera.ai.outcome': 'ok' });
   });
 
@@ -103,7 +116,10 @@ describe('Scenario: A task resolves to its configured deployment', () => {
 
 describe('Scenario: Unknown tasks are refused', () => {
   it.each([
-    ['generate', (ai: ReturnType<typeof setup>['ai']) => ai.generate({ ...draft, task: 'jobs.unknown' as never })],
+    [
+      'generate',
+      (ai: ReturnType<typeof setup>['ai']) => ai.generateStructured({ ...draft, task: 'jobs.unknown' as never }),
+    ],
     ['embed', (ai: ReturnType<typeof setup>['ai']) => ai.embed({ task: 'toString' as never, workspaceId, value: 'x' })],
   ])('%s throws UnknownAiTask before any network call', async (_name, run) => {
     const { ai, calls } = setup();
@@ -114,8 +130,8 @@ describe('Scenario: Unknown tasks are refused', () => {
 
 describe('Scenario: Transient failures are retried', () => {
   it('succeeds after two 429s, backing off, and telemetry records 3 attempts', async () => {
-    const { ai, calls, sleeps } = setup(fakeProvider({ failures: [429, 429] }));
-    await expect(ai.generate(draft)).resolves.toEqual({ text: FAKE_COMPLETION });
+    const { ai, calls, sleeps } = setup(fake({ failures: [429, 429] }));
+    await expect(ai.generateStructured(draft)).resolves.toEqual({ ready: true });
     expect(calls).toEqual(['gpt-main', 'gpt-main', 'gpt-main']);
     expect(sleeps).toEqual([1000, 2000]);
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.attempts': 3, 'aivera.ai.outcome': 'ok' });
@@ -132,15 +148,15 @@ describe('Scenario: Transient failures are retried', () => {
     });
     let failed = false;
     const provider: AiProvider = {
-      ...fakeProvider(),
+      ...fake(),
       languageModel: (deployment) => {
-        if (failed) return fakeProvider().languageModel(deployment);
+        if (failed) return fake().languageModel(deployment);
         failed = true;
         return new MockLanguageModelV4({ doGenerate: () => Promise.reject(error) });
       },
     };
     const { ai, sleeps } = setup(provider);
-    await ai.generate(draft);
+    await ai.generateStructured(draft);
     expect(sleeps).toEqual([1500]);
   });
 
@@ -162,8 +178,8 @@ describe('Scenario: Transient failures are retried', () => {
           abortSignal?.addEventListener('abort', () => reject(abortSignal.reason));
         }),
     });
-    const { ai } = setup({ ...fakeProvider(), languageModel: () => hanging });
-    const result = ai.generate(draft).catch((e: unknown) => e);
+    const { ai } = setup({ ...fake(), languageModel: () => hanging });
+    const result = ai.generateStructured(draft).catch((e: unknown) => e);
     for (let attempt = 0; attempt < 3; attempt++) {
       await vi.waitFor(() => expect(timers).toHaveLength(attempt + 1));
       timers[attempt]?.abort(new DOMException('timed out', 'TimeoutError'));
@@ -173,8 +189,8 @@ describe('Scenario: Transient failures are retried', () => {
   });
 
   it('does not retry a request the model refuses (400)', async () => {
-    const { ai, calls } = setup(fakeProvider({ failures: [400] }));
-    await expect(ai.generate(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 400'));
+    const { ai, calls } = setup(fake({ failures: [400] }));
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 400'));
     expect(calls).toHaveLength(1);
   });
 });
@@ -182,26 +198,26 @@ describe('Scenario: Transient failures are retried', () => {
 describe('Scenario: The model is down', () => {
   // SAFETY: mutation check: removed `breaker.openUntil > now()` from the attempt loop -> this test failed (the model was called while open)
   it('after 5 failures in a row callers get AiUnavailable and the circuit stays open for 30 seconds', async () => {
-    const { ai, calls, clock } = setup(fakeProvider({ failures: [503, 503, 503, 503, 503] }));
-    await expect(ai.generate(draft)).rejects.toBeInstanceOf(AiUnavailable); // attempts 1-3
-    await expect(ai.generate(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 503')); // 4-5, opens
+    const { ai, calls, clock } = setup(fake({ failures: [503, 503, 503, 503, 503] }));
+    await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(AiUnavailable); // attempts 1-3
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 503')); // 4-5, opens
     expect(calls).toHaveLength(5);
 
     clock.now += 29_999;
-    await expect(ai.generate(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
     expect(calls).toHaveLength(5);
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.outcome': 'circuit_open' });
 
     clock.now += 2;
-    await expect(ai.generate(draft)).resolves.toEqual({ text: FAKE_COMPLETION });
+    await expect(ai.generateStructured(draft)).resolves.toEqual({ ready: true });
   });
 
   // SAFETY: mutation check: stored a fresh breaker only on failure, not before the attempt -> this test failed
   it('five concurrent failures count together and open the circuit', async () => {
-    const { ai, calls } = setup(fakeProvider({ failures: [503, 503, 503, 503, 503] }));
-    const results = await Promise.allSettled(Array.from({ length: 5 }, () => ai.generate(draft)));
+    const { ai, calls } = setup(fake({ failures: [503, 503, 503, 503, 503] }));
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => ai.generateStructured(draft)));
     expect(results.every((r) => r.status === 'rejected')).toBe(true);
-    await expect(ai.generate(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
     expect(calls).toHaveLength(5);
   });
 });
@@ -212,8 +228,10 @@ describe('Scenario: Telemetry never holds prompt text', () => {
 
   // SAFETY: mutation check: added annotateSpan({ 'aivera.ai.prompt': input.prompt }) before generateText -> this test failed
   it('the span has task, latency, tokens and cost, and no field holds the prompt or completion', async () => {
-    const { ai } = setup(fakeProvider({ completion: 'Sara Al Qahtani shows strong pipeline ownership.' }));
-    await ai.generate({ ...draft, system: 'You read CVs.', prompt: `Draft from this CV: ${cv}` });
+    const { ai } = setup(
+      fake({ completion: JSON.stringify({ ready: true, note: 'Sara Al Qahtani shows strong pipeline ownership.' }) }),
+    );
+    await ai.generateStructured({ ...draft, system: 'You read CVs.', prompt: `Draft from this CV: ${cv}` });
 
     const span = lastSpan();
     expect(span?.attributes).toMatchObject({
@@ -231,8 +249,8 @@ describe('Scenario: Telemetry never holds prompt text', () => {
   });
 
   it('a failure throws an error without the prompt', async () => {
-    const { ai } = setup(fakeProvider({ failures: [400] }));
-    const error = await ai.generate({ ...draft, prompt: cv }).catch((e: unknown) => e);
+    const { ai } = setup(fake({ failures: [400] }));
+    const error = await ai.generateStructured({ ...draft, prompt: cv }).catch((e: unknown) => e);
     expect(JSON.stringify({ message: (error as Error).message, stack: (error as Error).stack })).not.toMatch(personal);
   });
 });
@@ -244,31 +262,33 @@ describe('Scenario: Workspace budget', () => {
   // SAFETY: mutation check: removed the spent >= limit check -> this test failed
   it('throws BudgetExceeded and sends no model request once the day is spent', async () => {
     const { ai, calls, clock } = setup();
-    await ai.generate(everything);
+    await ai.generateStructured(everything);
     expect(calls).toHaveLength(1);
 
-    await expect(ai.generate(draft)).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(BudgetExceeded);
     await expect(ai.embed({ task: 'evidence.embed', workspaceId, value: 'x' })).rejects.toBeInstanceOf(BudgetExceeded);
     expect(calls).toHaveLength(1);
     expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.outcome': 'budget_exceeded' });
 
-    await expect(ai.generate({ ...draft, workspaceId: '0190d4a2-0000-7000-8000-000000000002' })).resolves.toBeDefined();
+    await expect(
+      ai.generateStructured({ ...draft, workspaceId: '0190d4a2-0000-7000-8000-000000000002' }),
+    ).resolves.toBeDefined();
     clock.now = Date.parse('2026-11-19T00:00:00Z');
-    await expect(ai.generate(draft)).resolves.toBeDefined();
+    await expect(ai.generateStructured(draft)).resolves.toBeDefined();
   });
 
   it("a workspace's own lower budget stops the next call (AIV-P2-038)", async () => {
     const budget = memoryTokenBudget(100_000);
     await budget.add(workspaceId, '2026-11-18', 120_000);
-    const { ai, calls } = setup(fakeProvider(), undefined, budget);
-    await expect(ai.generate(draft)).rejects.toBeInstanceOf(BudgetExceeded);
+    const { ai, calls } = setup(fake(), undefined, budget);
+    await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(BudgetExceeded);
     expect(calls).toHaveLength(0);
   });
 
   it('a failed call spends nothing', async () => {
     const budget = memoryTokenBudget();
-    const { ai } = setup(fakeProvider({ failures: [400] }), undefined, budget);
-    await expect(ai.generate(draft)).rejects.toBeInstanceOf(AiUnavailable);
+    const { ai } = setup(fake({ failures: [400] }), undefined, budget);
+    await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(AiUnavailable);
     expect(await budget.spentToday(workspaceId, '2026-11-18')).toEqual({ spent: 0, limit: 2_000_000 });
   });
 
@@ -286,8 +306,8 @@ describe('Scenario: Workspace budget', () => {
   ] satisfies [string, TokenBudgetStore, number][])(
     'a store that cannot be %s fails closed with AiUnavailable and no prompt in the error',
     async (_, budget, requests) => {
-      const { ai, calls } = setup(fakeProvider(), undefined, budget);
-      const error = await ai.generate(draft).catch((e: unknown) => e);
+      const { ai, calls } = setup(fake(), undefined, budget);
+      const error = await ai.generateStructured(draft).catch((e: unknown) => e);
       expect(error).toEqual(new AiUnavailable(draft.task, 'budget store'));
       expect((error as Error).message).not.toContain('Draft competencies');
       expect(calls).toHaveLength(requests);

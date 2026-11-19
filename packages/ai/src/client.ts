@@ -1,5 +1,7 @@
 import { annotateSpan, withSpan } from '@aivera/observability';
-import { APICallError, embed as sdkEmbed, generateText } from 'ai';
+import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
+import type { z } from 'zod';
+import { checkOutput, formatSources, type Checked, type Source } from './citations';
 import {
   circuitBreaker,
   deployments,
@@ -47,6 +49,15 @@ function settingsOf<T>(tasks: Record<string, T>, task: string): T {
 
 const outcome = (value: string, extra: Record<string, string | number> = {}) =>
   annotateSpan({ 'aivera.ai.outcome': value, ...extra });
+
+// Appended to every structured task's system prompt; bump the version with any change (it is on telemetry).
+const CITATION_RULES_VERSION = 'citations@1';
+const CITATION_RULES = [
+  'Answer only from the sources in the prompt, each marked <source id="S1" kind="...">.',
+  'Every item that has a citations field must cite at least one source: its id (such as S1) and a quote copied',
+  'word for word from that source. Never cite a source that is not listed and never reword a quote.',
+  'If the sources do not support an item, leave the item out.',
+].join(' ');
 
 type Usage = { inputTokens: number; outputTokens: number };
 
@@ -180,23 +191,60 @@ export function createAiClient(options: {
   const sdk = { maxRetries: 0, telemetry: { isEnabled: false } } as const;
 
   return {
-    /** Generates text for a named task. Structured output and citations: AIV-P0-028. */
-    async generate(input: { task: GenerateTask; workspaceId: string; system?: string; prompt: string }): Promise<{
-      text: string;
-    }> {
-      const settings = settingsOf(generateTasks, input.task);
-      return call('chat', input.task, settings, input.workspaceId, async (abortSignal) => {
-        const result = await generateText({
-          ...sdk,
-          model: provider.languageModel(settings.deployment),
-          ...(input.system !== undefined && { system: input.system }),
-          prompt: input.prompt,
-          maxOutputTokens: settings.maxOutputTokens,
-          temperature: settings.temperature,
-          abortSignal,
+    /**
+     * Generates zod-validated output for a named task under the citation contract (AIV-P0-028). `sources` are shown to
+     * the model as S1, S2, ...; every `cited()` statement must quote one of them verbatim. Output that fails the schema
+     * or the contract is rejected, never patched, and asked for once more; then the call throws `SchemaMismatch`,
+     * `UncitedOutput` or `InvalidCitation`. Each attempt is charged to the workspace's budget. There is no free-text
+     * call: anything that feeds the product is structured (ADR-006 point 3).
+     */
+    async generateStructured<S extends z.ZodType>(input: {
+      task: GenerateTask;
+      workspaceId: string;
+      /** The caller's prompt id and version, `jobs.draftCompetencies@1`; it goes on telemetry, so never free text. */
+      promptVersion: string;
+      system: string;
+      prompt: string;
+      schema: S;
+      sources: readonly Source[];
+    }): Promise<Checked<z.infer<S>>> {
+      const { task, schema, sources } = input;
+      const settings = settingsOf(generateTasks, task);
+      if (!/^[a-z][\w.-]{0,63}@\d{1,4}$/i.test(input.promptVersion))
+        throw new Error('promptVersion must look like jobs.draftCompetencies@1');
+      // The model is given the schema; we parse its text ourselves, so a mismatch and an uncited answer are told apart.
+      const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
+      return withSpan(`ai structured ${task}`, async () => {
+        annotateSpan({
+          'aivera.ai.task': task,
+          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}`,
+          'workspace.id': input.workspaceId,
         });
-        const usage = { inputTokens: result.usage.inputTokens ?? 0, outputTokens: result.usage.outputTokens ?? 0 };
-        return { value: { text: result.text }, usage };
+        for (let attempts = 1; ; attempts++) {
+          const text = await call('chat', task, settings, input.workspaceId, async (abortSignal) => {
+            const result = await generateText({
+              ...sdk,
+              model: provider.languageModel(settings.deployment),
+              system: `${input.system}\n\n${CITATION_RULES}`,
+              prompt: `${input.prompt}\n\nSources:\n${formatSources(sources)}`,
+              output,
+              maxOutputTokens: settings.maxOutputTokens,
+              temperature: settings.temperature,
+              abortSignal,
+            });
+            const usage = { inputTokens: result.usage.inputTokens ?? 0, outputTokens: result.usage.outputTokens ?? 0 };
+            return { value: result.text, usage };
+          });
+          try {
+            const value = checkOutput(task, text, schema, sources);
+            outcome('ok', { 'aivera.ai.attempts': attempts });
+            return value;
+          } catch (error) {
+            // checkOutput throws only the contract's three errors, whose messages hold no output.
+            outcome('rejected', { 'aivera.ai.attempts': attempts, 'error.type': (error as Error).name });
+            if (attempts >= 2) throw error;
+          }
+        }
       });
     },
 
