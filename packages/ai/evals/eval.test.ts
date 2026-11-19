@@ -256,7 +256,7 @@ describe('Feature: AI eval harness with a golden set', () => {
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 10 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 11 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );

@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { cited, type Source } from '../citations';
 
-// "Draft competencies" (AIV-P1-008) and "suggest what it misses" (AIV-P1-009), ADR-006 point 2: the prompt and schema, versioned here so every change runs the
-// eval set (evals/jobs.draftCompetencies/). The jobs module calls it; the eval runner calls the same.
+// "Draft competencies" (AIV-P1-008) and "suggest what it misses" (AIV-P1-009), ADR-006 point 2: the prompt and
+// schema, versioned here so every change runs the eval set (evals/jobs.draftCompetencies/). The jobs module calls it;
+// the eval runner calls the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
 export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@2';
@@ -21,7 +22,8 @@ export const DRAFT_COMPETENCIES_SYSTEM = [
   'industry or market, a language the work is done in, or a skill the work implies. Never repeat a listed competency.',
   'Give each suggestion the same fields, and in why one sentence on what in the description implies it and what the',
   'description leaves out; cite the line that implies it. The weights of all competencies and suggestions together are',
-  'at most 100. Suggest none when nothing is missing.',
+  'at most 100. Suggest none when nothing is missing. Suggestions follow the same rule: never a proxy. A language is',
+  'a skill shown by work in it, never being a native speaker, a nationality or a place.',
 ].join(' ');
 
 const competency = z.object({

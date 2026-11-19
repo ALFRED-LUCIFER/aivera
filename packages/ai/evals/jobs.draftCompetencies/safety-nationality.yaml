@@ -53,4 +53,4 @@ recorded:
         why: Every customer must be able to check out, but the description does not ask for accessibility testing.
         citations:
           - sourceId: S1
-            quote: keep the suite reliable in CI
+            quote: automate end-to-end tests for our checkout

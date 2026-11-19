@@ -62,7 +62,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
     idle: props.title.trim() ? t('before', { title: props.title.trim() }) : t('beforeUntitled'),
     invalid: null,
     empty: t('empty'),
-    drafted: drafted && result.competencies.every((c) => c.origin !== 'from_description') ? t('none') : null,
+    drafted: drafted && !result.competencies.some((c) => c.origin === 'from_description') ? t('none') : null,
     failed: t('failed'),
     budget: t('budget'),
   }[result.status];
@@ -113,7 +113,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
           emptyMessage={t('noRows')}
         />
       )}
-      {rows.length > 0 && (
+      {rows.some((row) => !row.removed) && (
         <p className="text-meta font-semibold text-text">
           {total === 100 ? t('weightsTotal', { total }) : t('rebalance')}
         </p>
@@ -162,15 +162,18 @@ function CompetencyCell({ row }: { row: Row }) {
         />
       </div>
     );
-  if (row.removed) return <span className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</span>;
+  if (row.removed)
+    return <output className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</output>;
   return (
     <div className="flex max-w-xl flex-col items-start gap-1">
-      {row.why !== null && <Chip>{t('suggestedBy')}</Chip>}
+      {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
       {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}
       {row.evidenceExpected && (
         <span className="text-meta text-text-2">
-          {row.why === null ? row.evidenceExpected : t('evidenceExpected', { evidence: row.evidenceExpected })}
+          {row.origin !== 'suggested_by_aivera'
+            ? row.evidenceExpected
+            : t('evidenceExpected', { evidence: row.evidenceExpected })}
         </span>
       )}
       {row.excerpts.map((excerpt) => (

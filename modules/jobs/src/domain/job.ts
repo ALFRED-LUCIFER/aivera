@@ -117,6 +117,7 @@ export function newSuggestions<T extends { name: string }>(
   suggestions: T[],
 ): T[] {
   const seen = new Set(drafted.map((c) => nameKey(c.name)));
+  // `seen.add` returns the set (truthy), so a kept name also blocks a later suggestion with the same name.
   return suggestions.filter((s) => !seen.has(nameKey(s.name)) && seen.add(nameKey(s.name)));
 }
 
