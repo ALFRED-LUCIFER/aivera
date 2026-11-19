@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aivera/ai": "workspace:*",
     "@aivera/audit": "workspace:*",
     "@aivera/db": "workspace:*",
     "@aivera/workspaces": "workspace:*",

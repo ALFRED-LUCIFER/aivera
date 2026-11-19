@@ -12,11 +12,11 @@ const JOBS = '/app/jobs';
 const offered = (list: { value: string }[], id: string | null) => !id || list.some((o) => o.value === id);
 
 /**
- * "Draft competencies": validates step 1 (AGENTS.md 3.7), then, as an admin or recruiter of the active workspace
+ * "Save job": validates step 1 (AGENTS.md 3.7), then, as an admin or recruiter of the active workspace
  * (`newJobOptions` authorises `job.create`; anyone else gets the 403 page), saves the job at stage "defining rubric".
  * The workspace, the creator and whether the job is synthetic come from the server, never from the form.
- * shortcut: lands on Jobs, which shows no confirmation and no saved job until the jobs list (AIV-P1-006) ships, and a
- * resubmit after going back saves a second job; drafting competencies for the saved job (AIV-P1-008) replaces this.
+ * shortcut: "Save job" saves the job alone; the drafted competencies on the page are not saved with it until
+ * "Save job and rubric" (AIV-P1-010) replaces this action. A resubmit after going back saves a second job.
  */
 export async function addJob(_previous: NewJobState, form: FormData): Promise<NewJobState> {
   const parsed = parseNewJobForm(form);

@@ -1,12 +1,14 @@
 // Builds the jobs module for an app (ADR-002: only apps import this).
+import type { AiClient } from '@aivera/ai';
 import type { AuditContract } from '@aivera/audit';
 import type { Db, Tx } from '@aivera/db/client';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
 import { sql } from 'drizzle-orm';
+import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
-import type { JobCounts, JobsContract, PublicJobsContract } from './contracts/index.ts';
+import type { CompetencyDrafting, JobCounts, JobsContract, PublicJobsContract } from './contracts/index.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
 
@@ -49,3 +51,7 @@ export function createPublicJobs(db: Db): PublicJobsContract {
 export function createJobCounts(db: Db): JobCounts {
   return { countJobs: (workspaceId) => withWorkspace(db, workspaceId, (tx) => countJobs(tx, workspaceId)) };
 }
+
+/** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */
+export const createCompetencyDrafting = (ai: Pick<AiClient, 'generateStructured'>): CompetencyDrafting =>
+  competencyDrafting(ai);

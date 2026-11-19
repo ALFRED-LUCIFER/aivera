@@ -1,0 +1,48 @@
+# A Site Reliability Engineer description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: site-reliability-engineer
+input:
+  jobType: devops_sre
+  title: 'Site Reliability Engineer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will manage our cloud infrastructure as code. You lead incident response and write the reviews. You build the dashboards and alerts we run on.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Infrastructure as code'
+      - 'Incident response'
+      - 'Observability'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Infrastructure as code',
+            'evidenceExpected': 'Infrastructure code they wrote and maintained',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'manage our cloud infrastructure as code' }],
+          },
+          {
+            'name': 'Incident response',
+            'evidenceExpected': 'Incidents they led and the reviews they wrote',
+            'weight': 25,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You lead incident response and write the reviews' }],
+          },
+          {
+            'name': 'Observability',
+            'evidenceExpected': 'Dashboards and alerts they built and tuned',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You build the dashboards and alerts we run on' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

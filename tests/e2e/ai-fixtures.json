@@ -1,0 +1,10 @@
+[
+  {
+    "when": "ship and run LLM assistants and retrieval systems",
+    "completion": "{\"competencies\":[{\"name\":\"LLM systems in production\",\"evidenceExpected\":\"A shipped assistant or RAG system with real users, and their part in it\",\"weight\":25,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"ship and run LLM assistants and retrieval systems that real merchants use every day\"}]},{\"name\":\"Retrieval and evaluation\",\"evidenceExpected\":\"Eval sets and retrieval metrics, and how they changed decisions\",\"weight\":20,\"level\":4,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"build the eval sets and retrieval metrics that decide what we ship\"}]},{\"name\":\"Python service engineering\",\"evidenceExpected\":\"Production Python they wrote: services, tests, deployment\",\"weight\":15,\"level\":3,\"type\":\"mandatory\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"write production Python services, with tests, and deploy them yourself\"}]},{\"name\":\"Cost and reliability\",\"evidenceExpected\":\"Numbers on latency, cost per request and incidents handled\",\"weight\":15,\"level\":2,\"type\":\"desirable\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"You keep latency, cost per request and incidents in check\"}]}],\"refused\":false,\"reason\":null}"
+  },
+  {
+    "when": "keep our flaky assistants running",
+    "status": 500
+  }
+]

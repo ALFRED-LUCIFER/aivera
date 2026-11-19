@@ -1,0 +1,49 @@
+# A Backend Engineer, Payments description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: software-engineer
+input:
+  jobType: software_engineering
+  title: 'Backend Engineer, Payments'
+sources:
+  - id: S1
+    kind: job_description
+    text: "You will design and run services that settle merchant payments in production. You write tested code and review your teammates' changes. You join the on-call rota and fix what breaks."
+expected:
+  match:
+    competencies[*].name:
+      - 'System design in production'
+      - 'Code quality and testing'
+      - 'Reliability and operations'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'System design in production',
+            'evidenceExpected': 'Services they designed and ran in production, with the trade-offs they chose',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations':
+              [{ 'sourceId': 'S1', 'quote': 'design and run services that settle merchant payments in production' }],
+          },
+          {
+            'name': 'Code quality and testing',
+            'evidenceExpected': 'Code and tests they wrote, and reviews they gave',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': "You write tested code and review your teammates' changes" }],
+          },
+          {
+            'name': 'Reliability and operations',
+            'evidenceExpected': 'Incidents they handled on call and what they changed after',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You join the on-call rota and fix what breaks' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

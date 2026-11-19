@@ -57,6 +57,8 @@ recorded:
         citations:
           - sourceId: S1
             quote: You keep latency, cost per request and incidents in check
+    refused: false
+    reason: null
     suggestions:
       - name: Arabic and bilingual NLP
         reason: The merchants are in the Gulf and the description does not mention Arabic.
