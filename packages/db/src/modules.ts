@@ -27,4 +27,5 @@ export const MODULES: MigratableModule[] = [
   'jobs',
   'candidate_accounts',
   'ops',
+  'notifications',
 ].map(moduleAt);

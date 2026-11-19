@@ -1063,5 +1063,31 @@
       "failed": "We could not save the rubric. Check each competency has a name, a weight from 1 to 100 and a level, then try again."
     },
     "percentSign": "%"
+  },
+  "emails": {
+    "layout": {
+      "brand": "Aivera",
+      "logoAlt": "Aivera",
+      "sentBy": "Sent by {sender} at {workspace} through Aivera",
+      "devBand": "Synthetic data — development environment",
+      "reasonCandidate": "You are receiving this because you applied for a job through this workspace.",
+      "repliesGoTo": "Replies go to {name}.",
+      "privacy": "Privacy",
+      "deleteData": "Ask us to delete your data",
+      "copyLink": "Button not working? Copy this link:",
+      "note": "Note:"
+    },
+    "evidenceRequest": {
+      "subject": "A request about your application: {jobTitle}",
+      "preheader": "The recruiter would like to see more of your work. About two minutes.",
+      "heading": "More evidence would help your application",
+      "intro": "{recruiter} at {workspace} would like more evidence for your application to {jobTitle}. Add it with the button below; it takes about two minutes.",
+      "whatToSend": "What to send, by competency",
+      "youSaid": "You said:",
+      "quoted": "“{claim}”",
+      "callout": "This is a gap to close, not a decision. If you cannot share something, these points are discussed in the interview.",
+      "button": "Add your evidence",
+      "questions": "Questions? Reply to this email and it goes to {name}."
+    }
   }
 }

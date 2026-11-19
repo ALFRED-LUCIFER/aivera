@@ -65,6 +65,8 @@ const webEnvSchema = z
     AUTH_GOOGLE_ISSUER: z.url({ protocol: /^https?$/ }).optional(),
     // Never refuses to start: a bad list means no operators (parseOperatorEmails).
     PLATFORM_OPERATOR_EMAILS: z.string().optional(),
+    // The ACS delivery-report webhook's key (AIV-P0-017, Key Vault acs-webhook-key). Unset, the webhook answers 404.
+    ACS_WEBHOOK_KEY: z.string().min(32).optional(),
   })
   // Deployed environments must say which commit runs (health and the deploy smoke test rely on it).
   .refine((e) => e.APP_ENV === 'local' || e.COMMIT_SHA, { path: ['COMMIT_SHA'] })

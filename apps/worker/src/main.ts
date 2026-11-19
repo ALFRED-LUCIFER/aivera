@@ -16,6 +16,10 @@ const env = z
     // The fully qualified namespace, `<name>.servicebus.windows.net`; Entra sign-in only (infra/modules/messaging.bicep).
     AZURE_SERVICE_BUS_NAMESPACE: z.string().min(1),
     APPLICATIONINSIGHTS_CONNECTION_STRING: z.string().optional(),
+    // Email (AIV-P0-017): the ACS endpoint, its verified-domain sender, and the send log's column key (Key Vault).
+    ACS_ENDPOINT: z.url({ protocol: /^https$/ }),
+    EMAIL_SENDER: z.email(),
+    NOTIFICATIONS_ENCRYPTION_KEY: z.string().min(1),
     PORT: z.coerce.number().int().default(8080),
   })
   .parse(process.env);
@@ -26,6 +30,8 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@aivera/candidates');
+const { EmailQueuedV1 } = await import('@aivera/notifications');
+const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@aivera/notifications/composition');
 const { createDb, isReachable } = await import('@aivera/db');
 const { createConsumer } = await import('@aivera/db/consumer');
 const { createRelay } = await import('@aivera/db/relay');
@@ -34,11 +40,11 @@ const { subscribe, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
-const OUTBOXES = ['candidates'];
-const QUEUES: Record<string, string> = { [PersonCreatedV1.type]: 'candidates' };
-// Each queue's handlers, exported by the consuming module's infrastructure. A consuming module's ticket adds its queue.
-// shortcut: nothing consumes `candidates` yet, so PersonCreated.v1 dead-letters after its 14-day TTL and raises the dead-letter alert; add its consumer or drop the mapping with the first candidates handler (AIV-P1-018)
-const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']> = {};
+const OUTBOXES = ['candidates', 'notifications'];
+const QUEUES: Record<string, string> = {
+  [PersonCreatedV1.type]: 'candidates',
+  [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
+};
 
 const stop = new AbortController();
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.once(signal, () => stop.abort());
@@ -57,7 +63,29 @@ const credential = (clientId: string | undefined) =>
 const relayBus = new ServiceBusClient(env.AZURE_SERVICE_BUS_NAMESPACE, credential(env.RELAY_CLIENT_ID), {
   retryOptions: { maxRetries: 0, timeoutInMs: 10_000 },
 });
-const appBus = new ServiceBusClient(env.AZURE_SERVICE_BUS_NAMESPACE, credential(env.AZURE_CLIENT_ID));
+const appCredential = credential(env.AZURE_CLIENT_ID);
+const appBus = new ServiceBusClient(env.AZURE_SERVICE_BUS_NAMESPACE, appCredential);
+
+// Each queue's handlers, exported by the consuming module's infrastructure. A consuming module's ticket adds its queue.
+// shortcut: nothing consumes `candidates` yet, so PersonCreated.v1 dead-letters after its 14-day TTL and raises the dead-letter alert; add its consumer or drop the mapping with the first candidates handler (AIV-P1-018)
+const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']> = {
+  [NOTIFICATIONS_QUEUE]: [
+    createEmailHandler({
+      encryptionKey: env.NOTIFICATIONS_ENCRYPTION_KEY,
+      now,
+      acs: {
+        endpoint: env.ACS_ENDPOINT,
+        senderAddress: env.EMAIL_SENDER,
+        // The app identity holds the email sender role on the ACS resource (infra/modules/communication.bicep).
+        token: async () => {
+          const token = await appCredential.getToken('https://communication.azure.com/.default');
+          if (!token) throw new Error('No Entra token for Azure Communication Services');
+          return token.token;
+        },
+      },
+    }),
+  ],
+};
 const senders = new Map<string, ReturnType<typeof relayBus.createSender>>();
 const senderFor = (queue: string) => {
   let sender = senders.get(queue);

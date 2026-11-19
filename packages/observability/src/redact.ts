@@ -50,6 +50,8 @@ const ALLOWED = [
   // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
   'aivera.ai.template_version',
+  // The HMAC of an email's recipient (AIV-P0-017): the only form of an address that may be logged.
+  'notifications.recipient_hash',
   'gen_ai.usage.input_tokens',
   'gen_ai.usage.output_tokens',
 ];

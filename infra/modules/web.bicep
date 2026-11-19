@@ -87,6 +87,8 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVaultUri}secrets/platform-operator-emails'
           identity: appIdentityId
         }
+        // ACS delivery-report webhook key (AIV-P0-017). Must exist in the vault before an apply.
+        { name: 'acs-webhook-key', keyVaultUrl: '${keyVaultUri}secrets/acs-webhook-key', identity: appIdentityId }
       ], candidateSecrets, googleSecrets)
     }
     template: {
@@ -114,6 +116,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_ENTRA_CLIENT_SECRET', secretRef: 'entra-recruiter-client-secret' }
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
             { name: 'PLATFORM_OPERATOR_EMAILS', secretRef: 'platform-operator-emails' }
+            { name: 'ACS_WEBHOOK_KEY', secretRef: 'acs-webhook-key' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
           ], candidateEnv, googleEnv)

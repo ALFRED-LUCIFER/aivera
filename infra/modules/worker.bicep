@@ -15,6 +15,10 @@ param databaseHost string
 param databaseName string
 param serviceBusNamespace string
 param workerImage string
+@description('Aivera Key Vault URI (ends with a slash): notifications-encryption-key must exist before an apply.')
+param keyVaultUri string
+param acsEndpoint string
+param emailSender string
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -36,7 +40,15 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
-      secrets: [{ name: 'appinsights-connection-string', keyVaultUrl: appInsightsSecretUri, identity: appIdentityId }]
+      secrets: [
+        { name: 'appinsights-connection-string', keyVaultUrl: appInsightsSecretUri, identity: appIdentityId }
+        // The send log's column key (AIV-P0-017): the worker opens what the web app sealed.
+        {
+          name: 'notifications-encryption-key'
+          keyVaultUrl: '${keyVaultUri}secrets/notifications-encryption-key'
+          identity: appIdentityId
+        }
+      ]
     }
     template: {
       containers: [
@@ -51,6 +63,9 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'RELAY_CLIENT_ID', value: relayIdentityClientId }
             { name: 'AZURE_SERVICE_BUS_NAMESPACE', value: serviceBusNamespace }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
+            { name: 'ACS_ENDPOINT', value: acsEndpoint }
+            { name: 'EMAIL_SENDER', value: emailSender }
+            { name: 'NOTIFICATIONS_ENCRYPTION_KEY', secretRef: 'notifications-encryption-key' }
           ]
           resources: { cpu: json('0.25'), memory: '0.5Gi' }
           probes: [

@@ -19,6 +19,7 @@
     "@aivera/i18n": "workspace:*",
     "@aivera/identity": "workspace:*",
     "@aivera/jobs": "workspace:*",
+    "@aivera/notifications": "workspace:*",
     "@aivera/observability": "workspace:*",
     "@aivera/ops": "workspace:*",
     "@aivera/ui": "workspace:*",
