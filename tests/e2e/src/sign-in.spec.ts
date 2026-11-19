@@ -32,16 +32,51 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
   await desk(page);
 });
 
-// Email one-time code and Microsoft accounts are not offered: the recruiter user flow has email with password and
-// Google only (owner decision on #241; docs/runbooks/recruiter-sign-in.md).
-test('Scenario: Google sign-in', async ({ page }) => {
+// Email one-time code and Microsoft accounts are not offered: email with password on the tenant and Google directly
+// (owner decision on #241, AIV-P0-928; docs/runbooks/recruiter-sign-in.md).
+// SAFETY: mutation check: sent "Continue with Google" to the tenant (signIn('entra')) in startSignIn -> this test failed
+test('Scenario: On a shared computer Google always shows the account chooser', async ({ page }) => {
   await page.goto('/sign-in');
+  await page.getByLabel('Email').fill('alex@example.com');
+  const authorize = page.waitForRequest((request) => new URL(request.url()).pathname === '/authorize');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  // No domain_hint: Google is chosen on the tenant's own page (see authorizationParams' shortcut).
-  await expect(page.getByText('Hint: none', { exact: true })).toBeVisible();
-  await page.getByLabel('Email', { exact: true }).fill('nadia@example.com');
-  await page.getByRole('button', { name: 'Sign in with Google' }).click();
-  await desk(page);
+  const url = new URL((await authorize).url());
+  // Straight to Google, never the tenant, asking which account every time, and with no login_hint.
+  expect(url.origin).toBe('http://localhost:3298');
+  expect(url.searchParams.get('prompt')).toBe('select_account');
+  expect(url.searchParams.has('login_hint')).toBe(false);
+  await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
+});
+
+const newAddress = (name: string) => `${name}.${Date.now()}${Math.floor(Math.random() * 1000)}@example.com`;
+const noWorkspace = (page: import('@playwright/test').Page) =>
+  expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+
+test('Scenario: First-time Google sign-in creates the user, and a returning one is the same user', async ({
+  page,
+  context,
+}) => {
+  const email = newAddress('nadia.freelance');
+  await signIn(page, { email, button: 'Continue with Google' });
+  await noWorkspace(page);
+  const first = await sessionToken(context);
+  expect(first.sub).toBeTruthy();
+  await context.clearCookies();
+  await signIn(page, { email, button: 'Continue with Google' });
+  await noWorkspace(page);
+  expect((await sessionToken(context)).sub).toBe(first.sub);
+});
+
+// Google's issuer is not trusted without email_verified true (the mocked Google sends it), so this is the real path.
+test('Scenario: The same verified email by email and password and by Google is one user', async ({ page, context }) => {
+  const email = newAddress('mira.recruiter');
+  await signIn(page, { email });
+  await noWorkspace(page);
+  const byPassword = await sessionToken(context);
+  await context.clearCookies();
+  await signIn(page, { email, button: 'Continue with Google' });
+  await noWorkspace(page);
+  expect((await sessionToken(context)).sub).toBe(byPassword.sub);
 });
 
 test('Scenario: A refused sign-in adds nothing (explicit email_verified false)', async ({ page, context }) => {
@@ -104,7 +139,7 @@ async function sessionToken(context: BrowserContext) {
   const salt = '__Host-aivera-session';
   const token = (await context.cookies()).find((c) => c.name === salt)?.value ?? '';
   const payload = await decode({ token, secret: e2eAuthSecret, salt });
-  return { exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - (payload?.iat ?? 0) };
+  return { sub: payload?.sub, exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - (payload?.iat ?? 0) };
 }
 
 // SAFETY: mutation check: read the remember cookie under another name in auth.ts's NextAuth(request) -> the ticked row

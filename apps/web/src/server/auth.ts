@@ -3,15 +3,17 @@ import { createIdentity } from '@aivera/identity/composition';
 import { log } from '@aivera/observability';
 import NextAuth, { customFetch, type AuthError, type NextAuthConfig } from 'next-auth';
 import { encode } from 'next-auth/jwt';
+import Google from 'next-auth/providers/google';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { REMEMBER_COOKIE, signInPath } from '@/features/sign-in/domain/signIn.ts';
 import { getDb } from './db';
 import { env, type WebEnv } from './env';
 
-// Recruiter sign-in (AIV-P0-009, ADR-009): one OIDC provider, the Entra External ID tenant's recruiter app
-// registration. Email with password and Google are chosen on the tenant's user flow, never in this app, so the app
-// never sees a password. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
+// Recruiter sign-in (AIV-P0-009, ADR-009): the Entra External ID tenant's recruiter app registration for email with
+// password (entered on the tenant's page, so the app never sees a password), and Google directly when configured
+// (AIV-P0-928): the tenant cannot create Google users. The session is an encrypted JWT in an HTTP-only cookie holding
+// only the identity user id.
 
 // shortcut: platform session lengths; read sessionIdleHours and sessionMaxDays from the workspace settings when
 // AIV-P1-051 (#201) ships.
@@ -53,6 +55,9 @@ export const getIdentity = (): IdentityContract =>
   (identity ??= createIdentity(getDb(), { trustedIssuer: env().auth?.issuer ?? '' }));
 
 export const authConfigured = (): boolean => env().auth !== null;
+
+/** "Continue with Google" goes straight to Google; otherwise it opens the tenant's page. */
+export const googleConfigured = (): boolean => Boolean(env().auth?.google);
 
 // Auth.js's stable `type` codes (the class name is minified in production); anything else is never echoed.
 const AUTH_ERROR_TYPES: ReadonlySet<string> = new Set<AuthError['type'] | 'Configuration'>([
@@ -141,6 +146,20 @@ export function authConfig(
         [customFetch]: (input: string | URL | Request, init?: RequestInit) =>
           fetch(isDiscovery(input) ? auth.discovery : input, init),
       },
+      ...(auth.google
+        ? [
+            Google({
+              clientId: auth.google.clientId,
+              clientSecret: auth.google.clientSecret,
+              // The mocked provider of the end-to-end tests; Google's own issuer otherwise.
+              ...(auth.google.issuer && { issuer: auth.google.issuer }),
+              // `select_account`: Google always asks which account, so the next person at a shared computer does not
+              // land in the previous recruiter's account (Sign out ends only our session).
+              authorization: { params: { scope: 'openid profile email', prompt: 'select_account' } },
+              checks: ['pkce', 'state', 'nonce'],
+            }),
+          ]
+        : []),
     ],
     // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): codes only.
     logger: {

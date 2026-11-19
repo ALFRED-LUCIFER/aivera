@@ -18,6 +18,8 @@ param imageTag string
 
 @description('Candidate app registration (client) id; empty keeps candidate sign-in off (docs/runbooks/candidate-sign-in.md).')
 param entraCandidateClientId string = ''
+@description('Google OAuth client id for recruiter "Continue with Google" (AIV-P0-928); empty keeps the Google button hidden.')
+param googleClientId string = ''
 
 var location = resourceGroup().location
 var tags = { product: 'aivera', env: 'dev', data: 'synthetic' }
@@ -94,6 +96,7 @@ module web 'modules/web.bicep' = {
     aiResourceName: ai.outputs.resourceName
     commitSha: imageTag
     entraCandidateClientId: entraCandidateClientId
+    googleClientId: googleClientId
   }
 }
 

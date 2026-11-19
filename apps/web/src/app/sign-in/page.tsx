@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { SignInForm } from '@/features/sign-in/components/SignInForm.tsx';
 import { safeNext, signInError } from '@/features/sign-in/domain/signIn.ts';
 import { startSignIn } from '@/features/sign-in/services/startSignIn.ts';
+import { googleConfigured } from '@/server/auth';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
@@ -20,6 +21,7 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
       action={startSignIn}
       next={safeNext(next)}
       error={errorKey && t(`signIn.errors.${errorKey}`)}
+      google={googleConfigured()}
       labels={{
         title: t('signIn.title'),
         panelTitle: t('signIn.panelTitle'),

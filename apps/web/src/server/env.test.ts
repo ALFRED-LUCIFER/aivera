@@ -49,6 +49,7 @@ describe('parseWebEnv sign-in settings (AIV-P0-009)', () => {
       clientSecret: 'client-secret-value',
       issuer: `https://${TENANT}.ciamlogin.com/${TENANT}/v2.0`,
       discovery: `https://aiverarecruiters.ciamlogin.com/${TENANT}/v2.0/.well-known/openid-configuration`,
+      google: null,
     });
   });
 
@@ -81,6 +82,39 @@ const candidate = {
   AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'candidate-id',
   AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'candidate-secret',
 };
+const google = { AUTH_GOOGLE_CLIENT_ID: 'google-id', AUTH_GOOGLE_CLIENT_SECRET: 'google-secret-value' };
+
+describe('parseWebEnv Google sign-in settings (AIV-P0-928)', () => {
+  it('adds Google to the recruiter sign-in when both values are set', () => {
+    expect(parseWebEnv({ ...valid, ...auth, ...google }).auth?.google).toEqual({
+      clientId: 'google-id',
+      clientSecret: 'google-secret-value',
+      issuer: undefined,
+    });
+  });
+
+  // SAFETY: mutation check: removed `google: null` from candidateAuth -> this test failed
+  it('never adds Google to the candidate side', () => {
+    expect(parseWebEnv({ ...valid, ...auth, ...google, ...candidate }).candidateAuth?.google).toBeNull();
+  });
+
+  it('is all or nothing, naming only what is missing and never the secret', () => {
+    const halfGoogle = { ...valid, ...auth, AUTH_GOOGLE_CLIENT_SECRET: 'google-secret-value' };
+    expect(() => parseWebEnv(halfGoogle)).toThrow('missing or invalid: AUTH_GOOGLE_CLIENT_ID');
+    expect(() => parseWebEnv(halfGoogle)).not.toThrow(/google-secret-value/);
+  });
+
+  it('accepts a mocked Google issuer only locally', () => {
+    const issuer = { AUTH_GOOGLE_ISSUER: 'http://localhost:3299' };
+    expect(parseWebEnv({ ...valid, ...auth, ...google, ...issuer, APP_ENV: 'local' }).auth?.google?.issuer).toBe(
+      'http://localhost:3299',
+    );
+    expect(() => parseWebEnv({ ...valid, ...auth, ...google, ...issuer })).toThrow(
+      'missing or invalid: AUTH_GOOGLE_ISSUER',
+    );
+  });
+});
+
 const half = () => parseWebEnv({ ...valid, ...auth, AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'candidate-secret' });
 
 describe('parseWebEnv candidate sign-in settings (AIV-P0-011)', () => {
@@ -90,6 +124,7 @@ describe('parseWebEnv candidate sign-in settings (AIV-P0-011)', () => {
       ...parsed.auth,
       clientId: 'candidate-id',
       clientSecret: 'candidate-secret',
+      google: null,
     });
   });
 

@@ -16,6 +16,7 @@ const settings = {
   clientSecret: 'secret',
   issuer: 'https://tenant.aivera.example/v2.0',
   discovery: 'https://tenant.aivera.example/v2.0/.well-known/openid-configuration',
+  google: null,
 };
 const config = authConfig(settings);
 const PERSONAL = /nadia|@example\.com|Haddad|eyJ/i;
@@ -153,6 +154,41 @@ describe('ID token claims', () => {
     const result = await config.callbacks?.signIn?.({ user: {}, profile: withoutEmail, account: null } as never);
     expect(result).toBe(false);
     expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe('Continue with Google (AIV-P0-928)', () => {
+  const google = { clientId: 'google-client', clientSecret: 'google-secret', issuer: undefined };
+
+  // Scenario: Google not configured: the button opens the tenant's page as before.
+  it('has only the tenant provider when Google is not configured', () => {
+    const { providers } = authConfig({ ...settings, google: null });
+    expect(providers.map((provider) => (typeof provider === 'function' ? provider().id : provider.id))).toEqual([
+      'entra',
+    ]);
+  });
+
+  // Scenario: Shared computer: Google shows the account chooser.
+  // SAFETY: mutation check: removed prompt 'select_account' from the Google provider -> this test failed
+  it('adds Google, asking which account every time, with PKCE, state and nonce', () => {
+    const provider = authConfig({ ...settings, google }).providers[1];
+    // Auth.js merges `options` over the provider's defaults when it parses the providers.
+    expect(provider).toMatchObject({
+      id: 'google',
+      issuer: 'https://accounts.google.com',
+      options: { authorization: { params: { prompt: 'select_account' } }, checks: ['pkce', 'state', 'nonce'] },
+    });
+  });
+
+  // Scenario: First-time Google sign-in creates the user: Google's verified email is passed on as verified.
+  it('passes a Google token on with its issuer and verified email', async () => {
+    upsert.mockResolvedValueOnce({ id: 'user-2' });
+    const googleProfile = { ...profile, iss: 'https://accounts.google.com', email_verified: true };
+    const result = await config.callbacks?.signIn?.({ user: {}, profile: googleProfile, account: null } as never);
+    expect(result).toBe(true);
+    expect(upsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ issuer: 'https://accounts.google.com', emailVerified: true }),
+    );
   });
 });
 

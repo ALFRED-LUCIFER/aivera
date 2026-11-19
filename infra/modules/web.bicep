@@ -15,6 +15,8 @@ param aiResourceName string
 param commitSha string
 @description('Candidate app registration (client) id in the dev External ID tenant (docs/runbooks/candidate-sign-in.md). Empty until the owner registers it: the candidate settings are then left out and candidate sign-in stays off.')
 param entraCandidateClientId string = ''
+@description('Google OAuth client id for recruiter "Continue with Google" (AIV-P0-928, docs/runbooks/recruiter-sign-in.md). Empty until the owner creates it and writes google-client-secret to the vault: the Google button stays hidden.')
+param googleClientId string = ''
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -37,6 +39,16 @@ var candidateEnv = empty(entraCandidateClientId)
   : [
       { name: 'AUTH_ENTRA_CANDIDATE_CLIENT_ID', value: entraCandidateClientId }
       { name: 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET', secretRef: 'entra-candidate-client-secret' }
+    ]
+// Google sign-in (AIV-P0-928): added only once the client exists, for the same reason.
+var googleSecrets = empty(googleClientId)
+  ? []
+  : [{ name: 'google-client-secret', keyVaultUrl: '${keyVaultUri}secrets/google-client-secret', identity: appIdentityId }]
+var googleEnv = empty(googleClientId)
+  ? []
+  : [
+      { name: 'AUTH_GOOGLE_CLIENT_ID', value: googleClientId }
+      { name: 'AUTH_GOOGLE_CLIENT_SECRET', secretRef: 'google-client-secret' }
     ]
 
 resource web 'Microsoft.App/containerApps@2024-03-01' = {
@@ -75,7 +87,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVaultUri}secrets/platform-operator-emails'
           identity: appIdentityId
         }
-      ], candidateSecrets)
+      ], candidateSecrets, googleSecrets)
     }
     template: {
       containers: [
@@ -104,7 +116,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'PLATFORM_OPERATOR_EMAILS', secretRef: 'platform-operator-emails' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
-          ], candidateEnv)
+          ], candidateEnv, googleEnv)
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [
             { type: 'Liveness', httpGet: union(probe, { path: '/api/health' }), periodSeconds: 30 }
