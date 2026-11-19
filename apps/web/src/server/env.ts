@@ -9,7 +9,10 @@ const AUTH_KEYS = [
   'AUTH_ENTRA_CLIENT_ID',
   'AUTH_ENTRA_CLIENT_SECRET',
   'AUTH_ENTRA_ISSUER',
+  'AUTH_ENTRA_CANDIDATE_CLIENT_ID',
+  'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET',
 ] as const;
+const CANDIDATE_KEYS = ['AUTH_ENTRA_CANDIDATE_CLIENT_ID', 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET'] as const;
 
 const webEnvSchema = z
   .object({
@@ -28,6 +31,10 @@ const webEnvSchema = z
     AUTH_ENTRA_CLIENT_SECRET: z.string().min(1).optional(),
     // Local only: the mocked provider of the end-to-end tests, in place of the tenant subdomain and id.
     AUTH_ENTRA_ISSUER: z.url({ protocol: /^https?$/ }).optional(),
+    // Candidate sign-in (AIV-P0-011, docs/runbooks/candidate-sign-in.md): the same tenant and session secret, the
+    // candidate app registration. Needs the recruiter settings too; optional everywhere until the candidate site ships.
+    AUTH_ENTRA_CANDIDATE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: z.string().min(1).optional(),
   })
   // Deployed environments must say which commit runs (health and the deploy smoke test rely on it).
   .refine((e) => e.APP_ENV === 'local' || e.COMMIT_SHA, { path: ['COMMIT_SHA'] })
@@ -40,6 +47,7 @@ const webEnvSchema = z
     const needed = ['AUTH_SECRET', 'AUTH_ENTRA_CLIENT_ID', 'AUTH_ENTRA_CLIENT_SECRET'] as const;
     const tenant = ['AUTH_ENTRA_TENANT_SUBDOMAIN', 'AUTH_ENTRA_TENANT_ID'] as const;
     for (const key of e.AUTH_ENTRA_ISSUER ? needed : [...needed, ...tenant]) if (!e[key]) missing(key);
+    if (CANDIDATE_KEYS.some((key) => e[key])) for (const key of CANDIDATE_KEYS) if (!e[key]) missing(key);
   })
   .transform(
     ({ AUTH_SECRET: secret, AUTH_ENTRA_CLIENT_ID: clientId, AUTH_ENTRA_CLIENT_SECRET: clientSecret, ...e }) => {
@@ -47,22 +55,29 @@ const webEnvSchema = z
         AUTH_ENTRA_TENANT_SUBDOMAIN: subdomain,
         AUTH_ENTRA_TENANT_ID: tenantId,
         AUTH_ENTRA_ISSUER: mock,
+        AUTH_ENTRA_CANDIDATE_CLIENT_ID: candidateClientId,
+        AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: candidateClientSecret,
         ...rest
       } = e;
       // External ID serves its metadata on the subdomain host but names the tenant-id host as the issuer.
       const discoveryBase = mock ?? (subdomain && tenantId && `https://${subdomain}.ciamlogin.com/${tenantId}/v2.0`);
+      const auth =
+        secret && clientId && clientSecret && discoveryBase
+          ? {
+              secret,
+              clientId,
+              clientSecret,
+              issuer: mock ?? `https://${tenantId}.ciamlogin.com/${tenantId}/v2.0`,
+              discovery: `${discoveryBase}/.well-known/openid-configuration`,
+            }
+          : null;
       return {
         ...rest,
         COMMIT_SHA: rest.COMMIT_SHA ?? 'local',
-        auth:
-          secret && clientId && clientSecret && discoveryBase
-            ? {
-                secret,
-                clientId,
-                clientSecret,
-                issuer: mock ?? `https://${tenantId}.ciamlogin.com/${tenantId}/v2.0`,
-                discovery: `${discoveryBase}/.well-known/openid-configuration`,
-              }
+        auth,
+        candidateAuth:
+          auth && candidateClientId && candidateClientSecret
+            ? { ...auth, clientId: candidateClientId, clientSecret: candidateClientSecret }
             : null,
       };
     },

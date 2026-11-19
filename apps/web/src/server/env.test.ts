@@ -7,7 +7,7 @@ const malformed = () => parseWebEnv({ ...valid, DATABASE_URL: 'https://user:hunt
 
 describe('parseWebEnv', () => {
   it('returns typed configuration when every variable is valid', () => {
-    expect(parseWebEnv(valid)).toEqual({ ...valid, auth: null });
+    expect(parseWebEnv(valid)).toEqual({ ...valid, auth: null, candidateAuth: null });
   });
 
   // SAFETY: mutation check: appended JSON.stringify(source) to the error -> both "without echoing" tests failed
@@ -71,5 +71,35 @@ describe('parseWebEnv sign-in settings (AIV-P0-009)', () => {
     expect(() => parseWebEnv({ ...valid, ...auth, AUTH_ENTRA_ISSUER: 'http://localhost:3299' })).toThrow(
       'missing or invalid: AUTH_ENTRA_ISSUER',
     );
+  });
+});
+
+const candidate = {
+  AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'candidate-id',
+  AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'candidate-secret',
+};
+const half = () => parseWebEnv({ ...valid, ...auth, AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'candidate-secret' });
+
+describe('parseWebEnv candidate sign-in settings (AIV-P0-011)', () => {
+  it('uses the same tenant and session secret with the candidate app registration', () => {
+    const parsed = parseWebEnv({ ...valid, ...auth, ...candidate });
+    expect(parsed.candidateAuth).toEqual({
+      ...parsed.auth,
+      clientId: 'candidate-id',
+      clientSecret: 'candidate-secret',
+    });
+  });
+
+  it('runs without candidate sign-in while the recruiter side is configured', () => {
+    expect(parseWebEnv({ ...valid, ...auth }).candidateAuth).toBeNull();
+  });
+
+  it('is all or nothing, naming only what is missing and never the secret', () => {
+    expect(half).toThrow(/missing or invalid: AUTH_ENTRA_CANDIDATE_CLIENT_ID$/);
+    expect(half).not.toThrow(/candidate-secret/);
+  });
+
+  it('needs the tenant and session secret it shares with the recruiter side', () => {
+    expect(() => parseWebEnv({ ...valid, ...candidate })).toThrow(/AUTH_SECRET.*AUTH_ENTRA_TENANT_ID$/);
   });
 });

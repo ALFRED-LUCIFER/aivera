@@ -1,7 +1,8 @@
-import { ForbiddenError, type WorkspaceContext } from '@aivera/workspaces';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { IdentityContract, User } from '@aivera/identity';
+import { ForbiddenError, type Member, type WorkspaceContext } from '@aivera/workspaces';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
-import { workspaceAction } from './workspace.ts';
+import { currentMembership, workspaceAction } from './workspace.ts';
 
 const W1 = '0190d4a2-0000-7000-8000-000000000001';
 const session = vi.fn<() => Promise<string | null>>();
@@ -88,4 +89,16 @@ describe('workspaceAction', () => {
     await expect(viewCandidate({ candidateId: 'C1' })).rejects.toThrow('NEXT_REDIRECT;/sign-in');
     expect(handler).not.toHaveBeenCalled();
   });
+});
+
+// Scenario: The recruiter side cannot tell that a recruiter is also a candidate (AIV-P0-011). Checked by `tsc`: a
+// candidate field, flag or account id added to any of these member views fails the typecheck.
+// SAFETY: mutation check: added `candidateAccountId?: string` to Member -> tsc failed on this test
+it('the recruiter-facing member views hold no candidate field', () => {
+  expectTypeOf<keyof Member>().toEqualTypeOf<'userId' | 'workspaceId' | 'role' | 'status'>();
+  expectTypeOf<keyof User>().toEqualTypeOf<'id' | 'email' | 'displayName' | 'createdAt'>();
+  expectTypeOf<keyof IdentityContract>().toEqualTypeOf<'upsertUserFromIdToken' | 'getUser'>();
+  expectTypeOf<keyof NonNullable<Awaited<ReturnType<typeof currentMembership>>>>().toEqualTypeOf<
+    'name' | 'role' | 'synthetic'
+  >();
 });

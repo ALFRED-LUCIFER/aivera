@@ -13,7 +13,6 @@ import { env, type WebEnv } from './env';
 // registration. Email with password and Google are chosen on the tenant's user flow, never in this app, so the app
 // never sees a password. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
 
-const SESSION_COOKIE = '__Host-aivera-session';
 // shortcut: platform session lengths; read sessionIdleHours and sessionMaxDays from the workspace settings when
 // AIV-P1-051 (#201) ships.
 const EIGHT_HOURS = 8 * 60 * 60;
@@ -94,12 +93,34 @@ const authErrorCode = (error: Error): string => {
 };
 
 /**
+ * One side of the sign-in: recruiters, or candidates (candidateAuth.ts, AIV-P0-011). Each side has its own session
+ * cookie, its own Auth.js endpoints and its own sign-in page; Auth.js also salts the session encryption with the cookie
+ * name, so one side's cookie never decodes on the other.
+ */
+export type SignInSide = {
+  cookie: string;
+  basePath: string;
+  signInPage: string;
+};
+
+const RECRUITER: SignInSide = {
+  cookie: '__Host-aivera-session',
+  basePath: '/api/auth',
+  signInPage: '/sign-in',
+};
+
+/**
  * Exported for its test (auth.test.ts): the logger and the refusal path must never print personal data, and the
  * session length follows "Keep me signed in". `remember` is that choice, read from the sign-in request.
  */
-export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false): NextAuthConfig {
+export function authConfig(
+  auth: NonNullable<WebEnv['auth']>,
+  remember = false,
+  side: SignInSide = RECRUITER,
+): NextAuthConfig {
   return {
     secret: auth.secret,
+    basePath: side.basePath,
     // AUTH_URL sets the public origin on Azure (infra/modules/web.bicep); locally and in e2e the request host is trusted.
     trustHost: true,
     providers: [
@@ -122,7 +143,7 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false):
       error: (error) => log.error({ area: 'auth', code: authErrorCode(error) }, 'auth error'),
       warn: (code) => log.warn({ area: 'auth', code }, 'auth warning'),
     },
-    pages: { signIn: '/sign-in', error: '/sign-in' },
+    pages: { signIn: side.signInPage, error: side.signInPage },
     // The cookie lives as long as the longest session; the token inside expires on its own clock (jwt.encode below).
     session: { strategy: 'jwt', maxAge: THIRTY_DAYS },
     // Each token expires on its own clock (tokenMaxAge); an expired token fails decode and Auth.js drops the cookie.
@@ -131,15 +152,17 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false):
     },
     cookies: {
       sessionToken: {
-        name: SESSION_COOKIE,
+        name: side.cookie,
         options: { httpOnly: true, secure: true, sameSite: 'lax', path: '/' },
       },
     },
     callbacks: {
-      // The proxy's check (sessionProxy): no session goes to /sign-in, remembering where it was going.
+      // The proxy's check (sessionProxy): no session goes to this side's sign-in, remembering where it was going.
       authorized: ({ request, auth: session }) =>
         Boolean(session?.user?.id) ||
-        NextResponse.redirect(new URL(signInPath(request.nextUrl.pathname, request.nextUrl.search), request.url)),
+        NextResponse.redirect(
+          new URL(signInPath(request.nextUrl.pathname, request.nextUrl.search, side.signInPage), request.url),
+        ),
       async signIn({ user, profile }) {
         const claims = idTokenClaims.safeParse(profile);
         if (!claims.success) return false;
@@ -155,7 +178,7 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false):
           user.id = found.id;
           return true;
         } catch (error) {
-          if (error instanceof IdentityError) return `/sign-in?error=${error.code}`;
+          if (error instanceof IdentityError) return `${side.signInPage}?error=${error.code}`;
           throw error;
         }
       },

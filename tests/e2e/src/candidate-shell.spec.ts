@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
-// AIV-P3-001, journey J5 step 1. Signed out only: the candidate session arrives with AIV-P0-011, so the signed-in
-// header ("My applications") is proven by CandidateSite.test.tsx until then.
+// AIV-P3-001, journey J5 step 1. Signed out only: the signed-in header ("My applications") is proven by
+// candidate-sign-in.spec.ts (AIV-P0-011) and CandidateSite.test.tsx.
 const home = '/candidates';
 const siteNav = (page: import('@playwright/test').Page) => page.getByRole('navigation', { name: 'Candidate site' });
 // The home page's hero fades in (about 1.4 s); reduced motion shows it settled, so axe never measures text mid-fade.

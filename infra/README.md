@@ -38,7 +38,7 @@ Every Aivera resource is tagged `product=aivera`, `env=dev`, `data=synthetic`.
 ### Web: what is not here, and why
 
 - **No worker app yet.** `apps/worker` does not exist; the ticket that creates it adds `ca-aivera-worker-dev` (no ingress, min 0) beside the web app.
-- **Public, with sign-in.** The default address `https://ca-aivera-web-dev.<cae-aivera-dev domain>` is public over HTTPS only; `/app` needs a session from the dev External ID tenant ([recruiter sign-in runbook](../docs/runbooks/recruiter-sign-in.md)). Dev holds synthetic data only.
+- **Public, with sign-in.** The default address `https://ca-aivera-web-dev.<cae-aivera-dev domain>` is public over HTTPS only; `/app` needs a session from the dev External ID tenant ([recruiter sign-in runbook](../docs/runbooks/recruiter-sign-in.md)), and `/candidates/me` a candidate session once `entraCandidateClientId` is set ([candidate sign-in runbook](../docs/runbooks/candidate-sign-in.md)). Dev holds synthetic data only.
 - shortcut: no Front Door, no custom domain and no portfolio subdomains in dev; they come with the launch epic AIV-P5-E03 (#34).
 
 ## Monthly cost (dev, Central India and UAE North for AI, list prices November 2026)

@@ -16,6 +16,9 @@ param alertEmail string
 @description('Commit SHA tag of the images on ghcr.io to run. Pass the one running now so a redeploy changes nothing.')
 param imageTag string
 
+@description('Candidate app registration (client) id; empty keeps candidate sign-in off (docs/runbooks/candidate-sign-in.md).')
+param entraCandidateClientId string = ''
+
 var location = resourceGroup().location
 var tags = { product: 'aivera', env: 'dev', data: 'synthetic' }
 var images = 'ghcr.io/${toLower(githubRepo)}'
@@ -89,6 +92,7 @@ module web 'modules/web.bicep' = {
     webImage: '${images}/web:${imageTag}'
     aiResourceName: ai.outputs.resourceName
     commitSha: imageTag
+    entraCandidateClientId: entraCandidateClientId
   }
 }
 

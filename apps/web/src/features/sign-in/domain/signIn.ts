@@ -37,8 +37,8 @@ export const rememberCookie = (remember: boolean) => ({
 });
 
 /** The sign-in page for a request that needs a session, remembering where it was going. */
-export const signInPath = (pathname: string, search: string) =>
-  `/sign-in?${new URLSearchParams({ next: `${pathname}${search}` })}`;
+export const signInPath = (pathname: string, search: string, page = '/sign-in') =>
+  `${page}?${new URLSearchParams({ next: `${pathname}${search}` })}`;
 
 // Email with password and Google: what the recruiter user flow offers. A user flow has one email method (password,
 // not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md). `reset`
