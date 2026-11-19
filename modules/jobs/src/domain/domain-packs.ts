@@ -4,7 +4,10 @@ import type { JobType } from './job-types.ts';
 /** Bump when a pack entry changes meaning; kept pack competencies record the version that seeded them. */
 export const DOMAIN_PACK_CATALOGUE_VERSION = 1;
 
-/** Keys are stored with kept competencies (AIV-P1-064), so never rename one. */
+/**
+ * Keys are stored with kept competencies (AIV-P1-064), so never rename one. Must list exactly the
+ * `competency_pack_key_check` values (infrastructure/schema.ts); a new pack needs a migration.
+ */
 export const DOMAIN_KEYS = [
   'payments_fintech',
   'banking_islamic_finance',

@@ -873,7 +873,6 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     const { rubricVersion } = await as(RANA, w, (ctx) =>
       jobs.createJobWithDraftRubric(ctx, { ...job('Senior Backend Engineer, Payments'), competencies: kept }),
     );
-    packVersionId = rubricVersion.id;
     const list = await rows<{ name: string; origin: string; pack_key: string | null; pack_version: number | null }>(
       ALEX,
       w,
@@ -891,6 +890,12 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
 
   // SAFETY: mutation check: dropped competency_domain_pack_check, then competency_pack_key_check, from migration 0007 -> this test failed each time (row stored)
   it('the database refuses a domain_pack competency without its pack, a pack on any other origin, or an unknown pack', async () => {
+    // Its own draft version, so it does not hang on the test above.
+    packVersionId = (
+      await as(RANA, w, (ctx) =>
+        jobs.createJobWithDraftRubric(ctx, { ...job('Pack Constraint Engineer'), competencies: draft() }),
+      )
+    ).rubricVersion.id;
     for (const [origin, key, v] of [
       ['domain_pack', null, null],
       ['domain_pack', 'payments_fintech', null],
