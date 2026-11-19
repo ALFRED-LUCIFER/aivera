@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 // Not 3000: that is the owner's local preview. `next dev` because the gallery exists only when
@@ -65,6 +66,9 @@ export default defineConfig({
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'e2e-only',
         // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.
         PLATFORM_OPERATOR_EMAILS: 'pia.platform@example.com,Theo.Platform@example.com',
+        // AIV-P1-008: the fake model answers "Draft competencies" from recorded fixtures, by description text.
+        AI_PROVIDER: 'fake',
+        AI_FAKE_FIXTURES: join(import.meta.dirname, 'ai-fixtures.json'),
       },
     },
     {

@@ -1,0 +1,54 @@
+# A Forward Deployed Engineer description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: forward-deployed-engineer
+input:
+  jobType: forward_deployed_engineering
+  title: 'Forward Deployed Engineer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will work on site with logistics customers to find the problem worth solving. You ship integrations into their systems and APIs. You deploy and tune our AI agents for each customer.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Customer problem discovery'
+      - 'Integration engineering'
+      - 'Working with AI systems'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Customer problem discovery',
+            'evidenceExpected': 'Problems they found with a customer and what they built for it',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations':
+              [
+                {
+                  'sourceId': 'S1',
+                  'quote': 'work on site with logistics customers to find the problem worth solving',
+                },
+              ],
+          },
+          {
+            'name': 'Integration engineering',
+            'evidenceExpected': "Integrations they shipped into a customer's systems",
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You ship integrations into their systems and APIs' }],
+          },
+          {
+            'name': 'Working with AI systems',
+            'evidenceExpected': 'AI agents they deployed and tuned for a customer',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You deploy and tune our AI agents for each customer' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

@@ -69,6 +69,11 @@ export default async function seed() {
         // A reused local database: she signed up on an earlier run.
         if (!(error instanceof CandidateAccountError && error.code === 'already_signed_up')) throw error;
       });
+    // AIV-P1-008: drafting spends AI tokens, so it runs in workspaces whose figures no other spec reads. Karim's has
+    // used its whole daily budget (the platform default, AI_DAILY_TOKEN_BUDGET) today.
+    await workspaceOf('Draft Studio', await person('mira@example.com', 'Mira Recruiter'));
+    const spent = await workspaceOf('Spent Budget Co', await person('karim@example.com', 'Karim Recruiter'));
+    await createAiTokenBudget(db).add(spent, new Date().toISOString().slice(0, 10), 2_000_000);
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 

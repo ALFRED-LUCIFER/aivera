@@ -1,0 +1,48 @@
+# A Product Designer description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: product-designer
+input:
+  jobType: product_design
+  title: 'Product Designer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will design the checkout flows our customers use. You turn research into design decisions. You prototype and test ideas before we build them.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Interaction design craft'
+      - 'Research to decisions'
+      - 'Prototyping'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Interaction design craft',
+            'evidenceExpected': 'Flows they designed and shipped',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'design the checkout flows our customers use' }],
+          },
+          {
+            'name': 'Research to decisions',
+            'evidenceExpected': 'Research they ran and the design decisions it changed',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You turn research into design decisions' }],
+          },
+          {
+            'name': 'Prototyping',
+            'evidenceExpected': 'Prototypes they built and what testing them showed',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You prototype and test ideas before we build them' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

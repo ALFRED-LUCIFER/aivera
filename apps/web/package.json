@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@aivera/ai": "workspace:*",
     "@aivera/audit": "workspace:*",
     "@aivera/candidate-accounts": "workspace:*",
     "@aivera/candidates": "workspace:*",

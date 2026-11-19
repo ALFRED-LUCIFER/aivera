@@ -1,6 +1,9 @@
 import { context, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { APICallError } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { z } from 'zod';
@@ -13,6 +16,7 @@ import {
   UnknownAiTask,
   type TokenBudgetStore,
 } from './client';
+import { maxAttempts } from './config';
 import { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';
 
 // Feature: One AI client on Azure AI Foundry (AIV-P0-027). Synthetic data only (docs/00-product/personas.md).
@@ -111,6 +115,25 @@ describe('Scenario: A task resolves to its configured deployment', () => {
     expect(() => providerFromEnv({ AI_PROVIDER: 'fake' })).toThrow(/local and dev only/);
     expect(() => providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'Pilot' })).toThrow(/local and dev only/);
     expect(() => providerFromEnv({ APP_ENV: 'dev' })).toThrow(/AZURE_OPENAI_RESOURCE_NAME/);
+  });
+
+  it('answers from the first fixture whose text is in the prompt, read from AI_FAKE_FIXTURES', async () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'aivera-ai-')), 'fixtures.json');
+    writeFileSync(
+      file,
+      JSON.stringify([
+        { when: 'data engineer', completion: '{"ready":false}' },
+        { when: 'flaky engineer', status: 500 },
+      ]),
+    );
+    const { ai, calls } = setup(providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'local', AI_FAKE_FIXTURES: file }));
+    await expect(ai.generateStructured(draft)).resolves.toEqual({ ready: false });
+    await expect(ai.generateStructured({ ...draft, prompt: 'A flaky engineer.' })).rejects.toBeInstanceOf(
+      AiUnavailable,
+    );
+    expect(calls).toHaveLength(1 + maxAttempts);
+    writeFileSync(file, JSON.stringify([{ when: '', completion: '{}' }]));
+    expect(() => providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'local', AI_FAKE_FIXTURES: file })).toThrow();
   });
 });
 

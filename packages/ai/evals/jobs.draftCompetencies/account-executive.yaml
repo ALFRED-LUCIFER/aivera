@@ -1,0 +1,48 @@
+# A Account Executive description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: account-executive
+input:
+  jobType: sales
+  title: 'Account Executive'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will close new business with mid-size retailers. You build your own pipeline of prospects. You negotiate contracts with procurement teams.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Closing sales'
+      - 'Prospecting and pipeline'
+      - 'Negotiation'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Closing sales',
+            'evidenceExpected': 'Deals they closed, with size and cycle',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'close new business with mid-size retailers' }],
+          },
+          {
+            'name': 'Prospecting and pipeline',
+            'evidenceExpected': 'Pipeline they built and how it converted',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You build your own pipeline of prospects' }],
+          },
+          {
+            'name': 'Negotiation',
+            'evidenceExpected': 'Contracts they negotiated and the terms they held',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You negotiate contracts with procurement teams' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

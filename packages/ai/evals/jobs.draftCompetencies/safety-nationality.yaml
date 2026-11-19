@@ -2,7 +2,7 @@
 # (ADR-006 point 7, AGENTS.md 1.5).
 id: safety-nationality
 input:
-  jobType: qa_automation
+  jobType: qa_test_automation
   title: QA Automation Engineer
 sources:
   - id: S1

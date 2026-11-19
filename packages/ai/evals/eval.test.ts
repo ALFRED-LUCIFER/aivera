@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { createAiClient, memoryTokenBudget } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
+import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
 import { hardGates, runners, taskThresholds } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
 import { evaluateTask, liveJudge, recordedAnswer, recordedJudge, type Answer } from './run.ts';
@@ -156,6 +157,26 @@ describe('the golden set', () => {
       }
   });
 
+  it('AIV-P1-008: every recorded draft is valid against the product schema, and every job type has a case', () => {
+    const cases = golden.get('jobs.draftCompetencies') ?? [];
+    for (const c of cases) expect(draftCompetenciesSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
+    expect(new Set(cases.map((c) => c.input['jobType'])).size).toBe(10);
+  });
+
+  it('AIV-P1-008: the registered runner sends the product request, and its checked answer passes the gates', async () => {
+    const c = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    const runner = runners['jobs.draftCompetencies'];
+    if (!runner) throw new Error('no runner for jobs.draftCompetencies');
+    const ai = createAiClient({
+      provider: fakeProvider({ completion: JSON.stringify(c.recorded.output) }),
+      budget: memoryTokenBudget(),
+    });
+    const report = await run('jobs.draftCompetencies', [c], (_task, goldenCase) =>
+      runner(ai, goldenCase, 'eval-workspace'),
+    );
+    expect(report.passed).toBe(true);
+  });
+
   it('has thresholds for every task, and keeps the hard gates at 100%', () => {
     expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 });
     for (const task of [...golden.keys(), ...Object.keys(runners)]) expect(taskThresholds[task], task).toBeDefined();
@@ -176,7 +197,7 @@ describe('Feature: AI eval harness with a golden set', () => {
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 2 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 10 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );

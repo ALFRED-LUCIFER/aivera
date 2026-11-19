@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@aivera/ui';
 import { DESCRIPTION_MAX, descriptionPlaceholder, TEXT_MAX, type NewJobState } from '../domain/jobNew.ts';
 
@@ -21,6 +22,8 @@ type NewJobLabels = {
   noHiringOwner: string;
   inviteHiringOwner: string;
   submit: string;
+  drafting: string;
+  save: string;
   submitting: string;
   cancel: string;
   discardTitle: string;
@@ -35,8 +38,21 @@ type Option = { value: string; label: string };
 
 type NewJobFormProps = {
   state: NewJobState;
+  /** Saves the job (step 1 only; the rubric is saved with it from AIV-P1-010). */
   action: (form: FormData) => void;
   pending: boolean;
+  /** The required fields to fix, from the last save or draft. */
+  errors: NewJobState['errors'];
+  /** "Draft competencies" reads the form without posting it, so nothing is saved. */
+  onDraft: (form: HTMLFormElement) => void;
+  /** Save job was submitted: the errors shown are now the save's. */
+  onSaving: () => void;
+  drafting: boolean;
+  /** Once competencies are drafted, saving is the step's primary action. */
+  drafted: boolean;
+  onTitleChange: (title: string) => void;
+  /** Step 2, between the job fields and Save. */
+  draftSection: ReactNode;
   jobType: string;
   onJobTypeChange: (jobType: string) => void;
   onInput: () => void;
@@ -58,7 +74,7 @@ const id = (field: string) => `job-new-${field}`;
 
 /** Add a job, step 1 "Job and description" (RoleNew artboard, AIV-P1-007). */
 export function NewJobForm(props: NewJobFormProps) {
-  const { state, labels, jobType, pending } = props;
+  const { state, errors, labels, jobType, pending } = props;
   const evidence = props.jobTypes.find((t) => t.value === jobType)?.evidence;
   const optional = <span className="ms-1 font-normal text-text-2">{labels.optional}</span>;
   return (
@@ -68,8 +84,8 @@ export function NewJobForm(props: NewJobFormProps) {
           {labels.stepList.map((step, i) => (
             <li
               key={step}
-              aria-current={i === 0 ? 'step' : undefined}
-              className={i === 0 ? 'font-semibold text-text' : ''}
+              aria-current={i === (props.drafted ? 1 : 0) ? 'step' : undefined}
+              className={i === (props.drafted ? 1 : 0) ? 'font-semibold text-text' : ''}
             >
               {step}
             </li>
@@ -83,8 +99,15 @@ export function NewJobForm(props: NewJobFormProps) {
       )}
       {/* Keyed on the result, so a refused submit shows the fields again with what was typed. */}
       <form
+        id={id('form')}
         key={JSON.stringify(state)}
         action={props.action}
+        // Draft is the form's first submit button, so Enter in a field drafts; only Save job posts the action.
+        onSubmit={(e) => {
+          if ((e.nativeEvent as SubmitEvent).submitter?.id === id('save')) return props.onSaving();
+          e.preventDefault();
+          props.onDraft(e.currentTarget);
+        }}
         onInput={props.onInput}
         noValidate
         className="flex max-w-2xl flex-col gap-3"
@@ -96,8 +119,8 @@ export function NewJobForm(props: NewJobFormProps) {
           value={jobType}
           onChange={(e) => props.onJobTypeChange(e.target.value)}
           aria-required="true"
-          aria-invalid={state.errors.jobType || undefined}
-          aria-describedby={`${id('type-hint')}${state.errors.jobType ? ` ${id('type-error')}` : ''}`}
+          aria-invalid={errors.jobType || undefined}
+          aria-describedby={`${id('type-hint')}${errors.jobType ? ` ${id('type-error')}` : ''}`}
         >
           <option value="" disabled>
             {labels.chooseJobType}
@@ -112,7 +135,7 @@ export function NewJobForm(props: NewJobFormProps) {
           {labels.jobTypeHint}
           {evidence && ` ${labels.evidence} ${evidence}`}
         </p>
-        {state.errors.jobType && (
+        {errors.jobType && (
           <p id={id('type-error')} role="alert" className="text-meta font-semibold text-err-text">
             {labels.errors.jobType}
           </p>
@@ -124,11 +147,12 @@ export function NewJobForm(props: NewJobFormProps) {
           name="title"
           maxLength={TEXT_MAX}
           defaultValue={state.values.title}
+          onChange={(e) => props.onTitleChange(e.target.value)}
           aria-required="true"
-          aria-invalid={state.errors.title || undefined}
-          aria-describedby={state.errors.title ? id('title-error') : undefined}
+          aria-invalid={errors.title || undefined}
+          aria-describedby={errors.title ? id('title-error') : undefined}
         />
-        {state.errors.title && (
+        {errors.title && (
           <p id={id('title-error')} role="alert" className="text-meta font-semibold text-err-text">
             {labels.errors.title}
           </p>
@@ -207,12 +231,24 @@ export function NewJobForm(props: NewJobFormProps) {
         )}
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" disabled={pending}>
-            {pending ? labels.submitting : labels.submit}
+          <Button type="submit" variant={props.drafted ? 'secondary' : 'primary'} disabled={props.drafting}>
+            {props.drafting ? labels.drafting : labels.submit}
           </Button>
-          <Button onClick={props.onCancel}>{labels.cancel}</Button>
         </div>
       </form>
+      {props.draftSection}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          id={id('save')}
+          form={id('form')}
+          variant={props.drafted ? 'primary' : 'secondary'}
+          disabled={pending}
+        >
+          {pending ? labels.submitting : labels.save}
+        </Button>
+        <Button onClick={props.onCancel}>{labels.cancel}</Button>
+      </div>
       <Dialog
         open={props.discardOpen}
         onOpenChange={props.onDiscardOpenChange}

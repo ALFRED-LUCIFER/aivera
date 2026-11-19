@@ -1,6 +1,7 @@
 // The only public surface of @aivera/jobs (ADR-002).
 import type { Tx } from '@aivera/db';
 import type { WorkspaceContext } from '@aivera/workspaces';
+import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
 import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
@@ -38,6 +39,7 @@ export type {
   RubricVersion,
 } from '../domain/job.ts';
 export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
+export type { CompetencyDraft, DraftedCompetency, DraftInput } from '../application/draft-competencies.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
@@ -113,6 +115,20 @@ export interface JobsContract {
    * whether each is open. Only for the operator's status change, inside its withWorkspace(<workspace>) `tx`.
    */
   pausePublicListings(tx: Tx, workspaceId: string, paused: boolean): Promise<void>;
+}
+
+/**
+ * "Draft competencies" (AIV-P1-008). Saves nothing and reads nothing from the database. `workspaceId` is only whose
+ * daily AI budget pays: the caller must have authorised `job.create` in that workspace first, and must not hold a
+ * workspace transaction open across the model call.
+ */
+export interface CompetencyDrafting {
+  /**
+   * The competencies the description states, each citing it, and whether a line asking for something that is not a
+   * skill was left out. Throws `@aivera/ai`'s `BudgetExceeded`, `AiUnavailable`,
+   * or (an answer rejected twice) `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
+   */
+  draftCompetencies(workspaceId: string, input: DraftInput): Promise<CompetencyDraft>;
 }
 
 /**

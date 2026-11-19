@@ -1,0 +1,48 @@
+# A Technical Writer description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: technical-writer
+input:
+  jobType: technical_writing_support
+  title: 'Technical Writer'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will write task documentation for our merchant dashboard. You learn the product well enough to explain it. You organise the help centre so answers are easy to find.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Clear task documentation'
+      - 'Understanding the product'
+      - 'Information structure'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Clear task documentation',
+            'evidenceExpected': 'Task guides they wrote and readers used',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'write task documentation for our merchant dashboard' }],
+          },
+          {
+            'name': 'Understanding the product',
+            'evidenceExpected': 'Explanations that show they understood the product',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You learn the product well enough to explain it' }],
+          },
+          {
+            'name': 'Information structure',
+            'evidenceExpected': 'Help centres or docs sites they organised',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You organise the help centre so answers are easy to find' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

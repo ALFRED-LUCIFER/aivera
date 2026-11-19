@@ -42,6 +42,9 @@ for (const theme of themes) {
     await owner.selectOption({ label: 'Head of Engineering' });
     await page.keyboard.press('Tab');
     await expect(draft(page)).toBeFocused();
+    // Drafting is job-draft.spec.ts (AIV-P1-008); saving the job alone stays one keystroke away.
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Save job' })).toBeFocused();
     await page.keyboard.press('Enter');
 
     await expect(page).toHaveURL(/\/app\/jobs$/);

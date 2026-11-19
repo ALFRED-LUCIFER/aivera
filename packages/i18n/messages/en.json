@@ -473,6 +473,8 @@
     "noHiringOwner": "This workspace has no hiring owner yet.",
     "inviteHiringOwner": "Invite a hiring owner",
     "submit": "Draft competencies",
+    "drafting": "Drafting competencies…",
+    "save": "Save job",
     "submitting": "Saving the job…",
     "cancel": "Cancel",
     "discardTitle": "Discard this job?",
@@ -486,6 +488,51 @@
       "jobType": "Choose a job type.",
       "failed": "We could not save this job. Try again."
     }
+  },
+  "jobDraft": {
+    "heading": "Competencies",
+    "before": "Choose Draft competencies. Aivera reads the description for a {title}, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
+    "beforeUntitled": "Choose Draft competencies. Aivera reads the description for this job, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
+    "fromDescription": "From your job description · {count, plural, one {# competency} other {# competencies}}",
+    "caption": "Drafted competencies",
+    "columns": {
+      "competency": "Competency and evidence expected",
+      "weight": "Weight",
+      "level": "Level the job needs",
+      "type": "Type",
+      "actions": "Actions"
+    },
+    "weight": "{weight}%",
+    "level": "{level} of 5",
+    "types": {
+      "mandatory": "Mandatory",
+      "desirable": "Desirable"
+    },
+    "citedFrom": "From your description:",
+    "markLabel": "cited from your description",
+    "evidenceCounts": "Evidence that counts for this job type",
+    "fields": {
+      "name": "Competency name",
+      "evidence": "Evidence expected",
+      "weight": "Weight in percent",
+      "level": "Level the job needs",
+      "type": "Type"
+    },
+    "newCompetency": "New competency",
+    "edit": "Edit {name}",
+    "editAction": "Edit",
+    "remove": "Remove {name}",
+    "removeAction": "Remove",
+    "done": "Done",
+    "add": "Add competency",
+    "useStarters": "Use the starter competencies",
+    "none": "Aivera found no competencies stated in the description. Add them yourself or use the starter competencies.",
+    "leftOut": "Aivera left out a line of your description that asks for something other than a skill, such as a nationality or an age. Candidates are judged on evidence of their work.",
+    "noRows": "No competencies yet.",
+    "failed": "Aivera could not draft competencies. You can try again or add them yourself.",
+    "budget": "This workspace has used today's AI allowance. You can add competencies yourself, or draft them tomorrow.",
+    "empty": "Add a job description to draft competencies from it, or add them yourself.",
+    "notSaved": "Drafted competencies are suggestions: keep, edit or remove each. Save job keeps the job details only; the competencies are not saved yet."
   },
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",

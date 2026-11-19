@@ -19,9 +19,8 @@ expected:
       - Python service engineering
       - Cost and reliability
     competencies[*].type: [mandatory, desirable]
-    suggestions[*].name:
-      - Arabic and bilingual NLP
-      - Product judgement
+    # The suggestions below are AIV-P1-009's: its schema adds them, and it moves `suggestions[*].name` back into match
+    # (Arabic and bilingual NLP, Product judgement). Until then a live run, on this ticket's schema, returns none.
 recorded:
   output:
     competencies:
@@ -57,6 +56,8 @@ recorded:
         citations:
           - sourceId: S1
             quote: You keep latency, cost per request and incidents in check
+    refused: false
+    reason: null
     suggestions:
       - name: Arabic and bilingual NLP
         reason: The merchants are in the Gulf and the description does not mention Arabic.

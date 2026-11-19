@@ -1,0 +1,48 @@
+# A Senior Product Manager, Payments description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: product-manager
+input:
+  jobType: product_management
+  title: 'Senior Product Manager, Payments'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will run discovery with merchants and decide what we build next. You set outcome metrics and report against them. You work daily with engineering and design.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Discovery to decision'
+      - 'Outcomes with metrics'
+      - 'Working with engineering and design'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Discovery to decision',
+            'evidenceExpected': 'Discovery they ran and the decisions it led to',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'run discovery with merchants and decide what we build next' }],
+          },
+          {
+            'name': 'Outcomes with metrics',
+            'evidenceExpected': 'Metrics they set and how the product moved them',
+            'weight': 25,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You set outcome metrics and report against them' }],
+          },
+          {
+            'name': 'Working with engineering and design',
+            'evidenceExpected': 'Work they shipped with engineers and designers',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You work daily with engineering and design' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }

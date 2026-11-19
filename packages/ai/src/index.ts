@@ -19,3 +19,9 @@ export {
 } from './citations';
 export type { EmbedTask, GenerateTask } from './config';
 export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';
+export {
+  DRAFT_COMPETENCIES_SYSTEM,
+  DRAFT_COMPETENCIES_VERSION,
+  draftCompetenciesRequest,
+  draftCompetenciesSchema,
+} from './prompts/jobs.draftCompetencies';

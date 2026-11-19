@@ -1,7 +1,9 @@
 'use client';
 
 import type { ComponentProps } from 'react';
+import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
 import { NewJobForm } from '@/features/job-new/components/NewJobForm.tsx';
+import { useCompetencyDraftController } from '@/features/job-new/hooks/useCompetencyDraftController.ts';
 import { useNewJobController } from '@/features/job-new/hooks/useNewJobController.ts';
 
 type Props = Pick<
@@ -10,5 +12,26 @@ type Props = Pick<
 > & { defaultJobType: string };
 
 export function NewJob({ defaultJobType, ...props }: Props) {
-  return <NewJobForm {...props} {...useNewJobController(defaultJobType)} />;
+  const job = useNewJobController(defaultJobType);
+  const { result, onDraft, onSaving, onUseStarters, ...draft } = useCompetencyDraftController();
+  return (
+    <NewJobForm
+      {...props}
+      {...job}
+      errors={result.status === 'invalid' ? result.errors : job.state.errors}
+      onDraft={onDraft}
+      onSaving={onSaving}
+      drafting={draft.drafting}
+      drafted={draft.rows.length > 0}
+      draftSection={
+        <CompetencyDraft
+          {...draft}
+          result={result}
+          title={job.title}
+          evidence={props.jobTypes.find((t) => t.value === job.jobType)?.evidence ?? null}
+          onUseStarters={() => onUseStarters(job.jobType)}
+        />
+      }
+    />
+  );
 }

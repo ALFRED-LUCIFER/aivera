@@ -61,6 +61,8 @@ export default async function NewJobPage() {
           noHiringOwner: t('jobNew.noHiringOwner'),
           inviteHiringOwner: t('jobNew.inviteHiringOwner'),
           submit: t('jobNew.submit'),
+          drafting: t('jobNew.drafting'),
+          save: t('jobNew.save'),
           submitting: t('jobNew.submitting'),
           cancel: t('jobNew.cancel'),
           discardTitle: t('jobNew.discardTitle'),

@@ -1,0 +1,48 @@
+# A Data Scientist, Risk description stating three needs (synthetic); the draft cites the sentence each comes from.
+id: data-scientist
+input:
+  jobType: data_ml
+  title: 'Data Scientist, Risk'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will build and evaluate credit risk models. You own the data pipelines that feed them. You design experiments to test policy changes.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Modelling and evaluation'
+      - 'Data quality and pipelines'
+      - 'Experimentation'
+recorded:
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Modelling and evaluation',
+            'evidenceExpected': 'Models they built and how they evaluated them',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'build and evaluate credit risk models' }],
+          },
+          {
+            'name': 'Data quality and pipelines',
+            'evidenceExpected': 'Pipelines they owned and the checks in them',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You own the data pipelines that feed them' }],
+          },
+          {
+            'name': 'Experimentation',
+            'evidenceExpected': 'Experiments they designed and the decisions they changed',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You design experiments to test policy changes' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+    }
