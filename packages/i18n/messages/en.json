@@ -1039,6 +1039,8 @@
     "editNote": "Editing a weight creates a new version that needs approval again.",
     "loading": "Loading the rubric",
     "error": "We could not load this rubric. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "separator": " · ",
+    "approvedOn": "{date, date, short}"
   }
 }

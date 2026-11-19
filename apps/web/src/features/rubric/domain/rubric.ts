@@ -1,10 +1,11 @@
 import type { Competency, Rubric, RubricStatus } from '@aivera/jobs';
 
 /** One line of the approval history: who approved and when, or the change that made the next version. */
-export type HistoryEntry = {
+type HistoryEntry = {
   version: number;
   status: RubricStatus;
-  approved: { by: string; at: Date } | null;
+  /** `by` is null when the approver's name cannot be read. */
+  approved: { by: string | null; at: Date } | null;
   note: string | null;
 };
 
@@ -17,7 +18,7 @@ export type RubricView = {
 
 /**
  * `versions` newest first, as `listRubricVersions` returns them; `names` resolves approver ids. A superseded version
- * shows the change note of the version after it ("Product judgement raised from 10% to 15%"), as the Rubric artboard
+ * shows the change note of the approved version that replaced it ("Product judgement raised from 10% to 15%"), as the Rubric artboard
  * does; an approved version shows who approved it and when; any other shows its own note.
  */
 export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string>): RubricView {
@@ -31,12 +32,13 @@ export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string
       status: v.status,
       approved:
         v.status === 'approved' && v.approvedBy && v.approvedAt
-          ? { by: names.get(v.approvedBy) ?? '', at: v.approvedAt }
+          ? { by: names.get(v.approvedBy) || null, at: v.approvedAt }
           : null,
       // An approved version's own note is shown under the version it superseded.
       note:
         v.status === 'superseded'
-          ? (versions[i - 1]?.changeNote ?? null)
+          ? (versions.slice(0, i).findLast((n) => n.status === 'approved' || n.status === 'superseded')?.changeNote ??
+            null)
           : v.status === 'approved'
             ? null
             : v.changeNote,

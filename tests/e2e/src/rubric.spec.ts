@@ -47,8 +47,8 @@ test('Scenario: Approval history and what success means', async ({ page }) => {
   await openRubric(page);
   const history = page.getByRole('listitem').filter({ hasText: /^Version \d/ });
   await expect(history).toHaveText([
-    'Version 2, approvedHead of Engineering · 12 Nov 2026',
-    'Version 1, supersededProduct judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
+    'Version 2, approved · Head of Engineering · 12 Nov 2026',
+    'Version 1, superseded · Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
   ]);
   await expect(page.getByText('Editing a weight creates a new version that needs approval again.')).toBeVisible();
   await expect(

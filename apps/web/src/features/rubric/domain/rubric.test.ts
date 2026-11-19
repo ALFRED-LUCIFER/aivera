@@ -43,6 +43,20 @@ describe('Rubric page view (AIV-P1-012)', () => {
     ]);
   });
 
+  it('a returned version in between: the superseded one shows the note of the version that was approved', () => {
+    const history = rubricView(
+      [
+        version(3, 'approved', { approvedBy: HEAD, approvedAt: at, changeNote: 'Cost and reliability raised.' }),
+        version(2, 'returned', { changeNote: 'Python lowered.' }),
+        version(1, 'superseded', { approvedBy: HEAD, approvedAt: at }),
+      ],
+      new Map(),
+    ).history;
+    expect(history.map((h) => h.note)).toEqual([null, 'Python lowered.', 'Cost and reliability raised.']);
+    // An approver whose name cannot be read is left out, never shown as an empty name.
+    expect(history[0]?.approved).toEqual({ by: null, at });
+  });
+
   it('with none approved, shows the latest draft; with no versions, nothing', () => {
     expect(rubricView([version(1, 'draft')], new Map()).shown?.version).toBe(1);
     expect(rubricView([], new Map())).toEqual({ shown: null, history: [] });

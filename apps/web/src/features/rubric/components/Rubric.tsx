@@ -94,12 +94,17 @@ export function Rubric({ state }: { state: RubricState }) {
                   <span className="font-semibold">
                     {t('version', { version: h.version, status: t(`status.${h.status}`) })}
                   </span>
-                  {h.approved && (
+                  {(h.approved || h.note) && (
                     <span className="text-meta text-text-2">
-                      {t('approvedBy', { name: h.approved.by, date: h.approved.at })}
+                      {/* Two lines on screen, one sentence when read: "Version 2, approved · Head of Engineering · …". */}
+                      <span className="sr-only">{t('separator')}</span>
+                      {h.approved
+                        ? h.approved.by
+                          ? t('approvedBy', { name: h.approved.by, date: h.approved.at })
+                          : t('approvedOn', { date: h.approved.at })
+                        : h.note}
                     </span>
                   )}
-                  {h.note && <span className="text-meta text-text-2">{h.note}</span>}
                 </li>
               ))}
             </ol>

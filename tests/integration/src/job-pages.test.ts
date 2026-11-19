@@ -163,6 +163,7 @@ describe('Feature: Job rubric (AIV-P1-012)', () => {
     expect(await as(HEAD, demo, (ctx) => jobs.listRubricVersions(ctx, sae))).toHaveLength(2);
   });
 
+  // SAFETY: mutation check: listRubricVersions skipped the job lookup (authorised only a found job) -> this test failed
   it('an interviewer not on this job, and another workspace, read nothing', async () => {
     expect(await as(LINA, demo, (ctx) => jobs.listRubricVersions(ctx, sae))).toBeNull();
     expect(await as(ALEX, demo, (ctx) => jobs.listRubricVersions(ctx, elsewhere))).toBeNull();

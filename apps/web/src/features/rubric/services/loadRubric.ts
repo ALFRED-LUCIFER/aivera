@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
@@ -8,6 +9,8 @@ import { rubricView, type RubricView } from '../domain/rubric.ts';
  * job scope, with approvers' names. Null when the job is not visible or there is no workspace.
  */
 export async function loadRubric(jobId: string): Promise<RubricView | null> {
+  // The layout runs alongside this page, so a malformed id must not reach the database from here either.
+  if (!z.uuid().safeParse(jobId).success) return null;
   const result = await inActiveWorkspace((ctx) => getJobs().listRubricVersions(ctx, jobId));
   if (!result?.value) return null;
   const approvers = [...new Set(result.value.flatMap((v) => v.approvedBy ?? []))];
