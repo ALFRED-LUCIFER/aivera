@@ -33,7 +33,11 @@ const idTokenClaims = z.object({
   iss: z.string().min(1),
   sub: z.string().min(1),
   email: z.email(),
-  email_verified: z.unknown().transform((v) => (v === undefined ? undefined : v === true)),
+  // `.optional()` keeps the key optional: under zod 4 a transform alone makes it required, and External ID omits it.
+  email_verified: z
+    .unknown()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === true)),
   name: z.string().min(1).optional(),
 });
 

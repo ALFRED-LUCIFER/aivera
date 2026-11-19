@@ -118,6 +118,29 @@ describe('auth logging and refusals never print personal data', () => {
   });
 });
 
+describe('ID token claims', () => {
+  // Scenario: A token from our tenant without email_verified signs the recruiter in (External ID never sends it).
+  // SAFETY: mutation check: removed `.optional()` from email_verified in idTokenClaims -> this test failed
+  it('accepts a token with no email_verified and passes it on as undefined', async () => {
+    upsert.mockResolvedValueOnce({ id: 'user-1' });
+    const { email_verified: _omitted, ...withoutClaim } = profile;
+    const user: { id?: string } = {};
+    const result = await config.callbacks?.signIn?.({ user, profile: withoutClaim, account: null } as never);
+    expect(result).toBe(true);
+    expect(user.id).toBe('user-1');
+    expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({ emailVerified: undefined }));
+  });
+
+  // Scenario: A token missing its email is still refused.
+  it('refuses a token with no email', async () => {
+    upsert.mockClear();
+    const { email: _omitted, ...withoutEmail } = profile;
+    const result = await config.callbacks?.signIn?.({ user: {}, profile: withoutEmail, account: null } as never);
+    expect(result).toBe(false);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
 // Scenario Outline: Session length follows "Keep me signed in". The real Auth.js JWT encode and decode (jose), with the
 // token the sign-in callback writes and the one each later request re-issues.
 describe('session length follows "Keep me signed in"', () => {
