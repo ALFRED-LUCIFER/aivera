@@ -23,6 +23,13 @@ export const ACTIONS = [
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
+/**
+ * What an Aivera operator did, recorded in the platform audit log with no workspace (ADR-012). Adding one also needs a
+ * migration for the `platform_entry_action_check` constraint (infrastructure/schema.ts).
+ */
+export const PLATFORM_ACTIONS = ['ops.console_opened'] as const;
+export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
+
 /** Actions where a person changes an outcome, so the reason must be written down. */
 export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded'];
 
@@ -44,6 +51,18 @@ export type NewEntry = {
   note?: string;
   before?: Values;
   after?: Values;
+};
+
+/** An operator's action: the operator's identity user id, the target by opaque id when there is one, and the reason. */
+export type NewPlatformEntry = { actorId: string; action: PlatformAction; subject?: Subject; note?: string };
+
+export type PlatformEntry = {
+  id: string;
+  occurredAt: Date;
+  actorId: string;
+  action: PlatformAction;
+  subject: Subject | null;
+  note: string | null;
 };
 
 export type AuditEntry = Required<Pick<NewEntry, 'action' | 'subject'>> & {
@@ -89,4 +108,9 @@ export function assertValidEntry(entry: NewEntry): void {
   if (NOTE_REQUIRED.includes(entry.action) && !entry.note?.trim()) throw new AuditError('note_required');
   for (const values of [entry.before, entry.after])
     if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
+}
+
+/** Throws unless `entry` names a known platform action. */
+export function assertValidPlatformEntry(entry: NewPlatformEntry): void {
+  if (!PLATFORM_ACTIONS.includes(entry.action)) throw new AuditError('unknown_action');
 }

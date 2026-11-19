@@ -1,7 +1,7 @@
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { bigint, check, index, jsonb, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { ACTIONS, ACTOR_TYPES, type Values } from '../domain/entry.ts';
+import { ACTIONS, ACTOR_TYPES, PLATFORM_ACTIONS, type Values } from '../domain/entry.ts';
 
 export const audit = pgSchema('audit');
 
@@ -44,3 +44,26 @@ export const entry = audit
     ],
   )
   .enableRLS();
+
+// The platform audit log (ADR-012): what Aivera operators did, outside any workspace, so no workspace id and no tenant
+// policy. aivera_app may only INSERT (no SELECT, UPDATE, DELETE or TRUNCATE) and the same append-only triggers as
+// audit.entry hold for every role (migration 0010_platform_entry_append_only).
+export const platformEntry = audit.table(
+  'platform_entry',
+  {
+    id: uuid().primaryKey(),
+    // From the injected clock (AGENTS.md 3.9).
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    // The operator's identity user id (opaque, ADR-009).
+    actorId: uuid('actor_id').notNull(),
+    action: text({ enum: PLATFORM_ACTIONS }).notNull(),
+    subjectType: text('subject_type'),
+    subjectId: uuid('subject_id'),
+    note: text(),
+  },
+  (t) => [
+    // Must list exactly PLATFORM_ACTIONS (domain/entry.ts); changing it needs a new migration.
+    check('platform_entry_action_check', sql`${t.action} in ('ops.console_opened')`),
+    check('platform_entry_subject_check', sql`(${t.subjectType} is null) = (${t.subjectId} is null)`),
+  ],
+);

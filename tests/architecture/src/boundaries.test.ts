@@ -21,6 +21,22 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ]);
   });
 
+  // AIV-P2-035 (ADR-012): every /ops entry point declares the platformOperator policy.
+  // SAFETY: mutation check: removed the ops-platform-operator-policy check -> this test failed
+  // SAFETY: mutation check: tested the whole file for the policy instead of each exported function -> this test failed (page.tsx, x.ts missing)
+  it('an /ops page, metadata, route handler or server action without `await platformOperator()` is reported', () => {
+    expect(
+      findViolations(fixture('ops-policy'))
+        .filter((v) => v.rule === 'ops-platform-operator-policy')
+        .map((v) => v.file)
+        .toSorted(),
+    ).toEqual([
+      'apps/web/src/app/(ops)/ops/page.tsx',
+      'apps/web/src/app/(ops)/ops/workspaces/route.ts',
+      'apps/web/src/features/ops/services/x.ts',
+    ]);
+  });
+
   // SAFETY: mutation check: made findViolations return [] -> every case below failed
   it.each([
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],

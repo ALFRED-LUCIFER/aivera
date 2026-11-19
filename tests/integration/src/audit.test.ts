@@ -59,12 +59,16 @@ const PERMISSION_DENIED = expect.objectContaining({ code: '42501', routine: 'acl
 const APPEND_ONLY = expect.objectContaining({ code: '42501', routine: 'exec_stmt_raise' });
 
 describe('the audit schema', () => {
-  it('audit.entry is owned by aivera_migrator with row-level security enabled and forced', async () => {
+  // audit.platform_entry belongs to no workspace (ADR-012): no tenant policy; aivera_app may only insert into it.
+  it('audit.entry has row-level security enabled and forced; both tables are owned by aivera_migrator', async () => {
     const rows = await admin.execute(sql`
-      select tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
+      select t.tablename as name, tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
-      where t.schemaname = 'audit'`);
-    expect([...rows]).toEqual([{ owner: 'aivera_migrator', rls: true, forced: true }]);
+      where t.schemaname = 'audit' order by t.tablename`);
+    expect([...rows]).toEqual([
+      { name: 'entry', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'platform_entry', owner: 'aivera_migrator', rls: false, forced: false },
+    ]);
   });
 
   // Holds for audit tables added later: each needs the REVOKE and both triggers, or this test fails.
@@ -293,5 +297,53 @@ describe('Scenario: No raw personal data in before and after', () => {
         withWorkspace(app, W1, (tx) => audit.record(as(tx, W1), { action: 'candidate.merged', subject: other, after })),
       ).rejects.toThrow(new AuditError('personal_data'));
     expect(await audit.listFor(W1, other)).toEqual([]);
+  });
+});
+
+// AIV-P2-035 (ADR-012): the platform audit log of operator actions. Pia Platform is a synthetic operator; only her
+// opaque id is stored.
+describe('Scenario: An operator opens the console (the platform audit log)', () => {
+  const PIA = id(601);
+  const platformRows = () =>
+    admin.execute<{ actor_id: string; action: string; occurred_at: string; subject_id: string | null }>(
+      sql`select actor_id, action, to_json(occurred_at) #>> '{}' as occurred_at, subject_id
+        from audit.platform_entry where actor_id = ${PIA}`,
+    );
+
+  it('recordPlatform writes one "ops.console_opened" entry with her user id and the time, and no workspace', async () => {
+    await audit.recordPlatform({ actorId: PIA, action: 'ops.console_opened' });
+    expect([...(await platformRows())]).toEqual([
+      { actor_id: PIA, action: 'ops.console_opened', occurred_at: '2026-11-12T09:30:00+00:00', subject_id: null },
+    ]);
+  });
+
+  it('an action that is not on the list is refused by recordPlatform and by the database', async () => {
+    await expect(
+      audit.recordPlatform({ actorId: PIA, action: 'workspace.created' as 'ops.console_opened' }),
+    ).rejects.toThrow(new AuditError('unknown_action'));
+    await expect(
+      app.execute(sql`insert into audit.platform_entry (id, occurred_at, actor_id, action)
+        values (${id(602)}, now(), ${PIA}, 'workspace.created')`),
+    ).rejects.toThrow(expect.objectContaining({ code: '23514' }));
+  });
+
+  // SAFETY: mutation check: removed the REVOKE in 0010_platform_entry_append_only -> the SELECT, UPDATE and DELETE cases
+  // failed (select returned rows; update and delete hit the trigger, not permission denied)
+  it.each([
+    ['SELECT', sql`select * from audit.platform_entry`],
+    ['UPDATE', sql`update audit.platform_entry set note = 'rewritten'`],
+    ['DELETE', sql`delete from audit.platform_entry`],
+    ['TRUNCATE', sql`truncate audit.platform_entry`],
+  ])(
+    'the application role running %s on audit.platform_entry is refused (42501): insert-only',
+    async (_s, statement) => {
+      await expect(app.execute(statement)).rejects.toThrow(PERMISSION_DENIED);
+      expect(await platformRows()).toHaveLength(1);
+    },
+  );
+
+  it('even the owner cannot change an entry: the append-only trigger raises', async () => {
+    await expect(migrator.execute(sql`delete from audit.platform_entry`)).rejects.toThrow(APPEND_ONLY);
+    expect(await platformRows()).toHaveLength(1);
   });
 });

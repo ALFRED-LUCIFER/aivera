@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseWebEnv } from './env';
+
+const warn = vi.hoisted(() => vi.fn());
+vi.mock('@aivera/observability', () => ({ log: { warn } }));
 
 const valid = { APP_ENV: 'dev', DATABASE_URL: 'postgres://aivera_app@db.example:5432/aivera', COMMIT_SHA: 'abc1234' };
 const missing = () => parseWebEnv({ ...valid, DATABASE_URL: undefined, COMMIT_SHA: 'secret-looking-value' });
@@ -7,7 +10,7 @@ const malformed = () => parseWebEnv({ ...valid, DATABASE_URL: 'https://user:hunt
 
 describe('parseWebEnv', () => {
   it('returns typed configuration when every variable is valid', () => {
-    expect(parseWebEnv(valid)).toEqual({ ...valid, auth: null, candidateAuth: null });
+    expect(parseWebEnv(valid)).toEqual({ ...valid, auth: null, candidateAuth: null, platformOperators: new Set() });
   });
 
   // SAFETY: mutation check: appended JSON.stringify(source) to the error -> both "without echoing" tests failed
@@ -101,5 +104,39 @@ describe('parseWebEnv candidate sign-in settings (AIV-P0-011)', () => {
 
   it('needs the tenant and session secret it shares with the recruiter side', () => {
     expect(() => parseWebEnv({ ...valid, ...candidate })).toThrow(/AUTH_SECRET.*AUTH_ENTRA_TENANT_ID$/);
+  });
+});
+
+// AIV-P2-035 Background and "The console fails closed without a valid operator list" (ADR-012). Synthetic operators.
+const operators = (value: string | undefined) =>
+  parseWebEnv({ ...valid, PLATFORM_OPERATOR_EMAILS: value }).platformOperators;
+
+describe('PLATFORM_OPERATOR_EMAILS', () => {
+  it('holds each listed email lower-cased and trimmed', () => {
+    expect(operators('pia.platform@example.com, Theo.Platform@example.com')).toEqual(
+      new Set(['pia.platform@example.com', 'theo.platform@example.com']),
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: piped the list into z.array(z.string()) instead of z.array(z.email()).min(1) -> the malformed,
+  // bad-entry and trailing-comma cases failed
+  it.each([
+    ['unset', undefined],
+    ['empty', ''],
+    ['blank', '  '],
+    ['malformed', 'not-an-email,,'],
+    ['one bad entry among good ones', 'pia.platform@example.com,theo.platform'],
+    ['a trailing comma', 'pia.platform@example.com,'],
+  ])('%s means nobody is an operator, and the app still starts', (_case, value) => {
+    expect(operators(value)).toEqual(new Set());
+  });
+
+  it('logs an invalid list without its value', () => {
+    warn.mockClear();
+    operators('pia.platform@example.com,theo.platform');
+    expect(warn).toHaveBeenCalledOnce();
+    expect(JSON.stringify(warn.mock.calls)).toContain('platform operator config invalid');
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/pia|theo/);
   });
 });
