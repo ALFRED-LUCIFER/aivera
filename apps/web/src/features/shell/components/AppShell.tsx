@@ -144,26 +144,41 @@ export function AppShell({
           {t('wordmark')}
         </Link>
         <ul ref={listRef} className="flex flex-col gap-0.5">
-          {screens.map(({ id, path }) => (
-            <li key={id}>
+          {screens
+            .filter((screen) => !('foot' in screen))
+            .map(({ id, path }) => (
+              <li key={id}>
+                <Link
+                  href={path}
+                  onClick={onCloseNav}
+                  aria-current={id === activeId ? 'page' : undefined}
+                  className={navLink}
+                >
+                  {t(`nav.${id}`)}
+                  {counts?.[id] !== undefined && (
+                    <>
+                      {/* The space keeps the accessible name "Inbox 20", not "Inbox20". */}{' '}
+                      <span className="ms-auto text-meta tabular-nums">{counts[id]}</span>
+                    </>
+                  )}
+                </Link>
+              </li>
+            ))}
+        </ul>
+        <div className="mt-auto border-t border-border pt-3">
+          {screens
+            .filter((screen) => 'foot' in screen)
+            .map(({ id, path }) => (
               <Link
+                key={id}
                 href={path}
                 onClick={onCloseNav}
                 aria-current={id === activeId ? 'page' : undefined}
                 className={navLink}
               >
                 {t(`nav.${id}`)}
-                {counts?.[id] !== undefined && (
-                  <>
-                    {/* The space keeps the accessible name "Inbox 20", not "Inbox20". */}{' '}
-                    <span className="ms-auto text-meta tabular-nums">{counts[id]}</span>
-                  </>
-                )}
               </Link>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-auto border-t border-border pt-3">
+            ))}
           <Link href="/" className={navLink}>
             {t('nav.website')}
           </Link>
