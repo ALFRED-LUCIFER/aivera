@@ -95,7 +95,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
           >
             <div className="flex flex-col gap-0.5">
               {/* Named as an example, so the illustration is never read as a real listing. */}
-              <h2 id="sample" className="text-card font-semibold">
+              <h2 id="sample" className="text-card">
                 <span className="sr-only">{t('candidate.home.sampleExample')}</span> {t('candidate.home.sampleTitle')}
               </h2>
               <p className="text-meta text-text-2">{t('candidate.home.sampleJob')}</p>
@@ -125,7 +125,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
           {PRINCIPLES.map((key) => (
             <li key={key} className="flex flex-col gap-2">
               <span aria-hidden="true" className="mb-3 block h-0.5 bg-text" />
-              <h3 className="text-section font-semibold">{t(`candidate.home.principles.${key}.title`)}</h3>
+              <h3 className="text-section">{t(`candidate.home.principles.${key}.title`)}</h3>
               <p className="text-[16px] leading-6 text-text-2">{t(`candidate.home.principles.${key}.body`)}</p>
             </li>
           ))}

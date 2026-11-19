@@ -32,7 +32,9 @@ test('under reduced motion the hero is shown at once, highlighter included', asy
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/candidates');
   const hero = page.getByRole('heading', { level: 1 });
-  await expect(hero).toHaveCSS('opacity', '1');
+  await expect(hero).toBeVisible();
+  // Read once, not retried: a retrying opacity check would simply wait out the 1.4 s entrance and pass.
+  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
   await expect(hero.locator('mark')).toHaveText('what you have done');
   await expect(hero.locator('mark')).toHaveCSS('background-color', 'rgb(255, 232, 115)'); // --hl #FFE873
 });

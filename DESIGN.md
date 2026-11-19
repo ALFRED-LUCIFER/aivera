@@ -15,7 +15,7 @@ Source of truth: the "Design system foundations" artboard in the claude.ai Desig
 | Metadata, labels       | Hanken Grotesk      | 13 / 18 · 400 (labels 600). The smallest size in the product. |
 | Evidence               | JetBrains Mono      | 13 / 18 · 400                                                 |
 
-Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site and the candidate home (CHome artboard) may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
+Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site, the candidate home and the candidate site's header wordmark (CHome artboard) may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
 
 ## Spacing, radius, controls
 
