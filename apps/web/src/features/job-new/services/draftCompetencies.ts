@@ -1,6 +1,6 @@
 'use server';
 
-import { BudgetExceeded } from '@aivera/ai';
+import { AiUnavailable, BudgetExceeded } from '@aivera/ai';
 import { log } from '@aivera/observability';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { getCompetencyDrafting, getDomainDetection } from '@/server/jobs';
@@ -32,7 +32,8 @@ export async function draftCompetencies(form: FormData): Promise<DraftResult> {
       getDomainDetection()
         .detectDomain(allowed.value, { jobType, title, description, location })
         .catch((error: unknown) => {
-          // No detection is no industry: the recruiter can still choose one with "Add industry skills".
+          if (!(error instanceof AiUnavailable || error instanceof BudgetExceeded)) throw error;
+          // An outage or the budget is no industry: the recruiter can still choose one with "Add industry skills".
           log.warn({ area: 'job-new', 'error.type': error instanceof Error ? error.name : 'unknown' }, 'detect failed');
           return null;
         }),

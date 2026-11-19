@@ -177,6 +177,14 @@ export const competency = jobs
         'competency_domain_pack_check',
         sql`(${t.origin} = 'domain_pack') = (${t.packKey} is not null and ${t.packVersion} is not null)`,
       ),
+      // A new pack key needs a migration: keys are stored with kept competencies, so the database knows each one.
+      check(
+        'competency_pack_key_check',
+        sql`${t.packKey} in (${sql.join(
+          DOMAIN_KEYS.map((key) => sql.raw(`'${key}'`)),
+          sql`, `,
+        )}) and ${t.packVersion} >= 1`,
+      ),
       tenantPolicy('competency_tenant_isolation', t.workspaceId),
       restrictive(
         'competency_job_scope',

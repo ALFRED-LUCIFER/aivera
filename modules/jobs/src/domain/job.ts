@@ -1,6 +1,6 @@
 // A job and its own versioned rubric (AIV-P1-005). Assessment reads only the approved version; editing an approved
 // rubric starts a new version, and the approved one stays in force until the new one is approved.
-import { isRegionalHint, type DomainKey } from './domain-packs.ts';
+import { DOMAIN_KEYS, isRegionalHint, nameKey, type DomainKey } from './domain-packs.ts';
 import type { JobType } from './job-types.ts';
 
 /** Must list exactly the `job_stage_check` values (infrastructure/schema.ts); changing it needs a new migration. */
@@ -117,7 +117,8 @@ export function assertValidCompetencies(competencies: Competency[]): void {
     if (!Number.isInteger(c.weightPercent) || c.weightPercent < 1 || c.weightPercent > 100)
       throw new JobError('weight');
     if (!Number.isInteger(c.levelNeeded) || c.levelNeeded < 1 || c.levelNeeded > 5) throw new JobError('level');
-    if ((c.origin === 'domain_pack') !== Boolean(c.packKey && c.packVersion)) throw new JobError('domain_pack');
+    const packed = Boolean(c.packKey && c.packVersion && DOMAIN_KEYS.includes(c.packKey));
+    if ((c.origin === 'domain_pack') !== packed) throw new JobError('domain_pack');
     // Knowing a market's rules is evidence of a skill, never a residency requirement, so it can never be mandatory.
     if (c.type !== 'desirable' && isRegionalHint(c.name)) throw new JobError('regional_desirable');
   }
@@ -141,8 +142,6 @@ export function rebalanceWeights(competencies: Competency[]): Competency[] {
   const remainder = 100 - scaled.reduce((sum, c) => sum + c.weightPercent, 0);
   return scaled.map((c, i) => (i === heaviest ? { ...c, weightPercent: c.weightPercent + remainder } : c));
 }
-
-const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /**
  * The suggestions that repeat no drafted competency and no earlier suggestion, comparing names without case or extra

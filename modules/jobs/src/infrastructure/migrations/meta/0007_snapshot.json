@@ -1,5 +1,5 @@
 {
-  "id": "a247c2eb-38a3-484f-9cf9-7a9cd66113fd",
+  "id": "8ec043a9-002c-4f88-824c-08d1bf2a42ef",
   "prevId": "974e0e85-9409-4fcb-9a9a-3832442a9227",
   "version": "7",
   "dialect": "postgresql",
@@ -154,6 +154,10 @@
         "competency_domain_pack_check": {
           "name": "competency_domain_pack_check",
           "value": "(\"jobs\".\"competency\".\"origin\" = 'domain_pack') = (\"jobs\".\"competency\".\"pack_key\" is not null and \"jobs\".\"competency\".\"pack_version\" is not null)"
+        },
+        "competency_pack_key_check": {
+          "name": "competency_pack_key_check",
+          "value": "\"jobs\".\"competency\".\"pack_key\" in ('payments_fintech', 'banking_islamic_finance', 'healthcare', 'ecommerce_marketplaces', 'logistics_mobility', 'government_public_sector', 'telecom', 'energy_utilities') and \"jobs\".\"competency\".\"pack_version\" >= 1"
         }
       },
       "isRLSEnabled": true

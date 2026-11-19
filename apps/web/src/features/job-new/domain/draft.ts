@@ -6,6 +6,7 @@ import {
   getDomainPack,
   isRegionalHint,
   JOB_TYPE_CATALOGUE,
+  nameKey,
   type Competency,
   type DomainCompetency,
   type DomainDetection,
@@ -120,8 +121,6 @@ const fromPack = (c: DomainCompetency | RegionalHint, key: DomainKey, region: Re
   pack: { key, version: DOMAIN_PACK_CATALOGUE_VERSION, region },
 });
 
-const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
-
 /** A pack's suggestions for the job type: its core competencies, then its hints for the job's regions (AIV-P1-064). */
 export function packCompetencies(key: DomainKey, jobType: JobType, regions: readonly Region[]): DraftCompetency[] {
   const pack = getDomainPack(key, jobType);
@@ -148,9 +147,9 @@ export function withPack<T extends DraftCompetency>(rows: readonly T[], pack: re
   return [...kept, ...pack.filter((c) => !names.has(nameKey(c.name)))];
 }
 
-// shortcut: AIV-P1-009's generic industry suggestion ("Banking and payments domain") is told apart by its name; give
-// suggestions a kind in the prompt (with an eval run) if one still shows next to a pack.
-const GENERIC_INDUSTRY = /\b(domain|industry)\b/i;
+// shortcut: AIV-P1-009's generic industry suggestion ("Banking and payments domain", "Retail industry knowledge") is
+// told apart by a name that ends so; give suggestions a kind in the prompt (with an eval run) if one still slips by.
+const GENERIC_INDUSTRY = /\s(domain|industry)( knowledge| expertise)?$/i;
 
 /**
  * The rows the step shows and saves: with an industry chosen, AIV-P1-009's generic industry suggestion gives way to the

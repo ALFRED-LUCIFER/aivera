@@ -1868,7 +1868,8 @@ export function getDomainPack(key: DomainKey, jobType: JobType): DomainPackForJo
   };
 }
 
-const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+/** A competency name compared without case or extra spaces, so the same skill is never listed twice. */
+export const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const HINT_NAMES = new Set(CATALOGUE.flatMap((p) => REGIONS.flatMap((r) => p.hints[r].map((h) => nameKey(h.name)))));
 
 /**

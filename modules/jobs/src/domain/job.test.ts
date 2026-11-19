@@ -53,6 +53,7 @@ describe('Domain pack competencies (AIV-P1-064)', () => {
     for (const change of [
       { ...pack, packKey: null },
       { ...pack, packVersion: null },
+      { ...pack, packKey: 'crypto' as NonNullable<Competency['packKey']> },
       { origin: 'domain_pack' as const },
     ])
       expect(() => assertValidCompetencies(one(change))).toThrow('A competency from a domain pack names its pack');

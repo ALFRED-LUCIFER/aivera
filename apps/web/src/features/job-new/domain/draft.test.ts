@@ -258,7 +258,12 @@ describe('Scenario: No duplicates with the description or AIV-P1-009', () => {
   it('hides the generic industry suggestion while a pack applies, and brings it back without one', () => {
     const generic = row('g', { name: 'Banking and payments domain', origin: 'suggested_by_aivera' });
     const other = row('o', { name: 'Product judgement', origin: 'suggested_by_aivera' });
-    expect(visibleRows([generic, other], 'payments_fintech')).toEqual([other]);
+    const ddd = row('x', { name: 'Domain-driven design', origin: 'suggested_by_aivera' });
+    const model = row('m', { name: 'Domain modelling', origin: 'suggested_by_aivera' });
+    expect(visibleRows([generic, other, ddd, model], 'payments_fintech')).toEqual([other, ddd, model]);
+    expect(
+      visibleRows([row('k', { name: 'Retail industry knowledge', origin: 'suggested_by_aivera' })], 'payments_fintech'),
+    ).toEqual([]);
     expect(visibleRows([generic, other], null)).toEqual([generic, other]);
   });
 });

@@ -144,6 +144,11 @@ describe('draftCompetencies (server action)', () => {
     log.mockRestore();
   });
 
+  it('a detection bug is not hidden as "no industry"', async () => {
+    detect.mockRejectedValueOnce(new TypeError('bug'));
+    await expect(submit(job)).resolves.toEqual({ status: 'failed' });
+  });
+
   it('asks for a title before drafting', async () => {
     await expect(submit({ ...job, title: ' ' })).resolves.toEqual({ status: 'invalid', errors: { title: true } });
     expect(draft).not.toHaveBeenCalled();

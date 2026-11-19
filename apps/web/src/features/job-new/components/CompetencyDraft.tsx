@@ -202,7 +202,10 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
               ))}
             </ul>
           </details>
-          {industryLabel && (
+          {industryLabel && fromPack.length === 0 && props.more.length === 0 && (
+            <p className="text-body text-text-2">{t('packEmpty', { industry: industryLabel })}</p>
+          )}
+          {industryLabel && (fromPack.length > 0 || props.more.length > 0) && (
             <>
               <h3 className="mt-3 text-body font-semibold text-text">
                 {t('packSuggestions', {

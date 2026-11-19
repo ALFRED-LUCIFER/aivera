@@ -852,6 +852,16 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
   });
 
   // Feature: Suggest an industry's competencies in Add a job (AIV-P1-064), Scenario: I decide what stays.
+  let packVersionId = '';
+  const insert = (origin: string, packKey: string | null, packVersion: number | null) =>
+    rows(
+      ALEX,
+      w,
+      sql`insert into jobs.competency (id, workspace_id, rubric_version_id, name, evidence_expected, weight_percent,
+            level_needed, type, origin, pack_key, pack_version, position)
+          values (gen_random_uuid(), ${w}, ${packVersionId}, 'Ledger', '', 10, 3, 'desirable', ${origin}, ${packKey},
+            ${packVersion}, 99)`,
+    );
   it('Scenario: I decide what stays: a kept pack competency is saved with origin domain_pack, its pack and version', async () => {
     const kept = draft([
       {},
@@ -863,6 +873,7 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     const { rubricVersion } = await as(RANA, w, (ctx) =>
       jobs.createJobWithDraftRubric(ctx, { ...job('Senior Backend Engineer, Payments'), competencies: kept }),
     );
+    packVersionId = rubricVersion.id;
     const list = await rows<{ name: string; origin: string; pack_key: string | null; pack_version: number | null }>(
       ALEX,
       w,
@@ -875,22 +886,11 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
       pack_key: 'payments_fintech',
       pack_version: 1,
     });
-    expect(list.map((c) => c.name)).not.toContain('Reconciliation and settlement');
     expect(list.filter((c) => c.pack_key !== null)).toHaveLength(1);
   });
 
-  // SAFETY: mutation check: dropped competency_domain_pack_check from migration 0007 -> this test failed (row stored)
-  it('the database refuses a domain_pack competency without its pack, and a pack on any other origin', async () => {
-    const [version] = await rows<{ id: string }>(ALEX, w, sql`select id from jobs.rubric_version limit 1`);
-    const insert = (origin: string, packKey: string | null, packVersion: number | null) =>
-      rows(
-        ALEX,
-        w,
-        sql`insert into jobs.competency (id, workspace_id, rubric_version_id, name, evidence_expected, weight_percent,
-              level_needed, type, origin, pack_key, pack_version, position)
-            values (gen_random_uuid(), ${w}, ${version?.id}, 'Ledger', '', 10, 3, 'desirable', ${origin}, ${packKey},
-              ${packVersion}, 99)`,
-      );
+  // SAFETY: mutation check: dropped competency_domain_pack_check, then competency_pack_key_check, from migration 0007 -> this test failed each time (row stored)
+  it('the database refuses a domain_pack competency without its pack, a pack on any other origin, or an unknown pack', async () => {
     for (const [origin, key, v] of [
       ['domain_pack', null, null],
       ['domain_pack', 'payments_fintech', null],
@@ -899,6 +899,14 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
       expect(await pgError(insert(origin, key, v))).toEqual({
         code: '23514',
         constraint: 'competency_domain_pack_check',
+      });
+    for (const [key, v] of [
+      ['crypto', 1],
+      ['payments_fintech', 0],
+    ] as const)
+      expect(await pgError(insert('domain_pack', key, v))).toEqual({
+        code: '23514',
+        constraint: 'competency_pack_key_check',
       });
   });
 
