@@ -37,6 +37,7 @@ const snapshot = async () => {
     'workspaces.workspace',
     'workspaces.member',
     'workspaces.active_workspace',
+    'workspaces.job_grant',
     'candidates.person',
     'candidates.person_identifier',
     'jobs.job',
@@ -138,6 +139,7 @@ describe('Scenario: Seeding a fresh database', () => {
     const actions = await admin.execute<{ action: string; n: string }>(sql`
       select action, count(*) as n from audit.entry where workspace_id = ${workspaceId} group by action order by action`);
     expect([...actions]).toEqual([
+      { action: 'job_access.granted', n: '5' },
       { action: 'job.created', n: '5' },
       { action: 'member.added', n: '5' },
       { action: 'workspace.created', n: '1' },
@@ -184,6 +186,21 @@ describe('Scenario: Seeding a fresh database', () => {
       );
     });
 
+    it("grants each job's hiring owner, who is job-scoped, the job whose draft they approve", async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const jobs = createJobs(workspaces, createAudit(app));
+      const [vp] = await admin.execute<{ id: string }>(
+        sql`select id from identity.user where email = 'vp.engineering@example.com'`,
+      );
+      if (!vp) throw new Error('the seed created VP Engineering');
+      const seen = await workspaces.withWorkspace({ userId: vp.id }, workspaceId, (ctx) => jobs.listJobs(ctx));
+      expect(seen.map((j) => j.title).toSorted()).toEqual([
+        'Data Engineer, Marketplace',
+        'SRE, Core Banking',
+        'Senior Backend Engineer, Payments',
+      ]);
+    });
+
     // Scenario Outline: Each industry job uses its pack and region.
     it.each([
       ['Integration Engineer, Health Records', 'healthcare', 'DHA NABIDH health information exchange'],
@@ -208,12 +225,6 @@ describe('Scenario: Seeding a fresh database', () => {
         for (const c of rows) expect(c.level_needed >= 1 && c.level_needed <= 5, c.name).toBe(true);
         for (const c of rows.filter((r) => r.origin === 'domain_pack')) expect(c.type, c.name).toBe('desirable');
       }
-      const hints = await competenciesOf('QA Engineer, Payments');
-      expect(hints.filter((c) => /UPI|RBI|Card-on-file/.test(c.name)).map((c) => c.type)).toEqual([
-        'desirable',
-        'desirable',
-        'desirable',
-      ]);
     });
   });
 
@@ -246,6 +257,7 @@ describe('Scenario: Seeding a fresh database', () => {
       expect(await count(sql`select count(*) as n from workspaces.workspace where id = ${workspaceId}`)).toBe(0);
       for (const t of [
         'workspaces.member',
+        'workspaces.job_grant',
         'candidates.person',
         'candidates.person_identifier',
         'jobs.job',

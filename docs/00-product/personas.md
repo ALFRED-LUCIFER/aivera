@@ -35,7 +35,7 @@
 | Staff Backend Engineer           | Engineering · Riyadh, hybrid  | VP Engineering      | Collecting evidence, 31 assessed |
 | Senior Product Designer          | Design · Abu Dhabi            | Design Director     | Defining rubric                  |
 
-`pnpm db:seed` also adds five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
+The five jobs above live in the seed cast (`tools/seed/src/cast.ts`) and the e2e seed; `pnpm db:seed` does not write them yet. It writes five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
 
 | Job                                  | Job type × domain pack                        | Team · location             | Hiring owner        | Regional hints |
 | ------------------------------------ | --------------------------------------------- | --------------------------- | ------------------- | -------------- |

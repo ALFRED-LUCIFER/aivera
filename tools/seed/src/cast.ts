@@ -225,6 +225,8 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
  * The job's draft rubric, as Add a job would build it with the industry chosen (AIV-P1-064): the job type's starter
  * competencies, then the pack's core competencies and its regional hints, each recording the pack and its version.
  * Weights need not total 100; the jobs module rebalances them when it saves the draft.
+ * shortcut: repeats starterCompetencies and packCompetencies of apps/web job-new/domain/draft.ts (a tool cannot import an
+ * app); move one builder into @aivera/jobs when either changes how a pack becomes rubric rows.
  */
 export function industryRubric({ jobType, pack: key, region }: CastIndustryJob): Competency[] {
   const pack = getDomainPack(key, jobType);
