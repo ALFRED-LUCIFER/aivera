@@ -86,7 +86,10 @@ test('Scenario: Being an operator grants nothing inside workspaces', async ({ pa
   await signIn(page, { email: PIA });
   await page.goto('/app');
   await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+  // No recruiter page opens for her: the recruiter layout shows the no-workspace message instead. Recruiter server
+  // actions refuse a user with no workspace in inActiveWorkspace (addJob.test.ts, workspace.test.ts).
   await page.goto('/app/jobs');
+  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
 });
 

@@ -1,6 +1,7 @@
 import type { AuditContract } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
 import { forbidden, redirect } from 'next/navigation';
+import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
@@ -23,15 +24,16 @@ export async function isPlatformOperator(userId: string): Promise<boolean> {
 /**
  * The policy every /ops page, layout, server action and route handler awaits before anything else (architecture-test
  * enforced). No session goes to sign-in and back to /ops; a signed-in non-operator gets the 403 page, or a 403 from an
- * action or route handler, and nothing of the console.
+ * action or route handler, and nothing of the console. Memoised for one request only (layout, page and metadata share
+ * one check); every new request checks again.
  */
-export async function platformOperator(): Promise<{ userId: string }> {
+export const platformOperator = cache(async (): Promise<{ userId: string }> => {
   const userId = await getSessionUserId();
   // signInPath('/ops', '') as a literal, which typed routes accept; a deeper /ops path keeps its own return in the proxy.
   if (!userId) redirect('/sign-in?next=%2Fops');
   if (!(await isPlatformOperator(userId))) forbidden();
   return { userId };
-}
+});
 
 let audit: AuditContract | undefined;
 /** The audit module for operator actions: `recordPlatform`, and `record` inside the target workspace (ADR-012). */

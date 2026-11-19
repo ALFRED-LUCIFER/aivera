@@ -39,6 +39,7 @@ export function OpsShell({ labels, sections, signOutAction, children }: OpsShell
           {sections.map((label) => (
             <li key={label} className={`${navItem} text-text-2`}>
               {label}
+              {/* The space keeps the accessible name "Workspaces Coming soon". */}{' '}
               <span className="ms-auto text-meta">{labels.soon}</span>
             </li>
           ))}

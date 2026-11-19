@@ -35,7 +35,8 @@ const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
 const PUBLIC_API_ALLOWED = new Set(['@aivera/jobs', '@/server/publicJobs']);
 // AIV-P2-035 (ADR-012): the operator console's pages, layouts and route handlers, and its server action files.
 const OPS_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)|features[/\\]ops(?:-[^/\\]+)?)[/\\]/;
-const ROUTE_FILE = /[/\\](?:page|layout|route)\.tsx?$/;
+// template and default render children like a layout; loading, error and not-found render no console data.
+const ROUTE_FILE = /[/\\](?:page|layout|template|default|route)\.tsx?$/;
 const USE_SERVER = /^\s*['"]use server['"]/;
 const PLATFORM_OPERATOR_POLICY = /\bawait platformOperator\(\)/;
 // shortcut: sees `export [default] [async] function` only, not `export const x = async () =>`; widen it if the console

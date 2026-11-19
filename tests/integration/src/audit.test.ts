@@ -309,9 +309,10 @@ describe('Scenario: An operator opens the console (the platform audit log)', () 
       sql`select actor_id, action, to_json(occurred_at) #>> '{}' as occurred_at, subject_id
         from audit.platform_entry where actor_id = ${PIA}`,
     );
+  // One entry for every case below, so none depends on another's order.
+  beforeAll(() => audit.recordPlatform({ actorId: PIA, action: 'ops.console_opened' }));
 
   it('recordPlatform writes one "ops.console_opened" entry with her user id and the time, and no workspace', async () => {
-    await audit.recordPlatform({ actorId: PIA, action: 'ops.console_opened' });
     expect([...(await platformRows())]).toEqual([
       { actor_id: PIA, action: 'ops.console_opened', occurred_at: '2026-11-12T09:30:00+00:00', subject_id: null },
     ]);
