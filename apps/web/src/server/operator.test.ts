@@ -1,6 +1,12 @@
 import type { User } from '@aivera/identity';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isPlatformOperator, platformOperator } from './operator';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getWorkspaceFacts,
+  isPlatformOperator,
+  listWorkspaceFacts,
+  platformOperator,
+  setWorkspaceAiBudget,
+} from './operator';
 
 // AIV-P2-035 (ADR-012): the platformOperator policy. Synthetic operators from docs/00-product/personas.md.
 const PIA = '0190d4a2-0000-7000-8000-00000000a001';
@@ -31,7 +37,28 @@ const config = vi.hoisted(() => ({ list: undefined as string | undefined }));
 const session = vi.fn<() => Promise<string | null>>();
 const getUser = vi.fn(async (id: string) => users[id] ?? null);
 
-vi.mock('@aivera/observability', () => ({ log: { warn: vi.fn() } }));
+const warn = vi.hoisted(() => vi.fn());
+vi.mock('@aivera/observability', () => ({ log: { warn } }));
+// AIV-P2-038: the console's reads and the budget change, behind their contracts.
+const DEMO = '0190d4a2-0000-7000-8000-000000000001';
+const summary = {
+  id: DEMO,
+  name: 'Demo Hiring Co',
+  type: 'in_house',
+  createdAt: new Date('2026-11-19T00:00:00Z'),
+  synthetic: true,
+  status: 'active',
+  activeMembers: 3,
+};
+const ai = vi.hoisted(() => ({ usage: vi.fn(), setDailyBudget: vi.fn(async (_input: unknown) => undefined) }));
+vi.mock('@aivera/workspaces/composition', () => ({
+  createWorkspaceDirectory: () => ({
+    getSummary: async () => summary,
+    listSummaries: async () => ({ total: 1, summaries: [summary] }),
+  }),
+  createAiBudgetConsole: () => ai,
+}));
+vi.mock('@aivera/jobs/composition', () => ({ createJobCounts: () => ({ countJobs: async () => 2 }) }));
 // The list is parsed on every env() call here, so changing `config.list` is "the app reloads its configuration".
 vi.mock('./env', async (actual) => {
   const real = await actual<typeof import('./env')>();
@@ -105,5 +132,48 @@ describe('isPlatformOperator', () => {
     expect(await isPlatformOperator(PIA)).toBe(true);
     expect(await isPlatformOperator(PIA)).toBe(true);
     expect(getUser).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('AI token use and the daily budget (AIV-P2-038)', () => {
+  const use = { dailyBudget: 2_000_000, overridden: false, days: [{ day: '2026-11-25', tokens: 1_500 }] };
+  beforeEach(() => {
+    session.mockResolvedValue(PIA);
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-25T09:00:00Z') });
+    ai.usage.mockResolvedValue(use);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('the detail reads the 7 UTC days ending today, the list today only', async () => {
+    expect(await getWorkspaceFacts(DEMO)).toMatchObject({ jobs: 2, ai: use });
+    expect(ai.usage).toHaveBeenCalledWith(DEMO, '2026-11-25', 7);
+    await listWorkspaceFacts({ query: '', offset: 0, limit: 50 });
+    expect(ai.usage).toHaveBeenLastCalledWith(DEMO, '2026-11-25', 1);
+  });
+
+  it('Scenario: Usage not available: a store that cannot be read gives ai null, and the log holds no error text', async () => {
+    ai.usage.mockRejectedValue(new Error('relation workspaces.ai_token_usage: Demo Hiring Co'));
+    expect(await getWorkspaceFacts(DEMO)).toMatchObject({ name: 'Demo Hiring Co', jobs: 2, ai: null });
+    expect(warn).toHaveBeenCalledOnce();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Demo Hiring Co');
+  });
+
+  it('Scenario: Setting an override: the operator is the session user, never the caller', async () => {
+    await setWorkspaceAiBudget({ workspaceId: DEMO, dailyBudget: 500_000, reason: 'Pilot cap agreed with the team' });
+    expect(ai.setDailyBudget).toHaveBeenCalledExactlyOnceWith({
+      operatorId: PIA,
+      workspaceId: DEMO,
+      dailyBudget: 500_000,
+      reason: 'Pilot cap agreed with the team',
+    });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from setWorkspaceAiBudget (its userId taken from a stub) -> this test failed (budget set)
+  it('Scenario: Non-operators are refused: Alex gets 403 and the budget is unchanged', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(setWorkspaceAiBudget({ workspaceId: DEMO, dailyBudget: 500_000, reason: 'x' })).rejects.toThrow(
+      'NEXT_HTTP_ERROR_FALLBACK;403',
+    );
+    expect(ai.setDailyBudget).not.toHaveBeenCalled();
   });
 });

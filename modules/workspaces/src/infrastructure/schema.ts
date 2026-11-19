@@ -6,6 +6,7 @@ import {
   check,
   date,
   foreignKey,
+  integer,
   pgSchema,
   primaryKey,
   text,
@@ -30,9 +31,16 @@ export const workspace = workspaces
       hiringFocus: text('hiring_focus').notNull(),
       synthetic: boolean().notNull().default(false),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+      // An operator's daily AI token budget for this workspace (AIV-P2-038); null means the platform default.
+      aiDailyTokenBudget: integer('ai_daily_token_budget'),
     },
     (t) => [
       check('workspace_type_check', sql`${t.type} in ('in_house', 'agency')`),
+      // Must match AI_DAILY_TOKEN_BUDGET's min and max (domain/workspace.ts); changing them needs a new migration.
+      check(
+        'workspace_ai_daily_token_budget_check',
+        sql`${t.aiDailyTokenBudget} is null or ${t.aiDailyTokenBudget} between 100000 and 10000000`,
+      ),
       tenantPolicy('workspace_tenant_isolation', t.id),
     ],
   )

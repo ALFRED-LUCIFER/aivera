@@ -24,9 +24,6 @@ export const embedTasks = {
 export type GenerateTask = keyof typeof generateTasks;
 export type EmbedTask = keyof typeof embedTasks;
 
-/** Input plus output tokens one workspace may spend per UTC day, across every task. */
-export const dailyTokenBudgetPerWorkspace = 2_000_000;
-
 /** Attempts per call: the first plus two retries on 429, 5xx or a timeout. */
 export const maxAttempts = 3;
 

@@ -64,6 +64,13 @@
       "when": 1795062275554,
       "tag": "0008_directory_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795064592733,
+      "tag": "0009_ai_daily_token_budget",
+      "breakpoints": true
     }
   ]
 }

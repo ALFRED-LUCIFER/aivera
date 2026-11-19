@@ -1,5 +1,5 @@
 // The operator console's workspaces list and detail (AIV-P2-036, ADR-012). Pure: no React, no I/O (ADR-003).
-import type { WorkspaceSummary } from '@aivera/workspaces';
+import type { AiTokenUse, WorkspaceSummary } from '@aivera/workspaces';
 import { z } from 'zod';
 
 const PAGE_SIZE = 50;
@@ -11,8 +11,11 @@ export const workspaceSearchSchema = z.object({
 });
 export type WorkspaceSearch = z.infer<typeof workspaceSearchSchema>;
 
-/** A workspace's platform facts and job count, as the list and detail show them. */
-export type WorkspaceRow = WorkspaceSummary & { jobs: number };
+/**
+ * A workspace's platform facts, job count and AI token use (today in the list, the last 7 UTC days in the detail), as
+ * the list and detail show them. `ai` is null when the usage store could not be read: "Not yet available".
+ */
+export type WorkspaceRow = WorkspaceSummary & { jobs: number; ai: AiTokenUse | null };
 
 /** One page of the list, with the search that produced it. */
 export type WorkspacePage = { search: WorkspaceSearch; total: number; rows: WorkspaceRow[] };

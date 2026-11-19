@@ -6,8 +6,11 @@ import type { ReactNode } from 'react';
 import type { WorkspaceRow } from '../domain/workspaces.ts';
 import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
 
-/** One workspace's platform facts and the operator actions on it (AIV-P2-036). Never a member or candidate. */
-export function WorkspaceDetail({ workspace }: { workspace: WorkspaceRow }) {
+/**
+ * One workspace's platform facts and the operator actions on it (AIV-P2-036). Never a member or candidate. `children`
+ * goes between the two: the AI token use card (AIV-P2-038).
+ */
+export function WorkspaceDetail({ workspace, children }: { workspace: WorkspaceRow; children?: ReactNode }) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();
   const facts: [string, ReactNode][] = [
@@ -36,6 +39,7 @@ export function WorkspaceDetail({ workspace }: { workspace: WorkspaceRow }) {
           ))}
         </dl>
       </Card>
+      {children}
       <Card title={t('detail.actions')} level={2}>
         {/* shortcut: no operator action on a workspace exists yet, only access entries, so the history is always empty;
             AIV-P2-037 adds the first action (suspend) and lists the platform audit log entries here. */}

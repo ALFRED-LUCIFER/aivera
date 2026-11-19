@@ -1,9 +1,15 @@
 import type { AuditContract } from '@aivera/audit';
 import { DbQueryError, type Tx } from '@aivera/db/client';
-import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
-import { WorkspaceError, type WorkspaceSummary } from '../domain/workspace.ts';
+import {
+  AI_DAILY_TOKEN_BUDGET,
+  usageWindow,
+  WorkspaceError,
+  type AiTokenUse,
+  type WorkspaceSummary,
+} from '../domain/workspace.ts';
 import { activeWorkspace, aiTokenUsage, client, directory, jobGrant, member, workspace } from './schema.ts';
 
 const memberColumns = {
@@ -230,15 +236,20 @@ export async function readSummary(tx: Tx, workspaceId: string): Promise<Omit<Wor
   return { ...found, activeMembers: members?.n ?? 0 };
 }
 
-/** Daily AI token use (AIV-P0-033), over a workspace-scoped transaction; the filter and RLS both apply. */
+/** Daily AI token use (AIV-P0-033) and its budget (AIV-P2-038), over a workspace-scoped transaction; the filter and RLS both apply. */
+const budgetOf = (override: number | null) => override ?? AI_DAILY_TOKEN_BUDGET.default;
+
 export function aiTokenUsageStore(tx: Tx) {
   return {
+    /** The day's tokens and the budget in force, in one statement. Throws when the workspace is not visible. */
     async spent(workspaceId: string, day: string) {
       const [found] = await tx
-        .select({ tokens: aiTokenUsage.tokens })
-        .from(aiTokenUsage)
-        .where(and(eq(aiTokenUsage.workspaceId, workspaceId), eq(aiTokenUsage.usageDay, day)));
-      return found?.tokens ?? 0;
+        .select({ override: workspace.aiDailyTokenBudget, tokens: aiTokenUsage.tokens })
+        .from(workspace)
+        .leftJoin(aiTokenUsage, and(eq(aiTokenUsage.workspaceId, workspace.id), eq(aiTokenUsage.usageDay, day)))
+        .where(eq(workspace.id, workspaceId));
+      if (!found) throw new Error('no such workspace in this scope');
+      return { spent: found.tokens ?? 0, limit: budgetOf(found.override) };
     },
     // One statement, so concurrent calls from any process never lose an increment (no read-then-write).
     async add(workspaceId: string, day: string, tokens: number) {
@@ -249,6 +260,44 @@ export function aiTokenUsageStore(tx: Tx) {
           target: [aiTokenUsage.workspaceId, aiTokenUsage.usageDay],
           set: { tokens: sql`${aiTokenUsage.tokens} + excluded.tokens` },
         });
+    },
+    /** The budget and the `days` UTC days ending on `today`; null when the workspace is not visible. */
+    async usage(workspaceId: string, today: string, days: number): Promise<AiTokenUse | null> {
+      const [found] = await tx
+        .select({ override: workspace.aiDailyTokenBudget })
+        .from(workspace)
+        .where(eq(workspace.id, workspaceId));
+      if (!found) return null;
+      const window = usageWindow(today, days, []);
+      const used = await tx
+        .select({ day: aiTokenUsage.usageDay, tokens: aiTokenUsage.tokens })
+        .from(aiTokenUsage)
+        .where(
+          and(
+            eq(aiTokenUsage.workspaceId, workspaceId),
+            gte(aiTokenUsage.usageDay, window.at(-1)?.day ?? today),
+            lte(aiTokenUsage.usageDay, today),
+          ),
+        );
+      return {
+        dailyBudget: budgetOf(found.override),
+        overridden: found.override !== null,
+        days: usageWindow(today, days, used),
+      };
+    },
+    /**
+     * Sets the override (null: back to the default) under a row lock, so concurrent changes record a true "before".
+     * Returns the budget in force before; null when the workspace is not visible.
+     */
+    async setDailyBudget(workspaceId: string, override: number | null): Promise<number | null> {
+      const [found] = await tx
+        .select({ override: workspace.aiDailyTokenBudget })
+        .from(workspace)
+        .where(eq(workspace.id, workspaceId))
+        .for('update');
+      if (!found) return null;
+      await tx.update(workspace).set({ aiDailyTokenBudget: override }).where(eq(workspace.id, workspaceId));
+      return budgetOf(found.override);
     },
   };
 }

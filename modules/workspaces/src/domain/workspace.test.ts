@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertCanChangeRole, type Member, type MemberStatus, type Role } from './workspace.ts';
+import { assertCanChangeRole, usageWindow, type Member, type MemberStatus, type Role } from './workspace.ts';
 
 const W = '0190d4a2-0000-7000-8000-000000000001';
 const member = (userId: string, role: Role, status: MemberStatus = 'active'): Member => ({
@@ -50,5 +50,25 @@ describe('assertCanChangeRole', () => {
       expect(() => assertCanChangeRole(members, 'alex', target, 'admin')).toThrow(
         expect.objectContaining({ code: 'not_found' }),
       );
+  });
+});
+
+describe('usageWindow (AIV-P2-038)', () => {
+  it('lists the 7 UTC days ending today, newest first, across a month end, with 0 for a day with no use', () => {
+    const window = usageWindow('2026-12-02', 7, [
+      { day: '2026-12-02', tokens: 1_500 },
+      { day: '2026-11-28', tokens: 40 },
+      { day: '2026-11-25', tokens: 9 }, // outside the window
+    ]);
+    expect(window.map((d) => d.day)).toEqual([
+      '2026-12-02',
+      '2026-12-01',
+      '2026-11-30',
+      '2026-11-29',
+      '2026-11-28',
+      '2026-11-27',
+      '2026-11-26',
+    ]);
+    expect(window.map((d) => d.tokens)).toEqual([1_500, 0, 0, 0, 40, 0, 0]);
   });
 });

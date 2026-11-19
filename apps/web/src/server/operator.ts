@@ -1,9 +1,16 @@
 import type { AuditContract } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
 import type { JobCounts } from '@aivera/jobs';
+import { log } from '@aivera/observability';
 import { createJobCounts } from '@aivera/jobs/composition';
-import type { DirectorySearch, WorkspaceDirectory, WorkspaceSummary } from '@aivera/workspaces';
-import { createWorkspaceDirectory } from '@aivera/workspaces/composition';
+import type {
+  AiBudgetConsole,
+  AiTokenUse,
+  DirectorySearch,
+  WorkspaceDirectory,
+  WorkspaceSummary,
+} from '@aivera/workspaces';
+import { createAiBudgetConsole, createWorkspaceDirectory } from '@aivera/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
@@ -43,28 +50,64 @@ let audit: AuditContract | undefined;
 /** The audit module for operator actions: `recordPlatform`, and `record` inside the target workspace (ADR-012). */
 export const getAudit = (): AuditContract => (audit ??= createAudit(getDb()));
 
-let reads: { workspaces: WorkspaceDirectory; jobs: JobCounts } | undefined;
+let reads: { workspaces: WorkspaceDirectory; jobs: JobCounts; ai: AiBudgetConsole } | undefined;
 // The console's metadata reads (ADR-012 point 6): only this file wires them to the pool (ops-metadata-contracts-only).
-const opsReads = () => (reads ??= { workspaces: createWorkspaceDirectory(getDb()), jobs: createJobCounts(getDb()) });
+const opsReads = () =>
+  (reads ??= {
+    workspaces: createWorkspaceDirectory(getDb()),
+    jobs: createJobCounts(getDb()),
+    ai: createAiBudgetConsole(getDb(), getAudit()),
+  });
 
-/** A workspace's platform facts with its job count: metadata only, never a member or candidate (ADR-012 point 7). */
-type WorkspaceFacts = WorkspaceSummary & { jobs: number };
+/**
+ * A workspace's platform facts with its job count and AI token use: metadata only, never a member or candidate
+ * (ADR-012 point 7). `ai` is null when the usage store cannot be read ("Not yet available", AGENTS.md 1.7).
+ */
+type WorkspaceFacts = WorkspaceSummary & { jobs: number; ai: AiTokenUse | null };
 
-const withJobs = async (summary: WorkspaceSummary): Promise<WorkspaceFacts> => ({
-  ...summary,
-  jobs: await opsReads().jobs.countJobs(summary.id),
-});
+// The UTC day on the server's clock, the same day the AI client charges (packages/ai client.ts).
+const utcToday = () => new Date().toISOString().slice(0, 10);
 
-/** One page of the workspaces list. Checks the policy itself too, so no caller can skip it. */
+const withFacts = async (summary: WorkspaceSummary, aiDays: number): Promise<WorkspaceFacts> => {
+  const [jobs, ai] = await Promise.all([
+    opsReads().jobs.countJobs(summary.id),
+    opsReads()
+      .ai.usage(summary.id, utcToday(), aiDays)
+      .catch((error: unknown) => {
+        // The error type only: a database error can quote parameters (AGENTS.md 1.2).
+        log.warn(
+          { area: 'ops', 'error.type': error instanceof Error ? error.name : 'unknown' },
+          'ai usage unavailable',
+        );
+        return null;
+      }),
+  ]);
+  return { ...summary, jobs, ai };
+};
+
+/** One page of the workspaces list, with today's AI tokens. Checks the policy itself too, so no caller can skip it. */
 export async function listWorkspaceFacts(search: DirectorySearch): Promise<{ total: number; rows: WorkspaceFacts[] }> {
   await platformOperator();
   const { total, summaries } = await opsReads().workspaces.listSummaries(search);
-  return { total, rows: await Promise.all(summaries.map(withJobs)) };
+  return { total, rows: await Promise.all(summaries.map((summary) => withFacts(summary, 1))) };
 }
 
-/** One workspace's facts, or null when there is none. Checks the policy itself too. */
+/** One workspace's facts with its last 7 UTC days of AI tokens, or null when there is none. Checks the policy too. */
 export async function getWorkspaceFacts(workspaceId: string): Promise<WorkspaceFacts | null> {
   await platformOperator();
   const summary = await opsReads().workspaces.getSummary(workspaceId);
-  return summary && withJobs(summary);
+  return summary && withFacts(summary, 7);
+}
+
+/**
+ * Sets a workspace's daily AI budget (null: the platform default), audited with the operator from the session in the
+ * platform log and the workspace's (AIV-P2-038). Checks the policy itself too. Input is validated by the caller.
+ */
+export async function setWorkspaceAiBudget(input: {
+  workspaceId: string;
+  dailyBudget: number | null;
+  reason: string;
+}): Promise<void> {
+  const { userId } = await platformOperator();
+  await opsReads().ai.setDailyBudget({ operatorId: userId, ...input });
 }

@@ -6,6 +6,7 @@ import type { Action, JobResource } from '../domain/permissions.ts';
 import type { GrantJobAccessInput } from '../application/clients.ts';
 import type { DirectorySearch } from '../application/directory.ts';
 import type {
+  AiTokenUse,
   Client,
   JobGrant,
   Member,
@@ -15,8 +16,9 @@ import type {
   WorkspaceType,
 } from '../domain/workspace.ts';
 
-export { ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
+export { AI_DAILY_TOKEN_BUDGET, ROLES, MEMBER_STATUSES, WorkspaceError } from '../domain/workspace.ts';
 export type {
+  AiTokenUse,
   Client,
   JobGrant,
   Member,
@@ -44,8 +46,11 @@ export type WorkspaceContext = Context<Tx>;
  * Mirrors `@aivera/ai`'s `TokenBudgetStore` structurally, so this module needs no dependency on the AI package.
  */
 export interface AiTokenBudget {
-  /** Tokens the workspace has spent on `day`; 0 when it has made no call that day. */
-  spentToday(workspaceId: string, day: string): Promise<number>;
+  /**
+   * Tokens the workspace has spent on `day` (0 when it has made no call that day) and its daily budget in force: an
+   * operator's override, or `AI_DAILY_TOKEN_BUDGET.default` (AIV-P2-038). One read, so the two agree.
+   */
+  spentToday(workspaceId: string, day: string): Promise<{ spent: number; limit: number }>;
   /** Adds `tokens` to the workspace's `day` in one atomic statement. */
   add(workspaceId: string, day: string, tokens: number): Promise<void>;
 }
@@ -61,6 +66,28 @@ export interface WorkspaceDirectory {
   listSummaries(search: DirectorySearch): Promise<{ total: number; summaries: WorkspaceSummary[] }>;
   /** One workspace's facts; null when there is no such workspace. */
   getSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
+}
+
+/**
+ * The operator console's AI budget (AIV-P2-038, ADR-012), for `/ops` only. Each call runs inside
+ * withWorkspace(<that workspace>) as the app role. Callers check the platformOperator policy first and pass the
+ * operator's identity user id from the session.
+ */
+export interface AiBudgetConsole {
+  /** The workspace's daily budget and its tokens on each of the `days` UTC days ending on `today`; null: no workspace. */
+  usage(workspaceId: string, today: string, days: number): Promise<AiTokenUse | null>;
+  /**
+   * Sets the workspace's daily budget (`null`: back to the platform default) and records "ai_budget.changed" with the
+   * old and new budget, the operator and the reason in the platform audit log and the workspace's, in the same
+   * transaction. The database refuses a budget outside `AI_DAILY_TOKEN_BUDGET`'s bounds; `no_workspace` when there is
+   * no such workspace. The next AI call reads it; calls in flight finish.
+   */
+  setDailyBudget(input: {
+    operatorId: string;
+    workspaceId: string;
+    dailyBudget: number | null;
+    reason: string;
+  }): Promise<void>;
 }
 
 /** Workspace ids come from the request context, never from client input (ADR-005). */

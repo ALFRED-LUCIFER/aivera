@@ -7,7 +7,7 @@ import { createIdentity } from '@aivera/identity/composition';
 import type { Competency } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
 import type { WorkspaceContext } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 
 // Playwright global setup (AIV-P0-010): the synthetic cast (docs/00-product/personas.md) gets its workspaces before the
@@ -53,6 +53,8 @@ export default async function seed() {
         values (${demo}, ${headOfEngineering}, 'hiring_owner', 'active'), (${demo}, ${rami}, 'interviewer', 'active')`),
     );
     await workspaces.switchWorkspace({ userId: rami }, demo);
+    // AIV-P2-038 Background: Demo Hiring Co has used 1,500 AI tokens today (the UTC day).
+    await createAiTokenBudget(db).add(demo, new Date().toISOString().slice(0, 10), 1_500);
     // AIV-P1-006: "AP", the talent partner, runs workspace "Demo" with the five demo jobs (personas.md).
     const ap = await person('ap@example.com', 'AP');
     await seedDemoJobs(await workspaceOf('Demo', ap), ap);
