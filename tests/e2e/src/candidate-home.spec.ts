@@ -28,9 +28,20 @@ test('searching from the hero opens the jobs list filtered by the words', async 
   await expect(page.getByRole('listitem').getByRole('heading', { level: 2 })).toContainText(['Senior AI Engineer']);
 });
 
+test('under reduced motion the hero is shown at once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/candidates');
+  const hero = page.getByRole('heading', { level: 1 });
+  await expect(hero).toBeVisible();
+  // Read once, not retried: a retrying opacity check would simply wait out the 1.4 s entrance and pass.
+  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+});
+
 for (const theme of themes) {
   test(`axe passes on the candidate home page (${theme})`, async ({ page, context }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    // The hero rises in over about 1.4 s; reduced motion shows it settled, so axe checks it at full opacity.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/candidates');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('region', { name: 'New this week' }).getByRole('heading', { level: 3 })).toHaveCount(3);

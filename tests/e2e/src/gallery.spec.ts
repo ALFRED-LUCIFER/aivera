@@ -11,6 +11,7 @@ const sections = [
   'basis',
   'provenance',
   'strength',
+  'level',
   'score',
   'need',
   'evidence',

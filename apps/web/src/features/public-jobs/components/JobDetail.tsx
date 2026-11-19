@@ -1,6 +1,6 @@
 import { useTranslations } from '@aivera/i18n/react';
 import type { JobType } from '@aivera/jobs';
-import { Button, buttonClassName, Card, Chip } from '@aivera/ui';
+import { Button, buttonClassName, Card, Chip, LevelMeter } from '@aivera/ui';
 import Link from 'next/link';
 
 export type JobDetailProps = {
@@ -51,9 +51,9 @@ export function JobDetail(props: JobDetailProps) {
                     {c.evidenceExpected}
                   </p>
                 </div>
-                <p className="shrink-0 font-semibold tabular-nums text-text">
+                <p className="shrink-0">
                   <span className="sr-only">{t('candidate.job.levelLabel')} </span>
-                  {t('candidate.job.level', { level: c.levelNeeded })}
+                  <LevelMeter level={c.levelNeeded} label={t('candidate.job.level', { level: c.levelNeeded })} />
                 </p>
               </li>
             ))}

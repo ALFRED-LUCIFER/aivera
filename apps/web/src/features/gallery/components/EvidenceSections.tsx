@@ -4,6 +4,7 @@ import { useTranslations } from '@aivera/i18n/react';
 import {
   CompetencyRow,
   EvidenceHighlight,
+  LevelMeter,
   NeedVsProvenBar,
   ProvenanceTag,
   ScoreWithUncertainty,
@@ -80,6 +81,14 @@ export function EvidenceSections() {
             label={sample.strength.claim}
             countsAsZeroLabel={sample.strength.countsAsZero}
           />
+        </div>
+      </Section>
+
+      <Section id="level" title={s.level}>
+        <div className="flex flex-wrap gap-6">
+          {sample.levels.map(([level, label]) => (
+            <LevelMeter key={level} level={level} label={label} />
+          ))}
         </div>
       </Section>
 

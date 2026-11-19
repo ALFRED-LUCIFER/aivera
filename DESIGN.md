@@ -15,7 +15,7 @@ Source of truth: the "Design system foundations" artboard in the claude.ai Desig
 | Metadata, labels       | Hanken Grotesk      | 13 / 18 · 400 (labels 600). The smallest size in the product. |
 | Evidence               | JetBrains Mono      | 13 / 18 · 400                                                 |
 
-Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
+Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site, the candidate home and the candidate site's header wordmark (CHome artboard) may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
 
 ## Spacing, radius, controls
 
@@ -23,7 +23,7 @@ Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product 
 - Radius: 6 tags · 8 controls · 12 cards. Chips are pills (13 px radius at 26 px height).
 - Controls: compact 36 · standard 40 (default) · touch 44 (any coarse pointer). Large marketing buttons 48.
 - Focus: 2 px ring in `--focus`, offset 2 px, on every control.
-- Motion: 120 ms with `cubic-bezier(.16,1,.3,1)`, named properties only, off under reduced motion. The website's entrance and hero sequence may run longer, in 120 ms steps (every delay and duration a multiple of 120 ms), through `motion` in `features/marketing-home` only; the server-rendered page is already in its final state. The hero card's pointer tilt is a spring (no fixed duration), mouse only and off under reduced motion.
+- Motion: 120 ms with `cubic-bezier(.16,1,.3,1)`, named properties only, off under reduced motion. The website's entrance and hero sequence may run longer, in 120 ms steps (every delay and duration a multiple of 120 ms), through `motion` in `features/marketing-home` and the candidate home hero (`marketing.css`) only; the server-rendered page is already in its final state. The hero card's pointer tilt is a spring (no fixed duration), mouse only and off under reduced motion.
 
 ## Colour tokens
 
@@ -59,7 +59,7 @@ Themes are set by `data-theme="light"` (default) or `data-theme="dark"` on the r
 
 Form fields use `--field-border` (≥3:1, WCAG 1.4.11); every other border keeps `--border`/`--border-strong`. Owner decision, 18 Nov 2026.
 
-Text selection uses the highlighter. The marketing site's dark "ink" panels are `#1B1720` with `#F4F1F6` text.
+Text selection uses the highlighter. The marketing site's and the candidate home's dark "ink" panels are `#1B1720` with `#F4F1F6` text.
 
 ## Domain components (all in `@aivera/ui`)
 
@@ -69,6 +69,7 @@ Text selection uses the highlighter. The marketing site's dark "ink" panels are 
 | **Button**               | 40 px. **One primary per view.** Variants: primary (ink), secondary (outlined), ghost, disabled ("Unavailable").                                                         |
 | **Value-basis marker**   | Every metric carries one: Observed (solid square), Baseline (outlined square), Projection (dashed square), Not yet available (rule).                                     |
 | **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Claim awaiting validation · Contradictory · Awaiting live defence.                 |
+| **Level meter**          | Five segments in neutral ink and the words "N of 5": the level a job needs, never read as a grade.                                                                       |
 | **Strength meter**       | Three segments in neutral ink, so it is not read as pass or fail: Strong · Medium · Supporting · Claim only.                                                             |
 | **Score bar**            | Solid fill for the backed score, hatched segment for the range still resting on claims, with the caption "62 backed by evidence · up to 78 if claims hold in interview". |
 | **Evidence highlight**   | `<mark>` in `--hl`, only on the exact text the assessment cites, plus an ink underline so cited text is identifiable without colour (WCAG 1.4.1).                        |
