@@ -28,7 +28,7 @@ Every PR must be the smallest change that fully solves its ticket. Flag:
 
 - Modules are imported only as `@aivera/<m>` (contracts); `/composition` only from apps (ADR-002).
 - Front-end features keep the layers `domain/ services/ hooks/ components/` (ADR-003); components are presentational `.tsx`; no cross-feature imports of hooks, services or components.
-- UI uses `@aivera/ui` and Case file tokens only: no hex colours, no arbitrary Tailwind values where a token exists, no hard-coded user-facing strings; WCAG 2.2 AA; one primary button per view; the highlighter only on cited evidence.
+- UI uses `@aivera/ui` and Case file tokens only: no hex colours, no arbitrary Tailwind values where a token exists, no hard-coded user-facing strings; WCAG 2.2 AA; one primary button per view; the highlighter only on cited evidence, except the website and candidate home places DESIGN.md names.
 
 ## How to comment
 
