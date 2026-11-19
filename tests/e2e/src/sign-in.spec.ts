@@ -130,6 +130,21 @@ for (const [choice, ticked, length] of [
   });
 }
 
+// SAFETY: mutation check: removed the rememberCookie(false) line from the /signup route -> this test failed
+test('a sign-up right after a kept sign-in and sign-out gets the 8-hour session', async ({ page, context }) => {
+  await page.goto('/sign-in');
+  await page.getByRole('checkbox', { name: 'Keep me signed in' }).check();
+  await signIn(page);
+  await desk(page);
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.goto('/signup');
+  await page.getByLabel('Email', { exact: true }).fill(`nadia+kept-${Date.now()}@example.com`);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  expect((await sessionToken(context)).lifetime).toBe(8 * 60 * 60);
+});
+
 test('Scenario: Sign out', async ({ page, context }) => {
   await signIn(page);
   await desk(page);

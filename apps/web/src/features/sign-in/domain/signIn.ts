@@ -25,6 +25,17 @@ export function safeNext(value: unknown): string {
  */
 export const REMEMBER_COOKIE = '__Host-aivera-remember';
 
+/** That cookie, set for 15 minutes when ticked, or cleared (max-age 0). Every way into the tenant sets it. */
+export const rememberCookie = (remember: boolean) => ({
+  name: REMEMBER_COOKIE,
+  value: remember ? '1' : '',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: remember ? 15 * 60 : 0,
+});
+
 /** The sign-in page for a request that needs a session, remembering where it was going. */
 export const signInPath = (pathname: string, search: string) =>
   `/sign-in?${new URLSearchParams({ next: `${pathname}${search}` })}`;

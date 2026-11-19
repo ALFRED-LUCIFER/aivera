@@ -72,16 +72,11 @@ describe('sign-in form and request', () => {
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('sends only the typed email to the tenant page, for every method', () => {
-    expect(authorizationParams('alex@example.com')).toEqual({ prompt: 'login', login_hint: 'alex@example.com' });
-    expect(authorizationParams(undefined)).toEqual({ prompt: 'login' });
-  });
-
   // Sign out ends only our session, so every sign-in (and "Forgot password?") makes the tenant ask again.
   // SAFETY: mutation check: dropped `prompt: 'login'` from authorizationParams -> this test failed
-  it('every sign-in asks the tenant to sign in again (prompt=login), with or without an email', () => {
-    expect(authorizationParams('alex@example.com').prompt).toBe('login');
-    expect(authorizationParams(undefined).prompt).toBe('login');
+  it('sends prompt=login and only the typed email to the tenant page, for every method', () => {
+    expect(authorizationParams('alex@example.com')).toEqual({ prompt: 'login', login_hint: 'alex@example.com' });
+    expect(authorizationParams(undefined)).toEqual({ prompt: 'login' });
   });
 
   // Scenario: Forgot password opens the tenant's reset without my email in the URL.
