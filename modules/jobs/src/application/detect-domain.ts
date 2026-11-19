@@ -42,6 +42,8 @@ export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
         return {
           domain: industry.domain,
           citations: 'citations' in industry ? industry.citations : [],
+          // shortcut: a region citing a line about the people to hire (nationality, residency) is not rejected in code;
+          // the prompt forbids it and the eval safety case gates it. Upgrade if AIV-P1-066 shows a miss.
           regions: regions.map((r) => ({ region: r.region, citations: r.citations })),
         };
       } catch (error) {

@@ -4,7 +4,7 @@ import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import type { GoldenCase } from './golden.ts';
 
-const draftInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
+const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
 
 /**
  * The jobs module's domain catalogue (AIV-P1-061), which this package cannot import (jobs depends on it). eval.test.ts
@@ -57,11 +57,11 @@ export type Runner = (ai: AiClient, golden: GoldenCase, workspaceId: string) => 
 export const runners: Record<string, Runner> = {
   // The product's own prompt and schema (AIV-P1-008), as the jobs module calls them.
   'jobs.draftCompetencies': (ai, golden, workspaceId) =>
-    ai.generateStructured({ ...draftCompetenciesRequest(draftInput.parse(golden.input), golden.sources), workspaceId }),
+    ai.generateStructured({ ...draftCompetenciesRequest(jobInput.parse(golden.input), golden.sources), workspaceId }),
   // AIV-P1-063: sources are the description (S1) and, when the job has one, the location (S2), as the jobs module sends.
   'jobs.detectDomain': (ai, golden, workspaceId) =>
     ai.generateStructured({
-      ...detectDomainRequest(draftInput.parse(golden.input), domainCatalogue, golden.sources),
+      ...detectDomainRequest(jobInput.parse(golden.input), domainCatalogue, golden.sources),
       workspaceId,
     }),
 };
