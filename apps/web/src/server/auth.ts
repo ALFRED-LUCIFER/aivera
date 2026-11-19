@@ -14,8 +14,19 @@ import { env, type WebEnv } from './env';
 // never sees a password. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
 
 const SESSION_COOKIE = '__Host-aivera-session';
+// shortcut: platform session lengths; read sessionIdleHours and sessionMaxDays from the workspace settings when
+// AIV-P1-051 (#201) ships.
 const EIGHT_HOURS = 8 * 60 * 60;
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+/**
+ * The token's lifetime in seconds at each (re-)issue: with "Keep me signed in", 30 days from sign-in (a re-issued token
+ * keeps its first expiry); without, 8 hours from this request (idle). Exported for its test.
+ */
+export function tokenMaxAge(token: { remember?: unknown; exp?: unknown } | undefined, nowSeconds: number): number {
+  if (!token?.remember) return EIGHT_HOURS;
+  return typeof token.exp === 'number' ? token.exp - nowSeconds : THIRTY_DAYS;
+}
 
 // The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). `email_verified` stays undefined when absent;
 // identity decides what counts as verified (ADR-009 point 4).
@@ -114,9 +125,10 @@ export function authConfig(auth: NonNullable<WebEnv['auth']>, remember = false):
     pages: { signIn: '/sign-in', error: '/sign-in' },
     // The cookie lives as long as the longest session; the token inside expires on its own clock (jwt.encode below).
     session: { strategy: 'jwt', maxAge: THIRTY_DAYS },
-    // Every re-issue (each proxied request) restarts the token's clock: 30 days with "Keep me signed in", else 8 hours
-    // with no request (idle). An expired token fails decode and Auth.js drops the cookie.
-    jwt: { encode: (params) => encode({ ...params, maxAge: params.token?.['remember'] ? THIRTY_DAYS : EIGHT_HOURS }) },
+    // Each token expires on its own clock (tokenMaxAge); an expired token fails decode and Auth.js drops the cookie.
+    jwt: {
+      encode: (params) => encode({ ...params, maxAge: tokenMaxAge(params.token, Math.floor(Date.now() / 1000)) }),
+    },
     cookies: {
       sessionToken: {
         name: SESSION_COOKIE,
@@ -163,8 +175,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
 });
 
 /**
- * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, so the session length
- * (8 hours, or 30 days with "Keep me signed in") counts from the last request.
+ * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, so the 8-hour limit
+ * counts from the last request (idle); a "Keep me signed in" session ends 30 days after sign-in.
  */
 // next-auth's overloads do not type the (request, event) middleware call it supports at runtime.
 export const sessionProxy = auth as unknown as (request: NextRequest, event: NextFetchEvent) => Promise<Response>;

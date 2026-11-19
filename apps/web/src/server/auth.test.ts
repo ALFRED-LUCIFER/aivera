@@ -1,7 +1,7 @@
 import { IdentityError } from '@aivera/identity';
 import { decode } from 'next-auth/jwt';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { authConfig } from './auth';
+import { authConfig, tokenMaxAge } from './auth';
 
 // Scenario: A refused sign-in adds nothing (AIV-P0-009): the log line holds no email, name or token (AGENTS.md 1.2).
 
@@ -139,14 +139,22 @@ describe('session length follows "Keep me signed in"', () => {
   it.each([
     ['ticked', true, 30 * 24 * 60 * 60],
     ['unticked', false, 8 * 60 * 60],
-  ])('%s: the token expires after its own length, and keeps it when re-issued', async (_choice, remember, length) => {
+  ])('%s: the token expires after its own length', async (_choice, remember, length) => {
     const first = await issue(remember);
     expect(first.lifetime).toBe(length);
     expect(first.payload).toMatchObject({ sub: 'user-1', remember });
-    // A later request: the cookie has no remember choice of its own, the token carries it (idle clock restarts).
+    // A later request: the cookie has no remember choice of its own, the token carries it.
     const reissued = await issue(false, first.payload);
-    expect(reissued.lifetime).toBe(length);
-    expect(reissued.payload.sub).toBe('user-1');
+    expect(reissued.payload).toMatchObject({ sub: 'user-1', remember });
+  });
+
+  // SAFETY: mutation check: returned THIRTY_DAYS for every remembered token (rolling 30 days) -> this test failed
+  it('ticked ends 30 days after sign-in however often it is used; unticked restarts its 8 hours on each request', () => {
+    const signedIn = 1_000_000;
+    const exp = signedIn + 30 * 24 * 60 * 60;
+    const day29 = signedIn + 29 * 24 * 60 * 60;
+    expect(tokenMaxAge({ remember: true, exp }, day29)).toBe(24 * 60 * 60);
+    expect(tokenMaxAge({ remember: false, exp: signedIn + 8 * 60 * 60 }, signedIn + 7 * 60 * 60)).toBe(8 * 60 * 60);
   });
 
   it('the token holds only the user id and the choice: no email, name or provider token', async () => {

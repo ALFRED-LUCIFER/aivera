@@ -99,12 +99,12 @@ test("Scenario: Forgot password opens the tenant's reset without my email in the
   await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
 });
 
-// The session token's own lifetime, read with the e2e-only secret: the cookie lives 30 days either way.
-async function sessionLifetime(context: BrowserContext) {
+// The session token's own expiry, read with the e2e-only secret: the cookie lives 30 days either way.
+async function sessionToken(context: BrowserContext) {
   const salt = '__Host-aivera-session';
   const token = (await context.cookies()).find((c) => c.name === salt)?.value ?? '';
   const payload = await decode({ token, secret: e2eAuthSecret, salt });
-  return (payload?.exp ?? 0) - (payload?.iat ?? 0);
+  return { exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - (payload?.iat ?? 0) };
 }
 
 // SAFETY: mutation check: read the remember cookie under another name in auth.ts's NextAuth(request) -> the ticked row
@@ -118,11 +118,15 @@ for (const [choice, ticked, length] of [
     await page.getByRole('checkbox', { name: 'Keep me signed in' }).setChecked(ticked);
     await signIn(page);
     await desk(page);
-    expect(await sessionLifetime(context)).toBe(length);
-    // The next request re-issues the token with the same length (8 hours counts from the last request).
+    const first = await sessionToken(context);
+    expect(first.lifetime).toBe(length);
+    // The next request re-issues the token: ticked keeps its end 30 days after sign-in, unticked restarts its 8 hours.
     await page.goto('/app/jobs');
     await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
-    expect(await sessionLifetime(context)).toBe(length);
+    const reissued = await sessionToken(context);
+    // Within a second: the encode clock may tick between computing the max age and stamping the token.
+    if (ticked) expect(Math.abs(reissued.exp - first.exp)).toBeLessThanOrEqual(1);
+    else expect(reissued.lifetime).toBe(length);
   });
 }
 
