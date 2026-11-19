@@ -1,0 +1,164 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exactly as they are 1`] = `
+[
+  {
+    "hiringOwner": "head.engineering",
+    "jobType": "ai_llm_engineering",
+    "location": "DIFC, Dubai",
+    "rubric": {
+      "approvedOn": "2026-11-12",
+      "competencies": [
+        {
+          "name": "LLM systems in production",
+          "weight": 25,
+        },
+        {
+          "name": "Retrieval and evaluation",
+          "weight": 20,
+        },
+        {
+          "name": "Python service engineering",
+          "weight": 15,
+        },
+        {
+          "name": "Cost and reliability",
+          "weight": 15,
+        },
+        {
+          "name": "Arabic and multilingual NLP",
+          "weight": 10,
+        },
+        {
+          "name": "Delivery with a team",
+          "weight": 15,
+        },
+      ],
+      "version": 2,
+    },
+    "stage": "round_1",
+    "team": "Engineering",
+    "title": "Senior AI Engineer",
+  },
+  {
+    "hiringOwner": "cpo.payments",
+    "jobType": "product_management",
+    "location": "Dubai Internet City",
+    "rubric": {
+      "approvedOn": "2026-11-05",
+      "competencies": [
+        {
+          "name": "Discovery to decision",
+          "weight": 30,
+        },
+        {
+          "name": "Outcomes with metrics",
+          "weight": 30,
+        },
+        {
+          "name": "Prioritisation",
+          "weight": 20,
+        },
+        {
+          "name": "Working with engineering and design",
+          "weight": 20,
+        },
+      ],
+      "version": 1,
+    },
+    "stage": "round_1",
+    "team": "Product",
+    "title": "Senior Product Manager, Payments",
+  },
+  {
+    "hiringOwner": "head.quality",
+    "jobType": "qa_test_automation",
+    "location": "Dubai, hybrid",
+    "rubric": {
+      "approvedOn": "2026-11-09",
+      "competencies": [
+        {
+          "name": "Test automation design",
+          "weight": 35,
+        },
+        {
+          "name": "Defect finding and reporting",
+          "weight": 20,
+        },
+        {
+          "name": "CI and release quality",
+          "weight": 25,
+        },
+        {
+          "name": "Test strategy and risk",
+          "weight": 20,
+        },
+      ],
+      "version": 1,
+    },
+    "stage": "collecting_evidence",
+    "team": "Quality",
+    "title": "QA Automation Engineer",
+  },
+  {
+    "hiringOwner": "vp.engineering",
+    "jobType": "software_engineering",
+    "location": "Riyadh, hybrid",
+    "rubric": {
+      "approvedOn": "2026-11-10",
+      "competencies": [
+        {
+          "name": "System design in production",
+          "weight": 35,
+        },
+        {
+          "name": "Code quality and testing",
+          "weight": 20,
+        },
+        {
+          "name": "Reliability and operations",
+          "weight": 25,
+        },
+        {
+          "name": "Delivery with a team",
+          "weight": 20,
+        },
+      ],
+      "version": 1,
+    },
+    "stage": "collecting_evidence",
+    "team": "Engineering",
+    "title": "Staff Backend Engineer",
+  },
+  {
+    "hiringOwner": "design.director",
+    "jobType": "product_design",
+    "location": "Abu Dhabi",
+    "rubric": {
+      "approvedOn": null,
+      "competencies": [
+        {
+          "name": "Interaction design craft",
+          "weight": 35,
+        },
+        {
+          "name": "Research to decisions",
+          "weight": 25,
+        },
+        {
+          "name": "Design systems",
+          "weight": 20,
+        },
+        {
+          "name": "Prototyping",
+          "weight": 20,
+        },
+      ],
+      "version": 1,
+    },
+    "stage": "defining_rubric",
+    "team": "Design",
+    "title": "Senior Product Designer",
+  },
+]
+`;

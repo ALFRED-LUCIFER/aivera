@@ -24,7 +24,7 @@ import { countJobs, jobStore } from './infrastructure/repository.ts';
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one.
  */
 export function createJobs(
-  workspaces: Pick<WorkspacesContract, 'authorize' | 'listClients'>,
+  workspaces: Pick<WorkspacesContract, 'authorize' | 'listClients' | 'getWorkspace'>,
   audit: Pick<AuditContract, 'record'>,
   now: () => Date = () => new Date(),
 ): JobsContract {
@@ -32,6 +32,7 @@ export function createJobs(
     storeFor: jobStore,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     listClients: (ctx) => workspaces.listClients(ctx),
+    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     audit: (ctx, entry) =>
       audit.record({ tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } }, entry),
     newId: () => uuidv7(),

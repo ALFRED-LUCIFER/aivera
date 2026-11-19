@@ -91,6 +91,7 @@ const MESSAGES = {
   not_found: 'That job or rubric version was not found.',
   version_status: 'This rubric version cannot move to that status.',
   rubric_not_approved: 'Publish after the rubric is approved.',
+  not_synthetic: 'Only a synthetic workspace holding only synthetic jobs can be purged.',
   public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
 } as const;
 

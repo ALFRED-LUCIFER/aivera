@@ -140,6 +140,12 @@ export interface JobsContract {
   /** Admins and recruiters. Unpublishing an unpublished job does nothing. Audited. */
   unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void>;
   /**
+   * Deletes every job of the workspace with its rubrics and listings, for the demo seed's reset (AIV-P1-065); the
+   * workspaces purge follows in the same `ctx.tx` and its `workspace.purged` audit entry covers these deletes too.
+   * Admins. Throws `JobError('not_synthetic')`, deleting nothing, unless the workspace and every job in it is synthetic.
+   */
+  purgeSyntheticJobs(ctx: WorkspaceContext): Promise<void>;
+  /**
    * Hides every public listing of the workspace from the candidate site, or shows them again (AIV-P2-037), keeping
    * whether each is open. Only for the operator's status change, inside its withWorkspace(<workspace>) `tx`.
    */

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cited, type Source } from '../citations';
+import { cited, type Source } from '../citations.ts';
 
 // "Detect the job's industry" (AIV-P1-063, ADR-006 point 2): the prompt and schema, versioned here so every change runs
 // the eval set (evals/jobs.detectDomain/). The jobs module calls it with its domain catalogue; the eval runner the same.

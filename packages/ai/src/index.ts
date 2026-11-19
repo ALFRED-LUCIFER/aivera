@@ -6,7 +6,7 @@ export {
   UnknownAiTask,
   type AiClient,
   type TokenBudgetStore,
-} from './client';
+} from './client.ts';
 export {
   cited,
   InvalidCitation,
@@ -16,18 +16,18 @@ export {
   type Citation,
   type Source,
   type SourceKind,
-} from './citations';
-export type { EmbedTask, GenerateTask } from './config';
-export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers';
+} from './citations.ts';
+export type { EmbedTask, GenerateTask } from './config.ts';
+export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers.ts';
 export {
   DRAFT_COMPETENCIES_SYSTEM,
   DRAFT_COMPETENCIES_VERSION,
   draftCompetenciesRequest,
   draftCompetenciesSchema,
-} from './prompts/jobs.draftCompetencies';
+} from './prompts/jobs.draftCompetencies.ts';
 export {
   DETECT_DOMAIN_SYSTEM,
   DETECT_DOMAIN_VERSION,
   detectDomainRequest,
   detectDomainSchema,
-} from './prompts/jobs.detectDomain';
+} from './prompts/jobs.detectDomain.ts';

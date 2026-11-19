@@ -669,6 +669,20 @@ const PACKS: DomainPack[] = [
           type: 'desirable',
           levelNeeded: 2,
         },
+        {
+          name: 'SAMA cyber security framework',
+          meaning:
+            'Applies the SAMA cyber security framework to banking systems, mapping each control to how the systems run and keeping the evidence an assessment needs.',
+          evidence: 'Control mappings and assessment evidence; remediation records; compliance write-ups that apply it',
+          levels: {
+            1: 'Can explain the domains of the framework and which apply to a system',
+            3: 'Mapped a system to the framework and closed the findings of its assessment',
+            5: 'Led banking platforms through an assessment against the framework, with evidence kept current',
+          },
+          appliesTo: SECURITY_HINTS_APPLY_TO,
+          type: 'desirable',
+          levelNeeded: 2,
+        },
       ],
       india: [
         {

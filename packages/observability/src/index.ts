@@ -1,7 +1,7 @@
 import { trace, type Attributes } from '@opentelemetry/api';
 import { logs, type LogAttributes } from '@opentelemetry/api-logs';
 import pino from 'pino';
-import { redact } from './redact';
+import { redact } from './redact.ts';
 
 // Logging and tracing for web and worker (AIV-P0-018). `initTelemetry` (`@aivera/observability/init`) turns export to
 // Application Insights on; without it these are local-only (stdout) and the spans are no-ops.
@@ -11,7 +11,7 @@ import { redact } from './redact';
 // spans with it as parent (`propagation.extract`), so one operation id runs from the server action to the worker.
 // shortcut: the contract only; the outbox (#46) and worker (#47) tickets implement and test it.
 
-export { registerPersonalDataKeys } from './redact';
+export { registerPersonalDataKeys } from './redact.ts';
 
 /**
  * The structured logger (AGENTS.md 3.13): message templates and ids only. Every line is redacted, written to stdout

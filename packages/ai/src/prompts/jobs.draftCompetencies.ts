@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cited, type Source } from '../citations';
+import { cited, type Source } from '../citations.ts';
 
 // "Draft competencies" (AIV-P1-008) and "suggest what it misses" (AIV-P1-009), ADR-006 point 2: the prompt and
 // schema, versioned here so every change runs the eval set (evals/jobs.draftCompetencies/). The jobs module calls it;
