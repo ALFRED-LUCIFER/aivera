@@ -8,9 +8,9 @@ import { clientsUseCases } from './application/clients.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
 import { workspacesUseCases } from './application/workspaces.ts';
-import type { WorkspacesContract } from './contracts/index.ts';
+import type { AiTokenBudget, WorkspacesContract } from './contracts/index.ts';
 import { grantsCover } from './domain/permissions.ts';
-import { activeWorkspaceStore, workspaceStore } from './infrastructure/repository.ts';
+import { activeWorkspaceStore, aiTokenUsageStore, workspaceStore } from './infrastructure/repository.ts';
 
 const newId = () => uuidv7();
 
@@ -38,5 +38,15 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
     ...context,
     ...clientsUseCases({ storeFor, newId, authorize: context.authorize }),
     ...syntheticUseCases({ storeFor, authorize: context.authorize }),
+  };
+}
+
+/** The PostgreSQL store behind `@aivera/ai`'s daily token budget (AIV-P0-033): `createAiClient({ budget })`. */
+export function createAiTokenBudget(db: Db): AiTokenBudget {
+  return {
+    spentToday: (workspaceId, day) =>
+      withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).spent(workspaceId, day)),
+    add: (workspaceId, day, tokens) =>
+      withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).add(workspaceId, day, tokens)),
   };
 }

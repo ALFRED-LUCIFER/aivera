@@ -51,28 +51,43 @@ const outcome = (value: string, extra: Record<string, string | number> = {}) =>
 
 type Usage = { inputTokens: number; outputTokens: number };
 
+/**
+ * Tokens spent per workspace and UTC day (`YYYY-MM-DD`). Apps pass the PostgreSQL store (`createAiTokenBudget` from
+ * `@aivera/workspaces/composition`, AIV-P0-033), so every process shares one count; tests pass `memoryTokenBudget()`.
+ */
+export interface TokenBudgetStore {
+  spentToday(workspaceId: string, day: string): Promise<number>;
+  /** Must add atomically: concurrent calls from several processes must never lose an increment. */
+  add(workspaceId: string, day: string, tokens: number): Promise<void>;
+}
+
+/** A store in this process's memory, for unit tests and the fake provider; never for an app. */
+export function memoryTokenBudget(): TokenBudgetStore {
+  const spent = new Map<string, number>();
+  return {
+    spentToday: async (workspaceId, day) => spent.get(`${workspaceId} ${day}`) ?? 0,
+    add: async (workspaceId, day, tokens) =>
+      void spent.set(`${workspaceId} ${day}`, (spent.get(`${workspaceId} ${day}`) ?? 0) + tokens),
+  };
+}
+
 export type AiClient = ReturnType<typeof createAiClient>;
 
 export function createAiClient(options: {
   provider: AiProvider;
+  budget: TokenBudgetStore;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
 }) {
-  const { provider, now = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = options;
+  const {
+    provider,
+    budget,
+    now = Date.now,
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  } = options;
 
   const breakers = new Map<Deployment, { failures: number; openUntil: number }>();
-  // shortcut: the budget is counted in this process's memory, so web and worker each allow the full budget and a
-  // restart resets it; persist it in a workspace-scoped table with RLS in AIV-P0-033 (#266), before the pilot gate
-  let budgetDay = '';
-  const spent = new Map<string, number>();
-  const spentToday = (workspaceId: string) => {
-    const today = new Date(now()).toISOString().slice(0, 10);
-    if (today !== budgetDay) {
-      budgetDay = today;
-      spent.clear();
-    }
-    return spent.get(workspaceId) ?? 0;
-  };
+  const today = () => new Date(now()).toISOString().slice(0, 10); // the UTC day
 
   /** Runs one task with budget, breaker, timeout and retries, and records one span for it. */
   async function call<T>(
@@ -92,8 +107,16 @@ export function createAiClient(options: {
         'workspace.id': workspaceId,
       });
 
+      // A store that cannot be read or written fails the call closed: no unbudgeted model request, and the store's
+      // error (which may quote SQL parameters) is dropped like a provider's.
+      const day = today();
+      const unbudgeted = (attempts: number): never => {
+        outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': 'budget_store' });
+        throw new AiUnavailable(task, 'budget store');
+      };
+      const spent = await budget.spentToday(workspaceId, day).catch(() => unbudgeted(0));
       // Calls already in flight can overshoot the budget by their own size; it is a daily cap, not a meter.
-      if (spentToday(workspaceId) >= dailyTokenBudgetPerWorkspace) {
+      if (spent >= dailyTokenBudgetPerWorkspace) {
         outcome('budget_exceeded');
         throw new BudgetExceeded(task, workspaceId);
       }
@@ -106,21 +129,9 @@ export function createAiClient(options: {
           outcome('circuit_open', { 'aivera.ai.attempts': attempts - 1 });
           throw new AiUnavailable(task, 'circuit open');
         }
+        let result: { value: T; usage: Usage };
         try {
-          const { value, usage } = await attempt(AbortSignal.timeout(settings.timeoutMs));
-          Object.assign(breaker, { failures: 0, openUntil: 0 }); // in place: calls in flight hold this object
-          spent.set(workspaceId, spentToday(workspaceId) + usage.inputTokens + usage.outputTokens);
-          const price = deployments[deployment];
-          outcome('ok', {
-            'aivera.ai.attempts': attempts,
-            'gen_ai.usage.input_tokens': usage.inputTokens,
-            'gen_ai.usage.output_tokens': usage.outputTokens,
-            // Micro-dollars, not cents: one call costs a fraction of a cent. An estimate for dashboards, never billing.
-            'aivera.ai.cost_usd_micros': Math.round(
-              (usage.inputTokens * price.inputPerMillion + usage.outputTokens * price.outputPerMillion) / 1_000_000,
-            ),
-          });
-          return value;
+          result = await attempt(AbortSignal.timeout(settings.timeoutMs));
         } catch (error) {
           const status = APICallError.isInstance(error) ? error.statusCode : undefined;
           const timedOut = error instanceof Error && error.name === 'TimeoutError';
@@ -138,7 +149,23 @@ export function createAiClient(options: {
           const headers = APICallError.isInstance(error) ? error.responseHeaders : undefined;
           const retryAfterMs = Number(headers?.['retry-after-ms'] ?? Number(headers?.['retry-after']) * 1000);
           await sleep(Math.min(retryAfterMs > 0 ? retryAfterMs : 1000 * 2 ** (attempts - 1), 10_000));
+          continue;
         }
+        Object.assign(breaker, { failures: 0, openUntil: 0 }); // in place: calls in flight hold this object
+        const { value, usage } = result;
+        // Charged to the day the call was checked against; only a successful call spends.
+        await budget.add(workspaceId, day, usage.inputTokens + usage.outputTokens).catch(() => unbudgeted(attempts));
+        const price = deployments[deployment];
+        outcome('ok', {
+          'aivera.ai.attempts': attempts,
+          'gen_ai.usage.input_tokens': usage.inputTokens,
+          'gen_ai.usage.output_tokens': usage.outputTokens,
+          // Micro-dollars, not cents: one call costs a fraction of a cent. An estimate for dashboards, never billing.
+          'aivera.ai.cost_usd_micros': Math.round(
+            (usage.inputTokens * price.inputPerMillion + usage.outputTokens * price.outputPerMillion) / 1_000_000,
+          ),
+        });
+        return value;
       }
     });
   }

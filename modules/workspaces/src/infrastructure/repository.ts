@@ -4,7 +4,7 @@ import { and, asc, count, eq, isNull, sql } from 'drizzle-orm';
 import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
 import { WorkspaceError } from '../domain/workspace.ts';
-import { activeWorkspace, client, jobGrant, member, workspace } from './schema.ts';
+import { activeWorkspace, aiTokenUsage, client, jobGrant, member, workspace } from './schema.ts';
 
 const memberColumns = {
   userId: member.userId,
@@ -93,6 +93,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     },
     async deleteWorkspace(workspaceId) {
       // Children first: grants reference members and clients, and every table references the workspace.
+      await tx.delete(aiTokenUsage).where(eq(aiTokenUsage.workspaceId, workspaceId));
       await tx.delete(jobGrant).where(eq(jobGrant.workspaceId, workspaceId));
       await tx.delete(client).where(eq(client.workspaceId, workspaceId));
       await tx.delete(member).where(inWorkspace(workspaceId));
@@ -194,6 +195,29 @@ export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
         .insert(activeWorkspace)
         .values({ userId, workspaceId })
         .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
+    },
+  };
+}
+
+/** Daily AI token use (AIV-P0-033), over a workspace-scoped transaction; the filter and RLS both apply. */
+export function aiTokenUsageStore(tx: Tx) {
+  return {
+    async spent(workspaceId: string, day: string) {
+      const [found] = await tx
+        .select({ tokens: aiTokenUsage.tokens })
+        .from(aiTokenUsage)
+        .where(and(eq(aiTokenUsage.workspaceId, workspaceId), eq(aiTokenUsage.usageDay, day)));
+      return found?.tokens ?? 0;
+    },
+    // One statement, so concurrent calls from any process never lose an increment (no read-then-write).
+    async add(workspaceId: string, day: string, tokens: number) {
+      await tx
+        .insert(aiTokenUsage)
+        .values({ workspaceId, usageDay: day, tokens })
+        .onConflictDoUpdate({
+          target: [aiTokenUsage.workspaceId, aiTokenUsage.usageDay],
+          set: { tokens: sql`${aiTokenUsage.tokens} + excluded.tokens` },
+        });
     },
   };
 }

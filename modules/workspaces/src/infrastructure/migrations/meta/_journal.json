@@ -36,6 +36,20 @@
       "when": 1795017373477,
       "tag": "0004_force_rls_job_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795059909294,
+      "tag": "0005_ai_token_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795059909586,
+      "tag": "0006_force_rls_ai_token_usage",
+      "breakpoints": true
     }
   ]
 }

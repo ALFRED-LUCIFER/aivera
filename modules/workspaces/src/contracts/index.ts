@@ -26,6 +26,18 @@ export type { ChangeRoleInput, CreateWorkspaceInput } from '../application/works
 /** `{ userId, workspaceId, role, tx }`. Module repositories take this scoped `tx`, never the pool (AIV-P0-010). */
 export type WorkspaceContext = Context<Tx>;
 
+/**
+ * Input plus output AI tokens per workspace and UTC day (`YYYY-MM-DD`), shared by every process (AIV-P0-033). The store
+ * behind `@aivera/ai`'s daily budget; apps wire it into `createAiClient`. Server-side only: the workspace id comes from
+ * the caller's checked context or job envelope, and each call runs in that workspace's scoped transaction.
+ */
+export interface AiTokenBudget {
+  /** Tokens the workspace has spent on `day`; 0 when it has made no call that day. */
+  spentToday(workspaceId: string, day: string): Promise<number>;
+  /** Adds `tokens` to the workspace's `day` in one atomic statement. */
+  add(workspaceId: string, day: string, tokens: number): Promise<void>;
+}
+
 /** Workspace ids come from the request context, never from client input (ADR-005). */
 export interface WorkspacesContract {
   /** Creates the workspace, makes the creator its active admin and their active workspace, in one transaction. */

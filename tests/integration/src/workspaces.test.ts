@@ -83,9 +83,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(5);
+    expect(await applied()).toBe(7);
     dbMigrate();
-    expect(await applied()).toBe(5);
+    expect(await applied()).toBe(7);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -96,6 +96,7 @@ describe('Scenario: Migrations are forward-only and per schema', () => {
     expect([...tables]).toEqual([
       // Keyed on the user, not workspace-owned (AIV-P0-010): read before any workspace is open.
       { name: 'active_workspace', owner: 'aivera_migrator', rls: false, forced: false },
+      { name: 'ai_token_usage', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'client', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'job_grant', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
@@ -216,7 +217,7 @@ describe('getMembership returns active memberships only', () => {
 
 describe('Scenario: The application role cannot switch RLS off', () => {
   // SAFETY: mutation check: ran ALTER TABLE workspaces.member OWNER TO aivera_app -> this test failed (the ALTER succeeded)
-  it.each(['member', 'workspace', 'client', 'job_grant'])(
+  it.each(['member', 'workspace', 'client', 'job_grant', 'ai_token_usage'])(
     'aivera_app running DISABLE ROW LEVEL SECURITY on %s gets a permission error',
     async (table) => {
       await expect(

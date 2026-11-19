@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAiClient } from './client';
+import { createAiClient, memoryTokenBudget } from './client';
 import { azureProvider } from './providers';
 
 // Opt-in smoke test against the Azure dev resource, skipped in PR CI. Signs in with `az login` (DefaultAzureCredential):
@@ -7,7 +7,10 @@ import { azureProvider } from './providers';
 const resourceName = process.env['AZURE_OPENAI_RESOURCE_NAME'];
 
 describe.skipIf(!process.env['AI_LIVE_SMOKE'] || !resourceName)('live Azure OpenAI smoke test', () => {
-  const ai = createAiClient({ provider: azureProvider({ resourceName: resourceName ?? '' }) });
+  const ai = createAiClient({
+    provider: azureProvider({ resourceName: resourceName ?? '' }),
+    budget: memoryTokenBudget(),
+  });
   const workspaceId = '0190d4a2-0000-7000-8000-00000000f00d';
 
   it('generates with gpt-main and embeds with embedding-main', async () => {

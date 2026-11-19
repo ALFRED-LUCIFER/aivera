@@ -587,6 +587,9 @@ importers:
 
   tests/integration:
     devDependencies:
+      '@aivera/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@aivera/audit':
         specifier: workspace:*
         version: link:../../modules/audit
@@ -620,6 +623,9 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      ai:
+        specifier: 7.0.162
+        version: 7.0.162(zod@4.6.7)
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
