@@ -66,6 +66,15 @@ While a workspace is suspended:
 - Candidates, rankings and scores are untouched: nothing is deleted, hidden or reordered (AGENTS.md 1.5, 1.8).
 - Not built yet, so nothing to stop: the worker, AI calls, outbound email and candidate evidence uploads. When they land, they go through the same check (the module README says how).
 
+## Approving new workspaces
+
+While "New workspaces need approval" is on (the default for dev and the pilot), a workspace created on the sign-up page waits: its creator sees "Your workspace is waiting for approval" on every recruiter page, and the server refuses new work in it. `/ops/approvals` lists the waiting workspaces, oldest first, with their type, created date and the creator's email.
+
+- **Approve** opens the preview; Confirm makes the workspace active, and its creator can add jobs at once.
+- **Reject** needs a reason of at least 10 characters. The creator sees "Your workspace was not approved. Reason: …". The workspace stays, with no new work, for audit.
+- **Email the creator yourself** for now: the approval emails ("Your Aivera workspace is approved" / "… was not approved") arrive with AIV-P0-017, which is not built. The waiting page already promises an email, so do not leave a decision unsent.
+- **The switch** ("Turn off" / "Turn on", with a reason) changes only what happens to the next sign-ups. Turning it off approves nothing: workspaces already waiting stay waiting until you decide each one. Existing and seeded workspaces, and people invited into an existing workspace, are never affected.
+
 ## Audit
 
-Every operator action is written to the platform audit log `audit.platform_entry` (ADR-012 point 8). The app can only insert into it. Opening the console writes `ops.console_opened` once per browser session. Opening a workspace's detail page writes `ops.workspace_viewed` with the workspace's id, on the server before the page renders. A suspension or reactivation writes `workspace.suspended` or `workspace.reactivated` with the reason, both there and in the workspace's own audit log with actor `operator:<user id>`, in the same transaction as the change.
+Every operator action is written to the platform audit log `audit.platform_entry` (ADR-012 point 8). The app can only insert into it. Opening the console writes `ops.console_opened` once per browser session. Opening a workspace's detail page writes `ops.workspace_viewed` with the workspace's id, on the server before the page renders. A suspension or reactivation writes `workspace.suspended` or `workspace.reactivated` with the reason, both there and in the workspace's own audit log with actor `operator:<user id>`, in the same transaction as the change. Approving and rejecting write `workspace.approved` and `workspace.rejected` (with the reason) the same way; turning the switch writes `ops.approval_mode_changed` to the platform log, with the value before and after and the reason.

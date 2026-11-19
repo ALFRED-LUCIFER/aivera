@@ -78,3 +78,16 @@ export const currentMembership = cache(async () => {
   if (!user || !workspace) forbidden();
   return { name: user.displayName ?? user.email, role, synthetic: workspace.synthetic, status: workspace.status };
 });
+
+/**
+ * The operator's reason for not approving the active workspace (AIV-P2-039), shown to its creator; null when the
+ * workspace is not rejected. Read from the workspace's own audit log, inside its scope, after the membership check.
+ */
+export async function rejectionReason(): Promise<string | null> {
+  if ((await currentMembership())?.status !== 'rejected') return null;
+  const userId = await getSessionUserId();
+  const workspaceId = userId && (await getWorkspaces().activeWorkspace(userId));
+  if (!workspaceId) return null;
+  const entries = await createAudit(getDb()).listOperatorEntries(workspaceId);
+  return entries.findLast((e) => e.action === 'workspace.rejected')?.note ?? null;
+}

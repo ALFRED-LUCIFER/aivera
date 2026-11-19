@@ -14,7 +14,7 @@ import {
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type WorkspaceStore = {
   /** Also adds it to the platform directory (ADR-012 point 6). */
-  insertWorkspace(workspace: Omit<Workspace, 'createdAt' | 'status'>): Promise<Workspace>;
+  insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
   insertMember(member: Member): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
@@ -80,6 +80,11 @@ export type CreateWorkspaceInput = {
   // shortcut: unchecked here, the web form validates it; the job-types catalogue (AIV-P1-004) owns the values.
   hiringFocus: string;
   synthetic?: boolean;
+  /**
+   * A sign-up while the pilot needs approval (AIV-P2-039): the workspace starts `pending_approval` and takes no new
+   * work until an operator approves it. The seed and tests leave it out: active at once.
+   */
+  needsApproval?: boolean;
   /** The signed-in user, from the request context; becomes the workspace's first admin. */
   creatorUserId: string;
 };
@@ -91,9 +96,10 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
     createWorkspace(input: CreateWorkspaceInput): Promise<Workspace> {
       const id = newId();
       return inWorkspace(id, async (store) => {
-        const { creatorUserId, synthetic = false, ...fields } = input;
+        const { creatorUserId, synthetic = false, needsApproval = false, ...fields } = input;
+        const status = needsApproval ? 'pending_approval' : 'active';
         // Every workspace starts as an in-house team; an admin makes it an agency with setWorkspaceType.
-        const workspace = await store.insertWorkspace({ id, type: 'in_house', ...fields, synthetic });
+        const workspace = await store.insertWorkspace({ id, type: 'in_house', ...fields, synthetic, status });
         await store.insertMember({ workspaceId: id, userId: creatorUserId, role: 'admin', status: 'active' });
         // The creator lands in the new workspace (AIV-P0-010).
         await store.setActiveWorkspace(creatorUserId, id);

@@ -19,6 +19,7 @@ import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
 import { getJobs } from './jobs';
+import { getPlatformSettings } from './platformSettings';
 import { getWorkspaces } from './workspace';
 
 // The platformOperator policy (AIV-P2-035, ADR-012): the operator console at /ops is for the people who run Aivera,
@@ -145,7 +146,47 @@ export async function listOperatorActions(workspaceId: string): Promise<Operator
  */
 export async function applyStatusChange(workspaceId: string, change: StatusChange, reason: string) {
   const { userId } = await platformOperator();
-  await getWorkspaces().changeStatus({ operatorId: userId, workspaceId, change, reason }, (tx) =>
-    getJobs().pausePublicListings(tx, workspaceId, change === 'suspend'),
+  // shortcut: no "approved" / "not approved" email to the creator (AIV-P2-039) until @aivera/notifications exists
+  // (AIV-P0-017); operators email the creator by hand (docs/runbooks/operator-console.md). Send it here then.
+  // Approve and reject touch no listing: a workspace waiting for approval could never publish one.
+  const pause = change === 'suspend' ? true : change === 'reactivate' ? false : null;
+  await getWorkspaces().changeStatus(
+    { operatorId: userId, workspaceId, change, reason },
+    pause === null ? undefined : (tx) => getJobs().pausePublicListings(tx, workspaceId, pause),
   );
+}
+
+/** A workspace waiting for approval with its creator's email (a recruiter's, so the operator can contact them). */
+export type PendingApprovalFacts = Pick<WorkspaceSummary, 'id' | 'name' | 'type' | 'createdAt'> & {
+  creatorEmail: string | null;
+};
+
+/**
+ * Workspaces waiting for approval, oldest first (AIV-P2-039): metadata and the creator's email, never a member list or
+ * candidate data. Checks the policy itself too.
+ */
+export async function listPendingApprovals(): Promise<PendingApprovalFacts[]> {
+  await platformOperator();
+  const pending = await opsReads().workspaces.listPending();
+  return Promise.all(
+    pending.map(async ({ summary: { id, name, type, createdAt }, creatorUserId }) => ({
+      id,
+      name,
+      type,
+      createdAt,
+      creatorEmail: creatorUserId ? ((await getIdentity().getUser(creatorUserId))?.email ?? null) : null,
+    })),
+  );
+}
+
+/** Whether new sign-ups wait for approval, for the approvals page. Checks the policy itself too. */
+export async function approvalRequired(): Promise<boolean> {
+  await platformOperator();
+  return getPlatformSettings().approvalRequired();
+}
+
+/** Turns the approval switch on or off as the signed-in operator, audited in the platform log (AIV-P2-039). */
+export async function setApprovalRequired(required: boolean, reason: string): Promise<void> {
+  const { userId } = await platformOperator();
+  await getPlatformSettings().setApprovalRequired({ operatorId: userId, required, reason });
 }

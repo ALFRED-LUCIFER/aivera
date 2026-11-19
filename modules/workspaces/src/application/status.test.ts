@@ -44,7 +44,26 @@ describe('changeStatus', () => {
     expect(writes).toEqual(['status active', `audit workspace.reactivated by ${PIA}: Pilot extended to 31 Dec 2026`]);
   });
 
+  it('Scenario: The operator approves: no reason needed, and the audit entry carries no note', async () => {
+    const { writes, useCases } = setup('pending_approval');
+    await useCases.changeStatus({ operatorId: PIA, workspaceId: W1, change: 'approve', reason: '' });
+    expect(writes).toEqual(['status active', `audit workspace.approved by ${PIA}: undefined`]);
+  });
+
+  it('Scenario: The operator rejects with a reason', async () => {
+    const { writes, useCases } = setup('pending_approval');
+    await useCases.changeStatus({
+      operatorId: PIA,
+      workspaceId: W1,
+      change: 'reject',
+      reason: "Outside the pilot's agreed teams",
+    });
+    expect(writes).toEqual(['status rejected', `audit workspace.rejected by ${PIA}: Outside the pilot's agreed teams`]);
+  });
+
   it.each([
+    ['a rejection without a reason', 'pending_approval', 'reject', '   ', 'reason_required'],
+    ['approving a workspace that is not waiting', 'active', 'approve', '', 'status_conflict'],
     ['a reason under 10 characters', 'active', 'suspend', 'too short', 'reason_required'],
     ['no such workspace', null, 'suspend', 'Pilot ended on 30 Nov 2026', 'not_found'],
     ['a workspace already suspended', 'suspended', 'suspend', 'Pilot ended on 30 Nov 2026', 'status_conflict'],

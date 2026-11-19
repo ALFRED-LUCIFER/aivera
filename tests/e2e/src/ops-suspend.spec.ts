@@ -1,29 +1,25 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
+import { approveAsOperator, PIA, signUpWorkspace } from './workspaces.ts';
 
 // AIV-P2-037 (ADR-012): Pia Platform suspends and reactivates a workspace; its admin reads but cannot start work. Each
 // run's admin creates a new workspace through the app (the Omar Agency persona, as a fresh synthetic address), so the
 // seeded "Gulf Talent Partners", which other specs read in parallel, stays active. The worker, AI and email parts of the
 // ticket have no code to stop yet (no worker, no AI call, no email); the server refusal is mutation-checked in the
-// workspaces module and tests/integration/src/ops-status.test.ts. Synthetic people only.
+// workspaces module and tests/integration/src/ops-status.test.ts. While new workspaces need approval (AIV-P2-039), the
+// operator approves it first. Synthetic people only.
 
-const PIA = 'pia.platform@example.com';
 const BANNER = 'This workspace is paused by Aivera. You can read everything; new work is paused.';
 const PREVIEW = 'Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.';
 
 /** A new workspace and its admin, signed in, in a browser context of their own. */
 async function newWorkspace(browser: Browser, theme: (typeof themes)[number], baseURL: string) {
-  const context = await browser.newContext({ baseURL });
-  await context.addCookies([{ name: 'theme', value: theme, url: baseURL }]);
-  const page = await context.newPage();
   const stamp = `${theme}-${Date.now()}`;
   const name = `Harbour Talent ${stamp}`;
-  await signIn(page, { email: `omar.agency+suspend-${stamp}@example.com` });
-  await page.getByLabel('Company').fill(name);
-  await page.getByLabel('What do you hire for most?').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByRole('button', { name: 'Create workspace' }).click();
-  await expect(page).toHaveURL(/\/app$/);
+  const { page, context } = await signUpWorkspace(browser, baseURL, `omar.agency+suspend-${stamp}@example.com`, name);
+  await context.addCookies([{ name: 'theme', value: theme, url: baseURL }]);
+  await approveAsOperator(browser, baseURL, name);
   return { page, name, close: () => context.close() };
 }
 
@@ -40,6 +36,7 @@ async function openInConsole(page: Page, name: string) {
 /** The operator actions history: the list that holds the reasons. */
 const history = (page: Page) =>
   page.getByRole('list').filter({ hasText: 'Pilot ended on 30 Nov 2026' }).getByRole('listitem');
+const suspendedEntry = (page: Page) => history(page).filter({ hasText: 'Pilot ended on 30 Nov 2026' });
 const statusFact = (page: Page) => page.getByRole('term').filter({ hasText: 'Status' }).locator('+ dd');
 
 for (const theme of themes) {
@@ -77,7 +74,7 @@ for (const theme of themes) {
     await expect(page.getByRole('status').filter({ hasText: 'Workspace suspended.' })).toBeVisible();
     await expect(statusFact(page)).toHaveText('Suspended');
     await expect(statusFact(page).locator('svg')).toBeVisible();
-    await expect(history(page)).toHaveText(
+    await expect(suspendedEntry(page)).toHaveText(
       /^Suspended on \d{1,2} [A-Z][a-z]{2} \d{4} at \d{2}:\d{2} \(Asia\/Dubai\): Pilot ended on 30 Nov 2026$/,
     );
     await expectNoAxeViolations(page);
@@ -107,6 +104,7 @@ for (const theme of themes) {
     await expect(again).toBeHidden();
     await expect(statusFact(page)).toHaveText('Active');
     await expect(history(page)).toHaveText([
+      /^Approved on \d{1,2} [A-Z][a-z]{2} \d{4} at \d{2}:\d{2} \(Asia\/Dubai\)$/,
       /^Suspended on .*: Pilot ended on 30 Nov 2026$/,
       /^Reactivated on .*: Pilot extended to 31 Dec 2026$/,
     ]);

@@ -2,11 +2,12 @@ import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
-// AIV-P1-001 J1 step 1: a recruiter signs in with no workspace yet, creates one and lands on My desk in it.
+// AIV-P1-001 J1 step 1: a recruiter signs in with no workspace yet, creates one and lands in it. While new workspaces
+// need approval (AIV-P2-039, on by default) it shows the waiting page; ops-approvals.spec.ts continues the journey.
 // Each run signs in as a new synthetic address (Nadia, the solo recruiter persona), so a reused database works too.
 
 for (const theme of themes) {
-  test(`Scenario: A new workspace is created and I land in it, from the keyboard (${theme})`, async ({
+  test(`Scenario: A new workspace is created and I land in it (waiting for approval), from the keyboard (${theme})`, async ({
     page,
     context,
   }) => {
@@ -30,7 +31,7 @@ for (const theme of themes) {
     await page.keyboard.press('Enter');
 
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Waiting for approval' })).toBeVisible();
     await expectNoAxeViolations(page);
   });
 }

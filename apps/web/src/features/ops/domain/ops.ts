@@ -5,8 +5,9 @@ export const OPS_SECTIONS = ['workspaces', 'approvals', 'catalogue', 'requests',
 type OpsSection = (typeof OPS_SECTIONS)[number];
 
 /** The sections that have a page (a typed route each); the others show as "Coming soon". */
-export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces' | '/ops/catalogue'>> = {
+export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces' | '/ops/catalogue' | '/ops/approvals'>> = {
   workspaces: '/ops/workspaces',
+  approvals: '/ops/approvals',
   catalogue: '/ops/catalogue',
 };
 

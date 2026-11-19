@@ -37,7 +37,8 @@ function Card({
         onOpenChange={setOpen}
         reason={reason}
         onReasonChange={setReason}
-        canConfirm={reasonReady(reason)}
+        needsReason={change !== 'approve'}
+        canConfirm={change === 'approve' || reasonReady(reason)}
         onConfirm={onConfirm}
         done={null}
       />
@@ -49,7 +50,7 @@ describe('Scenario: Suspending needs a reason and a confirmation', () => {
   it('shows the preview, and Confirm stays disabled until the reason has at least 10 characters', async () => {
     const onConfirm = vi.fn(async () => {});
     render(<Card onConfirm={onConfirm} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Suspend workspace' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suspend workspace Gulf Talent Partners' }));
     const dialog = screen.getByRole('dialog', { name: 'Suspend Gulf Talent Partners?' });
     expect(dialog.textContent).toContain(PREVIEW_BODY);
     expect(dialog.textContent).toContain('Nothing changes until you confirm.');
@@ -65,7 +66,7 @@ describe('Scenario: Suspending needs a reason and a confirmation', () => {
 
   it('Reactivate uses the same card with its own words', async () => {
     render(<Card onConfirm={async () => {}} change="reactivate" />);
-    await userEvent.click(screen.getByRole('button', { name: 'Reactivate' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reactivate Gulf Talent Partners' }));
     expect(screen.getByRole('dialog', { name: 'Reactivate Gulf Talent Partners?' })).toBeTruthy();
   });
 });

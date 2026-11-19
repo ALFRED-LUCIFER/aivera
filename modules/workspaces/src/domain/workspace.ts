@@ -12,19 +12,25 @@ export type WorkspaceType = (typeof WORKSPACE_TYPES)[number];
 
 /**
  * Only an active workspace takes new work. An operator suspends one with a reason (AIV-P2-037); its members still read
- * everything, and nothing is deleted, hidden or reordered (AGENTS.md 1.5, 1.8).
+ * everything, and nothing is deleted, hidden or reordered (AGENTS.md 1.5, 1.8). While the pilot needs approval, a
+ * sign-up's workspace starts `pending_approval` until an operator approves (`active`) or rejects it (AIV-P2-039).
  */
-export const WORKSPACE_STATUSES = ['active', 'suspended'] as const;
+export const WORKSPACE_STATUSES = ['active', 'suspended', 'pending_approval', 'rejected'] as const;
 export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
 
 /** An operator's reason for a status change: at least this many characters once trimmed. */
 export const MIN_REASON_LENGTH = 10;
 
-/** What an operator may do to a workspace's status, from which status to which, and the audit action it records. */
+/**
+ * What an operator may do to a workspace's status, from which status to which, the audit action it records, and whether
+ * it needs a reason (approving does not).
+ */
 export const STATUS_CHANGES = {
-  suspend: { from: 'active', to: 'suspended', action: 'workspace.suspended' },
-  reactivate: { from: 'suspended', to: 'active', action: 'workspace.reactivated' },
-} as const satisfies Record<string, { from: WorkspaceStatus; to: WorkspaceStatus; action: string }>;
+  suspend: { from: 'active', to: 'suspended', action: 'workspace.suspended', reason: true },
+  reactivate: { from: 'suspended', to: 'active', action: 'workspace.reactivated', reason: true },
+  approve: { from: 'pending_approval', to: 'active', action: 'workspace.approved', reason: false },
+  reject: { from: 'pending_approval', to: 'rejected', action: 'workspace.rejected', reason: true },
+} as const satisfies Record<string, { from: WorkspaceStatus; to: WorkspaceStatus; action: string; reason: boolean }>;
 export type StatusChange = keyof typeof STATUS_CHANGES;
 
 export type Workspace = {

@@ -23,6 +23,8 @@ export const ACTIONS = [
   'ai_budget.changed',
   'workspace.suspended',
   'workspace.reactivated',
+  'workspace.approved',
+  'workspace.rejected',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -36,6 +38,9 @@ export const PLATFORM_ACTIONS = [
   'ai_budget.changed',
   'workspace.suspended',
   'workspace.reactivated',
+  'workspace.approved',
+  'workspace.rejected',
+  'ops.approval_mode_changed',
 ] as const;
 export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
 

@@ -5,9 +5,10 @@ export type Violation = { rule: string; file: string; detail: string };
 
 /** Pairs a module may never import: paying never changes ranking (AGENTS.md 1.8). */
 export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
-  assessment: ['billing', 'portfolio'],
-  jobs: ['billing', 'portfolio'],
-  intake: ['billing', 'portfolio'],
+  // ops holds platform settings (ADR-012 point 9): nothing that ranks may read them either.
+  assessment: ['billing', 'portfolio', 'ops'],
+  jobs: ['billing', 'portfolio', 'ops'],
+  intake: ['billing', 'portfolio', 'ops'],
 };
 
 /** Recruiter-side modules never import candidate-accounts, so none can tell a recruiter is also a candidate (ADR-009). */
@@ -61,9 +62,10 @@ const RAW_DATABASE = /^(?:@aivera\/db(?:\/.*)?|drizzle-orm(?:\/.*)?|postgres|pg)
 // jobs contracts), console code imports only operator.ts, which holds the policy and the metadata reads.
 const APP_SERVER = /(?:^@|[/\\]src)[/\\]server[/\\]([^/\\]+?)(?:\.tsx?)?$/;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
-// AIV-P2-037 (ADR-012 point 7): the contract methods that change a workspace for an operator take no member context
+// AIV-P2-037, AIV-P2-039 (ADR-012 points 7 and 9): the contract methods that change a workspace or a platform setting for
+// an operator take no member context
 // and check no role, so only server/operator.ts, behind platformOperator(), may call them.
-const OPERATOR_ONLY_CALL = /\.(?:changeStatus|pausePublicListings)\(/;
+const OPERATOR_ONLY_CALL = /\.(?:changeStatus|pausePublicListings|setApprovalRequired)\(/;
 const OPERATOR_SERVER = /[/\\]src[/\\]server[/\\]operator\.ts$/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
@@ -138,7 +140,8 @@ export function findViolations(root: string): Violation[] {
         violations.push({
           rule: 'operator-only-writes',
           file: rel,
-          detail: 'changeStatus and pausePublicListings are called only from server/operator.ts (ADR-012)',
+          detail:
+            'changeStatus, pausePublicListings and setApprovalRequired are called only from server/operator.ts (ADR-012)',
         });
 
       // AIV-P0-010: module code takes the workspace-scoped `tx` from the request context; only composition holds the pool.

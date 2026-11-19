@@ -12,6 +12,8 @@ vi.mock('@/server/auth', () => ({
   }),
 }));
 vi.mock('@/server/workspace', () => ({ getWorkspaces: () => workspaces }));
+const approvalRequired = vi.fn(async () => true);
+vi.mock('@/server/platformSettings', () => ({ getPlatformSettings: () => ({ approvalRequired }) }));
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
@@ -44,7 +46,17 @@ describe('createWorkspace (server action)', () => {
       company: '',
       hiringFocus: 'sales',
       creatorUserId: 'u1',
+      needsApproval: true,
     });
+  });
+
+  // SAFETY: mutation check: passed `needsApproval: false` in createWorkspace -> this test failed
+  it('Scenario: A sign-up waits for approval: the workspace needs approval while the switch is on, not once it is off', async () => {
+    await expect(submit({ hiringFocus: 'sales' })).rejects.toThrow('NEXT_REDIRECT;/app');
+    expect(workspaces.createWorkspace).toHaveBeenLastCalledWith(expect.objectContaining({ needsApproval: true }));
+    approvalRequired.mockResolvedValueOnce(false);
+    await expect(submit({ hiringFocus: 'sales' })).rejects.toThrow('NEXT_REDIRECT;/app');
+    expect(workspaces.createWorkspace).toHaveBeenLastCalledWith(expect.objectContaining({ needsApproval: false }));
   });
 
   it('sends no session to sign-in', async () => {

@@ -1,8 +1,8 @@
 // The operator console's workspaces list and detail (AIV-P2-036, ADR-012). Pure: no React, no I/O (ADR-003).
 import {
   MIN_REASON_LENGTH,
+  STATUS_CHANGES,
   type AiTokenUse,
-  type STATUS_CHANGES,
   type StatusChange,
   type WorkspaceStatus,
   type WorkspaceSummary,
@@ -55,19 +55,54 @@ export const pageCount = (total: number) => Math.max(1, Math.ceil(total / PAGE_S
 export const workspaceHref = (id: string) => `/ops/workspaces/${id}` as const;
 
 /** The status change request (AIV-P2-037), validated again by the server action; the operator comes from the session. */
-export const statusChangeSchema = z.object({
-  workspaceId: z.uuid(),
-  change: z.enum(['suspend', 'reactivate']),
-  reason: z.string().trim().min(MIN_REASON_LENGTH).max(500),
-});
-export type StatusChangeRequest = z.infer<typeof statusChangeSchema>;
+export const statusChangeSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    change: z.enum(['suspend', 'reactivate', 'approve', 'reject']),
+    // Empty only for a change that needs no reason (approve, AIV-P2-039).
+    reason: z.string().trim().max(500),
+  })
+  .refine(({ change, reason }) => !STATUS_CHANGES[change].reason || reason.length >= MIN_REASON_LENGTH, {
+    path: ['reason'],
+  });
+export type StatusChangeRequest = z.input<typeof statusChangeSchema>;
 
-/** What the operator may do next: suspend an active workspace, reactivate a suspended one. */
-export const nextChange = (status: WorkspaceStatus): StatusChange =>
-  status === 'suspended' ? 'reactivate' : 'suspend';
+/**
+ * What the operator may do next on the detail page: suspend an active workspace, reactivate a suspended one. A workspace
+ * waiting for approval is decided on the approvals page (AIV-P2-039); a rejected one has nothing left to change.
+ */
+export const nextChange = (status: WorkspaceStatus): StatusChange | null =>
+  (({ active: 'suspend', suspended: 'reactivate', pending_approval: null, rejected: null }) as const)[status];
 
 /** Confirm opens only once the reason is long enough, as the server requires. */
 export const reasonReady = (reason: string) => reason.trim().length >= MIN_REASON_LENGTH;
+
+/** Whether `change` may be confirmed with `reason`: approving needs none. */
+export const canConfirmChange = (change: StatusChange, reason: string) =>
+  !STATUS_CHANGES[change].reason || reasonReady(reason);
+
+/** A workspace waiting for approval, as the approvals page lists it (AIV-P2-039): the creator's email, never a member. */
+export type PendingRow = Pick<WorkspaceSummary, 'id' | 'name' | 'type' | 'createdAt'> & { creatorEmail: string | null };
+
+/** Turning the approval switch on or off, with the operator's reason (AIV-P2-039). */
+export const approvalModeSchema = z.object({
+  required: z.boolean(),
+  reason: z.string().trim().min(MIN_REASON_LENGTH).max(500),
+});
+export type ApprovalModeRequest = z.input<typeof approvalModeSchema>;
+
+/** The approval switch card's view model. */
+export type ApprovalModeView = {
+  required: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  reason: string;
+  onReasonChange: (reason: string) => void;
+  canConfirm: boolean;
+  onConfirm: () => Promise<void>;
+  /** The value just confirmed, for the success message; null before any change. */
+  done: boolean | null;
+};
 
 /** An operator action on the workspace, from its own audit log: what, when, and the operator's reason. */
 export type OperatorActionRow = {
@@ -84,6 +119,8 @@ export type StatusChangeView = {
   onOpenChange: (open: boolean) => void;
   reason: string;
   onReasonChange: (reason: string) => void;
+  /** Whether the change needs a reason (approving does not). */
+  needsReason: boolean;
   canConfirm: boolean;
   onConfirm: () => Promise<void>;
   /** The change just confirmed, for the success message; null before any. */
