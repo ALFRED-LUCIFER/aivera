@@ -1,0 +1,2 @@
+ALTER TABLE "jobs"."rubric_version" ADD COLUMN "revision" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "rubric_version_one_open_idx" ON "jobs"."rubric_version" USING btree ("workspace_id","job_id") WHERE "jobs"."rubric_version"."status" in ('draft', 'awaiting_approval', 'returned');

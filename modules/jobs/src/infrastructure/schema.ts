@@ -112,6 +112,8 @@ export const rubricVersion = jobs
       createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
       approvedBy: uuid('approved_by'),
       approvedAt: timestamp('approved_at', { withTimezone: true }),
+      // Bumped on every save of a version not yet approved, so a save of an older copy is refused (AIV-P1-013).
+      revision: integer().notNull().default(0),
     },
     (t) => [
       // Includes the workspace, so a version cannot hang off another workspace's job (key checks skip RLS).
@@ -126,6 +128,10 @@ export const rubricVersion = jobs
       uniqueIndex('rubric_version_one_approved_idx')
         .on(t.workspaceId, t.jobId)
         .where(sql`${t.status} = 'approved'`),
+      // At most one open version per job: editing resumes it instead of starting another (AIV-P1-013).
+      uniqueIndex('rubric_version_one_open_idx')
+        .on(t.workspaceId, t.jobId)
+        .where(sql`${t.status} in ('draft', 'awaiting_approval', 'returned')`),
       check('rubric_version_version_check', sql`${t.version} >= 1`),
       check(
         'rubric_version_status_check',

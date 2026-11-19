@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { AuditContract } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
 import { createDb, withWorkspace, type Db } from '@aivera/db';
-import type { Competency, JobsContract } from '@aivera/jobs';
+import { JobError, type Competency, type JobsContract } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
-import type { Role, WorkspaceContext, WorkspacesContract } from '@aivera/workspaces';
+import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -21,11 +22,13 @@ const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1'; // admin of every workspace here
 const HEAD = '0190d4a2-0000-7000-8000-0000000052bb'; // Head of Engineering, hiring owner of Senior AI Engineer
 const LINA = '0190d4a2-0000-7000-8000-0000000052dd'; // interviewer, granted no job
+const RANA = '0190d4a2-0000-7000-8000-0000000052aa'; // recruiter
 const NOW = new Date('2026-11-12T09:00:00.000Z');
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;
 let app: Db;
+let audit: AuditContract;
 let workspaces: WorkspacesContract;
 let jobs: JobsContract;
 let demo: string;
@@ -92,13 +95,14 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 2 });
-  const audit = createAudit(app, () => NOW);
+  audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
 
   demo = await newWorkspace('Demo');
   await addMember(demo, HEAD, 'hiring_owner');
   await addMember(demo, LINA, 'interviewer');
+  await addMember(demo, RANA, 'recruiter');
   sae = (await newJob(demo, 'Senior AI Engineer', HEAD)).id;
   await as(ALEX, demo, (ctx) => workspaces.grantJobAccess(ctx, { userId: HEAD, jobId: sae }));
   await approvedVersion(sae, [60, 40]);
@@ -167,5 +171,89 @@ describe('Feature: Job rubric (AIV-P1-012)', () => {
   it('an interviewer not on this job, and another workspace, read nothing', async () => {
     expect(await as(LINA, demo, (ctx) => jobs.listRubricVersions(ctx, sae))).toBeNull();
     expect(await as(ALEX, demo, (ctx) => jobs.listRubricVersions(ctx, elsewhere))).toBeNull();
+  });
+});
+
+/** Saves Senior AI Engineer's rubric as `userId`, from the copy at `base`. */
+const save = (userId: string, base: { versionId: string; revision: number }, weights: number[]) =>
+  as(userId, demo, (ctx) =>
+    jobs.saveRubric(ctx, sae, { successStatement: 'Ships reliable work.', competencies: competencies(weights), base }),
+  );
+const versions = async () => (await as(ALEX, demo, (ctx) => jobs.listRubricVersions(ctx, sae))) ?? [];
+
+// The scenarios build on each other in file order: version 3 is drafted, edited, sent, then resumed.
+describe('Feature: Edit an approved rubric as a new version (AIV-P1-013)', () => {
+  let v2: { versionId: string; revision: number };
+  let v3: string;
+
+  // SAFETY: mutation check: editsInPlace true for an approved version -> this file failed (version 2 could not be drafted)
+  it('Editing creates a draft version 3 with a change note; version 2 is untouched', async () => {
+    const [approved] = await versions();
+    v2 = { versionId: approved?.id ?? '', revision: approved?.revision ?? -1 };
+    const draft = await save(RANA, v2, [60, 40]);
+    v3 = draft.id;
+    expect(draft).toMatchObject({
+      version: 3,
+      status: 'draft',
+      revision: 0,
+      changeNote: 'Competency 1 raised from 50% to 60%; Competency 2 lowered from 50% to 40%.',
+    });
+    const [three, two] = await versions();
+    expect(three?.competencies.map((c) => c.weightPercent)).toEqual([60, 40]);
+    expect(two).toMatchObject({ version: 2, status: 'approved' });
+    expect(two?.competencies.map((c) => c.weightPercent)).toEqual([50, 50]);
+  });
+
+  // SAFETY: mutation check: removed the base check from saveRubric -> this test failed
+  it('Concurrent edit is detected: a save from an older copy is refused and nothing is overwritten', async () => {
+    // Opened version 2 before version 3 existed.
+    await expect(save(ALEX, v2, [70, 30])).rejects.toMatchObject({ code: 'stale' });
+    await save(ALEX, { versionId: v3, revision: 0 }, [55, 45]);
+    // A second editor still holding revision 0.
+    const stale = save(RANA, { versionId: v3, revision: 0 }, [65, 35]);
+    await expect(stale).rejects.toBeInstanceOf(JobError);
+    await expect(stale).rejects.toThrow('This rubric changed since you opened it. Reload to see the latest.');
+    const [three] = await versions();
+    expect(three).toMatchObject({ id: v3, revision: 1 });
+    expect(three?.competencies.map((c) => c.weightPercent)).toEqual([55, 45]);
+  });
+
+  it('Sending for approval keeps version 2 in force, and the audit log records the submission', async () => {
+    await as(RANA, demo, (ctx) => jobs.submitRubric(ctx, v3));
+    expect((await versions()).map((v) => [v.version, v.status])).toEqual([
+      [3, 'awaiting_approval'],
+      [2, 'approved'],
+      [1, 'superseded'],
+    ]);
+    // What assessment and ranking read.
+    expect(await as(ALEX, demo, (ctx) => jobs.getApprovedRubric(ctx, sae))).toMatchObject({ version: 2 });
+    expect(await audit.listFor(demo, { type: 'rubric_version', id: v3 })).toMatchObject([
+      {
+        action: 'rubric.submitted',
+        actor: { type: 'user', id: RANA },
+        before: { status: 'draft' },
+        after: { status: 'awaiting_approval', jobId: sae, version: 3 },
+      },
+    ]);
+  });
+
+  it('One open draft per job: another recruiter edits version 3, not a new version 4', async () => {
+    const edited = await save(ALEX, { versionId: v3, revision: 1 }, [50, 50]);
+    expect(edited).toMatchObject({ id: v3, version: 3, status: 'draft', revision: 2 });
+    expect(await versions()).toHaveLength(3);
+  });
+
+  it('the database refuses a second open version for the job', async () => {
+    const insert = as(ALEX, demo, (ctx) =>
+      ctx.tx.execute(sql`insert into jobs.rubric_version
+        (id, workspace_id, job_id, version, status, success_statement, created_by, created_at)
+        values (gen_random_uuid(), ${demo}, ${sae}, 4, 'draft', 'x', ${ALEX}, now())`),
+    );
+    await expect(insert).rejects.toMatchObject({ code: '23505', constraint: 'rubric_version_one_open_idx' });
+  });
+
+  it('Only recruiters and admins edit: a hiring owner gets 403', async () => {
+    await expect(save(HEAD, { versionId: v3, revision: 2 }, [60, 40])).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(as(HEAD, demo, (ctx) => jobs.submitRubric(ctx, v3))).rejects.toBeInstanceOf(ForbiddenError);
   });
 });

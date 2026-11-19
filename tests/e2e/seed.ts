@@ -44,7 +44,8 @@ export default async function seed() {
     ).id;
 
   try {
-    const demo = await workspaceOf('Demo Hiring Co', await person('alex@example.com', 'Alex Recruiter'));
+    const alex = await person('alex@example.com', 'Alex Recruiter');
+    const demo = await workspaceOf('Demo Hiring Co', alex);
     // AIV-P1-007: the Senior AI Engineer's hiring owner, and an interviewer, who may not add jobs, in Demo Hiring Co.
     const headOfEngineering = await person('hassan@example.com', 'Head of Engineering');
     const rami = await person('rami@example.com', 'Rami Panel');
@@ -53,6 +54,19 @@ export default async function seed() {
         values (${demo}, ${headOfEngineering}, 'hiring_owner', 'active'), (${demo}, ${rami}, 'interviewer', 'active')`),
     );
     await workspaces.switchWorkspace({ userId: rami }, demo);
+    // AIV-P1-013: "Applied AI Engineer" carries the Rubric artboard's two versions, for the rubric edit spec to revise.
+    const applied = await workspaces.withWorkspace({ userId: alex }, demo, (ctx) =>
+      createJobs(workspaces, createAudit(db)).createJob(ctx, {
+        title: 'Applied AI Engineer',
+        jobType: 'ai_llm_engineering',
+        team: 'Engineering',
+        location: 'DIFC, Dubai',
+        hiringOwnerUserId: headOfEngineering,
+        description: 'Applied AI Engineer, synthetic demo job.',
+        synthetic: true,
+      }),
+    );
+    await artboardRubric(demo, alex, headOfEngineering, applied.id);
     // AIV-P2-038 Background: Demo Hiring Co has used 1,500 AI tokens today (the UTC day).
     await createAiTokenBudget(db).add(demo, new Date().toISOString().slice(0, 10), 1_500);
     // AIV-P1-006: "AP", the talent partner, runs workspace "Demo" with the five demo jobs (personas.md).
@@ -152,8 +166,8 @@ export default async function seed() {
       workspaces.withWorkspace({ userId: recruiter }, workspaceId, fn);
     // AIV-P1-011, AIV-P1-012: the Senior AI Engineer as the Rubric artboard shows it, on a fixed clock: added 3 Nov,
     // version 1 approved by the Head of Engineering, then version 2 approved on 12 Nov.
-    let clock = new Date('2026-11-03T08:00:00.000Z');
-    const clocked = createJobs(workspaces, createAudit(db), () => clock);
+    const added = new Date('2026-11-03T08:00:00.000Z');
+    const clocked = createJobs(workspaces, createAudit(db), () => added);
     let sae = '';
     for (const [title, jobType, team, location, owner, stage] of [
       ['Senior AI Engineer', 'ai_llm_engineering', 'Engineering', 'DIFC, Dubai', 'Head of Engineering', 'round_1'],
@@ -208,9 +222,21 @@ export default async function seed() {
 
     const head = owners.get('Head of Engineering');
     if (!head) throw new Error('The Head of Engineering was not seeded.');
-    await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId: sae }));
     // AIV-P1-012: the hiring owner signs in to this workspace to read the rubric.
     await workspaces.switchWorkspace({ userId: head }, workspaceId);
+    await artboardRubric(workspaceId, recruiter, head, sae);
+  }
+
+  /**
+   * The Rubric artboard's two versions on a job (AIV-P1-012), on a fixed clock: version 1 approved 5 Nov, version 2
+   * approved 12 Nov by `head`, the job's hiring owner, who is granted the job.
+   */
+  async function artboardRubric(workspaceId: string, recruiter: string, head: string, jobId: string) {
+    let clock = new Date();
+    const clocked = createJobs(workspaces, createAudit(db), () => clock);
+    const as = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
+      workspaces.withWorkspace({ userId: recruiter }, workspaceId, fn);
+    await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId }));
     const sixCompetencies: [string, string, number, number][] = [
       ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4],
       ['Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4],
@@ -248,7 +274,7 @@ export default async function seed() {
     for (const [saved, approved, rubric, changeNote] of versions) {
       clock = new Date(saved);
       const version = await as((ctx) =>
-        clocked.saveRubric(ctx, sae, {
+        clocked.saveRubric(ctx, jobId, {
           successStatement:
             'Within six months, a bilingual assistant that answers merchant questions in English and Arabic is live, ' +
             'measured against an evaluation set, and running within an agreed cost per request.',

@@ -72,6 +72,8 @@ export type RubricVersion = {
   createdAt: Date;
   approvedBy: string | null;
   approvedAt: Date | null;
+  /** Bumped on every save of a version not yet approved; a save from an older copy is refused (AIV-P1-013). */
+  revision: number;
 };
 
 /** A version with its competencies in position order. */
@@ -90,6 +92,7 @@ const MESSAGES = {
   regional_desirable: 'Regional knowledge is shown through evidence, so it can only be desirable.',
   not_found: 'That job or rubric version was not found.',
   version_status: 'This rubric version cannot move to that status.',
+  stale: 'This rubric changed since you opened it. Reload to see the latest.',
   rubric_not_approved: 'Publish after the rubric is approved.',
   not_synthetic: 'Only a synthetic workspace holding only synthetic jobs can be purged.',
   public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
@@ -171,6 +174,30 @@ export function assertValidPayBand(band: PayBand | null): void {
 /** A version not yet approved is edited in place; once approved (or with none yet), an edit starts the next version. */
 export const editsInPlace = (latest: Pick<RubricVersion, 'status'> | null) =>
   latest?.status === 'draft' || latest?.status === 'returned' || latest?.status === 'awaiting_approval';
+
+/**
+ * The change note for a new version (AIV-P1-013), from the approved competencies to the edited ones, matched by name:
+ * "Cost and reliability raised from 15% to 20%; Product judgement lowered from 15% to 10%." Null when nothing changed.
+ * shortcut: written in English and stored; store the change list and word it per locale when Arabic ships (AIV-P5-007).
+ */
+export function describeChanges(before: readonly Competency[], after: readonly Competency[]): string | null {
+  const old = new Map(before.map((c) => [nameKey(c.name), c]));
+  const changes = after.flatMap((c) => {
+    const was = old.get(nameKey(c.name));
+    if (!was) return [`${c.name} added`];
+    return [
+      was.weightPercent !== c.weightPercent &&
+        `${c.name} ${c.weightPercent > was.weightPercent ? 'raised' : 'lowered'} from ${was.weightPercent}% to ${c.weightPercent}%`,
+      was.levelNeeded !== c.levelNeeded &&
+        `${c.name} level changed from ${was.levelNeeded} of 5 to ${c.levelNeeded} of 5`,
+      was.type !== c.type && `${c.name} changed to ${c.type}`,
+    ].filter((change) => change !== false);
+  });
+  const kept = new Set(after.map((c) => nameKey(c.name)));
+  const removed = before.filter((c) => !kept.has(nameKey(c.name))).map((c) => `${c.name} removed`);
+  const all = [...changes, ...removed];
+  return all.length > 0 ? `${all.join('; ')}.` : null;
+}
 
 // shortcut: only submit and approve; returning a version and its notifications come with AIV-P1-014.
 const TRANSITIONS: Partial<Record<RubricStatus, RubricStatus[]>> = {

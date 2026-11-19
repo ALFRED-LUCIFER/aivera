@@ -3,6 +3,7 @@ import {
   assertTransition,
   assertValidCompetencies,
   assertValidPayBand,
+  describeChanges,
   editsInPlace,
   newSuggestions,
   rebalanceWeights,
@@ -23,6 +24,34 @@ const rubric = (weights: number[], level = 3): Competency[] =>
     type: 'mandatory',
     origin: 'from_description',
   }));
+
+const named = (weights: number[]) =>
+  rubric(weights).map((c, i) => ({ ...c, name: ['Cost and reliability', 'Product judgement', 'Python'][i] ?? c.name }));
+
+describe('Scenario: Editing creates a draft version 3 (AIV-P1-013): the change note', () => {
+  it('weights raised and lowered, in the edited order', () => {
+    expect(describeChanges(named([15, 15, 70]), named([20, 10, 70]))).toBe(
+      'Cost and reliability raised from 15% to 20%; Product judgement lowered from 15% to 10%.',
+    );
+  });
+
+  it('level, type, added and removed; names match without case or extra spaces', () => {
+    const before = named([50, 30, 20]);
+    const after = [
+      { ...before[0], name: ' cost and  reliability', levelNeeded: 4 },
+      { ...before[1], type: 'desirable' },
+      { ...before[2], name: 'Arabic NLP' },
+    ] as Competency[];
+    expect(describeChanges(before, after)).toBe(
+      ' cost and  reliability level changed from 3 of 5 to 4 of 5; Product judgement changed to desirable; ' +
+        'Arabic NLP added; Python removed.',
+    );
+  });
+
+  it('no change, no note', () => {
+    expect(describeChanges(named([50, 50]), named([50, 50]))).toBeNull();
+  });
+});
 
 describe('Scenario: Weights must total 100', () => {
   it("weights 25, 20, 15, 15, 15 and 10 are valid (the ticket's 25, 20, 15, 15, 10, 10 totals 95)", () => {

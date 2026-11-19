@@ -57,6 +57,13 @@
       "when": 1795078136322,
       "tag": "0007_competency_domain_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795120962371,
+      "tag": "0008_rubric_revision",
+      "breakpoints": true
     }
   ]
 }

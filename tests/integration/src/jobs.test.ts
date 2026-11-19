@@ -324,7 +324,9 @@ describe('Scenario: Approving a version supersedes the previous one', () => {
     const approved = await as(HEAD, demo, (ctx) => jobs.getApprovedRubric(ctx, sae));
     expect(approved).toMatchObject({ version: 2, approvedBy: HEAD, approvedAt: NOW });
     const entries = await audit.listFor(demo, { type: 'rubric_version', id: v2?.id ?? '' });
+    // AIV-P1-013: sending it for approval is audited too.
     expect(entries).toMatchObject([
+      { action: 'rubric.submitted', actor: { type: 'user', id: ALEX }, after: { status: 'awaiting_approval' } },
       {
         action: 'rubric.approved',
         actor: { type: 'user', id: HEAD },

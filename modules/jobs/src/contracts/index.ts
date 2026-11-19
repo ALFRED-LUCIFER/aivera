@@ -140,10 +140,13 @@ export interface JobsContract {
   getApprovedRubric(ctx: WorkspaceContext, jobId: string): Promise<Rubric | null>;
   /**
    * Admins and recruiters. Edits the version not yet approved in place (back to draft) or starts the next version;
-   * the approved version stays in force. Throws `JobError` (`weights_total` "Weights must total 100%.", `level`, …).
+   * the approved version stays in force. One open version per job: editing resumes it. With no change note given, it is
+   * written from the changes to the approved version (AIV-P1-013). `base` is the copy the editor opened; a save from an
+   * older copy throws `JobError('stale')` and changes nothing. Throws `JobError` (`weights_total` "Weights must total
+   * 100%.", `level`, …).
    */
   saveRubric(ctx: WorkspaceContext, jobId: string, input: SaveRubricInput): Promise<RubricVersion>;
-  /** Admins and recruiters: a draft goes to the hiring owner for approval. */
+  /** Admins and recruiters: a draft goes to the hiring owner for approval; the approved version stays in force. Audited. */
   submitRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;
   /** Admins and the job's granted hiring owner. The previous approved version becomes superseded. Audited. */
   approveRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;

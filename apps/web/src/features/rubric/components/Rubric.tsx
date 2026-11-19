@@ -1,53 +1,58 @@
 'use client';
 
-import type { Competency } from '@aivera/jobs';
 import { useTranslations } from '@aivera/i18n/react';
-import { Card, Chip, DataTable, StatusBadge, StrengthMeter, type DataTableColumn } from '@aivera/ui';
-import { STRENGTHS, weightsTotal, type RubricView } from '../domain/rubric.ts';
+import { Button, Card, DataTable, Label, StatusBadge, StrengthMeter, Textarea } from '@aivera/ui';
+import { useId } from 'react';
+import { STRENGTHS, weightsTotal, type RubricEditorView, type RubricView } from '../domain/rubric.ts';
+import { cells, type Row } from './RubricCells.tsx';
 
 export type RubricState =
   { status: 'loading' } | { status: 'error'; onRetry: () => void } | { status: 'ready'; rubric: RubricView };
 
-type Row = Competency & { id: string };
+type Props = {
+  state: RubricState;
+  /** Edit mode, for admins and recruiters only (AIV-P1-013); absent for everyone else. */
+  editor?: RubricEditorView | undefined;
+  /** Who approves the new version, for the "sent" message. */
+  hiringOwner?: string | null;
+};
 
-// Module-level cell renderers (stable across renders); the component adds the translated headers.
-const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: 'competency' | 'weight' | 'level' | 'type' })[] = [
-  { id: 'competency', cell: (c) => <CompetencyCell c={c} /> },
-  { id: 'weight', numeric: true, cell: (c) => <Text id="weight" values={{ weight: c.weightPercent }} /> },
-  { id: 'level', cell: (c) => <Text id="level" values={{ level: c.levelNeeded }} /> },
-  { id: 'type', cell: (c) => <Text id={`type.${c.type}`} /> },
-];
-
-function Text({ id, values }: { id: 'weight' | 'level' | `type.${Row['type']}`; values?: Record<string, number> }) {
+/**
+ * The job's rubric (AIV-P1-012): agreed competencies, what success means, scoring definitions and approval history.
+ * In edit mode (AIV-P1-013) weights, levels and types change locally, and competencies can be added or removed;
+ * nothing changes until the recruiter saves the draft or sends it for approval.
+ */
+export function Rubric({ state, editor, hiringOwner = null }: Props) {
   const t = useTranslations('rubric');
-  return t(id, values);
-}
-
-function CompetencyCell({ c }: { c: Row }) {
-  const t = useTranslations('rubric');
-  return (
-    <div className="min-w-60">
-      <div className="font-semibold">{c.name}</div>
-      <div className="text-meta text-text-2">{c.evidenceExpected}</div>
-      {c.origin === 'suggested_by_aivera' && <Chip className="mt-1.5">{t('suggestedAccepted')}</Chip>}
+  const successId = useId();
+  const rubric = state.status === 'ready' ? state.rubric : null;
+  const editing = editor?.editing ? editor : null;
+  const shown = editing?.competencies ?? rubric?.shown?.competencies ?? [];
+  const rows: Row[] = shown.map((c, index) => ({ ...c, id: String(index), index, editor: editing }));
+  const total = editing?.total ?? weightsTotal(rows);
+  const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
+  const message = editor && editor.status !== 'idle' && (
+    <div
+      role={editor.status === 'stale' || editor.status === 'failed' ? 'alert' : 'status'}
+      className="mx-5 mb-5 rounded-control border border-border bg-surface-subtle px-3 py-2 text-body"
+    >
+      {editor.status === 'sent'
+        ? hiringOwner
+          ? t('edit.sent', { name: hiringOwner })
+          : t('edit.sentNoOwner')
+        : t(`edit.${editor.status}`)}
     </div>
   );
-}
-
-/** The job's rubric, read view (AIV-P1-012): agreed competencies, what success means, scoring and approval history. */
-export function Rubric({ state }: { state: RubricState }) {
-  const t = useTranslations('rubric');
-  const rubric = state.status === 'ready' ? state.rubric : null;
-  const rows: Row[] = rubric?.shown?.competencies.map((c, i) => ({ ...c, id: String(i) })) ?? [];
-  const total = weightsTotal(rows);
-  const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
 
   return (
     <div className="flex flex-wrap items-start gap-6">
       <section className="min-w-0 flex-[8_1_600px] rounded-card border border-border bg-surface shadow-1">
-        <div className="flex flex-col gap-0.5 px-5 pt-5 pb-3.5">
-          <h2 className="text-section">{t('competencies')}</h2>
-          <p className="text-meta text-text-2">{t('intro')}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-3.5">
+          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-0.5">
+            <h2 className="text-section">{t('competencies')}</h2>
+            <p className="text-meta text-text-2">{t('intro')}</p>
+          </div>
+          {editor && !editing && rubric?.edit && <Button onClick={editor.onStart}>{t('edit.start')}</Button>}
         </div>
         <DataTable
           caption={t('competencies')}
@@ -61,19 +66,48 @@ export function Rubric({ state }: { state: RubricState }) {
             error: { message: t('error'), retryLabel: t('retry'), onRetry: state.onRetry },
           })}
         />
-        {rows.length > 0 && (
+        {(rows.length > 0 || editing) && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
             <StatusBadge
               status={total === 100 ? 'supported' : 'needsValidation'}
-              label={t('weightsTotal', { total })}
+              label={total === 100 ? t('weightsTotal', { total }) : t('edit.weightsWrong', { total })}
             />
+            {editing && (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={editing.onAdd}>{t('edit.add')}</Button>
+                <Button variant="ghost" onClick={editing.onCancel}>
+                  {t('edit.cancel')}
+                </Button>
+                <Button disabled={!editing.canSave} onClick={editing.onSave}>
+                  {t('edit.save')}
+                </Button>
+                <Button variant="primary" disabled={!editing.canSave} onClick={editing.onSend}>
+                  {t('edit.send')}
+                </Button>
+              </div>
+            )}
           </div>
         )}
+        {message}
       </section>
       {rubric && (
         <div className="flex min-w-0 flex-[4_1_320px] flex-col gap-6">
-          <Card title={t('success')} level={2}>
-            <p className="text-text-2">{rubric.shown?.successStatement || t('successEmpty')}</p>
+          <Card title={editing ? undefined : t('success')} level={2}>
+            {editing ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={successId} className="text-card">
+                  {t('success')}
+                </Label>
+                <Textarea
+                  id={successId}
+                  value={editing.successStatement}
+                  maxLength={2000}
+                  onChange={(e) => editing.onSuccessStatement(e.target.value)}
+                />
+              </div>
+            ) : (
+              <p className="text-text-2">{rubric.shown?.successStatement || t('successEmpty')}</p>
+            )}
           </Card>
           <Card title={t('scoring')} level={2}>
             <dl className="flex flex-col gap-3">
