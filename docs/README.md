@@ -23,5 +23,6 @@ Rules live in [`../AGENTS.md`](../AGENTS.md); product in [`../PRODUCT.md`](../PR
 | [ADR-007](adr/ADR-007-lint-format-and-hooks.md)             | oxlint, Prettier, lefthook and ticket keys in commits                                                                            |
 | [ADR-008](adr/ADR-008-dev-environment-shares-medvya-dev.md) | Dev environment shares Medvya dev in Central India, synthetic data only                                                          |
 | [ADR-009](adr/ADR-009-identity-and-account-model.md)        | One External ID tenant for everyone, solo recruiters, agency clients with job-scoped access, one login kept apart, pricing later |
+| [ADR-011](adr/ADR-011-dev-ai-in-uae-north-global.md)        | Dev AI in UAE North; `gpt-main` on Global Standard as a dev-only exception to in-region inference                                |
 
 A new decision gets the next number, `Status: Proposed`, and is accepted in the PR that implements it.

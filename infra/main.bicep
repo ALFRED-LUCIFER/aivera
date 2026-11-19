@@ -63,6 +63,14 @@ module database 'modules/database.bicep' = {
   }
 }
 
+module ai 'modules/ai.bicep' = {
+  name: 'aivera-ai'
+  params: {
+    tags: tags
+    appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+  }
+}
+
 module web 'modules/web.bicep' = {
   name: 'aivera-web'
   params: {
@@ -76,6 +84,7 @@ module web 'modules/web.bicep' = {
     databaseHost: database.outputs.databaseHost
     databaseName: database.outputs.databaseName
     webImage: '${images}/web:${imageTag}'
+    aiResourceName: ai.outputs.resourceName
     commitSha: imageTag
   }
 }
@@ -102,3 +111,4 @@ output webFqdn string = web.outputs.webFqdn
 output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId
 output keyVaultName string = foundation.outputs.keyVaultName
+output aiResourceName string = ai.outputs.resourceName
