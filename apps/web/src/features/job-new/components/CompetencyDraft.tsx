@@ -14,6 +14,8 @@ type CompetencyDraftProps = RowHandlers & {
   result: DraftResult;
   rows: readonly DraftRow[];
   editingId: string | null;
+  /** The row the recruiter last removed, announced until it is restored. */
+  removedId: string | null;
   drafting: boolean;
   /** The title as typed, for "Aivera reads the description for a Senior AI Engineer". */
   title: string;
@@ -58,6 +60,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
   const kept = (origin: DraftRow['origin']) => rows.filter((row) => row.origin === origin && !row.removed).length;
   const drafted = result.status === 'drafted';
   const total = weightsTotal(rows);
+  const removed = rows.find((row) => row.id === props.removedId && row.removed);
   const notice = {
     idle: props.title.trim() ? t('before', { title: props.title.trim() }) : t('beforeUntitled'),
     invalid: null,
@@ -73,8 +76,10 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       <h2 id="job-draft-heading" className="font-display text-section text-text">
         {t('heading')}
       </h2>
-      {/* Announces the wait: the Draft button's label changes too, but a label change is not read out. */}
-      <output className="sr-only">{props.drafting ? tJob('drafting') : ''}</output>
+      {/* Announces the wait and a removal: label changes and new rows are not read out, a polite region's text is. */}
+      <output className="sr-only">
+        {props.drafting ? tJob('drafting') : removed ? t('removed', { name: removed.name || t('newCompetency') }) : ''}
+      </output>
       {notice && (
         <p
           role={alert ? 'alert' : undefined}
@@ -162,8 +167,7 @@ function CompetencyCell({ row }: { row: Row }) {
         />
       </div>
     );
-  if (row.removed)
-    return <output className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</output>;
+  if (row.removed) return <span className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</span>;
   return (
     <div className="flex max-w-xl flex-col items-start gap-1">
       {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}

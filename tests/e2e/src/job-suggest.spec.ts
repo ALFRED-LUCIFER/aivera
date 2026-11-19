@@ -57,6 +57,8 @@ for (const theme of themes) {
     await page.getByRole('button', { name: 'Remove Product judgement' }).focus();
     await page.keyboard.press('Enter');
     await expect(rowOf(page, 'Product judgement')).toContainText('Product judgement removed from this rubric.');
+    // Read out by the step's polite region, which is on the page before the removal.
+    await expect(page.locator('output.sr-only')).toHaveText('Product judgement removed from this rubric.');
     const restore = page.getByRole('button', { name: 'Restore Product judgement' });
     await expect(restore).toBeFocused();
     await expect(page.getByText('Weights rebalance when you save')).toBeVisible();

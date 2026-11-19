@@ -20,10 +20,12 @@ export function useCompetencyDraftController() {
   const [rows, setRows] = useState<DraftRow[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafting, startDrafting] = useTransition();
+  const [removedId, setRemovedId] = useState<string | null>(null);
   return {
     result,
     rows,
     editingId,
+    removedId,
     drafting,
     /** A new draft replaces the rows; a failed one keeps what the recruiter already has. */
     onDraft: (form: HTMLFormElement) => {
@@ -46,6 +48,7 @@ export function useCompetencyDraftController() {
     /** Takes the competency out of the rubric; it stays on the page with Restore (AIV-P1-009). */
     onRemove: (id: string) => {
       setRows((current) => current.map((row) => (row.id === id ? { ...row, removed: true } : row)));
+      setRemovedId(id);
       if (editingId === id) setEditingId(null);
     },
     onRestore: (id: string) =>
