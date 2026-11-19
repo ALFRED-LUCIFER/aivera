@@ -39,6 +39,7 @@ const signInPage = (query: URLSearchParams) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Mock tenant sign-in</title></head><body>
 <h1>Mock tenant sign-in</h1>
 <p>Hint: ${escape(query.get('domain_hint') ?? 'none')}</p>
+<p>Prompt: ${escape(query.get('prompt') ?? 'none')}</p>
 <form method="post" action="/authorize">
   ${['client_id', 'redirect_uri', 'state', 'nonce', 'code_challenge']
     .map((name) => `<input type="hidden" name="${name}" value="${escape(query.get(name) ?? '')}">`)

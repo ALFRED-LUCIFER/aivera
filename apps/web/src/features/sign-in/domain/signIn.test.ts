@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { authorizationParams, DESK, parseSignInForm, safeNext, signInError, signInPath } from './signIn';
+import {
+  authorizationParams,
+  DESK,
+  parseSignInForm,
+  safeNext,
+  signInError,
+  signInPath,
+  signUpRedirect,
+} from './signIn';
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -70,5 +78,17 @@ describe('sign-in form and request', () => {
     expect(signInError('unverified_email')).toBe('unverifiedEmail');
     expect(signInError('unavailable')).toBe('unavailable');
     expect(signInError('AccessDenied')).toBe('failed');
+  });
+});
+
+describe('signUpRedirect (AIV-P1-059)', () => {
+  // SAFETY: mutation check: checked signedIn before configured -> the not-configured signed-in case failed
+  it.each([
+    [false, false, '/sign-in?error=unavailable'],
+    [false, true, '/sign-in?error=unavailable'],
+    [true, true, DESK],
+    [true, false, null],
+  ] as const)('configured %s, signed in %s: %s', (configured, signedIn, target) => {
+    expect(signUpRedirect(configured, signedIn)).toBe(target);
   });
 });
