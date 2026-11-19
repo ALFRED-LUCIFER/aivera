@@ -10,7 +10,7 @@ import {
   type AiTokenUse,
   type WorkspaceSummary,
 } from '../domain/workspace.ts';
-import { activeWorkspace, aiTokenUsage, client, directory, jobGrant, member, workspace } from './schema.ts';
+import { activeWorkspace, aiTokenUsage, client, directory, jobGrant, member, settings, workspace } from './schema.ts';
 
 const memberColumns = {
   userId: member.userId,
@@ -112,6 +112,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     async deleteWorkspace(workspaceId) {
       // Children first: grants reference members and clients, and every table references the workspace.
       await tx.delete(aiTokenUsage).where(eq(aiTokenUsage.workspaceId, workspaceId));
+      await tx.delete(settings).where(eq(settings.workspaceId, workspaceId));
       await tx.delete(jobGrant).where(eq(jobGrant.workspaceId, workspaceId));
       await tx.delete(client).where(eq(client.workspaceId, workspaceId));
       await tx.delete(member).where(inWorkspace(workspaceId));
@@ -161,6 +162,20 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .where(and(eq(client.workspaceId, workspaceId), eq(client.id, clientId)))
         .returning({ id: client.id });
       return rows.length > 0;
+    },
+    async readSettings(workspaceId) {
+      const [row] = await tx
+        .select({ value: settings.value })
+        .from(settings)
+        .where(eq(settings.workspaceId, workspaceId));
+      return row?.value ?? null;
+    },
+    async writeSettings(workspaceId, value, updatedBy) {
+      await tx
+        .insert(settings)
+        .values({ workspaceId, value, updatedBy })
+        // shortcut: the database clock, like every timestamp in this module; move to the Clock port when it has one.
+        .onConflictDoUpdate({ target: settings.workspaceId, set: { value, updatedBy, updatedAt: sql`now()` } });
     },
     listGrants: (workspaceId, userId) =>
       tx

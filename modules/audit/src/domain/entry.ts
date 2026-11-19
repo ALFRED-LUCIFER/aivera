@@ -25,6 +25,7 @@ export const ACTIONS = [
   'workspace.reactivated',
   'workspace.approved',
   'workspace.rejected',
+  'workspace.settings_changed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
