@@ -959,5 +959,36 @@
       "failed": "That did not work. Try again."
     },
     "breadcrumb": "Breadcrumb"
+  },
+  "jobHeader": {
+    "breadcrumb": "Breadcrumb",
+    "stagesLabel": "Stages of this job",
+    "hiringOwner": "Hiring owner: {name}",
+    "noHiringOwner": "Hiring owner: not assigned",
+    "assessed": "{count, plural, one {# candidate assessed} other {# candidates assessed}}",
+    "stages": {
+      "description": "Job description",
+      "rubric": "Competencies and rubric",
+      "candidates": "Evidence and ranking",
+      "interviews": "Interviews",
+      "pack": "Decision"
+    },
+    "status": {
+      "saved": "Saved {date, date, ::d MMM}",
+      "approved": "Approved, version {version}",
+      "draft": "Draft, version {version}",
+      "awaiting_approval": "Awaiting approval, version {version}",
+      "returned": "Returned, version {version}",
+      "assessed": "{count, number} assessed",
+      "afterApproval": "Starts after rubric approval",
+      "notStarted": "Not started"
+    },
+    "empty": {
+      "candidates": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
+      "interviews": "No interviews yet. Round 1 is planned from the ranking.",
+      "pack": "No decision pack yet. It is built from the ranking and the Round 1 scorecards."
+    },
+    "notFoundTitle": "Job not found",
+    "notFound": "This job does not exist or you do not have access."
   }
 }

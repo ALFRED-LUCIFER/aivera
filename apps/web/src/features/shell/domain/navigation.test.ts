@@ -33,11 +33,21 @@ describe('navigation map (ADR-002 item 4)', () => {
   // SAFETY: mutation check: inbox page passed screen="jobs" -> this test failed
   // A page inside a section (/app/jobs/new) guards itself with its section's entry.
   it('every page under /app guards itself with its own map entry', () => {
-    for (const { file, path } of appPages) {
+    for (const { file, path } of appPages.filter((page) => !page.file.includes('/(job)/[jobId]/'))) {
       const id = activeScreen(path) ?? '?';
       const source = readFileSync(join(appDir, file), 'utf8');
       expect(source, file).toMatch(new RegExp(`(screen=|requireScreen\\()["']${id}["']`));
     }
+  });
+
+  // SAFETY: mutation check: removed loadJob from the job layout -> this test failed
+  // A job's pages are open to its granted hiring owners and interviewers too (AIV-P1-012), so they have no screen entry:
+  // the job layout refuses a job the member cannot view (job.view), before any of them renders.
+  it("every job page sits under the job layout, which loads the job through the member's job scope", () => {
+    const jobPages = appPages.filter(({ file }) => file.includes('/(job)/[jobId]/'));
+    expect(jobPages.length).toBeGreaterThan(0);
+    const layout = jobPages[0]?.file.replace(/\[jobId\]\/.*$/, '[jobId]/layout.tsx') ?? '';
+    expect(readFileSync(join(appDir, layout), 'utf8')).toMatch(/await loadJob\(/);
   });
 
   it('marks the section a path belongs to, the longest match winning', () => {

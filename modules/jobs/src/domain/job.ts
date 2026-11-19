@@ -255,3 +255,14 @@ export type DeskJob = Job & {
   coveragePercent: number | null;
   nextAction: NextAction | null;
 };
+
+/**
+ * What every job page's header shows (AIV-P1-011): the job, its approved version and its latest version (the same one
+ * when nothing newer is open), and how many candidates are assessed. `assessed` follows `DeskJob.assessed`.
+ */
+export type JobHeader = {
+  job: Job;
+  approved: RubricVersion | null;
+  latest: RubricVersion | null;
+  assessed: number | null;
+};
