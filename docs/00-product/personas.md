@@ -35,6 +35,18 @@
 | Staff Backend Engineer           | Engineering · Riyadh, hybrid  | VP Engineering      | Collecting evidence, 31 assessed |
 | Senior Product Designer          | Design · Abu Dhabi            | Design Director     | Defining rubric                  |
 
+The five jobs above live in the seed cast (`tools/seed/src/cast.ts`) and the e2e seed; `pnpm db:seed` does not write them yet. It writes five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
+
+| Job                                  | Job type × domain pack                        | Team · location             | Hiring owner        | Regional hints |
+| ------------------------------------ | --------------------------------------------- | --------------------------- | ------------------- | -------------- |
+| Senior Backend Engineer, Payments    | Software engineering × Payments and fintech   | Engineering · DIFC, Dubai   | VP Engineering      | UAE            |
+| Integration Engineer, Health Records | Forward deployed engineering × Healthcare     | Engineering · Abu Dhabi     | Head of Engineering | UAE            |
+| Data Engineer, Marketplace           | Data and ML × E-commerce and marketplaces     | Data · Riyadh               | VP Engineering      | KSA            |
+| SRE, Core Banking                    | DevOps and SRE × Banking and Islamic finance  | Platform · Riyadh, hybrid   | VP Engineering      | KSA            |
+| QA Engineer, Payments                | QA and test automation × Payments and fintech | Quality · Bengaluru, hybrid | Head of Quality     | India          |
+
+Their employers are a card and wallet payments company, a digital health company, an online marketplace, a retail bank and a payments gateway.
+
 AP signs in as `ap@example.com` in the e2e seed. Each demo hiring owner is a user named by their title, at `head.engineering@example.com`, `cpo.payments@example.com`, `head.quality@example.com`, `vp.engineering@example.com` and `design.director@example.com`.
 
 Candidate-site listings also include Real Estate Sales Consultant (a property brokerage, Dubai) and Senior Software Engineer, Banking (a retail bank, Dubai). Employers are described generically ("A BNPL fintech"), never named.

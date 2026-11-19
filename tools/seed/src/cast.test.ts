@@ -1,6 +1,6 @@
-import { JOB_TYPES } from '@aivera/jobs';
+import { DOMAIN_KEYS, DOMAIN_PACK_CATALOGUE_VERSION, getDomainPack, JOB_TYPES } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
-import { CANDIDATES, HIRING_OWNERS, JOBS, RECRUITER, WORKSPACE } from './cast.ts';
+import { CANDIDATES, HIRING_OWNERS, INDUSTRY_JOBS, industryRubric, JOBS, RECRUITER, WORKSPACE } from './cast.ts';
 
 const people = [RECRUITER, ...HIRING_OWNERS, ...CANDIDATES];
 
@@ -49,5 +49,58 @@ describe('the demo cast (AIV-P0-031)', () => {
       stage: 'defining_rubric',
       rubric: { approvedOn: null },
     });
+  });
+});
+
+describe('the industry demo jobs (AIV-P1-065)', () => {
+  it('leaves the five design jobs exactly as they are', () => {
+    expect(JOBS).toMatchSnapshot();
+  });
+
+  it.each([
+    ['Senior Backend Engineer, Payments', 'payments_fintech', 'uae'],
+    ['Integration Engineer, Health Records', 'healthcare', 'uae'],
+    ['Data Engineer, Marketplace', 'ecommerce_marketplaces', 'ksa'],
+    ['SRE, Core Banking', 'banking_islamic_finance', 'ksa'],
+    ['QA Engineer, Payments', 'payments_fintech', 'india'],
+  ])('%s holds every core competency of %s and its %s hints, recording the pack', (title, key, region) => {
+    const job = INDUSTRY_JOBS.find((j) => j.title === title);
+    if (!job) throw new Error(`no cast job ${title}`);
+    expect([job.pack, job.region]).toEqual([key, region]);
+    const pack = getDomainPack(job.pack, job.jobType);
+    const rubric = industryRubric(job);
+    const packed = rubric.filter((c) => c.origin === 'domain_pack');
+    expect(pack?.core.length).toBeGreaterThan(0);
+    expect(pack?.hints[job.region].length).toBeGreaterThan(0);
+    expect(packed.map((c) => c.name)).toEqual(
+      [...(pack?.core ?? []), ...(pack?.hints[job.region] ?? [])].map((c) => c.name),
+    );
+    for (const c of packed) expect(c).toMatchObject({ packKey: key, packVersion: DOMAIN_PACK_CATALOGUE_VERSION });
+    expect(rubric.filter((c) => c.origin === 'added_by_recruiter')).toHaveLength(4);
+  });
+
+  it('has valid job types, packs and hiring owners, and keeps every pack competency desirable', () => {
+    expect(INDUSTRY_JOBS).toHaveLength(5);
+    expect(new Set([...JOBS, ...INDUSTRY_JOBS].map((j) => j.title)).size).toBe(10);
+    for (const job of INDUSTRY_JOBS) {
+      expect(JOB_TYPES).toContain(job.jobType);
+      expect(DOMAIN_KEYS).toContain(job.pack);
+      expect(HIRING_OWNERS.map((o) => o.key)).toContain(job.hiringOwner);
+      for (const c of industryRubric(job)) {
+        expect(c.levelNeeded).toBeGreaterThanOrEqual(1);
+        expect(c.levelNeeded).toBeLessThanOrEqual(5);
+        if (c.origin === 'domain_pack') expect(c.type).toBe('desirable');
+      }
+    }
+  });
+
+  // Every capitalised word is a known place, acronym or the title's own words, so a named employer fails here.
+  it('describes each employer generically, never by name', () => {
+    const known = new Set('A An Abu Dhabi Dubai DIFC Riyadh Bengaluru QA SRE'.split(' '));
+    for (const job of INDUSTRY_JOBS) {
+      const words = new Set([...known, ...`${job.title} ${job.location}`.split(/[\s,]+/)]);
+      expect([...job.description.matchAll(/\b[A-Z][\w-]*/g)].map(([w]) => w).filter((w) => !words.has(w))).toEqual([]);
+      expect(job.description).toMatch(/^An? [a-z]/);
+    }
   });
 });

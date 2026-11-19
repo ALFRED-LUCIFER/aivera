@@ -59,6 +59,8 @@ export type JobStore = {
     status: RubricVersion['status'],
     approval?: { by: string; at: Date },
   ): Promise<void>;
+  /** Deletes every job of the workspace and its rubrics and listings; false, deleting nothing, if any is not synthetic. */
+  deleteSyntheticJobs(workspaceId: string): Promise<boolean>;
 };
 
 export type Ports = {
@@ -67,6 +69,8 @@ export type Ports = {
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** The workspaces contract's `listClients`, to check a job's client belongs to the workspace. */
   listClients(ctx: WorkspaceContext): Promise<Client[]>;
+  /** Whether the context's workspace is flagged synthetic (AGENTS.md 1.1). */
+  isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   /** The audit contract's `record` in `ctx.tx`; always the last write before commit (AGENTS.md 3.6). */
   audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
   newId(): string;
@@ -97,7 +101,7 @@ export type PublishJobInput = { publicDescriptor: string };
 
 const resourceOf = (job: Job): JobResource => ({ jobId: job.id, clientId: job.clientId });
 
-export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, now }: Ports) {
+export function jobsUseCases({ storeFor, authorize, listClients, isSyntheticWorkspace, audit, newId, now }: Ports) {
   /** The job if the context may see it (row-level security and the repository hide the rest), else `not_found`. */
   async function visibleJob(ctx: WorkspaceContext, jobId: string, action: Action, lock = false): Promise<Job> {
     const job = await storeFor(ctx.tx).getJob(ctx.workspaceId, jobId, { lock });
@@ -388,6 +392,13 @@ export function jobsUseCases({ storeFor, authorize, listClients, audit, newId, n
         before: { published: true },
         after: { published: false },
       });
+    },
+
+    /** The demo seed's reset (AIV-P1-065): admins; refuses unless the workspace and every job in it is synthetic. */
+    async purgeSyntheticJobs(ctx: WorkspaceContext): Promise<void> {
+      await authorize(ctx, 'workspace.settings');
+      if (!(await isSyntheticWorkspace(ctx))) throw new JobError('not_synthetic');
+      if (!(await storeFor(ctx.tx).deleteSyntheticJobs(ctx.workspaceId))) throw new JobError('not_synthetic');
     },
 
     /** The workspace's public listings leave (or return to) the candidate site; `tx` is withWorkspace(<it>)'s. */

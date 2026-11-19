@@ -3,8 +3,17 @@ import { createAudit } from '@aivera/audit/composition';
 import { createCandidates } from '@aivera/candidates/composition';
 import type { Db } from '@aivera/db/client';
 import { createIdentity } from '@aivera/identity/composition';
+import { createJobs } from '@aivera/jobs/composition';
 import { createWorkspaces } from '@aivera/workspaces/composition';
-import { CANDIDATES, HIRING_OWNERS, RECRUITER, WORKSPACE, type CastUser } from './cast.ts';
+import {
+  CANDIDATES,
+  HIRING_OWNERS,
+  INDUSTRY_JOBS,
+  industryRubric,
+  RECRUITER,
+  WORKSPACE,
+  type CastUser,
+} from './cast.ts';
 
 /** The cast's sign-in method: no real issuer, so no one can sign in as a seeded user. */
 export const SEED_ISSUER = 'https://seed.aivera.example';
@@ -29,8 +38,10 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   // synthetic workspace there. Check the server's environment marker once databases carry one.
   if (!SYNTHETIC_ENVS.includes(appEnv ?? '')) throw new SeedRefused();
   const identity = createIdentity(db, { trustedIssuer: SEED_ISSUER });
-  const workspaces = createWorkspaces(db, createAudit(db));
+  const audit = createAudit(db);
+  const workspaces = createWorkspaces(db, audit);
   const candidates = createCandidates(workspaces);
+  const jobs = createJobs(workspaces, audit);
   const userId = async (u: CastUser) =>
     (
       await identity.upsertUserFromIdToken({
@@ -50,6 +61,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
       await candidates.purgeSyntheticPeople(ctx);
+      await jobs.purgeSyntheticJobs(ctx);
       await workspaces.purgeSyntheticWorkspace(ctx);
     });
     workspaceId = null;
@@ -57,6 +69,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   workspaceId ??= (await workspaces.createWorkspace({ ...WORKSPACE, creatorUserId: recruiter })).id;
 
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
+  const ownerOf = (key: string) => owners[HIRING_OWNERS.findIndex((o) => o.key === key)] ?? null;
   await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
     for (const c of CANDIDATES)
       await candidates.findOrCreatePerson(ctx, {
@@ -68,8 +81,31 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         location: c.location,
         synthetic: c.synthetic,
       });
-    // Last, so the audit entries of added members are the last writes before commit (AGENTS.md 3.6).
+    // AIV-P1-065: a job is found again by its title; each new one gets its draft rubric v1, audited as `job.created`.
+    // shortcut: a demo job renamed in the app is seeded again on the next run; match on a seed key if that matters.
+    const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
+    for (const job of INDUSTRY_JOBS)
+      if (!jobIds.has(job.title)) {
+        const created = await jobs.createJobWithDraftRubric(ctx, {
+          title: job.title,
+          jobType: job.jobType,
+          team: job.team,
+          location: job.location,
+          description: job.description,
+          hiringOwnerUserId: ownerOf(job.hiringOwner),
+          synthetic: true,
+          competencies: industryRubric(job),
+        });
+        jobIds.set(job.title, created.job.id);
+      }
+    // Last, so the audit entries of added members and their grants are the last writes before commit (AGENTS.md 3.6).
     for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
+    // Hiring owners are job-scoped (ADR-005 point 6): each needs a grant to see and approve their job's draft rubric.
+    for (const job of INDUSTRY_JOBS) {
+      const owner = ownerOf(job.hiringOwner);
+      const jobId = jobIds.get(job.title);
+      if (owner && jobId) await workspaces.grantJobAccess(ctx, { userId: owner, jobId });
+    }
   });
   return workspaceId;
 }

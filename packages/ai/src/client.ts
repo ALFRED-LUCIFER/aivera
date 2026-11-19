@@ -1,7 +1,7 @@
 import { annotateSpan, withSpan } from '@aivera/observability';
 import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
 import type { z } from 'zod';
-import { checkOutput, formatSources, type Checked, type Source } from './citations';
+import { checkOutput, formatSources, type Checked, type Source } from './citations.ts';
 import {
   circuitBreaker,
   deployments,
@@ -11,8 +11,8 @@ import {
   type Deployment,
   type EmbedTask,
   type GenerateTask,
-} from './config';
-import type { AiProvider } from './providers';
+} from './config.ts';
+import type { AiProvider } from './providers.ts';
 
 // Every error carries the task and a safe reason only: never the prompt, the completion or the provider's error,
 // whose request body repeats the prompt (AGENTS.md 1.2).

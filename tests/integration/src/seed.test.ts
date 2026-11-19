@@ -7,6 +7,8 @@ import { createAudit } from '@aivera/audit/composition';
 import { CandidateError } from '@aivera/candidates';
 import { createCandidates } from '@aivera/candidates/composition';
 import { createDb, type Db } from '@aivera/db';
+import { JobError } from '@aivera/jobs';
+import { createJobs } from '@aivera/jobs/composition';
 import { seedDemo, SEED_ISSUER } from '@aivera/seed';
 import { WorkspaceError } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
@@ -35,8 +37,13 @@ const snapshot = async () => {
     'workspaces.workspace',
     'workspaces.member',
     'workspaces.active_workspace',
+    'workspaces.job_grant',
     'candidates.person',
     'candidates.person_identifier',
+    'jobs.job',
+    'jobs.rubric_version',
+    'jobs.competency',
+    'jobs.public_job',
     'audit.entry',
   ];
   const rows: Record<string, unknown[]> = {};
@@ -132,9 +139,93 @@ describe('Scenario: Seeding a fresh database', () => {
     const actions = await admin.execute<{ action: string; n: string }>(sql`
       select action, count(*) as n from audit.entry where workspace_id = ${workspaceId} group by action order by action`);
     expect([...actions]).toEqual([
+      { action: 'job_access.granted', n: '5' },
+      { action: 'job.created', n: '5' },
       { action: 'member.added', n: '5' },
       { action: 'workspace.created', n: '1' },
     ]);
+  });
+
+  // AIV-P1-065. The design jobs stay in the cast as they are (cast.test.ts snapshot); the seed writes the industry jobs.
+  type Row = { title: string; synthetic: boolean; stage: string; version: number; status: string };
+  const jobsOf = () =>
+    admin.execute<Row>(sql`select j.title, j.synthetic, j.stage, v.version, v.status from jobs.job j
+      join jobs.rubric_version v on v.job_id = j.id where j.workspace_id = ${workspaceId} order by j.title collate "C"`);
+  const competenciesOf = (title: string) =>
+    admin.execute<{
+      name: string;
+      origin: string;
+      pack_key: string | null;
+      pack_version: number | null;
+      type: string;
+      weight_percent: number;
+      level_needed: number;
+    }>(sql`select c.name, c.origin, c.pack_key, c.pack_version, c.type, c.weight_percent, c.level_needed
+      from jobs.competency c join jobs.rubric_version v on v.id = c.rubric_version_id
+      join jobs.job j on j.id = v.job_id where j.workspace_id = ${workspaceId} and j.title = ${title}
+      order by c.position`);
+
+  describe('Scenario: Five industry jobs are seeded', () => {
+    it('adds the five industry jobs, each synthetic with a draft rubric v1 at "Defining rubric"', async () => {
+      expect([...(await jobsOf())]).toEqual(
+        [
+          'Data Engineer, Marketplace',
+          'Integration Engineer, Health Records',
+          'QA Engineer, Payments',
+          'SRE, Core Banking',
+          'Senior Backend Engineer, Payments',
+        ].map((title) => ({ title, synthetic: true, stage: 'defining_rubric', version: 1, status: 'draft' })),
+      );
+      expect(await competenciesOf('Senior Backend Engineer, Payments')).toContainEqual(
+        expect.objectContaining({
+          name: 'Idempotent payment APIs and retries',
+          origin: 'domain_pack',
+          pack_key: 'payments_fintech',
+          pack_version: 1,
+        }),
+      );
+    });
+
+    it("grants each job's hiring owner, who is job-scoped, the job whose draft they approve", async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const jobs = createJobs(workspaces, createAudit(app));
+      const [vp] = await admin.execute<{ id: string }>(
+        sql`select id from identity.user where email = 'vp.engineering@example.com'`,
+      );
+      if (!vp) throw new Error('the seed created VP Engineering');
+      const seen = await workspaces.withWorkspace({ userId: vp.id }, workspaceId, (ctx) => jobs.listJobs(ctx));
+      expect(seen.map((j) => j.title).toSorted()).toEqual([
+        'Data Engineer, Marketplace',
+        'SRE, Core Banking',
+        'Senior Backend Engineer, Payments',
+      ]);
+    });
+
+    // Scenario Outline: Each industry job uses its pack and region.
+    it.each([
+      ['Integration Engineer, Health Records', 'healthcare', 'DHA NABIDH health information exchange'],
+      ['Data Engineer, Marketplace', 'ecommerce_marketplaces', 'ZATCA e-invoicing (Fatoora)'],
+      ['SRE, Core Banking', 'banking_islamic_finance', 'SAMA cyber security framework'],
+      ['QA Engineer, Payments', 'payments_fintech', 'UPI and NPCI rules'],
+    ])('%s has competencies from pack %s and the regional hint "%s"', async (title, pack, hint) => {
+      const rows = await competenciesOf(title);
+      const packed = rows.filter((c) => c.origin === 'domain_pack');
+      expect(packed.length).toBeGreaterThan(1);
+      expect(packed.every((c) => c.pack_key === pack && c.pack_version === 1)).toBe(true);
+      expect(packed.map((c) => c.name)).toContain(hint);
+    });
+
+    it('Scenario: Rubrics are valid drafts: weights total 100, levels 1 to 5, every regional hint desirable', async () => {
+      for (const { title } of await jobsOf()) {
+        const rows = await competenciesOf(title);
+        expect(
+          rows.reduce((sum, c) => sum + c.weight_percent, 0),
+          title,
+        ).toBe(100);
+        for (const c of rows) expect(c.level_needed >= 1 && c.level_needed <= 5, c.name).toBe(true);
+        for (const c of rows.filter((r) => r.origin === 'domain_pack')) expect(c.type, c.name).toBe('desirable');
+      }
+    });
   });
 
   describe('Scenario: The seed is idempotent', () => {
@@ -164,9 +255,18 @@ describe('Scenario: Seeding a fresh database', () => {
       const left = (table: string) =>
         count(sql`select count(*) as n from ${sql.raw(table)} where workspace_id = ${workspaceId}`);
       expect(await count(sql`select count(*) as n from workspaces.workspace where id = ${workspaceId}`)).toBe(0);
-      for (const t of ['workspaces.member', 'candidates.person', 'candidates.person_identifier'])
+      for (const t of [
+        'workspaces.member',
+        'workspaces.job_grant',
+        'candidates.person',
+        'candidates.person_identifier',
+        'jobs.job',
+        'jobs.rubric_version',
+        'jobs.competency',
+      ])
         expect(await left(t)).toBe(0);
       expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${reseeded}`)).toBe(23);
+      expect(await count(sql`select count(*) as n from jobs.job where workspace_id = ${reseeded}`)).toBe(5);
       // The append-only log keeps the old workspace's entries and records the purge last.
       const [last] = await admin.execute<{ action: string }>(
         sql`select action from audit.entry where workspace_id = ${workspaceId} order by seq desc limit 1`,
@@ -216,7 +316,49 @@ describe('Scenario: Seeding a fresh database', () => {
       expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${real.id}`)).toBe(1);
     });
 
-    // Last: it leaves a person who is not synthetic in the demo workspace.
+    // SAFETY: mutation check: removed the isSyntheticWorkspace check in purgeSyntheticJobs -> this test failed (resolved)
+    it('the jobs purge refuses a workspace not flagged synthetic, even when every job in it is', async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const jobs = createJobs(workspaces, createAudit(app));
+      const real = await workspaces.createWorkspace({
+        name: 'Omar Agency',
+        company: 'Omar Agency',
+        hiringFocus: 'several',
+        creatorUserId: ALEX,
+      });
+      await workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) =>
+        jobs.createJob(ctx, {
+          title: 'SRE, Core Banking',
+          jobType: 'devops_sre',
+          description: 'A retail bank is hiring.',
+          synthetic: true,
+        }),
+      );
+      await expect(
+        workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => jobs.purgeSyntheticJobs(ctx)),
+      ).rejects.toThrow(JobError);
+      expect(await count(sql`select count(*) as n from jobs.job where workspace_id = ${real.id}`)).toBe(1);
+    });
+
+    // SAFETY: mutation check: removed the synthetic = false lookup in deleteSyntheticJobs -> this test failed (resolved)
+    it('reset refuses a demo workspace holding a job not synthetic and deletes nothing', async () => {
+      const workspaces = createWorkspaces(app, createAudit(app));
+      const jobs = createJobs(workspaces, createAudit(app));
+      const demo = await seedDemo(app, { appEnv: 'local' });
+      const [ap] = await admin.execute<{ id: string }>(
+        sql`select id from identity.user where email = 'ap@example.com'`,
+      );
+      if (!ap) throw new Error('the seed above created AP');
+      await workspaces.withWorkspace({ userId: ap.id }, demo, (ctx) =>
+        jobs.createJob(ctx, { title: 'Imported job', jobType: 'sales', description: 'Imported.', synthetic: false }),
+      );
+      const before = await snapshot();
+      await expect(seedDemo(app, { appEnv: 'local', reset: true })).rejects.toThrow(JobError);
+      expect(await snapshot()).toEqual(before);
+    });
+
+    // Last: it leaves a person who is not synthetic in the demo workspace (and the job above), and the candidates
+    // purge runs first.
     // SAFETY: mutation check: removed the synthetic = false lookup in deleteSyntheticPeople -> this test failed (resolved)
     it('reset refuses a demo workspace holding anyone not synthetic and deletes nothing', async () => {
       const workspaces = createWorkspaces(app, createAudit(app));

@@ -1,5 +1,5 @@
 import { useAzureMonitor } from '@azure/monitor-opentelemetry';
-import { redactingLogRecordProcessor, redactingSpanProcessor } from './redact';
+import { redactingLogRecordProcessor, redactingSpanProcessor } from './redact.ts';
 
 /**
  * Exports traces, metrics and logs to Application Insights with the Azure Monitor OpenTelemetry distro. No connection
