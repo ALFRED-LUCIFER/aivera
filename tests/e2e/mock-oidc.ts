@@ -6,6 +6,8 @@ import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 const port = Number(process.env['MOCK_OIDC_PORT'] ?? 3299);
+// Plays Google (AIV-P0-928): Google always sends email_verified, true or false; the tenant sends it only as false.
+const sendsEmailVerified = process.env['MOCK_OIDC_SENDS_EMAIL_VERIFIED'] === '1';
 const issuer = `http://localhost:${port}`;
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const kid = 'mock-oidc-key';
@@ -28,7 +30,7 @@ function idToken(grant: Grant): string {
     nonce: grant.nonce,
     email: grant.email,
     // Like External ID: a verified email sends no email_verified claim at all; only the refusal case sends false.
-    ...(grant.verified ? {} : { email_verified: false }),
+    ...(sendsEmailVerified || !grant.verified ? { email_verified: grant.verified } : {}),
     name: grant.email.split('@')[0],
     idp: grant.idp,
   };

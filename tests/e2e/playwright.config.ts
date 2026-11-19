@@ -8,8 +8,10 @@ const port = 3200;
 // operator list (AIV-P2-035): the unconfigured project's fail-closed checks.
 const unconfiguredPort = 3201;
 const oidcPort = 3299;
+const googlePort = 3298;
 const databaseUrl = process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera';
 const oidc = `http://localhost:${oidcPort}`;
+const google = `http://localhost:${googlePort}`;
 const ci = Boolean(process.env['CI']);
 /** Test-only session secret for the mocked provider; it opens nothing anywhere else. sign-in.spec.ts reads tokens with it. */
 export const e2eAuthSecret = 'e2e-only-not-a-secret-e2e-only-not-a-secret';
@@ -50,6 +52,13 @@ export default defineConfig({
       env: { MOCK_OIDC_PORT: String(oidcPort) },
     },
     {
+      // Stands in for Google (AIV-P0-928): its own issuer, which identity does not trust without email_verified true.
+      command: `node mock-oidc.ts`,
+      url: `${google}/.well-known/openid-configuration`,
+      reuseExistingServer: false,
+      env: { MOCK_OIDC_PORT: String(googlePort), MOCK_OIDC_SENDS_EMAIL_VERIFIED: '1' },
+    },
+    {
       command: `pnpm --filter web exec next dev --port ${port}`,
       url: `http://localhost:${port}/dev/gallery`,
       // Never reuse: a server on this port may belong to another worktree's code.
@@ -64,9 +73,9 @@ export default defineConfig({
         // The candidate app registration on the same mocked tenant (AIV-P0-011).
         AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'aivera-e2e-candidate',
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'e2e-only',
-        // "Continue with Google" straight to Google (AIV-P0-928), played by the same mocked provider; the unconfigured app
-        // below has no Google settings, so it shows no Google button.
-        AUTH_GOOGLE_ISSUER: oidc,
+        // "Continue with Google" straight to Google (AIV-P0-928), played by the second mocked provider; the unconfigured
+        // app below has no Google settings, so it shows no Google button.
+        AUTH_GOOGLE_ISSUER: google,
         AUTH_GOOGLE_CLIENT_ID: 'aivera-e2e-google',
         AUTH_GOOGLE_CLIENT_SECRET: 'e2e-only',
         // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.

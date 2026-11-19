@@ -10,7 +10,7 @@ type SignInOptions = {
   from?: string;
 };
 
-/** Signs in through /sign-in and the mocked tenant (tests/e2e/mock-oidc.ts). Synthetic people only. */
+/** Signs in through /sign-in and the mocked tenant, or the mocked Google (tests/e2e/mock-oidc.ts). Synthetic people only. */
 export async function signIn(page: Page, options: SignInOptions = {}) {
   const { email = 'alex@example.com', button = 'Sign in', verified = true, from = '/sign-in' } = options;
   // Stays on a sign-in page a redirect already opened, so its `next` is kept.
@@ -19,7 +19,7 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(email);
   if (!verified) await page.getByLabel('Email verified').uncheck();
-  // As on the real tenant page, Google is chosen there: the app sends no domain_hint.
+  // The mocked Google plays the same page; its "Sign in with Google" marks the method.
   const tenantButton = button === 'Continue with Google' ? 'Sign in with Google' : 'Continue';
   await page.getByRole('button', { name: tenantButton }).click();
 }

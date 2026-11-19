@@ -12,7 +12,8 @@ import { env, type WebEnv } from './env';
 
 // Recruiter sign-in (AIV-P0-009, ADR-009): the Entra External ID tenant's recruiter app registration for email with
 // password (entered on the tenant's page, so the app never sees a password), and Google directly when configured
-// (AIV-P0-928): the tenant cannot create Google users. The session is an encrypted JWT in an HTTP-only cookie holding only the identity user id.
+// (AIV-P0-928): the tenant cannot create Google users. The session is an encrypted JWT in an HTTP-only cookie holding
+// only the identity user id.
 
 // shortcut: platform session lengths; read sessionIdleHours and sessionMaxDays from the workspace settings when
 // AIV-P1-051 (#201) ships.

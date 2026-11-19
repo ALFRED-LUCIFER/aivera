@@ -41,8 +41,8 @@ export const rememberCookie = (remember: boolean) => ({
 export const signInPath = (pathname: string, search: string, page = '/sign-in') =>
   `${page}?${new URLSearchParams({ next: `${pathname}${search}` })}`;
 
-// Email with password and Google: what the recruiter user flow offers. A user flow has one email method (password,
-// not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md). `reset`
+// Email with password (the recruiter user flow) and Google (direct, AIV-P0-928). A user flow has one email method
+// (password, not one-time code), and Microsoft accounts cannot be added to it yet (docs/runbooks/recruiter-sign-in.md). `reset`
 // is "Forgot password?": the same user flow, whose own "Forgot password?" link runs the tenant's password reset.
 const METHODS = ['password', 'google', 'reset'] as const;
 
@@ -71,7 +71,7 @@ export const parseSignInForm = (form: FormData) =>
  * page, so the app never sees a password. Google does not use the tenant (AIV-P0-928, startSignIn).
  */
 export function authorizationParams(email: string | undefined): Record<string, string> {
-  // `prompt=login`: the tenant always asks for the password (or Google) again. Sign out ends only our session, so
+  // `prompt=login`: the tenant always asks for the password again. Sign out ends only our session, so
   // without it the next person at a shared computer could land in the previous recruiter's account.
   // The recruiter's own email, sent only to our tenant to prefill its page; do not copy this for candidates (AIV-P0-011).
   return email ? { prompt: 'login', login_hint: email } : { prompt: 'login' };
