@@ -14,6 +14,7 @@ import {
   type Competency,
   type DeskJob,
   type Job,
+  type JobHeader,
   type PublicListing,
   type Rubric,
   type RubricVersion,
@@ -293,6 +294,19 @@ export function jobsUseCases({
           nextAction: nextAction(rubric, { packReady: null, openEvidenceRequests: null }),
         };
       });
+    },
+
+    /** Every job page's header (AIV-P1-011); null as `getJob`. */
+    async getJobHeader(ctx: WorkspaceContext, jobId: string): Promise<JobHeader | null> {
+      const store = storeFor(ctx.tx);
+      const job = await store.getJob(ctx.workspaceId, jobId);
+      if (!job) return null;
+      await authorize(ctx, 'job.view', resourceOf(job));
+      const approved = await store.approvedVersion(ctx.workspaceId, jobId);
+      const latest = await store.latestVersion(ctx.workspaceId, jobId);
+      // shortcut: assessed comes from assessment (AIV-P1-031) as in listJobsForDesk; interviews (AIV-P2-001) and the
+      // decision pack (AIV-P2-010) report nothing yet, so the header shows them as not started.
+      return { job, approved, latest, assessed: approved ? null : 0 };
     },
 
     /** What assessment reads: the job's approved version, never a draft; null when none is approved yet. */

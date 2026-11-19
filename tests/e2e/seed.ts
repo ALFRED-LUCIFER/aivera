@@ -150,6 +150,11 @@ export default async function seed() {
     ].map((c) => ({ ...c, type: 'mandatory', origin: 'from_description' }));
     const as = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
       workspaces.withWorkspace({ userId: recruiter }, workspaceId, fn);
+    // AIV-P1-011, AIV-P1-012: the Senior AI Engineer as the Rubric artboard shows it, on a fixed clock: added 3 Nov,
+    // version 1 approved by the Head of Engineering, then version 2 approved on 12 Nov.
+    let clock = new Date('2026-11-03T08:00:00.000Z');
+    const clocked = createJobs(workspaces, createAudit(db), () => clock);
+    let sae = '';
     for (const [title, jobType, team, location, owner, stage] of [
       ['Senior AI Engineer', 'ai_llm_engineering', 'Engineering', 'DIFC, Dubai', 'Head of Engineering', 'round_1'],
       [
@@ -179,7 +184,7 @@ export default async function seed() {
       ['Senior Product Designer', 'product_design', 'Design', 'Abu Dhabi', 'Design Director', 'defining_rubric'],
     ] as const) {
       await as(async (ctx) => {
-        const job = await jobs.createJob(ctx, {
+        const job = await (title === 'Senior AI Engineer' ? clocked : jobs).createJob(ctx, {
           title,
           jobType,
           team,
@@ -188,12 +193,70 @@ export default async function seed() {
           description: `${title}, synthetic demo job.`,
           synthetic: true,
         });
+        if (title === 'Senior AI Engineer') {
+          sae = job.id;
+          await ctx.tx.execute(sql`update jobs.job set stage = ${stage} where id = ${job.id}`);
+          return;
+        }
         const version = await jobs.saveRubric(ctx, job.id, { successStatement: 'Ships reliable work.', competencies });
         if (stage === 'defining_rubric') return;
         await jobs.submitRubric(ctx, version.id);
         await jobs.approveRubric(ctx, version.id);
         await ctx.tx.execute(sql`update jobs.job set stage = ${stage} where id = ${job.id}`);
       });
+    }
+
+    const head = owners.get('Head of Engineering');
+    if (!head) throw new Error('The Head of Engineering was not seeded.');
+    await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId: sae }));
+    const sixCompetencies: [string, string, number, number][] = [
+      ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4],
+      ['Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4],
+      ['Python service engineering', 'Production Python they wrote: services, tests, deployment', 15, 3],
+      ['Cost and reliability', 'Numbers on latency, cost per request and incidents handled', 15, 2],
+      ['Arabic and bilingual NLP', 'Work on Arabic or bilingual text: models, evals, tokenisation', 10, 2],
+      [
+        'Product judgement',
+        'Decisions made with product and business, shown in a doc or confirmed by a reference',
+        15,
+        3,
+      ],
+    ];
+    const v2: Competency[] = sixCompetencies.map(([name, evidenceExpected, weightPercent, levelNeeded], i) => ({
+      name,
+      evidenceExpected,
+      weightPercent,
+      levelNeeded,
+      type: i === 3 || i === 4 ? 'desirable' : 'mandatory',
+      origin: i >= 4 ? 'suggested_by_aivera' : 'from_description',
+    }));
+    // Version 1: Arabic NLP mandatory at 15%, Product judgement at 10%.
+    const v1 = v2.map((c, i): Competency =>
+      i === 4 ? { ...c, type: 'mandatory', weightPercent: 15 } : i === 5 ? { ...c, weightPercent: 10 } : c,
+    );
+    const versions: [string, string, Competency[], string | null][] = [
+      ['2026-11-03T08:00:00.000Z', '2026-11-05T08:00:00.000Z', v1, null],
+      [
+        '2026-11-10T08:00:00.000Z',
+        '2026-11-12T08:00:00.000Z',
+        v2,
+        'Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
+      ],
+    ];
+    for (const [saved, approved, rubric, changeNote] of versions) {
+      clock = new Date(saved);
+      const version = await as((ctx) =>
+        clocked.saveRubric(ctx, sae, {
+          successStatement:
+            'Within six months, a bilingual assistant that answers merchant questions in English and Arabic is live, ' +
+            'measured against an evaluation set, and running within an agreed cost per request.',
+          changeNote,
+          competencies: rubric,
+        }),
+      );
+      await as((ctx) => clocked.submitRubric(ctx, version.id));
+      clock = new Date(approved);
+      await workspaces.withWorkspace({ userId: head }, workspaceId, (ctx) => clocked.approveRubric(ctx, version.id));
     }
   }
 

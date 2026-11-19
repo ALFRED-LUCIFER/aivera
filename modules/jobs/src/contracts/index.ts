@@ -9,7 +9,7 @@ import type {
   PublishJobInput,
   SaveRubricInput,
 } from '../application/jobs.ts';
-import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
+import type { DeskJob, Job, JobHeader, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
@@ -37,6 +37,7 @@ export type {
   DeskJob,
   Job,
   JobErrorCode,
+  JobHeader,
   JobStage,
   NextAction,
   PayBand,
@@ -128,6 +129,8 @@ export interface JobsContract {
   listJobs(ctx: WorkspaceContext): Promise<Job[]>;
   /** The Jobs list rows: `listJobs` with each job's rubric state, next action, and what is not yet available. */
   listJobsForDesk(ctx: WorkspaceContext): Promise<DeskJob[]>;
+  /** The job page header (AIV-P1-011), or null when the job does not exist or the context's job scope does not reach it. */
+  getJobHeader(ctx: WorkspaceContext, jobId: string): Promise<JobHeader | null>;
   /** What assessment reads: the approved version and its competencies, or null when none is approved. */
   getApprovedRubric(ctx: WorkspaceContext, jobId: string): Promise<Rubric | null>;
   /**

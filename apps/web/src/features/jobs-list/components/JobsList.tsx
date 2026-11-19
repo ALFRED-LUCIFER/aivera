@@ -94,7 +94,7 @@ export function JobsList({ view }: { view: JobsListView }) {
 function JobCell({ row }: { row: JobRow }) {
   return (
     <>
-      {/* shortcut: the rubric and ranking pages arrive with AIV-P1-012 and AIV-P1-034, so the route is not typed yet. */}
+      {/* jobHref builds the path from the job id, which typed routes cannot check. */}
       <Link href={jobHref(row) as Route} className="font-semibold text-text underline-offset-2 hover:underline">
         {row.title}
       </Link>
