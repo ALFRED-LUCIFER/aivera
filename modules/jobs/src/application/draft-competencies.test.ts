@@ -130,7 +130,8 @@ describe('Scenario: Every drafted competency cites the description', () => {
     expect(
       draftCompetenciesSchema.safeParse({ ...answer, competencies: [{ ...answer.competencies[0], weight: 0 }] })
         .success,
-    ).toBe(false); // Weights totalling over 100, as the prompt forbids.
+    ).toBe(false);
+    // Weights totalling over 100, as the prompt forbids.
     const heavy = answer.competencies.map((c) => ({ ...c, weight: 30 }));
     expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: heavy }).success).toBe(false);
   });
