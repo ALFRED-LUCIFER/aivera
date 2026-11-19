@@ -92,6 +92,8 @@ export type Member = {
   workspaceId: string;
   role: Role;
   status: MemberStatus;
+  /** The job title shown in the app, such as "CPO, Payments"; null when none was given. */
+  title: string | null;
 };
 
 /** An agency's client (ADR-005 point 6). Not a tenant: it only scopes jobs for hiring owners and interviewers. */
@@ -122,6 +124,11 @@ const MESSAGES = {
   no_workspace: 'No such workspace',
   status_conflict: 'The workspace status has changed. Reload and try again.',
   reason_required: 'Give a reason of at least 10 characters.',
+  jobs_required: 'Choose the jobs this person works on.',
+  jobs_not_allowed: 'Admins and recruiters see every job; they are not given jobs.',
+  invitation_invalid: 'This invitation is no longer valid. Ask your workspace admin for a new one.',
+  invitation_email: 'This invitation was sent to another email address.',
+  already_member: 'This person is already a member of the workspace.',
 } as const;
 
 export type WorkspaceErrorCode = keyof typeof MESSAGES;

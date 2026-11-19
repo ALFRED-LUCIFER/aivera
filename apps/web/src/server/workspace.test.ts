@@ -108,7 +108,7 @@ describe('workspaceAction', () => {
 // candidate field, flag or account id added to any of these member views fails the typecheck.
 // SAFETY: mutation check: added `candidateAccountId?: string` to Member -> tsc failed on this test
 it('the recruiter-facing member views hold no candidate field', () => {
-  expectTypeOf<keyof Member>().toEqualTypeOf<'userId' | 'workspaceId' | 'role' | 'status'>();
+  expectTypeOf<keyof Member>().toEqualTypeOf<'userId' | 'workspaceId' | 'role' | 'status' | 'title'>();
   expectTypeOf<keyof User>().toEqualTypeOf<'id' | 'email' | 'displayName' | 'createdAt'>();
   expectTypeOf<keyof IdentityContract>().toEqualTypeOf<'upsertUserFromIdToken' | 'getUser'>();
   expectTypeOf<keyof NonNullable<Awaited<ReturnType<typeof currentMembership>>>>().toEqualTypeOf<

@@ -16,7 +16,7 @@ const form = (fields: Record<string, string>) => {
 };
 
 describe('safeNext (Scenario Outline: Return-to refuses anything outside the recruiter app)', () => {
-  it.each(['/app', '/app/jobs', '/app/jobs?tab=open#top', '/ops', '/ops/workspaces'])(
+  it.each(['/app', '/app/jobs', '/app/jobs?tab=open#top', '/ops', '/ops/workspaces', '/invite?token=abc'])(
     'keeps the same-origin path %s',
     (path) => {
       expect(safeNext(path)).toBe(path);
@@ -32,6 +32,7 @@ describe('safeNext (Scenario Outline: Return-to refuses anything outside the rec
     '/',
     '/apples',
     '/opsx',
+    '/invitex',
     '/ops/../candidates',
     '/app/../candidates',
     '/app/..//evil.example',

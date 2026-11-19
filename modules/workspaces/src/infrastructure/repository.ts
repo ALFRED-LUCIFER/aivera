@@ -10,13 +10,24 @@ import {
   type AiTokenUse,
   type WorkspaceSummary,
 } from '../domain/workspace.ts';
-import { activeWorkspace, aiTokenUsage, client, directory, jobGrant, member, settings, workspace } from './schema.ts';
+import {
+  activeWorkspace,
+  aiTokenUsage,
+  client,
+  directory,
+  invitation,
+  jobGrant,
+  member,
+  settings,
+  workspace,
+} from './schema.ts';
 
 const memberColumns = {
   userId: member.userId,
   workspaceId: member.workspaceId,
   role: member.role,
   status: member.status,
+  title: member.title,
 };
 
 const inWorkspace = (workspaceId: string) => eq(member.workspaceId, workspaceId);
@@ -29,6 +40,20 @@ const grantColumns = {
   clientId: jobGrant.clientId,
   grantedBy: jobGrant.grantedBy,
   grantedAt: jobGrant.grantedAt,
+};
+// Never the token hash: nothing outside the lookup needs it.
+const invitationColumns = {
+  id: invitation.id,
+  email: invitation.email,
+  role: invitation.role,
+  title: invitation.title,
+  jobIds: invitation.jobIds,
+  clientIds: invitation.clientIds,
+  invitedBy: invitation.invitedBy,
+  expiresAt: invitation.expiresAt,
+  acceptedAt: invitation.acceptedAt,
+  revokedAt: invitation.revokedAt,
+  createdAt: invitation.createdAt,
 };
 
 /** The unique name index refuses a duplicate in any case; anything else is rethrown. */
@@ -114,6 +139,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       await tx.delete(aiTokenUsage).where(eq(aiTokenUsage.workspaceId, workspaceId));
       await tx.delete(settings).where(eq(settings.workspaceId, workspaceId));
       await tx.delete(jobGrant).where(eq(jobGrant.workspaceId, workspaceId));
+      await tx.delete(invitation).where(eq(invitation.workspaceId, workspaceId));
       await tx.delete(client).where(eq(client.workspaceId, workspaceId));
       await tx.delete(member).where(inWorkspace(workspaceId));
       await tx.delete(activeWorkspace).where(eq(activeWorkspace.workspaceId, workspaceId));
@@ -210,6 +236,60 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .delete(jobGrant)
         .where(and(eq(jobGrant.workspaceId, workspaceId), eq(jobGrant.userId, userId)))
         .returning(grantColumns),
+    async insertInvitation(workspaceId, values) {
+      const [row] = await tx
+        .insert(invitation)
+        .values({ ...values, workspaceId })
+        .returning(invitationColumns);
+      if (!row) throw new Error('insert into workspaces.invitation returned no row');
+      return row;
+    },
+    listInvitations: (workspaceId) =>
+      tx
+        .select(invitationColumns)
+        .from(invitation)
+        .where(
+          and(eq(invitation.workspaceId, workspaceId), isNull(invitation.acceptedAt), isNull(invitation.revokedAt)),
+        )
+        .orderBy(desc(invitation.createdAt)),
+    async findInvitationByHash(workspaceId, tokenHash, lock) {
+      const query = tx
+        .select(invitationColumns)
+        .from(invitation)
+        .where(and(eq(invitation.workspaceId, workspaceId), eq(invitation.tokenHash, tokenHash)));
+      const [row] = await (lock ? query.for('update') : query);
+      return row ?? null;
+    },
+    async closeInvitation(workspaceId, invitationId, field, at) {
+      const rows = await tx
+        .update(invitation)
+        .set({ [field]: at })
+        .where(
+          and(
+            eq(invitation.workspaceId, workspaceId),
+            eq(invitation.id, invitationId),
+            isNull(invitation.acceptedAt),
+            isNull(invitation.revokedAt),
+          ),
+        )
+        .returning({ id: invitation.id });
+      return rows.length > 0;
+    },
+    async activateMember(values) {
+      await tx
+        .insert(member)
+        .values({ ...values, status: 'active' })
+        .onConflictDoUpdate({
+          target: [member.workspaceId, member.userId],
+          set: { role: values.role, title: values.title, status: 'active' },
+        });
+    },
+    async updateMemberStatus(workspaceId, userId, status) {
+      await tx
+        .update(member)
+        .set({ status })
+        .where(and(inWorkspace(workspaceId), eq(member.userId, userId)));
+    },
     async setJobScope(scope, grants) {
       await tx.execute(sql`select set_config('app.job_scope', ${scope}, true),
         set_config('app.job_ids', ${uuidArray(grants.map((g) => g.jobId))}, true),

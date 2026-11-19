@@ -12,7 +12,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations(defaultLocale, defaultTimeZone))('jobNew.title') };
 }
 
-// shortcut: the members screen (AIV-P1-003) is not built yet, so this link opens a 404 until it ships.
 const MEMBERS = '/app/settings/members';
 
 export default async function NewJobPage() {

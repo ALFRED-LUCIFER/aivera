@@ -127,6 +127,13 @@
       "when": 1795122800647,
       "tag": "0017_rubric_saved_action",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795125306492,
+      "tag": "0018_invitation_actions",
+      "breakpoints": true
     }
   ]
 }

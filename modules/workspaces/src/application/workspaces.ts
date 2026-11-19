@@ -1,10 +1,12 @@
 import type { NewEntry, PlatformAction } from '@aivera/audit';
+import type { Invitation } from '../domain/invitation.ts';
 import { JOB_SCOPED_ROLES } from '../domain/permissions.ts';
 import {
   assertCanChangeRole,
   type Client,
   type JobGrant,
   type Member,
+  type MemberStatus,
   type Role,
   type Workspace,
   type WorkspaceStatus,
@@ -16,7 +18,7 @@ export type WorkspaceStore = {
   /** Also adds it to the platform directory (ADR-012 point 6). */
   insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
-  insertMember(member: Member): Promise<boolean>;
+  insertMember(member: Omit<Member, 'title'>): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
   /**
    * The workspace row under FOR KEY SHARE until commit: every request context holds it, so an operator's status change
@@ -65,6 +67,24 @@ export type WorkspaceStore = {
   deleteJobGrant(workspaceId: string, userId: string, jobId: string): Promise<JobGrant | null>;
   /** The member's deleted grants. */
   deleteGrantsOf(workspaceId: string, userId: string): Promise<JobGrant[]>;
+  insertInvitation(
+    workspaceId: string,
+    invitation: Omit<Invitation, 'acceptedAt' | 'revokedAt' | 'createdAt'> & { tokenHash: string },
+  ): Promise<Invitation>;
+  /** Invitations neither accepted nor revoked (open or expired), newest first. */
+  listInvitations(workspaceId: string): Promise<Invitation[]>;
+  /** The invitation with this token hash; null when none. `lock` holds it until commit, so two accepts cannot both join. */
+  findInvitationByHash(workspaceId: string, tokenHash: string, lock: boolean): Promise<Invitation | null>;
+  /** Sets `acceptedAt` or `revokedAt` on an invitation neither accepted nor revoked; false when it was. */
+  closeInvitation(
+    workspaceId: string,
+    invitationId: string,
+    field: 'acceptedAt' | 'revokedAt',
+    at: Date,
+  ): Promise<boolean>;
+  /** Adds the user as an active member with `role`, or makes an invited or removed member active with it. */
+  activateMember(member: Omit<Member, 'status'>): Promise<void>;
+  updateMemberStatus(workspaceId: string, userId: string, status: MemberStatus): Promise<void>;
   /** Sets app.job_scope, app.job_ids and app.client_ids for this transaction only (ADR-005 point 6). */
   setJobScope(scope: 'all' | 'granted', grants: JobGrant[]): Promise<void>;
   /** Appends an audit entry in this transaction, by a user of this workspace. */

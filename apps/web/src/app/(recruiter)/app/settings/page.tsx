@@ -35,11 +35,19 @@ export default async function SettingsPage() {
     <>
       <PageHeader title={t('shell.nav.settings')} />
       <p className="-mt-3 mb-6 max-w-prose text-body text-text-2">{t('settings.intro')}</p>
-      {agency && (
-        <nav aria-label={t('settings.sections')} className="mb-6">
-          <Link href="/app/settings/clients" className="font-semibold text-text underline underline-offset-2">
-            {t('settings.clientsLink')}
-          </Link>
+      {(agency || form.canEdit) && (
+        <nav aria-label={t('settings.sections')} className="mb-6 flex gap-4">
+          {/* AIV-P1-003: Members is for admins, the same rule as saving settings. */}
+          {form.canEdit && (
+            <Link href="/app/settings/members" className="font-semibold text-text underline underline-offset-2">
+              {t('settings.membersLink')}
+            </Link>
+          )}
+          {agency && (
+            <Link href="/app/settings/clients" className="font-semibold text-text underline underline-offset-2">
+              {t('settings.clientsLink')}
+            </Link>
+          )}
         </nav>
       )}
       <SettingsClient {...form} />

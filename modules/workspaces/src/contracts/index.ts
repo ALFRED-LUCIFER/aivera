@@ -7,6 +7,8 @@ import type { GrantJobAccessInput, SetJobOwnerInput } from '../application/clien
 import type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 import type { ChangeStatusInput } from '../application/status.ts';
 import type { SettingsPatch, WorkspaceSettings } from '../domain/settings.ts';
+import type { InvitationView, InviteMemberInput, JobAccess } from '../application/invitations.ts';
+import type { Invitation } from '../domain/invitation.ts';
 import type {
   AiTokenUse,
   Client,
@@ -42,6 +44,9 @@ export type {
   WorkspaceType,
 } from '../domain/workspace.ts';
 export type { ChangeStatusInput } from '../application/status.ts';
+export type { InvitationView, InviteMemberInput, JobAccess } from '../application/invitations.ts';
+export { invitationState } from '../domain/invitation.ts';
+export type { Invitation, InvitationState } from '../domain/invitation.ts';
 export type { DirectorySearch, PendingApproval } from '../application/directory.ts';
 export type { GrantJobAccessInput, SetJobOwnerInput } from '../application/clients.ts';
 export {
@@ -165,6 +170,36 @@ export interface WorkspacesContract {
    * new value, last. Returns the settings now in force; a patch that changes nothing writes nothing.
    */
   updateSettings(ctx: WorkspaceContext, patch: SettingsPatch): Promise<WorkspaceSettings>;
+  // Invitations and membership (AIV-P1-003, ADR-009). Each takes the request context except the two the invitee uses
+  // before they are a member; every write is audited in the same transaction.
+  /**
+   * Admins. Stores the invitation (open for the `invitationDays` setting, default 7) and runs `alongside(invitation, token)` in the same transaction, before the
+   * audit write: the caller queues the invitation email there with the link. Only the token's hash is kept.
+   * Hiring owners and interviewers need jobs or clients (`jobs_required`), admins and recruiters take none
+   * (`jobs_not_allowed`); a client must be the workspace's and not archived (`client_not_found`). Job ids are not
+   * checked here: the caller passes only the workspace's jobs.
+   */
+  inviteMember(
+    ctx: WorkspaceContext,
+    input: InviteMemberInput,
+    alongside?: (invitation: Invitation, token: string) => Promise<void>,
+  ): Promise<{ invitation: Invitation; token: string }>;
+  /** Admins. Invitations neither accepted nor revoked, newest first, expired ones included. */
+  listInvitations(ctx: WorkspaceContext): Promise<Invitation[]>;
+  /** Admins. The link stops working at once; an accepted or revoked invitation is left as it is. */
+  revokeInvitation(ctx: WorkspaceContext, invitationId: string): Promise<void>;
+  /** Public: the invitation behind a link and whether it is open; null when the link matches none. */
+  findInvitation(token: string): Promise<InvitationView | null>;
+  /**
+   * The signed-in user, whose verified email must be the invited one (`invitation_email`), joins with the invited role
+   * and job grants (each audited; an archived client's is skipped) and lands in the workspace, in one transaction.
+   * Throws `invitation_invalid`, `already_member`, or `WorkspacePausedError` while the workspace is not active.
+   */
+  acceptInvitation(user: { userId: string; email: string }, token: string): Promise<{ workspaceId: string }>;
+  /** Admins. The member's grants become exactly `access` (each change audited); next request onwards. */
+  changeJobAccess(ctx: WorkspaceContext, userId: string, access: JobAccess): Promise<void>;
+  /** Admins. Removes the member and their grants; refuses the last admin (`last_admin`). */
+  removeMember(ctx: WorkspaceContext, userId: string): Promise<void>;
 
   /** The user's active workspace id, or null when they have none yet. */
   activeWorkspace(userId: string): Promise<string | null>;

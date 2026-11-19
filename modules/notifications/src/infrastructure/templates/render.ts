@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import type { Sender, TemplateData, TemplateName } from '../../domain/email.ts';
 import type { Direction, LayoutCopy } from './components.tsx';
 import { evidenceRequest } from './EvidenceRequest.tsx';
+import { memberInvitation } from './MemberInvitation.tsx';
 
 // Renders a template to subject, HTML and plain text with React Email, every string from packages/i18n.
 // Loaded only where an email is queued (the web app); the worker sends what was rendered and never imports JSX.
@@ -32,7 +33,7 @@ const TEMPLATES: {
     data: TemplateData[T],
     context: TemplateContext,
   ) => { subject: string; element: ReactElement; text: string[] };
-} = { 'evidence-request': evidenceRequest };
+} = { 'evidence-request': evidenceRequest, 'member-invitation': memberInvitation };
 
 export async function renderEmail<T extends TemplateName>(
   template: T,
@@ -42,7 +43,10 @@ export async function renderEmail<T extends TemplateName>(
   const t = await getTranslations(ctx.locale, ctx.timeZone);
   const privacyUrl = `${ctx.origin}/privacy`;
   const replies = t('emails.layout.repliesGoTo', { name: ctx.sender.name });
-  const reason = t('emails.layout.reasonCandidate');
+  // Why the recipient gets the email: a member was invited, or a candidate applied.
+  const reason = t(template === 'member-invitation' ? 'emails.layout.reasonInvited' : 'emails.layout.reasonCandidate');
+  // Only a candidate's email carries their signed "Ask us to delete your data" link; a member's has none.
+  const deleteData = 'deleteUrl' in data && { label: t('emails.layout.deleteData'), href: data.deleteUrl };
   const layout: TemplateContext['layout'] = {
     lang: ctx.locale,
     dir: directionOf(ctx.locale) as Direction,
@@ -55,10 +59,7 @@ export async function renderEmail<T extends TemplateName>(
       workspace: ctx.sender.workspace,
       reason,
       replies,
-      links: [
-        { label: t('emails.layout.privacy'), href: privacyUrl },
-        { label: t('emails.layout.deleteData'), href: data.deleteUrl },
-      ],
+      links: [{ label: t('emails.layout.privacy'), href: privacyUrl }, ...(deleteData ? [deleteData] : [])],
     },
     copyLinkLabel: t('emails.layout.copyLink'),
     noteLabel: t('emails.layout.note'),
@@ -71,7 +72,7 @@ export async function renderEmail<T extends TemplateName>(
     reason,
     replies,
     `${t('emails.layout.privacy')}: ${privacyUrl}`,
-    `${t('emails.layout.deleteData')}: ${data.deleteUrl}`,
+    ...(deleteData ? [`${deleteData.label}: ${deleteData.href}`] : []),
   ];
   return { subject, html: await render(element), text: [...text, ...footer].join('\n') };
 }
