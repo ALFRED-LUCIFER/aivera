@@ -37,6 +37,19 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ]);
   });
 
+  // SAFETY: mutation check: removed the recruiter-app-no-candidate-data check -> this test failed
+  it('only the candidate site, its server readers and the wiring roots import candidate accounts or sessions', () => {
+    expect(
+      findViolations(fixture('candidate-data'))
+        .filter((v) => v.rule === 'recruiter-app-no-candidate-data')
+        .map((v) => v.file),
+    ).toEqual([
+      'apps/web/src/app/(recruiter)/app/page.tsx',
+      'apps/web/src/features/shell/domain/y.ts',
+      'apps/web/src/features/shell/services/x.ts',
+    ]);
+  });
+
   // SAFETY: mutation check: made findViolations return [] -> every case below failed
   it.each([
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],

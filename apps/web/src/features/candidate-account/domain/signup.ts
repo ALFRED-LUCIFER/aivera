@@ -1,11 +1,25 @@
 import { isSignedUp, type Account } from '@aivera/candidate-accounts';
 import { JOB_TYPES } from '@aivera/jobs';
 import { z } from 'zod';
+import { CANDIDATE_HOME, candidateSafeNext } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 
 // Candidate sign-up (AIV-P3-007). Pure: no React, no I/O (ADR-003). Email, password and verification happen on the
 // tenant's hosted page (AIV-P0-011), so the app asks only for what the tenant does not know.
 
 export const CANDIDATE_SIGN_UP = '/candidates/signup';
+/**
+ * Where sign-up ends: the sanitised candidate page the person was going to (the apply form, say), never sign-up itself
+ * (that would loop); My applications by default.
+ */
+export function signUpNext(value: unknown): string {
+  const next = candidateSafeNext(value);
+  return /^\/candidates\/signup(?:[/?#]|$)/.test(next) ? CANDIDATE_HOME : next;
+}
+
+/** Sign-up, remembering where to go after it; the plain address when that is My applications. */
+export const signUpHref = (next: string) =>
+  next === CANDIDATE_HOME ? CANDIDATE_SIGN_UP : (`${CANDIDATE_SIGN_UP}?next=${encodeURIComponent(next)}` as const);
+
 /** Shows "Create account and start Plus" once Plus payment exists (AIV-P4-004); off until then. */
 export const PLUS_SIGN_UP_FLAG = 'candidatePlusSignUp';
 

@@ -85,6 +85,21 @@ test('Scenario: Creating a free account after the tenant sign-up, then signing o
   await expect(page.getByRole('banner').getByRole('link', { name: 'My applications' })).toBeVisible();
 });
 
+test('Scenario: Signing in returns me where I was, for a new candidate who signs up on the way', async ({ page }) => {
+  // AIV-P3-008's apply form sends a signed-out candidate to sign-in with this next.
+  const apply = '/candidates/jobs/senior-ai-engineer/apply';
+  const next = `next=${encodeURIComponent(apply)}`;
+  await page.goto(`/candidates/sign-in?${next}`);
+  await page.getByRole('link', { name: 'Create free account' }).click();
+  await expect(page).toHaveURL(`/candidates/signup?${next}`);
+  await throughTenant(page, newAddress('layla.haddad'), 'Create free account');
+  await expect(page).toHaveURL(`/candidates/signup?${next}`);
+  await fullName(page).fill('Layla Haddad');
+  await workType(page).selectOption({ label: 'AI and LLM engineering' });
+  await page.getByRole('button', { name: 'Create free account' }).click();
+  await expect(page).toHaveURL(apply);
+});
+
 test('Scenario: Signing up with Google', async ({ page }) => {
   await page.goto('/candidates/signup');
   await throughTenant(page, newAddress('arjun.mehta'), 'Continue with Google');
@@ -125,9 +140,11 @@ test("Scenario: A recruiter's email becomes the same login on the candidate site
   await expect(page).toHaveURL(/\/candidates\/signup$/);
   await expect(fullName(page)).toBeVisible();
   await expect(workType(page)).toBeVisible();
-  // Nothing of her recruiter workspace appears on the candidate site.
-  await expect(page.getByText('Nadia Freelance')).toHaveCount(0);
-  await expect(page.getByText(/workspace/i)).toHaveCount(0);
+  // Only the tenant's display name ("nadia", from the mocked tenant) is offered. Her recruiter workspace, which seed.ts
+  // names "Nadia Freelance", appears nowhere: not in the field, not on the page.
+  await expect(fullName(page)).toHaveValue('nadia');
+  await expect(page.getByRole('main')).not.toContainText('Nadia Freelance');
+  await expect(page.locator('body')).not.toContainText(/Nadia Freelance|workspace/i);
   await page.getByRole('banner').getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/candidates\/sign-in$/);
   expect(await cookie(context, CANDIDATE_COOKIE)).toBeUndefined();

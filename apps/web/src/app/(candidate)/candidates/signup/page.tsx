@@ -1,9 +1,9 @@
 import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@aivera/i18n';
 import { JOB_TYPES } from '@aivera/jobs';
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
 import { redirect } from 'next/navigation';
-import { CANDIDATE_SIGN_UP, PLUS_SIGN_UP_FLAG, signUpStep } from '@/features/candidate-account/domain/signup.ts';
-import { CANDIDATE_HOME } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
+import { PLUS_SIGN_UP_FLAG, signUpNext, signUpStep } from '@/features/candidate-account/domain/signup.ts';
+import { PLUS_MONTHLY_PRICE } from '@/features/candidate-shell/domain/plus.ts';
 import { startCandidateSignIn } from '@/features/candidate-sign-in/services/startCandidateSignIn.ts';
 import { getCandidateAccounts, identityDisplayName } from '@/server/candidateAccounts';
 import { getCandidateSessionUserId } from '@/server/candidateAuth';
@@ -15,12 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Public when signed out (the sign-up panel); with a candidate session, the session user's own account only (AIV-P3-007).
-export default async function CandidateSignUpPage() {
+export default async function CandidateSignUpPage({ searchParams }: PageProps<'/candidates/signup'>) {
+  const next = signUpNext((await searchParams).next);
   const userId = await getCandidateSessionUserId();
   const accounts = getCandidateAccounts();
   const account = userId ? await accounts.withAccount(userId, (ctx) => accounts.getMyAccount(ctx)) : null;
   const step = signUpStep(userId, account);
-  if (step === 'done') redirect(CANDIDATE_HOME);
+  // A sanitised candidate path (signUpNext), which typed routes cannot see.
+  if (step === 'done') redirect(next as Route);
   // Prefilled from the tenant's display name until the candidate chooses one.
   const fullName = account ? (account.fullName ?? (await identityDisplayName(account.id)) ?? '') : '';
   const t = await getTranslations(defaultLocale, defaultTimeZone);
@@ -28,11 +30,10 @@ export default async function CandidateSignUpPage() {
     <SignUpView
       step={step}
       startAction={startCandidateSignIn}
-      next={CANDIDATE_SIGN_UP}
+      next={next}
       workTypes={JOB_TYPES}
       plusEnabled={enabledFlags.has(PLUS_SIGN_UP_FLAG)}
-      // shortcut: the Plus price (PRODUCT.md) as a literal until Plans and billing own it (AIV-P4-003).
-      plusPrice={t('money.monthly', { amount: formatMoney({ amountMinor: 4900, currency: 'AED' }, defaultLocale) })}
+      plusPrice={t('money.monthly', { amount: formatMoney(PLUS_MONTHLY_PRICE, defaultLocale) })}
       fullName={fullName}
     />
   );

@@ -1,6 +1,6 @@
 import { Button } from '@aivera/ui';
 import Link from 'next/link';
-import { CANDIDATE_SIGN_UP } from '@/features/candidate-account/domain/signup.ts';
+import { signUpHref } from '@/features/candidate-account/domain/signup.ts';
 
 type Props = {
   /** The server action that starts the candidate sign-in at the tenant. */
@@ -35,7 +35,7 @@ export function CandidateSignInForm({ action, next, error, labels }: Props) {
       </form>
       <p className="text-text-2">
         {labels.noAccount}{' '}
-        <Link href={CANDIDATE_SIGN_UP} className="font-semibold text-text underline underline-offset-3">
+        <Link href={signUpHref(next)} className="font-semibold text-text underline underline-offset-3">
           {labels.createAccount}
         </Link>
       </p>

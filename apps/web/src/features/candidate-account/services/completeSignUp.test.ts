@@ -40,6 +40,14 @@ describe('completeSignUp (server action)', () => {
     expect(accounts.signUp).toHaveBeenCalledWith({ accountId: 'session-user' }, layla);
   });
 
+  // Scenario: Signing in returns me where I was (a new candidate signs up on the way).
+  it('lands on the sanitised next after sign-up, never outside the candidate site', async () => {
+    await expect(submit({ ...layla, next: '/candidates/jobs/senior-ai-engineer/apply' })).rejects.toThrow(
+      'NEXT_REDIRECT;/candidates/jobs/senior-ai-engineer/apply',
+    );
+    await expect(submit({ ...layla, next: '/app/jobs' })).rejects.toThrow('NEXT_REDIRECT;/candidates/me');
+  });
+
   // SAFETY: mutation check: used form.get('userId') as the account id in completeSignUp -> this test failed
   it('ignores any user id in the form: the account is always the session user', async () => {
     await expect(submit({ ...layla, userId: 'someone-else', accountId: 'someone-else' })).rejects.toThrow(

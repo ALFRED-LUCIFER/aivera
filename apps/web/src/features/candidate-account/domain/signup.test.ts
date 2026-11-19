@@ -1,7 +1,7 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import { JOB_TYPES } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
-import { parseSignUpForm, signUpStep } from './signup.ts';
+import { parseSignUpForm, signUpHref, signUpNext, signUpStep } from './signup.ts';
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -51,5 +51,27 @@ describe('parseSignUpForm', () => {
     expect(parseSignUpForm(new FormData())).toMatchObject({
       errors: { fullName: 'fullNameRequired', workType: 'workTypeRequired' },
     });
+  });
+});
+
+describe('signUpNext and signUpHref', () => {
+  const apply = '/candidates/jobs/senior-ai-engineer/apply';
+  it('keeps a candidate page and round-trips it through the sign-up address', () => {
+    expect(signUpNext(apply)).toBe(apply);
+    expect(signUpHref(apply)).toBe('/candidates/signup?next=%2Fcandidates%2Fjobs%2Fsenior-ai-engineer%2Fapply');
+    expect(signUpNext(new URL(signUpHref(apply), 'http://x').searchParams.get('next'))).toBe(apply);
+  });
+
+  // SAFETY: mutation check: returned candidateSafeNext(value) without the sign-up check -> this test failed
+  it('never returns to the recruiter app, another site or sign-up itself', () => {
+    for (const value of [
+      '/app',
+      'https://evil.example/candidates',
+      '/candidates/signup',
+      '/candidates/signup?next=x',
+      null,
+    ])
+      expect(signUpNext(value)).toBe('/candidates/me');
+    expect(signUpHref('/candidates/me')).toBe('/candidates/signup');
   });
 });

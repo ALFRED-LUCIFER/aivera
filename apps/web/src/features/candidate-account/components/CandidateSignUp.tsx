@@ -3,14 +3,14 @@ import { Button, Card, Input, Label, Select } from '@aivera/ui';
 import type { JobType } from '@aivera/jobs';
 import Link from 'next/link';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
-import type { SignUpState, SignUpStep } from '../domain/signup.ts';
+import { signUpHref, type SignUpState, type SignUpStep } from '../domain/signup.ts';
 
 export type CandidateSignUpProps = {
   /** Signed out: the buttons that start the candidate user flow. Profile: the full name and work type form. */
   step: Exclude<SignUpStep, 'done'>;
   /** The server action that starts the candidate sign-in at the tenant (AIV-P0-011). */
   startAction: (form: FormData) => Promise<void>;
-  /** Where the tenant returns to: this page. */
+  /** Where sign-up ends (already sanitised): the tenant returns to sign-up with it, and the profile form posts it. */
   next: string;
   workTypes: readonly JobType[];
   /** Shows "Create account and start Plus" (feature flag, until AIV-P4-004). */
@@ -70,7 +70,7 @@ function Start({ startAction, next }: CandidateSignUpProps) {
     <>
       {/* Both open the candidate user flow, where email with password or Google is chosen; no email in the URL. */}
       <form action={startAction} className="flex flex-col gap-3">
-        <input type="hidden" name="next" value={next} />
+        <input type="hidden" name="next" value={signUpHref(next)} />
         <Button type="submit" variant="primary">
           {t('create')}
         </Button>
@@ -86,7 +86,7 @@ function Start({ startAction, next }: CandidateSignUpProps) {
   );
 }
 
-function Profile({ workTypes, plusEnabled, plusPrice, action, state, pending }: CandidateSignUpProps) {
+function Profile({ next, workTypes, plusEnabled, plusPrice, action, state, pending }: CandidateSignUpProps) {
   const t = useTranslations();
   const error = (field: keyof SignUpState['errors']) => {
     const key = state.errors[field];
@@ -108,6 +108,7 @@ function Profile({ workTypes, plusEnabled, plusPrice, action, state, pending }: 
       {/* Validated on the server (the same zod schema), so each message comes from i18n, next to its field. Keyed on
           the result, so a refused submit shows the fields again with what was typed. */}
       <form key={JSON.stringify(state)} action={action} noValidate className="flex flex-col gap-4">
+        <input type="hidden" name="next" value={next} />
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="signup-fullName">{t('candidate.signup.fullName')}</Label>
           <Input
