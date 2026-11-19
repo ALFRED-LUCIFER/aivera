@@ -579,7 +579,8 @@
         "breadcrumb": "Breadcrumb",
         "facts": "Platform facts",
         "actions": "Operator actions",
-        "noActions": "No operator actions yet."
+        "noActions": "No operator actions yet.",
+        "error": "We could not load this workspace. Try again."
       }
     }
   }

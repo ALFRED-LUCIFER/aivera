@@ -2,7 +2,7 @@
 import type { WorkspaceSummary } from '@aivera/workspaces';
 import { z } from 'zod';
 
-export const PAGE_SIZE = 50;
+const PAGE_SIZE = 50;
 
 /** The list request, sent in the server action's body, never in the URL: the name search and the 1-based page. */
 export const workspaceSearchSchema = z.object({
@@ -26,7 +26,6 @@ export type WorkspacesListView = {
     | {
         status: 'ready';
         rows: WorkspaceRow[];
-        total: number;
         /** The search these rows answer, for the "No workspace matches" message. */
         searched: string;
         page: number;

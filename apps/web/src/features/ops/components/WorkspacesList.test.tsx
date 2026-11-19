@@ -33,7 +33,7 @@ const row = (name: string, extra: Partial<WorkspaceRow> = {}): WorkspaceRow => (
   ...extra,
 });
 const ready = (rows: WorkspaceRow[], searched = '', onPage = () => {}, page = 1, total = rows.length) =>
-  ({ status: 'ready', rows, total, searched, page, pageCount: Math.max(1, Math.ceil(total / 50)), onPage }) as const;
+  ({ status: 'ready', rows, searched, page, pageCount: Math.max(1, Math.ceil(total / 50)), onPage }) as const;
 
 describe('Scenario: Listing workspaces', () => {
   it('shows name, type, created date in its stated time zone, members, jobs, status "Active", plan "No plan yet"', () => {

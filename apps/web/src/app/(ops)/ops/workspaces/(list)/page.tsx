@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // The workspaces list (AIV-P2-036, ADR-012). Loading and error states: loading.tsx and error.tsx beside this page,
-// inside the (list) group so the detail page keeps its own.
+// inside the (list) group so the detail page keeps its own ([id]/error.tsx).
 export default async function WorkspacesPage() {
   await platformOperator();
   const t = await getTranslations(defaultLocale, defaultTimeZone);

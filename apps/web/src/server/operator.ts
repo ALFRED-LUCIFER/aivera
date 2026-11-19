@@ -48,7 +48,7 @@ let reads: { workspaces: WorkspaceDirectory; jobs: JobCounts } | undefined;
 const opsReads = () => (reads ??= { workspaces: createWorkspaceDirectory(getDb()), jobs: createJobCounts(getDb()) });
 
 /** A workspace's platform facts with its job count: metadata only, never a member or candidate (ADR-012 point 7). */
-export type WorkspaceFacts = WorkspaceSummary & { jobs: number };
+type WorkspaceFacts = WorkspaceSummary & { jobs: number };
 
 const withJobs = async (summary: WorkspaceSummary): Promise<WorkspaceFacts> => ({
   ...summary,

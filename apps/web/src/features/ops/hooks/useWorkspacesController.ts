@@ -31,7 +31,6 @@ export function useWorkspacesController(initial: WorkspacePage): WorkspacesListV
     table = {
       status: 'ready',
       rows: page.rows,
-      total: page.total,
       searched: page.search.query,
       page: page.search.page,
       pageCount: pageCount(page.total),
