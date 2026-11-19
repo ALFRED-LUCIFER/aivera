@@ -27,6 +27,16 @@ describe('the platform action list (ADR-012)', () => {
       new AuditError('unknown_action'),
     );
   });
+
+  // SAFETY: mutation check: removed the NOTE_REQUIRED check in assertValidPlatformEntry -> this test failed (nothing thrown)
+  it('"ai_budget.changed" needs its reason and refuses contact details in its values (AIV-P2-038)', () => {
+    const change = { actorId, action: 'ai_budget.changed', before: { dailyTokenBudget: 2_000_000 } } as const;
+    expect(() => assertValidPlatformEntry({ ...change, note: ' ' })).toThrow(new AuditError('note_required'));
+    expect(() => assertValidPlatformEntry({ ...change, note: 'Pilot cap agreed with the team' })).not.toThrow();
+    expect(() =>
+      assertValidPlatformEntry({ ...change, note: 'Pilot cap', after: { contact: 'pia.platform@example.com' } }),
+    ).toThrow(new AuditError('personal_data'));
+  });
 });
 
 describe('Scenario: A note is required where a person changes an outcome', () => {

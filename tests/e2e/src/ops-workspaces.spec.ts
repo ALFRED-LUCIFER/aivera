@@ -41,6 +41,7 @@ test('Scenario: Listing workspaces', async ({ page }) => {
     'Created (Asia/Dubai)',
     'Members',
     'Jobs',
+    'AI tokens today',
     'Status',
     'Plan',
   ]);
@@ -48,8 +49,9 @@ test('Scenario: Listing workspaces', async ({ page }) => {
     await search(page, name);
     const cells = rowOf(page, name).getByRole('cell');
     await expect(cells.nth(2)).toHaveText(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
-    await expect(cells.nth(5)).toHaveText('Active');
-    await expect(cells.nth(6)).toHaveText('No plan yet');
+    await expect(cells.nth(5)).toHaveText(/^[\d,]+Observed$/);
+    await expect(cells.nth(6)).toHaveText('Active');
+    await expect(cells.nth(7)).toHaveText('No plan yet');
   }
   await search(page, 'Demo Hiring Co');
   await expect(rowOf(page, 'Demo Hiring Co').getByRole('cell')).toHaveText([
@@ -58,6 +60,7 @@ test('Scenario: Listing workspaces', async ({ page }) => {
     /\d{4}$/,
     '3',
     /^\d+$/,
+    '1,500Observed',
     'Active',
     'No plan yet',
   ]);
@@ -104,8 +107,19 @@ test('Scenario: Opening a workspace, by keyboard', async ({ page }) => {
     'Jobs',
     'Status',
     'Plan',
+    'AI tokens today',
+    'Daily AI budget',
   ]);
-  await expect(facts).toHaveText(['Agency', /\d{4}$/, '4', '2', 'Active', 'No plan yet']);
+  await expect(facts).toHaveText([
+    'Agency',
+    /\d{4}$/,
+    '4',
+    '2',
+    'Active',
+    'No plan yet',
+    '0 of 2,000,000Observed',
+    '2,000,000 (platform default)',
+  ]);
   await expect(page.getByText('No operator actions yet.')).toBeVisible();
   // The "ops.workspace_viewed" entry is written by the page on the server ([id]/page.test.tsx) into the insert-only
   // platform log (tests/integration/src/ops-reads.test.ts).

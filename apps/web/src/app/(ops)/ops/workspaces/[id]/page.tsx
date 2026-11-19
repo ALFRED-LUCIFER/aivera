@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { WorkspaceDetail } from '@/features/ops/components/WorkspaceDetail.tsx';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { getAudit, getWorkspaceFacts, platformOperator } from '@/server/operator';
+import { AiBudgetClient } from './AiBudgetClient.tsx';
 
 export async function generateMetadata(): Promise<Metadata> {
   await platformOperator();
@@ -38,7 +39,9 @@ export default async function WorkspacePage({ params }: PageProps<'/ops/workspac
         }
         title={workspace.name}
       />
-      <WorkspaceDetail workspace={workspace} />
+      <WorkspaceDetail workspace={workspace}>
+        <AiBudgetClient workspaceId={workspace.id} ai={workspace.ai} />
+      </WorkspaceDetail>
     </>
   );
 }

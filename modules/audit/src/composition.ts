@@ -12,7 +12,8 @@ export function createAudit(db: Db, now: () => Date = () => new Date()): AuditCo
   return auditUseCases({
     storeFor: auditStore,
     inWorkspace: (workspaceId, work) => withWorkspace(db, workspaceId, (tx) => work(auditStore(tx))),
-    insertPlatform: (entry) => db.transaction((tx) => insertPlatformEntry(tx, entry)),
+    insertPlatform: (entry, tx) =>
+      tx ? insertPlatformEntry(tx, entry) : db.transaction((t) => insertPlatformEntry(t, entry)),
     newId: () => uuidv7(),
     now,
   });

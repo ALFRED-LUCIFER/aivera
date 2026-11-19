@@ -30,17 +30,18 @@ const row = (name: string, extra: Partial<WorkspaceRow> = {}): WorkspaceRow => (
   status: 'active',
   activeMembers: 1,
   jobs: 0,
+  ai: { dailyBudget: 2_000_000, overridden: false, days: [{ day: '2026-11-25', tokens: 1_500 }] },
   ...extra,
 });
 const ready = (rows: WorkspaceRow[], searched = '', onPage = () => {}, page = 1, total = rows.length) =>
   ({ status: 'ready', rows, searched, page, pageCount: Math.max(1, Math.ceil(total / 50)), onPage }) as const;
 
 describe('Scenario: Listing workspaces', () => {
-  it('shows name, type, created date in its stated time zone, members, jobs, status "Active", plan "No plan yet"', () => {
+  it('shows name, type, created date in its stated time zone, members, jobs, AI tokens today, status "Active", plan "No plan yet"', () => {
     list(
       ready([
         row('Demo Hiring Co', { synthetic: true, activeMembers: 3, jobs: 5 }),
-        row('Gulf Talent Partners', { type: 'agency', activeMembers: 4, jobs: 2 }),
+        row('Gulf Talent Partners', { type: 'agency', activeMembers: 4, jobs: 2, ai: null }),
       ]),
     );
     const table = screen.getByRole('table', { name: 'Workspaces' });
@@ -48,14 +49,25 @@ describe('Scenario: Listing workspaces', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Workspace', 'Type', 'Created (Asia/Dubai)', 'Members', 'Jobs', 'Status', 'Plan']);
+    ).toEqual(['Workspace', 'Type', 'Created (Asia/Dubai)', 'Members', 'Jobs', 'AI tokens today', 'Status', 'Plan']);
     const [, demo, gulf] = within(table).getAllByRole('row');
     expect(
       within(demo as HTMLElement)
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['Demo Hiring CoSynthetic', 'In-house team', '19 Nov 2026', '3', '5', 'Active', 'No plan yet']);
+    ).toEqual([
+      'Demo Hiring CoSynthetic',
+      'In-house team',
+      '19 Nov 2026',
+      '3',
+      '5',
+      '1,500Observed',
+      'Active',
+      'No plan yet',
+    ]);
     expect(within(gulf as HTMLElement).getAllByRole('cell')[1]?.textContent).toBe('Agency');
+    // AIV-P2-038 Scenario: Usage not available: the store could not be read for this workspace.
+    expect(within(gulf as HTMLElement).getAllByRole('cell')[5]?.textContent).toBe('Not yet available');
     expect(screen.getByRole('link', { name: 'Gulf Talent Partners' }).getAttribute('href')).toMatch(
       /^\/ops\/workspaces\/[0-9a-f-]{36}$/,
     );

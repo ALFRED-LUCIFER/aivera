@@ -241,7 +241,7 @@ describe('Scenario: Workspace budget', () => {
   // The fake counts one token per 4 characters: this prompt spends the whole 2,000,000-token daily budget.
   const everything = { ...draft, prompt: 'x'.repeat(8_000_000) };
 
-  // SAFETY: mutation check: removed the spent >= dailyTokenBudgetPerWorkspace check -> this test failed
+  // SAFETY: mutation check: removed the spent >= limit check -> this test failed
   it('throws BudgetExceeded and sends no model request once the day is spent', async () => {
     const { ai, calls, clock } = setup();
     await ai.generate(everything);
@@ -257,17 +257,32 @@ describe('Scenario: Workspace budget', () => {
     await expect(ai.generate(draft)).resolves.toBeDefined();
   });
 
+  it("a workspace's own lower budget stops the next call (AIV-P2-038)", async () => {
+    const budget = memoryTokenBudget(100_000);
+    await budget.add(workspaceId, '2026-11-18', 120_000);
+    const { ai, calls } = setup(fakeProvider(), undefined, budget);
+    await expect(ai.generate(draft)).rejects.toBeInstanceOf(BudgetExceeded);
+    expect(calls).toHaveLength(0);
+  });
+
   it('a failed call spends nothing', async () => {
     const budget = memoryTokenBudget();
     const { ai } = setup(fakeProvider({ failures: [400] }), undefined, budget);
     await expect(ai.generate(draft)).rejects.toBeInstanceOf(AiUnavailable);
-    expect(await budget.spentToday(workspaceId, '2026-11-18')).toBe(0);
+    expect(await budget.spentToday(workspaceId, '2026-11-18')).toEqual({ spent: 0, limit: 2_000_000 });
   });
 
   // The PostgreSQL store's own failure scenario: tests/integration/src/ai-token-budget.test.ts.
   it.each([
     ['read', { spentToday: () => Promise.reject(new Error('Draft competencies')), add: async () => {} }, 0],
-    ['written', { spentToday: async () => 0, add: () => Promise.reject(new Error('Draft competencies')) }, 1],
+    [
+      'written',
+      {
+        spentToday: async () => ({ spent: 0, limit: 2_000_000 }),
+        add: () => Promise.reject(new Error('Draft competencies')),
+      },
+      1,
+    ],
   ] satisfies [string, TokenBudgetStore, number][])(
     'a store that cannot be %s fails closed with AiUnavailable and no prompt in the error',
     async (_, budget, requests) => {

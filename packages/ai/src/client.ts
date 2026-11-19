@@ -2,7 +2,6 @@ import { annotateSpan, withSpan } from '@aivera/observability';
 import { APICallError, embed as sdkEmbed, generateText } from 'ai';
 import {
   circuitBreaker,
-  dailyTokenBudgetPerWorkspace,
   deployments,
   embedTasks,
   generateTasks,
@@ -52,20 +51,25 @@ const outcome = (value: string, extra: Record<string, string | number> = {}) =>
 type Usage = { inputTokens: number; outputTokens: number };
 
 /**
- * Tokens spent per workspace and UTC day (`YYYY-MM-DD`). Apps pass the PostgreSQL store (`createAiTokenBudget` from
- * `@aivera/workspaces/composition`, AIV-P0-033), so every process shares one count; tests pass `memoryTokenBudget()`.
+ * Tokens spent per workspace and UTC day (`YYYY-MM-DD`), and the workspace's daily budget. Apps pass the PostgreSQL
+ * store (`createAiTokenBudget` from `@aivera/workspaces/composition`, AIV-P0-033), so every process shares one count
+ * and reads an operator's per-workspace budget (AIV-P2-038); tests pass `memoryTokenBudget()`.
  */
 export interface TokenBudgetStore {
-  spentToday(workspaceId: string, day: string): Promise<number>;
+  /** Input plus output tokens spent on `day`, and the input plus output tokens the workspace may spend per UTC day. */
+  spentToday(workspaceId: string, day: string): Promise<{ spent: number; limit: number }>;
   /** Must add atomically: concurrent calls from several processes must never lose an increment. */
   add(workspaceId: string, day: string, tokens: number): Promise<void>;
 }
 
-/** A store in this process's memory, for unit tests and the fake provider; never for an app. */
-export function memoryTokenBudget(): TokenBudgetStore {
+/**
+ * A store in this process's memory, for unit tests and the fake provider; never for an app. `limit` defaults to the
+ * platform default, `AI_DAILY_TOKEN_BUDGET.default` in `@aivera/workspaces` (not imported: no module dependency here).
+ */
+export function memoryTokenBudget(limit = 2_000_000): TokenBudgetStore {
   const spent = new Map<string, number>();
   return {
-    spentToday: async (workspaceId, day) => spent.get(`${workspaceId} ${day}`) ?? 0,
+    spentToday: async (workspaceId, day) => ({ spent: spent.get(`${workspaceId} ${day}`) ?? 0, limit }),
     add: async (workspaceId, day, tokens) =>
       void spent.set(`${workspaceId} ${day}`, (spent.get(`${workspaceId} ${day}`) ?? 0) + tokens),
   };
@@ -114,9 +118,10 @@ export function createAiClient(options: {
         outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': 'budget_store' });
         throw new AiUnavailable(task, 'budget store');
       };
-      const spent = await budget.spentToday(workspaceId, day).catch(() => unbudgeted(0));
-      // Calls already in flight can overshoot the budget by their own size; it is a daily cap, not a meter.
-      if (spent >= dailyTokenBudgetPerWorkspace) {
+      const { spent, limit } = await budget.spentToday(workspaceId, day).catch(() => unbudgeted(0));
+      // Calls already in flight can overshoot the budget by their own size; it is a daily cap, not a meter. A budget
+      // lowered below today's use stops the next call.
+      if (spent >= limit) {
         outcome('budget_exceeded');
         throw new BudgetExceeded(task, workspaceId);
       }

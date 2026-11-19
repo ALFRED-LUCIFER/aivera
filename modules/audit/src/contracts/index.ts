@@ -1,4 +1,5 @@
 // The only public surface of @aivera/audit (ADR-002).
+import type { Tx } from '@aivera/db';
 import type { AuditContext } from '../application/audit.ts';
 import type { AuditEntry, NewEntry, NewPlatformEntry, Subject } from '../domain/entry.ts';
 
@@ -31,7 +32,9 @@ export interface AuditContract {
   /**
    * Appends an operator's action to the platform audit log (ADR-012): no workspace id, its own transaction. Throws
    * `AuditError('unknown_action')`. The actor is the operator's identity user id from the session, never client input.
-   * An action on a workspace is also recorded there with `record`, inside `withWorkspace(<that workspace>)`.
+   * An action on a workspace is also recorded there with `record`, inside `withWorkspace(<that workspace>)`: pass that
+   * transaction as `tx` so both entries commit or roll back with the change. Also throws `note_required` and
+   * `personal_data`, as `record` does.
    */
-  recordPlatform(entry: NewPlatformEntry): Promise<void>;
+  recordPlatform(entry: NewPlatformEntry, tx?: Tx): Promise<void>;
 }

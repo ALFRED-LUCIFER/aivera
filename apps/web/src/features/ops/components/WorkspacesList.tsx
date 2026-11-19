@@ -2,7 +2,7 @@
 
 import type { Messages } from '@aivera/i18n';
 import { useTimeZone, useTranslations } from '@aivera/i18n/react';
-import { Button, DataTable, Input, Label, type DataTableColumn } from '@aivera/ui';
+import { Button, DataTable, Input, Label, ValueBasis, type DataTableColumn } from '@aivera/ui';
 import Link from 'next/link';
 import { workspaceHref, type WorkspaceRow, type WorkspacesListView } from '../domain/workspaces.ts';
 import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
@@ -16,6 +16,7 @@ const cells: (Omit<DataTableColumn<WorkspaceRow>, 'header'> & { id: ColumnId })[
   { id: 'created', cell: (row) => <CreatedCell row={row} /> },
   { id: 'members', numeric: true, cell: (row) => <Count value={row.activeMembers} /> },
   { id: 'jobs', numeric: true, cell: (row) => <Count value={row.jobs} /> },
+  { id: 'aiToday', numeric: true, cell: (row) => <AiTodayCell row={row} /> },
   { id: 'status', cell: (row) => <WorkspaceStatus status={row.status} /> },
   { id: 'plan', cell: () => <NoPlan /> },
 ];
@@ -117,6 +118,19 @@ function CreatedCell({ row }: { row: WorkspaceRow }) {
 function Count({ value }: { value: number }) {
   const t = useTranslations('ops.workspaces');
   return <>{t('count', { count: value })}</>;
+}
+
+// Today's AI tokens with their basis (AIV-P2-038): observed, or "Not yet available" when the store could not be read.
+function AiTodayCell({ row }: { row: WorkspaceRow }) {
+  const t = useTranslations('ops.workspaces');
+  return row.ai ? (
+    <span className="inline-flex items-center gap-2">
+      {t('count', { count: row.ai.days[0]?.tokens ?? 0 })}
+      <ValueBasis basis="observed" label={t('ai.observed')} />
+    </span>
+  ) : (
+    <ValueBasis basis="not-available" label={t('ai.notAvailable')} />
+  );
 }
 
 function NoPlan() {

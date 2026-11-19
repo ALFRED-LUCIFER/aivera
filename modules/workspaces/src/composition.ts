@@ -9,8 +9,9 @@ import { directoryUseCases } from './application/directory.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
 import { workspacesUseCases } from './application/workspaces.ts';
-import type { AiTokenBudget, WorkspaceDirectory, WorkspacesContract } from './contracts/index.ts';
+import type { AiBudgetConsole, AiTokenBudget, WorkspaceDirectory, WorkspacesContract } from './contracts/index.ts';
 import { grantsCover } from './domain/permissions.ts';
+import { AI_DAILY_TOKEN_BUDGET, WorkspaceError } from './domain/workspace.ts';
 import {
   activeWorkspaceStore,
   aiTokenUsageStore,
@@ -55,6 +56,29 @@ export function createAiTokenBudget(db: Db): AiTokenBudget {
       withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).spent(workspaceId, day)),
     add: (workspaceId, day, tokens) =>
       withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).add(workspaceId, day, tokens)),
+  };
+}
+
+/** The operator console's AI budget (AIV-P2-038, ADR-012): reads and the audited override, per workspace scope. */
+export function createAiBudgetConsole(db: Db, audit: AuditContract): AiBudgetConsole {
+  return {
+    usage: (workspaceId, today, days) =>
+      withWorkspace(db, workspaceId, (tx) => aiTokenUsageStore(tx).usage(workspaceId, today, days)),
+    setDailyBudget: ({ operatorId, workspaceId, dailyBudget, reason }) =>
+      withWorkspace(db, workspaceId, async (tx) => {
+        const before = await aiTokenUsageStore(tx).setDailyBudget(workspaceId, dailyBudget);
+        if (before === null) throw new WorkspaceError('no_workspace');
+        const change = {
+          action: 'ai_budget.changed',
+          subject: { type: 'workspace', id: workspaceId },
+          note: reason,
+          before: { dailyTokenBudget: before },
+          after: { dailyTokenBudget: dailyBudget ?? AI_DAILY_TOKEN_BUDGET.default },
+        } as const;
+        // Both logs in the change's transaction, the workspace's entry last (AGENTS.md 3.6, ADR-012 point 8).
+        await audit.recordPlatform({ actorId: operatorId, ...change }, tx);
+        await audit.record({ tx, workspaceId, actor: { type: 'operator', id: operatorId } }, change);
+      }),
   };
 }
 

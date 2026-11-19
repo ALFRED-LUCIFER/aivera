@@ -20,6 +20,7 @@ export const ACTIONS = [
   'workspace.purged',
   'job.published',
   'job.unpublished',
+  'ai_budget.changed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -27,13 +28,14 @@ export type Action = (typeof ACTIONS)[number];
  * What an Aivera operator did, recorded in the platform audit log with no workspace (ADR-012). Adding one also needs a
  * migration for the `platform_entry_action_check` constraint (infrastructure/schema.ts).
  */
-export const PLATFORM_ACTIONS = ['ops.console_opened', 'ops.workspace_viewed'] as const;
+export const PLATFORM_ACTIONS = ['ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed'] as const;
 export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */
-export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded'];
+export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded', 'ai_budget.changed'];
 
-export const ACTOR_TYPES = ['user', 'system', 'candidate', 'client'] as const;
+/** `operator` is an Aivera operator acting on a workspace from the console, by identity user id (ADR-012 point 8). */
+export const ACTOR_TYPES = ['user', 'system', 'candidate', 'client', 'operator'] as const;
 export type ActorType = (typeof ACTOR_TYPES)[number];
 
 /** `system` is Aivera itself and has no id; every other actor is an opaque id from its owning module. */
@@ -53,8 +55,18 @@ export type NewEntry = {
   after?: Values;
 };
 
-/** An operator's action: the operator's identity user id, the target by opaque id when there is one, and the reason. */
-export type NewPlatformEntry = { actorId: string; action: PlatformAction; subject?: Subject; note?: string };
+/**
+ * An operator's action: the operator's identity user id, the target by opaque id when there is one, the reason, and
+ * the values before and after a change (ids, enum values and numbers only, as for `NewEntry`).
+ */
+export type NewPlatformEntry = {
+  actorId: string;
+  action: PlatformAction;
+  subject?: Subject;
+  note?: string;
+  before?: Values;
+  after?: Values;
+};
 
 export type PlatformEntry = {
   id: string;
@@ -63,6 +75,8 @@ export type PlatformEntry = {
   action: PlatformAction;
   subject: Subject | null;
   note: string | null;
+  before: Values | null;
+  after: Values | null;
 };
 
 export type AuditEntry = Required<Pick<NewEntry, 'action' | 'subject'>> & {
@@ -110,7 +124,11 @@ export function assertValidEntry(entry: NewEntry): void {
     if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
 }
 
-/** Throws unless `entry` names a known platform action. */
+/** Throws unless `entry` names a known platform action, has a note where required, and no contact details in values. */
 export function assertValidPlatformEntry(entry: NewPlatformEntry): void {
   if (!PLATFORM_ACTIONS.includes(entry.action)) throw new AuditError('unknown_action');
+  if ((NOTE_REQUIRED as readonly string[]).includes(entry.action) && !entry.note?.trim())
+    throw new AuditError('note_required');
+  for (const values of [entry.before, entry.after])
+    if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
 }

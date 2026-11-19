@@ -1,0 +1,2 @@
+ALTER TABLE "workspaces"."workspace" ADD COLUMN "ai_daily_token_budget" integer;--> statement-breakpoint
+ALTER TABLE "workspaces"."workspace" ADD CONSTRAINT "workspace_ai_daily_token_budget_check" CHECK ("workspaces"."workspace"."ai_daily_token_budget" is null or "workspaces"."workspace"."ai_daily_token_budget" between 100000 and 10000000);

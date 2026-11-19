@@ -37,6 +37,33 @@ export type WorkspaceSummary = {
   activeMembers: number;
 };
 
+/**
+ * Input plus output AI tokens a workspace may spend per UTC day (AIV-P0-033, AIV-P2-038): the platform default, and the
+ * bounds of an operator's per-workspace override. Mirrored by `workspace_ai_daily_token_budget_check`.
+ */
+export const AI_DAILY_TOKEN_BUDGET = { default: 2_000_000, min: 100_000, max: 10_000_000 } as const;
+
+/** One workspace's AI token use for the operator console: its daily budget and the tokens spent per UTC day. */
+export type AiTokenUse = {
+  /** The budget in force: the operator's override, or the platform default. */
+  dailyBudget: number;
+  /** True when an operator set `dailyBudget`; false for the platform default. */
+  overridden: boolean;
+  /** Tokens per UTC day (`YYYY-MM-DD`), newest (today) first, one entry per day of the window, 0 when no call. */
+  days: { day: string; tokens: number }[];
+};
+
+const DAY_MS = 86_400_000;
+
+/** The `count` UTC days ending on `today` (`YYYY-MM-DD`), newest first, with 0 tokens for a day with no use. */
+export function usageWindow(today: string, count: number, used: { day: string; tokens: number }[]) {
+  const end = Date.parse(`${today}T00:00:00Z`);
+  return Array.from({ length: count }, (_, i) => {
+    const day = new Date(end - i * DAY_MS).toISOString().slice(0, 10);
+    return { day, tokens: used.find((u) => u.day === day)?.tokens ?? 0 };
+  });
+}
+
 export type Member = {
   userId: string;
   workspaceId: string;
@@ -68,6 +95,7 @@ const MESSAGES = {
   client_not_found: 'No such client in this workspace',
   grant_role: 'Only hiring owners and interviewers get job access.',
   not_synthetic: 'Only a synthetic demo workspace can be seeded or purged.',
+  no_workspace: 'No such workspace',
 } as const;
 
 export type WorkspaceErrorCode = keyof typeof MESSAGES;

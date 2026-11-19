@@ -20,8 +20,8 @@ export type Ports = {
   storeFor(tx: Tx): AuditStore;
   /** Runs `work` in one transaction scoped to `workspaceId` (row-level security, ADR-005). */
   inWorkspace<T>(workspaceId: string, work: (store: AuditStore) => Promise<T>): Promise<T>;
-  /** Appends one platform entry in its own transaction: it belongs to no workspace (ADR-012). */
-  insertPlatform(entry: PlatformEntry): Promise<void>;
+  /** Appends one platform entry in `tx`, or in its own transaction: it belongs to no workspace (ADR-012). */
+  insertPlatform(entry: PlatformEntry, tx?: Tx): Promise<void>;
   newId(): string;
   now(): Date;
 };
@@ -56,16 +56,22 @@ export function auditUseCases({ storeFor, inWorkspace, insertPlatform, newId, no
       return inWorkspace(workspaceId, (store) => store.listFor(workspaceId, subject));
     },
 
-    async recordPlatform({ actorId, action, subject, note }: NewPlatformEntry): Promise<void> {
-      assertValidPlatformEntry({ actorId, action });
-      await insertPlatform({
-        id: newId(),
-        occurredAt: now(),
-        actorId,
-        action,
-        subject: subject ?? null,
-        note: note ?? null,
-      });
+    async recordPlatform(input: NewPlatformEntry, tx?: Tx): Promise<void> {
+      assertValidPlatformEntry(input);
+      const { actorId, action, subject, note, before, after } = input;
+      await insertPlatform(
+        {
+          id: newId(),
+          occurredAt: now(),
+          actorId,
+          action,
+          subject: subject ?? null,
+          note: note ?? null,
+          before: before ?? null,
+          after: after ?? null,
+        },
+        tx,
+      );
     },
   };
 }

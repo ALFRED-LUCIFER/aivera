@@ -4,7 +4,8 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { AiUnavailable, BudgetExceeded, createAiClient, fakeProvider, type AiProvider } from '@aivera/ai';
 import { createAudit } from '@aivera/audit/composition';
 import { createDb, migrateModules, MODULES, withWorkspace, type Db } from '@aivera/db';
-import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
+import { WorkspaceError } from '@aivera/workspaces';
+import { createAiBudgetConsole, createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
 import { MockLanguageModelV4 } from 'ai/test';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
+const PIA = '0190d4a2-0000-7000-8000-00000000a001'; // Pia Platform, an operator (personas.md)
 const NINE_AM = Date.parse('2026-11-18T09:00:00Z');
 const BUDGET = 2_000_000;
 
@@ -217,5 +219,175 @@ describe('Scenario: Row-level security isolates usage between workspaces', () =>
   // Ownership, ENABLE and FORCE ROW LEVEL SECURITY: tests/integration/src/workspaces.test.ts (every workspaces table).
   it('a negative total is refused by the check constraint', async () => {
     await expect(spend(GULF, '2026-11-18', -1)).rejects.toMatchObject({ constraint: 'ai_token_usage_tokens_check' });
+  });
+});
+
+// AIV-P2-038: the operator's per-workspace daily budget, set through the console's contract on one pool and read by the
+// AI client's check on another, as the app role.
+const reason = 'Pilot cap agreed with the team';
+const override = async (workspaceId: string) =>
+  (
+    await admin.execute<{ budget: number | null }>(
+      sql`select ai_daily_token_budget as budget from workspaces.workspace where id = ${workspaceId}`,
+    )
+  )[0]?.budget;
+// The platform log is insert-only for aivera_app, so it is read as the superuser.
+const platformEntries = async () => [
+  ...(await admin.execute(
+    sql`select actor_id, action, subject_type, subject_id, note, before, after from audit.platform_entry
+      where action = 'ai_budget.changed' order by occurred_at, id`,
+  )),
+];
+const budgetChanges = async (workspaceId: string) =>
+  (await createAudit(reader).listFor(workspaceId, { type: 'workspace', id: workspaceId })).filter(
+    (e) => e.action === 'ai_budget.changed',
+  );
+const resetAll = async () => {
+  await clear();
+  await admin.execute(sql`update workspaces.workspace set ai_daily_token_budget = null`);
+};
+
+describe('AIV-P2-038: a per-workspace daily budget', () => {
+  // Its own pool of 4, so two operators' changes really run at once.
+  let budgets: ReturnType<typeof createAiBudgetConsole> | undefined;
+  const ops = () => (budgets ??= createAiBudgetConsole(pool(4), createAudit(reader)));
+  const setBudget = (workspaceId: string, dailyBudget: number | null) =>
+    ops().setDailyBudget({ operatorId: PIA, workspaceId, dailyBudget, reason });
+
+  describe('Scenario: A lower budget stops further calls', () => {
+    // SAFETY: mutation check: made aiTokenUsageStore.spent return AI_DAILY_TOKEN_BUDGET.default as the limit (override ignored) -> this test failed (the request was sent)
+    it('with the budget set to 100,000 and 120,000 used today, a call from another process throws and sends nothing', async () => {
+      await resetAll();
+      await setBudget(DEMO, 100_000);
+      await spend(DEMO, '2026-11-18', 120_000);
+      const model = exact(1, 1);
+      await expect(processWith(model.provider).generate(draft(DEMO))).rejects.toBeInstanceOf(BudgetExceeded);
+      expect(model.sent.requests).toBe(0);
+      // Another workspace keeps the platform default.
+      await spend(GULF, '2026-11-18', 120_000);
+      await expect(processWith(model.provider).generate(draft(GULF))).resolves.toEqual({ text: 'ok' });
+    });
+
+    it('raising it again lets the next call through', async () => {
+      await resetAll();
+      await setBudget(DEMO, 100_000);
+      await spend(DEMO, '2026-11-18', 120_000);
+      await setBudget(DEMO, 200_000);
+      await expect(processWith(exact(1, 1).provider).generate(draft(DEMO))).resolves.toEqual({ text: 'ok' });
+    });
+  });
+
+  describe('Scenario: Setting an override', () => {
+    // SAFETY: mutation check: removed the audit.recordPlatform call from setDailyBudget -> this test failed (no platform entry)
+    it('records "ai_budget.changed" from 2,000,000 to 500,000 with her user id and the reason in both audit logs', async () => {
+      await resetAll();
+      const before = (await platformEntries()).length;
+      await setBudget(GULF, 500_000);
+      expect(await override(GULF)).toBe(500_000);
+      expect((await platformEntries()).slice(before)).toEqual([
+        {
+          actor_id: PIA,
+          action: 'ai_budget.changed',
+          subject_type: 'workspace',
+          subject_id: GULF,
+          note: reason,
+          before: { dailyTokenBudget: 2_000_000 },
+          after: { dailyTokenBudget: 500_000 },
+        },
+      ]);
+      expect((await budgetChanges(GULF)).at(-1)).toMatchObject({
+        actor: { type: 'operator', id: PIA },
+        note: reason,
+        before: { dailyTokenBudget: 2_000_000 },
+        after: { dailyTokenBudget: 500_000 },
+      });
+      expect(await ops().usage(GULF, '2026-11-18', 7)).toMatchObject({ dailyBudget: 500_000, overridden: true });
+    });
+
+    it('a reset goes back to the default and is audited from 500,000 to 2,000,000', async () => {
+      await resetAll();
+      await setBudget(GULF, 500_000);
+      await setBudget(GULF, null);
+      expect(await override(GULF)).toBeNull();
+      expect((await budgetChanges(GULF)).at(-1)).toMatchObject({
+        before: { dailyTokenBudget: 500_000 },
+        after: { dailyTokenBudget: 2_000_000 },
+      });
+      expect(await ops().usage(GULF, '2026-11-18', 7)).toMatchObject({ dailyBudget: 2_000_000, overridden: false });
+    });
+
+    // SAFETY: mutation check: removed .for('update') from aiTokenUsageStore.setDailyBudget -> this test failed (both entries recorded 2,000,000 as before)
+    it('two operators changing it at once: the second records the budget the first left as "before"', async () => {
+      await resetAll();
+      await Promise.all([setBudget(DEMO, 300_000), setBudget(DEMO, 400_000)]);
+      const [first, second] = (await budgetChanges(DEMO)).slice(-2);
+      expect(first?.before).toEqual({ dailyTokenBudget: 2_000_000 });
+      expect(second?.before).toEqual(first?.after);
+      expect(await override(DEMO)).toBe(second?.after?.['dailyTokenBudget']);
+    });
+  });
+
+  describe('Scenario Outline: Bounds (the database is the last layer)', () => {
+    it.each([99_999, 10_000_001])(
+      '%d is refused by the check constraint; nothing changes or is audited',
+      async (value) => {
+        await resetAll();
+        const [platform, workspace] = [(await platformEntries()).length, (await budgetChanges(DEMO)).length];
+        await expect(setBudget(DEMO, value)).rejects.toMatchObject({
+          constraint: 'workspace_ai_daily_token_budget_check',
+        });
+        expect(await override(DEMO)).toBeNull();
+        expect((await platformEntries()).length).toBe(platform);
+        expect((await budgetChanges(DEMO)).length).toBe(workspace);
+      },
+    );
+  });
+
+  // SAFETY: mutation check: dropped platform_entry_note_check -> this test failed (the blank-note row was inserted)
+  it('the database refuses a platform "ai_budget.changed" entry without a reason', async () => {
+    await expect(
+      reader.execute(sql`insert into audit.platform_entry (id, occurred_at, actor_id, action, note)
+        values (gen_random_uuid(), now(), ${PIA}, 'ai_budget.changed', '  ')`),
+    ).rejects.toMatchObject({ constraint: 'platform_entry_note_check' });
+  });
+
+  it("the client's check fails closed for a workspace its scope cannot see: AiUnavailable, no request", async () => {
+    const model = exact(1, 1);
+    await expect(processWith(model.provider).generate(draft('0190d4a2-0000-7000-8000-0000000000ff'))).rejects.toEqual(
+      new AiUnavailable('jobs.draftCompetencies', 'budget store'),
+    );
+    expect(model.sent.requests).toBe(0);
+  });
+
+  it('a workspace that does not exist is refused with no_workspace and nothing is audited', async () => {
+    const platform = (await platformEntries()).length;
+    await expect(setBudget('0190d4a2-0000-7000-8000-0000000000ff', 500_000)).rejects.toEqual(
+      new WorkspaceError('no_workspace'),
+    );
+    expect((await platformEntries()).length).toBe(platform);
+  });
+
+  describe('Scenario: Use is shown as observed', () => {
+    it('lists today and the 6 UTC days before it, newest first, from the workspace scope only', async () => {
+      await resetAll();
+      await spend(DEMO, '2026-11-18', 1_500);
+      await spend(DEMO, '2026-11-15', 40);
+      await spend(DEMO, '2026-11-11', 9); // 7 days back: outside the window
+      await spend(GULF, '2026-11-18', 777);
+      expect(await ops().usage(DEMO, '2026-11-18', 7)).toEqual({
+        dailyBudget: 2_000_000,
+        overridden: false,
+        days: [
+          { day: '2026-11-18', tokens: 1_500 },
+          { day: '2026-11-17', tokens: 0 },
+          { day: '2026-11-16', tokens: 0 },
+          { day: '2026-11-15', tokens: 40 },
+          { day: '2026-11-14', tokens: 0 },
+          { day: '2026-11-13', tokens: 0 },
+          { day: '2026-11-12', tokens: 0 },
+        ],
+      });
+      expect(await ops().usage('0190d4a2-0000-7000-8000-0000000000ff', '2026-11-18', 1)).toBeNull();
+    });
   });
 });
