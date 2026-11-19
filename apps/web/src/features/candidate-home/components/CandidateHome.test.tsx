@@ -62,8 +62,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
 
   it('the sample job shows what will be judged', () => {
     renderHome();
-    const card = screen.getByRole('heading', { level: 2, name: 'Senior AI Engineer' }).parentElement
-      ?.parentElement as HTMLElement;
+    const card = screen.getByRole('region', { name: 'Example: Senior AI Engineer' });
     expect(within(card).getByText('What this job needs')).toBeDefined();
     const rows = within(card)
       .getAllByRole('listitem')

@@ -18,7 +18,7 @@ export type CandidateShellProps = {
 const navLink =
   'inline-flex min-h-11 items-center px-1.5 font-medium text-text-2 hover:text-text ' +
   'bg-[linear-gradient(currentColor,currentColor)] bg-no-repeat bg-position-[6px_calc(100%-10px)] rtl:bg-position-[calc(100%-6px)_calc(100%-10px)] bg-size-[0_1.5px] ' +
-  'transition-[background-size,color] duration-240 ease-case hover:bg-size-[calc(100%-12px)_1.5px] motion-reduce:transition-none ' +
+  'transition-[background-size,color] duration-120 ease-case hover:bg-size-[calc(100%-12px)_1.5px] motion-reduce:transition-none ' +
   'aria-[current=page]:font-semibold aria-[current=page]:text-text aria-[current=page]:bg-size-[calc(100%-12px)_1.5px]';
 
 // The artboard's 1120 px column with fluid gutters.

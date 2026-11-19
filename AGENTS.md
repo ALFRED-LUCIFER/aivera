@@ -67,7 +67,7 @@ src/features/<feature>/components/ presentational .tsx only: props in, events ou
 
 **Design rules** ([DESIGN.md](DESIGN.md)). New code follows them.
 
-- **Ink does the work.** Text, actions, scores and selection use ink. **The highlighter (`--hl`) marks cited evidence and nothing else.**
+- **Ink does the work.** Text, actions, scores and selection use ink. **The highlighter (`--hl`) marks cited evidence and nothing else**, except the website and candidate home headlines DESIGN.md names.
 - **Status colour always travels with an icon and a word.** Never colour alone.
 - **Every metric shows its value-basis marker** (observed, baseline, projection, not yet available).
 - **Evidence provenance and strength** use the shared `ProvenanceTag` and `StrengthMeter` (neutral ink, so strength is not read as pass/fail).

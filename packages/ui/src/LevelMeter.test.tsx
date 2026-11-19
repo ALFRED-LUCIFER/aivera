@@ -6,7 +6,7 @@ import { LevelMeter } from './LevelMeter.tsx';
 const segments = (c: HTMLElement) => [...c.querySelectorAll('[aria-hidden="true"] > span')];
 
 describe('LevelMeter', () => {
-  // SAFETY: mutation check: i <= level -> i < level -> every row failed
+  // Mutation check: i <= level -> i < level -> every row failed.
   it.each([1, 4, 5])('level %i fills that many of five segments and reads its words', (level) => {
     const { container } = render(<LevelMeter level={level} label={`${level} of 5`} />);
     expect(screen.getByText(`${level} of 5`)).toBeTruthy();

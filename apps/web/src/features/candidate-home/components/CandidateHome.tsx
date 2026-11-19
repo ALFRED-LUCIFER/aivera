@@ -31,7 +31,7 @@ const arrow = (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
-    className="size-4.5 flex-none transition-transform duration-120 ease-case group-hover:translate-x-0.5 motion-reduce:transition-none rtl:-scale-x-100"
+    className="size-4.5 flex-none transition-transform duration-120 ease-case group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 motion-reduce:transition-none rtl:-scale-x-100"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -89,9 +89,15 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
           </div>
         </div>
         <div className="mk-rise min-w-0 flex-[5_1_360px]" style={step(4)}>
-          <div className="flex flex-col gap-3.5 rounded-card border border-border-strong bg-surface p-6 shadow-pop">
+          <section
+            aria-labelledby="sample"
+            className="flex flex-col gap-3.5 rounded-card border border-border-strong bg-surface p-6 shadow-pop"
+          >
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-[16px] leading-6 font-semibold">{t('candidate.home.sampleTitle')}</h2>
+              {/* Named as an example, so the illustration is never read as a real listing. */}
+              <h2 id="sample" className="text-card font-semibold">
+                <span className="sr-only">{t('candidate.home.sampleExample')}</span> {t('candidate.home.sampleTitle')}
+              </h2>
               <p className="text-meta text-text-2">{t('candidate.home.sampleJob')}</p>
             </div>
             <ul>
@@ -106,7 +112,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
               ))}
             </ul>
             <p className="text-meta text-text-2">{t('candidate.job.needsIntro')}</p>
-          </div>
+          </section>
         </div>
       </section>
 
@@ -119,7 +125,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
           {PRINCIPLES.map((key) => (
             <li key={key} className="flex flex-col gap-2">
               <span aria-hidden="true" className="mb-3 block h-0.5 bg-text" />
-              <h3 className="text-[18px] leading-6.5 font-semibold">{t(`candidate.home.principles.${key}.title`)}</h3>
+              <h3 className="text-section font-semibold">{t(`candidate.home.principles.${key}.title`)}</h3>
               <p className="text-[16px] leading-6 text-text-2">{t(`candidate.home.principles.${key}.body`)}</p>
             </li>
           ))}
@@ -128,7 +134,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
 
       <section aria-labelledby="new-jobs" className="min-w-0 rounded-card border border-border bg-surface shadow-1">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3.5">
-          <h2 id="new-jobs" className={`${display} text-[22px] leading-[1.15]`}>
+          <h2 id="new-jobs" className={`${display} text-[20px] leading-[1.15]`}>
             {t('candidate.home.newTitle')}
           </h2>
           <Link
@@ -145,6 +151,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
         ) : newJobs.length === 0 ? (
           <p className="border-t border-border px-5 py-4.5 text-text-2">{t('candidate.home.noNew')}</p>
         ) : (
+          // A row, not JobCard: the artboard lays New this week out as a list inside one card.
           <ul>
             {newJobs.map((job) => (
               <li
@@ -179,7 +186,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
                 <Link
                   href={`/candidates/jobs/${job.slug}`}
                   aria-label={t('candidate.jobs.viewJobFor', { title: job.title })}
-                  className={buttonClassName('secondary', 'compact')}
+                  className={buttonClassName('secondary')}
                 >
                   {t('candidate.jobs.viewJob')}
                 </Link>
