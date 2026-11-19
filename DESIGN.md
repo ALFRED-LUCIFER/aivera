@@ -59,7 +59,7 @@ Themes are set by `data-theme="light"` (default) or `data-theme="dark"` on the r
 
 Form fields use `--field-border` (≥3:1, WCAG 1.4.11); every other border keeps `--border`/`--border-strong`. Owner decision, 18 Nov 2026.
 
-Text selection uses the highlighter. The marketing site's, the candidate home's and the sign-in pages' dark "ink" panels are `#1B1720` with `#F4F1F6` text.
+Text selection uses the highlighter. The marketing site's, the candidate home's and the sign-in pages' dark "ink" panels are drawn `#1B1720` in the artboards and built with the dark theme's tokens (`data-theme="dark"`, `--surface` `#1D1922`, `--text` `#F4F1F6`), so they stay dark in either theme.
 
 ## Domain components (all in `@aivera/ui`)
 

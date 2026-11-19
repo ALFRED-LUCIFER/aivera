@@ -10,7 +10,6 @@ type SignInFormLabels = {
   title: string;
   lead: string;
   email: string;
-  emailPlaceholder: string;
   passwordNote: string;
   remember: string;
   signIn: string;
@@ -36,7 +35,8 @@ type SignInFormProps = {
 const RESET_FORM = 'sign-in-reset';
 
 // The SignIn artboard (docs/01-design/artboards/SignIn.dc.html). Deviations: the password is typed on the tenant's
-// hosted page, so a note replaces the password field; no company single sign-on button until AIV-P1-057.
+// hosted page, so a note replaces the password field; no company single sign-on button until AIV-P1-057; no
+// "you@company.com" placeholder (no real domains, and messages ship in every page: ops-workspaces.spec.ts).
 export function SignInForm({ action, next, error, labels: l, google }: SignInFormProps) {
   return (
     <AuthPage wordmark={l.wordmark} headline={l.headline} points={l.points} title={l.title} lead={l.lead}>
@@ -54,7 +54,6 @@ export function SignInForm({ action, next, error, labels: l, google }: SignInFor
             name="email"
             type="email"
             autoComplete="username"
-            placeholder={l.emailPlaceholder}
             className="min-h-11"
             aria-describedby="sign-in-password-note"
           />

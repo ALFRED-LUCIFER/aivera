@@ -27,6 +27,13 @@ const check = (
   </svg>
 );
 
+/** The headline's highlighter: light tokens keep it bright on the ink panel; globals.css sweeps it in. */
+export const inkMark = (chunks: ReactNode) => (
+  <mark data-theme="light" className="mk-sweep rounded-tag bg-hl px-1.5 text-hl-text box-decoration-clone">
+    {chunks}
+  </mark>
+);
+
 const pad = 'min-w-0 p-[clamp(28px,5vw,64px)]';
 
 /** The SignIn and SignUp artboards: the ink panel with the promise, the form on the right (stacks when narrow). */
@@ -37,7 +44,7 @@ export function AuthPage({ wordmark, headline, points, title, lead, children }: 
       <aside data-theme="dark" className={`${pad} flex flex-[5_1_360px] flex-col gap-10 bg-surface text-text`}>
         <Link
           href="/"
-          className="flex items-center gap-2.5 self-start font-display text-[20px] font-bold tracking-tight text-text no-underline"
+          className="flex items-center gap-2.5 self-start font-display text-[20px] font-bold tracking-[-0.01em] text-text no-underline"
         >
           <Image
             src="/brand/aivera-mark.png"

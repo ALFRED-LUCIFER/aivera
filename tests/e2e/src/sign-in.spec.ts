@@ -2,7 +2,7 @@ import { decode } from '@auth/core/jwt';
 import { expect, test, type BrowserContext } from '@playwright/test';
 import { e2eAuthSecret } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { css, expectNoAxeViolations, themes } from './gallery.ts';
 
 // AIV-P0-009 J0 smoke and AIV-P1-002 J1 step: recruiter sign-in against a mocked OIDC provider standing in for the
 // External ID tenant.
@@ -96,7 +96,8 @@ test('Scenario: The page offers only the two ways in and the artboard copy', asy
   // The SignIn artboard: logo home link, headline with "evidence" under the highlighter, the three promises, the lead.
   await expect(page.getByRole('link', { name: 'Aivera' })).toHaveAttribute('href', '/');
   await expect(page.getByText('Hire on evidence, not claims.')).toBeVisible();
-  await expect(page.locator('mark', { hasText: 'evidence' })).toBeVisible();
+  await expect(page.locator('mark')).toHaveCount(1);
+  await expect(page.locator('mark')).toHaveText('evidence');
   for (const point of [
     'Every score cites the work it rests on.',
     'Claims are labelled as claims.',
@@ -245,7 +246,27 @@ for (const theme of themes) {
   });
 }
 
-// AIV-P1-068: the ink panel stacks above the form at phone width, with no sideways scroll.
+// AIV-P1-068: the SignIn artboard's sizes: 32/40 title, 16/24 lead, 44 px field, 48 px buttons, a 440 px column, and
+// the ink panel dark in either theme.
+for (const theme of themes) {
+  test(`the sign-in page has the artboard's sizes and ink panel (${theme})`, async ({ page, context, baseURL }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/sign-in');
+    const title = page.getByRole('heading', { level: 1, name: 'Sign in' });
+    expect([await css(title, 'font-size'), await css(title, 'line-height')]).toEqual(['32px', '40px']);
+    const lead = page.getByText('Welcome back. Pick up where your roles left off.');
+    expect([await css(lead, 'font-size'), await css(lead, 'line-height')]).toEqual(['16px', '24px']);
+    expect((await page.getByLabel('Email').boundingBox())?.height).toBe(44);
+    for (const name of ['Sign in', 'Continue with Google'])
+      expect((await page.getByRole('button', { name, exact: true }).boundingBox())?.height).toBe(48);
+    expect(await css(title.locator('..').locator('..'), 'max-width')).toBe('440px');
+    expect(await css(page.getByRole('complementary'), 'background-color')).toBe('rgb(29, 25, 34)');
+  });
+}
+
+// AIV-P1-068: the ink panel stacks above the form at phone width, with no sideways scroll. Like the artboard, the two
+// columns sit side by side while both fit (about 780 px and up).
 test('the sign-in page stacks at phone width with no horizontal scroll', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto('/sign-in');
