@@ -6,13 +6,17 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will close new business with mid-size retailers. You build your own pipeline of prospects. You negotiate contracts with procurement teams.'
+    text: 'You will close new business with mid-size retailers. You build your own pipeline of prospects. You negotiate
+      contracts with procurement teams.'
 expected:
   match:
     competencies[*].name:
       - 'Closing sales'
       - 'Prospecting and pipeline'
       - 'Negotiation'
+    suggestions[*].name:
+      - Retail industry knowledge
+      - CRM and forecasting
 recorded:
   output:
     {
@@ -45,4 +49,25 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Retail industry knowledge,
+            evidenceExpected: 'Deals closed with retailers, and what they learned about how retailers buy',
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why: 'You sell to mid-size retailers, but the description asks for no knowledge of how retailers buy.',
+            citations: [{ sourceId: S1, quote: close new business with mid-size retailers }],
+          },
+          {
+            name: CRM and forecasting,
+            evidenceExpected: 'A pipeline they kept in a CRM, and how close their forecasts came',
+            weight: 10,
+            level: 2,
+            type: desirable,
+            why: 'You build your own pipeline, but the description does not say how it is tracked or forecast.',
+            citations: [{ sourceId: S1, quote: You build your own pipeline of prospects }],
+          },
+        ],
     }

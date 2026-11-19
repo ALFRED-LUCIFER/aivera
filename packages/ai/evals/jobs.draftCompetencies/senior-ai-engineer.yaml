@@ -8,9 +8,10 @@ sources:
   - id: S1
     kind: job_description
     text: >-
-      You will ship and run LLM assistants and retrieval systems that real merchants use every day. You will build
-      the eval sets and retrieval metrics that decide what we ship. You will write production Python services, with
-      tests, and deploy them yourself. You keep latency, cost per request and incidents in check.
+      You will ship and run LLM assistants and retrieval systems that real merchants use every day. You will build the
+      eval sets and retrieval metrics that decide what we ship. You will write production Python services, with tests,
+      and deploy them yourself. You keep latency, cost per request and incidents in check. The assistant answers
+      merchants in Arabic and English.
 expected:
   match:
     competencies[*].name:
@@ -19,8 +20,9 @@ expected:
       - Python service engineering
       - Cost and reliability
     competencies[*].type: [mandatory, desirable]
-    # The suggestions below are AIV-P1-009's: its schema adds them, and it moves `suggestions[*].name` back into match
-    # (Arabic and bilingual NLP, Product judgement). Until then a live run, on this ticket's schema, returns none.
+    suggestions[*].name:
+      - Arabic and bilingual NLP
+      - Product judgement
 recorded:
   output:
     competencies:
@@ -60,6 +62,20 @@ recorded:
     reason: null
     suggestions:
       - name: Arabic and bilingual NLP
-        reason: The merchants are in the Gulf and the description does not mention Arabic.
+        evidenceExpected: 'Work on Arabic or bilingual text: models, evals, tokenisation'
+        weight: 10
+        level: 2
+        type: desirable
+        why: The assistant must answer in Arabic, but the description lists no language requirement.
+        citations:
+          - sourceId: S1
+            quote: The assistant answers merchants in Arabic and English
       - name: Product judgement
-        reason: The engineer decides what ships, which the description implies but does not state.
+        evidenceExpected: Product decisions they shaped from evals or merchant feedback
+        weight: 15
+        level: 3
+        type: desirable
+        why: Your evals decide what ships, but the description does not ask for judging what merchants need.
+        citations:
+          - sourceId: S1
+            quote: build the eval sets and retrieval metrics that decide what we ship

@@ -6,13 +6,18 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build and evaluate credit risk models. You own the data pipelines that feed them. You design experiments to test policy changes.'
+    text:
+      'You will build and evaluate credit risk models. You own the data pipelines that feed them. You design experiments
+      to test policy changes.'
 expected:
   match:
     competencies[*].name:
       - 'Modelling and evaluation'
       - 'Data quality and pipelines'
       - 'Experimentation'
+    suggestions[*].name:
+      - Credit risk regulation
+      - Explaining results to decision makers
 recorded:
   output:
     {
@@ -45,4 +50,27 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Credit risk regulation,
+            evidenceExpected: Models they took through model risk review or a regulator's questions,
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why: 'The models decide who gets credit, which is regulated, but the description names no lending or model risk rules.',
+            citations: [{ sourceId: S1, quote: build and evaluate credit risk models }],
+          },
+          {
+            name: Explaining results to decision makers,
+            evidenceExpected: Write-ups or talks that explained a model or experiment to people who acted on it,
+            weight: 10,
+            level: 3,
+            type: desirable,
+            why:
+              'Your experiments test policy changes, but the description does not ask you to explain results to the people who
+              decide.',
+            citations: [{ sourceId: S1, quote: You design experiments to test policy changes }],
+          },
+        ],
     }

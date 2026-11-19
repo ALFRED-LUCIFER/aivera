@@ -1,18 +1,21 @@
 import { useTranslations } from '@aivera/i18n/react';
-import { Button, DataTable, EvidenceHighlight, Input, Select, Textarea, type DataTableColumn } from '@aivera/ui';
-import type { DraftCompetency, DraftResult, DraftRow } from '../domain/draft.ts';
+import { Button, Chip, DataTable, EvidenceHighlight, Input, Select, Textarea, type DataTableColumn } from '@aivera/ui';
+import { weightsTotal, type DraftCompetency, type DraftResult, type DraftRow } from '../domain/draft.ts';
 
 type RowHandlers = {
   onEdit: (id: string) => void;
   onDone: () => void;
   onChange: (id: string, change: Partial<DraftCompetency>) => void;
   onRemove: (id: string) => void;
+  onRestore: (id: string) => void;
 };
 
 type CompetencyDraftProps = RowHandlers & {
   result: DraftResult;
   rows: readonly DraftRow[];
   editingId: string | null;
+  /** The row the recruiter last removed, announced until it is restored. */
+  removedId: string | null;
   drafting: boolean;
   /** The title as typed, for "Aivera reads the description for a Senior AI Engineer". */
   title: string;
@@ -38,18 +41,31 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: 'competency' | 'weigh
     { id: 'actions', cell: (row) => <ActionsCell row={row} /> },
   ];
 
-/** Add a job, step 2 "Competencies, drafted and suggested" (RoleNew artboard, AIV-P1-008). */
+/** Add a job, step 2 "Competencies, drafted and suggested" (RoleNew artboard, AIV-P1-008, AIV-P1-009). */
 export function CompetencyDraft(props: CompetencyDraftProps) {
   const t = useTranslations('jobDraft');
   const tJob = useTranslations('jobNew');
   const { result, rows } = props;
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
-  const on = { onEdit: props.onEdit, onDone: props.onDone, onChange: props.onChange, onRemove: props.onRemove };
+  const on = {
+    onEdit: props.onEdit,
+    onDone: props.onDone,
+    onChange: props.onChange,
+    onRemove: props.onRemove,
+    onRestore: props.onRestore,
+  };
+  const toRows = (list: DraftRow[]) => list.map((row) => ({ ...row, editing: row.id === props.editingId, on }));
+  const suggested = rows.filter((row) => row.origin === 'suggested_by_aivera');
+  const own = rows.filter((row) => row.origin !== 'suggested_by_aivera');
+  const kept = (origin: DraftRow['origin']) => rows.filter((row) => row.origin === origin && !row.removed).length;
+  const drafted = result.status === 'drafted';
+  const total = weightsTotal(rows);
+  const removed = rows.find((row) => row.id === props.removedId && row.removed);
   const notice = {
     idle: props.title.trim() ? t('before', { title: props.title.trim() }) : t('beforeUntitled'),
     invalid: null,
     empty: t('empty'),
-    drafted: result.status === 'drafted' && result.competencies.length === 0 ? t('none') : null,
+    drafted: drafted && !result.competencies.some((c) => c.origin === 'from_description') ? t('none') : null,
     failed: t('failed'),
     budget: t('budget'),
   }[result.status];
@@ -60,8 +76,10 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       <h2 id="job-draft-heading" className="font-display text-section text-text">
         {t('heading')}
       </h2>
-      {/* Announces the wait: the Draft button's label changes too, but a label change is not read out. */}
-      <output className="sr-only">{props.drafting ? tJob('drafting') : ''}</output>
+      {/* Announces the wait and a removal: label changes and new rows are not read out, a polite region's text is. */}
+      <output className="sr-only">
+        {props.drafting ? tJob('drafting') : removed ? t('removed', { name: removed.name || t('newCompetency') }) : ''}
+      </output>
       {notice && (
         <p
           role={alert ? 'alert' : undefined}
@@ -70,20 +88,40 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
           {notice}
         </p>
       )}
-      {result.status === 'drafted' && (
+      {drafted && (
         <h3 className="text-body font-semibold text-text">
-          {t('fromDescription', { count: result.competencies.length })}
+          {t('fromDescription', { count: kept('from_description') })}
         </h3>
       )}
-      {result.status === 'drafted' && result.leftOutNonSkill && <p className="text-body text-text">{t('leftOut')}</p>}
-      {(rows.length > 0 || result.status === 'drafted') && (
+      {drafted && result.leftOutNonSkill && <p className="text-body text-text">{t('leftOut')}</p>}
+      {(own.length > 0 || drafted) && (
         <DataTable
           caption={t('caption')}
           columns={columns}
-          rows={rows.map((row) => ({ ...row, editing: row.id === props.editingId, on }))}
+          rows={toRows(own)}
           getRowId={(row) => row.id}
           emptyMessage={t('noRows')}
         />
+      )}
+      {drafted && (
+        <h3 className="mt-3 text-body font-semibold text-text">
+          {t('suggestions', { count: kept('suggested_by_aivera') })}
+        </h3>
+      )}
+      {drafted && suggested.length === 0 && <p className="text-body text-text-2">{t('noSuggestions')}</p>}
+      {suggested.length > 0 && (
+        <DataTable
+          caption={t('suggestionsCaption')}
+          columns={columns}
+          rows={toRows(suggested)}
+          getRowId={(row) => row.id}
+          emptyMessage={t('noRows')}
+        />
+      )}
+      {rows.some((row) => !row.removed) && (
+        <p className="text-meta font-semibold text-text">
+          {total === 100 ? t('weightsTotal', { total }) : t('rebalance')}
+        </p>
       )}
       {props.evidence && (
         <dl className="flex flex-wrap gap-x-2 text-meta">
@@ -94,7 +132,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       {result.status !== 'idle' && result.status !== 'invalid' && (
         <div className="flex flex-wrap gap-2">
           <Button onClick={props.onAdd}>{t('add')}</Button>
-          {rows.length === 0 && <Button onClick={props.onUseStarters}>{t('useStarters')}</Button>}
+          {rows.every((row) => row.removed) && <Button onClick={props.onUseStarters}>{t('useStarters')}</Button>}
         </div>
       )}
       {rows.length > 0 && <p className="text-meta text-text-2">{t('notSaved')}</p>}
@@ -129,10 +167,19 @@ function CompetencyCell({ row }: { row: Row }) {
         />
       </div>
     );
+  if (row.removed) return <span className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</span>;
   return (
-    <div className="flex max-w-xl flex-col gap-1">
+    <div className="flex max-w-xl flex-col items-start gap-1">
+      {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
-      {row.evidenceExpected && <span className="text-meta text-text-2">{row.evidenceExpected}</span>}
+      {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}
+      {row.evidenceExpected && (
+        <span className="text-meta text-text-2">
+          {row.origin !== 'suggested_by_aivera'
+            ? row.evidenceExpected
+            : t('evidenceExpected', { evidence: row.evidenceExpected })}
+        </span>
+      )}
       {row.excerpts.map((excerpt) => (
         <p key={`${excerpt.start}-${excerpt.end}`} className="text-meta text-text-2">
           {t('citedFrom')}{' '}
@@ -150,6 +197,7 @@ function CompetencyCell({ row }: { row: Row }) {
 function WeightCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
   const label = useFieldLabel(row);
+  if (row.removed) return null;
   if (!row.editing) return t('weight', { weight: row.weightPercent });
   return (
     <Input
@@ -168,6 +216,7 @@ function WeightCell({ row }: { row: Row }) {
 function LevelCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
   const label = useFieldLabel(row);
+  if (row.removed) return null;
   if (!row.editing) return t('level', { level: row.levelNeeded });
   return (
     <Select
@@ -187,6 +236,7 @@ function LevelCell({ row }: { row: Row }) {
 function TypeCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
   const label = useFieldLabel(row);
+  if (row.removed) return null;
   if (!row.editing) return t(`types.${row.type}`);
   return (
     <Select
@@ -206,15 +256,23 @@ function ActionsCell({ row }: { row: Row }) {
   return (
     <div className="flex gap-2">
       {/* One button for Edit and Done, so focus stays on it when editing ends. */}
+      {!row.removed && (
+        <Button
+          size="compact"
+          aria-label={row.editing ? undefined : t('edit', { name })}
+          onClick={() => (row.editing ? row.on.onDone() : row.on.onEdit(row.id))}
+        >
+          {row.editing ? t('done') : t('editAction')}
+        </Button>
+      )}
+      {/* One button for Remove and Restore, in the same place, so focus stays on it. */}
       <Button
         size="compact"
-        aria-label={row.editing ? undefined : t('edit', { name })}
-        onClick={() => (row.editing ? row.on.onDone() : row.on.onEdit(row.id))}
+        variant="ghost"
+        aria-label={row.removed ? t('restore', { name }) : t('remove', { name })}
+        onClick={() => (row.removed ? row.on.onRestore(row.id) : row.on.onRemove(row.id))}
       >
-        {row.editing ? t('done') : t('editAction')}
-      </Button>
-      <Button size="compact" variant="ghost" aria-label={t('remove', { name })} onClick={() => row.on.onRemove(row.id)}>
-        {t('removeAction')}
+        {row.removed ? t('restoreAction') : t('removeAction')}
       </Button>
     </div>
   );

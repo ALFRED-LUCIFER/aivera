@@ -40,7 +40,12 @@ export type {
   RubricVersion,
 } from '../domain/job.ts';
 export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
-export type { CompetencyDraft, DraftedCompetency, DraftInput } from '../application/draft-competencies.ts';
+export type {
+  CompetencyDraft,
+  DraftedCompetency,
+  DraftInput,
+  SuggestedCompetency,
+} from '../application/draft-competencies.ts';
 export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';

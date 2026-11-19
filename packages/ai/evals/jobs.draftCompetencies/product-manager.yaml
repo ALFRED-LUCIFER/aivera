@@ -6,13 +6,18 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will run discovery with merchants and decide what we build next. You set outcome metrics and report against them. You work daily with engineering and design.'
+    text:
+      'You will run discovery with merchants and decide what we build next. You set outcome metrics and report against
+      them. You work daily with engineering and design.'
 expected:
   match:
     competencies[*].name:
       - 'Discovery to decision'
       - 'Outcomes with metrics'
       - 'Working with engineering and design'
+    suggestions[*].name:
+      - Payments domain
+      - Working under regulation
 recorded:
   output:
     {
@@ -45,4 +50,25 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Payments domain,
+            evidenceExpected: 'Payments products they shaped: checkout, payouts, settlement or risk',
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why: 'You decide what a payments product builds next, but the description asks for no payments knowledge.',
+            citations: [{ sourceId: S1, quote: decide what we build next }],
+          },
+          {
+            name: Working under regulation,
+            evidenceExpected: Product decisions they made within payments or data protection rules,
+            weight: 10,
+            level: 2,
+            type: desirable,
+            why: 'Payments are regulated, but the description names no rules the product must meet.',
+            citations: [{ sourceId: S1, quote: run discovery with merchants }],
+          },
+        ],
     }

@@ -216,6 +216,26 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
+  // Scenario Outline: Suggestions per job type (AIV-P1-009), on the recorded answers.
+  it.each([
+    ['software-engineer', 'Banking and payments domain', 'Working under regulation'],
+    ['senior-ai-engineer', 'Arabic and bilingual NLP', 'Product judgement'],
+    ['product-designer', 'Arabic and right-to-left design', 'Accessibility'],
+    ['technical-writer', 'Editing other writers', 'Docs tooling'],
+  ])('AIV-P1-009: the %s case expects the suggestions %s and %s', (id, first, second) => {
+    expect(caseOf('jobs.draftCompetencies', id).expected.match?.['suggestions[*].name']).toEqual([first, second]);
+  });
+
+  // SAFETY: mutation check: 'suggestions[*]' removed from the task's statements in config.ts -> this test failed
+  it('AIV-P1-009: a suggestion that drops its citations fails citation validity', async () => {
+    const good = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    const output = structuredClone(good.recorded.output) as { suggestions: { citations?: unknown }[] };
+    delete output.suggestions[0]?.citations;
+    const report = await run('jobs.draftCompetencies', [withOutput(good, output)]);
+    expect(report.rates.citationValidity).toBeCloseTo(5 / 6);
+    expect(report.passed).toBe(false);
+  });
+
   it('has thresholds for every task, and keeps the hard gates at 100%', () => {
     expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 });
     for (const task of [...golden.keys(), ...Object.keys(runners)]) expect(taskThresholds[task], task).toBeDefined();
@@ -232,11 +252,11 @@ describe('Feature: AI eval harness with a golden set', () => {
     () => {
       const { status, stdout } = cli(['--task', 'jobs.draftCompetencies']);
       expect(status).toBe(0);
-      expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 4/4');
+      expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 6/6');
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 10 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 11 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );
@@ -249,7 +269,7 @@ describe('Feature: AI eval harness with a golden set', () => {
     const output = structuredClone(good.recorded.output) as { competencies: { citations: unknown[] }[] };
     output.competencies[0]?.citations.splice(0, 1, cite('S9', 'ship and run LLM assistants'));
     const report = await run('jobs.draftCompetencies', [withOutput(good, output)]);
-    expect(report.rates.citationValidity).toBe(0.75);
+    expect(report.rates.citationValidity).toBeCloseTo(5 / 6);
     expect(report.rates.fieldMatch).toBe(1); // everything else is right: the citation alone fails it
     expect(report.passed).toBe(false);
   });

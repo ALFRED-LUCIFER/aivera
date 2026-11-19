@@ -39,7 +39,7 @@ export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, 
  * task's cases, so one case may fail while the task passes a pooled threshold below 100%.
  */
 export const taskThresholds: Record<string, { statements: string[]; fieldMatch: number; judge: number }> = {
-  'jobs.draftCompetencies': { statements: ['competencies[*]'], fieldMatch: 0.9, judge: 1 },
+  'jobs.draftCompetencies': { statements: ['competencies[*]', 'suggestions[*]'], fieldMatch: 0.9, judge: 1 },
   // `industry` is a statement only when it names a domain (it then carries citations); `none` cites nothing.
   'jobs.detectDomain': { statements: ['regions[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.mapToCompetency': { statements: ['statements[*]'], fieldMatch: 0.9, judge: 1 },

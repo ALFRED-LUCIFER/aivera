@@ -62,6 +62,18 @@ beforeEach(() => {
         citations: [{ sourceId: 'description', quote: 'build the eval sets', start, end: start + 19 }],
       },
     ],
+    suggestions: [
+      {
+        name: 'Product judgement',
+        evidenceExpected: 'Product decisions they shaped from evals or merchant feedback',
+        weightPercent: 15,
+        levelNeeded: 3,
+        type: 'desirable',
+        origin: 'suggested_by_aivera',
+        why: 'Your evals decide what ships, but the description does not ask for judging what merchants need.',
+        citations: [{ sourceId: 'description', quote: 'decide what we ship', start: start + 47, end: start + 66 }],
+      },
+    ],
   });
 });
 
@@ -74,7 +86,15 @@ describe('draftCompetencies (server action)', () => {
       competencies: [
         expect.objectContaining({
           name: 'Retrieval and evaluation',
+          origin: 'from_description',
           excerpts: [{ text: description, start, end: start + 19 }],
+        }),
+        // The suggestions follow the drafted competencies, each with its why and its cited sentence (AIV-P1-009).
+        expect.objectContaining({
+          name: 'Product judgement',
+          origin: 'suggested_by_aivera',
+          why: 'Your evals decide what ships, but the description does not ask for judging what merchants need.',
+          excerpts: [{ text: description, start: start + 47, end: start + 66 }],
         }),
       ],
       leftOutNonSkill: false,

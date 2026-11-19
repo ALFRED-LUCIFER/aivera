@@ -10,8 +10,8 @@ import { parseNewJobForm } from '../domain/jobNew.ts';
 
 /**
  * "Draft competencies" (AIV-P1-008): validates step 1 (AGENTS.md 3.7) and, for an admin or recruiter of the active
- * workspace (`job.create`; anyone else gets the 403 page), drafts competencies from the job type, title and description.
- * Saves nothing: the draft is a suggestion the recruiter keeps, edits or removes.
+ * workspace (`job.create`; anyone else gets the 403 page), drafts competencies from the job type, title and description,
+ * then the suggestions for what it leaves out (AIV-P1-009). Saves nothing: the recruiter keeps, edits or removes each.
  */
 export async function draftCompetencies(form: FormData): Promise<DraftResult> {
   const parsed = parseNewJobForm(form);
@@ -29,7 +29,7 @@ export async function draftCompetencies(form: FormData): Promise<DraftResult> {
     const draft = await getCompetencyDrafting().draftCompetencies(allowed.value, { jobType, title, description });
     return {
       status: 'drafted',
-      competencies: draft.competencies.map((c) => toDraftCompetency(description, c)),
+      competencies: [...draft.competencies, ...draft.suggestions].map((c) => toDraftCompetency(description, c)),
       leftOutNonSkill: draft.leftOutNonSkill,
     };
   } catch (error) {

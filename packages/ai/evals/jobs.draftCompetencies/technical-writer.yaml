@@ -6,13 +6,18 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will write task documentation for our merchant dashboard. You learn the product well enough to explain it. You organise the help centre so answers are easy to find.'
+    text:
+      'You will write task documentation for our merchant dashboard. You learn the product well enough to explain it.
+      You organise the help centre so answers are easy to find. Support agents also draft articles for the help centre.'
 expected:
   match:
     competencies[*].name:
       - 'Clear task documentation'
       - 'Understanding the product'
       - 'Information structure'
+    suggestions[*].name:
+      - Editing other writers
+      - Docs tooling
 recorded:
   output:
     {
@@ -45,4 +50,25 @@ recorded:
         ],
       'refused': false,
       'reason': null,
+      suggestions:
+        [
+          {
+            name: Editing other writers,
+            evidenceExpected: 'Articles by others that they edited, before and after',
+            weight: 15,
+            level: 3,
+            type: desirable,
+            why: 'Support agents draft help articles, but the description does not ask you to edit their work.',
+            citations: [{ sourceId: S1, quote: Support agents also draft articles for the help centre }],
+          },
+          {
+            name: Docs tooling,
+            evidenceExpected: Docs sites or pipelines they set up or maintained,
+            weight: 10,
+            level: 2,
+            type: desirable,
+            why: 'You run the help centre, but the description names no tools for writing and publishing docs.',
+            citations: [{ sourceId: S1, quote: You organise the help centre so answers are easy to find }],
+          },
+        ],
     }

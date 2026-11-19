@@ -10,7 +10,8 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 const DESCRIPTION =
   'You will ship and run LLM assistants and retrieval systems that real merchants use every day. You will build ' +
   'the eval sets and retrieval metrics that decide what we ship. You will write production Python services, with ' +
-  'tests, and deploy them yourself. You keep latency, cost per request and incidents in check.';
+  'tests, and deploy them yourself. You keep latency, cost per request and incidents in check. ' +
+  'The assistant answers merchants in Arabic and English.';
 const FAILING = 'You will keep our flaky assistants running.';
 
 async function fill(page: Page, title: string, description: string, email = 'mira@example.com') {
@@ -102,8 +103,12 @@ for (const theme of themes) {
       .getByRole('button', { name: 'Remove Python service engineering' })
       .focus();
     await page.keyboard.press('Enter');
-    await expect(rowOf(page, 'Python service engineering')).toHaveCount(0);
-    await expect(table(page).getByRole('row')).toHaveCount(4); // the header and the three kept
+    // Removed from the rubric, kept on the page to restore (AIV-P1-009); the heading counts the three kept.
+    await expect(rowOf(page, 'Python service engineering')).toContainText(
+      'Python service engineering removed from this rubric.',
+    );
+    await expect(page.getByRole('button', { name: 'Restore Python service engineering' })).toBeFocused();
+    await expect(page.getByRole('heading', { name: 'From your job description · 3 competencies' })).toBeVisible();
   });
 }
 

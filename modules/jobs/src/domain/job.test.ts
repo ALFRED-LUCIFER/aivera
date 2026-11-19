@@ -4,6 +4,7 @@ import {
   assertValidCompetencies,
   assertValidPayBand,
   editsInPlace,
+  newSuggestions,
   nextAction,
   RUBRIC_STATUSES,
   toPublicListing,
@@ -38,6 +39,23 @@ describe('Scenario: Weights must total 100', () => {
 
   it('a rubric with no competencies is refused', () => {
     expect(() => assertValidCompetencies([])).toThrow('A rubric needs at least one competency.');
+  });
+});
+
+describe('Scenario: Suggestions never duplicate drafted competencies (AIV-P1-009)', () => {
+  // SAFETY: mutation check: newSuggestions returned every suggestion unfiltered -> this test and the draft one failed
+  it('drops a suggestion named like a drafted competency or an earlier suggestion, ignoring case and spaces', () => {
+    const drafted = [{ name: 'Cost and reliability' }, { name: 'Retrieval and evaluation' }];
+    const suggestions = [
+      { name: ' cost  and Reliability ' },
+      { name: 'Arabic and bilingual NLP' },
+      { name: 'arabic and bilingual nlp' },
+      { name: 'Product judgement' },
+    ];
+    expect(newSuggestions(drafted, suggestions).map((s) => s.name)).toEqual([
+      'Arabic and bilingual NLP',
+      'Product judgement',
+    ]);
   });
 });
 
