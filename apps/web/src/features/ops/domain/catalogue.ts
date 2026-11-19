@@ -14,7 +14,7 @@ export const CATALOGUE_SOURCES = {
   domainPacks: 'https://github.com/ALFRED-LUCIFER/aivera/blob/main/modules/jobs/src/domain/domain-packs.ts',
 } as const;
 
-/** Every job type, and every pack split by the job types it covers (a job type with no competency is left out). */
+/** Every job type, and every pack split by the job types it covers (a job type with no competency and no hint is left out). */
 export function catalogueView() {
   return {
     jobTypes: { version: JOB_TYPE_CATALOGUE_VERSION, entries: JOB_TYPE_CATALOGUE },
@@ -25,9 +25,10 @@ export function catalogueView() {
         labelKey: pack.labelKey,
         jobTypes: JOB_TYPES.flatMap((jobType) => {
           const forJobType = getDomainPack(pack.key, jobType);
-          const count = forJobType ? forJobType.core.length + forJobType.more.length : 0;
-          if (!forJobType || !count) return [];
+          if (!forJobType) return [];
           const { core, more, hints } = forJobType;
+          const count = core.length + more.length;
+          if (!count && !Object.values(hints).some((list) => list.length)) return [];
           return [{ jobType, labelKey: `jobTypes.${jobType}.label` as const, count, core, more, hints }];
         }),
       })),

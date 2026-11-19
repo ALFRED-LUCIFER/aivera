@@ -60,16 +60,15 @@ export function Catalogue({ view }: { view: CatalogueView }) {
   const t = useTranslations();
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-body text-text-2">
-        {t('ops.catalogue.readOnly')}{' '}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-body text-text-2">
+        <p>{t('ops.catalogue.readOnly')}</p>
         <a href={CATALOGUE_SOURCES.jobTypes} className={link}>
           {t('ops.catalogue.jobTypesSource')}
         </a>
-        {' · '}
         <a href={CATALOGUE_SOURCES.domainPacks} className={link}>
           {t('ops.catalogue.domainPacksSource')}
         </a>
-      </p>
+      </div>
 
       <Card title={t('ops.catalogue.jobTypes', { version: view.jobTypes.version })} level={2}>
         <div className="overflow-x-auto">

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { JOB_TYPES, getDomainPack } from '@aivera/jobs';
 import { catalogueView } from './catalogue.ts';
 
 // AIV-P5-015: the view model built from the code catalogue (counts per pack and job type).
@@ -18,8 +19,12 @@ describe('catalogueView', () => {
       expect(pack.jobTypes.length).toBeGreaterThan(0);
       for (const entry of pack.jobTypes) {
         expect(entry.count).toBe(entry.core.length + entry.more.length);
-        expect(entry.count).toBeGreaterThan(0);
         expect(entry.core.length).toBeLessThanOrEqual(4);
+      }
+      // A job type left out has nothing in the pack: no competency and no regional hint is hidden.
+      for (const jobType of JOB_TYPES.filter((j) => !pack.jobTypes.some((e) => e.jobType === j))) {
+        const left = getDomainPack(pack.key, jobType);
+        expect([...(left?.core ?? []), ...(left?.more ?? []), ...Object.values(left?.hints ?? {}).flat()]).toEqual([]);
       }
     }
   });
