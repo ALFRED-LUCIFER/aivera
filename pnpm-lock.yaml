@@ -563,6 +563,9 @@ importers:
       '@aivera/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
+      '@auth/core':
+        specifier: 0.41.3
+        version: 0.41.3
       '@axe-core/playwright':
         specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.0)

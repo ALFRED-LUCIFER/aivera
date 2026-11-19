@@ -22,9 +22,13 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
       error={errorKey && t(`signIn.errors.${errorKey}`)}
       labels={{
         title: t('signIn.title'),
+        panelTitle: t('signIn.panelTitle'),
+        panelBody: t('signIn.panelBody'),
         email: t('signIn.email'),
         passwordNote: t('signIn.passwordNote'),
+        remember: t('signIn.remember'),
         signIn: t('signIn.signIn'),
+        forgotPassword: t('signIn.forgotPassword'),
         or: t('signIn.or'),
         google: t('signIn.google'),
       }}

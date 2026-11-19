@@ -11,6 +11,8 @@ let pathname = '/app';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
 const setTheme = vi.fn(async (_theme: string) => {});
 vi.mock('@/features/shell/services/theme.ts', () => ({ setTheme: (theme: string) => setTheme(theme) }));
+const signOut = vi.fn(async () => {});
+vi.mock('@/features/sign-in/services/signOut.ts', () => ({ signOut: () => signOut() }));
 
 beforeEach(() => {
   pathname = '/app';
@@ -74,6 +76,13 @@ describe('Recruiter app shell', () => {
     expect(within(sidebar()).getByRole('link', { name: 'My desk 4' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'Aivera website' }).getAttribute('href')).toBe('/');
+  });
+
+  // Scenario: Sign out (the cookie and the redirect are proven end to end in tests/e2e/src/sign-in.spec.ts).
+  it('Sign out in the sidebar calls the sign-out action', async () => {
+    renderShell();
+    await userEvent.click(within(sidebar()).getByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
   });
 
   it('marks the section of a nested page as current', () => {

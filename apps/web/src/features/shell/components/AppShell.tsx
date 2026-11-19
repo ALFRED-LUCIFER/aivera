@@ -17,6 +17,8 @@ export type AppShellProps = {
   onCloseNav: () => void;
   theme: Theme;
   onToggleTheme: () => void;
+  /** The server action that ends the session and lands on the sign-in page. */
+  signOutAction: () => Promise<void>;
   children: ReactNode;
 };
 
@@ -37,6 +39,7 @@ export function AppShell({
   onCloseNav,
   theme,
   onToggleTheme,
+  signOutAction,
   children,
 }: AppShellProps) {
   const t = useTranslations('shell');
@@ -164,6 +167,11 @@ export function AppShell({
           <Link href="/" className={navLink}>
             {t('nav.website')}
           </Link>
+          <form action={signOutAction}>
+            <button type="submit" className={`${navLink} w-full cursor-pointer`}>
+              {t('signOut')}
+            </button>
+          </form>
         </div>
       </nav>
       <main id="content" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 pt-6 pb-14 lg:col-start-2 lg:px-8">

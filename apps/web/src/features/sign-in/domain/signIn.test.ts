@@ -15,15 +15,21 @@ const form = (fields: Record<string, string>) => {
   return data;
 };
 
-describe('safeNext (Scenario: Open redirects are refused)', () => {
+describe('safeNext (Scenario Outline: Return-to refuses anything outside the recruiter app)', () => {
   it.each(['/app', '/app/jobs', '/app/jobs?tab=open#top'])('keeps the same-origin path %s', (path) => {
     expect(safeNext(path)).toBe(path);
   });
 
   // SAFETY: mutation check: returned `value` unchanged after the startsWith('/') check -> the //, /\ and tab cases failed
-  // SAFETY: mutation check: dropped the final `startsWith('//')` re-check -> the four dot-segment cases failed
+  // SAFETY: mutation check: replaced the final /app check with `!path.startsWith('//')` (any same-origin path) -> the
+  // /candidates/jobs, /apples and /app/.. cases failed
   it.each([
     'https://evil.example',
+    '/candidates/jobs',
+    '/',
+    '/apples',
+    '/app/../candidates',
+    '/app/..//evil.example',
     '//evil.example/app',
     '/\\evil.example',
     '/\t/evil.example',
@@ -57,16 +63,28 @@ describe('sign-in form and request', () => {
       method: 'google',
       email: 'nadia@example.com',
       next: DESK,
+      remember: false,
     });
+    expect(parseSignInForm(form({ method: 'password', remember: 'on' })).remember).toBe(true);
     expect(
       parseSignInForm(form({ method: 'password', email: 'not an email', next: '/app/jobs' })).email,
     ).toBeUndefined();
     expect(() => parseSignInForm(form({ method: 'sso' }))).toThrow();
   });
 
-  it('sends only the typed email to the tenant page, for every method', () => {
-    expect(authorizationParams('alex@example.com')).toEqual({ login_hint: 'alex@example.com' });
-    expect(authorizationParams(undefined)).toEqual({});
+  // Sign out ends only our session, so every sign-in (and "Forgot password?") makes the tenant ask again.
+  // SAFETY: mutation check: dropped `prompt: 'login'` from authorizationParams -> this test failed
+  it('sends prompt=login and only the typed email to the tenant page, for every method', () => {
+    expect(authorizationParams('alex@example.com')).toEqual({ prompt: 'login', login_hint: 'alex@example.com' });
+    expect(authorizationParams(undefined)).toEqual({ prompt: 'login' });
+  });
+
+  // Scenario: Forgot password opens the tenant's reset without my email in the URL.
+  // SAFETY: mutation check: removed the `method === 'reset'` transform (email kept) -> this test failed
+  it('"Forgot password?" sends no login_hint, even with an email typed', () => {
+    const { method, email } = parseSignInForm(form({ method: 'reset', email: 'nadia@example.com', next: '/app' }));
+    expect(method).toBe('reset');
+    expect(authorizationParams(email)).toEqual({ prompt: 'login' });
   });
 
   it('refuses the methods the user flow does not offer', () => {
