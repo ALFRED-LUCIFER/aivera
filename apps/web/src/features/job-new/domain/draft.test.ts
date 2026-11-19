@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { excerptOf, starterCompetencies, toDraftCompetency } from './draft.ts';
+import {
+  blankCompetency,
+  excerptOf,
+  parseRubric,
+  rowErrors,
+  rubricJson,
+  starterCompetencies,
+  toDraftCompetency,
+  type DraftRow,
+} from './draft.ts';
 
 const description =
   'You will ship and run LLM assistants that real merchants use. You keep latency, cost per request and incidents in check.';
@@ -68,6 +77,42 @@ describe('toDraftCompetency', () => {
       origin: 'suggested_by_aivera',
       why: 'Merchants use it, but the description asks for no product judgement.',
     });
+  });
+});
+const row = (id: string, change: Partial<DraftRow> = {}): DraftRow => ({
+  ...blankCompetency(),
+  name: 'Cost and reliability',
+  id,
+  removed: false,
+  ...change,
+});
+
+describe('Saving the rubric (AIV-P1-010)', () => {
+  // SAFETY: mutation check: rowErrors skipped the name check -> this test failed (a nameless row could be saved)
+  it('names each kept row to fix: no name, or a weight that is not a whole percent from 1 to 100', () => {
+    const rows = [
+      row('a'),
+      row('b', { name: '  ' }),
+      row('c', { weightPercent: 0 }),
+      row('d', { weightPercent: 12.5, name: '' }),
+      row('e', { name: '', removed: true }),
+    ];
+    expect(rowErrors(rows)).toEqual({ b: { name: true }, c: { weight: true }, d: { name: true, weight: true } });
+  });
+
+  it('posts the kept rows only, with their origin, and the server reads back the same competencies', () => {
+    const rows = [row('a', { origin: 'suggested_by_aivera', why: 'Why.' }), row('b', { removed: true })];
+    expect(parseRubric(rubricJson(rows))).toEqual([
+      {
+        name: 'Cost and reliability',
+        evidenceExpected: '',
+        weightPercent: 10,
+        levelNeeded: 3,
+        type: 'mandatory',
+        origin: 'suggested_by_aivera',
+      },
+    ]);
+    expect(parseRubric(rubricJson([row('b', { removed: true })]))).toBeNull();
   });
 });
 

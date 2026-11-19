@@ -43,6 +43,13 @@
       "when": 1795065776321,
       "tag": "0005_public_job_paused",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795074975962,
+      "tag": "0006_competency_added_by_recruiter",
+      "breakpoints": true
     }
   ]
 }

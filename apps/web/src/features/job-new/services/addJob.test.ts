@@ -20,7 +20,7 @@ const workspaces = {
   ]),
   listClients: vi.fn(async () => [{ id: client, name: 'Falcon Pay', archivedAt: null }]),
 };
-const createJob = vi.fn(async () => ({ id: 'j1' }));
+const createJobWithDraftRubric = vi.fn(async () => ({ job: { id: 'j1' }, rubricVersion: { id: 'v1' } }));
 
 // As in server/workspace.ts: a refused role renders the 403 page.
 vi.mock('@/server/workspace', () => ({
@@ -37,7 +37,7 @@ vi.mock('@/server/workspace', () => ({
 vi.mock('@/server/auth', () => ({
   getIdentity: () => ({ getUser: async (id: string) => ({ id, email: 'hassan@example.com', displayName: null }) }),
 }));
-vi.mock('@/server/jobs', () => ({ getJobs: () => ({ createJob }) }));
+vi.mock('@/server/jobs', () => ({ getJobs: () => ({ createJobWithDraftRubric }) }));
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
@@ -51,8 +51,18 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
+const competency = {
+  name: 'Arabic and bilingual NLP',
+  evidenceExpected: 'Work on Arabic or bilingual text',
+  weightPercent: 10,
+  levelNeeded: 2,
+  type: 'desirable',
+  origin: 'suggested_by_aivera',
+};
+const rubric = JSON.stringify([competency]);
 const submit = (fields: Record<string, string>) => {
   const data = new FormData();
+  data.set('rubric', rubric);
   for (const [key, value] of Object.entries(fields)) data.set(key, value);
   return addJob(initialNewJobState(''), data);
 };
@@ -65,48 +75,76 @@ beforeEach(() => {
 });
 
 describe('addJob (server action)', () => {
-  it('saves the job with a synthetic flag from the workspace, never the form, and opens Jobs', async () => {
-    await expect(submit({ ...job, hiringOwnerUserId: owner, synthetic: 'false' })).rejects.toThrow(
-      'NEXT_REDIRECT;/app/jobs',
-    );
-    expect(createJob).toHaveBeenCalledWith(expect.objectContaining({ role: 'recruiter' }), {
+  it('saves the job and its rubric, synthetic from the workspace, never the form, and shows the saved state', async () => {
+    await expect(submit({ ...job, hiringOwnerUserId: owner, synthetic: 'false' })).resolves.toMatchObject({
+      saved: true,
+      error: null,
+    });
+    expect(createJobWithDraftRubric).toHaveBeenCalledWith(expect.objectContaining({ role: 'recruiter' }), {
       ...job,
       team: null,
       clientId: null,
       location: null,
       hiringOwnerUserId: owner,
       synthetic: true,
+      // Scenario: Kept suggestions are marked (AIV-P1-009): the origin reaches the jobs module as posted.
+      competencies: [competency],
     });
+  });
+
+  // Scenario: Validation (AIV-P1-010): the server refuses what the page would have blocked.
+  // SAFETY: mutation check: parseRubric parsed z.array(z.any()) -> the name, level, weight and origin cases failed
+  it.each([
+    ['no competency', '[]'],
+    ['a competency with no name', JSON.stringify([{ ...competency, name: ' ' }])],
+    ['a level outside 1 to 5', JSON.stringify([{ ...competency, levelNeeded: 6 }])],
+    ['a weight of 0', JSON.stringify([{ ...competency, weightPercent: 0 }])],
+    ['an unknown origin', JSON.stringify([{ ...competency, origin: 'imported' }])],
+    ['text that is not JSON', 'not json'],
+  ])('refuses %s and stores nothing', async (_case, value) => {
+    const data = new FormData();
+    for (const [key, v] of Object.entries(job)) data.set(key, v);
+    data.set('rubric', value);
+    await expect(addJob(initialNewJobState(''), data)).resolves.toMatchObject({ error: 'failed', saved: false });
+    expect(createJobWithDraftRubric).not.toHaveBeenCalled();
   });
 
   // SAFETY: mutation check: removed authorize(ctx, 'job.create') from newJobOptions -> this test failed (job created)
   it.each(['interviewer', 'hiring_owner'] as const)('refuses a %s with 403 and saves nothing', async (r) => {
     role = r;
     await expect(submit(job)).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
-    expect(createJob).not.toHaveBeenCalled();
+    expect(createJobWithDraftRubric).not.toHaveBeenCalled();
   });
 
   it('asks for a title and saves nothing', async () => {
     await expect(submit({ ...job, title: '' })).resolves.toMatchObject({ errors: { title: true }, error: null });
-    expect(createJob).not.toHaveBeenCalled();
+    expect(createJobWithDraftRubric).not.toHaveBeenCalled();
   });
 
   // SAFETY: mutation check: dropped the offered() check -> this test failed (job saved with the interviewer as owner)
   it('refuses a hiring owner the page did not offer', async () => {
     await expect(submit({ ...job, hiringOwnerUserId: interviewer })).resolves.toMatchObject({ error: 'failed' });
-    expect(createJob).not.toHaveBeenCalled();
+    expect(createJobWithDraftRubric).not.toHaveBeenCalled();
   });
 
   it("accepts an agency's own client", async () => {
     workspaces.getWorkspace.mockResolvedValue({ type: 'agency', synthetic: true, hiringFocus: 'sales' });
-    await expect(submit({ ...job, clientId: client })).rejects.toThrow('NEXT_REDIRECT;/app/jobs');
-    expect(createJob).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ clientId: client }));
+    await expect(submit({ ...job, clientId: client })).resolves.toMatchObject({ saved: true });
+    expect(createJobWithDraftRubric).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ clientId: client }),
+    );
   });
 
   it('on a service error keeps what was typed and logs no personal data', async () => {
     const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    createJob.mockRejectedValueOnce(new Error('duplicate: Senior AI Engineer'));
-    await expect(submit(job)).resolves.toMatchObject({ error: 'failed', values: { title: 'Senior AI Engineer' } });
+    createJobWithDraftRubric.mockRejectedValueOnce(new Error('duplicate: Senior AI Engineer'));
+    // Scenario: Save fails: the edits stay (values here, the rows in the page), and nothing is reported saved.
+    await expect(submit(job)).resolves.toMatchObject({
+      error: 'failed',
+      saved: false,
+      values: { title: 'Senior AI Engineer' },
+    });
     expect(log.mock.calls.join('')).not.toContain('Senior AI Engineer');
     log.mockRestore();
   });

@@ -42,13 +42,15 @@ for (const theme of themes) {
     await owner.selectOption({ label: 'Head of Engineering' });
     await page.keyboard.press('Tab');
     await expect(draft(page)).toBeFocused();
-    // Drafting is job-draft.spec.ts (AIV-P1-008); saving the job alone stays one keystroke away.
+    // Drafting is job-draft.spec.ts (AIV-P1-008) and saving job-save.spec.ts (AIV-P1-010): a job is saved with its
+    // rubric, so saving before any competency is kept asks for one and stores nothing.
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Save job' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Save job and rubric' })).toBeFocused();
     await page.keyboard.press('Enter');
-
-    await expect(page).toHaveURL(/\/app\/jobs$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Keep at least' })).toHaveText(
+      'Keep at least one competency to save the job and rubric.',
+    );
+    await expect(page).toHaveURL(/\/app\/jobs\/new$/);
   });
 }
 
@@ -98,10 +100,10 @@ test('Scenario: No hiring owner yet', async ({ page }) => {
   );
 });
 
-test('Scenario: Cancel with unsaved input asks first', async ({ page }) => {
+test('Scenario: Discard draft with unsaved input asks first', async ({ page }) => {
   await open(page);
   await page.getByLabel('Job title').fill('Senior AI Engineer');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Discard draft' }).click();
   const dialog = page.getByRole('dialog', { name: 'Discard this job?' });
   await expect(dialog).toBeVisible();
   await expectNoAxeViolations(page);
@@ -109,14 +111,14 @@ test('Scenario: Cancel with unsaved input asks first', async ({ page }) => {
   await expect(dialog).toHaveCount(0);
   await expect(page.getByLabel('Job title')).toHaveValue('Senior AI Engineer');
 
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Discard draft' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Discard', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/jobs$/);
 });
 
-test('Cancel with nothing typed opens Jobs at once', async ({ page }) => {
+test('Discard draft with nothing typed opens Jobs at once', async ({ page }) => {
   await open(page);
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Discard draft' }).click();
   await expect(page).toHaveURL(/\/app\/jobs$/);
 });
 

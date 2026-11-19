@@ -5,6 +5,7 @@ import {
   assertValidPayBand,
   editsInPlace,
   newSuggestions,
+  rebalanceWeights,
   nextAction,
   RUBRIC_STATUSES,
   toPublicListing,
@@ -56,6 +57,39 @@ describe('Scenario: Suggestions never duplicate drafted competencies (AIV-P1-009
       'Arabic and bilingual NLP',
       'Product judgement',
     ]);
+  });
+});
+
+const weights = (list: Competency[]) => list.map((c) => c.weightPercent);
+
+describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)', () => {
+  it('scales 85 to 100 and gives the rounding remainder to the heaviest', () => {
+    // 25 20 15 15 10 (Product judgement's 15 removed): 29.4 23.5 17.6 17.6 11.8 rounds to 29 24 18 18 12 = 101.
+    expect(weights(rebalanceWeights(rubric([25, 20, 15, 15, 10])))).toEqual([28, 24, 18, 18, 12]);
+  });
+
+  it('keeps weights that already total 100, and keeps every other field', () => {
+    const six = rubric([25, 20, 15, 15, 15, 10]);
+    expect(rebalanceWeights(six)).toBe(six);
+    expect(rebalanceWeights(rubric([30, 30], 4)).map((c) => [c.weightPercent, c.levelNeeded, c.name])).toEqual([
+      [50, 4, 'Competency 1'],
+      [50, 4, 'Competency 2'],
+    ]);
+  });
+
+  // SAFETY: mutation check: remainder no longer added to the heaviest in rebalanceWeights -> this test failed
+  it('always totals exactly 100, each weight a whole percent from 1 to 100 (1,000 random rubrics)', () => {
+    let seed = 7;
+    const random = () => (seed = (seed * 48_271) % 2_147_483_647) / 2_147_483_647; // a fixed-seed generator
+    for (let run = 0; run < 1_000; run++) {
+      const list = Array.from({ length: 1 + Math.floor(random() * 20) }, () => 1 + Math.floor(random() * 100));
+      const result = weights(rebalanceWeights(rubric(list)));
+      expect(
+        result.reduce((a, b) => a + b, 0),
+        list.join(' '),
+      ).toBe(100);
+      for (const w of result) expect(Number.isInteger(w) && w >= 1 && w <= 100, list.join(' ')).toBe(true);
+    }
   });
 });
 

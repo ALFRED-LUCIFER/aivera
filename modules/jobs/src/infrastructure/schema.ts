@@ -166,7 +166,10 @@ export const competency = jobs
       check('competency_weight_check', sql`${t.weightPercent} between 1 and 100`),
       check('competency_level_check', sql`${t.levelNeeded} between 1 and 5`),
       check('competency_type_check', sql`${t.type} in ('mandatory', 'desirable')`),
-      check('competency_origin_check', sql`${t.origin} in ('from_description', 'suggested_by_aivera')`),
+      check(
+        'competency_origin_check',
+        sql`${t.origin} in ('from_description', 'suggested_by_aivera', 'added_by_recruiter')`,
+      ),
       tenantPolicy('competency_tenant_isolation', t.workspaceId),
       restrictive(
         'competency_job_scope',
