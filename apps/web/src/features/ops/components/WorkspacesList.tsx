@@ -1,0 +1,125 @@
+'use client';
+
+import type { Messages } from '@aivera/i18n';
+import { useTimeZone, useTranslations } from '@aivera/i18n/react';
+import { Button, DataTable, Input, Label, type DataTableColumn } from '@aivera/ui';
+import Link from 'next/link';
+import { workspaceHref, type WorkspaceRow, type WorkspacesListView } from '../domain/workspaces.ts';
+import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
+
+type ColumnId = keyof Messages['ops']['workspaces']['columns'];
+
+// Module-level cell renderers (stable across renders); the component adds the translated headers.
+const cells: (Omit<DataTableColumn<WorkspaceRow>, 'header'> & { id: ColumnId })[] = [
+  { id: 'workspace', cell: (row) => <NameCell row={row} /> },
+  { id: 'type', cell: (row) => <TypeCell row={row} /> },
+  { id: 'created', cell: (row) => <CreatedCell row={row} /> },
+  { id: 'members', numeric: true, cell: (row) => <Count value={row.activeMembers} /> },
+  { id: 'jobs', numeric: true, cell: (row) => <Count value={row.jobs} /> },
+  { id: 'status', cell: (row) => <WorkspaceStatus status={row.status} /> },
+  { id: 'plan', cell: () => <NoPlan /> },
+];
+
+/** Every workspace's platform facts, newest first, 50 per page (AIV-P2-036). Never a member or candidate. */
+export function WorkspacesList({ search, table }: WorkspacesListView) {
+  const t = useTranslations('ops.workspaces');
+  const timeZone = useTimeZone();
+  const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`, { timeZone }) }));
+  const ready = table.status === 'ready' ? table : null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {search && (
+        <search>
+          <form
+            className="flex max-w-xl flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              search.onSearch();
+            }}
+          >
+            <div className="flex min-w-60 grow flex-col gap-1.5">
+              <Label htmlFor="ops-workspace-search">{t('searchLabel')}</Label>
+              <Input
+                id="ops-workspace-search"
+                type="search"
+                maxLength={100}
+                value={search.query}
+                onChange={(event) => search.onQueryChange(event.target.value)}
+              />
+            </div>
+            <Button type="submit" variant="primary">
+              {t('search')}
+            </Button>
+          </form>
+        </search>
+      )}
+      <DataTable
+        caption={t('caption')}
+        columns={columns}
+        rows={ready?.rows ?? []}
+        getRowId={(row) => row.id}
+        emptyMessage={ready?.searched ? t('noMatch', { query: ready.searched }) : t('empty')}
+        loading={table.status === 'loading'}
+        loadingLabel={t('loading')}
+        {...(table.status === 'error' && {
+          error: { message: t('error'), retryLabel: t('retry'), onRetry: table.onRetry },
+        })}
+        footer={ready && ready.pageCount > 1 && <Pager {...ready} />}
+      />
+    </div>
+  );
+}
+
+function Pager({ page, pageCount, onPage }: { page: number; pageCount: number; onPage: (page: number) => void }) {
+  const t = useTranslations('ops.workspaces');
+  return (
+    <>
+      <span>{t('pages', { page, count: pageCount })}</span>
+      <span className="flex gap-2">
+        <Button size="compact" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          {t('previous')}
+        </Button>
+        <Button size="compact" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
+          {t('next')}
+        </Button>
+      </span>
+    </>
+  );
+}
+
+function NameCell({ row }: { row: WorkspaceRow }) {
+  return (
+    <>
+      {/* No prefetch: opening a workspace is recorded on the server (ADR-012), so only a real visit may render it. */}
+      <Link
+        href={workspaceHref(row.id)}
+        prefetch={false}
+        className="font-semibold text-text underline-offset-2 hover:underline"
+      >
+        {row.name}
+      </Link>
+      {row.synthetic && <SyntheticBadge className="ms-2" />}
+    </>
+  );
+}
+
+function TypeCell({ row }: { row: WorkspaceRow }) {
+  const t = useTranslations('ops.workspaces.type');
+  return <>{t(row.type)}</>;
+}
+
+function CreatedCell({ row }: { row: WorkspaceRow }) {
+  const t = useTranslations('ops.workspaces');
+  return <>{t('createdOn', { value: row.createdAt })}</>;
+}
+
+function Count({ value }: { value: number }) {
+  const t = useTranslations('ops.workspaces');
+  return <>{t('count', { count: value })}</>;
+}
+
+function NoPlan() {
+  const t = useTranslations('ops.workspaces');
+  return <span className="text-text-2">{t('noPlan')}</span>;
+}

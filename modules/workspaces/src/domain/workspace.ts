@@ -21,6 +21,22 @@ export type Workspace = {
   createdAt: Date;
 };
 
+/**
+ * A workspace's platform facts for the operator console (ADR-012 point 6): metadata and a count, never a member, a
+ * client or anything about a candidate.
+ */
+export type WorkspaceSummary = {
+  id: string;
+  name: string;
+  type: WorkspaceType;
+  createdAt: Date;
+  synthetic: boolean;
+  /** Every workspace is active until suspension exists (AIV-P2-037). */
+  status: 'active';
+  /** Members whose status is active; invited and removed members are not counted. */
+  activeMembers: number;
+};
+
 export type Member = {
   userId: string;
   workspaceId: string;

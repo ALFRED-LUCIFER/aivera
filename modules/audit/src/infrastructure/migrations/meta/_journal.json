@@ -78,6 +78,13 @@
       "when": 1795060096488,
       "tag": "0010_platform_entry_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795062260260,
+      "tag": "0011_workspace_viewed_action",
+      "breakpoints": true
     }
   ]
 }

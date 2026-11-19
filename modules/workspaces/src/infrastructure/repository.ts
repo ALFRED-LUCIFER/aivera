@@ -1,10 +1,10 @@
 import type { AuditContract } from '@aivera/audit';
 import { DbQueryError, type Tx } from '@aivera/db/client';
-import { and, asc, count, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
-import { WorkspaceError } from '../domain/workspace.ts';
-import { activeWorkspace, aiTokenUsage, client, jobGrant, member, workspace } from './schema.ts';
+import { WorkspaceError, type WorkspaceSummary } from '../domain/workspace.ts';
+import { activeWorkspace, aiTokenUsage, client, directory, jobGrant, member, workspace } from './schema.ts';
 
 const memberColumns = {
   userId: member.userId,
@@ -44,6 +44,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     async insertWorkspace(values) {
       const [row] = await tx.insert(workspace).values(values).returning();
       if (!row) throw new Error('insert into workspaces.workspace returned no row');
+      await tx.insert(directory).values({ workspaceId: row.id, createdAt: row.createdAt });
       return row;
     },
     async findWorkspace(workspaceId) {
@@ -98,6 +99,7 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       await tx.delete(client).where(eq(client.workspaceId, workspaceId));
       await tx.delete(member).where(inWorkspace(workspaceId));
       await tx.delete(activeWorkspace).where(eq(activeWorkspace.workspaceId, workspaceId));
+      await tx.delete(directory).where(eq(directory.workspaceId, workspaceId));
       await tx.delete(workspace).where(eq(workspace.id, workspaceId));
     },
     async countClients(workspaceId) {
@@ -197,6 +199,35 @@ export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
         .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
     },
   };
+}
+
+/** Every workspace id in the platform directory, newest first (not workspace-owned; see the schema). */
+export async function listDirectory(tx: Tx): Promise<string[]> {
+  const rows = await tx
+    .select({ id: directory.workspaceId })
+    .from(directory)
+    .orderBy(desc(directory.createdAt), desc(directory.workspaceId));
+  return rows.map((r) => r.id);
+}
+
+/** The workspace's platform facts, over its own scoped transaction; the filter and RLS both apply. */
+export async function readSummary(tx: Tx, workspaceId: string): Promise<Omit<WorkspaceSummary, 'status'> | null> {
+  const [found] = await tx
+    .select({
+      id: workspace.id,
+      name: workspace.name,
+      type: workspace.type,
+      createdAt: workspace.createdAt,
+      synthetic: workspace.synthetic,
+    })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId));
+  if (!found) return null;
+  const [members] = await tx
+    .select({ n: count() })
+    .from(member)
+    .where(and(inWorkspace(workspaceId), eq(member.status, 'active')));
+  return { ...found, activeMembers: members?.n ?? 0 };
 }
 
 /** Daily AI token use (AIV-P0-033), over a workspace-scoped transaction; the filter and RLS both apply. */

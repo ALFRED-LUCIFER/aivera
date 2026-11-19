@@ -1,5 +1,9 @@
 import type { AuditContract } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
+import type { JobCounts } from '@aivera/jobs';
+import { createJobCounts } from '@aivera/jobs/composition';
+import type { DirectorySearch, WorkspaceDirectory, WorkspaceSummary } from '@aivera/workspaces';
+import { createWorkspaceDirectory } from '@aivera/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
@@ -38,3 +42,29 @@ export const platformOperator = cache(async (): Promise<{ userId: string }> => {
 let audit: AuditContract | undefined;
 /** The audit module for operator actions: `recordPlatform`, and `record` inside the target workspace (ADR-012). */
 export const getAudit = (): AuditContract => (audit ??= createAudit(getDb()));
+
+let reads: { workspaces: WorkspaceDirectory; jobs: JobCounts } | undefined;
+// The console's metadata reads (ADR-012 point 6): only this file wires them to the pool (ops-metadata-contracts-only).
+const opsReads = () => (reads ??= { workspaces: createWorkspaceDirectory(getDb()), jobs: createJobCounts(getDb()) });
+
+/** A workspace's platform facts with its job count: metadata only, never a member or candidate (ADR-012 point 7). */
+export type WorkspaceFacts = WorkspaceSummary & { jobs: number };
+
+const withJobs = async (summary: WorkspaceSummary): Promise<WorkspaceFacts> => ({
+  ...summary,
+  jobs: await opsReads().jobs.countJobs(summary.id),
+});
+
+/** One page of the workspaces list. Checks the policy itself too, so no caller can skip it. */
+export async function listWorkspaceFacts(search: DirectorySearch): Promise<{ total: number; rows: WorkspaceFacts[] }> {
+  await platformOperator();
+  const { total, summaries } = await opsReads().workspaces.listSummaries(search);
+  return { total, rows: await Promise.all(summaries.map(withJobs)) };
+}
+
+/** One workspace's facts, or null when there is none. Checks the policy itself too. */
+export async function getWorkspaceFacts(workspaceId: string): Promise<WorkspaceFacts | null> {
+  await platformOperator();
+  const summary = await opsReads().workspaces.getSummary(workspaceId);
+  return summary && withJobs(summary);
+}

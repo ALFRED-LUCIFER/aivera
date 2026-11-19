@@ -12,6 +12,7 @@ import {
 
 /** The store a use case sees inside one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type WorkspaceStore = {
+  /** Also adds it to the platform directory (ADR-012 point 6). */
   insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
   insertMember(member: Member): Promise<boolean>;
@@ -26,7 +27,7 @@ export type WorkspaceStore = {
   /** The workspace row, locked until commit, so a type change and an added client cannot interleave. */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
-  /** Deletes the workspace with its members, clients, job grants and active-workspace pointers. */
+  /** Deletes the workspace with its members, clients, job grants, active-workspace pointers and directory row. */
   deleteWorkspace(workspaceId: string): Promise<void>;
   /** Clients that are not archived. */
   countClients(workspaceId: string): Promise<number>;

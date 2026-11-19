@@ -73,6 +73,17 @@ export const activeWorkspace = workspaces.table('active_workspace', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// The platform list of workspaces for the operator console (ADR-012 point 6): the opaque id and created date only,
+// nothing a tenant wrote, so like active_workspace it has no tenant policy (tenancy.test.ts GLOBAL_TABLES). Written with
+// the workspace (insertWorkspace) and deleted with it (deleteWorkspace). Each workspace's facts are read inside
+// withWorkspace(<that workspace>), under its tenant policies.
+export const directory = workspaces.table('directory', {
+  workspaceId: uuid('workspace_id')
+    .primaryKey()
+    .references(() => workspace.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
 // An agency's client (ADR-005 point 6). Only an agency workspace adds them (enforced in the use case under a lock on the
 // workspace row). Never deleted, only archived, so old jobs and audit entries keep resolving; the synthetic demo purge is the exception.
 export const client = workspaces
