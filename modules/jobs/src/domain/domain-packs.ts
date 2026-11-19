@@ -62,7 +62,8 @@ const PAYMENTS_HINTS_APPLY_TO: JobType[] = [
   'product_management',
 ];
 const HEALTHCARE_HINTS_APPLY_TO: JobType[] = [...PAYMENTS_HINTS_APPLY_TO, 'data_ml'];
-const HINTS_APPLY_TO: JobType[] = [...HEALTHCARE_HINTS_APPLY_TO, 'devops_sre'];
+const HINTS_APPLY_TO = HEALTHCARE_HINTS_APPLY_TO;
+const SECURITY_HINTS_APPLY_TO: JobType[] = [...HINTS_APPLY_TO, 'devops_sre'];
 
 // shortcut: competency text is English seed text copied into the recruiter's rubric, like the job type starters, not
 // i18n keys; move it to `domainPacks.<key>.*` when the recruiter app ships in Arabic (AIV-P5-009).
@@ -458,7 +459,7 @@ const PACKS: DomainPack[] = [
           'ai_llm_engineering',
           'product_management',
         ],
-        core: ['software_engineering', 'data_ml', 'ai_llm_engineering', 'product_management'],
+        core: ['software_engineering', 'data_ml', 'product_management'],
         type: 'desirable',
         levelNeeded: 3,
       },
@@ -1024,7 +1025,7 @@ const PACKS: DomainPack[] = [
           5: 'Owned recommendations across surfaces, with evaluation, guardrails and measured revenue effect',
         },
         appliesTo: ['data_ml', 'ai_llm_engineering', 'software_engineering'],
-        core: ['ai_llm_engineering'],
+        core: ['data_ml'],
         type: 'desirable',
         levelNeeded: 2,
       },
@@ -1040,6 +1041,21 @@ const PACKS: DomainPack[] = [
             1: 'Can explain when an online sale needs a tax invoice and how a return changes it',
             3: 'Built tax invoices and credit notes for online sales, with tests and a review trail',
             5: 'Owned VAT handling for a marketplace through a tax audit, with the evidence pack',
+          },
+          appliesTo: HINTS_APPLY_TO,
+          type: 'desirable',
+          levelNeeded: 2,
+        },
+        {
+          name: 'UAE e-invoicing (Peppol)',
+          meaning:
+            'Issues and receives structured e-invoices through an accredited service provider on the UAE network built on Peppol, with the tax data reported to the tax authority as the mandate requires.',
+          evidence:
+            'E-invoice generation or service provider integration code with tests; invoice data mappings; validation results',
+          levels: {
+            1: 'Can explain how an e-invoice moves between seller, service providers, buyer and the tax authority',
+            3: 'Built e-invoice generation or a service provider integration that passed validation, with tests',
+            5: 'Took e-invoicing live for a business at volume, with rejections and reporting owned',
           },
           appliesTo: HINTS_APPLY_TO,
           type: 'desirable',
@@ -1124,7 +1140,7 @@ const PACKS: DomainPack[] = [
           5: 'Owned routing and dispatch in production at scale, including real-time re-planning, with measured savings',
         },
         appliesTo: ['software_engineering', 'data_ml', 'ai_llm_engineering', 'product_management'],
-        core: ['software_engineering', 'data_ml', 'ai_llm_engineering'],
+        core: ['software_engineering', 'data_ml'],
         type: 'desirable',
         levelNeeded: 3,
       },
@@ -1207,7 +1223,7 @@ const PACKS: DomainPack[] = [
           5: 'Owned forecasting and capacity planning across peaks, with service-level and cost results',
         },
         appliesTo: ['product_management', 'data_ml'],
-        core: ['product_management'],
+        core: ['product_management', 'data_ml'],
         type: 'desirable',
         levelNeeded: 2,
       },
@@ -1407,7 +1423,7 @@ const PACKS: DomainPack[] = [
             3: 'Mapped a service to the standards and closed assessment findings',
             5: 'Led a platform through assessment against the standards, with evidence kept current',
           },
-          appliesTo: HINTS_APPLY_TO,
+          appliesTo: SECURITY_HINTS_APPLY_TO,
           type: 'desirable',
           levelNeeded: 2,
         },
@@ -1437,7 +1453,7 @@ const PACKS: DomainPack[] = [
             3: 'Mapped a system to the controls and closed the findings of its assessment',
             5: 'Led a platform through an assessment against the controls, with evidence kept current',
           },
-          appliesTo: HINTS_APPLY_TO,
+          appliesTo: SECURITY_HINTS_APPLY_TO,
           type: 'desirable',
           levelNeeded: 2,
         },
@@ -1574,7 +1590,7 @@ const PACKS: DomainPack[] = [
           5: 'Led network automation across domains, with manual changes and failures measured down',
         },
         appliesTo: ['software_engineering', 'devops_sre', 'data_ml', 'ai_llm_engineering'],
-        core: ['devops_sre', 'ai_llm_engineering'],
+        core: ['devops_sre'],
         type: 'desirable',
         levelNeeded: 3,
       },
@@ -1589,7 +1605,7 @@ const PACKS: DomainPack[] = [
           5: 'Owned network and churn analytics, with models in production and measured results',
         },
         appliesTo: ['data_ml', 'ai_llm_engineering', 'product_management'],
-        core: ['data_ml', 'ai_llm_engineering', 'product_management'],
+        core: ['data_ml', 'product_management'],
         type: 'desirable',
         levelNeeded: 2,
       },
@@ -1683,7 +1699,7 @@ const PACKS: DomainPack[] = [
           'ai_llm_engineering',
           'product_management',
         ],
-        core: ['software_engineering', 'data_ml', 'ai_llm_engineering'],
+        core: ['software_engineering', 'data_ml'],
         type: 'desirable',
         levelNeeded: 3,
       },
@@ -1751,7 +1767,7 @@ const PACKS: DomainPack[] = [
           5: 'Owned forecasting used in grid or trading operations, with error targets met',
         },
         appliesTo: ['data_ml', 'ai_llm_engineering', 'product_management'],
-        core: ['data_ml', 'ai_llm_engineering', 'product_management'],
+        core: ['data_ml', 'product_management'],
         type: 'desirable',
         levelNeeded: 2,
       },
@@ -1775,14 +1791,14 @@ const PACKS: DomainPack[] = [
       ],
       ksa: [
         {
-          name: 'SERA electricity rules',
+          name: 'WERA water and electricity rules',
           meaning:
-            'Knows the SERA rules for electricity services, such as metering, connection and service-quality reporting, and builds systems that meet them.',
+            'Knows the WERA rules for water and electricity services, such as metering, connection and service-quality reporting, and builds systems that meet them.',
           evidence: 'Requirement documents or compliance write-ups that apply the rules; systems built to meet them',
           levels: {
-            1: 'Can name the SERA rules that apply to a system',
-            3: 'Built or specified a system feature to meet a SERA rule, with the review trail',
-            5: 'Led a system’s compliance with SERA rules through review or audit, with the evidence pack',
+            1: 'Can name the WERA rules that apply to a system',
+            3: 'Built or specified a system feature to meet a WERA rule, with the review trail',
+            5: 'Led a system’s compliance with WERA rules through review or audit, with the evidence pack',
           },
           appliesTo: HINTS_APPLY_TO,
           type: 'desirable',
@@ -1798,7 +1814,7 @@ const PACKS: DomainPack[] = [
             3: 'Mapped a control system to the OT controls and closed assessment findings',
             5: 'Led sites through an assessment against the OT controls, with evidence kept current',
           },
-          appliesTo: HINTS_APPLY_TO,
+          appliesTo: SECURITY_HINTS_APPLY_TO,
           type: 'desirable',
           levelNeeded: 2,
         },
