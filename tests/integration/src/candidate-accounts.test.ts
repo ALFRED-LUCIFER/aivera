@@ -324,7 +324,7 @@ describe('Scenario: A recruiter signs up on the candidate site', () => {
     expect(signedUp).toMatchObject({ id: nadia, fullName: 'Nadia Freelance', workType: 'ai_llm_engineering' });
     expect(await users()).toBe(1);
 
-    // SAFETY: mutation check: dropped isNull(account.fullName) from setSignUp's WHERE -> this test failed
+    // SAFETY: mutation check: dropped the not-signed-up guard from setSignUp's WHERE -> this test failed
     await expect(
       accounts.withAccount(nadia, (ctx) => accounts.signUp(ctx, { fullName: 'Someone Else', workType: 'sales' })),
     ).rejects.toThrow(new CandidateAccountError('already_signed_up'));

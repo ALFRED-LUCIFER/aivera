@@ -21,7 +21,7 @@ export type AccountStore = {
   /** Creates the account (and its empty profile) unless it exists. */
   ensureAccount(accountId: string, now: Date): Promise<void>;
   getAccount(accountId: string): Promise<Account | null>;
-  /** Sets full name and work type unless already set, in one statement; false when they were set. */
+  /** Sets full name and work type unless the account is signed up, in one statement; false when it was. */
   setSignUp(accountId: string, input: SignUpInput, now: Date): Promise<boolean>;
   insertConsent(consent: Consent): Promise<void>;
   /** The consent, locked for update so a link and a withdrawal of it never interleave; null when not this account's. */

@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@aivera/i18n';
 import { JOB_TYPES } from '@aivera/jobs';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -23,6 +23,7 @@ export default async function CandidateSignUpPage() {
   if (step === 'done') redirect(CANDIDATE_HOME);
   // Prefilled from the tenant's display name until the candidate chooses one.
   const fullName = account ? (account.fullName ?? (await identityDisplayName(account.id)) ?? '') : '';
+  const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <SignUpView
       step={step}
@@ -30,6 +31,8 @@ export default async function CandidateSignUpPage() {
       next={CANDIDATE_SIGN_UP}
       workTypes={JOB_TYPES}
       plusEnabled={enabledFlags.has(PLUS_SIGN_UP_FLAG)}
+      // shortcut: the Plus price (PRODUCT.md) as a literal until Plans and billing own it (AIV-P4-003).
+      plusPrice={t('money.monthly', { amount: formatMoney({ amountMinor: 4900, currency: 'AED' }, defaultLocale) })}
       fullName={fullName}
     />
   );

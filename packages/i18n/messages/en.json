@@ -133,7 +133,9 @@
       },
       "placeholder": "This page arrives with its own ticket.",
       "applyPlaceholder": "Apply",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "failed": "This page could not load. Try again.",
+      "retry": "Try again"
     },
     "jobs": {
       "title": "Jobs",
@@ -239,7 +241,7 @@
       "workType": "What kind of work do you do?",
       "workTypeHint": "Used to show you jobs that fit.",
       "choose": "Choose one",
-      "createWithPlus": "Create account and start Plus, AED 49 a month",
+      "createWithPlus": "Create account and start Plus, {price}",
       "perks": {
         "title": "What you get, free",
         "jobs": "Every job, with what it needs shown before you apply.",

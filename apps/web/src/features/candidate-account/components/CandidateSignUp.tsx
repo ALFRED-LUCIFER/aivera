@@ -3,11 +3,11 @@ import { Button, Card, Input, Label, Select } from '@aivera/ui';
 import type { JobType } from '@aivera/jobs';
 import Link from 'next/link';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
-import type { SignUpState } from '../domain/signup.ts';
+import type { SignUpState, SignUpStep } from '../domain/signup.ts';
 
 export type CandidateSignUpProps = {
   /** Signed out: the buttons that start the candidate user flow. Profile: the full name and work type form. */
-  step: 'signedOut' | 'profile';
+  step: Exclude<SignUpStep, 'done'>;
   /** The server action that starts the candidate sign-in at the tenant (AIV-P0-011). */
   startAction: (form: FormData) => Promise<void>;
   /** Where the tenant returns to: this page. */
@@ -15,6 +15,8 @@ export type CandidateSignUpProps = {
   workTypes: readonly JobType[];
   /** Shows "Create account and start Plus" (feature flag, until AIV-P4-004). */
   plusEnabled: boolean;
+  /** The Plus price, already formatted. */
+  plusPrice: string;
   /** The profile form's posted action, its last result and whether it is running. */
   action: (form: FormData) => void;
   state: SignUpState;
@@ -84,7 +86,7 @@ function Start({ startAction, next }: CandidateSignUpProps) {
   );
 }
 
-function Profile({ workTypes, plusEnabled, action, state, pending }: CandidateSignUpProps) {
+function Profile({ workTypes, plusEnabled, plusPrice, action, state, pending }: CandidateSignUpProps) {
   const t = useTranslations();
   const error = (field: keyof SignUpState['errors']) => {
     const key = state.errors[field];
@@ -150,7 +152,7 @@ function Profile({ workTypes, plusEnabled, action, state, pending }: CandidateSi
         {/* shortcut: submits the same free sign-up; AIV-P4-004 sends it on to payment before its flag is turned on. */}
         {plusEnabled && (
           <Button type="submit" disabled={pending}>
-            {t('candidate.signup.createWithPlus')}
+            {t('candidate.signup.createWithPlus', { price: plusPrice })}
           </Button>
         )}
       </form>

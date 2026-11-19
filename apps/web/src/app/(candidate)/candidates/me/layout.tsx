@@ -8,6 +8,8 @@ import { getCandidateSessionUserId } from '@/server/candidateAuth';
 
 // My applications needs a candidate session (AIV-P0-011): the proxy redirects first, this checks again on the server.
 // A signed-in person who has not given their full name and kind of work yet finishes sign-up first (AIV-P3-007).
+// shortcut: only My applications checks this; a sign-in with `next` to another candidate page skips it. AIV-P3-008
+// (apply) must check isSignedUp before applying, as must every later page that needs the profile.
 export default async function CandidateMeLayout({ children }: { children: ReactNode }) {
   const userId = await getCandidateSessionUserId();
   if (!userId) redirect(CANDIDATE_SIGN_IN);

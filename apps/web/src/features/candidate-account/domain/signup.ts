@@ -24,9 +24,9 @@ const signUpForm = z.object({
   fullName: z.string().trim().min(1, 'fullNameRequired').max(200, 'fullNameTooLong'),
   workType: z.enum(JOB_TYPES, 'workTypeRequired'),
 });
-export type SignUpForm = z.infer<typeof signUpForm>;
-export type SignUpField = keyof SignUpForm;
-export type SignUpErrorKey = 'fullNameRequired' | 'fullNameTooLong' | 'workTypeRequired';
+type SignUpForm = z.infer<typeof signUpForm>;
+type SignUpField = keyof SignUpForm;
+type SignUpErrorKey = 'fullNameRequired' | 'fullNameTooLong' | 'workTypeRequired';
 
 /** What the form shows after a refused or failed submit: each field's error, and what was typed so nothing is lost. */
 export type SignUpState = {
