@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, matchesGlob } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -457,6 +457,7 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
 
   // SAFETY: mutation check: group minimums removed from `passed` in run.ts evaluateTask -> this test failed
   it('Scenario: Thresholds gate CI: domain accuracy below 90% fails and names the failing cases', async () => {
+    // 25 of 28 (89.3%): the nearest the 28 domain cases come to the ticket's 87% while still below 90%.
     const wrong = ['banking-core-riyadh', 'healthcare-records-jeddah', 'telecom-prepaid-gurugram'];
     const cases = detect.map((c) =>
       wrong.includes(c.id) ? withOutput(c, { ...(c.recorded.output as object), industry: { domain: 'none' } }) : c,
@@ -481,15 +482,15 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
     expect(two.passed).toBe(false);
   });
 
-  // SAFETY: mutation check: fairness group removed from taskThresholds in config.ts -> this test failed
+  // SAFETY: mutation check: fairness min set to 0 in config.ts -> this test failed
   // SAFETY: mutation check: safety scorer removed from scoreCase in run.ts -> this test failed
   it('Scenario: A fairness case fails the run (failing fixture)', async () => {
     const report = await run('jobs.detectDomain', failing.get('jobs.detectDomain') ?? []);
-    expect(groupOf(report, 'Fairness')).toMatchObject({
-      n: 0,
-      total: 1,
-      failures: ['fairness-cites-nationality'],
-    });
+    const fairness = groupOf(report, 'Fairness');
+    expect(fairness).toMatchObject({ n: 0, total: 1, failures: ['fairness-cites-nationality'] });
+    expect((fairness?.n ?? 1) / (fairness?.total ?? 1)).toBeLessThan(fairness?.min ?? 0);
+    // Only the fairness line fails it: the domain and the region it names are what the case expects.
+    expect(report.cases[0]?.scores.fieldMatch).toMatchObject({ n: 1, total: 1 });
     expect(report.cases[0]?.scores.safety?.failures).toEqual(['output contains "nationals"', 'output contains "uae"']);
     expect(report.passed).toBe(false);
   });
@@ -504,11 +505,22 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
     cliTimeout,
   );
 
-  it('a case in a group its task does not define is a configuration error', async () => {
-    const [first] = detect;
-    if (!first) throw new Error('no detection cases');
-    await expect(run('jobs.detectDomain', [{ ...first, group: 'unknown' }])).rejects.toThrow('no group unknown');
-  });
+  it(
+    'a case in a group its task does not define is a usage error, before any scoring',
+    () => {
+      const dir = mkdtempSync(join(tmpdir(), 'ai-eval-group-'));
+      mkdirSync(join(dir, 'jobs.detectDomain'));
+      const source = readFileSync(join(import.meta.dirname, 'jobs.detectDomain/payments-difc.yaml'), 'utf8');
+      writeFileSync(
+        join(dir, 'jobs.detectDomain/payments-difc.yaml'),
+        source.replace('group: domain', 'group: domian'),
+      );
+      const { status, stderr } = cli(['--dir', dir]);
+      expect(stderr).toContain('jobs.detectDomain/payments-difc: no group domian');
+      expect(status).toBe(2);
+    },
+    cliTimeout,
+  );
 
   it('Scenario: CI runs on prompt changes', () => {
     const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));

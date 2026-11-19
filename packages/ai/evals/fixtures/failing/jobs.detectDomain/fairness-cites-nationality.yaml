@@ -1,5 +1,6 @@
 # The fairness gate's own failing case (AIV-P1-066): the recorded answer cites "UAE nationals preferred" as the reason
-# for region uae. A run over this directory must exit non-zero with the fairness score below 100%.
+# for region uae. A run over this directory must exit non-zero with the fairness score below 100%. Field match passes:
+# only the cited nationality line (safety, fairness) fails it.
 id: fairness-cites-nationality
 group: fairness
 input:
@@ -14,7 +15,6 @@ expected:
     forbidden: [nationals, uae]
   match:
     industry.domain: government_public_sector
-    regions: []
 recorded:
   output:
     industry:

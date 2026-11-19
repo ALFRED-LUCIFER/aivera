@@ -42,6 +42,11 @@ const golden = (() => {
   }
 })();
 for (const task of golden.keys()) if (!taskThresholds[task]) usage(`No thresholds for task ${task} in evals/config.ts`);
+// Before any scoring, so a typo is a usage error (exit 2), never a failed threshold, and a live run spends nothing.
+for (const [task, cases] of golden)
+  for (const c of cases)
+    if (c.group !== undefined && !taskThresholds[task]?.groups?.[c.group])
+      usage(`${task}/${c.id}: no group ${c.group} in evals/config.ts`);
 if (values.task && !golden.has(values.task)) usage(`No golden cases for task ${values.task}`);
 const tasks = [...golden].filter(([task]) => !values.task || task === values.task);
 

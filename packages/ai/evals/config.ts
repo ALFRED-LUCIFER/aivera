@@ -45,7 +45,8 @@ export const taskThresholds: Record<
 > = {
   'jobs.draftCompetencies': { statements: ['competencies[*]', 'suggestions[*]'], fieldMatch: 0.9, judge: 1 },
   // `industry` is a statement only when it names a domain (it then carries citations); `none` cites nothing.
-  // AIV-P1-066: pack and near-miss cases (domain), descriptions with no industry (none) and fairness cases.
+  // AIV-P1-066: pack and near-miss cases (domain), descriptions with no industry (none) and fairness cases. A group
+  // counts a case only when it passes every metric, so "domain accuracy" also needs the right regions.
   'jobs.detectDomain': {
     statements: ['regions[*]'],
     fieldMatch: 0.9,

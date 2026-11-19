@@ -111,9 +111,6 @@ export async function evaluateTask(
     }),
   ) as Record<Metric, number | null>;
   const groupThresholds = taskThresholds[task]?.groups ?? {};
-  for (const golden of cases)
-    if (golden.group !== undefined && !groupThresholds[golden.group])
-      throw new Error(`${task}/${golden.id}: no group ${golden.group} in evals/config.ts`);
   const groups = Object.entries(groupThresholds).map(([group, { label, min }]) => {
     const inGroup = results.filter((_, i) => cases[i]?.group === group);
     const failures = inGroup.filter((result) => !result.passed).map((result) => result.id);
@@ -122,6 +119,8 @@ export async function evaluateTask(
   const passed =
     results.every((result) => !result.error) &&
     metrics.every((metric) => rates[metric] === null || (rates[metric] ?? 0) >= thresholds[metric]) &&
+    // shortcut: an empty group passes (the failing fixtures fill one group only); eval.test.ts pins each group's case
+    // count in the golden set. Upgrade to a per-group minimum count if a group can shrink outside that test.
     groups.every((group) => group.total === 0 || group.n / group.total >= group.min);
   return { task, passed, cases: results, rates, thresholds, groups };
 }
