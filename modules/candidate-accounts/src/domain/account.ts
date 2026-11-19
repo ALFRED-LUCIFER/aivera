@@ -50,8 +50,8 @@ export type WorkspaceLink = {
 };
 
 /**
- * Field names in this module's contract that hold candidate personal data (AGENTS.md 1.2), for the telemetry scrubber
- * (AIV-P0-018) to register. Never log them.
+ * Field names in this module's contract that hold candidate personal data (AGENTS.md 1.2). apps/web registers them with
+ * the telemetry scrubber at start-up (instrumentation.ts), so they are redacted in logs and telemetry. Never log them.
  */
 export const PERSONAL_DATA_FIELDS = ['fullName', 'headline', 'location'] as const;
 

@@ -7,7 +7,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Runs `work` in a transaction with one row-level security setting (`setting` is a code constant, never input).
  * `set_config(..., true)` is transaction-local, so a pooled connection never carries it over.
  */
-function withSetting<T>(db: Db, setting: string, id: string, work: (tx: Tx) => Promise<T>): Promise<T> {
+function withSetting<T>(
+  db: Db,
+  setting: 'app.workspace_id' | 'app.candidate_account_id',
+  id: string,
+  work: (tx: Tx) => Promise<T>,
+): Promise<T> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`select set_config(${setting}, ${id}, true)`);
     return work(tx);
