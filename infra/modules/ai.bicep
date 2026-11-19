@@ -4,7 +4,7 @@
 param tags object
 param appIdentityPrincipalId string
 
-var location = resourceGroup().location
+var location = 'uaenorth' // ADR-011: explicit, so a group created elsewhere cannot move the account.
 // The subdomain must equal the name: @ai-sdk/azure builds <AZURE_OPENAI_RESOURCE_NAME>.openai.azure.com.
 var name = 'ai-aivera-dev-${take(uniqueString(resourceGroup().id), 6)}'
 
