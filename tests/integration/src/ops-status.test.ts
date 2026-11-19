@@ -277,8 +277,8 @@ describe('row locks: a status change and the work in flight', () => {
     await asOmar(async (ctx) => {
       await secondInside;
       releaseSecond();
+      // With FOR UPDATE, each request's lock would wait on the other's KEY SHARE: a deadlock, whichever goes first.
       await workspaces.setWorkspaceType(ctx, 'in_house');
-      await untilWaiting('the second type change');
     });
     await expect(second).resolves.toBeUndefined();
   });
