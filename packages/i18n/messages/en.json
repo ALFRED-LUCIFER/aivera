@@ -596,7 +596,6 @@
         "day": "Day (UTC)",
         "tokens": "Tokens",
         "basis": "Basis",
-        "count": "{count, number}",
         "change": "Change the daily AI budget",
         "newBudget": "New daily budget (tokens)",
         "hint": "Between {min, number} and {max, number} tokens per UTC day.",

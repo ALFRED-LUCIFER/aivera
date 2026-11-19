@@ -236,8 +236,9 @@ export async function readSummary(tx: Tx, workspaceId: string): Promise<Omit<Wor
   return { ...found, activeMembers: members?.n ?? 0 };
 }
 
-/** Daily AI token use (AIV-P0-033) and its budget (AIV-P2-038), over a workspace-scoped transaction; the filter and RLS both apply. */
 const budgetOf = (override: number | null) => override ?? AI_DAILY_TOKEN_BUDGET.default;
+
+/** Daily AI token use (AIV-P0-033) and its budget (AIV-P2-038), over a workspace-scoped transaction; the filter and RLS both apply. */
 
 export function aiTokenUsageStore(tx: Tx) {
   return {

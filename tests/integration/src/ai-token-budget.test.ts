@@ -343,6 +343,22 @@ describe('AIV-P2-038: a per-workspace daily budget', () => {
     );
   });
 
+  // SAFETY: mutation check: dropped platform_entry_note_check -> this test failed (the blank-note row was inserted)
+  it('the database refuses a platform "ai_budget.changed" entry without a reason', async () => {
+    await expect(
+      reader.execute(sql`insert into audit.platform_entry (id, occurred_at, actor_id, action, note)
+        values (gen_random_uuid(), now(), ${PIA}, 'ai_budget.changed', '  ')`),
+    ).rejects.toMatchObject({ constraint: 'platform_entry_note_check' });
+  });
+
+  it("the client's check fails closed for a workspace its scope cannot see: AiUnavailable, no request", async () => {
+    const model = exact(1, 1);
+    await expect(processWith(model.provider).generate(draft('0190d4a2-0000-7000-8000-0000000000ff'))).rejects.toEqual(
+      new AiUnavailable('jobs.draftCompetencies', 'budget store'),
+    );
+    expect(model.sent.requests).toBe(0);
+  });
+
   it('a workspace that does not exist is refused with no_workspace and nothing is audited', async () => {
     const platform = (await platformEntries()).length;
     await expect(setBudget('0190d4a2-0000-7000-8000-0000000000ff', 500_000)).rejects.toEqual(

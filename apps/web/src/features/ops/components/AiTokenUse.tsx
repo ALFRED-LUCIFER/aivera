@@ -13,10 +13,11 @@ type Day = { day: string; tokens: number };
  */
 export function AiTokenUse({ ai, children }: { ai: WorkspaceRow['ai']; children?: ReactNode }) {
   const t = useTranslations('ops.workspaces.ai');
+  const count = useTranslations('ops.workspaces');
   const observed = <ValueBasis basis="observed" label={t('observed')} />;
   const columns = [
     { id: 'day', header: t('day'), cell: (row: Day) => row.day },
-    { id: 'tokens', header: t('tokens'), numeric: true, cell: (row: Day) => t('count', { count: row.tokens }) },
+    { id: 'tokens', header: t('tokens'), numeric: true, cell: (row: Day) => count('count', { count: row.tokens }) },
     { id: 'basis', header: t('basis'), cell: () => observed },
   ];
 
