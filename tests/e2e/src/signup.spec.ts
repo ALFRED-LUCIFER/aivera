@@ -14,8 +14,9 @@ for (const theme of themes) {
   test(`Scenario: A visitor goes from the home page to the workspace form, with no personal data in a URL (${theme})`, async ({
     page,
     context,
+    baseURL,
   }) => {
-    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     const urls: string[] = [];
     page.on('request', (request) => {
       if (request.isNavigationRequest()) urls.push(decodeURIComponent(request.url()));
@@ -37,8 +38,9 @@ for (const theme of themes) {
   test(`"Create your workspace" and "Sign in" are links reached by keyboard with a focus ring (${theme})`, async ({
     page,
     context,
+    baseURL,
   }) => {
-    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await page.goto('/');
     const header = page.getByRole('banner');
     for (const [name, href] of [
@@ -78,9 +80,12 @@ test('Scenario Outline: A signed-in user not in any workspace opening /signup se
   await noWorkspace(page);
 });
 
+// The shell does not render the workspace name; Alex's only workspace is "Demo Hiring Co" (seed.ts), and the synthetic
+// workspace tag shows the desk opened inside it.
 test('Scenario Outline: An admin of "Demo Hiring Co" opening /signup sees My desk', async ({ page }) => {
   await signIn(page);
   await page.goto('/signup');
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
+  await expect(page.getByText('Synthetic demo data', { exact: true })).toBeVisible();
 });

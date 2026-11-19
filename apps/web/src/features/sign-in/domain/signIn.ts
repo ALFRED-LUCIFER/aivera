@@ -68,10 +68,7 @@ export function signInError(value: string | string[] | undefined): SignInError |
  * Where `/signup` sends a visitor (AIV-P1-059): with no tenant, the sign-in page's "not set up" message; signed in,
  * My desk (or the no-workspace page); otherwise null: the tenant's sign-up page, returning to My desk.
  */
-export function signUpRedirect(
-  configured: boolean,
-  signedIn: boolean,
-): '/sign-in?error=unavailable' | typeof DESK | null {
+export function signUpRedirect(configured: boolean, signedIn: boolean) {
   if (!configured) return '/sign-in?error=unavailable';
   return signedIn ? DESK : null;
 }
