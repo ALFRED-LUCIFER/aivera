@@ -15,6 +15,8 @@ export const PERMISSIONS = {
   'client.manage': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'job_access.manage': { scope: 'workspace', roles: ['admin'] },
   'job_access.view': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
+  // The job's hiring owner gets that job's grant with it (AIV-P1-056); whoever adds or edits the job sets it.
+  'job.assign_owner': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   'rubric.approve': { scope: 'job', roles: ['admin', 'hiring_owner'] },
   'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
@@ -34,6 +36,15 @@ export const JOB_SCOPED_ROLES: readonly Role[] = ['hiring_owner', 'interviewer']
 /** A grant covers the resource when it names that job, or the job's client (so also the client's future jobs). */
 export const grantsCover = (grants: Pick<JobGrant, 'jobId' | 'clientId'>[], { jobId, clientId }: JobResource) =>
   grants.some((g) => g.jobId === jobId || (!!clientId && g.clientId === clientId));
+
+/**
+ * The grant change when a job's hiring owner goes from `previous` to `next` (AIV-P1-056): the new owner gets a grant
+ * on that job, the previous one loses it. Only the job grant: a client grant they hold is a separate row and stays.
+ */
+export const ownerGrantChange = (previous: string | null, next: string | null) => ({
+  grant: next !== previous ? next : null,
+  revoke: previous !== next ? previous : null,
+});
 
 /** A refused request: not a member of the workspace, or the role or job grant does not allow the action. HTTP 403. */
 export class ForbiddenError extends Error {

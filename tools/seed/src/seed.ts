@@ -71,6 +71,9 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
   const ownerOf = (key: string) => owners[HIRING_OWNERS.findIndex((o) => o.key === key)] ?? null;
   await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
+    // First, though audited before the jobs (AGENTS.md 3.6 asks audit last): a job's hiring owner must already be an
+    // active member, and gets the job's grant, audited, as the job is saved (AIV-P1-056).
+    for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
     for (const c of CANDIDATES)
       await candidates.findOrCreatePerson(ctx, {
         displayName: c.displayName,
@@ -98,14 +101,6 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         });
         jobIds.set(job.title, created.job.id);
       }
-    // Last, so the audit entries of added members and their grants are the last writes before commit (AGENTS.md 3.6).
-    for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
-    // Hiring owners are job-scoped (ADR-005 point 6): each needs a grant to see and approve their job's draft rubric.
-    for (const job of INDUSTRY_JOBS) {
-      const owner = ownerOf(job.hiringOwner);
-      const jobId = jobIds.get(job.title);
-      if (owner && jobId) await workspaces.grantJobAccess(ctx, { userId: owner, jobId });
-    }
   });
   return workspaceId;
 }

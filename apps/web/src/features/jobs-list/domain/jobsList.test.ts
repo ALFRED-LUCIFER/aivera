@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { filterCounts, filterJobs, jobHref, parseFilter, rubricLabel, type JobRow } from './jobsList.ts';
+import {
+  clientNames,
+  filterByClient,
+  filterCounts,
+  filterJobs,
+  jobHref,
+  parseFilter,
+  rubricLabel,
+  type JobRow,
+} from './jobsList.ts';
 
 const row = (title: string, more: Partial<JobRow>): JobRow => ({
   id: title,
@@ -12,6 +21,7 @@ const row = (title: string, more: Partial<JobRow>): JobRow => ({
   coveragePercent: null,
   nextAction: null,
   hiringOwner: null,
+  client: null,
   ...more,
 });
 
@@ -74,5 +84,14 @@ describe('Rubric label and job link', () => {
   it('opens the rubric until one is approved, then the ranked candidates', () => {
     expect(jobHref({ id: 'j1', rubric: { approved: false, latest: 'draft' } })).toBe('/app/jobs/j1/rubric');
     expect(jobHref({ id: 'j1', rubric: { approved: true, latest: 'approved' } })).toBe('/app/jobs/j1/candidates');
+  });
+});
+
+describe('AIV-P1-056: the agency client filter', () => {
+  const agency = [row('A', { client: 'Falcon Pay' }), row('B', { client: 'Dune Logistics' }), row('C', {})];
+  it('offers each client named on a job, by name, and filters to it', () => {
+    expect(clientNames(agency)).toEqual(['Dune Logistics', 'Falcon Pay']);
+    expect(filterByClient(agency, 'Falcon Pay').map((r) => r.title)).toEqual(['A']);
+    expect(filterByClient(agency, '')).toHaveLength(3);
   });
 });

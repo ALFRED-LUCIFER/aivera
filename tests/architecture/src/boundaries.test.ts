@@ -47,6 +47,15 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ).toEqual(['apps/web/src/features/jobs/services/x.ts', 'apps/web/src/features/signup/services/y.ts']);
   });
 
+  // SAFETY: mutation check: removed the job-owner-from-jobs check -> this test failed
+  it('a call to setJobOwner outside the jobs module is reported (AIV-P1-056)', () => {
+    expect(
+      findViolations(fixture('job-owner'))
+        .filter((v) => v.rule === 'job-owner-from-jobs')
+        .map((v) => v.file),
+    ).toEqual(['apps/web/src/features/jobs/services/x.ts']);
+  });
+
   // SAFETY: mutation check: removed the recruiter-app-no-candidate-data check -> this test failed
   it('only the candidate site, its server readers and the wiring roots import candidate accounts or sessions', () => {
     expect(

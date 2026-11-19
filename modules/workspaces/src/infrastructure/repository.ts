@@ -198,6 +198,13 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .returning(grantColumns);
       return row ?? null;
     },
+    async deleteJobGrant(workspaceId, userId, jobId) {
+      const [row] = await tx
+        .delete(jobGrant)
+        .where(and(eq(jobGrant.workspaceId, workspaceId), eq(jobGrant.userId, userId), eq(jobGrant.jobId, jobId)))
+        .returning(grantColumns);
+      return row ?? null;
+    },
     deleteGrantsOf: (workspaceId, userId) =>
       tx
         .delete(jobGrant)

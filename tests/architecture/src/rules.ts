@@ -67,6 +67,9 @@ const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 // and check no role, so only server/operator.ts, behind platformOperator(), may call them.
 const OPERATOR_ONLY_CALL = /\.(?:changeStatus|pausePublicListings|setApprovalRequired)\(/;
 const OPERATOR_SERVER = /[/\\]src[/\\]server[/\\]operator\.ts$/;
+// AIV-P1-056: setJobOwner trusts the job id and the previous owner it is given, so only the jobs module, which passes
+// the job it is saving, calls it.
+const JOB_OWNER_CALL = /\.setJobOwner\(/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
   /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
@@ -142,6 +145,18 @@ export function findViolations(root: string): Violation[] {
           file: rel,
           detail:
             'changeStatus, pausePublicListings and setApprovalRequired are called only from server/operator.ts (ADR-012)',
+        });
+
+      if (
+        unit !== 'modules/jobs' &&
+        unit !== 'modules/workspaces' &&
+        !/\.test\.tsx?$/.test(file) &&
+        JOB_OWNER_CALL.test(readFileSync(file, 'utf8'))
+      )
+        violations.push({
+          rule: 'job-owner-from-jobs',
+          file: rel,
+          detail: 'setJobOwner is called only by the jobs module, for the job it is saving (AIV-P1-056)',
         });
 
       // AIV-P0-010: module code takes the workspace-scoped `tx` from the request context; only composition holds the pool.

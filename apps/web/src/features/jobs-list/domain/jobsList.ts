@@ -4,9 +4,13 @@ import type { DeskJob, RubricState } from '@aivera/jobs';
 export type JobRow = Pick<
   DeskJob,
   'id' | 'title' | 'team' | 'location' | 'stage' | 'rubric' | 'assessed' | 'coveragePercent' | 'nextAction'
-> & { hiringOwner: string | null };
+> & {
+  hiringOwner: string | null;
+  /** The agency client's name; null for the team's own job (AIV-P1-056). */
+  client: string | null;
+};
 
-export const toJobRow = (job: DeskJob, hiringOwner: string | null): JobRow => ({
+export const toJobRow = (job: DeskJob, hiringOwner: string | null, client: string | null): JobRow => ({
   id: job.id,
   title: job.title,
   team: job.team,
@@ -17,6 +21,7 @@ export const toJobRow = (job: DeskJob, hiringOwner: string | null): JobRow => ({
   coveragePercent: job.coveragePercent,
   nextAction: job.nextAction,
   hiringOwner,
+  client,
 });
 
 export const JOB_FILTERS = ['all', 'needsAction', 'rubricNotApproved'] as const;
@@ -34,6 +39,12 @@ const matches: Record<JobFilter, (row: JobRow) => boolean> = {
 };
 
 export const filterJobs = (rows: JobRow[], filter: JobFilter) => rows.filter(matches[filter]);
+
+/** The agency's client filter: every client named on a job, by name; '' is every job. */
+export const clientNames = (rows: JobRow[]) =>
+  [...new Set(rows.flatMap((row) => row.client ?? []))].toSorted((a, b) => a.localeCompare(b));
+export const filterByClient = (rows: JobRow[], client: string) =>
+  client ? rows.filter((row) => row.client === client) : rows;
 
 export const filterCounts = (rows: JobRow[]) =>
   Object.fromEntries(JOB_FILTERS.map((filter) => [filter, filterJobs(rows, filter).length])) as Record<

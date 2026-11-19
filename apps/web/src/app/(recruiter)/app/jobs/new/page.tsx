@@ -54,6 +54,7 @@ export default async function NewJobPage() {
           placeholderIntro: t('jobNew.placeholderIntro'),
           team: t('jobNew.team'),
           client: t('jobNew.client'),
+          ourTeam: t('jobNew.clientOurTeam'),
           location: t('jobNew.location'),
           optional: t('jobNew.optional'),
           hiringOwner: t('jobNew.hiringOwner'),

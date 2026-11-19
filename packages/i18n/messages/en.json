@@ -478,7 +478,8 @@
     "descriptionHint": "Paste what you have, even if it is thin.",
     "placeholderIntro": "What this person must be able to do:",
     "team": "Team",
-    "client": "Client",
+    "client": "Team or client",
+    "clientOurTeam": "Our team",
     "location": "Location",
     "optional": "Optional",
     "hiringOwner": "Hiring owner",
@@ -600,6 +601,7 @@
     },
     "columns": {
       "job": "Job",
+      "client": "Client",
       "hiringOwner": "Hiring owner",
       "stage": "Stage",
       "assessed": "Assessed",
@@ -636,7 +638,10 @@
     "emptyFiltered": "No jobs match this filter.",
     "loading": "Loading jobs",
     "error": "We could not load your jobs. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "clientFilter": "Client",
+    "allClients": "All clients",
+    "ourTeam": "Our team"
   },
   "ops": {
     "title": "Aivera operations",
@@ -915,6 +920,44 @@
         "label": "Tell candidates which competencies fell short when they are not taken forward",
         "help": "Applies to Aivera Plus members. A person still makes every decision."
       }
-    }
+    },
+    "clientsLink": "Clients",
+    "sections": "Settings sections"
+  },
+  "clients": {
+    "title": "Clients",
+    "intro": "The clients this agency recruits for. Each job belongs to a client or to your own team.",
+    "name": "Client name",
+    "add": "Add client",
+    "caption": "Clients",
+    "empty": "No clients yet. Add the first one above.",
+    "columns": {
+      "name": "Client",
+      "openJobs": "Open jobs",
+      "actions": "Actions"
+    },
+    "openJobs": "{count, plural, one {# open job} other {# open jobs}}",
+    "archived": "Archived",
+    "rename": "Rename",
+    "renameFor": "Rename {name}",
+    "renameTitle": "Rename client",
+    "archive": "Archive",
+    "archiveFor": "Archive {name}",
+    "archiveTitle": "Archive {name}?",
+    "archiveBody": "Its jobs stay as they are. You cannot add new jobs for this client.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "done": {
+      "added": "Client added.",
+      "renamed": "Client renamed.",
+      "archived": "Client archived."
+    },
+    "errors": {
+      "name": "Enter the client's name.",
+      "exists": "A client with this name already exists.",
+      "failed": "That did not work. Try again."
+    },
+    "breadcrumb": "Breadcrumb"
   }
 }
