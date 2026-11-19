@@ -25,3 +25,9 @@ export {
   draftCompetenciesRequest,
   draftCompetenciesSchema,
 } from './prompts/jobs.draftCompetencies';
+export {
+  DETECT_DOMAIN_SYSTEM,
+  DETECT_DOMAIN_VERSION,
+  detectDomainRequest,
+  detectDomainSchema,
+} from './prompts/jobs.detectDomain';

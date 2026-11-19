@@ -1,0 +1,30 @@
+# The ticket's payments example (AIV-P1-063, synthetic): the domain cites the acquiring sentence, the region the location.
+id: payments-difc
+input:
+  jobType: software_engineering
+  title: 'Senior Backend Engineer, Payments'
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      You will build the card acquiring platform that settles merchant payments across the Gulf. You write tested
+      services in TypeScript and join the on-call rota.
+  - id: S2
+    kind: job_description
+    text: 'DIFC, Dubai'
+expected:
+  match:
+    industry.domain: payments_fintech
+    regions[*].region: [uae]
+recorded:
+  output:
+    industry:
+      domain: payments_fintech
+      citations:
+        - sourceId: S1
+          quote: You will build the card acquiring platform that settles merchant payments across the Gulf.
+    regions:
+      - region: uae
+        citations:
+          - sourceId: S2
+            quote: 'DIFC, Dubai'

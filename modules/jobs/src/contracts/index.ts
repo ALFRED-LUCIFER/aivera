@@ -1,6 +1,7 @@
 // The only public surface of @aivera/jobs (ADR-002).
 import type { Tx } from '@aivera/db';
 import type { WorkspaceContext } from '@aivera/workspaces';
+import type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
 import type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 import type { DeskJob, Job, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
@@ -40,6 +41,7 @@ export type {
 } from '../domain/job.ts';
 export type { CreateJobInput, PublishJobInput, SaveRubricInput } from '../application/jobs.ts';
 export type { CompetencyDraft, DraftedCompetency, DraftInput } from '../application/draft-competencies.ts';
+export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
@@ -129,6 +131,19 @@ export interface CompetencyDrafting {
    * or (an answer rejected twice) `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
    */
   draftCompetencies(workspaceId: string, input: DraftInput): Promise<CompetencyDraft>;
+}
+
+/**
+ * "Detect the job's industry" (AIV-P1-063). Saves nothing and reads nothing from the database; the same rules for
+ * `workspaceId` as `CompetencyDrafting`.
+ */
+export interface DomainDetecting {
+  /**
+   * The hiring company's likely industry from the domain catalogue, or `none`, and the job's regions, each citing the
+   * description or the location. An answer the citation contract rejects twice (a domain not in the catalogue, a quote
+   * not in the job's text) is `none`. Throws `@aivera/ai`'s `BudgetExceeded` or `AiUnavailable`.
+   */
+  detectDomain(workspaceId: string, input: DetectDomainInput): Promise<DomainDetection>;
 }
 
 /**
