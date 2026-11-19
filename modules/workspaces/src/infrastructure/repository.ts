@@ -198,8 +198,18 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
     },
     async operatorAudit(workspaceId, operatorId, values) {
       await audit.record({ tx, workspaceId, actor: { type: 'operator', id: operatorId } }, values);
-      const { action, subject, note } = values;
-      await audit.recordPlatform({ actorId: operatorId, action, subject, ...(note ? { note } : {}) }, tx);
+      const { action, subject, note, before, after } = values;
+      await audit.recordPlatform(
+        {
+          actorId: operatorId,
+          action,
+          subject,
+          ...(note && { note }),
+          ...(before && { before }),
+          ...(after && { after }),
+        },
+        tx,
+      );
     },
   };
 }
@@ -312,7 +322,8 @@ export function aiTokenUsageStore(tx: Tx) {
         .select({ override: workspace.aiDailyTokenBudget })
         .from(workspace)
         .where(eq(workspace.id, workspaceId))
-        .for('update');
+        // Serialises budget changes without waiting behind every request's KEY SHARE (only a status change needs that).
+        .for('no key update');
       if (!found) return null;
       await tx.update(workspace).set({ aiDailyTokenBudget: override }).where(eq(workspace.id, workspaceId));
       return budgetOf(found.override);

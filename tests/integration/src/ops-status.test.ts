@@ -19,6 +19,7 @@ import {
 } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P2-037 (ADR-012 points 6 to 8): an operator suspends and reactivates a workspace, against real PostgreSQL as the
@@ -161,6 +162,10 @@ describe('Feature: Suspend and reactivate a workspace', () => {
     expect(await platformLog()).toEqual([
       { action: 'workspace.suspended', actor_id: PIA, subject_id: gulf, note: 'Pilot ended on 30 Nov 2026' },
     ]);
+    const [values] = await admin.execute<{ before: unknown; after: unknown }>(
+      sql`select before, after from audit.platform_entry where action = 'workspace.suspended'`,
+    );
+    expect(values).toEqual({ before: { status: 'active' }, after: { status: 'suspended' } });
   });
 
   it('a second suspend is a conflict and records nothing', async () => {
@@ -214,5 +219,67 @@ describe('Feature: Suspend and reactivate a workspace', () => {
     await asOmar((ctx) =>
       jobs.createJob(ctx, { title: 'Another job', jobType: 'software_engineering', description: 'x', synthetic: true }),
     );
+  });
+});
+
+/** Sessions of the app role waiting on a lock right now. */
+const lockWaits = async () =>
+  Number(
+    (
+      await admin.execute<{ n: string }>(
+        sql`select count(*) as n from pg_stat_activity where usename = 'aivera_app' and wait_event_type = 'Lock'`,
+      )
+    )[0]?.n,
+  );
+
+const untilWaiting = async (what: string) => {
+  for (let i = 0; (await lockWaits()) === 0; i++) {
+    if (i > 200) throw new Error(`${what} never waited on the lock`);
+    await sleep(25);
+  }
+};
+
+describe('row locks: a status change and the work in flight', () => {
+  let other: Db;
+  let otherWorkspaces: WorkspacesContract;
+  beforeAll(() => {
+    other = createDb(urlFor('aivera_app'), { max: 2 });
+    otherWorkspaces = createWorkspaces(other, audit);
+  });
+  afterAll(() => other?.$client.end());
+
+  // SAFETY: mutation check: read the status with findWorkspace (no lock) in withWorkspace -> this test failed (no wait)
+  it('a suspension waits for a request already running in the workspace, then applies', async () => {
+    let suspension: Promise<void> | undefined;
+    await otherWorkspaces.withWorkspace({ userId: OMAR }, gulf, async (ctx) => {
+      expect(ctx.status).toBe('active');
+      suspension = change('suspend', 'Lock check: pilot paused');
+      await untilWaiting('the suspension');
+      expect(await status()).toBe('active');
+    });
+    await suspension;
+    expect(await status()).toBe('suspended');
+    await change('reactivate', 'Lock check: pilot resumed');
+  });
+
+  // SAFETY: mutation check: lockWorkspace back to .for('update') -> this test failed (deadlock detected, one refused)
+  it('two member requests that lock the workspace row do not deadlock', async () => {
+    let enterSecond!: () => void;
+    const secondInside = new Promise<void>((resolve) => (enterSecond = resolve));
+    let releaseSecond!: () => void;
+    const go = new Promise<void>((resolve) => (releaseSecond = resolve));
+    const second = otherWorkspaces.withWorkspace({ userId: OMAR }, gulf, async (ctx) => {
+      enterSecond();
+      await go;
+      await otherWorkspaces.setWorkspaceType(ctx, 'in_house');
+    });
+    // Both contexts now hold KEY SHARE on the row; then both take the row lock for a type change.
+    await asOmar(async (ctx) => {
+      await secondInside;
+      releaseSecond();
+      await workspaces.setWorkspaceType(ctx, 'in_house');
+      await untilWaiting('the second type change');
+    });
+    await expect(second).resolves.toBeUndefined();
   });
 });
