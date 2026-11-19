@@ -18,7 +18,7 @@ const CANDIDATE: SignInSide = {
 
 export const candidateAuthConfigured = (): boolean => env().candidateAuth !== null;
 
-export const { handlers, auth, signIn } = NextAuth(() => {
+export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const settings = env().candidateAuth;
   // Callers check candidateAuthConfigured() first; reaching here without settings is a bug, not a user error.
   if (!settings) throw new Error('Candidate sign-in is not configured.');

@@ -8,14 +8,15 @@ import { useCandidateShellController } from '@/features/candidate-shell/hooks/us
 type Props = {
   intl: Omit<ComponentProps<typeof IntlProvider>, 'children'>;
   signedIn: boolean;
+  signOutAction: () => Promise<void>;
   children: ReactNode;
 };
 
-export function CandidateSite({ intl, signedIn, children }: Props) {
+export function CandidateSite({ intl, signedIn, signOutAction, children }: Props) {
   const controller = useCandidateShellController();
   return (
     <IntlProvider {...intl}>
-      <CandidateShell signedIn={signedIn} {...controller}>
+      <CandidateShell signedIn={signedIn} signOutAction={signOutAction} {...controller}>
         {children}
       </CandidateShell>
     </IntlProvider>

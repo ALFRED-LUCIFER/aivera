@@ -4,6 +4,7 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 
 // AIV-P0-011: candidate sign-in on a separate session, against the mocked tenant (tests/e2e/mock-oidc.ts) standing in
 // for the candidate app registration and user flow. The unconfigured environment is candidate-sign-in.unconfigured.spec.ts.
+// Sara has a candidate account (seed.ts), so her sign-in lands on My applications; sign-up is candidate-signup.spec.ts.
 
 const RECRUITER_COOKIE = '__Host-aivera-session';
 const CANDIDATE_COOKIE = '__Host-aivera-candidate';
@@ -57,7 +58,8 @@ test('Scenario: The same person is one account on both sides', async ({ page, co
   const recruiter = await cookie(context, RECRUITER_COOKIE);
   expect(recruiter).toBeDefined();
   await candidateSignIn(page, 'nadia@example.com');
-  await expect(page).toHaveURL(/\/candidates\/me$/);
+  // She has no candidate account yet, so My applications sends her to finish sign-up (AIV-P3-007).
+  await expect(page).toHaveURL(/\/candidates\/signup$/);
   expect(await cookie(context, CANDIDATE_COOKIE)).toBeDefined();
   // The candidate sign-in left the recruiter session exactly as it was (one identity user: tests/integration).
   expect((await cookie(context, RECRUITER_COOKIE))?.value).toBe(recruiter?.value);

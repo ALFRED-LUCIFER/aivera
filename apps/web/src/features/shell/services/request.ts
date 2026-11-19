@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { enabledFlags } from '@/server/flags';
 import { currentMembership } from '@/server/workspace';
 import { canOpen, navigation, type ScreenId } from '../domain/navigation.ts';
 import { parseTheme, shellMember, themeCookie, type Member, type ShellCounts } from '../domain/shell.ts';
@@ -12,9 +13,6 @@ export async function currentMember(): Promise<Member | null> {
   const membership = await currentMembership();
   return membership && shellMember(membership);
 }
-
-// shortcut: no feature flags exist yet; every map entry has flag null. The flag service supplies this set when it ships.
-export const enabledFlags: ReadonlySet<string> = new Set();
 
 /** The route guard every recruiter page awaits: no member, no capability or flag off is a 404. */
 export async function requireScreen(id: ScreenId): Promise<Member> {

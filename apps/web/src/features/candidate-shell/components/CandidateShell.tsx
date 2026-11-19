@@ -10,6 +10,8 @@ export type CandidateShellProps = {
   menuOpen: boolean;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
+  /** Ends only the candidate session and lands on the candidate sign-in page. */
+  signOutAction: () => Promise<void>;
   children: ReactNode;
 };
 
@@ -30,6 +32,7 @@ export function CandidateShell({
   menuOpen,
   onToggleMenu,
   onCloseMenu,
+  signOutAction,
   children,
 }: CandidateShellProps) {
   const t = useTranslations('candidate.shell');
@@ -111,6 +114,13 @@ export function CandidateShell({
             >
               {t(account.key)}
             </Link>
+            {signedIn && (
+              <form action={signOutAction} className="self-start md:self-auto">
+                <Button type="submit" variant="ghost">
+                  {t('signOut')}
+                </Button>
+              </form>
+            )}
           </nav>
         </div>
       </header>

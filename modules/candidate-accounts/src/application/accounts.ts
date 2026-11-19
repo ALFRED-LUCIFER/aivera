@@ -3,11 +3,13 @@ import {
   CandidateAccountError,
   checkLinkConsent,
   checkNewConsent,
+  signUpName,
   withdrawalAt,
   type Account,
   type Consent,
   type ConsentPurpose,
   type LinkReason,
+  type SignUpInput,
   type WorkspaceLink,
 } from '../domain/account.ts';
 
@@ -19,6 +21,8 @@ export type AccountStore = {
   /** Creates the account (and its empty profile) unless it exists. */
   ensureAccount(accountId: string, now: Date): Promise<void>;
   getAccount(accountId: string): Promise<Account | null>;
+  /** Sets full name and work type unless the account is signed up, in one statement; false when it was. */
+  setSignUp(accountId: string, input: SignUpInput, now: Date): Promise<boolean>;
   insertConsent(consent: Consent): Promise<void>;
   /** The consent, locked for update so a link and a withdrawal of it never interleave; null when not this account's. */
   getConsentForUpdate(accountId: string, consentId: string): Promise<Consent | null>;
@@ -52,6 +56,12 @@ export type LinkToWorkspaceInput = {
 };
 
 export function accountsUseCases({ storeFor, inAccount, newId, now }: Ports) {
+  async function getMyAccount(ctx: CandidateAccountContext): Promise<Account> {
+    const account = await storeFor(ctx.tx).getAccount(ctx.accountId);
+    if (!account) throw new Error('candidate account missing inside withAccount');
+    return account;
+  }
+
   return {
     /** `identityUserId` comes from the server-side candidate session only; it is also the account id. */
     withAccount<T>(identityUserId: string, work: (ctx: CandidateAccountContext) => Promise<T>): Promise<T> {
@@ -61,10 +71,13 @@ export function accountsUseCases({ storeFor, inAccount, newId, now }: Ports) {
       });
     },
 
-    async getMyAccount(ctx: CandidateAccountContext): Promise<Account> {
-      const account = await storeFor(ctx.tx).getAccount(ctx.accountId);
-      if (!account) throw new Error('candidate account missing inside withAccount');
-      return account;
+    getMyAccount,
+
+    async signUp(ctx: CandidateAccountContext, input: SignUpInput): Promise<Account> {
+      const fullName = signUpName(input.fullName);
+      if (!(await storeFor(ctx.tx).setSignUp(ctx.accountId, { ...input, fullName }, now())))
+        throw new CandidateAccountError('already_signed_up');
+      return getMyAccount(ctx);
     },
 
     // shortcut: the caller checks the job is published in that workspace (public jobs read model); this module cannot

@@ -9,6 +9,7 @@ import { createCandidateAccounts } from '@aivera/candidate-accounts/composition'
 import type { CandidatesContract } from '@aivera/candidates';
 import { createCandidates } from '@aivera/candidates/composition';
 import { createDb, withCandidateAccount, type Db } from '@aivera/db';
+import { createIdentity } from '@aivera/identity/composition';
 import type { WorkspacesContract } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -293,5 +294,51 @@ describe('Scenario: Withdrawing consent is recorded, not deleted', () => {
     await expect(accounts.withAccount(ARJUN, (ctx) => accounts.withdrawConsent(ctx, consent.id))).rejects.toEqual(
       new CandidateAccountError('consent_not_found'),
     );
+  });
+});
+
+// AIV-P3-007: a recruiter's verified email becomes the same login on the candidate site (ADR-009).
+describe('Scenario: A recruiter signs up on the candidate site', () => {
+  it('the existing identity user gets a candidate account, not a second user; a second sign-up is refused', async () => {
+    const identity = createIdentity(app, { trustedIssuer: 'https://tenant.aivera.example' });
+    const token = {
+      issuer: 'https://tenant.aivera.example',
+      subject: 'nadia-sub',
+      email: 'nadia@example.com',
+      emailVerified: true,
+      displayName: 'Nadia Freelance',
+    };
+    const nadia = (await identity.upsertUserFromIdToken(token)).id;
+    // The candidate sign-in returns the same user (one per verified email).
+    expect((await identity.upsertUserFromIdToken(token)).id).toBe(nadia);
+    const users = async () =>
+      [...(await admin.execute<{ id: string }>(sql`select id from identity.user where email = 'nadia@example.com'`))]
+        .length;
+    expect(await users()).toBe(1);
+
+    // Opening sign-up creates the empty account; signing up fills it.
+    expect(await accounts.withAccount(nadia, (ctx) => accounts.getMyAccount(ctx))).toMatchObject({ fullName: null });
+    const signedUp = await accounts.withAccount(nadia, (ctx) =>
+      accounts.signUp(ctx, { fullName: '  Nadia Freelance ', workType: 'ai_llm_engineering' }),
+    );
+    expect(signedUp).toMatchObject({ id: nadia, fullName: 'Nadia Freelance', workType: 'ai_llm_engineering' });
+    expect(await users()).toBe(1);
+
+    // SAFETY: mutation check: dropped the not-signed-up guard from setSignUp's WHERE -> this test failed
+    await expect(
+      accounts.withAccount(nadia, (ctx) => accounts.signUp(ctx, { fullName: 'Someone Else', workType: 'sales' })),
+    ).rejects.toThrow(new CandidateAccountError('already_signed_up'));
+    const rows = await admin.execute<{ full_name: string; work_type: string }>(
+      sql`select full_name, work_type from candidate_accounts.account where identity_user_id = ${nadia}`,
+    );
+    expect([...rows]).toEqual([{ full_name: 'Nadia Freelance', work_type: 'ai_llm_engineering' }]);
+  });
+
+  it('a blank full name is refused and nothing is stored', async () => {
+    const id = '0190d4a2-0000-7000-8000-00000000c503';
+    await expect(
+      accounts.withAccount(id, (ctx) => accounts.signUp(ctx, { fullName: '   ', workType: 'sales' })),
+    ).rejects.toThrow(new CandidateAccountError('full_name'));
+    expect(await accounts.withAccount(id, (ctx) => accounts.getMyAccount(ctx))).toMatchObject({ fullName: null });
   });
 });
