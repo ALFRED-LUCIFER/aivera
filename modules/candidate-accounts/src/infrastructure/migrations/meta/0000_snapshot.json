@@ -1,0 +1,370 @@
+{
+  "id": "6273b6ee-e4b4-493e-8410-58d40a995ec9",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "candidate_accounts.account": {
+      "name": "account",
+      "schema": "candidate_accounts",
+      "columns": {
+        "identity_user_id": {
+          "name": "identity_user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_type": {
+          "name": "work_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "account_owner_isolation": {
+          "name": "account_owner_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidate_accounts\".\"account\".\"identity_user_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid",
+          "withCheck": "\"candidate_accounts\".\"account\".\"identity_user_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "account_work_type_check": {
+          "name": "account_work_type_check",
+          "value": "\"candidate_accounts\".\"account\".\"work_type\" in ('software_engineering', 'qa_test_automation', 'ai_llm_engineering', 'forward_deployed_engineering', 'data_ml', 'devops_sre', 'product_management', 'product_design', 'sales', 'technical_writing_support')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "candidate_accounts.consent": {
+      "name": "consent",
+      "schema": "candidate_accounts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "granted_at": {
+          "name": "granted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text_version": {
+          "name": "text_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawn_at": {
+          "name": "withdrawn_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "consent_account_granted_idx": {
+          "name": "consent_account_granted_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "granted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "consent_account_id_account_identity_user_id_fk": {
+          "name": "consent_account_id_account_identity_user_id_fk",
+          "tableFrom": "consent",
+          "tableTo": "account",
+          "schemaTo": "candidate_accounts",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "identity_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "consent_account_id_key": {
+          "name": "consent_account_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "account_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {
+        "consent_owner_isolation": {
+          "name": "consent_owner_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidate_accounts\".\"consent\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid",
+          "withCheck": "\"candidate_accounts\".\"consent\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "consent_purpose_check": {
+          "name": "consent_purpose_check",
+          "value": "\"candidate_accounts\".\"consent\".\"purpose\" in ('apply_to_job', 'answer_evidence_request', 'cv_check')"
+        },
+        "consent_text_version_check": {
+          "name": "consent_text_version_check",
+          "value": "btrim(\"candidate_accounts\".\"consent\".\"text_version\") <> ''"
+        },
+        "consent_target_check": {
+          "name": "consent_target_check",
+          "value": "case when \"candidate_accounts\".\"consent\".\"purpose\" = 'cv_check' then \"candidate_accounts\".\"consent\".\"workspace_id\" is null and \"candidate_accounts\".\"consent\".\"job_id\" is null else \"candidate_accounts\".\"consent\".\"workspace_id\" is not null and \"candidate_accounts\".\"consent\".\"job_id\" is not null end"
+        },
+        "consent_withdrawn_check": {
+          "name": "consent_withdrawn_check",
+          "value": "\"candidate_accounts\".\"consent\".\"withdrawn_at\" is null or \"candidate_accounts\".\"consent\".\"withdrawn_at\" >= \"candidate_accounts\".\"consent\".\"granted_at\""
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "candidate_accounts.profile": {
+      "name": "profile",
+      "schema": "candidate_accounts",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "headline": {
+          "name": "headline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "profile_account_id_account_identity_user_id_fk": {
+          "name": "profile_account_id_account_identity_user_id_fk",
+          "tableFrom": "profile",
+          "tableTo": "account",
+          "schemaTo": "candidate_accounts",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "identity_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "profile_owner_isolation": {
+          "name": "profile_owner_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidate_accounts\".\"profile\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid",
+          "withCheck": "\"candidate_accounts\".\"profile\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "candidate_accounts.workspace_link": {
+      "name": "workspace_link",
+      "schema": "candidate_accounts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_candidate_id": {
+          "name": "workspace_candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consent_id": {
+          "name": "consent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workspace_link_consent_fk": {
+          "name": "workspace_link_consent_fk",
+          "tableFrom": "workspace_link",
+          "tableTo": "consent",
+          "schemaTo": "candidate_accounts",
+          "columnsFrom": [
+            "account_id",
+            "consent_id"
+          ],
+          "columnsTo": [
+            "account_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "workspace_link_account_workspace_candidate_key": {
+          "name": "workspace_link_account_workspace_candidate_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "account_id",
+            "workspace_id",
+            "workspace_candidate_id"
+          ]
+        }
+      },
+      "policies": {
+        "workspace_link_owner_isolation": {
+          "name": "workspace_link_owner_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"candidate_accounts\".\"workspace_link\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid",
+          "withCheck": "\"candidate_accounts\".\"workspace_link\".\"account_id\" = nullif(current_setting('app.candidate_account_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "workspace_link_reason_check": {
+          "name": "workspace_link_reason_check",
+          "value": "\"candidate_accounts\".\"workspace_link\".\"reason\" in ('applied', 'answered_evidence_request')"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "candidate_accounts": "candidate_accounts"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

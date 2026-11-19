@@ -34,10 +34,24 @@ const PUBLIC_READ: Record<string, { name: string; qual: string }> = {
 };
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
+/**
+ * The candidate's own tables (ADR-009), each with its account key. They belong to a person, not a workspace, so they
+ * are checked for the `app.candidate_account_id` policy instead of the workspace one. A table in the schema that is
+ * missing here is a violation, never skipped. Row isolation between two accounts: candidate-accounts.test.ts.
+ */
+const ACCOUNT_SCHEMA = 'candidate_accounts';
+const ACCOUNT_TABLES: Record<string, string> = {
+  'candidate_accounts.account': 'identity_user_id',
+  'candidate_accounts.profile': 'account_id',
+  'candidate_accounts.consent': 'account_id',
+  'candidate_accounts.workspace_link': 'account_id',
+};
+const isAccountTable = (table: string) => table.startsWith(`${ACCOUNT_SCHEMA}.`);
 
-/** The expression every tenant policy must use, exactly as PostgreSQL prints the one `tenantPolicy` generates. */
-const tenantExpr = (column: string) =>
-  `(${column} = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid)`;
+type Setting = 'app.workspace_id' | 'app.candidate_account_id';
+/** The expression every policy must use, exactly as PostgreSQL prints the one `tenantPolicy` (or `candidateAccountPolicy`) generates. */
+const tenantExpr = (column: string, setting: Setting = 'app.workspace_id') =>
+  `(${column} = (NULLIF(current_setting('${setting}'::text, true), ''::text))::uuid)`;
 
 type Table = {
   name: string;
@@ -77,7 +91,7 @@ const listTables = async (db: Db | Tx) => [
 ];
 
 const tenantTables = (tables: Table[]) =>
-  tables.filter((t) => ['r', 'p'].includes(t.kind) && !(t.name in GLOBAL_TABLES));
+  tables.filter((t) => ['r', 'p'].includes(t.kind) && !(t.name in GLOBAL_TABLES) && !isAccountTable(t.name));
 const keyOf = (table: string) => TENANT_KEY[table] ?? 'workspace_id';
 
 /** Every way a table breaks workspace isolation, as "schema.table: reason". Empty when isolation holds. */
@@ -105,23 +119,31 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
       violations.push(`${t.name}: materialized views and foreign tables have no row-level security`);
       continue;
     }
-    if (!t.hasWorkspaceId && !(t.name in TENANT_KEY)) {
+    const account = isAccountTable(t.name);
+    if (account && !(t.name in ACCOUNT_TABLES)) {
+      violations.push(`${t.name}: not in ACCOUNT_TABLES (add it with its account key)`);
+      continue;
+    }
+    if (!account && !t.hasWorkspaceId && !(t.name in TENANT_KEY)) {
       violations.push(`${t.name}: no workspace_id column (add one, or list it in GLOBAL_TABLES with the reason)`);
       continue;
     }
     if (!t.rls) violations.push(`${t.name}: row-level security not enabled`);
     if (!t.forced) violations.push(`${t.name}: row-level security not forced`);
-    const expected = tenantExpr(keyOf(t.name));
+    const [key, setting]: [string, Setting] = account
+      ? [ACCOUNT_TABLES[t.name] ?? '', 'app.candidate_account_id']
+      : [keyOf(t.name), 'app.workspace_id'];
+    const expected = tenantExpr(key, setting);
     const permissive = policies.filter((p) => p.table === t.name && p.permissive === 'PERMISSIVE');
     const isTenant = (p: Policy) => p.qual === expected && p.check === expected;
     if (!permissive.some((p) => isTenant(p) && p.cmd === 'ALL' && p.roles.join() === 'public'))
-      violations.push(`${t.name}: no policy comparing ${keyOf(t.name)} with current_setting('app.workspace_id')`);
+      violations.push(`${t.name}: no policy comparing ${key} with current_setting('${setting}')`);
     // Permissive policies are OR-ed, so any looser one opens the table to other workspaces. Restrictive ones (the jobs
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
     const isPublicRead = (p: Policy) =>
       PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
     for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p)))
-      violations.push(`${t.name}: permissive policy ${loose.name} does not compare with app.workspace_id`);
+      violations.push(`${t.name}: permissive policy ${loose.name} does not compare with ${setting}`);
   }
   return violations;
 }
@@ -253,6 +275,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // SAFETY: mutation check: ALTER TABLE candidates.person NO FORCE ROW LEVEL SECURITY -> this test failed (not forced)
   // SAFETY: mutation check: added permissive policy USING (true) on workspaces.client -> this test failed (named the policy)
   // SAFETY: mutation check: public_job_public_read loosened to USING (true) in jobs 0003 -> this test failed (named the policy)
+  // SAFETY: mutation check: consent_owner_isolation replaced by USING (true) in candidate_accounts 0000 -> this test failed (named it)
   // SAFETY: mutation check: GRANT aivera_migrator TO aivera_app -> this test failed (owned by a role aivera_app belongs to)
   it('every table with a workspace_id column has RLS enabled, forced, and the app.workspace_id policy', async () => {
     const tables = await listTables(admin);
@@ -263,9 +286,9 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
     expect(await isolationViolations(admin)).toEqual([]);
   });
 
-  it('every GLOBAL_TABLES entry is a real table, so the allowlist cannot go stale', async () => {
+  it('every GLOBAL_TABLES and ACCOUNT_TABLES entry is a real table, so the allowlists cannot go stale', async () => {
     const names = (await listTables(admin)).map((t) => t.name);
-    expect(names).toEqual(expect.arrayContaining(Object.keys(GLOBAL_TABLES)));
+    expect(names).toEqual(expect.arrayContaining([...Object.keys(GLOBAL_TABLES), ...Object.keys(ACCOUNT_TABLES)]));
   });
 
   // The migrator too: a view or function it owns would otherwise read across workspaces.
@@ -307,6 +330,23 @@ describe('Scenario: A new table without RLS fails the build', () => {
       await tx.execute(sql`create table candidates.note (id uuid primary key)`);
       expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidates.note:'))).toEqual([
         'candidates.note: no workspace_id column (add one, or list it in GLOBAL_TABLES with the reason)',
+      ]);
+      throw new Rollback();
+    });
+    await expect(probe).rejects.toBeInstanceOf(Rollback);
+  });
+
+  // SAFETY: mutation check: isolationViolations with `account = false` (no account branch) -> this test and the forced-RLS test failed
+  it('a candidate_accounts table not in ACCOUNT_TABLES, or with the workspace policy instead of the account one, is named', async () => {
+    const probe = admin.transaction(async (tx) => {
+      await tx.execute(sql`create table candidate_accounts.note (id uuid primary key, account_id uuid not null)`);
+      await tx.execute(sql`drop policy consent_owner_isolation on candidate_accounts.consent`);
+      await tx.execute(sql`create policy consent_ws on candidate_accounts.consent
+        using (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid)`);
+      expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidate_accounts.'))).toEqual([
+        "candidate_accounts.consent: no policy comparing account_id with current_setting('app.candidate_account_id')",
+        'candidate_accounts.consent: permissive policy consent_ws does not compare with app.candidate_account_id',
+        'candidate_accounts.note: not in ACCOUNT_TABLES (add it with its account key)',
       ]);
       throw new Rollback();
     });
