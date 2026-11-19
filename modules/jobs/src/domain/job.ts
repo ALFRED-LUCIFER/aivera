@@ -108,15 +108,16 @@ export function assertValidCompetencies(competencies: Competency[]): void {
 }
 
 /**
- * Weights scaled proportionally to total 100 (AIV-P1-010): each rounded to a whole percent and at least 1, and the
- * rounding remainder given to the heaviest competency. Weights that already total 100 are kept as they are.
+ * Weights scaled proportionally to total 100 (AIV-P1-010): each rounded down to a whole percent and at least 1, and the
+ * rounding remainder given to the heaviest competency. Rounded down, so the heaviest only gains and stays the heaviest.
+ * Weights that already total 100 are kept as they are.
  */
 export function rebalanceWeights(competencies: Competency[]): Competency[] {
   const total = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
-  if (total === 100 || total <= 0) return competencies;
+  if (total === 100) return competencies;
   const scaled = competencies.map((c) => ({
     ...c,
-    weightPercent: Math.max(1, Math.round((c.weightPercent * 100) / total)),
+    weightPercent: Math.max(1, Math.floor((c.weightPercent * 100) / total)),
   }));
   const weights = competencies.map((c) => c.weightPercent);
   const heaviest = weights.indexOf(Math.max(...weights));

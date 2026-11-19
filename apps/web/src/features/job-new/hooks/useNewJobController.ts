@@ -4,8 +4,9 @@ import { initialNewJobState } from '../domain/jobNew.ts';
 import { addJob } from '../services/addJob.ts';
 
 /**
- * Step 1 of Add a job: the posted action and its last result, the chosen job type (it drives the description
- * placeholder) and the title as typed (step 2 names it), and Cancel, which asks "Discard this job?" first once anything was typed.
+ * Add a job: the posted "Save job and rubric" action and its last result, the chosen job type (it drives the description
+ * placeholder), the title as typed (step 2 names it), and Discard draft, which asks "Discard this job?" first once
+ * anything was typed.
  */
 export function useNewJobController(defaultJobType: string) {
   const [state, action, pending] = useActionState(addJob, initialNewJobState(defaultJobType));

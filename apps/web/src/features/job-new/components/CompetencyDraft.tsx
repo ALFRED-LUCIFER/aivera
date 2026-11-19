@@ -1,6 +1,7 @@
 import { useTranslations } from '@aivera/i18n/react';
 import { Button, Chip, DataTable, EvidenceHighlight, Input, Select, Textarea, type DataTableColumn } from '@aivera/ui';
 import {
+  RUBRIC_MAX,
   weightsTotal,
   type DraftCompetency,
   type DraftResult,
@@ -142,7 +143,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       )}
       {result.status !== 'idle' && result.status !== 'invalid' && (
         <div className="flex flex-wrap gap-2">
-          <Button onClick={props.onAdd}>{t('add')}</Button>
+          {rows.filter((row) => !row.removed).length < RUBRIC_MAX && <Button onClick={props.onAdd}>{t('add')}</Button>}
           {rows.every((row) => row.removed) && <Button onClick={props.onUseStarters}>{t('useStarters')}</Button>}
         </div>
       )}
@@ -179,7 +180,7 @@ function CompetencyCell({ row }: { row: Row }) {
       <div className="flex min-w-60 flex-col gap-2">
         <Input
           {...label(t('fields.name'))}
-          ref={focusOnMount}
+          ref={row.error?.weight && !row.error.name ? undefined : focusOnMount}
           value={row.name}
           maxLength={120}
           aria-invalid={row.error?.name}
@@ -240,6 +241,8 @@ function WeightCell({ row }: { row: Row }) {
     <>
       <Input
         {...label(t('fields.weight'))}
+        // The field to fix gets focus when the row opens for it (AIV-P1-010); otherwise the name does.
+        ref={row.error?.weight && !row.error.name ? focusOnMount : undefined}
         type="number"
         inputMode="numeric"
         min={1}
