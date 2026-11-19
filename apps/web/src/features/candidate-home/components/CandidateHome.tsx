@@ -1,7 +1,7 @@
 import { useTranslations } from '@aivera/i18n/react';
 import { buttonClassName, Input, Label, LevelMeter } from '@aivera/ui';
 import Link from 'next/link';
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useId, type CSSProperties } from 'react';
 import type { JobCardData } from '@/features/public-jobs/index.ts';
 
 export type CandidateHomeProps = {
@@ -20,11 +20,8 @@ const SAMPLE = [
 ] as const;
 const PRINCIPLES = ['needs', 'work', 'person'] as const;
 
-// The hero rises in 120 ms steps and the highlighter sweeps over the promise (marketing.css, off under reduced motion).
+// The hero rises in 120 ms steps (marketing.css, off under reduced motion). No highlighter: it marks cited evidence only.
 const step = (n: number) => ({ '--mk-step': n }) as CSSProperties;
-const mark = (chunks: ReactNode) => (
-  <mark className="mk-sweep rounded-tag bg-hl px-2 text-hl-text box-decoration-clone">{chunks}</mark>
-);
 const display = 'font-display font-bold tracking-[-0.025em] text-balance';
 
 const arrow = (
@@ -54,7 +51,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
             className="mk-rise font-display text-[clamp(40px,5.6vw,72px)] leading-[1.03] font-bold tracking-[-0.035em] text-balance"
             style={step(0)}
           >
-            {t.rich('candidate.home.title', { mark })}
+            {t('candidate.home.title')}
           </h1>
           <p className="mk-rise max-w-[52ch] text-[clamp(17px,1.5vw,20px)] leading-normal text-text-2" style={step(1)}>
             {t('candidate.home.lead')}
@@ -210,7 +207,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
             {t('candidate.home.plusBody', { price: plusPrice })}
           </p>
         </div>
-        {/* Secondary: Find jobs is the page's one primary, and the highlighter marks evidence only (DESIGN.md). */}
+        {/* Secondary: Find jobs is the page's one primary, and the highlighter marks cited evidence only. */}
         <Link href="/candidates/plans" className={`group ${buttonClassName('secondary', 'touch')}`}>
           {t('candidate.home.plusLink')}
           {arrow}

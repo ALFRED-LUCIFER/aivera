@@ -28,15 +28,13 @@ test('searching from the hero opens the jobs list filtered by the words', async 
   await expect(page.getByRole('listitem').getByRole('heading', { level: 2 })).toContainText(['Senior AI Engineer']);
 });
 
-test('under reduced motion the hero is shown at once, highlighter included', async ({ page }) => {
+test('under reduced motion the hero is shown at once', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/candidates');
   const hero = page.getByRole('heading', { level: 1 });
   await expect(hero).toBeVisible();
   // Read once, not retried: a retrying opacity check would simply wait out the 1.4 s entrance and pass.
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
-  await expect(hero.locator('mark')).toHaveText('what you have done');
-  await expect(hero.locator('mark')).toHaveCSS('background-color', 'rgb(255, 232, 115)'); // --hl #FFE873
 });
 
 for (const theme of themes) {

@@ -50,7 +50,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
   it('the hero explains the promise, and Find jobs searches the jobs list', () => {
     renderHome();
     expect(screen.getByRole('heading', { level: 1, name: 'Get hired for what you have done.' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 1 }).querySelector('mark')?.textContent).toBe('what you have done');
+    expect(screen.getByRole('heading', { level: 1 }).querySelector('mark')).toBeNull(); // the highlighter is for evidence
     expect(screen.getByText(/No tests to sit\./)).toBeDefined();
     expect(screen.getByText('Free to browse and apply. Always.')).toBeDefined();
     const search = screen.getByRole('searchbox', { name: 'Job title or skill' });
