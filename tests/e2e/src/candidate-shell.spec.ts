@@ -5,6 +5,8 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 // header ("My applications") is proven by CandidateSite.test.tsx until then.
 const home = '/candidates';
 const siteNav = (page: import('@playwright/test').Page) => page.getByRole('navigation', { name: 'Candidate site' });
+// The home page's hero fades in (about 1.4 s); reduced motion shows it settled, so axe never measures text mid-fade.
+test.use({ reducedMotion: 'reduce' });
 
 test('a signed-out visitor sees the candidate navigation and footer, and no recruiter chrome', async ({ page }) => {
   await page.goto(home);
