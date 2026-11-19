@@ -88,5 +88,6 @@ flowchart LR
 - **Microsoft accounts.** AIV-P0-009 confirmed they are not built-in providers in External ID, and a user flow cannot offer them directly. Personal accounts become a custom OIDC provider (AIV-P1-058). Work accounts from any company cannot be one provider, because a custom provider needs one fixed issuer; they come as per-workspace company SSO (AIV-P1-057).
 - **Cross-workspace reads.** Listing a person's workspaces for the switcher needs a named cross-workspace read keyed on the user (ADR-005, point 4).
 - **Recruiter-side code never sees candidate accounts.** The architecture test gains a rule: no recruiter-side module imports `candidate-accounts` (AIV-P3-006).
+- **A second isolation key.** Candidate-owned tables use row-level security on `app.candidate_account_id`, set by `withCandidateAccount` in `@aivera/db`, beside the workspace key `app.workspace_id` (AIV-P3-006).
 - **Billing.** The free External ID tier removes identity cost for the pilot. Monthly active users are watched against the 50,000 limit before launch.
 - **Company SSO.** A workspace that federates its company SSO keeps its members' accounts: the user is still found by verified email.

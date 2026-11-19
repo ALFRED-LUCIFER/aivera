@@ -7,5 +7,6 @@ export async function register(): Promise<void> {
   // The modules' personal-data field names are redacted in logs and telemetry even where the allowlist would keep them.
   const { registerPersonalDataKeys } = await import('@aivera/observability');
   registerPersonalDataKeys((await import('@aivera/candidates')).PERSONAL_DATA_FIELDS);
+  registerPersonalDataKeys((await import('@aivera/candidate-accounts')).PERSONAL_DATA_FIELDS);
   (await import('@aivera/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
 }

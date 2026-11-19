@@ -14,6 +14,13 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     expect(findViolations(fixture('clean'))).toEqual([]);
   });
 
+  it('a candidate-side module may import candidate-accounts; only the recruiter-side importers are reported', () => {
+    expect(findViolations(fixture('candidate-accounts')).map((v) => v.file)).toEqual([
+      'modules/pool/src/domain/x.ts',
+      'modules/workspaces/src/application/x.ts',
+    ]);
+  });
+
   // SAFETY: mutation check: made findViolations return [] -> every case below failed
   it.each([
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],
@@ -30,6 +37,9 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['candidate-session', 'candidate-site-no-recruiter-session', 'apps/web/src/app/(candidate)/layout.tsx'],
     // SAFETY: mutation check: tested the raw spec instead of the resolved relative path -> this case failed
     ['candidate-session', 'candidate-site-no-recruiter-session', 'apps/web/src/features/candidate-shell/domain/x.ts'],
+    // SAFETY: mutation check: removed the recruiter-side-no-candidate-accounts check -> these cases failed
+    ['candidate-accounts', 'recruiter-side-no-candidate-accounts', 'modules/workspaces/src/application/x.ts'],
+    ['candidate-accounts', 'recruiter-side-no-candidate-accounts', 'modules/pool/src/domain/x.ts'],
     ['ai-sdk-direct', 'ai-sdk-only-in-packages-ai', 'modules/jobs/src/application/x.ts'],
   ])('%s is reported as %s and names the file', (name, rule, file) => {
     expect(findViolations(fixture(name))).toContainEqual(expect.objectContaining({ rule, file }));
