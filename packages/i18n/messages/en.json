@@ -418,8 +418,26 @@
     "payments_fintech": {
       "label": "Payments and fintech"
     },
+    "banking_islamic_finance": {
+      "label": "Banking and Islamic finance"
+    },
     "healthcare": {
       "label": "Healthcare"
+    },
+    "ecommerce_marketplaces": {
+      "label": "E-commerce and marketplaces"
+    },
+    "logistics_mobility": {
+      "label": "Logistics and mobility"
+    },
+    "government_public_sector": {
+      "label": "Government and public sector"
+    },
+    "telecom": {
+      "label": "Telecom"
+    },
+    "energy_utilities": {
+      "label": "Energy and utilities"
     }
   },
   "jobNew": {

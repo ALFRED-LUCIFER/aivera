@@ -28,22 +28,23 @@ const PROXIES: RegExp[] = [
   /\bresid(e|es|ing|ent|ents|ence|ency)\b|\blocals\b|\blocal (candidates?|hires?|talent)\b|\bin-country\b|\bcommut/i,
   /\blives? in\b|\bliving in\b|\bbased in\b|\bborn\b|\bcomes? from\b|\bfrom (the )?(uae|ksa|india|gcc)\b/i,
   /\bvisa\b|\biqama\b|\bemirates id\b|\bwork permit\b|\bsponsorship\b/i,
-  /\bnative[- ](speak|arabic|english|hindi|urdu|language|tongue)|\bmother tongue\b|\b(arabic|english|hindi|urdu)[- ]?(speak(er|ers|ing)|native)\b|\bfluent\b/i,
+  /\bnative[- ](speak|arabic|english|hindi|urdu|language|tongue)|\bmother tongue\b|\b(arabic|english|hindi|urdu)[- ]?(speak(er|ers|ing)|native)\b|\bfluent\b|\bspeaks? (arabic|english|hindi|urdu)\b|\b(arabic|english|hindi|urdu) (proficiency|language skills?)\b/i,
   /\bage[ds]?\b|\byears old\b|\b(young|youthful|energetic)\b|\b(under|over|below|above) \d\d\b/i,
   /\b(gender|male|female|man|woman|men|women|he|she|his|her|hers|him|ladies|gentlem[ae]n|girls?|boys?)\b/i,
-  /\b(married|marital|religion|religious|muslim|christian|hindu)\b/i,
+  /\b(married|marital|religion|religious|muslim|christian|hindu|islam)\b|\bislamic\b(?! (finance|banking))/i,
 ];
 // Every capitalised word after a string's first is a known standard, acronym or regional name, so an employer or
 // brand fails until a reviewer adds it here on purpose.
 // shortcut: a lowercase or sentence-initial company name escapes this; widen with a reviewed dictionary if a pack PR
 // slips one past review.
 const PROPER_NOUNS = new Set(
-  'ABDM ABHA ADT API APIs Aani CBUAE CPT D DHA DSS DoH EMR EMRs FHIR HL7 ICD-10 ID IDs ISO Malaffi NABIDH NPCI NPHIES ORU PCI R4 RBI REST SADAD SAMA SCA SMART Secure UAE UPI'.split(
+  'AA AAOIFI ABDM ABHA ADT AMF AML API APIs Aadhaar Aani Abu Arabic BSS CBUAE CEA CFT CPT CST D DHA DLT DNP3 DSS Dhabi DigiLocker DoE DoH DoT ECC EMR EMRs ETAs FASAH FHIR Fatoora Forum GST HL7 HSE ICD-10 ID IDs IEC IFRS ISO IT Islamic KYC Malaffi Modbus NABIDH NCA NETCONF NPCI NPHIES Nafath OIDC ONDC OPC ORU OSS OT OTCC Open PASS Peppol PCI QR R4 RBI REST SADAD SAMA SAML SCA SCADA WERA SIM SMART SMF Secure Sharia TDRA TLS TM TRAI UA UAE UIDAI UPF UPI VAT VEE WCAG XML YANG ZATCA'.split(
     ' ',
   ),
 );
 // Regional regulators, schemes and exchanges: knowledge shown with evidence, so only inside regional hints.
-const REGIONAL_NAMES = /\b(CBUAE|Aani|SAMA|mada|SADAD|NPCI|UPI|RBI|RuPay|DHA|DoH|NABIDH|Malaffi|NPHIES|ABDM|ABHA)\b/;
+const REGIONAL_NAMES =
+  /\b(CBUAE|Aani|SAMA|mada|SADAD|NPCI|UPI|RBI|RuPay|DHA|DoH|NABIDH|Malaffi|NPHIES|ABDM|ABHA|UAE PASS|Nafath|Aadhaar|UIDAI|DigiLocker|ZATCA|Fatoora|GST|ONDC|FASAH|TDRA|CST|TRAI|DoT|DoE|Abu Dhabi|WERA|CEA|NCA|ECC|OTCC)\b/;
 
 const stringsOf = (value: unknown): string[] =>
   typeof value === 'string'
@@ -106,10 +107,14 @@ describe('domain packs', () => {
   it('keeps every catalogue string a skill, never a proxy', () => {
     // SAFETY: mutation check: renamed a payments competency to "Worked at a top-tier bank", then "UAE nationals",
     // then "Payments at Emirates NBD" -> 'keeps every catalogue string a skill, never a proxy' failed each time.
+    // SAFETY: mutation check (AIV-P1-062): renamed a banking competency to "Basel and IFRS 9 risk reporting for Saudi
+    // banks" -> 'keeps every catalogue string a skill, never a proxy' failed.
     expect(fairnessViolations(catalogueStrings(listDomainPacks()))).toEqual([]);
   });
 
   it('fails the fairness check when a pack names an employer, a nationality, residency or an age', () => {
+    // SAFETY: mutation check (AIV-P1-062): removed the "speaks Arabic", "Arabic proficiency" and "Islamic" proxies ->
+    // 'fails the fairness check when a pack names an employer, a nationality, residency or an age' failed.
     const [first, ...rest] = listDomainPacks();
     const template = first?.competencies[0];
     if (!first || !template) throw new Error('catalogue is empty');
@@ -130,6 +135,9 @@ describe('domain packs', () => {
       'Below 30',
       'Ladies only',
       'Married',
+      'Speaks Arabic',
+      'Arabic proficiency',
+      'Islamic values',
     ])
       expect(
         fairnessViolations(
@@ -142,6 +150,8 @@ describe('domain packs', () => {
   });
 
   it('names regulators and schemes only as regional knowledge, never as a residency requirement', () => {
+    // SAFETY: mutation check (AIV-P1-062): put "Nafath" in a banking competency's level guide -> 'names regulators and
+    // schemes only as regional knowledge, never as a residency requirement' failed.
     for (const pack of listDomainPacks()) {
       expect(stringsOf(pack.competencies).filter((s) => REGIONAL_NAMES.test(s))).toEqual([]);
       for (const hint of REGIONS.flatMap((r) => pack.hints[r])) {
@@ -189,8 +199,32 @@ describe('domain packs', () => {
     }
   });
 
-  it('gives a job type the pack does not cover empty lists', () => {
-    expect(getDomainPack('healthcare', 'sales')).toMatchObject({
+  // AIV-P1-062 Gherkin: six more packs.
+  it.each([
+    ['Banking and Islamic finance', 'Core banking integration'],
+    ['E-commerce and marketplaces', 'Catalogue and search relevance'],
+    ['Logistics and mobility', 'Route and dispatch optimisation'],
+    ['Government and public sector', 'National digital identity sign-in'],
+    ['Telecom', 'OSS/BSS systems'],
+    ['Energy and utilities', 'OT and SCADA security (IEC 62443)'],
+  ])('gives software engineering in %s the core competency "%s" first, and hints for every region', (label, first) => {
+    const key = listDomainPacks().find((p) => t(p.labelKey) === label)?.key;
+    const pack = key && getDomainPack(key, 'software_engineering');
+    expect(pack?.core[0]?.name).toBe(first);
+    for (const region of REGIONS) expect(pack?.hints[region].length, region).toBeGreaterThan(0);
+  });
+
+  it('lists eight packs in a fixed order', () => {
+    const labels = listDomainPacks().map((p) => t(p.labelKey));
+    expect(labels).toHaveLength(8);
+    expect([labels[0], labels.at(-1)]).toEqual(['Payments and fintech', 'Energy and utilities']);
+  });
+
+  it.each([
+    ['healthcare', 'sales'],
+    ['telecom', 'product_design'],
+  ] as const)('gives %s for %s empty lists, so the job type starters stay the only defaults', (key, jobType) => {
+    expect(getDomainPack(key, jobType)).toMatchObject({
       core: [],
       more: [],
       hints: { uae: [], ksa: [], india: [] },
