@@ -19,6 +19,7 @@ const config: NextConfig = {
     '@aivera/identity',
     '@aivera/jobs',
     '@aivera/candidates',
+    '@aivera/candidate-accounts',
     '@aivera/workspaces',
     '@aivera/audit',
     '@aivera/observability',

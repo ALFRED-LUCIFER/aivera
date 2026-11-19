@@ -10,6 +10,19 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   intake: ['billing', 'portfolio'],
 };
 
+/** Recruiter-side modules never import candidate-accounts, so none can tell a recruiter is also a candidate (ADR-009). */
+export const RECRUITER_SIDE_MODULES = new Set([
+  'workspaces',
+  'candidates',
+  'jobs',
+  'intake',
+  'evidence',
+  'assessment',
+  'interviews',
+  'decisions',
+  'pool',
+]);
+
 // shortcut: catches named imports of Db or createDb only, not `import * as` or a direct postgres/drizzle client; widen it
 // if a module ever needs another way to reach the database.
 const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
@@ -101,6 +114,8 @@ export function findViolations(root: string): Violation[] {
               add('module-contracts-only', 'import a module only as @aivera/<m> (ADR-002)');
             if (kind === 'modules' && FORBIDDEN_MODULE_IMPORTS[name]?.includes(target))
               add('paying-never-changes-ranking', `${name} may not import ${target} (AGENTS.md 1.8)`);
+            if (kind === 'modules' && target === 'candidate-accounts' && RECRUITER_SIDE_MODULES.has(name))
+              add('recruiter-side-no-candidate-accounts', `${name} may not import candidate-accounts (ADR-009)`);
           }
           if (kind === 'modules' && (target === 'ui' || target === 'tokens'))
             add('module-no-ui', 'modules hold no UI (AGENTS.md 9.4)');
