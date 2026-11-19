@@ -38,12 +38,14 @@ export async function addClient(name: string): Promise<ClientResult> {
 export async function renameClient(clientId: string, name: string): Promise<ClientResult> {
   const parsed = clientNameSchema.safeParse(name);
   if (!parsed.success) return { ok: false, error: 'name' };
-  const id = clientIdSchema.parse(clientId);
-  return change((ctx) => getWorkspaces().renameClient(ctx, id, parsed.data));
+  const id = clientIdSchema.safeParse(clientId);
+  if (!id.success) return { ok: false, error: 'failed' };
+  return change((ctx) => getWorkspaces().renameClient(ctx, id.data, parsed.data));
 }
 
 /** "Archive" a client: its jobs stay; it is not offered for new jobs. */
 export async function archiveClient(clientId: string): Promise<ClientResult> {
-  const id = clientIdSchema.parse(clientId);
-  return change((ctx) => getWorkspaces().archiveClient(ctx, id));
+  const id = clientIdSchema.safeParse(clientId);
+  if (!id.success) return { ok: false, error: 'failed' };
+  return change((ctx) => getWorkspaces().archiveClient(ctx, id.data));
 }

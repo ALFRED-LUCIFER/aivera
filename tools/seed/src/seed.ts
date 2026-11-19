@@ -71,7 +71,8 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
   const ownerOf = (key: string) => owners[HIRING_OWNERS.findIndex((o) => o.key === key)] ?? null;
   await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
-    // First: a job's hiring owner must be an active member, and gets the job's grant as the job is saved (AIV-P1-056).
+    // First, though audited before the jobs (AGENTS.md 3.6 asks audit last): a job's hiring owner must already be an
+    // active member, and gets the job's grant, audited, as the job is saved (AIV-P1-056).
     for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
     for (const c of CANDIDATES)
       await candidates.findOrCreatePerson(ctx, {

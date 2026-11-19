@@ -122,37 +122,44 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
 
     /**
      * Admins and recruiters, as part of saving the job (AIV-P1-056): the new hiring owner, who must be an active hiring
-     * owner (`owner_role`), gets a grant on the job; the previous one loses their grant on it. Both audited.
-     * shortcut: the job id is the jobs module's, which calls this only for the job it is saving; it is not checked here.
+     * owner (`owner_role`), gets a grant on the job; the previous one, if a hiring owner, loses their grant on that job
+     * (also one an admin made by hand: the ticket's rule). Interviewers' grants are never touched here. Both audited, last.
+     * shortcut: the job id is trusted; only the jobs module calls this, for the job it is saving (architecture rule
+     * `job-owner-from-jobs`); check it through a jobs port if another caller ever needs it.
      */
     async setJobOwner(ctx: WorkspaceContext<Tx>, input: SetJobOwnerInput): Promise<void> {
       await authorize(ctx, 'job.assign_owner');
       const store = storeFor(ctx.tx);
       const { grant, revoke } = ownerGrantChange(input.previousOwnerId, input.ownerId);
-      if (revoke) {
-        const removed = await store.deleteJobGrant(ctx.workspaceId, revoke, input.jobId);
-        if (removed)
-          await store.audit(ctx.workspaceId, ctx.userId, {
-            action: 'job_access.revoked',
-            subject: { type: 'member', id: revoke },
-            before: target(removed),
-          });
-      }
-      if (!grant) return;
-      // Locks the members in changeRole's order, so a concurrent role change cannot keep this grant.
-      const member = (await store.lockMembers(ctx.workspaceId)).find((m) => m.userId === grant);
-      if (member?.status !== 'active' || member.role !== 'hiring_owner') throw new WorkspaceError('owner_role');
-      const added = await store.insertGrant(ctx.workspaceId, {
-        id: newId(),
-        userId: grant,
-        jobId: input.jobId,
-        clientId: null,
-        grantedBy: ctx.userId,
-      });
+      if (!grant && !revoke) return;
+      // Locks the members in changeRole's order, so a concurrent role change cannot slip between check and write.
+      const members = await store.lockMembers(ctx.workspaceId);
+      const isOwner = (userId: string | null) =>
+        members.some((m) => m.userId === userId && m.status === 'active' && m.role === 'hiring_owner');
+      if (grant && !isOwner(grant)) throw new WorkspaceError('owner_role');
+      const removed =
+        revoke && members.some((m) => m.userId === revoke && m.role === 'hiring_owner')
+          ? await store.deleteJobGrant(ctx.workspaceId, revoke, input.jobId)
+          : null;
+      const added =
+        grant &&
+        (await store.insertGrant(ctx.workspaceId, {
+          id: newId(),
+          userId: grant,
+          jobId: input.jobId,
+          clientId: null,
+          grantedBy: ctx.userId,
+        }));
+      if (removed)
+        await store.audit(ctx.workspaceId, ctx.userId, {
+          action: 'job_access.revoked',
+          subject: { type: 'member', id: removed.userId },
+          before: target(removed),
+        });
       if (added)
         await store.audit(ctx.workspaceId, ctx.userId, {
           action: 'job_access.granted',
-          subject: { type: 'member', id: grant },
+          subject: { type: 'member', id: added.userId },
           after: target(added),
         });
     },

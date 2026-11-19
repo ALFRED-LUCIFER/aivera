@@ -957,6 +957,7 @@
       "name": "Enter the client's name.",
       "exists": "A client with this name already exists.",
       "failed": "That did not work. Try again."
-    }
+    },
+    "breadcrumb": "Breadcrumb"
   }
 }

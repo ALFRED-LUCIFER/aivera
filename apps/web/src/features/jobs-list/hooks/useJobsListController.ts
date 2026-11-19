@@ -15,8 +15,9 @@ import { replaceFilterInUrl } from '../services/filterUrl.ts';
  * The Jobs list: the filter from the URL, the rows it shows, and each tab's count. An agency also filters by client
  * (AIV-P1-056); the tabs count within the chosen client.
  */
-export function useJobsListController(rows: JobRow[], agency = false) {
+export function useJobsListController(rows: JobRow[], agency: boolean) {
   const filter = parseFilter(useSearchParams().get('filter'));
+  // shortcut: the client choice lives in state, not the URL like the tabs; move it to the URL if recruiters ask to link it.
   const [client, setClient] = useState('');
   const scoped = filterByClient(rows, client);
   return {

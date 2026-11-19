@@ -10,7 +10,7 @@ export type JobRow = Pick<
   client: string | null;
 };
 
-export const toJobRow = (job: DeskJob, hiringOwner: string | null, client: string | null = null): JobRow => ({
+export const toJobRow = (job: DeskJob, hiringOwner: string | null, client: string | null): JobRow => ({
   id: job.id,
   title: job.title,
   team: job.team,

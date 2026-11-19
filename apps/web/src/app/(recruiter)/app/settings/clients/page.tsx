@@ -29,7 +29,7 @@ export default async function ClientsPage() {
     <>
       <PageHeader
         breadcrumb={
-          <nav aria-label={t('jobNew.breadcrumb')} className="text-meta text-text-2">
+          <nav aria-label={t('clients.breadcrumb')} className="text-meta text-text-2">
             <Link href="/app/settings" className="underline underline-offset-2 hover:text-text">
               {t('shell.nav.settings')}
             </Link>

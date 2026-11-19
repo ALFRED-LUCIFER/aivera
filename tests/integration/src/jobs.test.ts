@@ -1002,6 +1002,13 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
     expect(await canOpen(OWNER_A, backend, dune)).toBe('allowed');
   });
 
+  // SAFETY: mutation check: dropped the hiring_owner role check on the revoke -> this test failed (Panel's grant was deleted)
+  it('an owner change never removes an interviewer’s grant', async () => {
+    await as(ALEX, w, (ctx) => workspaces.grantJobAccess(ctx, { userId: PANEL, jobId: backend }));
+    await as(RANA, w, (ctx) => workspaces.setJobOwner(ctx, { jobId: backend, previousOwnerId: PANEL, ownerId: null }));
+    expect(await grantsOf(PANEL)).toEqual([backend]);
+  });
+
   it('a hiring owner who is not an active hiring owner is refused and no job is saved', async () => {
     const before = (await as(ALEX, w, (ctx) => jobs.listJobs(ctx))).length;
     await expect(

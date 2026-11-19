@@ -182,20 +182,27 @@ export function jobsUseCases({
       createdAt: now(),
     };
     await storeFor(ctx.tx).insertJob(job);
-    // The hiring owner sees this job, and only it (AIV-P1-056); setJobOwner refuses anyone but an active hiring owner.
+    return job;
+  }
+
+  /**
+   * The new job's hiring owner gets its grant, and only it (AIV-P1-056); setJobOwner refuses anyone but an active hiring
+   * owner. Called after the job's own writes, so only audit entries follow (AGENTS.md 3.6).
+   */
+  async function grantOwner(ctx: WorkspaceContext, job: Job) {
     if (job.hiringOwnerUserId)
       await setJobOwner(ctx, { jobId: job.id, previousOwnerId: null, ownerId: job.hiringOwnerUserId });
-    return job;
   }
 
   return {
     async createJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job> {
       await authorize(ctx, 'job.create');
       const job = await insertNewJob(ctx, input);
+      await grantOwner(ctx, job);
       await audit(ctx, {
         action: 'job.created',
         subject: { type: 'job', id: job.id },
-        after: { clientId: job.clientId },
+        after: { clientId: job.clientId, hiringOwnerUserId: job.hiringOwnerUserId },
       });
       return job;
     },
@@ -227,17 +234,24 @@ export function jobsUseCases({
         approvedAt: null,
       };
       await storeFor(ctx.tx).insertVersion(rubricVersion, competencies);
+      await grantOwner(ctx, job);
       await audit(ctx, {
         action: 'job.created',
         subject: { type: 'job', id: job.id },
-        after: { clientId: job.clientId, rubricVersionId: rubricVersion.id, rubricStatus: rubricVersion.status },
+        after: {
+          clientId: job.clientId,
+          hiringOwnerUserId: job.hiringOwnerUserId,
+          rubricVersionId: rubricVersion.id,
+          rubricStatus: rubricVersion.status,
+        },
       });
       return { job, rubricVersion };
     },
 
     /**
      * Admins and recruiters (AIV-P1-056): the job's hiring owner becomes `ownerId` (null: none). The new owner gets a
-     * grant on the job and the previous one loses theirs, audited by the workspaces module as the last writes.
+     * grant on the job and the previous one loses theirs, audited by the workspaces module as the last writes. No screen
+     * calls it yet: the job edit page (AIV-P1-012 job header) will; the ticket's revoke test exercises it now.
      */
     async changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void> {
       const job = await visibleJob(ctx, jobId, 'job.assign_owner', true);

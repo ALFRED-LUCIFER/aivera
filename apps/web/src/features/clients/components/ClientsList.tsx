@@ -3,7 +3,7 @@
 import type { Messages } from '@aivera/i18n';
 import { useTranslations } from '@aivera/i18n/react';
 import { Button, DataTable, Dialog, DialogClose, Input, Label, SuccessBanner, type DataTableColumn } from '@aivera/ui';
-import type { ReactNode } from 'react';
+import { useRef, type MouseEvent, type ReactNode } from 'react';
 import { CLIENT_NAME_MAX, type ClientRow, type ClientsView } from '../domain/clients.ts';
 
 type Row = ClientRow & { label: ReactNode; jobs: ReactNode; actions: ReactNode };
@@ -20,6 +20,17 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: keyof Messages['clien
  */
 export function ClientsList({ view }: { view: ClientsView }) {
   const t = useTranslations('clients');
+  // The dialogs have no trigger, so focus goes back by hand to the button that opened them (or stays put if it is gone).
+  const opener = useRef<HTMLElement | null>(null);
+  const opened = (open: () => void) => (event: MouseEvent<HTMLElement>) => {
+    opener.current = event.currentTarget;
+    open();
+  };
+  const returnFocus = (event: Event) => {
+    if (!opener.current?.isConnected) return;
+    event.preventDefault();
+    opener.current.focus();
+  };
   const fieldError = view.error === 'name' || view.error === 'exists' ? view.error : null;
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
   // The cells' content is built here, as elements, so the column definitions stay module-level and stable.
@@ -34,13 +45,17 @@ export function ClientsList({ view }: { view: ClientsView }) {
     jobs: t('openJobs', { count: row.openJobs }),
     actions: !row.archived && (
       <span className="flex flex-wrap gap-2">
-        <Button variant="ghost" aria-label={t('renameFor', { name: row.name })} onClick={() => view.onRenameOpen(row)}>
+        <Button
+          variant="ghost"
+          aria-label={t('renameFor', { name: row.name })}
+          onClick={opened(() => view.onRenameOpen(row))}
+        >
           {t('rename')}
         </Button>
         <Button
           variant="ghost"
           aria-label={t('archiveFor', { name: row.name })}
-          onClick={() => view.onArchiveOpen(row)}
+          onClick={opened(() => view.onArchiveOpen(row))}
         >
           {t('archive')}
         </Button>
@@ -96,6 +111,7 @@ export function ClientsList({ view }: { view: ClientsView }) {
       <Dialog
         open={view.renaming !== null}
         onOpenChange={(open) => !open && view.onClose()}
+        onCloseAutoFocus={returnFocus}
         title={t('renameTitle')}
         closeLabel={t('close')}
       >
@@ -135,6 +151,7 @@ export function ClientsList({ view }: { view: ClientsView }) {
       <Dialog
         open={view.archiving !== null}
         onOpenChange={(open) => !open && view.onClose()}
+        onCloseAutoFocus={returnFocus}
         title={t('archiveTitle', { name: view.archiving?.name ?? '' })}
         description={t('archiveBody')}
         closeLabel={t('close')}

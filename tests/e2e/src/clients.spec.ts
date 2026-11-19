@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectNoAxeViolations, themes } from './gallery.ts';
 
-// AIV-P1-056 J1 step 3, agency variant. seed.ts: Zaid is a recruiter in the agency Oasis Talent (no clients yet), where
+// AIV-P1-056 J1 step 3, agency variant (the ticket's archive examples use Dune Logistics, which has the job). seed.ts: Zaid is a recruiter in the agency Oasis Talent (no clients yet), where
 // Faisal Client is a hiring owner with no grants; Alex's Demo Hiring Co is an in-house team. The fake model drafts from
 // tests/e2e/ai-fixtures.json (the senior-ai-engineer description).
 
@@ -54,20 +54,29 @@ test('Scenarios: add clients, pick one on Add a job with a hiring owner, archive
   await page.getByLabel('Client', { exact: true }).selectOption({ label: 'Dune Logistics' });
   await expect(jobRow).toBeVisible();
 
-  // Scenario: Archiving asks for confirmation.
+  // Scenario: Archiving asks for confirmation, by keyboard: Escape cancels and returns focus to the button.
   await page.goto('/app/settings/clients');
   await expect(clientRow(page, 'Dune Logistics')).toContainText('1 open job');
-  await page.getByRole('button', { name: 'Archive Falcon Pay' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Archive Falcon Pay?' });
+  const archive = page.getByRole('button', { name: 'Archive Dune Logistics' });
+  await archive.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Archive Dune Logistics?' });
   await expect(dialog).toContainText('Its jobs stay as they are. You cannot add new jobs for this client.');
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(archive).toBeFocused();
+  await expect(clientRow(page, 'Dune Logistics')).not.toContainText('Archived');
+  await page.keyboard.press('Enter');
   await dialog.getByRole('button', { name: 'Archive' }).click();
   await expect(dialog).toBeHidden();
-  await expect(clientRow(page, 'Falcon Pay')).toContainText('Archived');
+  await expect(clientRow(page, 'Dune Logistics')).toContainText('Archived');
 
-  // Scenario: Archived clients are not offered for new jobs.
+  // Scenario: Archived clients are not offered for new jobs, and their existing jobs still show them.
   await page.goto('/app/jobs/new');
-  await expect(page.getByLabel('Team or client').locator('option')).toHaveText(['Our team', 'Dune Logistics']);
+  await expect(page.getByLabel('Team or client').locator('option')).toHaveText(['Our team', 'Falcon Pay']);
+  await page.goto('/app/jobs');
+  await expect(jobRow.getByRole('cell').nth(1)).toHaveText('Dune Logistics');
 });
 
 for (const theme of themes)
