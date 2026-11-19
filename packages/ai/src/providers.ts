@@ -91,8 +91,8 @@ export function fakeProvider(options: { completion?: string; failures?: number[]
 /** Selects the provider from configuration: `AI_PROVIDER=fake` for tests, otherwise Azure with managed identity. */
 export function providerFromEnv(env: Record<string, string | undefined>): AiProvider {
   if (env['AI_PROVIDER'] === 'fake') {
-    // A fake completion must never reach a real recruiter.
-    if (env['APP_ENV'] === 'pilot' || env['APP_ENV'] === 'prod')
+    // A fake completion must never reach a real recruiter: allow it only where APP_ENV says local or dev.
+    if (env['APP_ENV'] !== 'local' && env['APP_ENV'] !== 'dev')
       throw new Error('AI_PROVIDER=fake is local and dev only');
     return fakeProvider();
   }

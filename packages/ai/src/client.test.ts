@@ -86,6 +86,9 @@ describe('Scenario: A task resolves to its configured deployment', () => {
   it('selects the fake by configuration, never in pilot or production', () => {
     expect(() => providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'local' })).not.toThrow();
     expect(() => providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'prod' })).toThrow(/local and dev only/);
+    // SAFETY: mutation check: went back to refusing only pilot and prod -> the missing and misspelled APP_ENV cases failed
+    expect(() => providerFromEnv({ AI_PROVIDER: 'fake' })).toThrow(/local and dev only/);
+    expect(() => providerFromEnv({ AI_PROVIDER: 'fake', APP_ENV: 'Pilot' })).toThrow(/local and dev only/);
     expect(() => providerFromEnv({ APP_ENV: 'dev' })).toThrow(/AZURE_OPENAI_RESOURCE_NAME/);
   });
 });
