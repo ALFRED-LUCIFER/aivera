@@ -336,15 +336,23 @@
   },
   "signIn": {
     "title": "Sign in",
-    "panelTitle": "Hire on evidence, not claims.",
-    "panelBody": "Every score cites the work it rests on. Claims are labelled as claims. Nobody is rejected automatically.",
-    "email": "Email",
+    "headline": "Hire on <mark>evidence</mark>, not claims.",
+    "points": {
+      "cites": "Every score cites the work it rests on.",
+      "claims": "Claims are labelled as claims.",
+      "people": "Nobody is rejected automatically."
+    },
+    "lead": "Welcome back. Pick up where your roles left off.",
+    "email": "Work email",
+    "emailPlaceholder": "you@example.com",
     "passwordNote": "You enter your password on the next page, hosted by Aivera's sign-in service.",
     "remember": "Keep me signed in",
     "signIn": "Sign in",
     "forgotPassword": "Forgot password?",
     "or": "or",
     "google": "Continue with Google",
+    "newHere": "New to Aivera?",
+    "createWorkspace": "Create a workspace",
     "errors": {
       "unverifiedEmail": "Verify your email to continue.",
       "unavailable": "Sign-in is not set up in this environment yet.",
@@ -365,6 +373,11 @@
     "signOut": "Sign out"
   },
   "signup": {
+    "points": {
+      "define": "Define a role and agree its competencies with the hiring manager.",
+      "rank": "See candidates ranked by work you can inspect.",
+      "decide": "Keep every hiring decision with a person."
+    },
     "title": "Or create your own workspace",
     "company": "Company",
     "optional": "Optional",

@@ -2,9 +2,9 @@ import type { ComponentProps } from 'react';
 import { cx } from './cx.ts';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-export type ButtonSize = 'compact' | 'standard' | 'touch' | 'iconOnly';
+export type ButtonSize = 'compact' | 'standard' | 'touch' | 'large' | 'iconOnly';
 
-// DESIGN.md: 36 compact, 40 standard, 44 touch and on any coarse pointer. One primary per view.
+// DESIGN.md: 36 compact, 40 standard, 44 touch and on any coarse pointer, 48 large (website and sign-in pages). One primary per view.
 const base =
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control border font-semibold ' +
   'pointer-coarse:min-h-11 cursor-pointer transition-colors duration-120 ease-case motion-reduce:transition-none ' +
@@ -20,6 +20,8 @@ const sizes: Record<ButtonSize, string> = {
   compact: 'h-9 px-3 text-meta',
   standard: 'h-10 px-3.5 text-body',
   touch: 'h-11 px-4 text-body',
+  // The artboards' 48 px buttons use 15 px text; 14 (body) keeps the product type scale (DESIGN.md).
+  large: 'h-12 px-5 text-body',
   // Square, for an icon with an aria-label (close, more).
   iconOnly: 'size-10 pointer-coarse:min-w-11',
 };

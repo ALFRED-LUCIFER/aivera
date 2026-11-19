@@ -1,8 +1,8 @@
 # Aivera design system: the case file
 
-Source of truth: the "Design system foundations" artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence" (v0.1, 18 Nov 2026). Every screen artboard in that canvas is the spec for its screen; [`docs/01-design/screens.md`](docs/01-design/screens.md) maps them.
+Source of truth: the "Design system foundations" artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence" (v0.1, 18 Nov 2026), copied with every screen artboard into [`docs/01-design/artboards/`](docs/01-design/artboards/). Every screen artboard is the spec for its screen; build from the file, not from this summary (AGENTS.md section 4). [`docs/01-design/screens.md`](docs/01-design/screens.md) maps them.
 
-**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** The website alone, as the Landing artboard draws it, also lays it on "evidence" in the headline and on "what they have done" in the claims-tests-work line: both name what Aivera counts as evidence. The candidate home hero (CHome artboard) lays it the same way on "what you have done", for the same reason, and on its one Plus call to action, a highlighter button on the ink panel. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
+**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** The website alone, as the Landing artboard draws it, also lays it on "evidence" in the headline and on "what they have done" in the claims-tests-work line: both name what Aivera counts as evidence. The candidate home hero (CHome artboard) lays it the same way on "what you have done", for the same reason, and on its one Plus call to action, a highlighter button on the ink panel. The sign-in and create-workspace pages (SignIn and SignUp artboards) repeat the website headline on their ink panel, "evidence" under the highlighter, with highlighter check marks on its three promises. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
 
 ## Typography
 
@@ -15,13 +15,13 @@ Source of truth: the "Design system foundations" artboard in the claude.ai Desig
 | Metadata, labels       | Hanken Grotesk      | 13 / 18 · 400 (labels 600). The smallest size in the product. |
 | Evidence               | JetBrains Mono      | 13 / 18 · 400                                                 |
 
-Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site, the candidate home and the candidate site's header wordmark (CHome artboard) may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
+Numbers use `font-variant-numeric: tabular-nums`. No other sizes in the product UI; the marketing site, the candidate home, the sign-in and create-workspace pages (SignIn and SignUp artboards: ink panel headline, 32 / 40 page title, 16 / 24 lead, 20 px wordmark) and the candidate site's header wordmark (CHome artboard) may use display sizes (`clamp()` headlines in Bricolage 700) and the Landing artboard's reading sizes (15, 16, 17 and 20 px).
 
 ## Spacing, radius, controls
 
 - Spacing scale (px): 4 · 8 · 12 · 16 · 24 · 32 · 48.
 - Radius: 6 tags · 8 controls · 12 cards. Chips are pills (13 px radius at 26 px height).
-- Controls: compact 36 · standard 40 (default) · touch 44 (any coarse pointer). Large marketing buttons 48.
+- Controls: compact 36 · standard 40 (default) · touch 44 (any coarse pointer). Large buttons 48 (`size="large"`) on the website and the sign-in pages; their form fields are 44.
 - Focus: 2 px ring in `--focus`, offset 2 px, on every control.
 - Motion: 120 ms with `cubic-bezier(.16,1,.3,1)`, named properties only, off under reduced motion. The website's entrance and hero sequence may run longer, in 120 ms steps (every delay and duration a multiple of 120 ms), through `motion` in `features/marketing-home` and the candidate home hero (`marketing.css`) only; the server-rendered page is already in its final state. The hero card's pointer tilt is a spring (no fixed duration), mouse only and off under reduced motion.
 
@@ -59,7 +59,7 @@ Themes are set by `data-theme="light"` (default) or `data-theme="dark"` on the r
 
 Form fields use `--field-border` (≥3:1, WCAG 1.4.11); every other border keeps `--border`/`--border-strong`. Owner decision, 18 Nov 2026.
 
-Text selection uses the highlighter. The marketing site's and the candidate home's dark "ink" panels are `#1B1720` with `#F4F1F6` text.
+Text selection uses the highlighter. The marketing site's, the candidate home's and the sign-in pages' dark "ink" panels are `#1B1720` with `#F4F1F6` text.
 
 ## Domain components (all in `@aivera/ui`)
 

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aivera — Hire on evidence, not claims</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+/* Aivera "Case file" tokens. Ink carries text, actions, scores and selection; the highlighter marks cited evidence only. */
+.av{--bg:#F6F4F1;--surface:#FFFFFF;--surface-subtle:#EFECE8;--surface-raised:#FFFFFF;--border:#E4DFD9;--border-strong:#CFC8C0;--text:#1B1720;--text-2:#55505A;--text-3:#6A6470;--action:#1B1720;--action-hover:#3A3242;--on-action:#FFFFFF;--brand:#1B1720;--brand-hover:#000000;--brand-subtle:#E9E5DF;--brand-text:#1B1720;--hl:#FFE873;--hl-text:#1B1720;--focus:#1B1720;--ok-bg:#E8F3EA;--ok-text:#1F6B3A;--ok-border:#BFDCC5;--warn-bg:#FDEDE0;--warn-text:#9A3412;--warn-border:#F2C7A5;--err-bg:#FCE8E8;--err-text:#A1161D;--err-border:#F1BDBD;--info-bg:#E8EFFB;--info-text:#1D4E9E;--info-border:#BCD0F2;--shadow-1:0 1px 2px rgba(27,23,32,.05);--shadow-pop:0 16px 36px -12px rgba(27,23,32,.22),0 3px 8px rgba(27,23,32,.06)}
+.av[data-theme="dark"]{--bg:#141118;--surface:#1D1922;--surface-subtle:#18141D;--surface-raised:#262130;--border:#322C3B;--border-strong:#4A4355;--text:#F4F1F6;--text-2:#BDB5C6;--text-3:#9A91A5;--action:#F4F1F6;--action-hover:#FFFFFF;--on-action:#1B1720;--brand:#F4F1F6;--brand-hover:#FFFFFF;--brand-subtle:#2C2636;--brand-text:#F4F1F6;--hl:#4D4208;--hl-text:#FFF3B0;--focus:#FFE873;--ok-bg:#14281B;--ok-text:#8FE0A8;--ok-border:#24502F;--warn-bg:#33200F;--warn-text:#FDBA8C;--warn-border:#6A3F1C;--err-bg:#351717;--err-text:#FCA5A5;--err-border:#6E2A2A;--info-bg:#142440;--info-text:#A9C8FF;--info-border:#284A80;--shadow-1:none;--shadow-pop:0 18px 44px -10px rgba(0,0,0,.65)}
+.av{font-family:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:20px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;caret-color:var(--brand);accent-color:var(--brand);scrollbar-color:var(--border-strong) transparent}
+.av *{box-sizing:border-box}
+.av ::selection{background:var(--hl);color:var(--hl-text)}
+.av a{color:var(--brand-text);text-underline-offset:3px;text-decoration-thickness:1px}.av a:hover{color:var(--brand-hover)}
+.av :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.av h1,.av h2,.av h3,.av p{margin:0}
+.av h1,.av h2{font-family:"Bricolage Grotesque","Hanken Grotesk",system-ui,sans-serif;text-wrap:balance}
+.av h1{font-size:28px;line-height:36px;font-weight:700;letter-spacing:-0.02em}
+.av h2{font-size:18px;line-height:26px;font-weight:600;letter-spacing:-0.01em}
+.av h3{font-size:15px;line-height:22px;font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px}
+.sub{color:var(--text-2);font-size:13px;line-height:18px}
+.lab{font-size:13px;font-weight:600;color:var(--text-2)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;font-weight:600;line-height:20px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.av a.btn{color:var(--text)}
+.btn:hover{background:var(--surface-subtle)}
+.btn-primary,.av a.btn-primary{background:var(--action);border-color:var(--action);color:var(--on-action)}
+.btn-primary:hover,.av a.btn-primary:hover{background:var(--action-hover);border-color:var(--action-hover);color:var(--on-action)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.av a.btn-ghost{color:var(--text-2)}
+.btn-sm{height:36px;padding:0 12px;font-size:13px}
+.btn-icon{width:40px;padding:0}
+.btn[disabled]{background:var(--surface-subtle);border-color:var(--border);color:var(--text-3);cursor:not-allowed}
+.btn[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--on-action)}
+@media (pointer:coarse){.btn{min-height:44px}.nav a{min-height:44px}}
+.av .nav a{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:8px;color:var(--text-2);font-weight:500;text-decoration:none}
+.av .nav a:hover{background:var(--surface-subtle);color:var(--text)}
+.av .nav a[aria-current="page"]{background:var(--action);color:var(--on-action);font-weight:600}
+.av .nav a[aria-current="page"] .sub{color:var(--on-action)}
+.av .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--border)}
+.av .tabs a{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 12px;color:var(--text-2);font-weight:500;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.av .tabs a:hover{color:var(--text)}
+.av .tabs a[aria-current="page"]{color:var(--text);font-weight:600;border-bottom-color:var(--brand)}
+.tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface-subtle);color:var(--text-2);font-size:13px;font-weight:500;white-space:nowrap}
+.mk{display:inline-block;width:9px;height:9px;border-radius:2px;flex:none}
+.mk-obs{background:var(--text)}.mk-base{border:1.5px solid var(--text-2)}.mk-proj{border:1.5px dashed var(--brand-text)}.mk-na{height:0;border-top:1.5px solid var(--text-3);border-radius:0}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px 0 7px;border-radius:13px;border:1px solid var(--border);font-size:13px;font-weight:500;white-space:nowrap}
+.chip-ok{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok-border)}
+.chip-warn{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn-border)}
+.chip-err{background:var(--err-bg);color:var(--err-text);border-color:var(--err-border)}
+.chip-info{background:var(--info-bg);color:var(--info-text);border-color:var(--info-border)}
+.chip-neutral{background:var(--surface-subtle);color:var(--text-2)}
+.tbl{width:100%;border-collapse:collapse;text-align:left}
+.tbl th{padding:10px 12px;font-size:13px;font-weight:600;color:var(--text-2);border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:bottom}
+.tbl td{padding:14px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:var(--surface-subtle)}
+.tbl th:first-child,.tbl td:first-child{padding-left:20px}.tbl th:last-child,.tbl td:last-child{padding-right:20px}
+.meter{display:block;height:6px;border-radius:3px;background:var(--surface-subtle);box-shadow:inset 0 0 0 1px var(--border);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.seg{display:inline-flex;gap:3px}.seg i{width:8px;height:14px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--border-strong)}.seg i.on{background:var(--text-2);box-shadow:none}
+.str{display:inline-flex;gap:3px;vertical-align:middle}.str i{width:14px;height:8px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--border-strong)}.str i.on{background:var(--text);box-shadow:none}
+.hatch{background:repeating-linear-gradient(135deg,var(--brand) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1.5px var(--brand)}
+.score{position:relative;display:block;height:10px;border-radius:5px;background:var(--surface-subtle);box-shadow:inset 0 0 0 1px var(--border)}
+.score b{position:absolute;left:0;top:0;height:10px;border-radius:5px;background:var(--brand)}
+.score i{position:absolute;top:0;height:10px;border-radius:0 5px 5px 0}
+.av mark.hl{background:var(--hl);color:var(--hl-text);padding:1px 3px;border-radius:3px}
+.inp{width:100%;min-height:40px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;line-height:20px}
+.inp::placeholder{color:var(--text-3)}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld label,.fld legend{font-size:13px;font-weight:600;color:var(--text)}
+.row{display:flex;gap:12px;align-items:flex-start;padding:16px 20px;border-top:1px solid var(--border)}
+.ico{flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface-subtle);color:var(--text-2)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-subtle);color:var(--text-2);font-size:13px;line-height:18px}
+.note-ok{background:var(--ok-bg);border-color:var(--ok-border);color:var(--ok-text)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media (prefers-reduced-motion:no-preference){.btn,.nav a,.tabs a{transition:background-color .14s cubic-bezier(.16,1,.3,1),color .14s cubic-bezier(.16,1,.3,1)}}
+
+.av .wlink{color:var(--text-2);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
+.av .wlink:hover{color:var(--text)}
+.av .ink{background:#1B1720;color:#F4F1F6}
+.av .ink a{color:#F4F1F6}
+.btn-lg{height:48px;padding:0 20px;font-size:15px}
+.av .btn-hl,.av a.btn-hl{background:var(--hl);border-color:var(--hl);color:#1B1720}
+.av a.btn-hl:hover{background:#FFDF40;border-color:#FFDF40;color:#1B1720}
+
+@media (prefers-reduced-motion:no-preference){
+.btn svg{transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.btn:hover svg{transform:translateX(3px)}
+.btn:active{transform:scale(.98)}
+.av .wlink{background:linear-gradient(currentColor,currentColor) no-repeat 6px calc(100% - 10px)/0 1.5px;transition:background-size .3s cubic-bezier(.16,1,.3,1),color .15s}
+.av .wlink:hover{background-size:calc(100% - 12px) 1.5px}
+.rise{animation:rise .9s cubic-bezier(.16,1,.3,1) both}
+.d1{animation-delay:.08s}.d2{animation-delay:.16s}.d3{animation-delay:.24s}.d4{animation-delay:.34s}
+.av mark.sweep{background-color:transparent;background-image:linear-gradient(var(--hl),var(--hl));background-repeat:no-repeat;background-size:100% 100%;animation:sweep .9s cubic-bezier(.16,1,.3,1) .45s both}
+.av mark.sweep.late{animation-delay:2s}
+.fill b{transform-origin:left center;animation:grow 1.2s cubic-bezier(.16,1,.3,1) .7s both}
+.fill i{animation:wipe .7s cubic-bezier(.16,1,.3,1) 1.7s both}
+.lift{transition:transform .35s cubic-bezier(.16,1,.3,1),box-shadow .35s cubic-bezier(.16,1,.3,1)}
+.lift:hover{transform:translateY(-4px)}
+@supports (animation-timeline:view()){
+.rv{animation:reveal linear both;animation-timeline:view();animation-range:entry 0% entry 60%}
+.rule{animation:draw linear both;animation-timeline:view();animation-range:entry 10% entry 90%}
+.sweep2{animation:sweep2 linear both;animation-timeline:view();animation-range:entry 40% cover 35%}
+}
+}
+.rule{display:block;height:2px;background:var(--text);transform-origin:left center}
+.sweep2{background-image:linear-gradient(#FFE873,#FFE873);background-repeat:no-repeat;background-size:100% 100%;color:#1B1720;padding:0 6px;border-radius:4px}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes sweep{from{background-size:0 100%}to{background-size:100% 100%}}
+@keyframes sweep2{from{background-size:0 100%;color:#F4F1F6}60%{color:#1B1720}to{background-size:100% 100%;color:#1B1720}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:none}}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes reveal{from{opacity:.15;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:none}}
+</style>
+</helmet>
+<div class="av" data-theme="light" style="min-height: 100vh; display: flex; flex-direction: column">
+
+<header style="background: var(--bg); border-bottom: 1px solid var(--border)"><div style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-top: 14px; padding-bottom: 14px">
+  <a href="Landing.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit"><img src="/_blob/949836f67cdc790a215f3a9878d23051" alt="" width="34" height="34" style="border-radius: 9px; box-shadow: 0 0 0 1px var(--border-strong); display: block"><span style="font-family: Bricolage Grotesque, Hanken Grotesk, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em">Aivera</span></a>
+  <nav aria-label="Site" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px"><a class="wlink" href="#how">How it works</a><a class="wlink" href="#roles">Roles we cover</a><a class="wlink" href="#trust">Why trust it</a><a class="wlink" href="CHome.dc.html">For candidates</a></nav>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><a class="btn btn-ghost" href="SignIn.dc.html">Sign in</a><a class="btn btn-primary" href="SignUp.dc.html">Create workspace</a></div>
+</div></header>
+
+<section style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); display: flex; flex-wrap: wrap; align-items: center; gap: 48px 56px; padding-top: clamp(48px, 7vw, 96px); padding-bottom: clamp(48px, 7vw, 96px)">
+  <div style="flex: 6 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+    <h1 class="rise" style="font-size: clamp(44px, 6.4vw, 84px); line-height: 1.02; letter-spacing: -0.035em">Hire on <mark class="hl sweep" style="padding: 0 8px; border-radius: 6px">evidence</mark>, not claims.</h1>
+    <p class="rise d1" style="font-size: clamp(17px, 1.5vw, 20px); line-height: 1.5; color: var(--text-2); max-width: 54ch">Aivera reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.</p>
+    <div class="rise d2" style="display: flex; flex-wrap: wrap; gap: 12px"><a class="btn btn-primary btn-lg" href="SignUp.dc.html">Create your workspace<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a><a class="btn btn-lg" href="Main.dc.html">See the product</a></div>
+    <p class="sub rise d3" style="font-size: 14px; line-height: 20px">No tests to sit. No automatic rejections. A person makes every hiring decision.</p>
+  </div>
+  <div class="rise d4" style="flex: 5 1 380px; min-width: 0">
+    <div class="card lift" style="padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: var(--shadow-pop); border-color: var(--border-strong)">
+      <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600; font-size: 16px">Hessa Al Mazrouei</span><span class="sub">QA Automation Engineer · rank 1 of 38</span></div>
+      <div style="display: flex; align-items: center; gap: 14px"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 40px; line-height: 44px; font-weight: 700; letter-spacing: -0.02em; min-width: 2ch">{{score}}</span><span class="score fill" role="img" aria-label="Backed score 72, could reach 85" style="flex: 1 1 160px; min-width: 100px"><b style="width: 72%"></b><i class="hatch" style="left: 72%; width: 13%"></i></span></div>
+      <span class="sub num">72 backed by evidence · up to 85 if her open claim holds</span>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border)">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px"><span style="font-weight: 600; flex: 1 1 160px">Test automation design <span class="sub num" style="font-weight: 400">· weight 25%</span></span><span style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><span class="str" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span><span style="font-weight: 500">Strong</span></span></div>
+        <div><span class="chip chip-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 12.5 4.5 4.5L15 8M11.5 16l1 1L22 8"></path></svg>Independently corroborated</span></div>
+        <p style="font-size: 15px; line-height: 23px">In the repository <span class="mono">checkout-e2e</span> she <mark class="hl sweep late">wrote 148 of 171 test cases</mark>. The CI history shows the suite caught 23 regressions before release.</p>
+        <div class="sub" style="display: flex; flex-wrap: wrap; gap: 6px 18px"><span style="display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg><span class="mono">github.com/…/checkout-e2e</span></span><span style="display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg><span class="mono">CI history, checked 12 Nov</span></span></div>
+      </div>
+      <span class="sub">Illustrative candidate, synthetic data.</span>
+    </div>
+  </div>
+</section>
+
+<section class="ink"><div style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(48px, 6vw, 80px); padding-bottom: clamp(48px, 6vw, 80px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 32px 48px">
+  <p style="font-family: Bricolage Grotesque, sans-serif; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; color: #BDB5C6">A CV tells you what someone claims.</p>
+  <p style="font-family: Bricolage Grotesque, sans-serif; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; color: #BDB5C6">A test tells you how they do on a test.</p>
+  <p style="font-family: Bricolage Grotesque, sans-serif; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; font-weight: 600; letter-spacing: -0.015em">Their work tells you <span class="sweep2">what they have done</span>.</p>
+</div></section>
+
+<section id="how" style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(56px, 7vw, 104px); padding-bottom: clamp(32px, 4vw, 56px); display: flex; flex-direction: column; gap: 32px">
+  <h2 style="font-size: clamp(28px, 3.4vw, 40px); line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; max-width: 22ch">From job description to a decision you can defend</h2>
+  <ol style="list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--border)">
+    <li class="rv" style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px 20px; padding: 24px 0; border-top: 1px solid var(--border)"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 32px; line-height: 36px; font-weight: 700; color: var(--text-3)">1</span><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 40px"><h3 style="font-size: 20px; line-height: 28px">Agree what matters</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Paste the job description. Aivera drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves.</p></div></li>
+    <li class="rv" style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px 20px; padding: 24px 0; border-top: 1px solid var(--border)"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 32px; line-height: 36px; font-weight: 700; color: var(--text-3)">2</span><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 40px"><h3 style="font-size: 20px; line-height: 28px">Collect the work</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Repositories, test suites, design files, documents, shipped products. Where a candidate has nothing to show, Aivera asks for a short work sample and labels it as one.</p></div></li>
+    <li class="rv" style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px 20px; padding: 24px 0; border-top: 1px solid var(--border)"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 32px; line-height: 36px; font-weight: 700; color: var(--text-3)">3</span><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 40px"><h3 style="font-size: 20px; line-height: 28px">See why each person ranks where they do</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Every score cites its source and says how strong the evidence is. Claims are marked as claims, and count for nothing until something supports them.</p></div></li>
+    <li class="rv" style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px 20px; padding: 24px 0; border-top: 1px solid var(--border)"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 32px; line-height: 36px; font-weight: 700; color: var(--text-3)">4</span><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 40px"><h3 style="font-size: 20px; line-height: 28px">Interview only what is unproven</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Each interview gets questions tied to the gaps in that candidate’s evidence. Scorecards move the score, with the reason recorded.</p></div></li>
+    <li class="rv" style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px 20px; padding: 24px 0; border-top: 1px solid var(--border)"><span class="num" style="font-family: Bricolage Grotesque, sans-serif; font-size: 32px; line-height: 36px; font-weight: 700; color: var(--text-3)">5</span><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 40px"><h3 style="font-size: 20px; line-height: 28px">Decide with the pack in front of you</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Strengths, risks and open questions for each shortlisted candidate, on one page. Aivera recommends. You decide.</p></div></li>
+  </ol>
+</section>
+
+<section id="roles" style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(40px, 5vw, 72px); padding-bottom: clamp(40px, 5vw, 72px); display: flex; flex-wrap: wrap; gap: 32px 56px; align-items: flex-start">
+  <div style="flex: 4 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="font-size: clamp(28px, 3.4vw, 40px); line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; max-width: 22ch">Not only software engineers</h2>
+    <p style="font-size: 17px; line-height: 26px; color: var(--text-2); max-width: 44ch">AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Aivera knows which to look for.</p>
+    <p class="sub" style="font-size: 14px; line-height: 20px; max-width: 44ch">No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.</p>
+  </div>
+  <div class="card" style="flex: 7 1 480px; min-width: 0"><div style="overflow-x: auto"><table class="tbl" style="min-width: 480px"><thead><tr><th scope="col">Role family</th><th scope="col">Evidence that counts</th></tr></thead><tbody>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Software engineering</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Repositories, shipped products, code reviews</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">QA and test automation</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Test suites, bug reports, CI history, test plans</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">AI and LLM engineering</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Eval harnesses, prompt libraries, shipped assistants</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Sales</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Closed deals, client references, pipeline records, market write-ups</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Forward deployed engineering</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Customer deployments, integration code, solution write-ups, customer references</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Data and machine learning</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Notebooks, evaluation sets, model cards, results write-ups</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">DevOps and SRE</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Infrastructure code, incident reviews, runbooks</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Product management</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Requirement documents, discovery write-ups, before-and-after metrics</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Product design</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Case studies, design files, prototypes</td></tr>
+    <tr><th scope="row" style="white-space: normal; color: var(--text); font-size: 16px; font-weight: 600; padding-top: 16px; padding-bottom: 16px; vertical-align: top; min-width: 200px">Technical writing and support</th><td style="font-size: 16px; line-height: 24px; color: var(--text-2); padding-top: 16px; padding-bottom: 16px">Published documentation, resolved tickets, help articles</td></tr>
+  </tbody></table></div>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 20px; border-top: 1px solid var(--border)"><p style="font-size: 16px; line-height: 24px; max-width: 46ch"><strong style="font-weight: 600">This list is a start.</strong> <span style="color: var(--text-2)">We are piecing together more role families, and the one you hire for can be next.</span></p><a class="btn" href="SignUp.dc.html">Tell us the role you need<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></div></div>
+</section>
+
+<section id="trust" style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(40px, 5vw, 72px); padding-bottom: clamp(56px, 7vw, 104px); display: flex; flex-direction: column; gap: 32px">
+  <h2 style="font-size: clamp(28px, 3.4vw, 40px); line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; max-width: 22ch">Recommendations you can check. Decisions that stay yours.</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 32px 40px">
+    <div style="display: flex; flex-direction: column; gap: 8px"><span class="rule" style="margin-bottom: 12px"></span><h3 style="font-size: 18px; line-height: 26px">Every score cites its source</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Open any assessment and see the exact commit, document or reference it rests on, and what it does not show.</p></div>
+    <div style="display: flex; flex-direction: column; gap: 8px"><span class="rule" style="margin-bottom: 12px"></span><h3 style="font-size: 18px; line-height: 26px">Claims are labelled as claims</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Nothing is called verified unless a second source confirms it. Candidate-submitted, corroborated and contradictory evidence look different.</p></div>
+    <div style="display: flex; flex-direction: column; gap: 8px"><span class="rule" style="margin-bottom: 12px"></span><h3 style="font-size: 18px; line-height: 26px">Nobody is rejected automatically</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Ranking orders your attention. Lower-ranked candidates stay visible, and thin evidence is treated as a gap to close.</p></div>
+    <div style="display: flex; flex-direction: column; gap: 8px"><span class="rule" style="margin-bottom: 12px"></span><h3 style="font-size: 18px; line-height: 26px">Numbers say what they are</h3><p style="color: var(--text-2); font-size: 16px; line-height: 24px">Observed, baseline or projection. If no hire has completed, the dashboard says so instead of showing a figure.</p></div>
+  </div>
+</section>
+
+<section class="ink"><div style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: clamp(56px, 7vw, 96px); padding-bottom: clamp(56px, 7vw, 96px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px 56px">
+  <div style="flex: 3 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px"><h2 style="font-size: clamp(28px, 3.4vw, 40px); line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; max-width: 22ch; max-width: 20ch; color: #F4F1F6">One number to judge us on: interviews per completed hire</h2><p style="font-size: 17px; line-height: 26px; color: #BDB5C6; max-width: 56ch">Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working.</p></div>
+  <div style="display: flex; flex-wrap: wrap; gap: 12px"><a class="btn btn-lg btn-hl" href="SignUp.dc.html">Create your workspace<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a><a class="btn btn-lg" href="SignIn.dc.html" style="background: transparent; border-color: #4A4355; color: #F4F1F6">Sign in</a></div>
+</div></section>
+
+<footer style="background: var(--bg)"><div style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); padding-top: 28px; padding-bottom: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px">
+  <a href="Landing.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit"><img src="/_blob/949836f67cdc790a215f3a9878d23051" alt="" width="34" height="34" style="border-radius: 9px; box-shadow: 0 0 0 1px var(--border-strong); display: block"><span style="font-family: Bricolage Grotesque, Hanken Grotesk, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em">Aivera</span></a>
+  <nav aria-label="Footer" style="display: flex; flex-wrap: wrap; gap: 4px 16px"><a class="wlink" href="#how">How it works</a><a class="wlink" href="#roles">Roles we cover</a><a class="wlink" href="#trust">Why trust it</a><a class="wlink" href="SignIn.dc.html">Sign in</a></nav>
+  <span class="sub">© 2026 Aivera</span>
+</div></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3930}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    let ok = false;
+    try { ok = window.matchMedia('(prefers-reduced-motion: no-preference)').matches; } catch (e) {}
+    if (!ok || !window.requestAnimationFrame) return;
+    const start = performance.now() + 700, dur = 1200, target = 72;
+    this.setState({ n: 0 });
+    const tick = (now) => {
+      const p = Math.min(1, Math.max(0, (now - start) / dur));
+      const eased = 1 - Math.pow(1 - p, 4);
+      this.setState({ n: Math.round(target * eased) });
+      if (p < 1) this._raf = window.requestAnimationFrame(tick);
+    };
+    this._raf = window.requestAnimationFrame(tick);
+  }
+  componentWillUnmount() { if (this._raf) window.cancelAnimationFrame(this._raf); }
+  renderVals() {
+    const s = this.state || {};
+    return { score: s.n ?? 72 };
+  }
+}
+</script>
+</body>
+</html>

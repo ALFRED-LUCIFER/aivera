@@ -3,15 +3,24 @@ import { Button } from '@aivera/ui';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import '../../(marketing)/marketing.css';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, loadShellCounts, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
+import { AuthPage } from '@/features/sign-in/components/AuthPage.tsx';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
 import { enabledFlags } from '@/server/flags';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
+
+// The SignUp artboard's highlighter over "evidence" on the ink panel (light tokens keep it bright there).
+const mark = (chunks: ReactNode) => (
+  <mark data-theme="light" className="mk-sweep rounded-tag bg-hl px-1.5 text-hl-text box-decoration-clone">
+    {chunks}
+  </mark>
+);
 
 // Each section page sets its own title ("Inbox · Aivera", WCAG 2.4.2).
 export async function generateMetadata(): Promise<Metadata> {
@@ -28,7 +37,13 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
     const t = await getTranslations(defaultLocale, defaultTimeZone);
     // AIV-P1-001: or they create their own, and become its admin.
     return (
-      <AccessMessage title={t('access.noWorkspaceTitle')} body={t('access.noWorkspace')}>
+      <AuthPage
+        wordmark={t('shell.wordmark')}
+        headline={t.rich('signIn.headline', { mark })}
+        points={[t('signup.points.define'), t('signup.points.rank'), t('signup.points.decide')]}
+        title={t('access.noWorkspaceTitle')}
+        lead={t('access.noWorkspace')}
+      >
         <CreateWorkspace
           focusOptions={HIRING_FOCUS.map((value) => ({
             value,
@@ -45,7 +60,7 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
             failed: t('signup.errors.failed'),
           }}
         />
-      </AccessMessage>
+      </AuthPage>
     );
   }
   // AIV-P2-039: a workspace waiting for approval, or not approved, shows only why, on every recruiter route.

@@ -1,16 +1,24 @@
 import { Button, Checkbox, Input, Label } from '@aivera/ui';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { AuthPage } from './AuthPage.tsx';
 
 type SignInFormLabels = {
+  wordmark: string;
+  headline: ReactNode;
+  points: readonly string[];
   title: string;
-  panelTitle: string;
-  panelBody: string;
+  lead: string;
   email: string;
+  emailPlaceholder: string;
   passwordNote: string;
   remember: string;
   signIn: string;
   forgotPassword: string;
   or: string;
   google: string;
+  newHere: string;
+  createWorkspace: string;
 };
 
 type SignInFormProps = {
@@ -25,46 +33,70 @@ type SignInFormProps = {
   google: boolean;
 };
 
-// The SignIn artboard: the promise on the left, the form on the right (stacked under 1024px). No company single
-// sign-on button until per-workspace federation ships (AIV-P1-057).
-export function SignInForm({ action, next, error, labels, google }: SignInFormProps) {
+const RESET_FORM = 'sign-in-reset';
+
+// The SignIn artboard (docs/01-design/artboards/SignIn.dc.html). Deviations: the password is typed on the tenant's
+// hosted page, so a note replaces the password field; no company single sign-on button until AIV-P1-057.
+export function SignInForm({ action, next, error, labels: l, google }: SignInFormProps) {
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-2">
-      <aside className="flex flex-col justify-center gap-3 border-b border-border bg-surface-subtle px-6 py-10 lg:border-e lg:border-b-0 lg:px-16">
-        <p className="font-display text-title tracking-tight text-text">{labels.panelTitle}</p>
-        <p className="max-w-md text-body text-text-2">{labels.panelBody}</p>
-      </aside>
-      <main className="mx-auto flex w-full max-w-sm flex-col justify-center gap-6 px-6 py-10">
-        <h1 className="font-display text-title tracking-tight">{labels.title}</h1>
-        {error && (
-          <p role="alert" className="text-body text-text">
-            {error}
+    <AuthPage wordmark={l.wordmark} headline={l.headline} points={l.points} title={l.title} lead={l.lead}>
+      {error && (
+        <p role="alert" className="text-body text-text">
+          {error}
+        </p>
+      )}
+      <form action={action} className="flex flex-col gap-4">
+        <input type="hidden" name="next" value={next} />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="sign-in-email">{l.email}</Label>
+          <Input
+            id="sign-in-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder={l.emailPlaceholder}
+            className="min-h-11"
+            aria-describedby="sign-in-password-note"
+          />
+          <p id="sign-in-password-note" className="text-meta text-text-2">
+            {l.passwordNote}
           </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Checkbox name="remember" label={l.remember} className="min-h-11" />
+          {/* Owned by its own form below, so Enter in the email field still presses "Sign in". It opens the tenant's
+              user flow, whose own "Forgot password?" runs the reset; the email is not sent. */}
+          <button
+            type="submit"
+            form={RESET_FORM}
+            name="method"
+            value="reset"
+            className="inline-flex min-h-11 cursor-pointer items-center text-body text-text underline decoration-1 underline-offset-3 hover:text-brand-hover"
+          >
+            {l.forgotPassword}
+          </button>
+        </div>
+        <Button type="submit" name="method" value="password" variant="primary" size="large">
+          {l.signIn}
+        </Button>
+        {google && (
+          <>
+            <p className="text-center text-meta text-text-2">{l.or}</p>
+            <Button type="submit" name="method" value="google" size="large">
+              {l.google}
+            </Button>
+          </>
         )}
-        <form action={action} className="flex flex-col gap-3">
-          <input type="hidden" name="next" value={next} />
-          <Label htmlFor="sign-in-email">{labels.email}</Label>
-          <Input id="sign-in-email" name="email" type="email" autoComplete="username" />
-          <p className="text-meta text-text-2">{labels.passwordNote}</p>
-          <Checkbox name="remember" label={labels.remember} />
-          {/* First submit button, so Enter in the email field signs in. */}
-          <Button type="submit" name="method" value="password" variant="primary">
-            {labels.signIn}
-          </Button>
-          {/* Opens the tenant's user flow, whose own "Forgot password?" runs the reset; the email is not sent. */}
-          <Button type="submit" name="method" value="reset" variant="ghost" className="self-start">
-            {labels.forgotPassword}
-          </Button>
-          {google && (
-            <>
-              <p className="text-center text-meta text-text-2">{labels.or}</p>
-              <Button type="submit" name="method" value="google">
-                {labels.google}
-              </Button>
-            </>
-          )}
-        </form>
-      </main>
-    </div>
+      </form>
+      <form id={RESET_FORM} action={action} hidden>
+        <input type="hidden" name="next" value={next} />
+      </form>
+      <p className="text-body text-text-2">
+        {l.newHere}{' '}
+        <Link href="/signup" className="font-semibold text-text underline decoration-1 underline-offset-3">
+          {l.createWorkspace}
+        </Link>
+      </p>
+    </AuthPage>
   );
 }

@@ -114,6 +114,7 @@ export function Gallery({ theme, onThemeChange, toastOpen, onToastOpenChange, ..
             <Button disabled>{sample.buttons.unavailable}</Button>
             <Button size="compact">{sample.buttons.compact}</Button>
             <Button size="touch">{sample.buttons.touch}</Button>
+            <Button size="large">{sample.buttons.large}</Button>
           </div>
         </Section>
 

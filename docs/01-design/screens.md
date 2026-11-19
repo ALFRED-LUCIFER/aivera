@@ -1,6 +1,6 @@
 # Screen map
 
-Every screen is an artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence". The artboard is the spec for layout and copy; [DESIGN.md](../../DESIGN.md) is the spec for tokens and components. Interactive states named in the artboard (preview, sent, done…) are the states the screen must implement.
+Every screen is an artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence", copied verbatim into [`artboards/`](artboards/) (with `canvas.json`, the canvas layout) so every agent, reviewer and Copilot can read it. Open the file before building or reviewing its screen (AGENTS.md section 4); deviations are listed in the component and the PR. The artboard is the spec for layout and copy; [DESIGN.md](../../DESIGN.md) is the spec for tokens and components. Interactive states named in the artboard (preview, sent, done…) are the states the screen must implement.
 
 | Artboard file                        | Title                                                   | Journey | Route (planned)                   |
 | ------------------------------------ | ------------------------------------------------------- | ------- | --------------------------------- |

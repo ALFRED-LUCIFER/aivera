@@ -59,6 +59,7 @@ export const sample = {
     unavailable: 'Unavailable',
     compact: 'Compact',
     touch: 'Touch',
+    large: 'Large',
   },
   controls: {
     name: 'Job title',

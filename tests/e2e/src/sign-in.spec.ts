@@ -93,12 +93,18 @@ test('Scenario: A refused sign-in adds nothing (explicit email_verified false)',
 // The password is typed on the tenant's page, never in the app, so "Password" is the note under the email field.
 test('Scenario: The page offers only the two ways in and the artboard copy', async ({ page }) => {
   await page.goto('/sign-in');
+  // The SignIn artboard: logo home link, headline with "evidence" under the highlighter, the three promises, the lead.
+  await expect(page.getByRole('link', { name: 'Aivera' })).toHaveAttribute('href', '/');
   await expect(page.getByText('Hire on evidence, not claims.')).toBeVisible();
-  await expect(
-    page.getByText(
-      'Every score cites the work it rests on. Claims are labelled as claims. Nobody is rejected automatically.',
-    ),
-  ).toBeVisible();
+  await expect(page.locator('mark', { hasText: 'evidence' })).toBeVisible();
+  for (const point of [
+    'Every score cites the work it rests on.',
+    'Claims are labelled as claims.',
+    'Nobody is rejected automatically.',
+  ])
+    await expect(page.getByRole('listitem').filter({ hasText: point })).toBeVisible();
+  await expect(page.getByText('Welcome back. Pick up where your roles left off.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create a workspace' })).toHaveAttribute('href', '/signup');
   await expect(page.getByRole('checkbox', { name: 'Keep me signed in' })).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
@@ -208,11 +214,13 @@ test('Scenario: The session lives only in a secure cookie', async ({ page, conte
 test('the sign-in form works from the keyboard', async ({ page }) => {
   await page.goto('/sign-in');
   for (const control of [
+    page.getByRole('link', { name: 'Aivera' }),
     page.getByLabel('Email'),
     page.getByRole('checkbox', { name: 'Keep me signed in' }),
-    page.getByRole('button', { name: 'Sign in', exact: true }),
     page.getByRole('button', { name: 'Forgot password?' }),
+    page.getByRole('button', { name: 'Sign in', exact: true }),
     page.getByRole('button', { name: 'Continue with Google' }),
+    page.getByRole('link', { name: 'Create a workspace' }),
   ]) {
     await page.keyboard.press('Tab');
     await expect(control).toBeFocused();
@@ -236,3 +244,13 @@ for (const theme of themes) {
     await expectNoAxeViolations(page);
   });
 }
+
+// AIV-P1-068: the ink panel stacks above the form at phone width, with no sideways scroll.
+test('the sign-in page stacks at phone width with no horizontal scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto('/sign-in');
+  const panel = await page.getByRole('complementary').boundingBox();
+  const form = await page.getByRole('main').boundingBox();
+  expect(panel && form && panel.y + panel.height <= form.y).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
