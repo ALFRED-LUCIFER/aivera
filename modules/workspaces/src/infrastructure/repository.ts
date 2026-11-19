@@ -91,7 +91,15 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
         .set({ role })
         .where(and(inWorkspace(workspaceId), eq(member.userId, userId)));
     },
+    async shareWorkspace(workspaceId) {
+      const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('key share');
+      return row ?? null;
+    },
     async lockWorkspace(workspaceId) {
+      const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('no key update');
+      return row ?? null;
+    },
+    async lockWorkspaceStatus(workspaceId) {
       const [row] = await tx.select().from(workspace).where(eq(workspace.id, workspaceId)).for('update');
       return row ?? null;
     },

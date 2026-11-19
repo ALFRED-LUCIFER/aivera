@@ -55,8 +55,7 @@ const platformLog = () =>
   admin.execute<{ action: string; actor_id: string; subject_id: string; note: string }>(
     sql`select action, actor_id, subject_id, note from audit.platform_entry order by occurred_at, action`,
   );
-const operatorEntries = async () =>
-  (await audit.listFor(gulf, { type: 'workspace', id: gulf })).filter((e) => e.actor.type === 'operator');
+const operatorEntries = () => audit.listOperatorEntries(gulf);
 const ranking = () =>
   asOmar(async (ctx) => ({
     jobs: (await jobs.listJobs(ctx)).map((j) => [j.id, j.title, j.stage]),

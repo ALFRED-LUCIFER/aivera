@@ -28,6 +28,21 @@ export function auditStore(tx: Tx): AuditStore {
         subjectId: subject.id,
       });
     },
+    async listOperatorEntries(workspaceId) {
+      const rows = await tx
+        .select()
+        .from(entry)
+        .where(
+          and(
+            eq(entry.workspaceId, workspaceId),
+            eq(entry.actorType, 'operator'),
+            eq(entry.subjectType, 'workspace'),
+            eq(entry.subjectId, workspaceId),
+          ),
+        )
+        .orderBy(asc(entry.occurredAt), asc(entry.seq));
+      return rows.map(toEntry);
+    },
     async listFor(workspaceId, subject) {
       const rows = await tx
         .select()

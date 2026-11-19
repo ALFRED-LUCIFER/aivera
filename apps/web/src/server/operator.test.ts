@@ -68,8 +68,8 @@ vi.mock('./env', async (actual) => {
 });
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({ getUser }) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
-const listFor = vi.fn();
-vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listFor }) }));
+const listOperatorEntries = vi.fn();
+vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries }) }));
 const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
 const pausePublicListings = vi.fn(async () => {});
 vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));
@@ -211,22 +211,21 @@ describe('applyStatusChange', () => {
 });
 
 describe('listOperatorActions', () => {
-  it("lists only the operator's entries of the workspace's own log, with the reason", async () => {
+  it("lists the operators' status changes from the workspace's own log, with the reason", async () => {
     session.mockResolvedValue(PIA);
     const at = new Date('2026-11-19T09:00:00Z');
-    listFor.mockResolvedValue([
-      { action: 'workspace.created', actor: { type: 'user', id: ALEX }, occurredAt: at, note: null },
+    listOperatorEntries.mockResolvedValue([
       { action: 'workspace.suspended', actor: { type: 'operator', id: PIA }, occurredAt: at, note: 'Pilot ended' },
     ]);
     expect(await listOperatorActions(GULF)).toEqual([
       { action: 'workspace.suspended', occurredAt: at, reason: 'Pilot ended' },
     ]);
-    expect(listFor).toHaveBeenCalledWith(GULF, { type: 'workspace', id: GULF });
+    expect(listOperatorEntries).toHaveBeenCalledWith(GULF);
   });
 
   it('refuses a non-operator before reading anything', async () => {
     session.mockResolvedValue(ALEX);
     await expect(listOperatorActions(GULF)).rejects.toThrow('403');
-    expect(listFor).not.toHaveBeenCalled();
+    expect(listOperatorEntries).not.toHaveBeenCalled();
   });
 });

@@ -10,7 +10,7 @@ const PIA = '0190d4a2-0000-7000-8000-00000000a001';
 function setup(status: WorkspaceStatus | null) {
   const writes: string[] = [];
   const store = {
-    lockWorkspace: async () => status && ({ id: W1, status } as Workspace),
+    lockWorkspaceStatus: async () => status && ({ id: W1, status } as Workspace),
     updateStatus: async (_w: string, to: WorkspaceStatus) => void writes.push(`status ${to}`),
     operatorAudit: async (_w: string, operatorId: string, entry: { action: string; note?: string }) =>
       void writes.push(`audit ${entry.action} by ${operatorId}: ${entry.note}`),

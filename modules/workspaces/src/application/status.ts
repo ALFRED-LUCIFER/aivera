@@ -23,7 +23,7 @@ export function statusUseCases<Tx>({ inWorkspace }: StatusPorts<Tx>) {
       if (reason.length < MIN_REASON_LENGTH) throw new WorkspaceError('reason_required');
       const { from, to, action } = STATUS_CHANGES[change];
       return inWorkspace(workspaceId, async (store, tx) => {
-        const workspace = await store.lockWorkspace(workspaceId);
+        const workspace = await store.lockWorkspaceStatus(workspaceId);
         if (!workspace) throw new WorkspaceError('not_found');
         // A second operator, or a stale page, may have changed it already: refuse rather than record a false "before".
         if (workspace.status !== from) throw new WorkspaceError('status_conflict');

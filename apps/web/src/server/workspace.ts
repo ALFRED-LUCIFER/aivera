@@ -42,7 +42,7 @@ export async function inActiveWorkspace<T>(fn: (ctx: WorkspaceContext) => Promis
 /**
  * Wraps a server action or route handler: validate the input with `input` (AGENTS.md 3.7), open the active workspace's
  * context, `authorize(action, resource)`, then run `handler`. A refusal renders the 403 page ("You do not have access
- * to this. Ask your workspace admin."). For a job-scoped action `resource` loads the job of the stored record through
+ * to this. Ask your workspace admin.", or "This workspace is paused." when the workspace is suspended, AIV-P2-037). For a job-scoped action `resource` loads the job of the stored record through
  * `ctx.tx`; it must never take the job id from the request, or a grant on one job would open another job's records.
  */
 export function workspaceAction<Input, Result>(

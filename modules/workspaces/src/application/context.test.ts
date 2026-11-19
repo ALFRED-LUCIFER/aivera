@@ -21,7 +21,7 @@ const useCases = (member: Member | null = null, status: WorkspaceStatus | null =
       work(
         {
           findMember: async () => member,
-          findWorkspace: async () => status && { id: W1, status },
+          shareWorkspace: async () => status && { id: W1, status },
           listGrants: async () => [],
           setJobScope: async () => {},
         } as unknown as WorkspaceStore,

@@ -48,7 +48,8 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
       return inWorkspace(workspaceId, async (store, tx) => {
         const member = await store.findMember(workspaceId, session.userId);
         if (member?.status !== 'active') throw new ForbiddenError();
-        const workspace = await store.findWorkspace(workspaceId);
+        // Held until commit, so a suspension cannot land in the middle of this request's work.
+        const workspace = await store.shareWorkspace(workspaceId);
         if (!workspace) throw new ForbiddenError();
         const scoped = JOB_SCOPED_ROLES.includes(member.role);
         await store.setJobScope(

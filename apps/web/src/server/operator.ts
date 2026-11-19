@@ -124,14 +124,14 @@ const isStatusAction = (action: string): action is StatusAction => STATUS_ACTION
 export type OperatorAction = { action: StatusAction; occurredAt: Date; reason: string | null };
 
 /**
- * The operator actions on a workspace, oldest first: the entries its own audit log holds with actor `operator`, read
- * inside withWorkspace(<it>) as the app role (ADR-012 points 6 and 8). Never a member's entry. Checks the policy too.
+ * The status changes operators made to a workspace, oldest first, from its own audit log (`listOperatorEntries`, read
+ * inside withWorkspace(<it>) as the app role, ADR-012 points 6 and 8). Never a member's entry. Checks the policy too.
  */
 export async function listOperatorActions(workspaceId: string): Promise<OperatorAction[]> {
   await platformOperator();
-  const entries = await getAudit().listFor(workspaceId, { type: 'workspace', id: workspaceId });
-  return entries.flatMap(({ actor, action, occurredAt, note }) =>
-    actor.type === 'operator' && isStatusAction(action) ? [{ action, occurredAt, reason: note }] : [],
+  const entries = await getAudit().listOperatorEntries(workspaceId);
+  return entries.flatMap(({ action, occurredAt, note }) =>
+    isStatusAction(action) ? [{ action, occurredAt, reason: note }] : [],
   );
 }
 

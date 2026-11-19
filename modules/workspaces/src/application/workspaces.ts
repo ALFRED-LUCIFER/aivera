@@ -18,6 +18,11 @@ export type WorkspaceStore = {
   /** False, with nothing written, when the user is already a member. */
   insertMember(member: Member): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
+  /**
+   * The workspace row under FOR KEY SHARE until commit: every request context holds it, so an operator's status change
+   * (which locks FOR UPDATE) waits for work in flight to finish, and work that starts later reads the new status.
+   */
+  shareWorkspace(workspaceId: string): Promise<Workspace | null>;
   /** Points the user's active workspace here (not workspace-owned; see the schema). */
   setActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
   findMember(workspaceId: string, userId: string): Promise<Member | null>;
@@ -25,8 +30,14 @@ export type WorkspaceStore = {
   /** Every member, locked until commit, so two concurrent role changes cannot both remove an admin. */
   lockMembers(workspaceId: string): Promise<Member[]>;
   updateRole(workspaceId: string, userId: string, role: Role): Promise<void>;
-  /** The workspace row, locked until commit, so a type change and an added client cannot interleave. */
+  /**
+   * The workspace row under FOR NO KEY UPDATE until commit, so a type change and an added client cannot interleave. Not
+   * FOR UPDATE: that would conflict with the KEY SHARE every request context holds, and two such requests would
+   * deadlock.
+   */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
+  /** The workspace row under FOR UPDATE until commit, for a status change: it waits for every request in flight. */
+  lockWorkspaceStatus(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
   updateStatus(workspaceId: string, status: WorkspaceStatus): Promise<void>;
   /** Deletes the workspace with its members, clients, job grants, active-workspace pointers and directory row. */
