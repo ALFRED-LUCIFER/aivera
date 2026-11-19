@@ -57,10 +57,15 @@ for (const theme of themes) {
   });
 }
 
-test('Scenario: Sign in on the home page opens Sign in', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('banner').getByRole('link', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/sign-in$/);
+// Scenario "Sign in on the home page opens Sign in" is website.spec.ts "Calls to action".
+
+// Scenario "Sign-in not configured": signUpRedirect sends /signup here (signIn.test.ts); the e2e server always has a
+// tenant, so this checks the page it lands on.
+test('the not-set-up page shows its message, not an error page', async ({ page }) => {
+  await page.goto('/sign-in?error=unavailable');
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Sign-in is not set up in this environment yet.' }),
+  ).toBeVisible();
 });
 
 test('Scenario Outline: A signed-in user not in any workspace opening /signup sees the create form', async ({

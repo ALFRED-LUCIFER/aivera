@@ -4,10 +4,9 @@ import {
   DESK,
   parseSignInForm,
   safeNext,
-  SIGN_UP_PARAMS,
   signInError,
   signInPath,
-  signUpStep,
+  signUpRedirect,
 } from './signIn';
 
 const form = (fields: Record<string, string>) => {
@@ -82,18 +81,14 @@ describe('sign-in form and request', () => {
   });
 });
 
-describe('signUpStep (AIV-P1-059)', () => {
+describe('signUpRedirect (AIV-P1-059)', () => {
   // SAFETY: mutation check: checked signedIn before configured -> the not-configured signed-in case failed
   it.each([
-    [false, false, 'unavailable'],
-    [false, true, 'unavailable'],
-    [true, true, 'desk'],
-    [true, false, 'tenant'],
-  ] as const)('configured %s, signed in %s: %s', (configured, signedIn, step) => {
-    expect(signUpStep(configured, signedIn)).toBe(step);
-  });
-
-  it('opens the sign-up page with no personal data', () => {
-    expect(SIGN_UP_PARAMS).toEqual({ prompt: 'create' });
+    [false, false, '/sign-in?error=unavailable'],
+    [false, true, '/sign-in?error=unavailable'],
+    [true, true, DESK],
+    [true, false, null],
+  ] as const)('configured %s, signed in %s: %s', (configured, signedIn, target) => {
+    expect(signUpRedirect(configured, signedIn)).toBe(target);
   });
 });

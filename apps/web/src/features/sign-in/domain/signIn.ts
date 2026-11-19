@@ -66,11 +66,14 @@ export function signInError(value: string | string[] | undefined): SignInError |
 
 /**
  * Where `/signup` sends a visitor (AIV-P1-059): with no tenant, the sign-in page's "not set up" message; signed in,
- * My desk (or the no-workspace page); otherwise the tenant's sign-up page, returning to My desk.
+ * My desk (or the no-workspace page); otherwise null: the tenant's sign-up page, returning to My desk.
  */
-export function signUpStep(configured: boolean, signedIn: boolean): 'unavailable' | 'desk' | 'tenant' {
-  if (!configured) return 'unavailable';
-  return signedIn ? 'desk' : 'tenant';
+export function signUpRedirect(
+  configured: boolean,
+  signedIn: boolean,
+): '/sign-in?error=unavailable' | typeof DESK | null {
+  if (!configured) return '/sign-in?error=unavailable';
+  return signedIn ? DESK : null;
 }
 
 // External ID opens its sign-up page for `prompt=create`; a tenant that ignores it shows the same user flow, which
