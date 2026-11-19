@@ -62,6 +62,8 @@ export function AppShell({
     document.addEventListener('keydown', close);
     return () => document.removeEventListener('keydown', close);
   }, [navOpen, onCloseNav]);
+  const foot = screens.filter((screen) => 'foot' in screen);
+  const sections = screens.filter((screen) => !('foot' in screen));
   const activeLabel = activeId ? t(`nav.${activeId}`) : t('nav.label');
   return (
     // Under 1024px the grid falls away: header, then the opened menu, then the page stack in one column.
@@ -144,7 +146,7 @@ export function AppShell({
           {t('wordmark')}
         </Link>
         <ul ref={listRef} className="flex flex-col gap-0.5">
-          {screens.map(({ id, path }) => (
+          {sections.map(({ id, path }) => (
             <li key={id}>
               <Link
                 href={path}
@@ -164,6 +166,17 @@ export function AppShell({
           ))}
         </ul>
         <div className="mt-auto border-t border-border pt-3">
+          {foot.map(({ id, path }) => (
+            <Link
+              key={id}
+              href={path}
+              onClick={onCloseNav}
+              aria-current={id === activeId ? 'page' : undefined}
+              className={navLink}
+            >
+              {t(`nav.${id}`)}
+            </Link>
+          ))}
           <Link href="/" className={navLink}>
             {t('nav.website')}
           </Link>

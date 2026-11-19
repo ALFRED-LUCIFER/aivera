@@ -9,6 +9,8 @@ export type Screen = {
   capability: Capability;
   /** A feature flag that must be on, or null. */
   flag: string | null;
+  /** Linked from the foot of the sidebar instead of the section list. */
+  foot?: true;
 };
 
 // Every section is a placeholder page until its screen ticket replaces it (docs/01-design/screens.md).
@@ -21,6 +23,8 @@ export const navigation = [
   { id: 'interviews', path: '/app/interviews', capability: 'recruiter', flag: null },
   { id: 'packs', path: '/app/packs', capability: 'recruiter', flag: null },
   { id: 'value', path: '/app/value', capability: 'recruiter', flag: null },
+  // AIV-P1-052: every recruiter reads; only an admin saves.
+  { id: 'settings', path: '/app/settings', capability: 'recruiter', flag: null, foot: true },
 ] as const satisfies readonly Screen[];
 
 export type NavigationEntry = (typeof navigation)[number];

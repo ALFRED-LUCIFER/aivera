@@ -312,6 +312,7 @@
       "interviews": "Interviews",
       "packs": "Decision packs",
       "value": "Value dashboard",
+      "settings": "Settings",
       "website": "Aivera website"
     },
     "search": "Search roles, candidates and evidence",
@@ -839,6 +840,80 @@
         "doneOn": "Approval is on.",
         "doneOff": "Approval is off.",
         "hint": "At least 10 characters. Recorded in the platform audit log."
+      }
+    }
+  },
+  "settings": {
+    "intro": "Timings and limits Aivera uses in this workspace.",
+    "readOnly": "Only an admin can change these settings",
+    "loading": "Loading settings",
+    "save": "Save settings",
+    "saving": "Saving settings",
+    "saved": "Settings saved. New links, invitations and sessions use them; existing ones keep their expiry.",
+    "failed": "Settings were not saved. Try again.",
+    "range": "Enter a number from {min} to {max}",
+    "hint": {
+      "days": "{min} to {max} days",
+      "hours": "{min} to {max} hours",
+      "times": "{min} to {max} times",
+      "percent": "{min} to {max}%"
+    },
+    "default": "Default: {value}",
+    "defaultOff": "Default: off",
+    "useDefault": "Use default",
+    "useDefaultFor": "Use default for {label}",
+    "groups": {
+      "sharing": "Sharing and invitations",
+      "signIn": "Sign-in",
+      "candidates": "Candidates and evidence",
+      "interviews": "Interviews",
+      "value": "Value dashboard",
+      "feedback": "Candidate feedback"
+    },
+    "fields": {
+      "clientShareLinkDays": {
+        "label": "Client shortlist link lasts",
+        "help": "How long a shortlist link you send a client keeps working."
+      },
+      "invitationDays": {
+        "label": "Team invitations last",
+        "help": "How long an invitation to join this workspace can be accepted."
+      },
+      "sessionIdleHours": {
+        "label": "Sign out after inactivity",
+        "help": "Sign a recruiter out when they have done nothing for this long. At most 12 hours."
+      },
+      "sessionMaxDays": {
+        "label": "“Keep me signed in” lasts",
+        "help": "How long a recruiter who chose “Keep me signed in” stays signed in. At most 30 days."
+      },
+      "mergeUndoDays": {
+        "label": "Undo a candidate merge for",
+        "help": "How long a merge of two candidate records can be undone."
+      },
+      "evidenceFollowUpAfterDays": {
+        "label": "Follow up evidence requests after",
+        "help": "When to remind a candidate who has not answered an evidence request."
+      },
+      "evidenceFollowUpMax": {
+        "label": "Follow up at most",
+        "help": "How many reminders a candidate gets for one evidence request."
+      },
+      "evidencePortalLinkDays": {
+        "label": "Candidate upload link lasts",
+        "help": "How long a candidate's evidence upload link keeps working."
+      },
+      "scorecardReminderMax": {
+        "label": "Remind about an overdue scorecard at most",
+        "help": "How many reminders an interviewer gets for a scorecard that is late."
+      },
+      "pilotPassLinePercent": {
+        "label": "Pilot pass line (% of your baseline)",
+        "help": "The pilot passes when interviews per completed hire are at or below this share of your baseline."
+      },
+      "candidateFeedbackEnabled": {
+        "label": "Tell candidates which competencies fell short when they are not taken forward",
+        "help": "Applies to Aivera Plus members. A person still makes every decision."
       }
     }
   }

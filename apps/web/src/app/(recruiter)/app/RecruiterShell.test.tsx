@@ -185,6 +185,7 @@ describe('Recruiter app shell', () => {
       'Interviews',
       'Decision packs',
       'Value dashboard',
+      'Settings',
       'Aivera website',
     ]);
     expect(screen.getByRole('main').textContent).toBe('Page body');
