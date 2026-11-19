@@ -66,7 +66,7 @@ In the Microsoft Entra admin center, switch to the `aiveradev` external tenant.
 1. **External Identities → User flows → New user flow.** Name `candidate-signup-signin`.
 2. Identity providers: **Email with password** (not one-time passcode) and **Google** (the tenant's existing Google provider). Email accounts with password verify the email with a one-time code at sign-up, so no account exists before the email is verified.
 3. User attributes: **Display Name**. Create.
-4. Open the new flow → **Applications → Add application** → `aivera-candidates-dev`. Link it to the candidate app only; the recruiter app keeps `recruiter-signup-signin`.
+4. Open the new flow → **Applications → Add application** → `aivera-candidates-dev`. Link it to the candidate app only; the recruiter app keeps `recruiter-signup-signin-v2` (replaced `recruiter-signup-signin` on 19 Nov 2026).
 
 ### 4. Give the web app the candidate settings
 

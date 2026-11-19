@@ -32,8 +32,8 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
   await desk(page);
 });
 
-// Email one-time code and Microsoft accounts are not offered: the recruiter user flow has email with password and
-// Google only (owner decision on #241; docs/runbooks/recruiter-sign-in.md).
+// Email one-time code and Microsoft accounts are not offered: email with password on the tenant and Google directly
+// (owner decision on #241, AIV-P0-928; docs/runbooks/recruiter-sign-in.md).
 // SAFETY: mutation check: sent "Continue with Google" to the tenant (signIn('entra')) in startSignIn -> this test failed
 test('Scenario: On a shared computer Google always shows the account chooser', async ({ page }) => {
   await page.goto('/sign-in');

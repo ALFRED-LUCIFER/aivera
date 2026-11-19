@@ -58,7 +58,7 @@ Azure dev also sets `AUTH_URL` to the app's public origin (built from the enviro
 
 ## Owner checks (AIV-P1-002)
 
-The password page, its lockout and password reset belong to the tenant, so they are checked by hand on the dev tenant's `recruiter-signup-signin` user flow, not by the app's tests. Record each result with its date.
+The password page, its lockout and password reset belong to the tenant, so they are checked by hand on the dev tenant's `recruiter-signup-signin-v2` user flow, not by the app's tests. Record each result with its date.
 
 | Check                                                                                                                                                         | Result and date |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
@@ -70,7 +70,7 @@ The password page, its lockout and password reset belong to the tenant, so they 
 
 ## Microsoft accounts
 
-**Microsoft accounts are not built-in providers in External ID.** The built-in providers are email (password or one-time passcode), Google, Facebook and Apple ([identity providers](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers), read 18 Nov 2026). The owner confirmed in the portal that `recruiter-signup-signin` offers only Google to add. "Continue with Microsoft" is therefore not shown.
+**Microsoft accounts are not built-in providers in External ID.** The built-in providers are email (password or one-time passcode), Google, Facebook and Apple ([identity providers](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers), read 18 Nov 2026). The owner confirmed in the portal that the recruiter user flow offers only Google to add. "Continue with Microsoft" is therefore not shown.
 
 - **Personal accounts:** AIV-P1-058 (#243) covers them, as a [custom OIDC provider](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-oidc-federation-customers) on the fixed consumers issuer `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`. Medium confidence that this setup works.
 - **Work accounts from any company tenant:** these cannot be one provider. A custom provider needs one fixed issuer, and the multi-tenant endpoint issues per-tenant issuers. Each company tenant is its own federation, which is the company SSO of AIV-P1-057. Medium confidence: this is inferred from the fixed-issuer rule.
