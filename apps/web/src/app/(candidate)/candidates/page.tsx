@@ -1,6 +1,7 @@
 import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@aivera/i18n';
 import { log } from '@aivera/observability';
 import { newJobs } from '@/features/candidate-home/domain/new-jobs.ts';
+import { PLUS_MONTHLY_PRICE } from '@/features/candidate-shell/domain/plus.ts';
 import { postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';
 import { getPublicJobs } from '@/server/publicJobs';
 import { HomeView } from './HomeView.tsx';
@@ -40,8 +41,7 @@ export default async function CandidateHome() {
           postedDays: postedDaysAgo(postedAt, now),
         }))
       }
-      // shortcut: the Plus price (PRODUCT.md) as a literal until Plans and billing own it (AIV-P4-003).
-      plusPrice={t('money.monthly', { amount: formatMoney({ amountMinor: 4900, currency: 'AED' }, defaultLocale) })}
+      plusPrice={t('money.monthly', { amount: formatMoney(PLUS_MONTHLY_PRICE, defaultLocale) })}
     />
   );
 }

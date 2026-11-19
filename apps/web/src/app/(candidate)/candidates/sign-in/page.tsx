@@ -20,7 +20,14 @@ export default async function CandidateSignInPage({ searchParams }: PageProps<'/
       action={startCandidateSignIn}
       next={candidateSafeNext(next)}
       error={errorKey && t(`signIn.errors.${errorKey}`)}
-      labels={{ title: t('signIn.title'), signIn: t('signIn.signIn'), or: t('signIn.or'), google: t('signIn.google') }}
+      labels={{
+        title: t('signIn.title'),
+        signIn: t('signIn.signIn'),
+        or: t('signIn.or'),
+        google: t('signIn.google'),
+        noAccount: t('candidate.signIn.noAccount'),
+        createAccount: t('candidate.signIn.createAccount'),
+      }}
     />
   );
 }

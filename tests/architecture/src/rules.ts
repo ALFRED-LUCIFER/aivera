@@ -30,6 +30,11 @@ const CANDIDATE_SITE = /[/\\]src[/\\](?:app[/\\]\(candidate\)|features[/\\]candi
 // `@/…` or a relative path resolved to src/: the session readers (server/auth, server/workspace) and the recruiter shell.
 const RECRUITER_SESSION =
   /^(?:next-auth|@auth\/)|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell(?:[/\\]|$))/;
+// AIV-P3-007, ADR-009: the candidate account and session reach only the candidate site, its server readers
+// (src/server/candidate*), and the roots that wire them (the proxy, instrumentation, the candidate Auth.js route).
+const CANDIDATE_DATA = /^@aivera\/candidate-accounts(?:\/|$)|(?:^@|[/\\]src)[/\\]server[/\\]candidate[^/\\.]*/;
+const CANDIDATE_DATA_READERS =
+  /[/\\]src[/\\](?:app[/\\]\(candidate\)[/\\]|features[/\\]candidate-[^/\\]+[/\\]|server[/\\]candidate[^/\\]*$|app[/\\]api[/\\]candidate-auth[/\\]|proxy\.ts$|instrumentation\.ts$)/;
 // AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.
 const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
 const PUBLIC_API_ALLOWED = new Set(['@aivera/jobs', '@/server/publicJobs']);
@@ -152,6 +157,16 @@ export function findViolations(root: string): Violation[] {
           RECRUITER_SESSION.test(spec.startsWith('.') ? resolve(dirname(file), spec) : spec)
         )
           add('candidate-site-no-recruiter-session', 'the candidate site never reads the recruiter session (ADR-009)');
+        if (
+          kind === 'apps' &&
+          /[/\\]src[/\\]/.test(file) &&
+          !CANDIDATE_DATA_READERS.test(file) &&
+          CANDIDATE_DATA.test(spec.startsWith('.') ? resolve(dirname(file), spec) : spec)
+        )
+          add(
+            'recruiter-app-no-candidate-data',
+            'only the candidate site reads candidate accounts and sessions (ADR-009)',
+          );
         if (
           kind === 'apps' &&
           PUBLIC_API.test(file) &&

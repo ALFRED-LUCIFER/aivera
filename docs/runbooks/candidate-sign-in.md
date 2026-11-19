@@ -25,6 +25,7 @@ The owner fills this table in while following the steps.
 - `/candidates/sign-in` has "Sign in" and "Continue with Google". Both open the candidate user flow, where the email and password, or Google, are entered on the tenant's own page. There is no email field and **no `login_hint`**: the candidate's email never goes into a URL (AGENTS.md 1.2). There is no "Email me a code" (one email method per user flow) and no "Continue with Microsoft" (AIV-P1-058, #243).
 - The ID token goes through the same `upsertUserFromIdToken` as recruiters. The candidate app has the same issuer but its own subject per user, so a verified email that already signs in as a recruiter joins that same user. There is no candidate user table; the candidate's own data comes with `@aivera/candidate-accounts` (AIV-P3-006).
 - `identity` exposes nothing that tells recruiter-side code whether a user has a candidate session or account.
+- `/candidates/signup` (AIV-P3-007): signed out, "Create free account" and "Continue with Google" start the same candidate user flow and return to `/candidates/signup`. Signed in, the page asks only for full name and kind of work (`@aivera/candidate-accounts` `signUp`), then goes to `/candidates/me`. `/candidates/me` sends a signed-in person who has not done that to `/candidates/signup`. "Sign out" in the candidate header clears only `__Host-aivera-candidate`.
 
 ## Settings
 
@@ -78,7 +79,7 @@ Run these on Azure dev with synthetic `@example.com` addresses only, and fill in
 
 | Check                                                                                                                                        | Result (date) |
 | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| "Sign in" on `/candidates/sign-in`, sign up with email and password: lands on `/candidates/me`, header shows "My applications"               |               |
+| "Sign in" on `/candidates/sign-in`, sign up with email and password: lands on `/candidates/signup`, then `/candidates/me` after the profile  |               |
 | "Continue with Google": lands on `/candidates/me`                                                                                            |               |
 | The request to the tenant has no `login_hint` and no email (browser network tab)                                                             |               |
 | Signed in as a candidate only, `/app` redirects to `/sign-in`; no `__Host-aivera-session` cookie                                             |               |
@@ -86,6 +87,9 @@ Run these on Azure dev with synthetic `@example.com` addresses only, and fill in
 | A recruiter's email signing in as a candidate: still one row in `identity.user` for that email                                               |               |
 | Sign-up with an 8-character password on the tenant's page is refused with the tenant's own message. Minimum length the tenant enforces: \_\_ |               |
 | Sign-up without completing email verification: no account is created and the app is never reached                                            |               |
+| AIV-P3-007: sign-up with an email without "@" is refused with the tenant's own message                                                       |               |
+| AIV-P3-007: sign-up with an email that already has an account is refused, and the message does not name the recruiter app                    |               |
+| AIV-P3-007: a new sign-up returns to `/candidates/signup` asking only for full name and kind of work, then lands on `/candidates/me`         |               |
 
 ## Local
 

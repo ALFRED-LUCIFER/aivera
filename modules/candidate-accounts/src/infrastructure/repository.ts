@@ -1,5 +1,5 @@
 import type { Tx } from '@aivera/db/client';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull, or } from 'drizzle-orm';
 import type { AccountStore } from '../application/accounts.ts';
 import { account, consent, profile, workspaceLink } from './schema.ts';
 
@@ -31,6 +31,15 @@ export function accountStore(tx: Tx): AccountStore {
         .leftJoin(profile, eq(profile.accountId, account.identityUserId))
         .where(eq(account.identityUserId, accountId));
       return row ?? null;
+    },
+    async setSignUp(accountId, { fullName, workType }, now) {
+      const updated = await tx
+        .update(account)
+        .set({ fullName, workType, updatedAt: now })
+        // The negation of isSignedUp (domain/account.ts), so the page, the action and this guard agree.
+        .where(and(eq(account.identityUserId, accountId), or(isNull(account.fullName), isNull(account.workType))))
+        .returning({ id: account.identityUserId });
+      return updated.length === 1;
     },
     async insertConsent(values) {
       await tx.insert(consent).values(values);

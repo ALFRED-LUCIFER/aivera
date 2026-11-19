@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@aivera/audit": "workspace:*",
+    "@aivera/candidate-accounts": "workspace:*",
     "@aivera/config": "workspace:*",
     "@aivera/db": "workspace:*",
     "@aivera/identity": "workspace:*",
