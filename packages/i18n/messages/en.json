@@ -660,6 +660,7 @@
       "workspaces": "Workspaces",
       "approvals": "Approvals",
       "catalogue": "Catalogue",
+      "audit": "Audit log",
       "requests": "Requests",
       "subscriptions": "Subscriptions",
       "deletions": "Deletions"
@@ -860,6 +861,64 @@
         "doneOn": "Approval is on.",
         "doneOff": "Approval is off.",
         "hint": "At least 10 characters. Recorded in the platform audit log."
+      }
+    },
+    "audit": {
+      "title": "Audit log",
+      "description": "Every operator action on the platform, newest first: who did what, to which record, and why.",
+      "caption": "Platform audit log",
+      "filters": "Filter the audit log",
+      "action": "Action",
+      "anyAction": "Any action",
+      "operator": "Operator",
+      "anyOperator": "Any operator",
+      "target": "Target id",
+      "from": "From (UTC)",
+      "to": "To (UTC)",
+      "apply": "Apply filters",
+      "clear": "Clear filters",
+      "columns": {
+        "time": "Time",
+        "operator": "Operator",
+        "action": "Action",
+        "target": "Target",
+        "reason": "Reason",
+        "change": "Before → after"
+      },
+      "time": "{time} (UTC)",
+      "noName": "Name not set",
+      "none": "None",
+      "workspace": "Workspace {id}",
+      "change": "{field}: {before} → {after}",
+      "values": {
+        "dailyTokenBudget": "Daily AI budget",
+        "status": "Status",
+        "approvalRequired": "Approval required",
+        "on": "On",
+        "off": "Off",
+        "count": "{count, number}"
+      },
+      "empty": "No operator actions yet.",
+      "noMatch": "No entries match these filters.",
+      "loading": "Loading the audit log…",
+      "error": "We could not load the audit log. Try again.",
+      "retry": "Try again",
+      "next": "Next page",
+      "actionNames": {
+        "ops": {
+          "console_opened": "Console opened",
+          "workspace_viewed": "Workspace opened",
+          "approval_mode_changed": "Approval mode changed"
+        },
+        "ai_budget": {
+          "changed": "Daily AI budget changed"
+        },
+        "workspace": {
+          "suspended": "Suspended",
+          "reactivated": "Reactivated",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        }
       }
     }
   },

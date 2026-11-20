@@ -75,6 +75,14 @@ const icons: Record<OpsSection | 'home', ReactNode> = {
       <path d="M5 16a3.5 3.5 0 0 1 3.5-3.5H19M9 8h6" />
     </>
   ),
+  // A list with a clock: who did what, when.
+  audit: (
+    <>
+      <path d="M4.5 6h9M4.5 10.5h6M4.5 15h4.5" />
+      <circle cx="16.5" cy="15.5" r="4" />
+      <path d="M16.5 13.5v2l1.3 1.3" />
+    </>
+  ),
   requests: <path d="M4 6.5h16v10H9l-5 3.5zM8 10.5h8M8 13.5h5" />,
   subscriptions: (
     <>
