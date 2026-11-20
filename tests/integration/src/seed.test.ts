@@ -272,6 +272,8 @@ describe('Scenario: Seeding a fresh database', () => {
         sql`select action from audit.entry where workspace_id = ${workspaceId} order by seq desc limit 1`,
       );
       expect(last?.action).toBe('workspace.purged');
+      // The outbox keeps them too (ids only; aivera_app cannot delete events): consumers accept a person that is gone (AIV-P0-015).
+      expect(await left('candidates.outbox')).toBe(23);
       expect(await realRows()).toBe(1);
     });
 

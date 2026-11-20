@@ -38,6 +38,15 @@ const GLOBAL_TABLES: Record<string, string> = {
 const PUBLIC_READ: Record<string, { name: string; qual: string }> = {
   'jobs.public_job': { name: 'public_job_public_read', qual: "(CURRENT_USER = 'aivera_public'::name)" },
 };
+/**
+ * The one platform reader (ADR-005 point 4, AIV-P0-014): the outbox relay's policies, on `<schema>.outbox` tables only
+ * and for the role aivera_relay only, which has no grant on any other table (tests/integration/src/outbox.test.ts).
+ */
+const isRelayPolicy = (p: { table: string; name: string; cmd: string; roles: string[] }) =>
+  p.table.endsWith('.outbox') &&
+  ((p.name === 'outbox_relay_read' && p.cmd === 'SELECT') || (p.name === 'outbox_relay_mark' && p.cmd === 'UPDATE')) &&
+  p.roles.join() === 'aivera_relay';
+
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
 /**
@@ -148,7 +157,7 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
     const isPublicRead = (p: Policy) =>
       PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
-    for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p)))
+    for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p)))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with ${setting}`);
   }
   return violations;
@@ -302,15 +311,16 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // The migrator too: a view or function it owns would otherwise read across workspaces.
   // SAFETY: mutation check: ALTER ROLE aivera_migrator BYPASSRLS -> this test failed
   // SAFETY: mutation check: ALTER ROLE aivera_public BYPASSRLS -> this test failed (aivera_app can switch to it)
-  it('aivera_app, aivera_migrator and aivera_public are neither superuser nor BYPASSRLS', async () => {
+  it('aivera_app, aivera_migrator, aivera_public and aivera_relay are neither superuser nor BYPASSRLS', async () => {
     const roles = await admin.execute<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
-      sql`select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('aivera_app', 'aivera_migrator', 'aivera_public')
-        order by rolname`,
+      sql`select rolname, rolsuper, rolbypassrls from pg_roles
+        where rolname in ('aivera_app', 'aivera_migrator', 'aivera_public', 'aivera_relay') order by rolname`,
     );
     expect([...roles]).toEqual([
       { rolname: 'aivera_app', rolsuper: false, rolbypassrls: false },
       { rolname: 'aivera_migrator', rolsuper: false, rolbypassrls: false },
       { rolname: 'aivera_public', rolsuper: false, rolbypassrls: false },
+      { rolname: 'aivera_relay', rolsuper: false, rolbypassrls: false },
     ]);
   });
 });
@@ -327,6 +337,19 @@ describe('Scenario: A new table without RLS fails the build', () => {
         'jobs.note: row-level security not enabled',
         'jobs.note: row-level security not forced',
         "jobs.note: no policy comparing workspace_id with current_setting('app.workspace_id')",
+      ]);
+      throw new Rollback();
+    });
+    await expect(probe).rejects.toBeInstanceOf(Rollback);
+  });
+
+  // SAFETY: mutation check: isRelayPolicy without its role check -> this test failed (the public policy passed)
+  it("the outbox relay's policy exception holds only for the aivera_relay role", async () => {
+    const probe = admin.transaction(async (tx) => {
+      await tx.execute(sql`drop policy outbox_relay_read on candidates.outbox`);
+      await tx.execute(sql`create policy outbox_relay_read on candidates.outbox for select to public using (true)`);
+      expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidates.outbox:'))).toEqual([
+        'candidates.outbox: permissive policy outbox_relay_read does not compare with app.workspace_id',
       ]);
       throw new Rollback();
     });
@@ -405,14 +428,15 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
         name,
       ).toEqual([w1.workspaceId]);
 
-      // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only).
+      // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only; the app
+      // cannot mark an outbox event, AIV-P0-014).
       const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
         (result) => result.count,
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
-      expect(name === 'audit.entry' ? [0, '42501'] : [0], name).toContain(updated);
+      expect(name === 'audit.entry' || name.endsWith('.outbox') ? [0, '42501'] : [0], name).toContain(updated);
     }
   });
 });

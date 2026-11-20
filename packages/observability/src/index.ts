@@ -1,4 +1,4 @@
-import { trace, type Attributes } from '@opentelemetry/api';
+import { metrics, trace, type Attributes } from '@opentelemetry/api';
 import { logs, type LogAttributes } from '@opentelemetry/api-logs';
 import pino from 'pino';
 import { redact } from './redact.ts';
@@ -9,7 +9,7 @@ import { redact } from './redact.ts';
 // Outbox and worker trace continuation (AIV-P0-014, AIV-P0-015): the outbox row stores the W3C `traceparent` of the
 // active span as the envelope's `correlationId` (`propagation.inject`), and the relay and the worker handler start their
 // spans with it as parent (`propagation.extract`), so one operation id runs from the server action to the worker.
-// shortcut: the contract only; the outbox (#46) and worker (#47) tickets implement and test it.
+// The outbox half is built in packages/db (outbox.ts, relay.ts); the worker handler half is AIV-P0-015 (#47).
 
 export { registerPersonalDataKeys } from './redact.ts';
 
@@ -66,6 +66,9 @@ export function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
     }
   });
 }
+
+/** Metrics instruments (a no-op until `initTelemetry`). Attributes are opaque ids, never personal data. */
+export const meter = metrics.getMeter('aivera');
 
 /** Adds opaque ids (`workspace.id`, never an email) to the active span. */
 export const annotateSpan = (attributes: Attributes): void => void trace.getActiveSpan()?.setAttributes(attributes);

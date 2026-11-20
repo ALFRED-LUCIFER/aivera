@@ -1,9 +1,11 @@
 // Builds the candidates module for an app (ADR-002: only apps import this).
+import { enqueue } from '@aivera/db/outbox';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import type { WorkspacesContract } from '@aivera/workspaces';
 import { peopleUseCases } from './application/people.ts';
-import type { CandidatesContract } from './contracts/index.ts';
+import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
 import { candidateStore } from './infrastructure/repository.ts';
+import { outbox } from './infrastructure/schema.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -15,6 +17,13 @@ export function createCandidates(
 ): CandidatesContract {
   return peopleUseCases({
     storeFor: candidateStore,
+    publishPersonCreated: (tx, person) =>
+      enqueue(tx, outbox, PersonCreatedV1, {
+        workspaceId: person.workspaceId,
+        payload: { personId: person.id },
+        dedupeKey: `person:${person.id}`,
+        occurredAt: person.createdAt,
+      }),
     authorize: (ctx, action) => workspaces.authorize(ctx, action),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),

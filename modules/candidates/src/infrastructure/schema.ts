@@ -1,3 +1,4 @@
+import { outboxTable } from '@aivera/db/outbox';
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import {
@@ -67,3 +68,6 @@ export const personIdentifier = candidates
     ],
   )
   .enableRLS();
+
+// Events written in the same transaction as the change; the relay sends them to Service Bus (AIV-P0-014).
+export const outbox = outboxTable(candidates);

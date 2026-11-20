@@ -100,6 +100,15 @@ module web 'modules/web.bicep' = {
   }
 }
 
+// Service Bus and the outbox relay's identity (AIV-P0-014). The worker Container App that runs the relay: AIV-P0-015.
+module messaging 'modules/messaging.bicep' = {
+  name: 'aivera-messaging'
+  params: {
+    location: location
+    tags: tags
+  }
+}
+
 module alerts 'modules/alerts.bicep' = {
   name: 'aivera-alerts'
   params: {
@@ -123,4 +132,6 @@ output appIdentityClientId string = foundation.outputs.appIdentityClientId
 output cicdIdentityClientId string = foundation.outputs.cicdIdentityClientId
 output keyVaultName string = foundation.outputs.keyVaultName
 output aiResourceName string = ai.outputs.resourceName
+output relayIdentityClientId string = messaging.outputs.relayIdentityClientId
+output serviceBusNamespace string = messaging.outputs.serviceBusNamespace
 output aiEvalIdentityClientId string = foundation.outputs.aiEvalIdentityClientId

@@ -4,7 +4,7 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import { InMemoryLogRecordExporter, LoggerProvider, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { annotateSpan, log, withSpan } from './index';
+import { annotateSpan, log, withSpan } from './index.ts';
 
 const spans = new InMemorySpanExporter();
 const records = new InMemoryLogRecordExporter();
