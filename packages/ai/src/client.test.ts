@@ -292,7 +292,7 @@ describe('Scenario: Workspace budget', () => {
     expect(calls).toHaveLength(1);
 
     await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(BudgetExceeded);
-    await expect(ai.embed({ task: 'evidence.embed', workspaceId, value: 'x' })).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(ai.embed({ task: 'search.embed', workspaceId, value: 'x' })).rejects.toBeInstanceOf(BudgetExceeded);
     expect(calls).toHaveLength(1);
     expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.outcome': 'budget_exceeded' });
 
@@ -348,7 +348,7 @@ describe('Scenario: Workspace budget', () => {
 describe('embed', () => {
   it('the fake returns the same 3072-dimension vector for the same text', async () => {
     const { ai, calls } = setup();
-    const input = { task: 'evidence.embed', workspaceId, value: 'Built a streaming ingestion job.' } as const;
+    const input = { task: 'search.embed', workspaceId, value: 'Built a streaming ingestion job.' } as const;
     const [a, b] = [await ai.embed(input), await ai.embed(input)];
     expect(a.embedding).toHaveLength(3072);
     expect(a).toEqual(b);
