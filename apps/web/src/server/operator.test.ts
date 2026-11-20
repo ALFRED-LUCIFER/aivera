@@ -5,6 +5,7 @@ import {
   getWorkspaceFacts,
   isPlatformOperator,
   listOperatorActions,
+  listPlatformAudit,
   listWorkspaceFacts,
   platformOperator,
   setWorkspaceAiBudget,
@@ -69,7 +70,8 @@ vi.mock('./env', async (actual) => {
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({ getUser }) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
 const listOperatorEntries = vi.fn();
-vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries }) }));
+const listPlatformEntries = vi.fn();
+vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries, listPlatformEntries }) }));
 const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
 const pausePublicListings = vi.fn(async () => {});
 vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));
@@ -230,6 +232,59 @@ describe('listOperatorActions', () => {
     session.mockResolvedValue(ALEX);
     await expect(listOperatorActions(GULF)).rejects.toThrow('403');
     expect(listOperatorEntries).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-054: the platform audit log page's read.
+const NAMELESS = '0190d4a2-0000-7000-8000-00000000a004';
+const entry = (id: string, actorId: string) => ({
+  id,
+  occurredAt: new Date('2026-11-20T09:30:00Z'),
+  actorId,
+  action: 'workspace.suspended',
+  subject: { type: 'workspace', id: GULF },
+  note: 'Pilot ended on 30 Nov 2026',
+  before: { status: 'active' },
+  after: { status: 'suspended' },
+});
+
+describe('listPlatformAudit (AIV-P2-054)', () => {
+  it('names each operator by display name only, never an email, and lists the operators in the log for the filter', async () => {
+    session.mockResolvedValue(THEO);
+    const filtered = { entries: [entry('0190d4a2-0000-7000-8000-0000000000e1', PIA)], nextCursor: null };
+    listPlatformEntries.mockImplementation(async (query: { actorId?: string }) =>
+      query.actorId ? filtered : { entries: [entry('e2', THEO), entry('e3', NAMELESS)], nextCursor: null },
+    );
+    getUser.mockImplementation(async (id: string) =>
+      id === NAMELESS
+        ? { id, email: 'nameless@example.com', displayName: null, createdAt: new Date('2026-11-19T00:00:00Z') }
+        : (users[id] ?? null),
+    );
+    const result = await listPlatformAudit({ actorId: PIA });
+    expect(listPlatformEntries).toHaveBeenCalledWith({ actorId: PIA });
+    expect(result.rows).toEqual([{ ...filtered.entries[0], operatorName: 'Pia Platform' }]);
+    expect(result.nextCursor).toBeNull();
+    // Sorted by name; the operator with no display name is not offered (an id is not a name), and no email anywhere.
+    expect(result.operators).toEqual([
+      { id: PIA, name: 'Pia Platform' },
+      { id: THEO, name: 'Theo Platform' },
+    ]);
+    expect(JSON.stringify(result)).not.toContain('@example.com');
+  });
+
+  it('scans at most 10 pages of the log for the operator filter', async () => {
+    session.mockResolvedValue(THEO);
+    listPlatformEntries.mockResolvedValue({ entries: [entry('e1', PIA)], nextCursor: 'more' });
+    await listPlatformAudit({});
+    // One read for the page, ten for the filter's operators.
+    expect(listPlatformEntries).toHaveBeenCalledTimes(11);
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from listPlatformAudit -> this test failed (resolved)
+  it('refuses a non-operator before reading anything', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(listPlatformAudit({})).rejects.toThrow('403');
+    expect(listPlatformEntries).not.toHaveBeenCalled();
   });
 });
 

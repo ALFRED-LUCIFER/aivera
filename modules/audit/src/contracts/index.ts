@@ -10,7 +10,7 @@ import type {
   Subject,
 } from '../domain/entry.ts';
 
-export { AuditError } from '../domain/entry.ts';
+export { AuditError, PLATFORM_ACTIONS } from '../domain/entry.ts';
 export type {
   Action,
   Actor,

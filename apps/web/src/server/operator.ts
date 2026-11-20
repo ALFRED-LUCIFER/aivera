@@ -1,4 +1,4 @@
-import type { AuditContract } from '@aivera/audit';
+import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
 import type { JobCounts } from '@aivera/jobs';
 import { log } from '@aivera/observability';
@@ -200,4 +200,51 @@ export async function approvalRequired(): Promise<boolean> {
 export async function setApprovalRequired(required: boolean, reason: string): Promise<void> {
   const { userId } = await platformOperator();
   await getPlatformSettings().setApprovalRequired({ operatorId: userId, required, reason });
+}
+
+/** A platform audit entry with its operator's display name, or null when they have none (AIV-P2-054). */
+export type PlatformAuditRow = PlatformEntry & { operatorName: string | null };
+
+// shortcut: the operator filter lists who acted in the newest 500 entries (10 reads of 50); an operator whose last
+// action is older is still shown in rows and reachable by URL. Add a distinct-actors read to the audit function when
+// the log outgrows it.
+const OPERATOR_SCAN_PAGES = 10;
+
+/**
+ * One page of the platform audit log (AIV-P2-054, ADR-012 point 8), newest first, with each operator's display name by
+ * opaque id (never an email), and the operators who appear in the log for the filter. Only platform columns, never
+ * candidate data; reading the log is not itself audited. Checks the policy itself too. Throws a ZodError for bad input.
+ */
+export async function listPlatformAudit(query: PlatformEntryQuery): Promise<{
+  rows: PlatformAuditRow[];
+  nextCursor: string | null;
+  operators: { id: string; name: string }[];
+}> {
+  await platformOperator();
+  const scanOperators = async () => {
+    const ids = new Set<string>();
+    let cursor: string | null = null;
+    for (let page = 0; page < OPERATOR_SCAN_PAGES; page++) {
+      const result = await getAudit().listPlatformEntries(cursor ? { cursor } : {});
+      for (const entry of result.entries) ids.add(entry.actorId);
+      cursor = result.nextCursor;
+      if (!cursor) break;
+    }
+    return ids;
+  };
+  const [page, actorIds] = await Promise.all([getAudit().listPlatformEntries(query), scanOperators()]);
+  if (query.actorId) actorIds.add(query.actorId);
+  for (const entry of page.entries) actorIds.add(entry.actorId);
+  const names = new Map(
+    await Promise.all(
+      [...actorIds].map(async (id) => [id, (await getIdentity().getUser(id))?.displayName?.trim() || null] as const),
+    ),
+  );
+  return {
+    rows: page.entries.map((entry) => ({ ...entry, operatorName: names.get(entry.actorId) ?? null })),
+    nextCursor: page.nextCursor,
+    operators: [...names]
+      .flatMap(([id, name]) => (name ? [{ id, name }] : []))
+      .toSorted((a, b) => a.name.localeCompare(b.name)),
+  };
 }
