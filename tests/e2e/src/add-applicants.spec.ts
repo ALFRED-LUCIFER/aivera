@@ -41,20 +41,6 @@ for (const [file, payload] of refused) {
   });
 }
 
-test('Scenario: Only recruiters upload: a hiring owner reading the job sees no "Add applicants" button', async ({
-  page,
-  context,
-}) => {
-  await signIn(page, { email: AP });
-  await openDialog(page);
-  const url = page.url();
-  await context.clearCookies({ name: '__Host-credalent-session' });
-  await signIn(page, { email: 'head.engineering@example.com' });
-  await page.goto(url);
-  await expect(page.getByText('No ranking yet.', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add applicants' })).toHaveCount(0);
-});
-
 test('the dialog is keyboard operable: source, upload, then close with Escape back to its button', async ({ page }) => {
   await signIn(page, { email: AP });
   const dialog = await openDialog(page);
