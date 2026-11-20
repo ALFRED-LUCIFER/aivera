@@ -27,3 +27,14 @@ BEGIN
   END IF;
   RETURN coalesce(NEW, OLD);
 END $$;
+--> statement-breakpoint
+-- The exemption above trusts jobs.job.synthetic, so a job's synthetic flag is fixed when it is created.
+CREATE FUNCTION "jobs"."refuse_synthetic_change"() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'A job''s synthetic flag cannot change.' USING ERRCODE = 'check_violation',
+    CONSTRAINT = 'job_synthetic_frozen_check';
+END $$;
+--> statement-breakpoint
+CREATE TRIGGER "job_synthetic_frozen_check" BEFORE UPDATE OF "synthetic" ON "jobs"."job"
+  FOR EACH ROW WHEN (NEW.synthetic IS DISTINCT FROM OLD.synthetic)
+  EXECUTE FUNCTION "jobs"."refuse_synthetic_change"();

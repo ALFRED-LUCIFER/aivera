@@ -114,6 +114,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   // 3 Nov, each rubric version saved and sent by AP and approved by the job's hiring owner, then moved to its stage.
   // shortcut: one transaction per step (the hiring owner approves in their own), so a seed stopped midway leaves a job
   // part-seeded, which a rerun skips; run with --reset then. Resume from the job's state if that ever bites.
+  // Only the jobs module's writes and audit entries take this clock; the hiring owner's grant is audited at real time.
   let seedTime = new Date(0);
   const at = (date: string, hour: number) => (seedTime = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00Z`));
   const clock = () => seedTime;

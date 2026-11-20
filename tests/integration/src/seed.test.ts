@@ -383,7 +383,8 @@ describe('Scenario: Seeding a fresh database', () => {
     });
 
     // SAFETY: mutation check: dropped "AND synthetic" from refuse_approved_version_change and
-    // refuse_approved_competency_change -> this test failed (the deletes went through)
+    // refuse_approved_competency_change -> this test failed (the deletes went through); dropped trigger
+    // job_synthetic_frozen_check -> this test failed (the flag flipped, then the delete went through)
     it("a real job's approved rubric version can never be deleted, even with the repository filter removed", async () => {
       const workspaces = createWorkspaces(app, createAudit(app));
       const jobs = createJobs(workspaces, createAudit(app));
@@ -424,6 +425,11 @@ describe('Scenario: Seeding a fresh database', () => {
         code: '23514',
         constraint: 'rubric_version_frozen_check',
       });
+      // Nor by flagging the job synthetic first: the flag is fixed when the job is created.
+      await expect(
+        deleting(sql`update jobs.job set synthetic = true where id in
+          (select job_id from jobs.rubric_version where id = ${versionId})`),
+      ).rejects.toMatchObject({ code: '23514', constraint: 'job_synthetic_frozen_check' });
       expect(await count(sql`select count(*) as n from jobs.rubric_version where id = ${versionId}`)).toBe(1);
       expect(await count(sql`select count(*) as n from jobs.competency where rubric_version_id = ${versionId}`)).toBe(
         1,
