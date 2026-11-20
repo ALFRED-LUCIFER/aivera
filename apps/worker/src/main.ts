@@ -20,6 +20,10 @@ const env = z
     ACS_ENDPOINT: z.url({ protocol: /^https$/ }),
     EMAIL_SENDER: z.email(),
     NOTIFICATIONS_ENCRYPTION_KEY: z.string().min(1),
+    // GitHub evidence (AIV-P1-026): the GitHub App's id, PEM private key (Key Vault) and installation id; all or none.
+    GITHUB_APP_ID: z.string().min(1).optional(),
+    GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
+    GITHUB_APP_INSTALLATION_ID: z.string().min(1).optional(),
     PORT: z.coerce.number().int().default(8080),
     // Uploads (AIV-P0-016): on and with the blob endpoint, the worker settles each upload from Defender's scan result.
     // Without either it never settles one, so uploads stay pending: fail closed (the worker never skips the scan).
@@ -27,6 +31,12 @@ const env = z
     MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
   })
+  .refine(
+    (e) =>
+      [e.GITHUB_APP_ID, e.GITHUB_APP_PRIVATE_KEY, e.GITHUB_APP_INSTALLATION_ID].every((v) => v === undefined) ||
+      [e.GITHUB_APP_ID, e.GITHUB_APP_PRIVATE_KEY, e.GITHUB_APP_INSTALLATION_ID].every((v) => v !== undefined),
+    'Set GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY and GITHUB_APP_INSTALLATION_ID together, or none of them',
+  )
   .parse(process.env);
 
 // Before the other imports, so their instrumentation is patched (packages/observability/src/init.ts).
@@ -35,7 +45,8 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
-const { EvidenceRecordedV1 } = await import('@credalent/evidence');
+const { EvidenceRecordedV1, RepositoryReadRequestedV1 } = await import('@credalent/evidence');
+const { createRepositoryReadHandler, EVIDENCE_QUEUE } = await import('@credalent/evidence/composition');
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
@@ -44,7 +55,7 @@ const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
 const { log } = await import('@credalent/observability');
-const { subscribe, toMessage } = await import('./serviceBus.ts');
+const { createScheduler, subscribe, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
@@ -62,6 +73,7 @@ const QUEUES: Record<string, string> = {
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
+  [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
 };
 
 const stop = new AbortController();
@@ -84,6 +96,13 @@ const relayBus = new ServiceBusClient(env.AZURE_SERVICE_BUS_NAMESPACE, credentia
 const appCredential = credential(env.AZURE_CLIENT_ID);
 const appBus = new ServiceBusClient(env.AZURE_SERVICE_BUS_NAMESPACE, appCredential);
 
+const senders = new Map<string, ReturnType<typeof relayBus.createSender>>();
+const senderFor = (queue: string) => {
+  let sender = senders.get(queue);
+  if (!sender) senders.set(queue, (sender = relayBus.createSender(queue)));
+  return sender;
+};
+
 // Each queue's handlers, exported by the consuming module's infrastructure. A consuming module's ticket adds its queue.
 // shortcut: nothing consumes `candidates` yet, so PersonCreated.v1 dead-letters after its 14-day TTL and raises the dead-letter alert; add its consumer or drop the mapping with the first candidates handler (AIV-P1-018)
 const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']> = {
@@ -104,12 +123,23 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
     }),
   ],
 };
-const senders = new Map<string, ReturnType<typeof relayBus.createSender>>();
-const senderFor = (queue: string) => {
-  let sender = senders.get(queue);
-  if (!sender) senders.set(queue, (sender = relayBus.createSender(queue)));
-  return sender;
-};
+if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID)
+  CONSUMERS[EVIDENCE_QUEUE] = [
+    createRepositoryReadHandler({
+      github: {
+        appId: env.GITHUB_APP_ID,
+        privateKey: env.GITHUB_APP_PRIVATE_KEY,
+        installationId: env.GITHUB_APP_INSTALLATION_ID,
+      },
+      // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
+      // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
+      scheduler: createScheduler(senderFor),
+      now,
+    }),
+  ];
+// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads wait (and dead-letter after
+// the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-026 PR, owner to-dos).
+else log.warn('GitHub App not configured: repository reads are not consumed');
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
 // not outbox envelopes, so not through createConsumer. A settled file ignores a redelivery, so no inbox is needed.

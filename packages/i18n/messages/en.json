@@ -280,6 +280,11 @@
       "contradictory": "Contradictory",
       "awaiting-defence": "Awaiting live defence"
     },
+    "repositoryStatus": {
+      "pending": "Reading the commit history",
+      "not_accessible": "This repository is private or no longer exists",
+      "fork": "This repository is a fork. Forked code is not counted as the candidate's work."
+    },
     "request": {
       "send": "Send request"
     },

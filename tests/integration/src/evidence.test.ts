@@ -140,7 +140,16 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'evidence' order by name`);
     expect([...tables]).toEqual(
-      ['competency_link', 'duplicate_flag', 'item', 'outbox', 'source'].map((name) => ({
+      [
+        'competency_link',
+        'duplicate_flag',
+        'inbox',
+        'item',
+        'merged_pull_request',
+        'outbox',
+        'repository_read',
+        'source',
+      ].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
