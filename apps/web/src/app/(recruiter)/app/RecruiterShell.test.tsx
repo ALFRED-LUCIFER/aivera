@@ -83,7 +83,9 @@ describe('Recruiter app shell', () => {
     expect(
       within(sidebar()).getByRole('link', { name: 'Credalent' }).querySelector('img')?.getAttribute('src'),
     ).toContain('credalent-mark');
-    expect(screen.getByRole('link', { name: 'Credalent website' }).getAttribute('href')).toBe('/');
+    // Owner decision (20 Nov 2026): the recruiter app never links out to the website.
+    expect(screen.queryByRole('link', { name: /website/i })).toBeNull();
+    expect(document.querySelector('a[href="/"]')).toBeNull();
   });
 
   // Scenario: Sign out (the cookie and the redirect are proven end to end in tests/e2e/src/sign-in.spec.ts).
@@ -190,7 +192,6 @@ describe('Recruiter app shell', () => {
       'Decision packs',
       'Value dashboard',
       'Settings',
-      'Credalent website',
     ]);
     expect(screen.getByRole('main').textContent).toBe('Page body');
   });
