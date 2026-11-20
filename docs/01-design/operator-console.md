@@ -15,12 +15,12 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 
 ## Shell (`features/ops/components/OpsShell.tsx`)
 
-- **Grid:** sidebar `16rem` and main column on `lg` (1024 px and up), `bg-bg` behind; under 1024 px the sidebar stacks above the page.
+- **Grid:** `lg:grid-cols-[16rem_minmax(0,1fr)]` (sidebar and main column from the `lg` breakpoint), `bg-bg` behind; below `lg` the sidebar stacks above the page.
 - **Sidebar** (`bg-surface`, `border-e border-border`, sticky, full height):
-  - Wordmark "Aivera operations" in `font-display text-section`.
-  - Section list, one icon per section (24 px grid, 1.75 stroke, `currentColor`, the recruiter shell's style): Overview, Workspaces, Approvals, Catalogue, then later sections (Audit log, Requests…) as they ship. The current section is `aria-current="page"`: `bg-action text-on-action font-semibold`, as in the recruiter shell. Targets 40 px, 44 px on coarse pointers.
+  - Wordmark "Aivera operations" in `font-display text-section`, and under it the **"Operator" tag**: ink (`bg-action text-on-action`, `rounded-tag`), a shield icon and the word, so no page reads as the recruiter app.
+  - Section list, one icon per section (the recruiter shell's icon grid and stroke, `size-4.5`, `currentColor`): Overview, Workspaces, Approvals, Catalogue, then later sections (Audit log, Requests…) as they ship. The current section is `aria-current="page"`: `bg-action text-on-action font-semibold`, as in the recruiter shell. Targets `h-10`, `pointer-coarse:min-h-11`.
   - **Coming later:** sections without a page sit under a `text-meta` heading "Coming later" in `text-text-3`, not links, each with "Coming soon" for screen readers.
-  - **Foot:** the line "Platform metadata only. Candidate data never appears here." with a lock icon; the **identity slot** (initials disc in `bg-action`, the operator's name, the "Operator" tag in `rounded-tag border-border-strong`) on `bg-surface-subtle`; then "Sign out" and an icon-only theme switch ("Switch to dark theme" / "Switch to light theme" as its accessible name).
+  - **Foot:** the line "Platform metadata only. Candidate data never appears here." with a lock icon; the **identity slot** on `bg-surface-subtle` (initials disc in `bg-action`, the signed-in operator's own name and email; never a list of operators, ADR-012 point 1); then "Sign out" and the icon-only theme switch (`Button variant="ghost" size="iconOnly"`) ("Switch to dark theme" / "Switch to light theme" as its accessible name).
 - **Main:** `max-w-7xl`, `px-4 lg:px-10`, `pt-8 pb-14`; skip link to `#content`.
 
 ## Page header (`features/shell/components/PageHeader.tsx`)
@@ -57,7 +57,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 ## Detail layout (workspace)
 
 - Header: breadcrumb, name, tags (status, type, Synthetic), the status change action on the right.
-- Two columns on `lg` (`minmax(0,1fr)` and `22rem`): the main column holds the working sections (AI token use with today's share of the budget as a neutral ink bar, the 7-day table, the budget form); the side column holds **Platform facts** (term left, value right, one row per fact, `divide-y`) and **Operator actions** as a timeline (dot and rule in ink, newest first, each with its reason). One column under 1024 px.
+- Two columns from `lg` (`lg:grid-cols-[minmax(0,1fr)_22rem]`): the main column holds the working sections (AI token use with today's share of the budget as a neutral ink bar, the 7-day table, the budget form); the side column holds **Platform facts** (term left, value right, one row per fact, `divide-y`) and **Operator actions** as a timeline (dot and rule in ink, newest first, each with its reason). One column below `lg`.
 
 ## Home (AIV-P2-051)
 

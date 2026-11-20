@@ -1,8 +1,11 @@
+import { Button } from '@aivera/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { initials } from '@/features/shell/domain/shell.ts';
+import type { OpsSection } from '../domain/ops.ts';
 
-export type OpsSectionLink = { id: string; label: string; href?: Route | undefined };
+export type OpsSectionLink = { id: OpsSection; label: string; href?: Route | undefined };
 
 export type OpsShellProps = {
   labels: {
@@ -22,10 +25,10 @@ export type OpsShellProps = {
   /** The section the current path is in, marked `aria-current="page"`; `home` for the overview. */
   activeId: string | undefined;
   /**
-   * The signed-in operator's name, so the console always says who is acting. Never their email: the operator list is
-   * configuration that stays out of pages and logs (ADR-012 point 1).
+   * The signed-in operator's own name and email (AIV-P2-052), so the console always says who is acting. Only ever the
+   * viewer's own; the list of operators is never shown (ADR-012 point 1).
    */
-  operator?: { name: string } | undefined;
+  operator?: { name: string; email: string } | undefined;
   onToggleTheme: () => void;
   /** The server action that ends the session and lands on the sign-in page. */
   signOutAction: () => Promise<void>;
@@ -50,7 +53,7 @@ const svg = {
 } as const;
 
 // One stroke weight, drawn to the recruiter shell's icon grid (24px, 1.75 stroke).
-const icons: Record<string, ReactNode> = {
+const icons: Record<OpsSection | 'home', ReactNode> = {
   home: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" />,
   workspaces: (
     <>
@@ -82,15 +85,7 @@ const icons: Record<string, ReactNode> = {
   deletions: <path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7M10.5 11v5M13.5 11v5" />,
 };
 
-const SectionIcon = ({ id }: { id: string }) => <svg {...svg}>{icons[id]}</svg>;
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
+const SectionIcon = ({ id }: { id: OpsSection | 'home' }) => <svg {...svg}>{icons[id]}</svg>;
 
 /**
  * The operator console frame (AIV-P2-035, restyled in the console design pass): the Aivera mark with an "Operator" tag
@@ -107,7 +102,7 @@ export function OpsShell({
   signOutAction,
   children,
 }: OpsShellProps) {
-  const built = sections.filter((section) => section.href);
+  const built = sections.flatMap(({ href, ...section }) => (href ? [{ ...section, href }] : []));
   const later = sections.filter((section) => !section.href);
   const current = (id: string) => (id === activeId ? 'page' : undefined);
   return (
@@ -139,16 +134,14 @@ export function OpsShell({
               {labels.overview}
             </Link>
           </li>
-          {built.map(({ id, label, href }) =>
-            href ? (
-              <li key={id}>
-                <Link href={href} aria-current={current(id)} className={navLink}>
-                  <SectionIcon id={id} />
-                  {label}
-                </Link>
-              </li>
-            ) : null,
-          )}
+          {built.map(({ id, label, href }) => (
+            <li key={id}>
+              <Link href={href} aria-current={current(id)} className={navLink}>
+                <SectionIcon id={id} />
+                {label}
+              </Link>
+            </li>
+          ))}
         </ul>
         {later.length > 0 && (
           <div className="flex flex-col gap-1">
@@ -182,7 +175,12 @@ export function OpsShell({
               >
                 {initials(operator.name) || '·'}
               </span>
-              <span className="min-w-0 truncate text-body font-semibold text-text">{operator.name}</span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-body font-semibold text-text">{operator.name}</span>
+                <span className="truncate text-meta text-text-2" title={operator.email}>
+                  {operator.email}
+                </span>
+              </span>
             </div>
           )}
           <div className="flex gap-1">
@@ -194,17 +192,11 @@ export function OpsShell({
                 {labels.signOut}
               </button>
             </form>
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              aria-label={labels.theme}
-              title={labels.theme}
-              className={`${navLink} w-10 cursor-pointer justify-center px-0 pointer-coarse:w-11`}
-            >
+            <Button variant="ghost" size="iconOnly" aria-label={labels.theme} onClick={onToggleTheme}>
               <svg {...svg}>
                 <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5A6.5 6.5 0 0 1 12 3.5z" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </nav>

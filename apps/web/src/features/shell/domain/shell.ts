@@ -23,14 +23,8 @@ export function shellMember({
   synthetic: boolean;
   status: WorkspaceStatus;
 }): Member {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
   const capabilities: Capability[] = role === 'admin' || role === 'recruiter' ? ['recruiter'] : [];
-  return { name, initials, capabilities, workspace: { synthetic, status } };
+  return { name, initials: initials(name), capabilities, workspace: { synthetic, status } };
 }
 
 /** Sidebar badges; a section without a number shows no badge. */
@@ -40,3 +34,12 @@ export type Theme = 'light' | 'dark';
 export const themeCookie = 'theme';
 /** Anything but "dark" is light, so a tampered cookie cannot put another value into data-theme. */
 export const parseTheme = (value: unknown): Theme => (value === 'dark' ? 'dark' : 'light');
+
+/** Up to two initials for an avatar disc: "Alex Recruiter" -> "AR". */
+export const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');

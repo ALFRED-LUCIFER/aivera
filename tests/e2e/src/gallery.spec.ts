@@ -9,6 +9,7 @@ const sections = [
   'overlays',
   'status',
   'basis',
+  'stat',
   'provenance',
   'strength',
   'level',

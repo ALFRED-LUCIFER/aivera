@@ -26,11 +26,10 @@ export function StatTile({ label, value, basis, basisLabel, notAvailableLabel, d
     <div className="flex min-w-0 flex-col gap-2 rounded-card border border-border bg-surface p-4 shadow-1">
       <p className="text-meta font-semibold text-text-2">{label}</p>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        {value === null ? (
-          <span className="text-body font-semibold text-text-2">{notAvailableLabel}</span>
-        ) : (
+        {value !== null && (
           <span className="font-display text-section font-semibold text-text tabular-nums">{value}</span>
         )}
+        {/* No figure: the marker's words alone say so, never a 0. */}
         {value === null ? (
           <ValueBasis basis="not-available" label={notAvailableLabel} />
         ) : (
