@@ -4,7 +4,7 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 import type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
-import type { EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
+import type { EvidenceRequestView } from '../application/requests.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
@@ -135,11 +135,6 @@ export interface EvidenceContract {
    * returned once, `EvidenceRequestSent.v1` written. Audited. Throws `EvidenceError('request_status')` unless a draft.
    */
   sendRequest(ctx: WorkspaceContext, requestId: string): Promise<{ request: EvidenceRequestView; portalToken: string }>;
-  /**
-   * The system records what happened after sending (opened, answered, quiet) and writes its event. It can never send:
-   * a move the system may not make throws `EvidenceError('request_status')` and changes nothing.
-   */
-  recordRequestOutcome(ctx: WorkspaceContext, requestId: string, outcome: RequestOutcome): Promise<void>;
   /** A person closes the request. Audited. Throws `EvidenceError('request_status')` when already closed. */
   closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void>;
   /** The request with its items, or null when the workspace has none. Admins and recruiters. */

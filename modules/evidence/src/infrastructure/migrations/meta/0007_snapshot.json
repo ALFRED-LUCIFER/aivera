@@ -1,5 +1,5 @@
 {
-  "id": "011c181e-5c2c-4d31-92d2-076f57dc6e6b",
+  "id": "cf6849b9-00f2-4183-992c-2a4633b92936",
   "prevId": "c600157b-6a24-4266-92d6-f00b95917399",
   "version": "7",
   "dialect": "postgresql",
@@ -1156,7 +1156,7 @@
         },
         "request_follow_up_check": {
           "name": "request_follow_up_check",
-          "value": "\"evidence\".\"request\".\"follow_up_after_days\" between 1 and 14 and \"evidence\".\"request\".\"follow_up_max_count\" between 0 and 5"
+          "value": "\"evidence\".\"request\".\"follow_up_after_days\" >= 1 and \"evidence\".\"request\".\"follow_up_max_count\" >= 0"
         }
       },
       "isRLSEnabled": true

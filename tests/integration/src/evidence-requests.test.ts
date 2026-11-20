@@ -8,7 +8,7 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { EvidenceContract, RecordEvidenceInput, RequestOutcome } from '@credalent/evidence';
-import { createEvidence } from '@credalent/evidence/composition';
+import { createEvidence, createRequestOutcomeRecorder } from '@credalent/evidence/composition';
 import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -35,6 +35,9 @@ let app: Db;
 let workspaces: WorkspacesContract;
 let audit: AuditContract;
 let evidence: EvidenceContract;
+// The system's path (the follow-up worker, the portal): a workspace-scoped transaction with no member.
+const recordOutcome = (workspaceId: string, requestId: string, outcome: RequestOutcome) =>
+  withWorkspace(app, workspaceId, (tx) => createRequestOutcomeRecorder(() => NOW)(tx, workspaceId, requestId, outcome));
 let w1: string;
 let w2: string;
 
@@ -139,7 +142,7 @@ describe('Scenario: A draft names only open claims, with the default follow-up p
     expect(entries.map((e) => [e.action, e.after])).toEqual([
       ['evidence_request.created', { candidateId: SARA, jobId: JOB, items: 2 }],
     ]);
-    // One open request per candidate per job, by the use case and by the database.
+    // One open request per candidate per job: the partial unique index refuses a second, mapped to the domain error.
     await expect(as(w1, (ctx) => evidence.createDraftRequest(ctx, { candidateId: SARA, jobId: JOB }))).rejects.toThrow(
       'This candidate already has an open request for this job',
     );
@@ -164,12 +167,10 @@ describe('Scenario: Only a person can send', () => {
       tx.execute<{ id: string }>(sql`select id from evidence.request where candidate_id = ${SARA}`),
     );
     const id = draft?.id ?? '';
-    await expect(as(w1, (ctx) => evidence.recordRequestOutcome(ctx, id, 'sent' as RequestOutcome))).rejects.toThrow(
+    await expect(recordOutcome(w1, id, 'sent' as RequestOutcome)).rejects.toThrow(
       'This request cannot move to that status',
     );
-    await expect(as(w1, (ctx) => evidence.recordRequestOutcome(ctx, id, 'opened'))).rejects.toThrow(
-      'This request cannot move to that status',
-    );
+    await expect(recordOutcome(w1, id, 'opened')).rejects.toThrow('This request cannot move to that status');
     expect(await as(w1, (ctx) => evidence.getRequest(ctx, id))).toMatchObject({ status: 'draft', sentAt: null });
     expect(await outboxTypes(w1)).toEqual([]);
 
@@ -189,8 +190,8 @@ describe('Scenario: Only a person can send', () => {
       'This request cannot move to that status',
     );
 
-    await as(w1, (ctx) => evidence.recordRequestOutcome(ctx, id, 'opened'));
-    await as(w1, (ctx) => evidence.recordRequestOutcome(ctx, id, 'answered'));
+    await recordOutcome(w1, id, 'opened');
+    await recordOutcome(w1, id, 'answered');
     expect(await outboxTypes(w1)).toEqual([
       'EvidenceRequestAnswered.v1',
       'EvidenceRequestOpened.v1',
@@ -205,6 +206,20 @@ describe('Scenario: Only a person can send', () => {
   });
 });
 
+describe('Invariants the database enforces', () => {
+  it('a draft with a sent time, or a sent request without one, is refused', async () => {
+    const [row] = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ id: string; status: string }>(sql`select id, status from evidence.request limit 1`),
+    );
+    for (const change of [sql`status = 'draft', sent_at = now()`, sql`status = 'sent', sent_at = null`])
+      await expect(
+        withWorkspace(app, w1, (tx) =>
+          tx.execute(sql`update evidence.request set ${change} where id = ${row?.id ?? ''}`),
+        ),
+      ).rejects.toThrow();
+  });
+});
+
 describe('Scenario: Requests are workspace-scoped', () => {
   // SAFETY: mutation check: ALTER POLICY request_tenant_isolation USING (true) WITH CHECK (true) -> this test failed (W2 saw W1's request)
   it('a request in W1 is not visible from W2, even with no WHERE clause', async () => {
@@ -216,6 +231,19 @@ describe('Scenario: Requests are workspace-scoped', () => {
     for (const table of ['request', 'request_item', 'portal_token'])
       expect([
         ...(await withWorkspace(app, w2, (tx) =>
+          tx.execute(sql`select * from ${sql.identifier('evidence')}.${sql.identifier(table)}`),
+        )),
+      ]).toEqual([]);
+  });
+});
+
+describe('Scenario: The seed reset still purges a workspace holding requests', () => {
+  // SAFETY: mutation check: removed the request delete from deleteSynthetic -> this test failed (foreign key on request_item)
+  it('purgeSyntheticEvidence deletes requests, their items and tokens with the evidence', async () => {
+    await as(w1, (ctx) => evidence.purgeSyntheticEvidence(ctx));
+    for (const table of ['request', 'request_item', 'portal_token', 'item'])
+      expect([
+        ...(await withWorkspace(app, w1, (tx) =>
           tx.execute(sql`select * from ${sql.identifier('evidence')}.${sql.identifier(table)}`),
         )),
       ]).toEqual([]);

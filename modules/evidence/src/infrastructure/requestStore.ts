@@ -1,5 +1,6 @@
-import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, ne } from 'drizzle-orm';
+import { DbQueryError, type Tx } from '@credalent/db/client';
+import { and, asc, eq } from 'drizzle-orm';
+import { EvidenceError } from '../domain/evidence.ts';
 import type { RequestStore } from '../application/requests.ts';
 import { portalToken, request, requestItem } from './schema.ts';
 
@@ -10,7 +11,15 @@ import { portalToken, request, requestItem } from './schema.ts';
 export function requestStore(tx: Tx): RequestStore {
   return {
     async insert(row, items) {
-      await tx.insert(request).values(row);
+      // The partial unique index keeps one open request per candidate and job, even when two drafts race.
+      await tx
+        .insert(request)
+        .values(row)
+        .catch((error: unknown) => {
+          if (error instanceof DbQueryError && error.constraint === 'request_open_key')
+            throw new EvidenceError('open_request');
+          throw error;
+        });
       await tx
         .insert(requestItem)
         .values(items.map((i) => ({ ...i, workspaceId: row.workspaceId, requestId: row.id })));
@@ -28,26 +37,14 @@ export function requestStore(tx: Tx): RequestStore {
         .orderBy(asc(requestItem.competencyId));
       return { ...row, items };
     },
-    async hasOpen(workspaceId, candidateId, jobId) {
-      const [row] = await tx
-        .select({ id: request.id })
-        .from(request)
-        .where(
-          and(
-            eq(request.workspaceId, workspaceId),
-            eq(request.candidateId, candidateId),
-            eq(request.jobId, jobId),
-            ne(request.status, 'closed'),
-          ),
-        )
-        .limit(1);
-      return row !== undefined;
-    },
-    async setStatus(workspaceId, requestId, status, sentAt) {
-      await tx
+    async setStatus(workspaceId, requestId, from, to, sentAt) {
+      // Compare-and-set: the move applies only if the status is still `from`, so racing moves cannot skip the table.
+      const changed = await tx
         .update(request)
-        .set(sentAt ? { status, sentAt } : { status })
-        .where(and(eq(request.workspaceId, workspaceId), eq(request.id, requestId)));
+        .set(sentAt ? { status: to, sentAt } : { status: to })
+        .where(and(eq(request.workspaceId, workspaceId), eq(request.id, requestId), eq(request.status, from)))
+        .returning({ id: request.id });
+      return changed.length === 1;
     },
     async insertToken(workspaceId, requestId, tokenHash, expiresAt, createdAt) {
       await tx.insert(portalToken).values({ workspaceId, requestId, tokenHash, expiresAt, createdAt });

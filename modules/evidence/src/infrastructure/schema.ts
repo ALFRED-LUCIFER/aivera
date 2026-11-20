@@ -282,10 +282,7 @@ export const request = evidence
       // Must list exactly REQUEST_STATUSES (domain/request.ts); changing it needs a new migration.
       check('request_status_check', sql`${t.status} in ('draft', 'sent', 'opened', 'answered', 'quiet', 'closed')`),
       check('request_sent_check', sql`(${t.status} = 'draft') = (${t.sentAt} is null) or ${t.status} = 'closed'`),
-      check(
-        'request_follow_up_check',
-        sql`${t.followUpAfterDays} between 1 and 14 and ${t.followUpMaxCount} between 0 and 5`,
-      ),
+      check('request_follow_up_check', sql`${t.followUpAfterDays} >= 1 and ${t.followUpMaxCount} >= 0`),
       tenantPolicy('request_tenant_isolation', t.workspaceId),
     ],
   )

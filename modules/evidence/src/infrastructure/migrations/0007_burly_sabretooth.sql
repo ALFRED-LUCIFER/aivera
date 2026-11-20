@@ -25,7 +25,7 @@ CREATE TABLE "evidence"."request" (
 	CONSTRAINT "request_workspace_id_key" UNIQUE("workspace_id","id"),
 	CONSTRAINT "request_status_check" CHECK ("evidence"."request"."status" in ('draft', 'sent', 'opened', 'answered', 'quiet', 'closed')),
 	CONSTRAINT "request_sent_check" CHECK (("evidence"."request"."status" = 'draft') = ("evidence"."request"."sent_at" is null) or "evidence"."request"."status" = 'closed'),
-	CONSTRAINT "request_follow_up_check" CHECK ("evidence"."request"."follow_up_after_days" between 1 and 14 and "evidence"."request"."follow_up_max_count" between 0 and 5)
+	CONSTRAINT "request_follow_up_check" CHECK ("evidence"."request"."follow_up_after_days" >= 1 and "evidence"."request"."follow_up_max_count" >= 0)
 );
 --> statement-breakpoint
 ALTER TABLE "evidence"."request" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint

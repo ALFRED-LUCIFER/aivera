@@ -35,8 +35,14 @@ export type RequestOutcome = 'opened' | 'answered' | 'quiet';
 export type RequestStore = {
   insert(request: EvidenceRequest, items: OpenClaim[]): Promise<void>;
   get(workspaceId: string, requestId: string): Promise<EvidenceRequestView | null>;
-  hasOpen(workspaceId: string, candidateId: string, jobId: string): Promise<boolean>;
-  setStatus(workspaceId: string, requestId: string, status: RequestStatus, sentAt?: Date): Promise<void>;
+  /** Moves `from` → `to` only if the status is still `from`; false when it changed meanwhile. */
+  setStatus(
+    workspaceId: string,
+    requestId: string,
+    from: RequestStatus,
+    to: RequestStatus,
+    sentAt?: Date,
+  ): Promise<boolean>;
   insertToken(
     workspaceId: string,
     requestId: string,
@@ -90,8 +96,6 @@ export function requestUseCases(ports: RequestPorts) {
       );
       if (items.length === 0) throw new EvidenceError('nothing_to_request');
       const requests = requestStoreFor(ctx.tx);
-      if (await requests.hasOpen(ctx.workspaceId, input.candidateId, input.jobId))
-        throw new EvidenceError('open_request');
       const request: EvidenceRequest = {
         id: newId(),
         workspaceId: ctx.workspaceId,
@@ -129,7 +133,8 @@ export function requestUseCases(ports: RequestPorts) {
       const sentAt = now();
       const { token, hash } = newToken();
       const requests = requestStoreFor(ctx.tx);
-      await requests.setStatus(ctx.workspaceId, requestId, 'sent', sentAt);
+      if (!(await requests.setStatus(ctx.workspaceId, requestId, 'draft', 'sent', sentAt)))
+        throw new EvidenceError('request_status');
       await requests.insertToken(
         ctx.workspaceId,
         requestId,
@@ -148,24 +153,13 @@ export function requestUseCases(ports: RequestPorts) {
       return { request, portalToken: token };
     },
 
-    /**
-     * What happened after sending, recorded by the system (the worker, the portal): opened, answered or quiet. A move
-     * the system may not make, "sent" above all, throws `EvidenceError('request_status')` and changes nothing.
-     */
-    async recordRequestOutcome(ctx: WorkspaceContext, requestId: string, outcome: RequestOutcome): Promise<void> {
-      await authorize(ctx, 'candidate.create');
-      const found = await load(ctx, requestId);
-      if (!canMove(found.status, outcome, 'system')) throw new EvidenceError('request_status');
-      await requestStoreFor(ctx.tx).setStatus(ctx.workspaceId, requestId, outcome);
-      await publishRequestEvent(ctx.tx, { ...found, status: outcome }, outcome);
-    },
-
     /** A person closes the request. Audited. Throws `EvidenceError('request_status')` when it is already closed. */
     async closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void> {
       await authorize(ctx, 'candidate.create');
       const found = await load(ctx, requestId);
       if (!canMove(found.status, 'closed', 'user')) throw new EvidenceError('request_status');
-      await requestStoreFor(ctx.tx).setStatus(ctx.workspaceId, requestId, 'closed');
+      if (!(await requestStoreFor(ctx.tx).setStatus(ctx.workspaceId, requestId, found.status, 'closed')))
+        throw new EvidenceError('request_status');
       await audit(ctx, {
         action: 'evidence_request.closed',
         subject: { type: 'evidence_request', id: requestId },
@@ -180,4 +174,31 @@ export function requestUseCases(ports: RequestPorts) {
       return requestStoreFor(ctx.tx).get(ctx.workspaceId, requestId);
     },
   };
+}
+
+export type OutcomePorts = Pick<RequestPorts, 'requestStoreFor' | 'publishRequestEvent'>;
+
+/**
+ * What happened after a person sent the request, recorded by the system (the follow-up worker, AIV-P1-040; the portal,
+ * AIV-P1-041): opened, answered or quiet, with its event. It runs in the caller's workspace-scoped transaction with no
+ * member, like the repository read job. A move the system may not make, "sent" above all, throws
+ * `EvidenceError('request_status')` and changes nothing.
+ */
+// shortcut: outcomes are not audited yet; the worker that records them (AIV-P1-040) audits them with actor `system`.
+export async function recordRequestOutcome(
+  { requestStoreFor, publishRequestEvent }: OutcomePorts,
+  tx: Tx,
+  workspaceId: string,
+  requestId: string,
+  outcome: RequestOutcome,
+): Promise<void> {
+  const requests = requestStoreFor(tx);
+  const found = await requests.get(workspaceId, requestId);
+  if (!found) throw new EvidenceError('request_not_found');
+  if (
+    !canMove(found.status, outcome, 'system') ||
+    !(await requests.setStatus(workspaceId, requestId, found.status, outcome))
+  )
+    throw new EvidenceError('request_status');
+  await publishRequestEvent(tx, { ...found, status: outcome }, outcome);
 }

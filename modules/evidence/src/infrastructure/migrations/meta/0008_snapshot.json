@@ -1,6 +1,6 @@
 {
-  "id": "52716626-9286-469d-9b15-c030876bd1ee",
-  "prevId": "011c181e-5c2c-4d31-92d2-076f57dc6e6b",
+  "id": "389c5310-4456-4c4d-a085-73a776f8124a",
+  "prevId": "cf6849b9-00f2-4183-992c-2a4633b92936",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1156,7 +1156,7 @@
         },
         "request_follow_up_check": {
           "name": "request_follow_up_check",
-          "value": "\"evidence\".\"request\".\"follow_up_after_days\" between 1 and 14 and \"evidence\".\"request\".\"follow_up_max_count\" between 0 and 5"
+          "value": "\"evidence\".\"request\".\"follow_up_after_days\" >= 1 and \"evidence\".\"request\".\"follow_up_max_count\" >= 0"
         }
       },
       "isRLSEnabled": true
