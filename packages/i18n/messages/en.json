@@ -575,7 +575,7 @@
   },
   "ops": {
     "title": "Credalent operations",
-    "signedIn": "Signed in as an Credalent operator.",
+    "signedIn": "Signed in as a Credalent operator.",
     "operator": "Operator",
     "metadataOnly": "Platform metadata only. Candidate data never appears here.",
     "nav": {

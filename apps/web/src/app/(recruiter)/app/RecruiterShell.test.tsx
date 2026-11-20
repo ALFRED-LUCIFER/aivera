@@ -79,6 +79,10 @@ describe('Recruiter app shell', () => {
       expect(within(sidebar()).getByRole('link', { name })).toBeTruthy();
     expect(within(sidebar()).getByRole('link', { name: 'My desk 4' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    // The Main artboard draws the Credalent mark beside the wordmark (AIV-P0-035).
+    expect(
+      within(sidebar()).getByRole('link', { name: 'Credalent' }).querySelector('img')?.getAttribute('src'),
+    ).toContain('credalent-mark');
     expect(screen.getByRole('link', { name: 'Credalent website' }).getAttribute('href')).toBe('/');
   });
 

@@ -2,6 +2,7 @@
 
 - **Status:** Accepted, 18 Nov 2026
 - **Ticket:** AIV-P0-001
+- **Note, 20 Nov 2026:** the product was renamed from Aivera to Credalent (AIV-P0-035). ADR text uses the new name; live resource, database and role names keep `aivera` (see the AIV-P0-035 PR).
 
 ## Context
 

@@ -20,7 +20,8 @@ import {
 } from './cast.ts';
 
 /** The cast's sign-in method: no real issuer, so no one can sign in as a seeded user. */
-export const SEED_ISSUER = 'https://seed.credalent.example';
+// Kept after the Credalent rename: seeded identities on dev are keyed by this issuer; a new one would duplicate them.
+export const SEED_ISSUER = 'https://seed.aivera.example';
 
 /** The APP_ENV values that hold synthetic data only (apps/web/src/server/env.ts); anything else, unset too, is refused. */
 const SYNTHETIC_ENVS = ['local', 'dev'];

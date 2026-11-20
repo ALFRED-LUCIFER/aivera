@@ -255,7 +255,7 @@ export function findViolations(root: string): Violation[] {
           kind === 'apps' &&
           PUBLIC_API.test(file) &&
           !/\.test\.tsx?$/.test(file) &&
-          (spec.startsWith('.') || /^@(?:aivera\/|\/)/.test(spec)) &&
+          (spec.startsWith('.') || /^@(?:credalent\/|\/)/.test(spec)) &&
           !PUBLIC_API_ALLOWED.has(spec)
         )
           add(

@@ -64,6 +64,8 @@ describe('evidence-request template', () => {
     expect(html).toContain('href="https://credalent.example/l/delete-9fK2xQ"');
     expect(html).toContain('src="https://credalent.example/brand/credalent-mark.png"');
     expect(html).not.toContain('Synthetic data');
+    // SAFETY: mutation check: logo path back to /brand/aivera-mark.png -> this assertion failed
+    expect(html).not.toMatch(/aivera/i);
   });
 
   it('ships the dark colours in a prefers-color-scheme block', async () => {

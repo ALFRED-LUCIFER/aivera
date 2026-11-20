@@ -5,7 +5,7 @@ import { cited, type Source } from '../citations.ts';
 // the eval set (evals/jobs.detectDomain/). The jobs module calls it with its domain catalogue; the eval runner the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const DETECT_DOMAIN_VERSION = 'jobs.detectDomain@1';
+export const DETECT_DOMAIN_VERSION = 'jobs.detectDomain@2';
 
 export const DETECT_DOMAIN_SYSTEM = [
   "You read a job description and say which industry the hiring company is in, so Credalent can suggest that industry's",

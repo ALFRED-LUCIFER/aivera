@@ -4,7 +4,7 @@ exports[`Scenario: Only the published version is read (AIV-P2-044) > equals the 
 {
   "prompt": "Job type: software_engineering
 Title: Senior Backend Engineer, Payments",
-  "promptVersion": "jobs.detectDomain@1",
+  "promptVersion": "jobs.detectDomain@2",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,

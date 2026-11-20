@@ -113,6 +113,16 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ]);
   });
 
+  // SAFETY: mutation check: scope pattern back to the old @aivera/ prefix -> this test failed
+  it('a public API route importing a module other than jobs, or app server code, is reported for each import', () => {
+    expect(
+      findViolations(fixture('public-api'))
+        .filter((v) => v.rule === 'public-api-jobs-only')
+        .map((v) => v.detail.split(':')[0])
+        .toSorted(),
+    ).toEqual(['@/server/db', '@credalent/candidates/composition']);
+  });
+
   // SAFETY: mutation check: made findViolations return [] -> every case below failed
   it.each([
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],

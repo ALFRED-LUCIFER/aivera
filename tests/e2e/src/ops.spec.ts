@@ -13,7 +13,7 @@ const cookie = async (context: BrowserContext, name: string) => (await context.c
 
 async function expectConsole(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Credalent operations' })).toBeVisible();
-  await expect(page.getByText('Signed in as an Credalent operator.')).toBeVisible();
+  await expect(page.getByText('Signed in as a Credalent operator.')).toBeVisible();
   await expect(page).toHaveTitle('Credalent operations');
 }
 
@@ -23,7 +23,7 @@ async function expectRefused(page: Page) {
   await expect(page.getByText(noAccess)).toBeVisible();
   // No console data in the response: not the heading, the sections, the title or the operator line.
   const html = (await response?.text()) ?? '';
-  expect(html).not.toMatch(/Credalent operations|Signed in as an Credalent operator|Coming soon/);
+  expect(html).not.toMatch(/Credalent operations|Signed in as a Credalent operator|Coming soon/);
 }
 
 test('Scenario: An operator opens the console', async ({ page, context }) => {

@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Review an Credalent diff or PR against AGENTS.md and its ticket's Gherkin scenarios before merge
+description: Review a Credalent diff or PR against AGENTS.md and its ticket's Gherkin scenarios before merge
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
