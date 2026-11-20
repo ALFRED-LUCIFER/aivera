@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
+  BudgetExceeded,
   modelOf,
   parseCvRequest,
   type AiClient,
@@ -19,6 +20,7 @@ import { FileCleanV1, FileRejectedV1 } from '@credalent/files';
 import { annotateSpan, log, withSpan } from '@credalent/observability';
 import { cvParseUseCases, isTransient, parseCv, type ParsePorts } from './application/cvParse.ts';
 import type { WorkspacesContract } from '@credalent/workspaces';
+import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
 import {
@@ -40,6 +42,7 @@ import {
 } from './application/requests.ts';
 import {
   CvParseRequestedV1,
+  DocumentReadRequestedV1,
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
@@ -53,6 +56,7 @@ import {
 } from './contracts/index.ts';
 import { cvParseStore } from './infrastructure/cvParseStore.ts';
 import { createDocumentIntelligence, type DocumentIntelligenceConfig } from './infrastructure/documentIntelligence.ts';
+import { documentReadStore } from './infrastructure/documentReadStore.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
 import { mappingStore } from './infrastructure/mappingStore.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
@@ -79,6 +83,10 @@ const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKe
     occurredAt: source.createdAt,
   });
 
+const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
+  log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
+const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
+
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one.
@@ -95,9 +103,8 @@ export function createEvidence(
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     audit: (ctx, entry) =>
       audit.record({ tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } }, entry),
-    logFlagged: ({ similarity, ...ids }) =>
-      log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged'),
-    sha1: (input) => createHash('sha1').update(input).digest(),
+    logFlagged,
+    sha1,
     newId: () => uuidv7(),
     now,
   };
@@ -125,6 +132,18 @@ export function createEvidence(
           workspaceId: source.workspaceId,
           payload: { candidateId: source.candidateId, sourceId: source.id },
           dedupeKey: `cv-parse:${source.id}`,
+          occurredAt: source.createdAt,
+        }),
+    }),
+    ...documentReadUseCases({
+      ...ports,
+      cvStoreFor: cvParseStore,
+      documentStoreFor: documentReadStore,
+      publishReadRequested: (tx, source) =>
+        enqueue(tx, outbox, DocumentReadRequestedV1, {
+          workspaceId: source.workspaceId,
+          payload: { candidateId: source.candidateId, sourceId: source.id },
+          dedupeKey: `document-read:${source.id}`,
           occurredAt: source.createdAt,
         }),
     }),
@@ -381,22 +400,27 @@ export function createEvidenceMappingHandlers(config: {
 }
 
 /**
- * The worker jobs that parse CVs, on the evidence queue: `evidence.cv.parse` (CvParseRequested.v1), and on FileClean.v1
- * the parses that were waiting for that file's malware scan; FileRejected.v1 marks them unreadable. The parse span
- * carries the number of "Unusual content in this source" notes and nothing else (AGENTS.md 1.2).
+ * The worker jobs that read uploaded files, on the evidence queue: `evidence.cv.parse` (CvParseRequested.v1),
+ * `evidence.document.read` (DocumentReadRequested.v1, AIV-P1-028), and on FileClean.v1 the CV parses and document reads
+ * that were waiting for that file's malware scan; FileRejected.v1 marks them unreadable. Each span carries the number of
+ * "Unusual content in this source" notes and nothing else (AGENTS.md 1.2).
  */
-export function createCvParseHandlers(config: {
+export function createFileReadHandlers(config: {
   /** The consumers' database: a transient failure is recorded in its own transaction before the delivery retries. */
   db: Db;
   documentIntelligence: DocumentIntelligenceConfig;
   ai: Pick<AiClient, 'generateStructured'>;
   readCleanFile: ParsePorts['readCleanFile'];
   recordContact: ParsePorts['recordContact'];
+  /** Chunks and embeds one page item's excerpt for citation lookups (`indexDocument` of @credalent/ai/search). */
+  index(workspaceId: string, itemId: string, text: string): Promise<void>;
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
-  const ports: ParsePorts = {
+  const ports: ParsePorts & ReadPorts = {
+    storeFor: evidenceStore,
     cvStoreFor: cvParseStore,
+    documentStoreFor: documentReadStore,
     publishRecorded,
     readCleanFile: config.readCleanFile,
     recordContact: config.recordContact,
@@ -410,54 +434,107 @@ export function createCvParseHandlers(config: {
     documentIntelligence: createDocumentIntelligence(config.documentIntelligence),
     extract: (workspaceId, sourceId, text) =>
       config.ai.generateStructured({ ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]), workspaceId }),
+    logFlagged,
+    sha1,
     newId: uuidv7,
     now,
   };
-  const parse = (tx: Tx, workspaceId: string, sourceId: string) =>
-    withSpan('evidence cv parse', async () => {
-      let result: Awaited<ReturnType<typeof parseCv>>;
+  /**
+   * Runs one read in its span. A transient failure is written as `failed` in its own transaction, since the delivery's
+   * rolls back on the rethrow; the consumer then backs off, redelivers (a failed read runs again) and dead-letters after
+   * its last delivery.
+   */
+  const traced = (
+    name: string,
+    workspaceId: string,
+    sourceId: string,
+    run: () => Promise<{ notes: number } | null>,
+    fail: (own: Tx) => Promise<unknown>,
+  ) =>
+    withSpan(name, async () => {
+      let result: { notes: number } | null;
       try {
-        result = await parseCv(ports, tx, workspaceId, sourceId);
+        result = await run();
       } catch (error) {
         if (!isTransient(error)) throw error;
         // shortcut: the write takes a second pooled connection while the delivery holds one; give the worker a small
         // pool of its own if an outage ever stalls the shared pool.
-        // The delivery's transaction rolls back on the rethrow, so "Parsing failed, retry" is written apart; the
-        // consumer then backs off, redelivers (a failed parse runs again) and dead-letters after its last delivery.
-        await withWorkspace(config.db, workspaceId, (own) => cvParseStore(own).finish(workspaceId, sourceId, 'failed'));
-        log.warn(
-          { 'evidence.source_id': sourceId, 'error.type': (error as Error).name },
-          'cv parse failed, will retry',
-        );
+        await withWorkspace(config.db, workspaceId, fail);
+        log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed, will retry`);
         throw error;
       }
-      // SAFETY: the count only; a note's reason and excerpt quote the CV and stay in the database (AGENTS.md 1.2).
+      // SAFETY: the count only; a note's reason and excerpt quote the file and stay in the database (AGENTS.md 1.2).
       if (result) annotateSpan({ 'credalent.evidence.unusual_count': result.notes });
     });
-  const requested: Handler<{ candidateId: string; sourceId: string }> = {
+  const parse = (tx: Tx, workspaceId: string, sourceId: string) =>
+    traced(
+      'evidence cv parse',
+      workspaceId,
+      sourceId,
+      () => parseCv(ports, tx, workspaceId, sourceId),
+      (own) => cvParseStore(own).finish(workspaceId, sourceId, 'failed'),
+    );
+  const read = (tx: Tx, workspaceId: string, sourceId: string) =>
+    traced(
+      'evidence document read',
+      workspaceId,
+      sourceId,
+      async () => {
+        const result = await readDocument(ports, tx, workspaceId, sourceId);
+        // One owner per page item, so a search hit's offsets point into that item's excerpt. An embedding outage
+        // (AiUnavailable) is transient: the read is retried, and indexing replaces the vectors.
+        // shortcut: indexing runs inside the delivery, on its own connections, while the read's row is locked, and its
+        // vectors commit first (a rolled-back read leaves vectors without items); the synthetic purge does not remove
+        // them (hashes and vectors, no text). Index after commit, and call removeOwner from the purge and candidate
+        // deletion, when deletion requests are built.
+        try {
+          for (const item of result?.items ?? []) await config.index(workspaceId, item.id, item.excerpt);
+        } catch (error) {
+          // The day's AI budget spent: keep the read; its pages are simply not searchable yet.
+          if (!(error instanceof BudgetExceeded)) throw error;
+          log.warn({ 'evidence.source_id': sourceId, 'error.type': error.name }, 'document index skipped');
+        }
+        return result;
+      },
+      (own) => documentReadStore(own).finish(workspaceId, sourceId, 'failed'),
+    );
+  const cvRequested: Handler<{ candidateId: string; sourceId: string }> = {
     event: CvParseRequestedV1,
     inbox,
     consumer: 'evidence.cv.parse',
     handle: (tx, payload, envelope) => parse(tx, envelope.workspaceId, payload.sourceId),
   };
+  const documentRequested: Handler<{ candidateId: string; sourceId: string }> = {
+    event: DocumentReadRequestedV1,
+    inbox,
+    consumer: 'evidence.document.read',
+    handle: (tx, payload, envelope) => read(tx, envelope.workspaceId, payload.sourceId),
+  };
   const clean: Handler<{ fileId: string }> = {
     event: FileCleanV1,
     inbox,
-    consumer: 'evidence.cv.file_clean',
+    consumer: 'evidence.file_clean',
     async handle(tx, payload, envelope) {
-      for (const sourceId of await cvParseStore(tx).pendingForFile(envelope.workspaceId, payload.fileId))
-        await parse(tx, envelope.workspaceId, sourceId);
+      const { workspaceId } = envelope;
+      for (const sourceId of await cvParseStore(tx).pendingForFile(workspaceId, payload.fileId))
+        await parse(tx, workspaceId, sourceId);
+      for (const sourceId of await documentReadStore(tx).pendingForFile(workspaceId, payload.fileId))
+        await read(tx, workspaceId, sourceId);
     },
   };
   const rejected: Handler<{ fileId: string; reason: 'infected' | 'rejected' }> = {
     event: FileRejectedV1,
     inbox,
-    consumer: 'evidence.cv.file_rejected',
+    consumer: 'evidence.file_rejected',
     async handle(tx, payload, envelope) {
-      const store = cvParseStore(tx);
-      for (const sourceId of await store.pendingForFile(envelope.workspaceId, payload.fileId))
-        await store.finish(envelope.workspaceId, sourceId, 'unreadable');
+      const { workspaceId } = envelope;
+      const cvs = cvParseStore(tx);
+      for (const sourceId of await cvs.pendingForFile(workspaceId, payload.fileId))
+        await cvs.finish(workspaceId, sourceId, 'unreadable');
+      const documents = documentReadStore(tx);
+      for (const sourceId of await documents.pendingForFile(workspaceId, payload.fileId))
+        await documents.finish(workspaceId, sourceId, 'unreadable');
     },
   };
-  return [requested, clean, rejected] as Handler<unknown>[];
+  return [cvRequested, documentRequested, clean, rejected] as Handler<unknown>[];
 }

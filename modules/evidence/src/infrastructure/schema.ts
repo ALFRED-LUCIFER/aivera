@@ -19,6 +19,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
+import { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
@@ -531,6 +532,31 @@ export const cvParse = evidence
       // Must list exactly CV_PARSE_STATUSES (domain/cv.ts); changing it needs a new migration.
       check('cv_parse_status_check', sql`${t.status} in ('pending', 'parsed', 'unreadable', 'failed')`),
       tenantPolicy('cv_parse_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A document's read (AIV-P1-028): pending until the worker has read the clean file; then read, unreadable or failed.
+// Its text is held by the source's items (one per page), never here.
+export const documentRead = evidence
+  .table(
+    'document_read',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      status: text({ enum: DOCUMENT_READ_STATUSES }).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'document_read_pkey', columns: [t.workspaceId, t.sourceId] }),
+      foreignKey({
+        name: 'document_read_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      // Must list exactly DOCUMENT_READ_STATUSES (domain/document.ts); changing it needs a new migration.
+      check('document_read_status_check', sql`${t.status} in ('pending', 'read', 'unreadable', 'failed')`),
+      tenantPolicy('document_read_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

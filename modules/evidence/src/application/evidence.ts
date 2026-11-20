@@ -92,6 +92,41 @@ export type RecordEvidenceInput = {
 
 export type RecordEvidenceResult = { sourceId: string; itemIds: string[] };
 
+/**
+ * "Also submitted by another applicant": flags each other candidate's near-duplicate source in this workspace. The
+ * store filters by workspace and row-level security hides every other workspace's sources (ADR-005), so a flag never
+ * crosses workspaces. It records the flag and nothing else. Also run by the document read (AIV-P1-028).
+ */
+// shortcut: compares against every fingerprinted source in the workspace in memory; index fingerprint bands when a
+// workspace holds tens of thousands of sources.
+export async function flagCrossApplicantCopies(
+  { storeFor, newId, logFlagged }: Pick<Ports, 'storeFor' | 'newId' | 'logFlagged'>,
+  tx: Tx,
+  source: EvidenceSource,
+) {
+  if (!source.textFingerprint) return;
+  const store = storeFor(tx);
+  const others = (await store.fingerprints(source.workspaceId)).filter((o) => o.id !== source.id);
+  const flags = crossApplicantMatches(source, others).map((match): DuplicateFlag => ({
+    id: newId(),
+    workspaceId: source.workspaceId,
+    sourceId: source.id,
+    candidateId: source.candidateId,
+    otherSourceId: match.id,
+    otherCandidateId: match.candidateId,
+    similarity: match.similarity,
+    resolution: null,
+    resolvedBy: null,
+    resolvedAt: null,
+    createdAt: source.createdAt,
+  }));
+  if (!flags.length) return;
+  await store.insertFlags(flags);
+  // Logged before commit: a rolled-back record leaves a line with ids only, never a flag.
+  for (const f of flags)
+    logFlagged({ flagId: f.id, sourceId: f.sourceId, otherSourceId: f.otherSourceId, similarity: f.similarity });
+}
+
 // shortcut: recording and linking are open to admins and recruiters (`candidate.create`), reading to them alone
 // (`candidate.view` with no job); hiring owners and interviewers reach a candidate's evidence through an application's
 // job once applications land (AIV-P1-017).
@@ -106,37 +141,6 @@ export function evidenceUseCases({
   newId,
   now,
 }: Ports) {
-  /**
-   * "Also submitted by another applicant": flags each other candidate's near-duplicate source in this workspace. The
-   * store filters by workspace and row-level security hides every other workspace's sources (ADR-005), so a flag never
-   * crosses workspaces. It records the flag and nothing else.
-   */
-  // shortcut: compares against every fingerprinted source in the workspace in memory; index fingerprint bands when a
-  // workspace holds tens of thousands of sources.
-  async function flagCrossApplicantCopies(ctx: WorkspaceContext, source: EvidenceSource) {
-    if (!source.textFingerprint) return;
-    const store = storeFor(ctx.tx);
-    const others = (await store.fingerprints(ctx.workspaceId)).filter((o) => o.id !== source.id);
-    const flags = crossApplicantMatches(source, others).map((match): DuplicateFlag => ({
-      id: newId(),
-      workspaceId: ctx.workspaceId,
-      sourceId: source.id,
-      candidateId: source.candidateId,
-      otherSourceId: match.id,
-      otherCandidateId: match.candidateId,
-      similarity: match.similarity,
-      resolution: null,
-      resolvedBy: null,
-      resolvedAt: null,
-      createdAt: source.createdAt,
-    }));
-    if (!flags.length) return;
-    await store.insertFlags(flags);
-    // Logged before commit: a rolled-back record leaves a line with ids only, never a flag.
-    for (const f of flags)
-      logFlagged({ flagId: f.id, sourceId: f.sourceId, otherSourceId: f.otherSourceId, similarity: f.similarity });
-  }
-
   return {
     async recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult> {
       await authorize(ctx, 'candidate.create');
@@ -169,7 +173,7 @@ export function evidenceUseCases({
       );
       const itemIds = items.map((i) => i.item.id);
       await publishRecorded(ctx.tx, source, itemIds);
-      await flagCrossApplicantCopies(ctx, source);
+      await flagCrossApplicantCopies({ storeFor, newId, logFlagged }, ctx.tx, source);
       return { sourceId: source.id, itemIds };
     },
 

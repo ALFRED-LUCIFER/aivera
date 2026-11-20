@@ -11,7 +11,7 @@ import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, MAX_DELIVERIES, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
 import { CvParseRequestedV1, type EvidenceContract } from '@credalent/evidence';
-import { createCvParseHandlers, createEvidence, EVIDENCE_QUEUE } from '@credalent/evidence/composition';
+import { createFileReadHandlers, createEvidence, EVIDENCE_QUEUE } from '@credalent/evidence/composition';
 import { FileCleanV1, FileRejectedV1, type FilesContract } from '@credalent/files';
 import { createCleanFileReader, createFiles, type BlobStore } from '@credalent/files/composition';
 import { log } from '@credalent/observability';
@@ -178,12 +178,13 @@ async function relayAndConsume(completion: string): Promise<string[]> {
 
 /** Delivers the envelopes to the worker's CV handlers, as Service Bus would on delivery `deliveryCount`. */
 async function consume(envelopes: Envelope[], completion: string, deliveryCount = 1): Promise<string[]> {
-  const handlers = createCvParseHandlers({
+  const handlers = createFileReadHandlers({
     db: app,
     documentIntelligence: { endpoint: DI, token: async () => 'synthetic-entra-token', wait: async () => undefined },
     ai: createAiClient({ provider: fakeProvider({ completion }), budget: createAiTokenBudget(app) }),
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
+    index: async () => undefined,
     now: () => NOW,
   });
   const consumer = createConsumer({ db: app, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
@@ -458,7 +459,7 @@ describe('A CV whose file was rejected before the parse was asked for', () => {
 });
 
 describe('Scenario: Transient failures retry and then fail visibly', () => {
-  // SAFETY: mutation check: removed the own-transaction write of 'failed' in createCvParseHandlers -> this test failed (pending)
+  // SAFETY: mutation check: removed the own-transaction write of 'failed' in createFileReadHandlers -> this test failed (pending)
   it('Document Intelligence timing out is retried by the worker, then dead-lettered, and the source shows "Parsing failed, retry"', async () => {
     const { candidateId, sourceId, view, settled } = await parse('Mark Reyes', 'unavailable', answer({}));
     // The first delivery backs off for a redelivery; the parse already shows the failure.

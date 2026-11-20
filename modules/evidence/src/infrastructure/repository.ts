@@ -4,6 +4,7 @@ import type { EvidenceStore } from '../application/evidence.ts';
 import {
   competencyLink,
   cvParse,
+  documentRead,
   duplicateFlag,
   evidenceGap,
   item,
@@ -149,6 +150,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(repositorySkillSignal).where(eq(repositorySkillSignal.workspaceId, workspaceId));
       await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
       await tx.delete(cvParse).where(eq(cvParse.workspaceId, workspaceId));
+      await tx.delete(documentRead).where(eq(documentRead.workspaceId, workspaceId));
       await tx.delete(sourceNote).where(eq(sourceNote.workspaceId, workspaceId));
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
