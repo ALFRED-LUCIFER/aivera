@@ -38,7 +38,7 @@
 | Staff Backend Engineer           | Engineering · Riyadh, hybrid  | VP Engineering      | Collecting evidence, 31 assessed |
 | Senior Product Designer          | Design · Abu Dhabi            | Design Director     | Defining rubric                  |
 
-The five jobs above live in the seed cast (`tools/seed/src/cast.ts`) and the e2e seed; `pnpm db:seed` does not write them yet. It writes five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
+`pnpm db:seed` writes the five jobs above from the seed cast (`tools/seed/src/cast.ts`) at their stages (AIV-P1-067): each rubric approved by its hiring owner on its design date (Senior AI Engineer: version 1 on 5 Nov 2026, superseded by version 2 on 12 Nov; Senior Product Manager, Payments 5 Nov; QA Automation Engineer 9 Nov; Staff Backend Engineer 10 Nov), the Senior Product Designer's still a draft. Candidates and assessed counts are not seeded yet. It also writes five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
 
 | Job                                  | Job type × domain pack                        | Team · location             | Hiring owner        | Regional hints |
 | ------------------------------------ | --------------------------------------------- | --------------------------- | ------------------- | -------------- |

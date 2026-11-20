@@ -99,6 +99,7 @@ const MESSAGES = {
   stale: 'This rubric changed since you opened it. Reload to see the latest.',
   return_note: 'Write a note of up to 1,000 characters saying what to change.',
   rubric_not_approved: 'Publish after the rubric is approved.',
+  stage_needs_rubric: 'Approve the rubric before moving the job on.',
   not_synthetic: 'Only a synthetic workspace holding only synthetic jobs can be purged.',
   public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
 } as const;

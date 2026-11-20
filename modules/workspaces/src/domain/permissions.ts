@@ -20,6 +20,8 @@ export const PERMISSIONS = {
   // Inviting, revoking invitations and removing members (AIV-P1-003).
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   'rubric.approve': { scope: 'job', roles: ['admin', 'hiring_owner'] },
+  // Moving a job between its five stages (AIV-P1-067); the jobs module refuses leaving "defining rubric" unapproved.
+  'job.change_stage': { scope: 'job', roles: ['admin', 'recruiter'] },
   'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },

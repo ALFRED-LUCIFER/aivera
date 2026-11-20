@@ -11,7 +11,16 @@ import type {
   PublishJobInput,
   SaveRubricInput,
 } from '../application/jobs.ts';
-import type { DeskJob, Job, JobHeader, PublicListing, Rubric, RubricApproval, RubricVersion } from '../domain/job.ts';
+import type {
+  DeskJob,
+  Job,
+  JobHeader,
+  JobStage,
+  PublicListing,
+  Rubric,
+  RubricApproval,
+  RubricVersion,
+} from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
@@ -125,6 +134,11 @@ export interface JobsContract {
    * workspaces module's `WorkspaceError('owner_role')` when the owner is not an active hiring owner.
    */
   changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void>;
+  /**
+   * Admins and recruiters (AIV-P1-067): moves the job to `stage`; the same stage does nothing. Any stage past "defining
+   * rubric" needs an approved rubric (`JobError('stage_needs_rubric')`). Audited as `job.stage_changed`.
+   */
+  changeStage(ctx: WorkspaceContext, jobId: string, stage: JobStage): Promise<void>;
   /** The job, or null when it does not exist or the context's job scope does not reach it. Every role. */
   getJob(ctx: WorkspaceContext, jobId: string): Promise<Job | null>;
   /** The jobs the context may see, oldest first. Every role; job-scoped roles get their granted jobs only. */

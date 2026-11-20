@@ -163,6 +163,12 @@ export function jobStore(tx: Tx): JobStore {
         .set({ hiringOwnerUserId })
         .where(and(jobWhere(workspaceId), eq(job.id, jobId)));
     },
+    async setStage(workspaceId, jobId, stage) {
+      await tx
+        .update(job)
+        .set({ stage })
+        .where(and(jobWhere(workspaceId), eq(job.id, jobId)));
+    },
     async setPublication(workspaceId, jobId, publication) {
       await tx
         .update(job)
@@ -209,9 +215,7 @@ export function jobStore(tx: Tx): JobStore {
         .set({ status, ...change })
         .where(and(eq(rubricVersion.workspaceId, workspaceId), eq(rubricVersion.id, versionId)));
     },
-    // shortcut: an approved or superseded rubric version cannot be deleted (rubric_version_frozen_check), so a purge of
-    // a workspace where one was approved fails and deletes nothing; allow synthetic jobs' versions in that trigger once
-    // demo resets after an approval are needed.
+    // Approved and superseded versions too: the frozen-version triggers let a synthetic job's go (AIV-P1-067).
     async deleteSyntheticJobs(workspaceId) {
       const [real] = await tx
         .select({ id: job.id })

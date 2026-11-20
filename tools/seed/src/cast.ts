@@ -1,6 +1,6 @@
 // The synthetic demo cast (docs/00-product/personas.md, AIV-P0-031). Every person here is invented: emails are on the
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
-// Module tickets seed from this file: candidates and industry jobs now; the design jobs, applications, evidence,
+// Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
 // interviews and packs when they land.
 import {
   DOMAIN_PACK_CATALOGUE_VERSION,
@@ -24,9 +24,32 @@ export type CastJob = {
   /** `key` of the hiring owner in `HIRING_OWNERS`. */
   hiringOwner: string;
   stage: 'defining_rubric' | 'collecting_evidence' | 'round_1';
-  /** Weights total 100. `approvedOn` is a UTC date; null while the hiring owner has not approved this version. */
-  rubric: { version: number; approvedOn: string | null; competencies: { name: string; weight: number }[] };
+  /** The rubric's "What success means". */
+  successStatement: string;
+  /**
+   * Weights total 100. `approvedOn` is a UTC date; null while the hiring owner has not approved this version.
+   * `changeNote` says what changed from the version it supersedes.
+   */
+  rubric: { version: number; approvedOn: string | null; changeNote?: string; competencies: CastCompetency[] };
+  /** The approved version the current one replaced, now superseded (version 2 jobs only). */
+  supersedes?: { approvedOn: string; competencies: CastCompetency[] };
 };
+/** A rubric row as the Rubric and Add a job artboards show it; `suggested` marks "Suggested by Aivera, accepted". */
+export type CastCompetency = {
+  name: string;
+  evidence: string;
+  weight: number;
+  level: 1 | 2 | 3 | 4 | 5;
+  type: 'mandatory' | 'desirable';
+  suggested?: true;
+};
+const row = (
+  name: string,
+  evidence: string,
+  weight: number,
+  level: CastCompetency['level'],
+  type: CastCompetency['type'] = 'mandatory',
+): CastCompetency => ({ name, evidence, weight, level, type });
 
 /** A demo job in one industry (AIV-P1-065), seeded with a draft rubric v1 from its domain pack. */
 export type CastIndustryJob = {
@@ -68,6 +91,36 @@ export const HIRING_OWNERS: CastUser[] = [
   owner('design.director', 'Design Director'),
 ];
 
+// Evidence expected, levels and types from docs/01-design/artboards: Rubric.dc.html (Senior AI Engineer) and
+// RoleNew.dc.html (the other four). Weights are personas.md's, not RoleNew's draft weights. The four success statements
+// other than the Senior AI Engineer's are synthetic: no artboard shows them.
+// shortcut: tests/e2e/seed.ts artboardRubric repeats these rows; keep both in step.
+const SAE_V2: CastCompetency[] = [
+  row('LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4),
+  row('Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4),
+  row('Python service engineering', 'Production Python they wrote: services, tests, deployment', 15, 3),
+  row('Cost and reliability', 'Numbers on latency, cost per request and incidents handled', 15, 2, 'desirable'),
+  {
+    ...row(
+      'Arabic and bilingual NLP',
+      'Work on Arabic or bilingual text: models, evals, tokenisation',
+      10,
+      2,
+      'desirable',
+    ),
+    suggested: true,
+  },
+  {
+    ...row(
+      'Product judgement',
+      'Decisions made with product and business, shown in a doc or confirmed by a reference',
+      15,
+      3,
+    ),
+    suggested: true,
+  },
+];
+
 export const JOBS: CastJob[] = [
   {
     title: 'Senior AI Engineer',
@@ -76,17 +129,25 @@ export const JOBS: CastJob[] = [
     location: 'DIFC, Dubai',
     hiringOwner: 'head.engineering',
     stage: 'round_1',
+    successStatement:
+      'Within six months, a bilingual assistant that answers merchant questions in English and Arabic is live, ' +
+      'measured against an evaluation set, and running within an agreed cost per request.',
     rubric: {
       version: 2,
       approvedOn: '2026-11-12',
-      competencies: [
-        { name: 'LLM systems in production', weight: 25 },
-        { name: 'Retrieval and evaluation', weight: 20 },
-        { name: 'Python service engineering', weight: 15 },
-        { name: 'Cost and reliability', weight: 15 },
-        { name: 'Arabic and multilingual NLP', weight: 10 },
-        { name: 'Delivery with a team', weight: 15 },
-      ],
+      changeNote: 'Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
+      competencies: SAE_V2,
+    },
+    // Version 1: Arabic NLP mandatory at 15%, Product judgement at 10%.
+    supersedes: {
+      approvedOn: '2026-11-05',
+      competencies: SAE_V2.map((c) =>
+        c.name === 'Arabic and bilingual NLP'
+          ? { ...c, type: 'mandatory', weight: 15 }
+          : c.name === 'Product judgement'
+            ? { ...c, weight: 10 }
+            : c,
+      ),
     },
   },
   {
@@ -96,14 +157,17 @@ export const JOBS: CastJob[] = [
     location: 'Dubai Internet City',
     hiringOwner: 'cpo.payments',
     stage: 'round_1',
+    successStatement:
+      'Within six months, a payments feature they led is live with merchants, and its adoption and failure rates are ' +
+      'measured against the targets agreed before launch.',
     rubric: {
       version: 1,
       approvedOn: '2026-11-05',
       competencies: [
-        { name: 'Discovery to decision', weight: 30 },
-        { name: 'Outcomes with metrics', weight: 30 },
-        { name: 'Prioritisation', weight: 20 },
-        { name: 'Working with engineering and design', weight: 20 },
+        row('Discovery to decision', 'Research write-ups that show how evidence became a decision', 30, 4),
+        row('Outcomes with metrics', 'Before-and-after numbers tied to something shipped', 30, 4),
+        row('Prioritisation', 'A roadmap or trade-off document with the reasoning shown', 20, 3),
+        row('Working with engineering and design', 'A reference showing how they ran the team day to day', 20, 3),
       ],
     },
   },
@@ -114,14 +178,17 @@ export const JOBS: CastJob[] = [
     location: 'Dubai, hybrid',
     hiringOwner: 'head.quality',
     stage: 'collecting_evidence',
+    successStatement:
+      'Within six months, every release runs an automated regression suite they own, and escaped defects fall ' +
+      'release on release.',
     rubric: {
       version: 1,
       approvedOn: '2026-11-09',
       competencies: [
-        { name: 'Test automation design', weight: 35 },
-        { name: 'Defect finding and reporting', weight: 20 },
-        { name: 'CI and release quality', weight: 25 },
-        { name: 'Test strategy and risk', weight: 20 },
+        row('Test automation design', 'A test suite they wrote, and what it covers', 35, 4),
+        row('Defect finding and reporting', 'Bug reports that led to fixes', 20, 4),
+        row('CI and release quality', 'Pipelines and release checks they own', 25, 3),
+        row('Test strategy and risk', 'A test plan that shows what they chose not to test, and why', 20, 3),
       ],
     },
   },
@@ -132,14 +199,22 @@ export const JOBS: CastJob[] = [
     location: 'Riyadh, hybrid',
     hiringOwner: 'vp.engineering',
     stage: 'collecting_evidence',
+    successStatement:
+      'Within six months, a core service they designed runs in production within its agreed latency and error ' +
+      'budgets, with the team able to change it safely.',
     rubric: {
       version: 1,
       approvedOn: '2026-11-10',
       competencies: [
-        { name: 'System design in production', weight: 35 },
-        { name: 'Code quality and testing', weight: 20 },
-        { name: 'Reliability and operations', weight: 25 },
-        { name: 'Delivery with a team', weight: 20 },
+        row(
+          'System design in production',
+          'A service they designed that runs in production, and the trade-offs they made',
+          35,
+          4,
+        ),
+        row('Code quality and testing', 'Code they wrote, with its tests and review history', 20, 4),
+        row('Reliability and operations', 'Incidents they handled and the monitoring they set up', 25, 3),
+        row('Delivery with a team', 'Shipped work, with their part confirmed by a reference', 20, 3),
       ],
     },
   },
@@ -150,14 +225,17 @@ export const JOBS: CastJob[] = [
     location: 'Abu Dhabi',
     hiringOwner: 'design.director',
     stage: 'defining_rubric',
+    successStatement:
+      'Within six months, a redesigned core flow they led has shipped in English and Arabic, tested with users ' +
+      'before and after launch.',
     rubric: {
       version: 1,
       approvedOn: null,
       competencies: [
-        { name: 'Interaction design craft', weight: 35 },
-        { name: 'Research to decisions', weight: 25 },
-        { name: 'Design systems', weight: 20 },
-        { name: 'Prototyping', weight: 20 },
+        row('Interaction design craft', 'Design files or case studies showing flows, states and edge cases', 35, 4),
+        row('Research to decisions', 'Research that changed a design', 25, 4),
+        row('Design systems', 'Components or tokens they defined and maintained', 20, 3),
+        row('Prototyping', 'A working prototype used to test an idea', 20, 3),
       ],
     },
   },
