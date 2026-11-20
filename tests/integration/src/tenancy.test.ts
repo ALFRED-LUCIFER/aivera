@@ -439,10 +439,15 @@ async function seed(
       ${rubric.id}, 'evidence.mapToCompetency@1', 'gpt-4.1-mini', '[]'::jsonb, now())`);
     await ctx.tx.execute(sql`insert into evidence.evidence_gap (id, workspace_id, mapping_id, competency_id, kind)
       values (${crypto.randomUUID()}, ${workspaceId}, ${mappingId}, ${crypto.randomUUID()}, 'no_evidence')`);
+    const mappedItemId = crypto.randomUUID();
     await ctx.tx.execute(sql`insert into evidence.item (id, workspace_id, source_id, candidate_id, excerpt,
       provenance, strength, limit_statement, synthetic, created_at, mapping_id)
-      select ${crypto.randomUUID()}, workspace_id, source_id, candidate_id, excerpt, provenance, strength,
+      select ${mappedItemId}, workspace_id, source_id, candidate_id, excerpt, provenance, strength,
         limit_statement, synthetic, created_at, ${mappingId} from evidence.item where id = ${itemIds[0]}`);
+    // A comparison of two cited items (evidence.comparison, AIV-P1-029).
+    await ctx.tx.execute(sql`insert into evidence.comparison (id, workspace_id, candidate_id, job_id, mapping_id,
+      competency_id, item_id, other_item_id, outcome, created_at) values (${crypto.randomUUID()}, ${workspaceId},
+      ${personId}, ${job.id}, ${mappingId}, ${crypto.randomUUID()}, ${itemIds[0]}, ${mappedItemId}, 'agreement', now())`);
     await ctx.tx.execute(sql`insert into evidence.merged_pull_request
       (workspace_id, item_id, candidate_id, repository, number, merged_at, merged_by, self_merged)
       values (${workspaceId}, ${itemIds[0]}, ${personId}, 'saga-maintainer-credalent-example/saga', 41, now(),

@@ -141,6 +141,7 @@ describe('Migrations', () => {
       where t.schemaname = 'evidence' order by name`);
     expect([...tables]).toEqual(
       [
+        'comparison',
         'competency_link',
         'cv_parse',
         'document_read',

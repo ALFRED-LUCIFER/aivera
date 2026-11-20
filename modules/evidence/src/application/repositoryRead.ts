@@ -164,6 +164,14 @@ export type RepositoryReadStore = {
   insertItems(source: EvidenceSource | null, items: EvidenceItem[], pulls: MergedPullRequestRow[]): Promise<void>;
   /** "owner/name#12" for every merged pull request already recorded for the candidate. */
   knownPullRequests(workspaceId: string, candidateId: string): Promise<Set<string>>;
+  /** The candidate's supplied GitHub logins (lower case) and each recorded merged pull request with its source. */
+  pullRequestOrigins(
+    workspaceId: string,
+    candidateId: string,
+  ): Promise<{
+    logins: string[];
+    pulls: { sourceId: string; repository: string; mergedBy: string | null; selfMerged: boolean }[];
+  }>;
 };
 
 export type RepositoryPorts = Pick<Ports, 'publishRecorded' | 'authorize' | 'newId' | 'now'> & {

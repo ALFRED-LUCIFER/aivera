@@ -58,6 +58,8 @@ const ALLOWED = [
   'credalent.evidence.links',
   'credalent.evidence.gaps',
   'credalent.evidence.uncited_changes',
+  // Contradictions the numeric pre-check found in the run (AIV-P1-029).
+  'credalent.evidence.contradictions',
   'credalent.evidence.discarded.unknown_competency',
   'credalent.evidence.discarded.unknown_source',
   'credalent.evidence.discarded.claim_above_supporting',

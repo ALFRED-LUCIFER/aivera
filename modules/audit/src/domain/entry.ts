@@ -39,6 +39,7 @@ export const ACTIONS = [
   'evidence_request.created',
   'evidence_request.sent',
   'evidence_request.closed',
+  'evidence.contradiction_resolved',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -74,7 +75,12 @@ export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
 export const PLATFORM_VALUE_KEYS: readonly string[] = ['dailyTokenBudget', 'status', 'approvalRequired'];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */
-export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded', 'ai_budget.changed'];
+export const NOTE_REQUIRED: readonly Action[] = [
+  'score.changed',
+  'decision.recorded',
+  'ai_budget.changed',
+  'evidence.contradiction_resolved',
+];
 
 /** `operator` is a Credalent operator acting on a workspace from the console, by identity user id (ADR-012 point 8). */
 export const ACTOR_TYPES = ['user', 'system', 'candidate', 'client', 'operator'] as const;
