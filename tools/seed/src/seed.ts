@@ -164,8 +164,8 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
 
   // AIV-P1-024: the design candidates' Senior AI Engineer evidence; a rerun skips a candidate who has some.
   // shortcut: items are not linked to rubric competencies (cast.ts names each one) because the jobs contract does not
-  // expose competency ids yet, and the design's scores (Sara 68 up to 84, …) need scoring; link them with AIV-P1-027
-  // and check the scores with AIV-P1-030.
+  // expose competency ids yet; link them, with a level each, in AIV-P1-027, then assess with @credalent/assessment
+  // (AIV-P1-030), which scores Sara 63 up to 83, not the design's illustrative 68 up to 84.
   await asRecruiter(async (ctx) => {
     const people = new Map((await candidates.listPeople(ctx)).map((p) => [p.displayName, p.id]));
     const jobId = (await jobs.listJobs(ctx)).find((j) => j.title === 'Senior AI Engineer')?.id;

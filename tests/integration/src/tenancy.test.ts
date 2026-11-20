@@ -8,6 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
+import type { AssessmentContract } from '@credalent/assessment';
+import { createAssessment } from '@credalent/assessment/composition';
 import type { IntakeContract } from '@credalent/intake';
 import { createIntake } from '@credalent/intake/composition';
 import type { EvidenceContract } from '@credalent/evidence';
@@ -237,6 +239,7 @@ type Modules = {
   workspaces: WorkspacesContract;
   candidates: CandidatesContract;
   evidence: EvidenceContract;
+  assessment: AssessmentContract;
   jobs: JobsContract;
   intake: IntakeContract;
   audit: AuditContract;
@@ -251,6 +254,7 @@ const modulesOn = (db: Db): Modules => {
     workspaces,
     candidates,
     evidence: createEvidence(workspaces, audit, () => NOW),
+    assessment: createAssessment(workspaces, audit, () => NOW),
     jobs,
     intake: createIntake(workspaces, candidates, jobs, () => NOW),
   };
@@ -275,7 +279,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, evidence, jobs, intake }: Modules,
+  { workspaces, evidence, assessment, jobs, intake }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -342,6 +346,7 @@ async function seed(
       source: 'email',
     });
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
+    const competencyId = crypto.randomUUID();
     const { itemIds } = await evidence.recordEvidence(ctx, {
       candidateId: personId,
       source: {
@@ -360,10 +365,20 @@ async function seed(
           provenance: 'claim',
           strength: 'supporting',
           limit: 'A claim until a second source supports it.',
-          competencies: [{ jobId: job.id, competencyId: crypto.randomUUID() }],
+          competencies: [{ jobId: job.id, competencyId, level: 3 }],
         },
       ],
       synthetic: true,
+    });
+    // An assessment result (assessment.result, AIV-P1-030).
+    await assessment.assessCandidate(ctx, {
+      candidateId: personId,
+      jobId: job.id,
+      rubric: {
+        versionId: rubric.id,
+        competencies: [{ id: competencyId, weightPercent: 100, levelNeeded: 4, type: 'mandatory' }],
+      },
+      evidence: await evidence.listEvidenceForCandidate(ctx, personId, job.id),
     });
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
@@ -626,14 +641,15 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       ).toEqual([w1.workspaceId]);
 
       // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only; the app
-      // cannot mark an outbox event, AIV-P0-014).
+      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030).
       const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
         (result) => result.count,
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
-      expect(name === 'audit.entry' || name.endsWith('.outbox') ? [0, '42501'] : [0], name).toContain(updated);
+      const noUpdate = name === 'audit.entry' || name === 'assessment.result' || name.endsWith('.outbox');
+      expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);
     }
   });
 });
@@ -652,6 +668,7 @@ const listedInW1 = async (m: Modules) => ({
     grants: (await m.workspaces.listJobGrants(ctx)).map((r) => r.id),
     people: (await m.candidates.listPeople(ctx)).map((r) => r.id),
     jobs: (await m.jobs.listJobs(ctx)).map((r) => r.id),
+    w2Assessment: await m.assessment.getLatestAssessment(ctx, w2.personId, w2.jobId),
   }))),
 });
 
@@ -664,6 +681,7 @@ const onlyW1 = () => ({
   jobs: [w1.jobId],
   ownAudit: new Set([w1.workspaceId]),
   w2Audit: [],
+  w2Assessment: null,
 });
 
 describe('Scenario: Repositories return nothing from another workspace', () => {
@@ -720,6 +738,7 @@ describe('Scenario: Both layers are needed', () => {
   // SAFETY: mutation check: removed inWorkspace(workspaceId) from listMembers -> this test failed (saw W2's member rows)
   // SAFETY: mutation check: removed eq(person.workspaceId, workspaceId) from listPeople -> this test failed (saw W2's person)
   // SAFETY: mutation check: removed eq(job.workspaceId, workspaceId) from jobWhere -> this test failed (saw W2's job)
+  // SAFETY: mutation check: removed eq(result.workspaceId, workspaceId) from the assessment store's latest -> this test failed (saw W2's result)
   it('with row-level security out of the way, the repository filter alone still returns no W2 rows', async () => {
     const [role] = await admin.execute<{ bypass: boolean }>(
       sql`select rolsuper or rolbypassrls as bypass from pg_roles where rolname = current_user`,

@@ -49,8 +49,11 @@ export type EvidenceSource = {
   textFingerprint: string | null;
 };
 
-/** A link from an item to a competency of a job's rubric (ids of the jobs module, opaque here). */
-export type CompetencyLink = { jobId: string; competencyId: string };
+/**
+ * A link from an item to a competency of a job's rubric (ids of the jobs module, opaque here), with the level 0–5 the
+ * item shows for that competency (AIV-P1-030 scores it; 0 shows nothing).
+ */
+export type CompetencyLink = { jobId: string; competencyId: string; level: number };
 
 export type EvidenceItem = {
   id: string;
@@ -99,6 +102,7 @@ const MESSAGES = {
   strength: 'The strength is not one of the listed values',
   claim_strength: 'A claim cannot be stronger than Supporting',
   limit: 'State what this evidence does not show',
+  level: 'A level is a whole number from 0 to 5',
   not_found: 'No such evidence item',
   flag_not_found: 'No such flag',
   resolution: 'Choose a reason from the list',
@@ -127,6 +131,11 @@ export function checkSource(source: Pick<EvidenceSource, 'kind' | 'label' | 'url
   if (!source.label.trim()) throw new EvidenceError('source_label');
   // https only, so a stored link can never become a javascript: or plain-http link on a screen.
   if (source.url !== null && URL.parse(source.url)?.protocol !== 'https:') throw new EvidenceError('source_url');
+}
+
+/** Throws `EvidenceError('level')` unless the link's level is a whole number from 0 to 5. */
+export function checkLink(link: Pick<CompetencyLink, 'level'>): void {
+  if (!Number.isInteger(link.level) || link.level < 0 || link.level > 5) throw new EvidenceError('level');
 }
 
 /** Throws `EvidenceError('no_items')` when a source backs nothing: evidence is the items, not the source alone. */
