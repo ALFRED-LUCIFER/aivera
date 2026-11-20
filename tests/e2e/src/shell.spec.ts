@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { css, expectNoAxeViolations, focusInDrawer, focusInView, themes } from './gallery.ts';
+import { css, expectAccessible, focusInDrawer, focusInView, themes } from './gallery.ts';
 
 // Browser checks handed over from AIV-P0-020 (#52, PR #220) on #57. `/app` needs a session (AIV-P0-009) and runs in
 // the signed-in user's active workspace (AIV-P0-010): Alex Recruiter in the synthetic "Demo Hiring Co" (seed.ts).
@@ -69,7 +69,7 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
     await page.goto('/app');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await expect(page).toHaveScreenshot(`shell-desk-${theme}.png`);
   });
 }
@@ -91,7 +91,7 @@ for (const theme of themes) {
     const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
     const question = drawer.getByRole('textbox', { name: 'Ask about what is on this page' });
     await expect(question).toBeFocused();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.keyboard.press('Tab');
     await expect(drawer.getByRole('button', { name: 'Ask', exact: true })).toBeFocused();
     // Tab off the drawer's last control: out to the opener on the page, in view, and the drawer stays open.

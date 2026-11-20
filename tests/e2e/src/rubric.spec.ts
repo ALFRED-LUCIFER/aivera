@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-012: AP's workspace "Demo" (seed.ts): Senior AI Engineer has version 2 approved by the Head of Engineering on
 // 12 Nov 2026, superseding version 1. The Head of Engineering is its granted hiring owner.
@@ -78,6 +78,6 @@ for (const theme of themes) {
     await openRubric(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByText('Weights total 100%')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

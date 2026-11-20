@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-013: Alex's "Demo Hiring Co" (seed.ts) has "Applied AI Engineer" with the Rubric artboard's rubric: version 2
 // approved by the Head of Engineering. The journey below runs once per seeded workspace, so it is one test.
@@ -100,6 +100,6 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await page.getByRole('button', { name: 'Edit rubric' }).click();
     await expect(send(page)).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P3-001, journey J5 step 1. Signed out only: the signed-in header ("My applications") is proven by
 // candidate-sign-in.spec.ts (AIV-P0-011) and CandidateSite.test.tsx.
@@ -56,7 +56,7 @@ test('at 375 px the links sit behind a Menu button that opens and closes with th
   await expect(siteNav(page).getByRole('link', { name: 'Jobs' })).toBeFocused();
   // No horizontal scroll with the menu open, the widest state.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
   await page.keyboard.press('Escape');
   await expect(siteNav(page)).toBeHidden();
   await expect(menu).toBeFocused();
@@ -67,6 +67,6 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
     await page.goto(home);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

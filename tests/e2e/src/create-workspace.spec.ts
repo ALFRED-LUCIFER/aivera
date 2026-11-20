@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { css, expectNoAxeViolations, themes } from './gallery.ts';
+import { css, expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-001 J1 step 1: a recruiter signs in with no workspace yet, creates one and lands in it. While new workspaces
 // need approval (AIV-P2-039, on by default) it shows the waiting page; ops-approvals.spec.ts continues the journey.
@@ -17,7 +17,7 @@ for (const theme of themes) {
     await expect(page.getByRole('heading', { level: 2, name: 'Or create your own workspace' })).toBeVisible();
     await expect(page.getByText('Optional', { exact: true })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // The ink panel's logo link comes first (SignUp artboard, AIV-P1-068).
     await page.keyboard.press('Tab');
@@ -35,7 +35,7 @@ for (const theme of themes) {
 
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Waiting for approval' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
 

@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P0-011: candidate sign-in on a separate session, against the mocked tenant (tests/e2e/mock-oidc.ts) standing in
 // for the candidate app registration and user flow. The unconfigured environment is candidate-sign-in.unconfigured.spec.ts.
@@ -91,6 +91,6 @@ for (const theme of themes) {
     await page.goto('/candidates/sign-in?error=unverified_email');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('alert').filter({ hasText: 'Verify your email to continue.' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { css, expectNoAxeViolations, focusInDrawer, focusInView, openGallery, themes } from './gallery.ts';
+import { css, expectAccessible, focusInDrawer, focusInView, openGallery, themes } from './gallery.ts';
 
 // Browser-only checks queued on #57 by the reviews of AIV-P0-022 (#207), AIV-P0-023 and AIV-P0-024 (#206).
 
@@ -50,7 +50,7 @@ for (const theme of themes) {
     await page.getByRole('button', { name: 'Ask Credalent' }).click();
     const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
     await expect(drawer).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     // Hidden from assistive tech: the page behind is aria-hidden, so its buttons leave the accessibility tree.
     await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
     for (const key of ['Tab', 'Shift+Tab']) {

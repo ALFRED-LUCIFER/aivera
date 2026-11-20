@@ -2,7 +2,7 @@ import { decode } from '@auth/core/jwt';
 import { expect, test, type BrowserContext } from '@playwright/test';
 import { e2eAuthSecret } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
-import { css, expectNoAxeViolations, themes } from './gallery.ts';
+import { css, expectAccessible, themes } from './gallery.ts';
 
 // AIV-P0-009 J0 smoke and AIV-P1-002 J1 step: recruiter sign-in against a mocked OIDC provider standing in for the
 // External ID tenant.
@@ -245,7 +245,7 @@ for (const theme of themes) {
     await page.goto('/sign-in?error=unverified_email');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('alert').filter({ hasText: 'Verify your email to continue.' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
 

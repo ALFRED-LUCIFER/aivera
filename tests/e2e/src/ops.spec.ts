@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P2-035 (ADR-012): the operator console at /ops. playwright.config.ts sets PLATFORM_OPERATOR_EMAILS to
 // "pia.platform@example.com,Theo.Platform@example.com" (the Background); the fail-closed app is ops.unconfigured.spec.ts.
@@ -158,10 +158,10 @@ for (const theme of themes) {
     await page.goto('/ops');
     await expectConsole(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'alex@example.com' });
     await expectRefused(page);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

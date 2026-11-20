@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P2-038 (ADR-012): AI token use and the per-workspace daily AI budget in the operator console. seed.ts gives Demo
 // Hiring Co 1,500 tokens today (UTC). The budget is changed on Nadia Freelance, whose figures no other spec reads. A
@@ -125,14 +125,14 @@ for (const theme of themes) {
     await page.getByRole('textbox', { name: 'New daily budget (tokens)' }).fill('99,999');
     await page.getByRole('button', { name: 'Preview change' }).click();
     await expect(fieldAlert(page)).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.getByRole('textbox', { name: 'New daily budget (tokens)' }).fill('500,000');
     await page.getByRole('textbox', { name: 'Reason' }).fill(reason);
     // By keyboard, so the pointer does not rest on Confirm (a hover colour mid-transition is not the resting state).
     await page.mouse.move(0, 0);
     await page.getByRole('textbox', { name: 'New daily budget (tokens)' }).press('Enter');
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.keyboard.press('Escape');
   });
 }

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P0-010: the recruiter app runs in the signed-in user's active workspace (seed.ts sets up the cast).
 
@@ -27,11 +27,11 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
     await signIn(page, { email: 'huda@example.com' });
     await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'lina@example.com' });
     await expect(page.getByText(noAccess)).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
