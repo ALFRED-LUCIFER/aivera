@@ -22,6 +22,7 @@ import {
 import { sample } from '../domain/sample.ts';
 import { Section } from './Section.tsx';
 import { EvidenceSections } from './EvidenceSections.tsx';
+import { UploadSection } from './UploadSection.tsx';
 import { WorkflowSections, type WorkflowProps } from './WorkflowSections.tsx';
 
 type GalleryProps = WorkflowProps & {
@@ -208,6 +209,7 @@ export function Gallery({ theme, onThemeChange, toastOpen, onToastOpenChange, ..
 
         <EvidenceSections />
         <WorkflowSections {...workflow} />
+        <UploadSection />
       </main>
     </ToastProvider>
   );

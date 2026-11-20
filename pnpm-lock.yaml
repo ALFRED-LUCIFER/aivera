@@ -41,6 +41,9 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/files':
+        specifier: workspace:*
+        version: link:../../modules/files
       '@credalent/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -144,6 +147,9 @@ importers:
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../../modules/evidence
+      '@credalent/files':
+        specifier: workspace:*
+        version: link:../../modules/files
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
