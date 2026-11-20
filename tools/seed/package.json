@@ -16,6 +16,7 @@
     "@credalent/audit": "workspace:*",
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/evidence": "workspace:*",
     "@credalent/identity": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/workspaces": "workspace:*"

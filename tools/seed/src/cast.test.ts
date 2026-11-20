@@ -2,7 +2,16 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { packForJobType, type CatalogueVersion } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
-import { CANDIDATES, HIRING_OWNERS, INDUSTRY_JOBS, industryRubric, JOBS, RECRUITER, WORKSPACE } from './cast.ts';
+import {
+  CANDIDATES,
+  EVIDENCE,
+  HIRING_OWNERS,
+  INDUSTRY_JOBS,
+  industryRubric,
+  JOBS,
+  RECRUITER,
+  WORKSPACE,
+} from './cast.ts';
 
 const people = [RECRUITER, ...HIRING_OWNERS, ...CANDIDATES];
 // Catalogue version 1 from its committed snapshot, as migration 0012 publishes it.
@@ -108,5 +117,19 @@ describe('the industry demo jobs (AIV-P1-065)', () => {
       expect([...job.description.matchAll(/\b[A-Z][\w-]*/g)].map(([w]) => w).filter((w) => !words.has(w))).toEqual([]);
       expect(job.description).toMatch(/^An? [a-z]/);
     }
+  });
+
+  it('AIV-P1-024: the design evidence belongs to Sara, Arjun and Layla and names Senior AI Engineer competencies', () => {
+    const competencies = JOBS.find((j) => j.title === 'Senior AI Engineer')?.rubric.competencies.map((c) => c.name);
+    expect([...new Set(EVIDENCE.map((e) => e.candidate))]).toEqual(['Sara Al Qahtani', 'Arjun Menon', 'Layla Haddad']);
+    for (const { source, items } of EVIDENCE) {
+      expect(source.url ?? 'https://code.credalent.example/').toMatch(/^https:\/\/code\.credalent\.example\//);
+      for (const item of items) expect(competencies).toContain(item.competency);
+    }
+    // Sara's six competencies each have evidence, as the Candidate artboard shows.
+    const sara = EVIDENCE.filter((e) => e.candidate === 'Sara Al Qahtani').flatMap((e) =>
+      e.items.map((i) => i.competency),
+    );
+    expect(sara.toSorted()).toEqual(competencies?.toSorted());
   });
 });

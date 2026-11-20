@@ -2,6 +2,7 @@
 import { createAudit } from '@credalent/audit/composition';
 import { createCandidates } from '@credalent/candidates/composition';
 import type { Db } from '@credalent/db/client';
+import { createEvidence } from '@credalent/evidence/composition';
 import { createIdentity } from '@credalent/identity/composition';
 import type { Competency } from '@credalent/jobs';
 import { createCatalogueReads, createJobs } from '@credalent/jobs/composition';
@@ -9,6 +10,7 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import {
   CANDIDATES,
+  EVIDENCE,
   HIRING_OWNERS,
   INDUSTRY_JOBS,
   industryRubric,
@@ -47,6 +49,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   const workspaces = createWorkspaces(db, audit);
   const candidates = createCandidates(workspaces);
   const jobs = createJobs(workspaces, audit);
+  const evidence = createEvidence(workspaces);
   const userId = async (u: CastUser) =>
     (
       await identity.upsertUserFromIdToken({
@@ -65,6 +68,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   let workspaceId = await workspaces.activeWorkspace(recruiter);
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
+      await evidence.purgeSyntheticEvidence(ctx);
       await candidates.purgeSyntheticPeople(ctx);
       await jobs.purgeSyntheticJobs(ctx);
       await workspaces.purgeSyntheticWorkspace(ctx);
@@ -155,8 +159,46 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     }
     await asRecruiter((ctx) => designJobs.changeStage(ctx, created.id, job.stage));
   }
+
+  // AIV-P1-024: the design candidates' Senior AI Engineer evidence; a rerun skips a candidate who has some.
+  // shortcut: items are not linked to rubric competencies (cast.ts names each one) because the jobs contract does not
+  // expose competency ids yet, and the design's scores (Sara 68 up to 84, …) need scoring; link them with AIV-P1-027
+  // and check the scores with AIV-P1-030.
+  await asRecruiter(async (ctx) => {
+    const people = new Map((await candidates.listPeople(ctx)).map((p) => [p.displayName, p.id]));
+    const jobId = (await jobs.listJobs(ctx)).find((j) => j.title === 'Senior AI Engineer')?.id;
+    if (!jobId) throw new Error('No Senior AI Engineer job');
+    for (const name of new Set(EVIDENCE.map((e) => e.candidate))) {
+      const candidateId = people.get(name);
+      if (!candidateId) throw new Error(`No candidate ${name}`);
+      if ((await evidence.listEvidenceForCandidate(ctx, candidateId, jobId)).length > 0) continue;
+      for (const { source, items } of EVIDENCE.filter((e) => e.candidate === name))
+        await evidence.recordEvidence(ctx, {
+          candidateId,
+          source: {
+            kind: source.kind,
+            label: source.label,
+            url: source.url ?? null,
+            blobFileId: null,
+            capturedAt: day(source.capturedOn),
+            checkedAt: source.checkedOn ? day(source.checkedOn) : null,
+            checkMethod: source.checkMethod ?? null,
+          },
+          items: items.map((i) => ({
+            excerpt: i.excerpt,
+            excerptSpan: i.excerptSpan ?? null,
+            provenance: i.provenance,
+            strength: i.strength,
+            limit: i.limit,
+          })),
+          synthetic: true,
+        });
+    }
+  });
   return workspaceId;
 }
+
+const day = (date: string) => new Date(`${date}T08:00:00Z`);
 
 /** The cast's competencies as rubric rows: from the description, or suggested by Credalent and accepted. */
 function rubricOf(competencies: CastCompetency[]): Competency[] {

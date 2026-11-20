@@ -128,6 +128,9 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['deep-import', 'module-contracts-only', 'modules/evidence/src/application/x.ts'],
     ['composition-from-module', 'composition-apps-only', 'modules/evidence/src/application/x.ts'],
     ['relative-cross', 'relative-crosses-unit', 'modules/evidence/src/application/x.ts'],
+    // AIV-P1-024: no module reads the evidence module's infrastructure, by package path or relative path.
+    ['evidence-infrastructure', 'module-contracts-only', 'modules/assessment/src/application/x.ts'],
+    ['evidence-infrastructure', 'relative-crosses-unit', 'modules/assessment/src/application/y.ts'],
     ['package-imports-app', 'package-imports-app', 'packages/ui/src/x.ts'],
     ['module-no-ui', 'module-no-ui', 'modules/jobs/src/application/x.ts'],
     ['paid-ranking', 'paying-never-changes-ranking', 'modules/assessment/src/application/rank.ts'],

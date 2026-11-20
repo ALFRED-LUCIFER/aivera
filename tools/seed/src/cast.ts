@@ -2,6 +2,7 @@
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
 // Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
 // interviews and packs when they land.
+import type { Provenance, SourceKind, Strength } from '@credalent/evidence';
 import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@credalent/jobs';
 
 type Synthetic = { synthetic: true };
@@ -372,3 +373,283 @@ export const CANDIDATES: CastCandidate[] = NAMES.map(([displayName, location], i
   location,
   synthetic: true,
 }));
+
+/** One evidence source of a design candidate and the items it backs, each naming the rubric competency it backs. */
+export type CastEvidence = {
+  candidate: string;
+  source: {
+    kind: SourceKind;
+    label: string;
+    url?: string;
+    capturedOn: string;
+    checkedOn?: string;
+    checkMethod?: string;
+  };
+  items: {
+    competency: string;
+    excerpt: string;
+    excerptSpan?: string;
+    provenance: Provenance;
+    strength: Strength;
+    limit: string;
+  }[];
+};
+
+const repo = (handle: string, name: string) => `https://code.credalent.example/${handle}/${name}`;
+
+/**
+ * The Senior AI Engineer evidence of the three candidates the Candidate and Compare artboards show (Sara Al Qahtani
+ * 68 up to 84, Arjun Menon 64 up to 76, Layla Haddad 61 up to 82), one item per competency the artboards cite. A
+ * competency an artboard marks as having nothing stated (Arjun's Arabic NLP, Layla's cost and reliability) has no item.
+ * Limits the artboards do not show are synthetic.
+ */
+export const EVIDENCE: CastEvidence[] = [
+  {
+    candidate: 'Sara Al Qahtani',
+    source: { kind: 'shipped_product', label: 'Merchant help assistant', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'LLM systems in production',
+        excerpt: 'used by about 9,000 merchants',
+        provenance: 'corroborated',
+        strength: 'strong',
+        limit: 'The user count comes from her own write-up; the reference confirmed the scale only roughly.',
+      },
+    ],
+  },
+  {
+    candidate: 'Sara Al Qahtani',
+    source: {
+      kind: 'repository',
+      label: 'llm-eval-harness',
+      url: repo('sara', 'llm-eval-harness'),
+      capturedOn: '2026-11-10',
+      checkedOn: '2026-11-12',
+      checkMethod: 'Commit history',
+    },
+    items: [
+      {
+        competency: 'Retrieval and evaluation',
+        excerpt: 'authored 412 of 460 commits',
+        provenance: 'corroborated',
+        strength: 'strong',
+        limit: 'Shows the tooling, not how results changed product decisions.',
+      },
+    ],
+  },
+  {
+    candidate: 'Sara Al Qahtani',
+    source: {
+      kind: 'repository',
+      label: 'fastapi-ml-serve',
+      url: repo('sara', 'fastapi-ml-serve'),
+      capturedOn: '2026-11-10',
+    },
+    items: [
+      {
+        competency: 'Python service engineering',
+        excerpt: 'contract tests on every endpoint and blue-green deploy scripts',
+        provenance: 'submitted',
+        strength: 'medium',
+        limit: 'A personal project. Production code at her employer is private and was not seen.',
+      },
+    ],
+  },
+  {
+    candidate: 'Sara Al Qahtani',
+    source: { kind: 'reference_call', label: 'Reference call', capturedOn: '2026-11-11', checkedOn: '2026-11-11' },
+    items: [
+      {
+        competency: 'Product judgement',
+        excerpt: 'argued against a fully automatic refund bot and shipped suggest-then-confirm instead',
+        provenance: 'corroborated',
+        strength: 'medium',
+        limit: 'One reference, no written decision document.',
+      },
+    ],
+  },
+  {
+    candidate: 'Sara Al Qahtani',
+    source: { kind: 'cv', label: 'CV', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'Cost and reliability',
+        excerpt: 'cut cost per request by 40%',
+        excerptSpan: 'page 2',
+        provenance: 'claim',
+        strength: 'supporting',
+        limit: 'A claim until a document or a second source supports it.',
+      },
+    ],
+  },
+  {
+    candidate: 'Sara Al Qahtani',
+    source: { kind: 'interview_note', label: 'Round 1 notes', capturedOn: '2026-11-14' },
+    items: [
+      {
+        competency: 'Arabic and bilingual NLP',
+        excerpt: 'built a Gulf Arabic evaluation set',
+        provenance: 'awaiting-defence',
+        strength: 'claim',
+        limit: 'Claim only. Counts as zero in the backed score.',
+      },
+    ],
+  },
+  {
+    candidate: 'Arjun Menon',
+    source: { kind: 'document', label: 'KYC document reader write-up', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'LLM systems in production',
+        excerpt: 'KYC document reader in production',
+        provenance: 'submitted',
+        strength: 'strong',
+        limit: 'His own write-up, with no second source.',
+      },
+    ],
+  },
+  {
+    candidate: 'Arjun Menon',
+    source: {
+      kind: 'repository',
+      label: 'eval-notebook',
+      url: repo('arjun', 'eval-notebook'),
+      capturedOn: '2026-11-10',
+    },
+    items: [
+      {
+        competency: 'Retrieval and evaluation',
+        excerpt: 'retrieval evaluation notebook',
+        provenance: 'submitted',
+        strength: 'medium',
+        limit: 'Authorship is shared with a colleague.',
+      },
+    ],
+  },
+  {
+    candidate: 'Arjun Menon',
+    source: {
+      kind: 'repository',
+      label: 'queue library',
+      url: repo('arjun', 'queue'),
+      capturedOn: '2026-11-10',
+      checkedOn: '2026-11-12',
+      checkMethod: 'Commit history',
+    },
+    items: [
+      {
+        competency: 'Python service engineering',
+        excerpt: 'maintainer of an open-source queue library',
+        provenance: 'corroborated',
+        strength: 'strong',
+        limit: 'Shows library code, not the services he runs at work.',
+      },
+    ],
+  },
+  {
+    candidate: 'Arjun Menon',
+    source: { kind: 'cv', label: 'CV', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'Cost and reliability',
+        excerpt: 'on-call ownership',
+        excerptSpan: 'page 1',
+        provenance: 'claim',
+        strength: 'supporting',
+        limit: 'No incident record supplied.',
+      },
+    ],
+  },
+  {
+    candidate: 'Arjun Menon',
+    source: { kind: 'document', label: 'Decision document', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'Product judgement',
+        excerpt: 'decision document supplied',
+        provenance: 'submitted',
+        strength: 'medium',
+        limit: 'Authorship unverified.',
+      },
+    ],
+  },
+  {
+    candidate: 'Layla Haddad',
+    source: { kind: 'shipped_product', label: 'Support search prototype', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'LLM systems in production',
+        excerpt: 'support search prototype with 300 pilot users',
+        provenance: 'submitted',
+        strength: 'medium',
+        limit: 'A prototype with pilot users; production scale is unproven.',
+      },
+    ],
+  },
+  {
+    candidate: 'Layla Haddad',
+    source: {
+      kind: 'repository',
+      label: 'retrieval-benchmark',
+      url: repo('layla', 'retrieval-benchmark'),
+      capturedOn: '2026-11-10',
+      checkedOn: '2026-11-12',
+      checkMethod: 'Results reproduced',
+    },
+    items: [
+      {
+        competency: 'Retrieval and evaluation',
+        excerpt: 'published retrieval benchmark',
+        provenance: 'corroborated',
+        strength: 'strong',
+        limit: 'Shows benchmark work, not a production system.',
+      },
+    ],
+  },
+  {
+    candidate: 'Layla Haddad',
+    source: { kind: 'portal_submission', label: 'Service code sample', capturedOn: '2026-11-10' },
+    items: [
+      {
+        competency: 'Python service engineering',
+        excerpt: 'service code sample, tests present',
+        provenance: 'submitted',
+        strength: 'medium',
+        limit: 'A sample she chose; the rest of her code was not seen.',
+      },
+    ],
+  },
+  {
+    candidate: 'Layla Haddad',
+    source: {
+      kind: 'repository',
+      label: 'arabic-ocr',
+      url: repo('layla', 'arabic-ocr'),
+      capturedOn: '2026-11-10',
+      checkedOn: '2026-11-12',
+      checkMethod: 'Commit history',
+    },
+    items: [
+      {
+        competency: 'Arabic and bilingual NLP',
+        excerpt: 'Arabic OCR pipeline, public and documented',
+        provenance: 'corroborated',
+        strength: 'strong',
+        limit: 'OCR work, not conversational Arabic.',
+      },
+    ],
+  },
+  {
+    candidate: 'Layla Haddad',
+    source: { kind: 'interview_note', label: 'Round 1 notes', capturedOn: '2026-11-14' },
+    items: [
+      {
+        competency: 'Product judgement',
+        excerpt: 'described in interview only',
+        provenance: 'claim',
+        strength: 'supporting',
+        limit: 'A claim until a document or a reference supports it.',
+      },
+    ],
+  },
+];
