@@ -20,7 +20,7 @@ import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// AIV-P1-029 acceptance scenarios against real PostgreSQL as aivera_app: the mapping job (`evidence.mapping`) with the
+// AIV-P1-029 and AIV-P1-078 acceptance scenarios against real PostgreSQL as aivera_app: the mapping job (`evidence.mapping`) with the
 // fake model linking what each test sets, then the corroboration rules and the numeric pre-check deciding provenance.
 // The approved rubric is the jobs module's worker read, stubbed. Synthetic cast only (docs/00-product/personas.md).
 
@@ -70,6 +70,8 @@ let handlers: Handler<unknown>[];
 let w1: string;
 let w2: string;
 let completion = '{}';
+/** The fake model's answer to the AI comparison (AIV-P1-078); it flags nothing unless a test sets it. */
+let comparison = '{"contradictions":[]}';
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -144,6 +146,32 @@ const linked = async (candidateId: string, competencyId: string) =>
     .filter((i) => i.competencies.some((c) => c.competencyId === competencyId))
     .map((i) => ({ id: i.id, sourceId: i.sourceId, provenance: i.provenance, limit: i.limit }));
 
+/** The fake AI comparison's answer flagging S1 against S2 with these quotes (AIV-P1-078). */
+const flag = (s1: string, s2: string) =>
+  JSON.stringify({
+    contradictions: [
+      {
+        citations: [
+          { sourceId: 'S1', quote: s1 },
+          { sourceId: 'S2', quote: s2 },
+        ],
+      },
+    ],
+  });
+
+/** The backed score on the LLM competency alone. */
+const backed = async (candidateId: string) =>
+  (
+    await as(ALEX, w1, async (ctx) =>
+      assessment.assessCandidate(ctx, {
+        candidateId,
+        jobId: JOB,
+        rubric: { versionId: V1, competencies: [{ id: LLM, weightPercent: 100, levelNeeded: 3, type: 'mandatory' }] },
+        evidence: await evidence.listEvidenceForCandidate(ctx, candidateId, JOB),
+      }),
+    )
+  ).backedScore;
+
 beforeAll(async () => {
   container = await new PostgreSqlContainer('pgvector/pgvector:pg17').withDatabase('aivera').start();
   admin = createDb(container.getConnectionUri(), { max: 1 });
@@ -160,7 +188,13 @@ beforeAll(async () => {
   const fake = fakeProvider();
   handlers = createEvidenceMappingHandlers({
     ai: createAiClient({
-      provider: { ...fake, languageModel: (d) => fakeProvider({ completion }).languageModel(d) },
+      provider: {
+        ...fake,
+        languageModel: (d) =>
+          fakeProvider({ completion, fixtures: [{ when: 'Pairs to compare', completion: comparison }] }).languageModel(
+            d,
+          ),
+      },
       budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
       sleep: async () => {},
     }),
@@ -457,6 +491,95 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
           values (gen_random_uuid(), ${w1}, ${LINA}, ${JOB}, ${ALEX})`),
       );
       expect(await as(LINA, w1, (ctx) => evidence.listComparisons(ctx, daniel, JOB))).toHaveLength(1);
+    });
+  });
+
+  describe('an AI contradiction (AIV-P1-078)', () => {
+    let sara: string;
+    let contradictionId: string;
+
+    it('Scenario: Worded numbers are judged by the model: "Contradictory", both excerpts cited, out of the backed score', async () => {
+      sara = await person('Sara Al Qahtani', 'sara.worded@example.com');
+      await record(
+        sara,
+        'document',
+        'Merchant assistant write-up',
+        'About 9,000 merchants use the assistant every week.',
+      );
+      await reference(sara, 'A few hundred merchants used it while I managed her.');
+      completion = answer(LLM, [
+        [1, 'About 9,000 merchants use the assistant', 4],
+        [2, 'A few hundred merchants used it', 4],
+      ]);
+      comparison = flag('About 9,000 merchants', 'A few hundred merchants');
+      const events = async () => (await rows(w1, sql`select count(*)::int as n from evidence.outbox`))[0]?.['n'];
+      const before = await events();
+      await mapNow(sara);
+      // Only EvidenceMapped.v1: nothing moves a stage, rejects or contacts anyone.
+      expect(await events()).toBe(Number(before) + 1);
+
+      const items = await linked(sara, LLM);
+      expect(items.map((i) => i.provenance)).toEqual(['contradictory', 'contradictory']);
+      const comparisons = await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, sara, JOB));
+      expect(comparisons).toMatchObject([
+        { competencyId: LLM, outcome: 'contradiction', method: 'ai', resolvedAt: null },
+      ]);
+      const [contradiction] = comparisons;
+      expect([contradiction?.itemId, contradiction?.otherItemId].toSorted()).toEqual(items.map((i) => i.id).toSorted());
+      contradictionId = contradiction?.id ?? '';
+      expect(await backed(sara)).toBe(0);
+    });
+
+    it('stays open on a re-map whose answer leaves it out: only a person ends it', async () => {
+      comparison = '{"contradictions":[]}';
+      await mapNow(sara);
+      expect(await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, sara, JOB))).toMatchObject([
+        { outcome: 'contradiction', method: 'ai', resolvedAt: null },
+      ]);
+      expect((await linked(sara, LLM)).map((i) => i.provenance)).toEqual(['contradictory', 'contradictory']);
+      contradictionId = (await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, sara, JOB)))[0]?.id ?? '';
+    });
+
+    it('Scenario: An AI contradiction is resolved like any other', async () => {
+      const events = async () => (await rows(w1, sql`select count(*)::int as n from evidence.outbox`))[0]?.['n'];
+      const before = await events();
+      await as(ALEX, w1, (ctx) =>
+        evidence.resolveContradiction(ctx, contradictionId, {
+          note: 'Reference confirmed scale only roughly',
+          limit: 'The merchant count is her own; the reference confirmed the scale only roughly.',
+        }),
+      );
+      expect(await audit.listFor(w1, { type: 'comparison', id: contradictionId })).toMatchObject([
+        {
+          action: 'evidence.contradiction_resolved',
+          actor: { type: 'user', id: ALEX },
+          occurredAt: expect.any(Date),
+          note: 'Reference confirmed scale only roughly',
+        },
+      ]);
+      expect(await events()).toBe(before);
+      expect(await backed(sara)).toBeGreaterThan(0);
+    });
+
+    // SAFETY: mutation check: compareExcerpts (composition) flagged every pair of a rejected answer -> this test failed
+    it('Scenario: An answer citing an excerpt that does not exist is rejected and no contradiction is stored', async () => {
+      const yousef = await person('Youssef Aziz', 'youssef.aziz@example.com');
+      await record(
+        yousef,
+        'document',
+        'Merchant assistant write-up',
+        'About 9,000 merchants use the assistant every week.',
+      );
+      await reference(yousef, 'A few hundred merchants used it while I managed him.');
+      completion = answer(LLM, [
+        [1, 'About 9,000 merchants use the assistant'],
+        [2, 'A few hundred merchants used it'],
+      ]);
+      comparison = flag('About 9,000 merchants', 'A few hundred merchants').replace('"S2"', '"S3"');
+      await mapNow(yousef);
+      expect(await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, yousef, JOB))).toEqual([]);
+      expect((await linked(yousef, LLM)).map((i) => i.provenance)).not.toContain('contradictory');
+      comparison = '{"contradictions":[]}';
     });
   });
 });

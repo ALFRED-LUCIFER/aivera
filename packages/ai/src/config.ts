@@ -21,6 +21,8 @@ export const generateTasks = {
   'evidence.mapToCompetency': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 6_000, temperature: 0 },
   // A CV's statements, skills and roles, each with a quote: long, and as repeatable as the model allows (AIV-P1-025).
   'evidence.parseCv': { deployment: 'gpt-main', timeoutMs: 90_000, maxOutputTokens: 8_000, temperature: 0 },
+  // The unsettled pairs of one candidate and job in one call, each flag two short quotes (AIV-P1-078).
+  'evidence.compareExcerpts': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 3_000, temperature: 0 },
   // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows.
   'evals.judge': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;

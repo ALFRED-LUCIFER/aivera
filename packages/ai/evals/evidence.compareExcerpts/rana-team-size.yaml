@@ -1,0 +1,25 @@
+# Rana Khoury: A team of eight against no team. The pre-check cannot settle it (worded or unmatched numbers), so the
+# model must flag it.
+id: rana-team-size
+group: contradiction
+people: [Rana Khoury]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Led a team of 8 product managers.'
+  - id: S2
+    kind: reference
+    text: 'Rana worked alone as a product manager and led no team.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'Led a team of 8 product managers'
+          - sourceId: S2
+            quote: 'led no team'

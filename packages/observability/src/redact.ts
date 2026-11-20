@@ -60,6 +60,10 @@ const ALLOWED = [
   'credalent.evidence.uncited_changes',
   // Contradictions the numeric pre-check found in the run (AIV-P1-029).
   'credalent.evidence.contradictions',
+  // Pairs sent to the AI comparison, flagged by it, and left uncompared by a rejected answer (AIV-P1-078).
+  'credalent.evidence.compared.sent',
+  'credalent.evidence.compared.flagged',
+  'credalent.evidence.compared.rejected',
   'credalent.evidence.discarded.unknown_competency',
   'credalent.evidence.discarded.unknown_source',
   'credalent.evidence.discarded.claim_above_supporting',

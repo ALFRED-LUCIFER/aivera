@@ -49,6 +49,26 @@ export function mappingStore(tx: Tx): MappingStore {
         .orderBy(asc(comparison.resolvedAt));
       return new Map<string, Resolution>(rows.map(({ first, second, ...r }) => [pairKey(first, second), r]));
     },
+    async aiFlags(workspaceId, candidateId, jobId) {
+      const other = alias(item, 'other_item');
+      const rows = await tx
+        .select({
+          first: { sourceId: item.sourceId, excerpt: item.excerpt },
+          second: { sourceId: other.sourceId, excerpt: other.excerpt },
+        })
+        .from(comparison)
+        .innerJoin(item, and(eq(item.workspaceId, comparison.workspaceId), eq(item.id, comparison.itemId)))
+        .innerJoin(other, and(eq(other.workspaceId, comparison.workspaceId), eq(other.id, comparison.otherItemId)))
+        .where(
+          and(
+            eq(comparison.workspaceId, workspaceId),
+            eq(comparison.candidateId, candidateId),
+            eq(comparison.jobId, jobId),
+            eq(comparison.method, 'ai'),
+          ),
+        );
+      return new Set(rows.map(({ first, second }) => pairKey(first, second)));
+    },
     async newest(workspaceId, candidateId, jobId) {
       const [run] = await tx
         .select()

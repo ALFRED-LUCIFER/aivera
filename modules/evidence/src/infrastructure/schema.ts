@@ -20,7 +20,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
 import { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
-import { COMPARISON_OUTCOMES } from '../domain/corroboration.ts';
+import { COMPARISON_METHODS, COMPARISON_OUTCOMES } from '../domain/corroboration.ts';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
@@ -613,6 +613,8 @@ export const comparison = evidence
       itemId: uuid('item_id').notNull(),
       otherItemId: uuid('other_item_id').notNull(),
       outcome: text({ enum: COMPARISON_OUTCOMES }).notNull(),
+      // Rows before AIV-P1-078 were all the numeric pre-check's.
+      method: text({ enum: COMPARISON_METHODS }).notNull().default('numeric_precheck'),
       // The identity user who resolved it.
       resolvedBy: uuid('resolved_by'),
       resolvedAt: timestamp('resolved_at', tz),
@@ -640,6 +642,11 @@ export const comparison = evidence
       index('comparison_mapping_idx').on(t.workspaceId, t.mappingId),
       // Must list exactly COMPARISON_OUTCOMES (domain/corroboration.ts); changing it needs a new migration.
       check('comparison_outcome_check', sql`${t.outcome} in ('agreement', 'contradiction')`),
+      // Must list exactly COMPARISON_METHODS; the AI comparison only ever flags contradictions (AIV-P1-078).
+      check(
+        'comparison_method_check',
+        sql`${t.method} in ('numeric_precheck', 'ai') and (${t.method} = 'numeric_precheck' or ${t.outcome} = 'contradiction')`,
+      ),
       check('comparison_items_check', sql`${t.itemId} <> ${t.otherItemId}`),
       // Resolved all at once, with a note and a limit, and only a contradiction.
       check(

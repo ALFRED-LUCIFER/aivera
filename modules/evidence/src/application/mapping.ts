@@ -1,12 +1,15 @@
 import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import {
+  comparablePairs,
   corroboratedCompetencies,
   pairKey,
-  settledPairs,
   type Comparison,
+  type ComparisonMethod,
+  type ComparisonOutcome,
   type OriginSource,
   type Resolution,
+  type RuleLink,
 } from '../domain/corroboration.ts';
 import type { EvidenceItem, SourceKind } from '../domain/evidence.ts';
 import { groupOrigins } from '../domain/fingerprint.ts';
@@ -56,6 +59,8 @@ export type MappingStore = {
   ): Promise<void>;
   /** Resolved contradictions of the candidate's earlier runs for the job, by `pairKey` of their two cited excerpts. */
   resolutions(workspaceId: string, candidateId: string, jobId: string): Promise<Map<string, Resolution>>;
+  /** `pairKey`s of every pair the AI comparison flagged in the candidate's earlier runs for the job (AIV-P1-078). */
+  aiFlags(workspaceId: string, candidateId: string, jobId: string): Promise<Set<string>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
 };
 
@@ -80,6 +85,15 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
     competencies: { id: string; name: string; evidenceExpected: string }[],
     sources: { id: string; kind: (typeof AI_KIND)[SourceKind]; text: string }[],
   ): Promise<{ links: ModelLink[]; changes: { competencyId: string; text: string }[] }>;
+  /**
+   * The `evidence.compareExcerpts` call through `@credalent/ai` (AIV-P1-078): the indexes into `pairs` the model flags
+   * as contradicting, each citing both excerpts; null when its answer was rejected by the citation contract or schema.
+   */
+  compareExcerpts(
+    workspaceId: string,
+    sources: { id: string; kind: (typeof AI_KIND)[SourceKind]; text: string }[],
+    pairs: [string, string][],
+  ): Promise<number[] | null>;
   promptVersion: string;
   model: string;
   /** Writes `EvidenceMapped.v1` to the outbox in `tx`. */
@@ -92,8 +106,64 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
     contradictions: number;
     discarded: Partial<Record<DiscardReason, number>>;
     uncitedChanges: number;
+    /** Pairs sent to the AI comparison, flagged by it, and left uncompared because its answer was rejected. */
+    compared: { sent: number; flagged: number; rejected: number };
   }): void;
 };
+
+type ComparedPair = { a: number; b: number; outcome: ComparisonOutcome; method: ComparisonMethod };
+
+/**
+ * Pre-checks every pair of links on one competency from different origins (AIV-P1-029); the pairs it leaves
+ * `not_settled` go to the model in one call for the candidate and job (AIV-P1-078), and only its flags are kept, as
+ * contradictions. A settled pair never reaches the model. A pair the model flagged in an earlier run (`flagged`, by
+ * `pairKey`) stays a contradiction without a new call, so only a person's resolution ends it, never a later answer that
+ * leaves it out or is rejected. A rejected answer stores no new AI contradiction.
+ */
+// shortcut: a pair with no number on either side (`not_compared`) is never sent, so a conflict in words alone ("led the
+// team" against "a junior contributor") is missed; send those too if pilot resolutions show misses.
+// shortcut: every run sends its unflagged unsettled pairs again; cache "not contradicting" verdicts by `pairKey` if pilot
+// token use shows it.
+// shortcut: excerpts go to the model as stored, so a name inside one ("Arjun's queue library") is sent, as for
+// evidence.mapToCompetency; strip names before every evidence prompt with the ADR-006 point 7 follow-up.
+export async function comparePairs(
+  links: readonly (RuleLink & { excerpt: string })[],
+  originGroups: readonly (readonly string[])[],
+  flagged: ReadonlySet<string>,
+  kindOf: (sourceId: string) => (typeof AI_KIND)[SourceKind],
+  compare: (
+    sources: Parameters<MappingPorts['compareExcerpts']>[1],
+    pairs: [string, string][],
+  ) => Promise<number[] | null>,
+): Promise<{ pairs: ComparedPair[]; compared: { sent: number; flagged: number; rejected: number } }> {
+  const pairs = comparablePairs(links, originGroups);
+  const settled: ComparedPair[] = pairs.flatMap((p) =>
+    p.outcome === 'not_settled' ? [] : [{ ...p, outcome: p.outcome, method: 'numeric_precheck' as const }],
+  );
+  const linkAt = (i: number) => links[i] as RuleLink & { excerpt: string };
+  const isKnown = (p: { a: number; b: number }) => flagged.has(pairKey(linkAt(p.a), linkAt(p.b)));
+  const known: ComparedPair[] = pairs.flatMap((p) =>
+    p.outcome === 'not_settled' && isKnown(p) ? [{ a: p.a, b: p.b, outcome: 'contradiction', method: 'ai' }] : [],
+  );
+  const unsettled = pairs.filter((p) => p.outcome === 'not_settled' && !isKnown(p));
+  if (!unsettled.length) return { pairs: [...settled, ...known], compared: { sent: 0, flagged: 0, rejected: 0 } };
+  const sources = [...new Set(unsettled.flatMap((p) => [p.a, p.b]))].map((i) => {
+    const link = linkAt(i);
+    return { id: String(i), kind: kindOf(link.sourceId), text: link.excerpt };
+  });
+  const answer = await compare(
+    sources,
+    unsettled.map((p) => [String(p.a), String(p.b)]),
+  );
+  const ai = (answer ?? []).flatMap((i) => {
+    const pair = unsettled[i];
+    return pair ? [{ a: pair.a, b: pair.b, outcome: 'contradiction' as const, method: 'ai' as const }] : [];
+  });
+  return {
+    pairs: [...settled, ...known, ...ai],
+    compared: { sent: unsettled.length, flagged: ai.length, rejected: answer ? 0 : unsettled.length },
+  };
+}
 
 const idOf = (rows: readonly { id: string }[], i: number) => {
   const row = rows[i];
@@ -175,9 +245,18 @@ export async function mapEvidence(
   const { discarded } = guarded;
   // AIV-P1-029: the only place a link becomes "Independently corroborated"; near-duplicates are one origin.
   const originGroups = groupOrigins(await ports.storeFor(tx).fingerprints(workspaceId, candidateId));
-  // shortcut: pairs the numeric pre-check leaves `not_settled` are not compared until the AI comparison (AIV-P1-078).
   const resolutions = await ports.mappingStoreFor(tx).resolutions(workspaceId, candidateId, jobId);
-  const pairs = settledPairs(guarded.links, originGroups).map((pair) => ({
+  const aiFlags = await ports.mappingStoreFor(tx).aiFlags(workspaceId, candidateId, jobId);
+  const kinds = new Map(mapSources.map((s) => [s.id, AI_KIND[s.kind]]));
+  const { pairs: compared, compared: comparedCounts } = await comparePairs(
+    guarded.links,
+    originGroups,
+    aiFlags,
+    // Never undefined: the guards dropped every link citing a source that is not in `mapSources`.
+    (sourceId) => kinds.get(sourceId) ?? 'document',
+    (sources, unsettled) => ports.compareExcerpts(workspaceId, sources, unsettled),
+  );
+  const pairs = compared.map((pair) => ({
     ...pair,
     // A person's resolution of the same two excerpts stands on a re-map; it is not asked for again.
     resolved:
@@ -230,7 +309,7 @@ export async function mapEvidence(
     mappingId,
   }));
   const gapRows = gaps.map((g) => ({ ...g, id: ports.newId(), workspaceId, mappingId }));
-  const comparisons: Comparison[] = pairs.map(({ a, b, outcome, resolved }) => {
+  const comparisons: Comparison[] = pairs.map(({ a, b, outcome, method, resolved }) => {
     return {
       id: ports.newId(),
       workspaceId,
@@ -241,6 +320,7 @@ export async function mapEvidence(
       itemId: idOf(items, a),
       otherItemId: idOf(items, b),
       outcome,
+      method,
       resolvedBy: resolved?.resolvedBy ?? null,
       resolvedAt: resolved?.resolvedAt ?? null,
       resolutionNote: resolved?.resolutionNote ?? null,
@@ -280,6 +360,7 @@ export async function mapEvidence(
     contradictions: comparisons.filter((c) => c.outcome === 'contradiction').length,
     discarded: counts,
     uncitedChanges: ranked.uncited,
+    compared: comparedCounts,
   });
   return run;
 }

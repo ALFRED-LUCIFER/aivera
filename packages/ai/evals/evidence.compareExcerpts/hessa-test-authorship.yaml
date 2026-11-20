@@ -1,0 +1,25 @@
+# Hessa Al Mazrouei: Authorship of the same test cases differs. The pre-check cannot settle it (worded or unmatched
+# numbers), so the model must flag it.
+id: hessa-test-authorship
+group: contradiction
+people: [Hessa Al Mazrouei]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Wrote 148 test cases in checkout-e2e.'
+  - id: S2
+    kind: reference
+    text: 'Hessa reviewed the checkout-e2e test cases; another engineer wrote them.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'Wrote 148 test cases'
+          - sourceId: S2
+            quote: 'another engineer wrote them'

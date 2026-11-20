@@ -1,0 +1,25 @@
+# Layla Haddad: Two million pages against a pilot on a handful of pages. The pre-check cannot settle it (worded or
+# unmatched numbers), so the model must flag it.
+id: layla-ocr-volume
+group: contradiction
+people: [Layla Haddad]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'The Arabic OCR pipeline processed 2 million pages.'
+  - id: S2
+    kind: interview
+    text: 'Layla said the OCR pipeline only ran as a pilot on a handful of pages.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'processed 2 million pages'
+          - sourceId: S2
+            quote: 'only ran as a pilot on a handful of pages'

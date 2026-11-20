@@ -5,9 +5,11 @@ import { parseCvRequest } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
+import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import type { GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
+const pairsInput = z.object({ pairs: z.array(z.tuple([z.string(), z.string()])).min(1) });
 const rubricInput = z.object({
   competencies: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), evidenceExpected: z.string() })),
 });
@@ -65,6 +67,19 @@ export const taskThresholds: Record<
   },
   'evidence.mapToCompetency': { statements: ['links[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.firstPass': { statements: ['mustHaves[*]'], fieldMatch: 0.9, judge: 1 },
+  // AIV-P1-078: one case per pair the numeric pre-check leaves `not_settled` (modules/evidence/src/application/mapping.test.ts
+  // proves each is). A case passes only with every metric, so a group's pass rate is the recall over contradictions and
+  // one minus the false-positive rate over consistent pairs. Those two groups are the gate; the pooled field match sits
+  // below them so a failing run is named by the group it fails.
+  'evidence.compareExcerpts': {
+    statements: ['contradictions[*]'],
+    fieldMatch: 0.8,
+    judge: 1,
+    groups: {
+      contradiction: { label: 'Recall', min: 0.9 },
+      consistent: { label: 'Consistent pairs not flagged (1 - false-positive rate)', min: 5 / 6 },
+    },
+  },
   // AIV-P1-025: every role, skill and statement must cite the CV and is a claim. Recorded answers are checked ones
   // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
   // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
@@ -95,6 +110,13 @@ export const runners: Record<string, Runner> = {
       ...mapToCompetencyRequest(rubricInput.parse(golden.input).competencies, golden.sources),
       workspaceId,
     }),
+  // AIV-P1-078: the pair's two excerpts as sources; a flag citing anything but a requested pair fails the case.
+  'evidence.compareExcerpts': async (ai, golden, workspaceId) => {
+    const { pairs } = pairsInput.parse(golden.input);
+    const answer = await ai.generateStructured({ ...compareExcerptsRequest(golden.sources, pairs), workspaceId });
+    flaggedPairs(answer, pairs);
+    return answer;
+  },
   // AIV-P1-025: the CV text Document Intelligence extracted is the one source, as the evidence module sends it.
   'evidence.parseCv': (ai, golden, workspaceId) =>
     ai.generateStructured({ ...parseCvRequest(golden.sources), workspaceId }),

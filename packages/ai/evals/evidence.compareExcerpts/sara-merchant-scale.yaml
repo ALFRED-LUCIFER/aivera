@@ -1,0 +1,25 @@
+# Sara Al Qahtani: The write-up and the reference give merchant counts an order of magnitude apart. The pre-check cannot
+# settle it (worded or unmatched numbers), so the model must flag it.
+id: sara-merchant-scale
+group: contradiction
+people: [Sara Al Qahtani]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'About 9,000 merchants use the assistant every week.'
+  - id: S2
+    kind: reference
+    text: 'A few hundred merchants used it while I managed her.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'About 9,000 merchants'
+          - sourceId: S2
+            quote: 'A few hundred merchants'

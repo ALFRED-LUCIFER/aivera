@@ -1,0 +1,25 @@
+# Omar Al Suwaidi: Three weeks against most of a year. The pre-check cannot settle it (worded or unmatched numbers), so
+# the model must flag it.
+id: omar-fraud-timeline
+group: contradiction
+people: [Omar Al Suwaidi]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Shipped the fraud model to production in 3 weeks.'
+  - id: S2
+    kind: reference
+    text: 'The fraud model took most of a year to reach production.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'in 3 weeks'
+          - sourceId: S2
+            quote: 'took most of a year to reach production'

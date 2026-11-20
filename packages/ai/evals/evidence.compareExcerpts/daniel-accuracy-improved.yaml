@@ -1,0 +1,20 @@
+# Daniel Novak: the two excerpts agree in different words; the pre-check cannot settle it, and the model must not flag
+# it.
+id: daniel-accuracy-improved
+group: consistent
+people: [Daniel Novak]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Raised answer accuracy to 88% on the support assistant.'
+  - id: S2
+    kind: interview
+    text: 'Answer accuracy improved a lot after his changes.'
+expected:
+  match:
+    contradictions: []
+recorded:
+  output:
+    contradictions: []

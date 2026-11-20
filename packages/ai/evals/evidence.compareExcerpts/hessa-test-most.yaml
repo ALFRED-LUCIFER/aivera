@@ -1,0 +1,20 @@
+# Hessa Al Mazrouei: the two excerpts agree in different words; the pre-check cannot settle it, and the model must not
+# flag it.
+id: hessa-test-most
+group: consistent
+people: [Hessa Al Mazrouei]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Wrote 148 test cases in checkout-e2e.'
+  - id: S2
+    kind: reference
+    text: 'Hessa wrote most of the checkout-e2e test cases herself.'
+expected:
+  match:
+    contradictions: []
+recorded:
+  output:
+    contradictions: []

@@ -1,0 +1,25 @@
+# Arjun Menon: Forty contributors cannot be one only contributor. The pre-check cannot settle it (worded or unmatched
+# numbers), so the model must flag it.
+id: arjun-queue-contributors
+group: contradiction
+people: [Arjun Menon]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: repo
+    text: 'Maintains the queue library with 40 contributors.'
+  - id: S2
+    kind: reference
+    text: 'Arjun was the only contributor to the queue library.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: '40 contributors'
+          - sourceId: S2
+            quote: 'the only contributor'
