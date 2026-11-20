@@ -263,6 +263,13 @@
     }
   },
   "evidence": {
+    "provenance": {
+      "corroborated": "Independently corroborated",
+      "submitted": "Candidate-submitted",
+      "claim": "Claim awaiting validation",
+      "contradictory": "Contradictory",
+      "awaiting-defence": "Awaiting live defence"
+    },
     "request": {
       "send": "Send request"
     },

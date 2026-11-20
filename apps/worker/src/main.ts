@@ -30,6 +30,7 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
+const { EvidenceRecordedV1 } = await import('@credalent/evidence');
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
@@ -41,12 +42,13 @@ const { subscribe, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
-const OUTBOXES = ['candidates', 'jobs', 'notifications'];
+const OUTBOXES = ['candidates', 'jobs', 'evidence', 'notifications'];
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
-  // shortcut: nothing consumes `assessment` until AIV-P1-031, so RubricApproved.v1 dead-letters after its 14-day TTL like
-  // PersonCreated.v1 above; the assessment consumer replaces this note.
+  // shortcut: nothing consumes `assessment` until AIV-P1-031, so RubricApproved.v1 and EvidenceRecorded.v1 dead-letter
+  // after their 14-day TTL like PersonCreated.v1 above; the assessment consumer replaces this note.
   [RubricApprovedV1.type]: 'assessment',
+  [EvidenceRecordedV1.type]: 'assessment',
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',

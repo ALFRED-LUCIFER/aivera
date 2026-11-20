@@ -8,6 +8,7 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   // ops holds platform settings (ADR-012 point 9): nothing that ranks may read them either.
   assessment: ['billing', 'portfolio', 'ops'],
   jobs: ['billing', 'portfolio', 'ops'],
+  evidence: ['billing', 'portfolio', 'ops'],
   intake: ['billing', 'portfolio', 'ops'],
 };
 
