@@ -86,7 +86,7 @@ const repository = (
   synthetic: true,
 });
 
-const count = async (workspaceId: string, table: 'source' | 'item' | 'outbox') =>
+const count = async (workspaceId: string, table: 'source' | 'item' | 'competency_link' | 'outbox') =>
   Number(
     (
       await withWorkspace(app, workspaceId, (tx) =>
@@ -269,7 +269,7 @@ describe('Scenario: Every item states its limit', () => {
 });
 
 describe('Scenario: Evidence never crosses workspaces', () => {
-  // SAFETY: mutation check: ALTER POLICY item_tenant_isolation and source_tenant_isolation USING (true) WITH CHECK (true) -> this test failed (W2 saw W1's rows); dropping the policy instead hides every row under FORCE, so the test would still pass
+  // SAFETY: mutation check: ALTER POLICY <t>_tenant_isolation USING (true) WITH CHECK (true) on item, source, competency_link and outbox -> this test failed (W2 saw W1's rows); dropping the policy instead hides every row under FORCE, so the test would still pass
   it("a W2 user listing Sara's candidate id gets no rows, even with no WHERE clause", async () => {
     await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, repository(sara)));
     expect(await as(ALEX, w2, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, JOB))).toEqual([]);
@@ -279,7 +279,8 @@ describe('Scenario: Evidence never crosses workspaces', () => {
           tx.execute(sql`select * from ${sql.identifier('evidence')}.${sql.identifier(table)}`),
         )),
       ]).toEqual([]);
-    expect(await count(w1, 'item')).toBeGreaterThan(0);
+    for (const table of ['source', 'item', 'competency_link', 'outbox'] as const)
+      expect(await count(w1, table)).toBeGreaterThan(0);
   });
 
   it("an item cannot cite another workspace's source", async () => {

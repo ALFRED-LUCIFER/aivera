@@ -79,6 +79,7 @@ const MESSAGES = {
   source_label: 'Name the source',
   source_url: 'A source link must be an https address',
   excerpt: 'Quote the excerpt the evidence rests on',
+  no_items: 'Record at least one item the source backs',
   provenance: 'The provenance is not one of the listed values',
   strength: 'The strength is not one of the listed values',
   claim_strength: 'A claim cannot be stronger than Supporting',
@@ -101,12 +102,19 @@ export class EvidenceError extends Error {
 
 const isOneOf = <T extends string>(list: readonly T[], value: string): value is T => list.includes(value as T);
 
+// shortcut: no rule ties the kind to its locator (a repository needs a url; not both url and blobFileId); it arrives with
+// the readers that set them (AIV-P1-026, AIV-P1-028).
 /** Throws `EvidenceError` unless the source can be stored. */
 export function checkSource(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>): void {
   if (!isOneOf(SOURCE_KINDS, source.kind)) throw new EvidenceError('source_kind');
   if (!source.label.trim()) throw new EvidenceError('source_label');
   // https only, so a stored link can never become a javascript: or plain-http link on a screen.
   if (source.url !== null && URL.parse(source.url)?.protocol !== 'https:') throw new EvidenceError('source_url');
+}
+
+/** Throws `EvidenceError('no_items')` when a source backs nothing: evidence is the items, not the source alone. */
+export function checkItems(items: readonly unknown[]): void {
+  if (items.length === 0) throw new EvidenceError('no_items');
 }
 
 /** Throws `EvidenceError` unless the item can be stored: closed lists, a limit, and a claim at most Supporting. */

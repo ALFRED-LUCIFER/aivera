@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkItem, checkSource, PROVENANCES, STRENGTHS, type EvidenceItem } from './evidence.ts';
+import { checkItem, checkItems, checkSource, PROVENANCES, STRENGTHS, type EvidenceItem } from './evidence.ts';
 
 const item = (over: Partial<EvidenceItem> = {}) => ({
   excerpt: 'authored 412 of 460 commits',
@@ -38,6 +38,11 @@ describe('evidence items (AIV-P1-024)', () => {
   // SAFETY: mutation check: removed the limit check from checkItem -> this test failed
   it.each(['', '   '])('an item with limit %j is rejected: "State what this evidence does not show"', (limit) => {
     expect(() => checkItem(item({ limit }))).toThrow('State what this evidence does not show');
+  });
+
+  // SAFETY: mutation check: emptied checkItems -> this test failed
+  it('a source with no items is refused', () => {
+    expect(() => checkItems([])).toThrow('Record at least one item the source backs');
   });
 
   it('an item needs an excerpt', () => {

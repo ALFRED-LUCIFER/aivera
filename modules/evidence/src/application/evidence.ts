@@ -2,6 +2,7 @@ import type { Tx } from '@credalent/db';
 import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import {
   checkItem,
+  checkItems,
   checkSource,
   EvidenceError,
   type CompetencyLink,
@@ -58,6 +59,7 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
     async recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult> {
       await authorize(ctx, 'candidate.create');
       checkSource(input.source);
+      checkItems(input.items);
       input.items.forEach(checkItem);
       const createdAt = now();
       const base = {
