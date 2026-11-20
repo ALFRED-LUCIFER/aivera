@@ -4,7 +4,7 @@ import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-015 J1 step: Tariq (admin of "Approvals Co", seed.ts) previews, publishes, views and unpublishes Senior AI
 // Engineer (approved rubric, AED 35,000 to 48,000) from its rubric page; Senior Product Designer has only a draft. Its
-// own Playwright project, after the candidate site's specs, which count the listed jobs (playwright.config.ts). What
+// own project, apart from the candidate site's specs, which count the listed jobs (playwright.config.ts). What
 // the listing holds (the allow-list), the audit and the events are tests/integration jobs.test.ts.
 
 async function openRubric(page: Page, title: string) {

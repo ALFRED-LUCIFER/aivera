@@ -46,8 +46,8 @@ export default defineConfig({
       testIgnore: [/\.unconfigured\.spec\.ts$/, /publish-job\.spec\.ts$/],
       use: { ...devices['Desktop Chrome'] },
     },
-    // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so it runs after them.
-    // It is skipped, not passed, when any gallery test fails: a skipped "publish" project is not green.
+    // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so locally it runs after
+    // them and is skipped, not passed, when any gallery test fails. CI runs it with --no-deps on its own database.
     {
       name: 'publish',
       testMatch: /publish-job\.spec\.ts$/,
