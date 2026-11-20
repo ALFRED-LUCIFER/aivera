@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P2-036 (ADR-012): the operator console's workspaces list and detail. seed.ts gives Demo Hiring Co (3 members,
 // synthetic), Gulf Talent Partners (an agency, 4 active members, 2 jobs) and Nadia Freelance; every seeded workspace is
@@ -165,9 +165,9 @@ for (const theme of themes) {
     await openList(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await search(page, 'Demo Hiring Co');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await rowOf(page, 'Demo Hiring Co').getByRole('link').click();
     await expect(page.getByRole('heading', { level: 2, name: 'Platform facts' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

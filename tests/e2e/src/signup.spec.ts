@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { css, expectNoAxeViolations, themes } from './gallery.ts';
+import { css, expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-059 J1 step 0: from the home page through the (mocked) External ID sign-up to the no-workspace page.
 
@@ -30,7 +30,7 @@ for (const theme of themes) {
     await expect(page).toHaveURL(/\/app$/);
     await noWorkspace(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     expect(urls.length).toBeGreaterThan(2);
     for (const url of urls) expect(url).not.toMatch(/nadia|example\.com/i);
   });

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P3-003, journey J5 step 2: the candidate home page over the jobs published by seed.ts, signed out.
 
@@ -47,7 +47,7 @@ for (const theme of themes) {
     await page.goto('/candidates');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('region', { name: 'New this week' }).getByRole('heading', { level: 3 })).toHaveCount(3);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 
   test(`the Plus call to action stays the bright highlighter with a visible focus ring (${theme})`, async ({

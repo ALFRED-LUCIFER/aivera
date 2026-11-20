@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 import { approveAsOperator, PIA, signUpWorkspace } from './workspaces.ts';
 
 // AIV-P2-037 (ADR-012): Pia Platform suspends and reactivates a workspace; its admin reads but cannot start work. Each
@@ -61,7 +61,7 @@ for (const theme of themes) {
     await expect(dialog).toContainText('Nothing changes until you confirm.');
     const confirm = dialog.getByRole('button', { name: 'Confirm' });
     await expect(confirm).toBeDisabled();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await dialog.getByRole('textbox', { name: 'Reason' }).fill('Too short');
     await expect(confirm).toBeDisabled();
 
@@ -77,7 +77,7 @@ for (const theme of themes) {
     await expect(suspendedEntry(page)).toHaveText(
       /^Suspended on \d{1,2} [A-Z][a-z]{2} \d{4} at \d{2}:\d{2} \(Asia\/Dubai\): Pilot ended on 30 Nov 2026$/,
     );
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario: Members of a suspended workspace can read but not start work
     await member.page.goto('/app/jobs');
@@ -85,7 +85,7 @@ for (const theme of themes) {
     await expect(member.page.getByText(BANNER)).toBeVisible();
     // The operator's reason never reaches members.
     await expect(member.page.getByText('Pilot ended on 30 Nov 2026')).toHaveCount(0);
-    await expectNoAxeViolations(member.page);
+    await expectAccessible(member.page);
     const refused = await member.page.goto('/app/jobs/new');
     expect(refused?.status()).toBe(403);
     await expect(member.page.getByRole('heading', { level: 1, name: 'This workspace is paused.' })).toBeVisible();

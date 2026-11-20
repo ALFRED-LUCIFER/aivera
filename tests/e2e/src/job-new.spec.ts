@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-007 J1 step 3, Add a job step 1 (seed.ts: Alex at Demo Hiring Co with hiring owner "Head of Engineering" and
 // interviewer Rami; Nadia Freelance has no hiring owner).
@@ -19,7 +19,7 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByText('1. Job and description')).toHaveAttribute('aria-current', 'step');
     await expect(page.getByText('The job type sets which kinds of work count as evidence.')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     const jobType = page.getByLabel('Job type');
     await jobType.focus();
@@ -81,7 +81,7 @@ test('Scenario: Required fields', async ({ page }) => {
   // What was typed stays, and a one-line description is fine.
   await expect(page.getByLabel('Job description')).toHaveValue('Builds LLM features.');
   await expect(page.getByText('Paste what you have, even if it is thin.')).toBeVisible();
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
 });
 
 test('Scenario: Hiring owner comes from the workspace', async ({ page }) => {
@@ -106,7 +106,7 @@ test('Scenario: Discard draft with unsaved input asks first', async ({ page }) =
   await page.getByRole('button', { name: 'Discard draft' }).click();
   const dialog = page.getByRole('dialog', { name: 'Discard this job?' });
   await expect(dialog).toBeVisible();
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
   await dialog.getByRole('button', { name: 'Keep editing' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByLabel('Job title')).toHaveValue('Senior AI Engineer');
@@ -130,6 +130,6 @@ for (const theme of themes) {
     expect(response?.status()).toBe(403);
     await expect(page.getByText('You do not have access to add jobs.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Draft competencies' })).toHaveCount(0);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P3-004, journey J5 step 3: the public jobs list over the five synthetic jobs published by seed.ts, signed out.
 const chips = (page: Page) => page.getByRole('radiogroup', { name: 'Filter jobs' });
@@ -60,6 +60,6 @@ for (const theme of themes) {
     await page.goto('/candidates/jobs');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(titles(page)).toHaveCount(5);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

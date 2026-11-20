@@ -71,7 +71,16 @@ export default async function seed() {
     await createAiTokenBudget(db).add(demo, new Date().toISOString().slice(0, 10), 1_500);
     // AIV-P1-006: "AP", the talent partner, runs workspace "Demo" with the five demo jobs (personas.md).
     const ap = await person('ap@example.com', 'AP');
-    await seedDemoJobs(await workspaceOf('Demo', ap), ap);
+    const apDemo = await workspaceOf('Demo', ap);
+    await seedDemoJobs(apDemo, ap);
+    // AIV-P0-032: the hiringOwner fixture's own person, named as the mocked tenant names her: a sign-in renames a user
+    // to the tenant's name, and other specs read the Head of Engineering's.
+    const hana = await person('hana.owner@example.com', 'hana.owner');
+    await withWorkspace(db, apDemo, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${apDemo}, ${hana}, 'hiring_owner', 'active')`),
+    );
+    await workspaces.switchWorkspace({ userId: hana }, apDemo);
     await seedCandidateSiteJobs(await person('employer@example.com', 'Employer Recruiter'));
     // AIV-P3-007: Sara has signed up on the candidate site, so her sign-in lands on My applications.
     const accounts = createCandidateAccounts(db);

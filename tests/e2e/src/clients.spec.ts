@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-056 J1 step 3, agency variant (the ticket's archive examples use Dune Logistics, which has the job). seed.ts: Zaid is a recruiter in the agency Oasis Talent (no clients yet), where
 // Faisal Client is a hiring owner with no grants; Alex's Demo Hiring Co is an in-house team. The fake model drafts from
@@ -86,10 +86,10 @@ for (const theme of themes)
     await page.goto('/app/settings/clients');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('heading', { level: 1, name: 'Clients' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.goto('/app/jobs/new');
     await expect(page.getByLabel('Team or client')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 
 test('Scenario: In-house workspaces have no clients', async ({ page }) => {
