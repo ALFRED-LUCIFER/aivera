@@ -14,6 +14,7 @@ export function createAudit(db: Db, now: () => Date = () => new Date()): AuditCo
     inWorkspace: (workspaceId, work) => withWorkspace(db, workspaceId, (tx) => work(auditStore(tx))),
     insertPlatform: (entry, tx) =>
       tx ? insertPlatformEntry(tx, entry) : db.transaction((t) => insertPlatformEntry(t, entry)),
+    // Repository functions take a Tx, never the pool (scoped-tx-only).
     readPlatform: (filter) => db.transaction((t) => selectPlatformEntries(t, filter)),
     newId: () => uuidv7(),
     now,

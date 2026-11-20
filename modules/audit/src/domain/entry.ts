@@ -160,7 +160,7 @@ const EMAIL = /@/;
 // A whole value of 7 to 15 digits once spaces, dots, dashes and brackets are removed (E.164 length).
 const PHONE = /^\+?\d{7,15}$/;
 
-// shortcut: catches email addresses and phone numbers only, not names; keys are not checked; any 7-15 digit value is refused, so a plain date (2026-11-18) is too; add a zod schema per action when actions carry richer values
+// shortcut: catches email addresses and phone numbers only, not names; keys are not checked for workspace entries; any 7-15 digit value is refused, so a plain date (2026-11-18) is too; add a zod schema per action when actions carry richer values
 const looksPersonal = (value: Values[string]) =>
   typeof value === 'string' && (EMAIL.test(value) || PHONE.test(value.replace(/[\s().-]/g, '')));
 
@@ -172,6 +172,8 @@ export function assertValidEntry(entry: NewEntry): void {
     if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
 }
 
+// shortcut: a platform entry's note is the operator's free-text reason, checked for presence only, not for candidate
+// fields; operators never see candidate data (ADR-012 point 7). Scan notes when the console shows them to others.
 /**
  * Throws unless `entry` names a known platform action, has a note where required, and only platform keys
  * (`PLATFORM_VALUE_KEYS`) without contact details in its values.
