@@ -17,6 +17,12 @@ export {
   type Source,
   type SourceKind,
 } from './citations.ts';
+export {
+  CANDIDATE_PLACEHOLDER,
+  CONTACT_EXTRACTION_TASKS,
+  MissingIdentifiers,
+  type Identifiers,
+} from './identifiers.ts';
 export { modelOf, type EmbedTask, type GenerateTask } from './config.ts';
 export { detectUnusualContent, type UnusualContent } from './untrusted.ts';
 export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers.ts';

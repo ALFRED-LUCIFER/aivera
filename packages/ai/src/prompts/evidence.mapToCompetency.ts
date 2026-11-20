@@ -7,7 +7,7 @@ import { cited, type Source } from '../citations.ts';
 // checks each quote (citations.ts).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored on every mapped link. */
-export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@1';
+export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@2';
 
 export const MAP_TO_COMPETENCY_SYSTEM = [
   "You map a job candidate's evidence to the competencies of the job's approved rubric, listed in the prompt by id.",

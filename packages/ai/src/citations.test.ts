@@ -96,6 +96,7 @@ function answers(...outputs: unknown[]) {
       prompt: 'Strengths for a Senior AI Engineer.',
       schema,
       sources,
+      identifiers: { names: ['Sara Al Qahtani'], emails: [], phones: [] },
       ...overrides,
     });
   return { run, prompts, budget };

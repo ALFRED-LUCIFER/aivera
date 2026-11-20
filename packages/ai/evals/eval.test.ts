@@ -14,9 +14,10 @@ import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.t
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
+import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
-import { loadGolden, type GoldenCase } from './golden.ts';
+import { identifiersOf, loadGolden, type GoldenCase } from './golden.ts';
 import { evaluateTask, liveJudge, recordedAnswer, recordedJudge, summaryTable, type Answer } from './run.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, safety } from './scorers.ts';
 
@@ -199,11 +200,21 @@ describe('the golden set', () => {
     expect(report.passed).toBe(true);
   });
 
-  it('AIV-P1-027: every recorded mapping is valid against the product schema, 20 source/competency pairs', () => {
+  // A recorded answer must be one the model could give: it reads names, emails and phones as placeholders.
+  it("AIV-P1-080: every evidence case's recorded quotes are in its sources as the model reads them", () => {
+    for (const [task, cases] of golden)
+      for (const c of task.startsWith('evidence.') ? cases : []) {
+        const seen = redactSources(c.sources, identifiersOf(c), CONTACT_EXTRACTION_TASKS.includes(task)).sources;
+        const { failures } = citationValidity(c.recorded.output, seen, taskThresholds[task]?.statements);
+        expect(failures, `${task}/${c.id}`).toEqual([]);
+      }
+  });
+
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 21 source/competency pairs', () => {
     const cases = golden.get('evidence.mapToCompetency') ?? [];
     for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
-    expect(pairs).toHaveLength(20);
+    expect(pairs).toHaveLength(21);
   });
 
   it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {
@@ -240,9 +251,9 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('AIV-P1-025: ten CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
+  it('AIV-P1-025: eleven CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
     const cases = golden.get('evidence.parseCv') ?? [];
-    expect(cases).toHaveLength(10);
+    expect(cases).toHaveLength(11);
     for (const c of cases) expect(parseCvSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const runner = runners['evidence.parseCv'];
     if (!runner) throw new Error('no runner for evidence.parseCv');
@@ -280,21 +291,21 @@ describe('the golden set', () => {
           : c,
       );
 
-    it('10 contradiction pairs and 6 consistent ones, each recorded answer valid, and the runner passes the gates', async () => {
+    it('10 contradiction pairs and 7 consistent ones, each recorded answer valid, and the runner passes the gates', async () => {
       expect(cases.filter((c) => c.group === 'contradiction')).toHaveLength(10);
-      expect(cases.filter((c) => c.group === 'consistent')).toHaveLength(6);
+      expect(cases.filter((c) => c.group === 'consistent')).toHaveLength(7);
       for (const c of cases) {
         expect(compareExcerptsSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
         expect((await viaRunner(c, c.recorded.output)).passed, c.id).toBe(true);
       }
       const report = await run(task, cases);
       expect(groupOf(report, 'Recall')).toMatchObject({ n: 10, total: 10 });
-      expect(groupOf(report, consistent)).toMatchObject({ n: 6, total: 6 });
+      expect(groupOf(report, consistent)).toMatchObject({ n: 7, total: 7 });
     });
 
     // SAFETY: mutation check: Recall min set to 0 in config.ts -> this test failed
     // SAFETY: mutation check: consistent-pairs min set to 0 in config.ts -> this test failed
-    it('recall: one missed contradiction of ten passes, two fail; false positives: one flag of six passes, two fail', async () => {
+    it('recall: one missed contradiction of ten passes, two fail; false positives: one flag of seven passes, two fail', async () => {
       expect((await run(task, missing(['sara-merchant-scale']))).passed).toBe(true);
       const two = await run(task, missing(['sara-merchant-scale', 'rana-team-size']));
       expect(groupOf(two, 'Recall')).toMatchObject({
@@ -305,7 +316,7 @@ describe('the golden set', () => {
       expect(two.passed).toBe(false);
       expect((await run(task, flagged(['sara-merchant-thousands']))).passed).toBe(true);
       const falsePositives = await run(task, flagged(['sara-merchant-thousands', 'tarek-saga-dozen']));
-      expect(groupOf(falsePositives, consistent)).toMatchObject({ n: 4, total: 6 });
+      expect(groupOf(falsePositives, consistent)).toMatchObject({ n: 5, total: 7 });
       expect(falsePositives.passed).toBe(false);
     });
 
@@ -748,6 +759,7 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
           prompt: JSON.stringify(c.input),
           schema: z.record(z.string(), z.unknown()),
           sources: c.sources,
+          identifiers: identifiersOf(c),
         });
         expect(JSON.stringify(checked)).not.toMatch(/strong/i);
         const [system, user] = JSON.parse(

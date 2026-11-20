@@ -298,8 +298,11 @@ export function cvClaims(
     emails: extraction.contact.emails.filter((e) => e && text.includes(e)),
     phones: extraction.contact.phones.filter((p) => p && text.includes(p)),
   };
+  const contacts = [...contact.emails, ...contact.phones];
   const found: Located[] = [];
-  for (const s of extraction.statements) for (const c of s.citations.slice(0, 1)) found.push({ value: c.quote, ...c });
+  // A statement repeating the CV's own contact is dropped whole: contact goes to the candidate record only (AIV-P1-080).
+  for (const s of extraction.statements.filter((statement) => !contacts.some((c) => statement.text.includes(c))))
+    for (const c of s.citations.slice(0, 1)) found.push({ value: c.quote, ...c });
   for (const w of extraction.workHistory)
     for (const c of w.citations.slice(0, 1)) {
       const date = restoreDate(text, w.dates, c);
@@ -318,7 +321,6 @@ export function cvClaims(
     ),
   );
 
-  const contacts = [...contact.emails, ...contact.phones];
   const seen = new Set<string>();
   const claims = found
     .filter((f) => !instructions.some((i) => overlaps(i, f)))
