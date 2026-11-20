@@ -269,6 +269,7 @@ beforeAll(async () => {
       ai: createAiClient({ provider: fakeProvider({ completion: COMPLETION }), budget: createAiTokenBudget(app) }),
       readCleanFile: createCleanFileReader(blobs),
       recordContact: createContactRecorder(),
+      readPerson: readPersonAsSystem,
       index: async () => undefined,
       now: () => NOW,
     }),

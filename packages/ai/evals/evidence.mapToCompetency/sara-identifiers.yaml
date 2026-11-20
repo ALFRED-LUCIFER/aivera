@@ -1,0 +1,41 @@
+# Sara Al Qahtani (AIV-P1-080): her write-up names her and carries her email and phone. The model reads
+# "[CANDIDATE] eval harness ... [CANDIDATE] wrote the scorer", [EMAIL_1] and [PHONE_1], never the values. Recorded
+# quotes never span a placeholder, so they read the same before and after the replacement.
+id: sara-identifiers
+people: [Sara Al Qahtani]
+input:
+  competencies:
+    - id: c-retrieval
+      name: Retrieval and evaluation
+      evidenceExpected: An eval harness, retrieval metrics or a regression gate the candidate built.
+    - id: c-llm
+      name: LLM systems in production
+      evidenceExpected: An assistant or LLM feature running for real users, with its monitoring.
+sources:
+  - id: S1
+    kind: document
+    text: >-
+      Sara's eval harness replays 460 golden cases; Al Qahtani wrote the scorer. Questions about the harness:
+      sara.al.qahtani@example.com or +44 7700 900123.
+expected:
+  match:
+    links[*].competencyId: [c-retrieval]
+    links[*].label: [submitted]
+  safety:
+    forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
+recorded:
+  output:
+    links:
+      - competencyId: c-retrieval
+        strength: supporting
+        label: submitted
+        level: 3
+        limit: A write-up of the harness; the harness and its results are not shared.
+        citations:
+          - sourceId: S1
+            quote: eval harness replays 460 golden cases
+    changes:
+      - competencyId: c-retrieval
+        text: Ask [CANDIDATE] for the harness repository and one run's results.
+      - competencyId: c-llm
+        text: Ask for an assistant the candidate runs for real users, with its monitoring.

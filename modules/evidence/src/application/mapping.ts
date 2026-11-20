@@ -124,8 +124,6 @@ type ComparedPair = { a: number; b: number; outcome: ComparisonOutcome; method: 
 // team" against "a junior contributor") is missed; send those too if pilot resolutions show misses.
 // shortcut: every run sends its unflagged unsettled pairs again; cache "not contradicting" verdicts by `pairKey` if pilot
 // token use shows it.
-// shortcut: excerpts go to the model as stored, so a name inside one ("Arjun's queue library") is sent, as for
-// evidence.mapToCompetency; strip names before every evidence prompt with the ADR-006 point 7 follow-up.
 export async function comparePairs(
   links: readonly (RuleLink & { excerpt: string })[],
   originGroups: readonly (readonly string[])[],

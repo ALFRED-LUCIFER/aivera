@@ -23,7 +23,7 @@ export const goldenCase = z
     id: z.string().regex(/^[a-z0-9-]+$/),
     /** The task's case group this case is scored in (config.ts taskThresholds groups), if any. */
     group: z.string().min(1).optional(),
-    /** Every person the case names; each must be in the synthetic cast. */
+    /** Every person the case names; each must be in the synthetic cast. An evidence case names its candidate first. */
     people: z.array(z.string().min(1)).default([]),
     /** The task's input besides its sources (job type, a recruiter's instruction). */
     input: z.record(z.string(), z.unknown()).default({}),
@@ -59,6 +59,12 @@ export const goldenCase = z
   .refine((c) => !c.expected.judge || c.recorded.judge, 'recorded.judge is required when expected.judge is set');
 
 export type GoldenCase = z.infer<typeof goldenCase>;
+
+/**
+ * The candidate's identifiers for a live run (AIV-P1-080): an evidence case names its candidate first in `people`. The
+ * client replaces every email and phone in the sources anyway, so the case needs no record contact of its own.
+ */
+export const identifiersOf = (golden: GoldenCase) => ({ names: golden.people.slice(0, 1), emails: [], phones: [] });
 
 /** Reads every `<dir>/<task>/*.yaml`, except the gate's own failing fixtures. Throws on the first invalid case. */
 export function loadGolden(dir: string): Map<string, GoldenCase[]> {

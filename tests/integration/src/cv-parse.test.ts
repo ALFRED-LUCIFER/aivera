@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createAiClient, fakeProvider } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates, createContactRecorder } from '@credalent/candidates/composition';
+import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, MAX_DELIVERIES, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -133,6 +133,8 @@ const blobs: BlobStore = {
   stream: async () => new ReadableStream(),
 };
 const spans = new InMemorySpanExporter();
+/** Every model the fake provider handed out, so a test can read the requests it was sent (AIV-P1-080). */
+const models: { doGenerateCalls: { prompt: unknown }[] }[] = [];
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -181,9 +183,20 @@ async function consume(envelopes: Envelope[], completion: string, deliveryCount 
   const handlers = createFileReadHandlers({
     db: app,
     documentIntelligence: { endpoint: DI, token: async () => 'synthetic-entra-token', wait: async () => undefined },
-    ai: createAiClient({ provider: fakeProvider({ completion }), budget: createAiTokenBudget(app) }),
+    ai: createAiClient({
+      provider: {
+        ...fakeProvider(),
+        languageModel: (d) => {
+          const model = fakeProvider({ completion }).languageModel(d);
+          models.push(model as unknown as { doGenerateCalls: { prompt: unknown }[] });
+          return model;
+        },
+      },
+      budget: createAiTokenBudget(app),
+    }),
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
+    readPerson: readPersonAsSystem,
     index: async () => undefined,
     now: () => NOW,
   });
@@ -373,6 +386,45 @@ describe("Sara Al Qahtani's synthetic CV, parsed once it passed the malware scan
     );
     expect(other.created).toBe(true);
     expect(other.personId).not.toBe(sara.candidateId);
+  });
+});
+
+describe('Scenario: CV parsing may send the candidate own email and phone, never the name (AIV-P1-080)', () => {
+  it('sends the name as a placeholder, drops a statement repeating the contact, and stores the CV text', async () => {
+    const cv = [
+      [
+        'Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer',
+        'Sara Al Qahtani led the Gulf Arabic eval set.',
+      ],
+    ];
+    const contact = { emails: ['sara.al.qahtani@example.com'], phones: ['+44 7700 900123'] };
+    const completion = answer({
+      contact,
+      statements: ['[CANDIDATE] led the Gulf Arabic eval set', 'sara.al.qahtani@example.com'],
+    });
+    models.length = 0;
+    spans.reset();
+    const logs = [vi.spyOn(log, 'warn'), vi.spyOn(log, 'info'), vi.spyOn(log, 'error')];
+    const parsed = await parse('Sara Al Qahtani', cv, completion);
+    const telemetry = JSON.stringify([
+      ...spans.getFinishedSpans().map((s) => ({ name: s.name, attributes: s.attributes, events: s.events })),
+      ...logs.flatMap((spy) => spy.mock.calls),
+    ]);
+    for (const spy of logs) spy.mockRestore();
+
+    const sent = models.flatMap((m) => m.doGenerateCalls.map((call) => JSON.stringify(call.prompt))).join(' ');
+    expect(sent).toContain('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123');
+    expect(sent).not.toMatch(/sara al qahtani/i);
+    expect(telemetry).not.toMatch(/sara|qahtani|900123|\[CANDIDATE\]/i);
+    // The statement reads as the CV wrote it, a claim; the one repeating the email is dropped.
+    expect(parsed.items.map((i) => [i.excerpt, i.provenance])).toContainEqual([
+      'Sara Al Qahtani led the Gulf Arabic eval set',
+      'claim',
+    ]);
+    expect(parsed.items.map((i) => i.excerpt).join(' ')).not.toMatch(/@|900123|\[CANDIDATE\]/);
+    const record = await as(w1, (ctx) => candidates.getPerson(ctx, parsed.candidateId));
+    expect(record?.emails).toEqual(expect.arrayContaining(contact.emails));
+    expect(record?.phones).toContain('+447700900123'); // stored normalised
   });
 });
 

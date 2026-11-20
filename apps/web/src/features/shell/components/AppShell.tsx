@@ -1,3 +1,4 @@
+// Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
 import { useTranslations } from '@credalent/i18n/react';
 import { AssistantDrawer, Button, Input, Label } from '@credalent/ui';
 import Image from 'next/image';
@@ -185,9 +186,6 @@ export function AppShell({
               {t(`nav.${id}`)}
             </Link>
           ))}
-          <Link href="/" className={navLink}>
-            {t('nav.website')}
-          </Link>
           <form action={signOutAction}>
             <button type="submit" className={`${navLink} w-full cursor-pointer`}>
               {t('signOut')}

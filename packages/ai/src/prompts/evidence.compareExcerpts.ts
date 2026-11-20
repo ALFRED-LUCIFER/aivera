@@ -7,7 +7,7 @@ import { cited, InvalidCitation, sourceLabel, type Checked, type Source } from '
 // contradiction, and nothing it returns changes a stage, rejects or contacts anyone (AGENTS.md 1.5).
 
 /** Bump with any change to the system prompt, the prompt or the schema. */
-export const COMPARE_EXCERPTS_VERSION = 'evidence.compareExcerpts@1';
+export const COMPARE_EXCERPTS_VERSION = 'evidence.compareExcerpts@2';
 
 export const COMPARE_EXCERPTS_SYSTEM = [
   "You check pairs of excerpts from a job candidate's evidence for contradictions. Each pair in the prompt names two",

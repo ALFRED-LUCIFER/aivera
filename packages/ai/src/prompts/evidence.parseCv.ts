@@ -7,7 +7,7 @@ import { cited, type Source } from '../citations.ts';
 // (Apache-2.0, modified): THIRD_PARTY_NOTICES.md.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const PARSE_CV_VERSION = 'evidence.parseCv@2';
+export const PARSE_CV_VERSION = 'evidence.parseCv@3';
 
 export const PARSE_CV_SYSTEM = [
   "You read one candidate's CV and list what it says, so a recruiter can see each statement next to the CV line it",
@@ -36,8 +36,9 @@ export const parseCvSchema = z.object({
 
 /**
  * The whole request but its workspace, so the evidence module and the eval runner send the same thing. The CV text is
- * the only source, so the prompt holds no candidate data. A statement citing text not in the CV is dropped, not the
- * whole answer (`dropInvalidCitations`).
+ * the only source, so the prompt holds no candidate data. The client replaces the name in the CV and, for this task
+ * only, keeps its emails and phones (identifiers.ts CONTACT_EXTRACTION_TASKS). A statement citing text not in the CV
+ * is dropped, not the whole answer (`dropInvalidCitations`).
  */
 export const parseCvRequest = (sources: readonly Source[]) => ({
   task: 'evidence.parseCv' as const,

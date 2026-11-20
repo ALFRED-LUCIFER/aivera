@@ -116,7 +116,7 @@ describe('comparePairs', () => {
     const cases = readdirSync(dir).map(
       (file) => parse(readFileSync(join(dir, file), 'utf8')) as { id: string; sources: { text: string }[] },
     );
-    expect(cases).toHaveLength(16);
+    expect(cases).toHaveLength(17);
     for (const c of cases) {
       const compare = compareWith([]);
       await run([link('write-up', c.sources[0]?.text ?? ''), link('reference', c.sources[1]?.text ?? '')], compare);

@@ -7,7 +7,7 @@ import { BudgetExceeded, createAiClient, fakeProvider } from '@credalent/ai';
 import { createSearchIndex } from '@credalent/ai/search';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates, createContactRecorder } from '@credalent/candidates/composition';
+import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -189,6 +189,7 @@ async function consume(envelopes: Envelope[], deliveryCount = 1): Promise<string
     ai,
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
+    readPerson: readPersonAsSystem,
     index: async (workspaceId, itemId, text) => {
       if (budgetSpent) throw new BudgetExceeded('search.embed', workspaceId);
       indexed.push(itemId);
