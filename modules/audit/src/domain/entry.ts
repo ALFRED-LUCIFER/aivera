@@ -1,4 +1,5 @@
 // An audit entry: who did what to which record, when and why (AGENTS.md 1.5, 3.6). Entries are never changed.
+import { z } from 'zod';
 
 /** Adding an action also needs a migration for the `entry_action_check` constraint (infrastructure/schema.ts). */
 export const ACTIONS = [
@@ -52,6 +53,12 @@ export const PLATFORM_ACTIONS = [
   'ops.approval_mode_changed',
 ] as const;
 export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
+
+/**
+ * The only keys a platform entry's `before` and `after` may hold: platform values, never a candidate field (AIV-P2-053).
+ * A new platform action with other values adds its keys here.
+ */
+export const PLATFORM_VALUE_KEYS: readonly string[] = ['dailyTokenBudget', 'status', 'approvalRequired'];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */
 export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded', 'ai_budget.changed'];
@@ -112,6 +119,25 @@ export type AuditEntry = Required<Pick<NewEntry, 'action' | 'subject'>> & {
   correlationId: string | null;
 };
 
+/** The console's filter for the platform audit log (AIV-P2-053); every field optional, `to` exclusive. */
+export const platformEntryQuerySchema = z
+  .object({
+    action: z.enum(PLATFORM_ACTIONS).optional(),
+    actorId: z.uuid().optional(),
+    targetId: z.uuid().optional(),
+    from: z.date().optional(),
+    to: z.date().optional(),
+    // The id of the last entry of the previous page.
+    cursor: z.uuid().optional(),
+    pageSize: z.number().int().min(1).max(50).default(50),
+  })
+  .strict();
+export type PlatformEntryQuery = z.input<typeof platformEntryQuerySchema>;
+export type PlatformEntryFilter = z.output<typeof platformEntryQuerySchema>;
+
+/** One page of the platform audit log, newest first. A full page has a cursor; the page after it may be empty. */
+export type PlatformEntryPage = { entries: PlatformEntry[]; nextCursor: string | null };
+
 const MESSAGES = {
   unknown_action: 'Unknown audit action',
   note_required: 'A note is required for this action',
@@ -134,7 +160,7 @@ const EMAIL = /@/;
 // A whole value of 7 to 15 digits once spaces, dots, dashes and brackets are removed (E.164 length).
 const PHONE = /^\+?\d{7,15}$/;
 
-// shortcut: catches email addresses and phone numbers only, not names; keys are not checked; any 7-15 digit value is refused, so a plain date (2026-11-18) is too; add a zod schema per action when actions carry richer values
+// shortcut: catches email addresses and phone numbers only, not names; keys are not checked for workspace entries; any 7-15 digit value is refused, so a plain date (2026-11-18) is too; add a zod schema per action when actions carry richer values
 const looksPersonal = (value: Values[string]) =>
   typeof value === 'string' && (EMAIL.test(value) || PHONE.test(value.replace(/[\s().-]/g, '')));
 
@@ -146,11 +172,21 @@ export function assertValidEntry(entry: NewEntry): void {
     if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
 }
 
-/** Throws unless `entry` names a known platform action, has a note where required, and no contact details in values. */
+// shortcut: a platform entry's note is the operator's free-text reason, checked for presence only, not for candidate
+// fields; operators never see candidate data (ADR-012 point 7). Scan notes when the console shows them to others.
+/**
+ * Throws unless `entry` names a known platform action, has a note where required, and only platform keys
+ * (`PLATFORM_VALUE_KEYS`) without contact details in its values.
+ */
 export function assertValidPlatformEntry(entry: NewPlatformEntry): void {
   if (!PLATFORM_ACTIONS.includes(entry.action)) throw new AuditError('unknown_action');
   if ((NOTE_REQUIRED as readonly string[]).includes(entry.action) && !entry.note?.trim())
     throw new AuditError('note_required');
   for (const values of [entry.before, entry.after])
-    if (values && Object.values(values).some(looksPersonal)) throw new AuditError('personal_data');
+    if (
+      values &&
+      (Object.keys(values).some((key) => !PLATFORM_VALUE_KEYS.includes(key)) ||
+        Object.values(values).some(looksPersonal))
+    )
+      throw new AuditError('personal_data');
 }

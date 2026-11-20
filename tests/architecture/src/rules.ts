@@ -67,6 +67,9 @@ const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 // and check no role, so only server/operator.ts, behind platformOperator(), may call them.
 const OPERATOR_ONLY_CALL = /\.(?:changeStatus|pausePublicListings|setApprovalRequired)\(/;
 const OPERATOR_SERVER = /[/\\]src[/\\]server[/\\]operator\.ts$/;
+// AIV-P2-053 (ADR-012 point 8): the platform audit log is read only by console code (and server/operator.ts, which
+// wires the console's reads).
+const PLATFORM_AUDIT_READ = /\.listPlatformEntries\(/;
 // AIV-P1-056: setJobOwner trusts the job id and the previous owner it is given, so only the jobs module, which passes
 // the job it is saving, calls it.
 const JOB_OWNER_CALL = /\.setJobOwner\(/;
@@ -145,6 +148,19 @@ export function findViolations(root: string): Violation[] {
           file: rel,
           detail:
             'changeStatus, pausePublicListings and setApprovalRequired are called only from server/operator.ts (ADR-012)',
+        });
+
+      if (
+        !(kind === 'apps' && (OPS_READ_AREA.test(file) || OPERATOR_SERVER.test(file))) &&
+        unit !== 'modules/ops' &&
+        !/\.test\.tsx?$/.test(file) &&
+        PLATFORM_AUDIT_READ.test(readFileSync(file, 'utf8'))
+      )
+        violations.push({
+          rule: 'platform-audit-read-console-only',
+          file: rel,
+          detail:
+            'listPlatformEntries is called only from app/(ops), features/ops*, server/ops*, server/operator.ts or modules/ops (ADR-012)',
         });
 
       if (

@@ -1,7 +1,7 @@
 import type { Tx } from '@aivera/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { AuditStore } from '../application/audit.ts';
-import type { Actor, AuditEntry, PlatformEntry } from '../domain/entry.ts';
+import type { Actor, AuditEntry, PlatformAction, PlatformEntry, PlatformEntryFilter, Values } from '../domain/entry.ts';
 import { entry, platformEntry } from './schema.ts';
 
 type Row = typeof entry.$inferSelect;
@@ -61,4 +61,32 @@ export async function insertPlatformEntry(tx: Tx, { subject, ...rest }: Platform
   await tx
     .insert(platformEntry)
     .values({ ...rest, subjectType: subject?.type ?? null, subjectId: subject?.id ?? null });
+}
+
+type PlatformRow = {
+  id: string;
+  occurred_at: string;
+  actor_id: string;
+  action: PlatformAction;
+  subject_type: string | null;
+  subject_id: string | null;
+  note: string | null;
+  before: Values | null;
+  after: Values | null;
+};
+
+/** One page of the platform log through `audit.list_platform_entries`, the app role's only read of it (ADR-012). */
+export async function selectPlatformEntries(
+  tx: Tx,
+  { action, actorId, targetId, from, to, cursor, pageSize }: PlatformEntryFilter,
+): Promise<PlatformEntry[]> {
+  const rows = await tx.execute<PlatformRow>(sql`select * from audit.list_platform_entries(
+    ${action ?? null}::text, ${actorId ?? null}::uuid, ${targetId ?? null}::uuid, ${from?.toISOString() ?? null}::timestamptz,
+    ${to?.toISOString() ?? null}::timestamptz, ${cursor ?? null}::uuid, ${pageSize}::int)`);
+  return rows.map(({ occurred_at, actor_id, subject_type, subject_id, ...rest }) => ({
+    ...rest,
+    occurredAt: new Date(occurred_at),
+    actorId: actor_id,
+    subject: subject_type && subject_id ? { type: subject_type, id: subject_id } : null,
+  }));
 }

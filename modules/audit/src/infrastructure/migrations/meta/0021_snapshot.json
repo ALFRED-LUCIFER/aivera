@@ -1,0 +1,271 @@
+{
+  "id": "0f385435-7792-46cb-8ea4-b0fb48ab09a9",
+  "prevId": "f0a9e208-34ec-4d24-a838-c3866d633439",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "audit.entry": {
+      "name": "entry",
+      "schema": "audit",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_type": {
+          "name": "actor_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_type": {
+          "name": "subject_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "before": {
+          "name": "before",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "after": {
+          "name": "after",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correlation_id": {
+          "name": "correlation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seq": {
+          "name": "seq",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "name": "entry_seq_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "audit",
+            "type": "always"
+          }
+        }
+      },
+      "indexes": {
+        "entry_subject_idx": {
+          "name": "entry_subject_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subject_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "entry_tenant_isolation": {
+          "name": "entry_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"audit\".\"entry\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"audit\".\"entry\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "entry_actor_type_check": {
+          "name": "entry_actor_type_check",
+          "value": "\"audit\".\"entry\".\"actor_type\" in ('user', 'system', 'candidate', 'client', 'operator')"
+        },
+        "entry_actor_id_check": {
+          "name": "entry_actor_id_check",
+          "value": "\"audit\".\"entry\".\"actor_type\" = 'system' or \"audit\".\"entry\".\"actor_id\" is not null"
+        },
+        "entry_action_check": {
+          "name": "entry_action_check",
+          "value": "\"audit\".\"entry\".\"action\" in ('rubric.approved', 'rubric.submitted', 'rubric.saved', 'rubric.returned', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'workspace.settings_changed', 'member.invited', 'invitation.revoked', 'invitation.accepted', 'member.removed', 'job.stage_changed')"
+        },
+        "entry_note_check": {
+          "name": "entry_note_check",
+          "value": "\"audit\".\"entry\".\"action\" not in ('score.changed', 'decision.recorded', 'ai_budget.changed') or coalesce(btrim(\"audit\".\"entry\".\"note\"), '') <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "audit.platform_entry": {
+      "name": "platform_entry",
+      "schema": "audit",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_type": {
+          "name": "subject_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "before": {
+          "name": "before",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "after": {
+          "name": "after",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_entry_action_check": {
+          "name": "platform_entry_action_check",
+          "value": "\"audit\".\"platform_entry\".\"action\" in ('ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'ops.approval_mode_changed')"
+        },
+        "platform_entry_note_check": {
+          "name": "platform_entry_note_check",
+          "value": "\"audit\".\"platform_entry\".\"action\" <> 'ai_budget.changed' or coalesce(btrim(\"audit\".\"platform_entry\".\"note\"), '') <> ''"
+        },
+        "platform_entry_subject_check": {
+          "name": "platform_entry_subject_check",
+          "value": "(\"audit\".\"platform_entry\".\"subject_type\" is null) = (\"audit\".\"platform_entry\".\"subject_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "audit": "audit"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

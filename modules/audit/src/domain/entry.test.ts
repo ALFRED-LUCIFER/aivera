@@ -3,6 +3,8 @@ import {
   AuditError,
   assertValidEntry,
   assertValidPlatformEntry,
+  PLATFORM_ACTIONS,
+  platformEntryQuerySchema,
   type Action,
   type NewEntry,
   type PlatformAction,
@@ -36,6 +38,45 @@ describe('the platform action list (ADR-012)', () => {
     expect(() =>
       assertValidPlatformEntry({ ...change, note: 'Pilot cap', after: { contact: 'pia.platform@example.com' } }),
     ).toThrow(new AuditError('personal_data'));
+  });
+
+  // AIV-P2-053: before and after hold platform values only, whichever platform action writes them.
+  // SAFETY: mutation check: removed the PLATFORM_VALUE_KEYS check in assertValidPlatformEntry -> this test failed (nothing thrown)
+  it.each(PLATFORM_ACTIONS)('"%s" refuses a candidate field in before or after', (action) => {
+    const base = { actorId, action, note: 'Reason' } as const;
+    expect(() =>
+      assertValidPlatformEntry({ ...base, before: { status: 'active' }, after: { status: 'suspended' } }),
+    ).not.toThrow();
+    for (const values of [{ candidateId: CANDIDATE.id }, { backedScore: 61 }])
+      for (const side of ['before', 'after'] as const)
+        expect(() => assertValidPlatformEntry({ ...base, [side]: values })).toThrow(new AuditError('personal_data'));
+  });
+});
+
+// AIV-P2-053: the console's platform log filter is validated before any query.
+describe('the platform log query', () => {
+  it('defaults the page size to 50 and accepts every filter', () => {
+    expect(platformEntryQuerySchema.parse({})).toEqual({ pageSize: 50 });
+    const filter = {
+      action: 'workspace.suspended',
+      actorId: '0190d4a2-0000-7000-8000-00000000a001',
+      targetId: '0190d4a2-0000-7000-8000-00000000a002',
+      from: new Date('2026-11-01T00:00:00Z'),
+      to: new Date('2026-11-20T00:00:00Z'),
+      cursor: '0190d4a2-0000-7000-8000-00000000a003',
+      pageSize: 10,
+    } as const;
+    expect(platformEntryQuerySchema.parse(filter)).toEqual(filter);
+  });
+
+  it.each([
+    ['a page size of 500', { pageSize: 500 }],
+    ['a page size of 0', { pageSize: 0 }],
+    ['a malformed cursor', { cursor: "x' or 1=1 --" }],
+    ['an action that is not a platform action', { action: 'rubric.approved' }],
+    ['an unknown key', { workspaceId: '0190d4a2-0000-7000-8000-00000000a001' }],
+  ])('refuses %s', (_case, query) => {
+    expect(platformEntryQuerySchema.safeParse(query).success).toBe(false);
   });
 });
 
