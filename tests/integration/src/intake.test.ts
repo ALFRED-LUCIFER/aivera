@@ -145,7 +145,7 @@ describe('Scenario Outline: Each source is recorded', () => {
 });
 
 describe('Scenario: A second arrival adds a source, not an application', () => {
-  // SAFETY: mutation check: dropped application_person_job_key and made insertOrGetApplication insert unconditionally -> this test failed (two applications)
+  // SAFETY: mutation check: dropped application_person_job_key in intake 0000 -> this test failed (two applications)
   it('Sneha Iyer via LinkedIn, then the same CV by Email for the same job: one application, two sources', async () => {
     const jobId = await newJob(w1, 'Senior AI Engineer');
     const first = await as(ALEX, w1, (ctx) =>
@@ -179,6 +179,7 @@ describe('Scenario: One person, several jobs', () => {
 });
 
 describe('Scenario: Intake triggers ingestion through the outbox', () => {
+  // SAFETY: mutation check: removed publishApplicationReceived from receiveApplication -> this test failed (no event)
   it('receiving an application writes ApplicationReceived.v1 with opaque ids only', async () => {
     const jobId = await newJob(w1, 'Data Engineer');
     const result = await as(ALEX, w1, (ctx) =>
@@ -194,7 +195,6 @@ describe('Scenario: Intake triggers ingestion through the outbox', () => {
     ]);
   });
 
-  // SAFETY: mutation check: wrote the outbox event on the pool (outside ctx.tx) -> this test failed (event survived the rollback)
   it('a rolled-back arrival writes neither the application nor the event', async () => {
     const jobId = await newJob(w1, 'Platform Engineer');
     const before = [await count('intake.application'), await count('intake.outbox')];
@@ -244,7 +244,7 @@ describe('Scenario: There is no automatic rejection stage', () => {
 });
 
 describe('Applications are isolated by workspace (ADR-005)', () => {
-  // SAFETY: mutation check: ALTER POLICY application_tenant_isolation and application_source_tenant_isolation USING (true) WITH CHECK (true) -> this test failed (saw both workspaces' rows)
+  // SAFETY: mutation check: ALTER POLICY application_tenant_isolation and application_source_tenant_isolation USING (true) WITH CHECK (true) -> this test and the next failed (saw both workspaces' rows)
   it('W1 sees only its own applications and sources even with no WHERE clause', async () => {
     const w2Job = await newJob(w2, 'Gulf job');
     await as(ALEX, w2, (ctx) => intake.receiveApplication(ctx, arrival(w2Job, 'Sneha Iyer', 1, 'linkedin')));

@@ -9,6 +9,8 @@ import { ApplicationReceivedV1, type IntakeContract } from './contracts/index.ts
 import { intakeStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
+// shortcut: the worker relay does not read intake.outbox yet (nothing consumes ApplicationReceived.v1); add it to the
+// worker outboxes with its first consumer, evidence ingestion (AIV-P1-025).
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createIntake(
   workspaces: Pick<WorkspacesContract, 'authorize'>,
