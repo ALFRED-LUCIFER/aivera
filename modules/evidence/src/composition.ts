@@ -5,15 +5,19 @@ import type { Handler, Scheduler } from '@credalent/db/consumer';
 import type { Tx } from '@credalent/db';
 import { enqueue, newEnvelope, type Envelope, type EventDefinition } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
+import { ApplicationReceivedV1 } from '@credalent/intake';
 import { log } from '@credalent/observability';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import {
   type ApprovedRubricPort,
   GitHubRateLimited,
+  queueArrivalReads,
   readRepository,
   refreshStaleRepositorySources,
   repositoryReadUseCases,
+  type ArrivalPorts,
+  type RepositoryPorts,
 } from './application/repositoryRead.ts';
 import {
   recordRequestOutcome,
@@ -39,6 +43,14 @@ import { inbox, outbox } from './infrastructure/schema.ts';
 
 /** The queue RepositoryReadRequested.v1 and RepositoryRefreshRequested.v1 go to (infra/modules/messaging.bicep). */
 export const EVIDENCE_QUEUE = 'evidence';
+
+const publishReadRequested: RepositoryPorts['publishReadRequested'] = (tx, source) =>
+  enqueue(tx, outbox, RepositoryReadRequestedV1, {
+    workspaceId: source.workspaceId,
+    payload: { candidateId: source.candidateId, sourceId: source.id },
+    dedupeKey: `repository-read:${source.id}`,
+    occurredAt: source.createdAt,
+  });
 
 const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKey = `source:${source.id}`) =>
   enqueue(tx, outbox, EvidenceRecordedV1, {
@@ -75,13 +87,7 @@ export function createEvidence(
     ...repositoryReadUseCases({
       ...ports,
       readStoreFor: repositoryReadStore,
-      publishReadRequested: (tx, source) =>
-        enqueue(tx, outbox, RepositoryReadRequestedV1, {
-          workspaceId: source.workspaceId,
-          payload: { candidateId: source.candidateId, sourceId: source.id },
-          dedupeKey: `repository-read:${source.id}`,
-          occurredAt: source.createdAt,
-        }),
+      publishReadRequested,
       publishRefreshRequested: (tx, { workspaceId, candidateId, jobId, at }) =>
         enqueue(tx, outbox, RepositoryRefreshRequestedV1, {
           workspaceId,
@@ -216,5 +222,30 @@ export function createRepositoryRefreshHandler(config: {
         await reschedule(config.scheduler, RepositoryRefreshRequestedV1, envelope, payload, error.resetAt, now);
       }
     },
+  };
+}
+
+/**
+ * The worker job `evidence.application.received` on the evidence queue (AIV-P1-076): queues one read per GitHub
+ * repository link an arrival or a member's link brings, as the system in the envelope's workspace. The intake and
+ * candidates reads come from the worker's composition root, so this module imports neither's internals.
+ */
+export function createApplicationReceivedHandler(
+  config: Pick<ArrivalPorts, 'readArrival' | 'readPerson'> & { now?: () => Date },
+): Handler<{ applicationId: string; sourceId: string }> {
+  const ports: ArrivalPorts = {
+    ...config,
+    readStoreFor: repositoryReadStore,
+    publishReadRequested,
+    newId: uuidv7,
+    now: config.now ?? (() => new Date()),
+    logQueued: ({ queued, ...ids }) =>
+      log.info(ids, queued ? 'repository read queued' : 'repository read already queued'),
+  };
+  return {
+    event: ApplicationReceivedV1,
+    inbox,
+    consumer: 'evidence.application.received',
+    handle: (tx, payload, envelope) => queueArrivalReads(ports, tx, envelope.workspaceId, payload.sourceId),
   };
 }

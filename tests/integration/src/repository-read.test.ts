@@ -276,7 +276,7 @@ async function consume(envelopes: Envelope[], handlers: Handler<unknown>[] = [ha
 }
 
 /** Requests a read of `owner/name` for `who`, runs the worker, and returns what was stored. */
-async function read(who: { id: string; email: string }, login: string, owner: string, name: string) {
+async function read(who: { id: string; email: string }, login: string | null, owner: string, name: string) {
   const { sourceId } = await as(ALEX, w1, (ctx) =>
     evidence.requestRepositoryRead(ctx, {
       candidateId: who.id,
@@ -397,6 +397,24 @@ describe('Scenario: Authorship is measured from commit history (with generated-o
       hasTests: true,
       hasCi: true,
     });
+  });
+});
+
+// AIV-P1-076: a read queued with no GitHub login supplied matches by the candidate's emails only.
+describe('Scenario: No GitHub login supplied', () => {
+  it('once read, the source shows "Authorship unclear: no GitHub login supplied" and cannot back more than Medium', async () => {
+    const maria = await person('Maria Santos');
+    repos.set('maria-credalent-example/ledger-sync', {
+      commits: [
+        ...commits(30, { email: maria.email }),
+        // Her login on commits does not count: she never supplied it, and none is inferred from the owner.
+        ...commits(5, { login: 'maria-credalent-example' }),
+      ],
+    });
+    const { view, items } = await read(maria, null, 'maria-credalent-example', 'ledger-sync');
+    expect(view).toMatchObject({ authoredCommits: 30, totalCommits: 35, authorship: 'clear', strengthCap: 'medium' });
+    expect(items).toMatchObject([{ excerpt: 'authored 30 of 35 commits', strength: 'medium' }]);
+    expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
   });
 });
 

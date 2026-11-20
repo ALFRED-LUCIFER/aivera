@@ -33,5 +33,30 @@ export function intakeStore(tx: Tx): IntakeStore {
     async insertSource(values) {
       await tx.insert(applicationSource).values(values);
     },
+    async findSource(workspaceId, sourceId) {
+      const [row] = await tx
+        .select({
+          personId: application.personId,
+          links: applicationSource.links,
+          githubLogin: applicationSource.githubLogin,
+        })
+        .from(applicationSource)
+        .innerJoin(
+          application,
+          and(
+            eq(application.workspaceId, applicationSource.workspaceId),
+            eq(application.id, applicationSource.applicationId),
+          ),
+        )
+        .where(and(eq(applicationSource.workspaceId, workspaceId), eq(applicationSource.id, sourceId)));
+      return row ?? null;
+    },
+    async findApplication(workspaceId, applicationId) {
+      const [row] = await tx
+        .select()
+        .from(application)
+        .where(and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId)));
+      return row ?? null;
+    },
   };
 }

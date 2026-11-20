@@ -24,6 +24,7 @@ export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.t
 export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 export { COVERAGE_GAPS, GRADE_REASONS, SKILL_GRADES } from '../domain/skill-signals/classify.ts';
 export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/skill-signals/classify.ts';
+export { parseRepositoryUrl } from '../domain/repository.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
@@ -121,9 +122,11 @@ export interface EvidenceContract {
   purgeSyntheticEvidence(ctx: WorkspaceContext): Promise<void>;
   /**
    * Stores a pending `repository` source for a public https://github.com/<owner>/<repository> link and queues its read
-   * (`RepositoryReadRequested.v1`). Commits count as the candidate's only when they match `githubLogin`, one of
-   * `emails` or a Co-authored-by trailer naming them. Admins and recruiters. Throws `EvidenceError` (`repository_url`,
-   * `github_login`) and writes nothing.
+   * (`RepositoryReadRequested.v1`), once per candidate and normalised URL (lower case, no `.git`, trailing slash, query
+   * or fragment): a second request returns the first read's `sourceId` and queues nothing. Commits count as the
+   * candidate's only when they match `githubLogin` (null when they supplied none: emails only, strength cap Medium),
+   * one of `emails` or a Co-authored-by trailer naming them. Admins and recruiters. Throws `EvidenceError`
+   * (`repository_url`, `github_login`) and writes nothing.
    */
   requestRepositoryRead(ctx: WorkspaceContext, input: RequestRepositoryReadInput): Promise<{ sourceId: string }>;
   /**

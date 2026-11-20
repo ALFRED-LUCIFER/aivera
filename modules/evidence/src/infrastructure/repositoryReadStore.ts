@@ -24,8 +24,28 @@ export function repositoryReadStore(tx: Tx): RepositoryReadStore {
   }
 
   return {
-    async insert(read) {
-      await tx.insert(repositoryRead).values(read);
+    async insertOrGet(src, read) {
+      await tx.insert(source).values(src);
+      // ON CONFLICT waits for a concurrent insert of the same candidate and URL, so two requests at once keep one read.
+      const [inserted] = await tx
+        .insert(repositoryRead)
+        .values(read)
+        .onConflictDoNothing({ target: [repositoryRead.workspaceId, repositoryRead.candidateId, repositoryRead.url] })
+        .returning({ sourceId: repositoryRead.sourceId });
+      if (inserted) return null;
+      await tx.delete(source).where(and(eq(source.workspaceId, src.workspaceId), eq(source.id, src.id)));
+      const [existing] = await tx
+        .select({ sourceId: repositoryRead.sourceId })
+        .from(repositoryRead)
+        .where(
+          and(
+            eq(repositoryRead.workspaceId, read.workspaceId),
+            eq(repositoryRead.candidateId, read.candidateId),
+            eq(repositoryRead.url, read.url),
+          ),
+        );
+      if (!existing) throw new Error('repository read conflict but no read for this candidate and URL');
+      return existing.sourceId;
     },
     async find(workspaceId, sourceId) {
       const [row] = await tx

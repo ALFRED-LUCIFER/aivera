@@ -217,7 +217,7 @@ describe('Scenario: Intake triggers ingestion through the outbox', () => {
 });
 
 describe('Scenario: Applications to an unknown or other-workspace job are refused', () => {
-  // SAFETY: mutation check: removed the jobExists check from receiveApplication -> this test failed (no IntakeError, rows written)
+  // SAFETY: mutation check: removed the jobExists check (now jobResource) from receiveApplication -> this test failed (no IntakeError, rows written)
   it('a job from W2 named inside W1 fails with "Job not found" and nothing is written', async () => {
     const w2Job = await newJob(w2, 'Gulf job');
     const before = [
