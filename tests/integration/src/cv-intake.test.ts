@@ -327,7 +327,7 @@ describe('Scenario: An uploaded CV is parsed and its statements appear as claims
 });
 
 describe('Scenario: The same file redelivered is parsed once', () => {
-  // SAFETY: mutation check: removed onConflictDoNothing from cvParseStore.insertOrGet -> this test failed (a second cv source)
+  // SAFETY: mutation check: removed onConflictDoNothing from cvParseStore.insertOrGet -> this test and the next failed (23505 unique violation)
   it('a redelivered ApplicationReceived.v1 and a second arrival listing the same file keep one source, parse row and event', async () => {
     // A second arrival for Maria lists the same file id; its handler runs through the consumer, then once more past
     // the inbox, as a redelivery the inbox did not catch would.
@@ -342,7 +342,7 @@ describe('Scenario: The same file redelivered is parsed once', () => {
     expect(await parseRequests([maria.sourceId])).toHaveLength(1);
   });
 
-  // SAFETY: mutation check: dropped the unique index source_cv_file_key (schema and 0016) -> this test failed (ON CONFLICT had no matching index)
+  // SAFETY: mutation check: dropped the unique index source_cv_file_key (emptied 0016) -> this test failed (42P10: no index matches ON CONFLICT)
   it('two deliveries of one arrival at once keep one source, one parse row and one CvParseRequested.v1', async () => {
     const fileId = await upload();
     await apply('Daniel Novak', [fileId]);
@@ -357,7 +357,7 @@ describe('Scenario: The same file redelivered is parsed once', () => {
 });
 
 describe('Scenario Outline: Files that are not a readable CV are not parsed as one', () => {
-  // SAFETY: mutation check: removed the purpose filter in queueArrivalReads -> both rows failed (a cv source was created)
+  // SAFETY: mutation check: removed the purpose filter in queueArrivalReads -> both rows and the unit test failed (a cv source was created)
   it.each(['evidence', 'portal'] as const)('a file of purpose "%s": no CV parse is queued for it', async (purpose) => {
     const fileId = await upload({ purpose });
     await apply('Maria Santos', [fileId]);
@@ -379,7 +379,7 @@ describe('Scenario Outline: Files that are not a readable CV are not parsed as o
 });
 
 describe("Scenario: A file on another candidate's application is never parsed for this one", () => {
-  // SAFETY: mutation check: dropped the source id filter in intake findSource (any arrival of the workspace) -> this test failed (Omar's file parsed for Maria)
+  // SAFETY: mutation check: dropped the source id filter in intake findSource (any arrival of the workspace) -> this test failed (Omar's file not parsed for Omar)
   it("Omar's CV is parsed only for Omar, and Maria's arrival creates no source for it", async () => {
     const omarFile = await upload();
     const omar = await apply('Omar Al Suwaidi', [omarFile]);
@@ -392,7 +392,7 @@ describe("Scenario: A file on another candidate's application is never parsed fo
 });
 
 describe('Scenario: Workspace isolation holds for the worker', () => {
-  // SAFETY: mutation check: disabled row level security on evidence.source -> this test failed (w2 read w1's cv sources)
+  // SAFETY: mutation check: disabled (and unforced) row level security on evidence.source -> this test failed (w2 read w1's cv sources)
   it('workspace B reads no cv source with the repository filter removed', async () => {
     expect(await cvSources(maria.fileId)).toHaveLength(1);
     const other = await withWorkspace(app, w2, (tx) =>
@@ -404,7 +404,7 @@ describe('Scenario: Workspace isolation holds for the worker', () => {
 });
 
 describe('Scenario: No CV text or file names reach logs or telemetry', () => {
-  // SAFETY: mutation check: logged the file's content type in the arrival handler's queued line -> this test failed
+  // SAFETY: mutation check: put the content type in the arrival handler's queued message -> this test failed
   it('queued, parsed, retried once and parsed again: logs and spans carry ids only', async () => {
     const lines: string[] = [];
     const write = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
