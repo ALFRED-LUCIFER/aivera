@@ -47,12 +47,13 @@ test('Scenario: An operator opens the console', async ({ page, context }) => {
 });
 
 // AIV-P2-058: where an operator lands. Pia is listed and belongs to no workspace (seed.ts).
-// SAFETY: mutation check: removed the isPlatformOperator redirect from the /app layout -> this test failed (create-workspace page)
+// SAFETY: mutation check: removed the isPlatformOperator redirect from the /app layout -> both "lands on the console"
+// tests, "opens /app goes to the console" and "Being an operator grants nothing" failed (create-workspace page)
 // Theo takes the Google case: the unverified-email scenario below needs Pia's Google method to be new.
 for (const [email, button] of [
   [PIA, 'Sign in'],
   ['theo.platform@example.com', 'Continue with Google'],
-])
+] as const)
   test(`Scenario: An operator signing in from the sign-in page lands on the console (${button})`, async ({ page }) => {
     await signIn(page, { email, button });
     await expect(page).toHaveURL(/\/ops$/);
@@ -69,6 +70,7 @@ test('Scenario: An operator with no workspace who opens /app goes to the console
 test('Scenario: A recruiter who is not an operator still lands on My desk', async ({ page }) => {
   await signIn(page, { email: 'alex@example.com' });
   await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
 });
 
 test('Scenario: Email matching ignores case', async ({ page }) => {

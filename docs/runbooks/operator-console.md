@@ -7,7 +7,7 @@ The console at `/ops` is for the people who run Credalent. It is not for workspa
 ## Signing in as an operator
 
 1. Sign in on the normal sign-in page (`/sign-in`) with your own account on the same External ID tenant ([recruiter sign-in](recruiter-sign-in.md)).
-2. Open `/ops`. If you were not signed in, `/ops` sends you to sign in and brings you back.
+2. Signing in opens `/ops` when you belong to no workspace (AIV-P2-058); otherwise open `/ops`. If you were not signed in, `/ops` sends you to sign in and brings you back.
 3. You see "Credalent operations" and "Signed in as a Credalent operator." Anyone else gets the 403 page.
 
 Your email must be the one the identity module stored for you: your verified sign-in email, lower-case. The list is compared case-insensitively.

@@ -15,6 +15,8 @@ test('Scenario: A removed member loses access immediately', async ({ page }) => 
   await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
 });
 
+// SAFETY: mutation check: made the /app no-workspace redirect to /ops unconditional (dropped isPlatformOperator,
+// AIV-P2-058) -> this test failed (Huda, not an operator, landed on /ops)
 test('a signed-in user with no workspace yet is told so, not shown a 404', async ({ page }) => {
   await signIn(page, { email: 'huda@example.com' });
   await expect(page).toHaveURL(/\/app$/);

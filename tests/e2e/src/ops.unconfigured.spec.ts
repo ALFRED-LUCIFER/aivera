@@ -9,6 +9,7 @@ test('Scenario Outline: The console fails closed without a valid operator list (
   await signIn(page, { email: 'pia.platform@example.com' });
   // AIV-P2-058: no list, so no operator: sign-in lands on /app, never redirected to the console.
   await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
   const response = await page.goto('/ops');
   expect(response?.status()).toBe(403);
   await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
