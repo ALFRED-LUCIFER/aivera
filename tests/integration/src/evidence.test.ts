@@ -142,6 +142,7 @@ describe('Migrations', () => {
     expect([...tables]).toEqual(
       [
         'competency_link',
+        'cv_parse',
         'duplicate_flag',
         'evidence_gap',
         'inbox',
@@ -156,6 +157,7 @@ describe('Migrations', () => {
         'request',
         'request_item',
         'source',
+        'source_note',
       ].map((name) => ({
         name,
         owner: 'aivera_migrator',

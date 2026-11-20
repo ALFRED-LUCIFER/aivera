@@ -15,6 +15,7 @@
     "@credalent/ai": "workspace:*",
     "@credalent/audit": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/files": "workspace:*",
     "@credalent/intake": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/observability": "workspace:*",
@@ -27,6 +28,7 @@
     "@types/node": "24.19.2",
     "oxlint": "1.94.0",
     "typescript": "6.0.3",
-    "vitest": "5.1.0"
+    "vitest": "5.1.0",
+    "yaml": "2.9.1"
   }
 }

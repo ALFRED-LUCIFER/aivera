@@ -18,6 +18,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
@@ -67,6 +68,8 @@ export const source = evidence
       ),
       check('source_url_check', sql`${t.url} is null or ${t.url} like 'https://%'`),
       check('source_text_fingerprint_check', sql`${t.textFingerprint} ~ '^[0-9a-f]{16}$'`),
+      // FileClean.v1 finds the CV sources waiting for a file (AIV-P1-025).
+      index('source_blob_file_idx').on(t.workspaceId, t.blobFileId),
       tenantPolicy('source_tenant_isolation', t.workspaceId),
     ],
   )
@@ -504,6 +507,60 @@ export const evidenceGap = evidence
           and (${t.filesInspected} is null) = (${t.coverageReason} is null) and ${t.filesInspected} >= 0`,
       ),
       tenantPolicy('evidence_gap_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A CV parse (AIV-P1-025): pending until the worker has read the clean file; then parsed, unreadable or failed.
+export const cvParse = evidence
+  .table(
+    'cv_parse',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      status: text({ enum: CV_PARSE_STATUSES }).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'cv_parse_pkey', columns: [t.workspaceId, t.sourceId] }),
+      foreignKey({
+        name: 'cv_parse_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      // Must list exactly CV_PARSE_STATUSES (domain/cv.ts); changing it needs a new migration.
+      check('cv_parse_status_check', sql`${t.status} in ('pending', 'parsed', 'unreadable', 'failed')`),
+      tenantPolicy('cv_parse_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// "Unusual content in this source" (AIV-P1-025, AIV-P1-070): text in a source aimed at an AI or hidden in the file. The
+// excerpt quotes the candidate's source: personal data, never logged. A note changes no score, strength or stage.
+export const sourceNote = evidence
+  .table(
+    'source_note',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      reason: text({ enum: NOTE_REASONS }).notNull(),
+      excerpt: text().notNull(),
+      excerptSpan: text('excerpt_span'),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      foreignKey({
+        name: 'source_note_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      index('source_note_source_idx').on(t.workspaceId, t.sourceId),
+      // Must list exactly NOTE_REASONS (domain/cv.ts); changing it needs a new migration.
+      check('source_note_reason_check', sql`${t.reason} in ('instruction', 'role_marker', 'tool_call', 'hidden_text')`),
+      check('source_note_excerpt_check', sql`btrim(${t.excerpt}) <> ''`),
+      tenantPolicy('source_note_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

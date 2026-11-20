@@ -1,14 +1,23 @@
 // Builds the evidence module for an app (ADR-002: only apps import this).
 import { createHash, randomBytes } from 'node:crypto';
-import { MAP_TO_COMPETENCY_VERSION, mapToCompetencyRequest, modelOf, type AiClient } from '@credalent/ai';
+import {
+  MAP_TO_COMPETENCY_VERSION,
+  mapToCompetencyRequest,
+  modelOf,
+  parseCvRequest,
+  type AiClient,
+} from '@credalent/ai';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
-import type { Tx } from '@credalent/db';
+import type { Db, Tx } from '@credalent/db';
 import { enqueue, newEnvelope, type Envelope, type EventDefinition } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import { ApplicationReceivedV1 } from '@credalent/intake';
 import { RubricApprovedV1 } from '@credalent/jobs';
-import { log } from '@credalent/observability';
+import { withWorkspace } from '@credalent/db/with-workspace';
+import { FileCleanV1, FileRejectedV1 } from '@credalent/files';
+import { annotateSpan, log, withSpan } from '@credalent/observability';
+import { cvParseUseCases, isTransient, parseCv, type ParsePorts } from './application/cvParse.ts';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
@@ -16,6 +25,7 @@ import {
   type ApprovedRubricPort,
   GitHubRateLimited,
   queueArrivalReads,
+  queueRepositoryRead,
   readRepository,
   refreshStaleRepositorySources,
   repositoryReadUseCases,
@@ -29,6 +39,7 @@ import {
   type RequestOutcome,
 } from './application/requests.ts';
 import {
+  CvParseRequestedV1,
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
@@ -40,6 +51,8 @@ import {
   RepositoryRefreshRequestedV1,
   type EvidenceContract,
 } from './contracts/index.ts';
+import { cvParseStore } from './infrastructure/cvParseStore.ts';
+import { createDocumentIntelligence, type DocumentIntelligenceConfig } from './infrastructure/documentIntelligence.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
 import { mappingStore } from './infrastructure/mappingStore.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
@@ -104,6 +117,17 @@ export function createEvidence(
         }),
     }),
     ...mappingUseCases({ ...ports, mappingStoreFor: mappingStore }),
+    ...cvParseUseCases({
+      ...ports,
+      cvStoreFor: cvParseStore,
+      publishParseRequested: (tx, source) =>
+        enqueue(tx, outbox, CvParseRequestedV1, {
+          workspaceId: source.workspaceId,
+          payload: { candidateId: source.candidateId, sourceId: source.id },
+          dedupeKey: `cv-parse:${source.id}`,
+          occurredAt: source.createdAt,
+        }),
+    }),
     ...requestUseCases({
       ...ports,
       ...outcomePorts(now),
@@ -354,4 +378,86 @@ export function createEvidenceMappingHandlers(config: {
       },
     } satisfies Handler<{ candidateId: string; jobId: string }>,
   ];
+}
+
+/**
+ * The worker jobs that parse CVs, on the evidence queue: `evidence.cv.parse` (CvParseRequested.v1), and on FileClean.v1
+ * the parses that were waiting for that file's malware scan; FileRejected.v1 marks them unreadable. The parse span
+ * carries the number of "Unusual content in this source" notes and nothing else (AGENTS.md 1.2).
+ */
+export function createCvParseHandlers(config: {
+  /** The consumers' database: a transient failure is recorded in its own transaction before the delivery retries. */
+  db: Db;
+  documentIntelligence: DocumentIntelligenceConfig;
+  ai: Pick<AiClient, 'generateStructured'>;
+  readCleanFile: ParsePorts['readCleanFile'];
+  recordContact: ParsePorts['recordContact'];
+  now?: () => Date;
+}): Handler<unknown>[] {
+  const now = config.now ?? (() => new Date());
+  const ports: ParsePorts = {
+    cvStoreFor: cvParseStore,
+    publishRecorded,
+    readCleanFile: config.readCleanFile,
+    recordContact: config.recordContact,
+    queueRead: (tx, workspaceId, input) =>
+      queueRepositoryRead(
+        { readStoreFor: repositoryReadStore, publishReadRequested, newId: uuidv7, now },
+        tx,
+        workspaceId,
+        input,
+      ),
+    documentIntelligence: createDocumentIntelligence(config.documentIntelligence),
+    extract: (workspaceId, sourceId, text) =>
+      config.ai.generateStructured({ ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]), workspaceId }),
+    newId: uuidv7,
+    now,
+  };
+  const parse = (tx: Tx, workspaceId: string, sourceId: string) =>
+    withSpan('evidence cv parse', async () => {
+      let result: Awaited<ReturnType<typeof parseCv>>;
+      try {
+        result = await parseCv(ports, tx, workspaceId, sourceId);
+      } catch (error) {
+        if (!isTransient(error)) throw error;
+        // shortcut: the write takes a second pooled connection while the delivery holds one; give the worker a small
+        // pool of its own if an outage ever stalls the shared pool.
+        // The delivery's transaction rolls back on the rethrow, so "Parsing failed, retry" is written apart; the
+        // consumer then backs off, redelivers (a failed parse runs again) and dead-letters after its last delivery.
+        await withWorkspace(config.db, workspaceId, (own) => cvParseStore(own).finish(workspaceId, sourceId, 'failed'));
+        log.warn(
+          { 'evidence.source_id': sourceId, 'error.type': (error as Error).name },
+          'cv parse failed, will retry',
+        );
+        throw error;
+      }
+      // SAFETY: the count only; a note's reason and excerpt quote the CV and stay in the database (AGENTS.md 1.2).
+      if (result) annotateSpan({ 'credalent.evidence.unusual_count': result.notes });
+    });
+  const requested: Handler<{ candidateId: string; sourceId: string }> = {
+    event: CvParseRequestedV1,
+    inbox,
+    consumer: 'evidence.cv.parse',
+    handle: (tx, payload, envelope) => parse(tx, envelope.workspaceId, payload.sourceId),
+  };
+  const clean: Handler<{ fileId: string }> = {
+    event: FileCleanV1,
+    inbox,
+    consumer: 'evidence.cv.file_clean',
+    async handle(tx, payload, envelope) {
+      for (const sourceId of await cvParseStore(tx).pendingForFile(envelope.workspaceId, payload.fileId))
+        await parse(tx, envelope.workspaceId, sourceId);
+    },
+  };
+  const rejected: Handler<{ fileId: string; reason: 'infected' | 'rejected' }> = {
+    event: FileRejectedV1,
+    inbox,
+    consumer: 'evidence.cv.file_rejected',
+    async handle(tx, payload, envelope) {
+      const store = cvParseStore(tx);
+      for (const sourceId of await store.pendingForFile(envelope.workspaceId, payload.fileId))
+        await store.finish(envelope.workspaceId, sourceId, 'unreadable');
+    },
+  };
+  return [requested, clean, rejected] as Handler<unknown>[];
 }

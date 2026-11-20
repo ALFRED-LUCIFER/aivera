@@ -26,6 +26,7 @@ export {
   draftCompetenciesRequest,
   draftCompetenciesSchema,
 } from './prompts/jobs.draftCompetencies.ts';
+export { PARSE_CV_SYSTEM, PARSE_CV_VERSION, parseCvRequest, parseCvSchema } from './prompts/evidence.parseCv.ts';
 export {
   DETECT_DOMAIN_SYSTEM,
   DETECT_DOMAIN_VERSION,
