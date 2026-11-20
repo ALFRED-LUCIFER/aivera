@@ -22,13 +22,22 @@ describe('every server entry point declares its policy or is explicitly public (
     [`${web}/features/jobs/services/reexport.ts`, 'makeJob'],
     // SAFETY: mutation check: put getSessionUserId back in GUARDS -> this case failed
     [`${web}/features/signup/services/session.ts`, 'readsSession'],
+    // SAFETY: mutation check: dropped the handler's session-read requirement for sessionEntry -> this case failed
+    [`${web}/features/signup/services/label.ts`, 'listAll'],
+    // SAFETY: mutation check: removed the inline 'use server' branch -> these two cases failed
     [`${web}/app/(recruiter)/app/page.tsx`, 'save'],
+    [`${web}/app/(recruiter)/app/jobs/page.tsx`, 'archive'],
+    // SAFETY: mutation check: checked destructured names like identifiers again -> this case failed
     [`${web}/app/api/auth/route.ts`, '{ GET, POST }'],
+    // SAFETY: mutation check: dropped `name === '*'` from the re-export branch -> this case failed
     [`${web}/app/api/star/route.ts`, '\\*'],
     [`${web}/app/api/legacy/route.js`, 'GET'],
     [`${web}/app/api/mixed/route.ts`, 'GET'],
+    // SAFETY: mutation check: removed the raw-receive check -> these cases failed
     ['apps/worker/src/consumers/raw.ts', 'subscribe'],
     ['apps/worker/src/consumers/raw.ts', 'processMessage'],
+    ['apps/worker/src/consumers/iterate.ts', 'getMessageIterator'],
+    ['apps/worker/src/consumers/iterate.ts', 'processMessage'],
   ])('an undeclared entry point fails and names %s and %s', (file, name) => {
     expect(reported).toContainEqual(
       expect.stringMatching(new RegExp(`^${file.replace(/[.[\]()]/g, '\\$&')} ${name.replace(/[{}]/g, '\\$&')}: `)),

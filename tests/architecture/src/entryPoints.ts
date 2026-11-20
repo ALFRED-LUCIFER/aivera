@@ -23,7 +23,14 @@ const SOURCE = /\.[cm]?[jt]sx?$/;
 const TEST = /\.test\.[cm]?[jt]sx?$/;
 // The worker's one Service Bus adapter: anything else receiving messages is a consumer this check cannot see.
 const SERVICE_BUS = /[/\\]serviceBus\.ts$/;
-const RAW_RECEIVE = new Set(['subscribe', 'receiveMessages', 'processMessage']);
+const RAW_RECEIVE = new Set([
+  'subscribe',
+  'receiveMessages',
+  'receiveDeferredMessages',
+  'getMessageIterator',
+  'processMessage',
+]);
+const SESSION_READERS = new Set(['getSessionUserId', 'getCandidateSessionUserId']);
 
 type Fn = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
 const isFn = (node: ts.Node | undefined): node is Fn =>
@@ -78,8 +85,12 @@ function problem(value: ts.Node | undefined, guards: Set<string>, reasoned: Set<
     const name = callee(value) ?? '';
     if (WRAPPERS.has(name)) return null;
     if (reasoned.has(name)) {
-      const [reason] = value.arguments;
-      return reason && ts.isStringLiteralLike(reason) && reason.text.trim() ? null : `${name} needs a reason`;
+      const [reason, handler] = value.arguments;
+      if (!reason || !ts.isStringLiteralLike(reason) || !reason.text.trim()) return `${name} needs a reason`;
+      // sessionEntry is a session policy only when its handler reads the session.
+      if (name === 'sessionEntry' && !(handler && calls(handler, SESSION_READERS)))
+        return 'sessionEntry never reads the session';
+      return null;
     }
   }
   if (isFn(value) && calls(value, guards)) return null;
@@ -92,7 +103,12 @@ function webViolations(rel: string, file: ts.SourceFile, route: boolean): Violat
     // An inline `'use server'` closure in a component is an entry point no export shows: refused, so actions live in a
     // services file this check reads.
     const visit = (node: ts.Node) => {
-      if (isFn(node) && node.body && ts.isBlock(node.body) && useServer(node.body.statements))
+      if (
+        (isFn(node) || ts.isMethodDeclaration(node)) &&
+        node.body &&
+        ts.isBlock(node.body) &&
+        useServer(node.body.statements)
+      )
         found.push(
           violation(
             rel,
@@ -147,7 +163,10 @@ function workerViolations(rel: string, file: ts.SourceFile): Violation[] {
       subscribed.push(node.arguments[1]);
     // Straight on the SDK (`receiver.subscribe`, `receiveMessages`, a `processMessage` handler): refused outside the adapter.
     const name =
-      ts.isPropertyAccessExpression(node) || ts.isPropertyAssignment(node) || ts.isMethodDeclaration(node)
+      ts.isPropertyAccessExpression(node) ||
+      ts.isPropertyAssignment(node) ||
+      ts.isShorthandPropertyAssignment(node) ||
+      ts.isMethodDeclaration(node)
         ? node.name
         : undefined;
     if (!SERVICE_BUS.test(rel) && name && ts.isIdentifier(name) && RAW_RECEIVE.has(name.text))
