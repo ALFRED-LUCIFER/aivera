@@ -18,6 +18,7 @@
     "@credalent/db": "workspace:*",
     "@credalent/i18n": "workspace:*",
     "@credalent/identity": "workspace:*",
+    "@credalent/intake": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/observability": "workspace:*",
