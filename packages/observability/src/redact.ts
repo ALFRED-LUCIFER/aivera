@@ -68,7 +68,8 @@ const ALLOWED = [
   'credalent.evidence.discarded.unknown_source',
   'credalent.evidence.discarded.claim_above_supporting',
   'credalent.evidence.discarded.no_evidence_grade',
-  // Why a sign-in failed: the cause's class name and code, pattern-checked by apps/web auth.ts (AIV-P0-930).
+  // Why a sign-in failed: the cause's class name and code (AIV-P0-930). Trusted only because apps/web auth.ts
+  // pattern-checks both; any other code that emits these keys must check them the same way.
   'credalent.auth.cause',
   'credalent.auth.cause_code',
   // The HMAC of an email's recipient (AIV-P0-017): the only form of an address that may be logged.
