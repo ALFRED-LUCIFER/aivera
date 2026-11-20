@@ -26,8 +26,10 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
 
 const signedIn =
   (options: SignInOptions) =>
-  async ({ page }: { page: Page }, use: (page: Page) => Promise<void>) => {
+  async ({ page, baseURL }: { page: Page; baseURL: string | undefined }, use: (page: Page) => Promise<void>) => {
     await signIn(page, options);
+    // Back from the mocked tenant and past the sign-in page, so a test can act at once.
+    await page.waitForURL((url) => url.origin === new URL(baseURL ?? '').origin && !url.pathname.includes('sign-in'));
     await use(page);
   };
 
