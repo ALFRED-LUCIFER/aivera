@@ -13,6 +13,7 @@ import {
   type GenerateTask,
 } from './config.ts';
 import type { AiProvider } from './providers.ts';
+import { CONTACT_EXTRACTION_TASKS, MissingIdentifiers, redactSources, type Identifiers } from './identifiers.ts';
 
 // Every error carries the task and a safe reason only: never the prompt, the completion or the provider's error,
 // whose request body repeats the prompt (AGENTS.md 1.2).
@@ -228,11 +229,20 @@ export function createAiClient(options: {
        * instead of rejecting the answer (citations.ts checkOutput). A missing citation or a schema error still rejects.
        */
       dropInvalidCitations?: boolean;
+      /**
+       * The candidate's name, emails and phones from the candidate record, replaced in every source before the prompt
+       * is built (identifiers.ts, ADR-006 point 7). Required whenever a source is not a job description.
+       */
+      identifiers?: Identifiers | undefined;
     }): Promise<Checked<z.infer<S>>> {
-      const { task, schema, sources } = input;
+      const { task, schema, sources, identifiers } = input;
       const settings = settingsOf(generateTasks, task);
       if (!/^[a-z][\w.-]{0,63}@\d{1,4}$/i.test(input.promptVersion))
         throw new Error('promptVersion must look like jobs.draftCompetencies@1');
+      // Fails closed before any request or budget read, so a new candidate-source task cannot skip the replacer.
+      if (!identifiers && sources.some((source) => source.kind !== 'job_description'))
+        throw new MissingIdentifiers(task);
+      const redaction = identifiers && redactSources(sources, identifiers, CONTACT_EXTRACTION_TASKS.includes(task));
       // The model is given the schema; we parse its text ourselves, so a mismatch and an uncited answer are told apart.
       const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
       return withSpan(`ai structured ${task}`, async () => {
@@ -247,7 +257,7 @@ export function createAiClient(options: {
               ...sdk,
               model: provider.languageModel(settings.deployment),
               system: `${input.system}\n\n${CITATION_RULES}\n\n${UNTRUSTED_CONTENT_RULES}`,
-              prompt: `${input.prompt}\n\nSources:\n${formatSources(sources)}`,
+              prompt: `${input.prompt}\n\nSources:\n${formatSources(redaction?.sources ?? sources)}`,
               output,
               maxOutputTokens: settings.maxOutputTokens,
               temperature: settings.temperature,
@@ -264,6 +274,7 @@ export function createAiClient(options: {
               schema,
               sources,
               input.dropInvalidCitations ? () => dropped++ : undefined,
+              redaction,
             );
             outcome('ok', { 'credalent.ai.attempts': attempts, 'credalent.ai.citation_failures': dropped });
             // The count and the task only: never the statement or its quote (AGENTS.md 1.2).

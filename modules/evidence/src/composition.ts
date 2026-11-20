@@ -4,6 +4,7 @@ import {
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
   BudgetExceeded,
+  CANDIDATE_PLACEHOLDER,
   compareExcerptsRequest,
   flaggedPairs,
   InvalidCitation,
@@ -12,6 +13,7 @@ import {
   modelOf,
   parseCvRequest,
   type AiClient,
+  type Identifiers,
 } from '@credalent/ai';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
@@ -99,6 +101,34 @@ const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKe
 const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
   log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
 const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
+
+/** The candidate as the system reads it (the candidates module's `readPersonAsSystem`), in the worker's transaction. */
+export type ReadPerson = (
+  tx: Tx,
+  workspaceId: string,
+  personId: string,
+) => Promise<{ displayName: string; emails: string[]; phones: string[] } | null>;
+
+/**
+ * The identifiers `@credalent/ai` replaces in every evidence prompt (ADR-006 point 7, AIV-P1-080), and the name it puts
+ * back where model text shown to a recruiter carries the placeholder. No person means no identifiers: the call then
+ * fails closed (`MissingIdentifiers`) and the delivery retries.
+ */
+async function candidateOf(readPerson: ReadPerson, tx: Tx, workspaceId: string, candidateId: string) {
+  const person = await readPerson(tx, workspaceId, candidateId);
+  const identifiers: Identifiers | undefined = person
+    ? { names: [person.displayName], emails: person.emails, phones: person.phones }
+    : undefined;
+  const named = <T>(value: T): T => {
+    if (!person) return value;
+    if (typeof value === 'string') return value.replaceAll(CANDIDATE_PLACEHOLDER, person.displayName) as T;
+    if (Array.isArray(value)) return value.map(named) as T;
+    if (value && typeof value === 'object')
+      return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, named(child)])) as T;
+    return value;
+  };
+  return { identifiers, named };
+}
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -330,6 +360,7 @@ export function createEvidenceMappingHandlers(config: {
   ai: AiClient;
   approvedRubric: MappingPorts['approvedRubric'];
   applications: ApplicationsPort;
+  readPerson: ReadPerson;
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
@@ -342,7 +373,8 @@ export function createEvidenceMappingHandlers(config: {
       dedupeKey: `mapping:${envelope.id}:${candidateId}:${jobId}`,
       occurredAt: now(),
     });
-  const ports: MappingPorts = {
+  // Per candidate: both prompts send the candidate's sources, so both carry the candidate's identifiers.
+  const portsFor = ({ identifiers, named }: Awaited<ReturnType<typeof candidateOf>>): MappingPorts => ({
     storeFor: evidenceStore,
     readStoreFor: repositoryReadStore,
     mappingStoreFor: mappingStore,
@@ -351,12 +383,18 @@ export function createEvidenceMappingHandlers(config: {
       const { links, changes } = await config.ai.generateStructured({
         ...mapToCompetencyRequest(competencies, sources),
         workspaceId,
+        identifiers,
       });
-      return { links, changes };
+      // Quotes come back as the stored text; a limit or a check the model wrote may carry the placeholder.
+      return named({ links, changes });
     },
     compareExcerpts: async (workspaceId, sources, pairs) => {
       try {
-        const answer = await config.ai.generateStructured({ ...compareExcerptsRequest(sources, pairs), workspaceId });
+        const answer = await config.ai.generateStructured({
+          ...compareExcerptsRequest(sources, pairs),
+          workspaceId,
+          identifiers,
+        });
         return flaggedPairs(answer, pairs);
       } catch (error) {
         // A rejected answer stores no contradiction and is counted (logMapped); an outage still throws and retries.
@@ -396,7 +434,7 @@ export function createEvidenceMappingHandlers(config: {
       ),
     newId: uuidv7,
     now,
-  };
+  });
   return [
     {
       event: EvidenceRecordedV1,
@@ -421,7 +459,8 @@ export function createEvidenceMappingHandlers(config: {
       inbox,
       consumer: 'evidence.mapping',
       async handle(tx, { candidateId, jobId }, envelope) {
-        const run = await mapEvidence(ports, tx, envelope.workspaceId, candidateId, jobId);
+        const candidate = await candidateOf(config.readPerson, tx, envelope.workspaceId, candidateId);
+        const run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
         if (!run) log.info({ 'outbox.event_id': envelope.id }, 'evidence not mapped: the job has no approved rubric');
       },
     } satisfies Handler<{ candidateId: string; jobId: string }>,
@@ -441,6 +480,7 @@ export function createFileReadHandlers(config: {
   ai: Pick<AiClient, 'generateStructured'>;
   readCleanFile: ParsePorts['readCleanFile'];
   recordContact: ParsePorts['recordContact'];
+  readPerson: ReadPerson;
   /** Chunks and embeds one page item's excerpt for citation lookups (`indexDocument` of @credalent/ai/search). */
   index(workspaceId: string, itemId: string, text: string): Promise<void>;
   now?: () => Date;
@@ -461,8 +501,16 @@ export function createFileReadHandlers(config: {
         input,
       ),
     documentIntelligence: createDocumentIntelligence(config.documentIntelligence),
-    extract: (workspaceId, sourceId, text) =>
-      config.ai.generateStructured({ ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]), workspaceId }),
+    extract: async (tx, workspaceId, candidateId, sourceId, text) => {
+      const { identifiers, named } = await candidateOf(config.readPerson, tx, workspaceId, candidateId);
+      const extraction = await config.ai.generateStructured({
+        ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]),
+        workspaceId,
+        identifiers,
+      });
+      // A statement reads "[CANDIDATE] led ..." for the model; the recruiter sees the name.
+      return named(extraction);
+    },
     logFlagged,
     sha1,
     newId: uuidv7,

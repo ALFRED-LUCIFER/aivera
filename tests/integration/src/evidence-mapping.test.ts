@@ -6,7 +6,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { AiUnavailable, createAiClient, fakeProvider, MAP_TO_COMPETENCY_VERSION, modelOf } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import { newEnvelope } from '@credalent/db/outbox';
 import type { Handler } from '@credalent/db/consumer';
@@ -134,6 +134,7 @@ beforeAll(async () => {
       candidatesForJob: async (_tx, _w, jobId) =>
         [...applications].filter(([, j]) => j.includes(jobId)).map(([c]) => c),
     },
+    readPerson: readPersonAsSystem,
     now: () => NOW,
   });
 

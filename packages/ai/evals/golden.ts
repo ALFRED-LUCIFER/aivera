@@ -60,6 +60,12 @@ export const goldenCase = z
 
 export type GoldenCase = z.infer<typeof goldenCase>;
 
+/**
+ * The candidate's identifiers for a live run (AIV-P1-080): an evidence case names its candidate first in `people`. The
+ * client replaces every email and phone in the sources anyway, so the case needs no record contact of its own.
+ */
+export const identifiersOf = (golden: GoldenCase) => ({ names: golden.people.slice(0, 1), emails: [], phones: [] });
+
 /** Reads every `<dir>/<task>/*.yaml`, except the gate's own failing fixtures. Throws on the first invalid case. */
 export function loadGolden(dir: string): Map<string, GoldenCase[]> {
   const tasks = new Map<string, GoldenCase[]>();

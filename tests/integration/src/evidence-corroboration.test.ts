@@ -9,16 +9,17 @@ import { createAssessment } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import { newEnvelope } from '@credalent/db/outbox';
 import type { Handler } from '@credalent/db/consumer';
 import { EvidenceMappingRequestedV1, type EvidenceContract, type SourceKind } from '@credalent/evidence';
 import { createEvidence, createEvidenceMappingHandlers } from '@credalent/evidence/composition';
+import { log } from '@credalent/observability';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-029 and AIV-P1-078 acceptance scenarios against real PostgreSQL as aivera_app: the mapping job (`evidence.mapping`) with the
 // fake model linking what each test sets, then the corroboration rules and the numeric pre-check deciding provenance.
@@ -72,6 +73,9 @@ let w2: string;
 let completion = '{}';
 /** The fake model's answer to the AI comparison (AIV-P1-078); it flags nothing unless a test sets it. */
 let comparison = '{"contradictions":[]}';
+/** Every model the fake provider handed out, so a test can read the requests it was sent (AIV-P1-080). */
+const models: { doGenerateCalls: { prompt: unknown }[] }[] = [];
+const requests = () => models.flatMap((m) => m.doGenerateCalls.map((call) => JSON.stringify(call.prompt)));
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -190,16 +194,21 @@ beforeAll(async () => {
     ai: createAiClient({
       provider: {
         ...fake,
-        languageModel: (d) =>
-          fakeProvider({ completion, fixtures: [{ when: 'Pairs to compare', completion: comparison }] }).languageModel(
-            d,
-          ),
+        languageModel: (d) => {
+          const model = fakeProvider({
+            completion,
+            fixtures: [{ when: 'Pairs to compare', completion: comparison }],
+          }).languageModel(d);
+          models.push(model as unknown as { doGenerateCalls: { prompt: unknown }[] });
+          return model;
+        },
       },
       budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
       sleep: async () => {},
     }),
     approvedRubric: async (_tx, _workspaceId, jobId) => (jobId === JOB ? { id: V1, competencies } : null),
     applications: { jobsForCandidate: async () => [JOB], candidatesForJob: async () => [] },
+    readPerson: readPersonAsSystem,
     now: () => NOW,
   });
   const newWorkspace = async (name: string) =>
@@ -581,5 +590,42 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       expect((await linked(yousef, LLM)).map((i) => i.provenance)).not.toContain('contradictory');
       comparison = '{"contradictions":[]}';
     });
+  });
+});
+
+describe('Feature: Candidate names and contact details never reach the model (AIV-P1-080)', () => {
+  it('Scenario: mapping and comparison send placeholders; stored excerpts keep the text, logs hold neither', async () => {
+    const sara = await person('Sara Al Qahtani', 'sara.identifiers@example.com');
+    const writeUp =
+      "Sara's merchant assistant serves about 9,000 merchants; Al Qahtani wrote the scorer. Call +44 7700 900123.";
+    await record(sara, 'document', 'Merchant assistant write-up', writeUp);
+    await reference(sara, 'A few hundred merchants used it while I managed Sara (referee: omar@example.com).');
+    // The model quotes and writes what it saw; the limit it writes carries the placeholder.
+    completion = answer(LLM, [
+      [1, '[CANDIDATE] merchant assistant serves about 9,000 merchants', 4],
+      [2, 'A few hundred merchants used it', 4],
+    ]).replaceAll('Shows the work described', '[CANDIDATE] shows the work described');
+    comparison = '{"contradictions":[]}';
+    models.length = 0;
+    const logs = [vi.spyOn(log, 'info'), vi.spyOn(log, 'warn'), vi.spyOn(log, 'error')];
+    await mapNow(sara);
+    const logged = JSON.stringify(logs.flatMap((spy) => spy.mock.calls));
+    for (const spy of logs) spy.mockRestore();
+
+    const [mapping, compare] = requests();
+    expect(mapping).toContain(
+      '[CANDIDATE] merchant assistant serves about 9,000 merchants; [CANDIDATE] wrote the scorer. Call [PHONE_1].',
+    );
+    expect(mapping).toContain('A few hundred merchants used it while I managed [CANDIDATE] (referee: [EMAIL_1]).');
+    expect(compare).toContain('[CANDIDATE] merchant assistant serves about 9,000 merchants');
+    expect(requests().join(' ')).not.toMatch(/sara|qahtani|900123|omar@/i);
+    expect(logged).not.toMatch(/sara|qahtani|900123|omar@|\[CANDIDATE\]/i);
+
+    // Excerpts are the stored text (offsets mapped back); model text shown to a recruiter has the name put back.
+    const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, JOB));
+    const cited = items.filter((i) => i.competencies.some((c) => c.competencyId === LLM));
+    expect(cited.map((i) => i.excerpt)).toContain("Sara's merchant assistant serves about 9,000 merchants");
+    expect(cited.map((i) => i.limit)).toContain('Sara Al Qahtani shows the work described, not its scale.');
+    expect(JSON.stringify(cited)).not.toMatch(/\[(?:CANDIDATE|EMAIL_\d|PHONE_\d)\]/);
   });
 });

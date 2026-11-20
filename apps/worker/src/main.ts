@@ -191,6 +191,7 @@ if (mapping)
       ai: createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) }),
       ...createApprovedRubricReads(),
       applications: createApplicationReads(),
+      readPerson: readPersonAsSystem,
       now,
     }),
   );
@@ -241,6 +242,7 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
         createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID }),
       ),
       recordContact: createContactRecorder(),
+      readPerson: readPersonAsSystem,
       index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
       now,
     }),

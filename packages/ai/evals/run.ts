@@ -1,6 +1,6 @@
 import type { AiClient } from '../src/client.ts';
 import { hardGates, taskThresholds } from './config.ts';
-import { verdict, type GoldenCase, type Verdict } from './golden.ts';
+import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, safety, type Ratio } from './scorers.ts';
 
 // Runs golden cases, scores them and applies the thresholds (AIV-P0-029).
@@ -57,6 +57,8 @@ export function liveJudge(ai: AiClient): Judge {
       prompt: JSON.stringify({ rubric, output }),
       schema: verdict,
       sources: golden.sources,
+      // The judge reads the sources as the task's model did.
+      identifiers: identifiersOf(golden),
     });
 }
 
