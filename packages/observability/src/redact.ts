@@ -47,7 +47,7 @@ const ALLOWED = [
   'credalent.ai.outcome',
   'credalent.ai.attempts',
   'credalent.ai.cost_usd_micros',
-  // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@1`); not
+  // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@2+untrusted@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
   'credalent.ai.template_version',
   // How alike two evidence sources' fingerprints are, 0..1, logged with their ids when a flag is raised (AIV-P1-071).

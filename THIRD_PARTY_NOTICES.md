@@ -1,10 +1,16 @@
 # Third-party notices
 
-Code ported into this repository from other projects, with its licence. Packages installed through pnpm carry their own licences in `node_modules`.
+Credalent includes material adapted from the third-party works listed below, under their licences. Packages installed through pnpm carry their own licences in `node_modules`.
 
-## career-ops: text fingerprinting
+## career-ops
 
-`modules/evidence/src/domain/fingerprint.ts` (normalisation, 64-bit SimHash over word 3-shingles, similarity) is ported from `fingerprint-core.mjs` of career-ops, MIT licence.
+- Source: the "Untrusted External Content (CRITICAL)" section of career-ops' `AGENTS.md`.
+- Used in: `packages/ai/src/client.ts` (`UNTRUSTED_CONTENT_RULES`, AIV-P1-070).
+- Modified: rewritten as a system-prompt rule for candidate sources in hiring assessments. The list of instruction forms is adapted, and the wording and scope are changed.
+
+- Source: `fingerprint-core.mjs` of career-ops.
+- Used in: `modules/evidence/src/domain/fingerprint.ts` (normalisation, 64-bit SimHash over word 3-shingles, similarity; AIV-P1-071).
+- Modified: ported to TypeScript.
 
 ```text
 MIT License
