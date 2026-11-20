@@ -30,9 +30,9 @@ const env = z
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
     MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
-    // CV parsing (AIV-P1-025): Document Intelligence on the AI resource, signed in with AZURE_CLIENT_ID's identity. Set,
-    // with AZURE_STORAGE_BLOB_URL, the worker parses clean CVs; the model comes from AI_PROVIDER or
-    // AZURE_OPENAI_RESOURCE_NAME (packages/ai providerFromEnv).
+    // CV parsing and document reads (AIV-P1-025, AIV-P1-028): Document Intelligence on the AI resource, signed in with
+    // AZURE_CLIENT_ID's identity. Set, with AZURE_STORAGE_BLOB_URL, the worker reads clean CVs and documents; the model
+    // and the embeddings come from AI_PROVIDER or AZURE_OPENAI_RESOURCE_NAME (packages/ai providerFromEnv).
     AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: z.url({ protocol: /^https$/ }).optional(),
     // Evidence mapping (AIV-P1-027): the AI Foundry resource, called with the app identity; or AI_PROVIDER=fake in
     // local and dev (packages/ai providerFromEnv). Without either, evidence is recorded but not mapped.
@@ -54,9 +54,11 @@ const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
+const { createSearchIndex } = await import('@credalent/ai/search');
 const { createContactRecorder, readPersonAsSystem } = await import('@credalent/candidates/composition');
 const {
   CvParseRequestedV1,
+  DocumentReadRequestedV1,
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
@@ -65,8 +67,8 @@ const {
 } = await import('@credalent/evidence');
 const {
   createApplicationReceivedHandler,
-  createCvParseHandlers,
   createEvidenceMappingHandlers,
+  createFileReadHandlers,
   createRepositoryReadHandler,
   createRepositoryRefreshHandler,
   EVIDENCE_QUEUE,
@@ -94,9 +96,9 @@ const { createScheduler, subscribe, systemConsumer, toMessage } = await import('
 const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID;
 // Each evidence integration's events are mapped only when its consumer runs: an event with no handler is dead-lettered
 // on arrival, while an unmapped one waits in its outbox (retried by the relay) until the owner configures it.
-const cvParsing = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
-// shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with CV parsing, their one consumer (AIV-P1-025).
-const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(cvParsing ? ['files'] : [])];
+const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
+// shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
+const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App, below); otherwise they go to `assessment` as before, so the evidence queue never
 // receives an event nothing handles.
@@ -121,9 +123,11 @@ const QUEUES: Record<string, string> = {
     [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
     [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
   }),
-  // CV parsing (AIV-P1-025): a parse waits for its file's scan; a clean file runs it, a rejected one ends it.
-  ...(cvParsing && {
+  // CV parsing and document reads (AIV-P1-025, AIV-P1-028): each waits for its file's scan; a clean file runs it, a
+  // rejected one ends it.
+  ...(fileReading && {
     [CvParseRequestedV1.type]: EVIDENCE_QUEUE,
+    [DocumentReadRequestedV1.type]: EVIDENCE_QUEUE,
     [FileCleanV1.type]: EVIDENCE_QUEUE,
     [FileRejectedV1.type]: EVIDENCE_QUEUE,
   }),
@@ -212,9 +216,11 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
 // shortcut: without the GitHub App, repository reads and arrivals wait unsent in their outboxes until the owner
 // provisions the app and its Key Vault secrets (AIV-P1-074).
 else log.warn('GitHub App not configured: repository reads are not consumed');
-if (cvParsing && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL)
+if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL) {
+  const ai = createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) });
+  const search = createSearchIndex({ db: appDb, ai, now });
   evidenceHandlers.push(
-    ...createCvParseHandlers({
+    ...createFileReadHandlers({
       db: appDb,
       documentIntelligence: {
         endpoint: env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
@@ -225,17 +231,20 @@ if (cvParsing && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_B
           return token.token;
         },
       },
-      ai: createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) }),
+      ai,
       readCleanFile: createCleanFileReader(
         createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID }),
       ),
       recordContact: createContactRecorder(),
+      index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
       now,
     }),
   );
-// shortcut: without Document Intelligence, CV parses stay pending and their events wait unsent in evidence.outbox and
-// files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025 PR, owner to-dos).
-else log.warn('Document Intelligence not configured: CV parses are not consumed');
+}
+// shortcut: without Document Intelligence, CV parses and document reads stay pending and their events wait unsent in
+// evidence.outbox and files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025
+// PR, owner to-dos).
+else log.warn('Document Intelligence not configured: CV parses and document reads are not consumed');
 if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
