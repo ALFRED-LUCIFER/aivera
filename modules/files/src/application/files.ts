@@ -152,6 +152,14 @@ export function filesUseCases(p: Ports) {
       return file?.uploadedBy === ctx.userId ? file.status : null;
     },
 
+    async findCleanUpload(ctx: WorkspaceContext, fileId: string): Promise<{ purpose: Purpose; sha256: string } | null> {
+      await p.authorize(ctx, 'file.upload');
+      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
+      // SAFETY: only a clean file is offered for linking; a clean file always has its hash (settle sets both).
+      if (file?.uploadedBy !== ctx.userId || file.status !== 'clean' || !file.sha256) return null;
+      return { purpose: file.purpose, sha256: file.sha256 };
+    },
+
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets
     // MALWARE_SCANNING=on, and this path then refuses before reading anything.
     async markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus> {
