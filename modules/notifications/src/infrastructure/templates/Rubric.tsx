@@ -21,7 +21,8 @@ import type { TemplateContext } from './render.ts';
 // "Rubric returned with a note" (docs/01-design/artboards/ERubric, EApproved, EReturned). Deviations: EApproved's
 // "Assessment has started" reads "Assessment can now start", and "Candidates in the inbox … are now being assessed" is
 // left out, until assessment runs on RubricApproved.v1 (AIV-P1-031); ERubric shows the change note as one row, as the rubric page does, not split per change. ENewer is the
-// rubric page's own "A newer version is waiting for you" notice: opening a link sends no email. The highlighter marks
+// rubric page's own "A newer version is waiting for you" notice: opening a link sends no email, and the page keeps the
+// product highlighter rule (cited evidence only), not ENewer's email highlight. The highlighter here marks
 // what the recipient must act on (DESIGN.md): the owner's decision, the recruiter's change; an approval needs nothing.
 
 const text = (layout: TemplateContext['layout'], lines: string[]) => [
