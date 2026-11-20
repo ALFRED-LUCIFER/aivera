@@ -143,8 +143,10 @@ describe('Migrations', () => {
       [
         'competency_link',
         'duplicate_flag',
+        'evidence_gap',
         'inbox',
         'item',
+        'mapping',
         'merged_pull_request',
         'outbox',
         'portal_token',

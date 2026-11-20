@@ -1,37 +1,96 @@
-# Sara Al Qahtani's eval harness repository maps to "Retrieval and evaluation"; the rationale states what it does not
-# show, which only a judge can check.
+# Sara Al Qahtani: her eval harness repository backs "Retrieval and evaluation" and Python; her CV lines stay claims at
+# Supporting or below. Each limit states what the evidence does not show, which only a judge can check.
 id: sara-eval-harness
 people: [Sara Al Qahtani]
 input:
-  competencies: [Retrieval and evaluation, Python service engineering, Cost and reliability]
+  competencies:
+    - id: c-llm
+      name: LLM systems in production
+      evidenceExpected: An assistant or LLM feature running for real users, with its monitoring.
+    - id: c-retrieval
+      name: Retrieval and evaluation
+      evidenceExpected: An eval harness, retrieval metrics or a regression gate the candidate built.
+    - id: c-python
+      name: Python service engineering
+      evidenceExpected: Python services the candidate wrote and maintains, with tests.
+    - id: c-cost
+      name: Cost and reliability
+      evidenceExpected: Cost or latency reductions with the measurement behind them.
+    - id: c-arabic
+      name: Arabic and bilingual NLP
+      evidenceExpected: Arabic or bilingual datasets, models or evaluations.
 sources:
   - id: S1
     kind: repo
+    text: |-
+      llm-eval-harness
+      authored 412 of 460 commits
+      Skill signal Python: STRONG (code_corroborated)
+      Python in src/harness/run.py (path, code): Python source file
+      Python in pyproject.toml (manifest, declaration): declares pytest
+  - id: S2
+    kind: cv
     text: >-
-      llm-eval-harness: authored 412 of 460 commits between March and October; adds retrieval metrics and a regression
-      gate to the release pipeline. README: the gate blocked two prompt releases that lowered answer accuracy.
+      Sara Al Qahtani, Senior AI Engineer. Led the merchant assistant used by about 9,000 merchants. Cut cost per
+      request by 40% with response caching. Built a Gulf Arabic evaluation set for the assistant.
 expected:
   match:
-    competency: Retrieval and evaluation
-    statements[*].label: [submitted]
-  judge: The rationale names what the evidence does not show, such as who else reviewed the work or its effect on users.
+    links[*].competencyId: [c-retrieval, c-python, c-cost]
+    links[*].label: [submitted, claim]
+    links[*].strength: [strong, supporting]
+  judge: >-
+    Every link's limit names what its evidence does not show, such as who reviewed the work, its effect on product
+    decisions, or that a CV line has nothing to inspect.
 recorded:
   output:
-    competency: Retrieval and evaluation
-    statements:
-      - text: She wrote most of the eval harness and its retrieval metrics.
+    links:
+      - competencyId: c-retrieval
+        strength: strong
         label: submitted
+        level: 4
+        limit: Shows the tooling, not how results changed product decisions.
         citations:
           - sourceId: S1
             quote: authored 412 of 460 commits
-      - text: The gate changed release decisions.
+      - competencyId: c-python
+        strength: strong
         label: submitted
+        level: 4
+        limit: Shows Python code in one repository, not how it runs in production.
         citations:
           - sourceId: S1
-            quote: the gate blocked two prompt releases that lowered answer accuracy
-    rationale: >-
-      Strong evidence of building evaluation. It does not show how the metrics were chosen or whether a second
-      engineer confirms her share.
+            quote: 'Python in src/harness/run.py (path, code): Python source file'
+      - competencyId: c-llm
+        strength: supporting
+        label: claim
+        level: 3
+        limit: A CV line; nothing about the assistant can be inspected yet.
+        citations:
+          - sourceId: S2
+            quote: Led the merchant assistant used by about 9,000 merchants
+      - competencyId: c-cost
+        strength: supporting
+        label: claim
+        level: 3
+        limit: The 40% figure is on her CV only, with no measurement behind it.
+        citations:
+          - sourceId: S2
+            quote: Cut cost per request by 40% with response caching
+      - competencyId: c-arabic
+        strength: claim
+        label: claim
+        level: 2
+        limit: The evaluation set has not been shared.
+        citations:
+          - sourceId: S2
+            quote: Built a Gulf Arabic evaluation set for the assistant
+    changes:
+      - competencyId: c-cost
+        text: Ask for the billing or latency dashboard behind the 40% cost cut.
+      - competencyId: c-arabic
+        text: Ask for the Gulf Arabic evaluation set and the results it produced.
+      - competencyId: c-llm
+        text: Ask for the assistant's monitoring dashboard or a public changelog.
   judge:
     pass: true
-    reason: The rationale says it does not show how metrics were chosen or a second confirmation of her share.
+    reason: Each limit says what is not shown, from product decisions to the CV lines having nothing to inspect.

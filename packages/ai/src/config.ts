@@ -17,6 +17,8 @@ export const generateTasks = {
   'jobs.draftCompetencies': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 4_000, temperature: 0.2 },
   // A short answer: one domain and at most three regions, each with a quote.
   'jobs.detectDomain': { deployment: 'gpt-main', timeoutMs: 30_000, maxOutputTokens: 600, temperature: 0 },
+  // Up to 40 cited links and 3 checks for one candidate's sources (AIV-P1-027).
+  'evidence.mapToCompetency': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 6_000, temperature: 0 },
   // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows.
   'evals.judge': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;
@@ -27,6 +29,9 @@ export const embedTasks = {
 } as const satisfies Record<string, TaskSettings>;
 
 export type GenerateTask = keyof typeof generateTasks;
+
+/** The model behind a task's deployment, stored with what the task produced (AIV-P1-027). */
+export const modelOf = (task: GenerateTask): string => deployments[generateTasks[task].deployment].model;
 export type EmbedTask = keyof typeof embedTasks;
 
 /** Attempts per call: the first plus two retries on 429, 5xx or a timeout. */

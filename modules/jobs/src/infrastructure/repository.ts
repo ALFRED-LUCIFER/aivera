@@ -251,7 +251,10 @@ export async function approvedRubric(
   tx: Tx,
   workspaceId: string,
   jobId: string,
-): Promise<{ id: string; competencies: { id: string; name: string; evidenceExpected: string }[] } | null> {
+): Promise<{
+  id: string;
+  competencies: { id: string; name: string; evidenceExpected: string; weightPercent: number }[];
+} | null> {
   const [before] = await tx.execute<{ scope: string | null }>(
     sql`select current_setting('app.job_scope', true) as scope, set_config('app.job_scope', 'all', true)`,
   );
@@ -276,7 +279,12 @@ async function readApproved(tx: Tx, workspaceId: string, jobId: string) {
     );
   if (!version) return null;
   const competencies = await tx
-    .select({ id: competency.id, name: competency.name, evidenceExpected: competency.evidenceExpected })
+    .select({
+      id: competency.id,
+      name: competency.name,
+      evidenceExpected: competency.evidenceExpected,
+      weightPercent: competency.weightPercent,
+    })
     .from(competency)
     .where(and(eq(competency.workspaceId, workspaceId), eq(competency.rubricVersionId, version.id)))
     .orderBy(asc(competency.position));

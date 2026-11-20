@@ -17,7 +17,7 @@ export {
   type Source,
   type SourceKind,
 } from './citations.ts';
-export type { EmbedTask, GenerateTask } from './config.ts';
+export { modelOf, type EmbedTask, type GenerateTask } from './config.ts';
 export { detectUnusualContent, type UnusualContent } from './untrusted.ts';
 export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers.ts';
 export {
@@ -32,3 +32,10 @@ export {
   detectDomainRequest,
   detectDomainSchema,
 } from './prompts/jobs.detectDomain.ts';
+export {
+  MAP_TO_COMPETENCY_SYSTEM,
+  MAP_TO_COMPETENCY_VERSION,
+  mapToCompetencyRequest,
+  mapToCompetencySchema,
+  type RubricCompetencyInput,
+} from './prompts/evidence.mapToCompetency.ts';

@@ -92,6 +92,8 @@ export const PERSONAL_DATA_FIELDS = [
   'path',
   'detail',
   'citations',
+  // "What would change this" items carry the model's words about the candidate (AIV-P1-027).
+  'changes',
 ] as const;
 
 const MESSAGES = {

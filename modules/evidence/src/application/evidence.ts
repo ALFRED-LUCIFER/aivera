@@ -1,6 +1,6 @@
 import type { Tx } from '@credalent/db';
 import type { NewEntry } from '@credalent/audit';
-import type { Action, WorkspaceContext } from '@credalent/workspaces';
+import type { Action, JobResource, WorkspaceContext } from '@credalent/workspaces';
 import {
   checkItem,
   checkItems,
@@ -30,10 +30,13 @@ export type EvidenceStore = {
   insert(source: EvidenceSource, items: EvidenceItem[], links: (CompetencyLink & { itemId: string })[]): Promise<void>;
   /** False when the workspace has no such item. Linking twice keeps one link, at the latest level. */
   link(workspaceId: string, itemId: string, link: CompetencyLink): Promise<boolean>;
-  /** The candidate's items, oldest first; `jobId` set narrows `competencies` to that job's, null keeps every link. */
+  /**
+   * The candidate's items, oldest first; `jobId` set narrows `competencies` to that job's and leaves out items of any
+   * mapping run but the candidate's newest for the job; null keeps every link. `unmapped` keeps only recorded items.
+   */
   list(
     workspaceId: string,
-    filter: { candidateId?: string; itemId?: string },
+    filter: { candidateId?: string; itemId?: string; unmapped?: boolean },
     jobId: string | null,
   ): Promise<EvidenceItemView[]>;
   /**
@@ -59,7 +62,8 @@ export type Ports = {
   /** Writes `EvidenceRecorded.v1` to the outbox in `tx`, so it commits only with the evidence. */
   /** `dedupeKey` defaults to the source id; a re-read of the source passes its own. */
   publishRecorded(tx: Tx, source: EvidenceSource, itemIds: string[], dedupeKey?: string): Promise<void>;
-  authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
+  /** Job-scoped roles also need a grant on `resource` (ADR-005 point 6). */
+  authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   /** Appends an audit entry in `ctx.tx`; the last statement before commit (AGENTS.md 3.6). */
   audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;

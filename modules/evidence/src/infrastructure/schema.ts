@@ -20,6 +20,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
+import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
 import { REPOSITORY_READ_STATUSES } from '../domain/repository.ts';
 import { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 import {
@@ -71,6 +72,34 @@ export const source = evidence
   )
   .enableRLS();
 
+// One run of evidence mapping (AIV-P1-027) for a candidate, a job and its approved rubric version, with the prompt and
+// model it ran on and its "What would change this" list. Runs are never deleted when a new version is mapped: earlier
+// runs and their items stay for audit, and reads take the newest run per candidate and job.
+export const mapping = evidence
+  .table(
+    'mapping',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      // The jobs module's job and rubric version ids: opaque, no foreign key across modules.
+      jobId: uuid('job_id').notNull(),
+      rubricVersionId: uuid('rubric_version_id').notNull(),
+      promptVersion: text('prompt_version').notNull(),
+      model: text().notNull(),
+      // Up to three checks, each closing a gap or a capped item of this run; the text is candidate data (never logged).
+      changes: jsonb().$type<StoredChange[]>().notNull(),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      unique('mapping_workspace_id_key').on(t.workspaceId, t.id),
+      index('mapping_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.createdAt),
+      check('mapping_changes_check', sql`jsonb_array_length(${t.changes}) <= 3`),
+      tenantPolicy('mapping_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
 export const item = evidence
   .table(
     'item',
@@ -86,8 +115,15 @@ export const item = evidence
       limit: text('limit_statement').notNull(),
       synthetic: boolean().notNull(),
       createdAt: timestamp('created_at', tz).notNull(),
+      // The mapping run that cited this excerpt (AIV-P1-027); null for an item recorded from its source.
+      mappingId: uuid('mapping_id'),
     },
     (t) => [
+      foreignKey({
+        name: 'item_mapping_fk',
+        columns: [t.workspaceId, t.mappingId],
+        foreignColumns: [mapping.workspaceId, mapping.id],
+      }),
       // Includes the workspace and candidate, so an item cannot cite another workspace's or candidate's source.
       foreignKey({
         name: 'item_source_fk',
@@ -433,6 +469,41 @@ export const repositorySkillGrade = evidence
       ),
       check('repository_skill_grade_citations_check', sql`jsonb_array_length(${t.citations}) <= 6`),
       tenantPolicy('repository_skill_grade_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A rubric competency nothing backs after a mapping run (AIV-P1-027): evidence to request (AIV-P1-037), never negative
+// evidence and never a reason to reject (AGENTS.md 1.6).
+export const evidenceGap = evidence
+  .table(
+    'evidence_gap',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      mappingId: uuid('mapping_id').notNull(),
+      competencyId: uuid('competency_id').notNull(),
+      kind: text({ enum: GAP_KINDS }).notNull(),
+      // The repository scan's coverage behind `not_found` or `unable_to_verify`; null for `no_evidence`.
+      filesInspected: integer('files_inspected'),
+      coverageReason: text('coverage_reason', { enum: GRADE_REASONS }),
+    },
+    (t) => [
+      foreignKey({
+        name: 'evidence_gap_mapping_fk',
+        columns: [t.workspaceId, t.mappingId],
+        foreignColumns: [mapping.workspaceId, mapping.id],
+      }),
+      unique('evidence_gap_workspace_id_key').on(t.workspaceId, t.id),
+      unique('evidence_gap_competency_key').on(t.workspaceId, t.mappingId, t.competencyId),
+      // Must list exactly GAP_KINDS (domain/mapping.ts); changing it needs a new migration.
+      check('evidence_gap_kind_check', sql`${t.kind} in ('not_found', 'unable_to_verify', 'no_evidence')`),
+      check(
+        'evidence_gap_coverage_check',
+        sql`(${t.kind} = 'no_evidence') = (${t.filesInspected} is null)
+          and (${t.filesInspected} is null) = (${t.coverageReason} is null) and ${t.filesInspected} >= 0`,
+      ),
+      tenantPolicy('evidence_gap_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

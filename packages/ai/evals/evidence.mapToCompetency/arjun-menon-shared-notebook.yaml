@@ -1,0 +1,47 @@
+# Arjun Menon's eval notebooks: Python graded STRONG, but he wrote about a third of the commits, so authorship is
+# unclear and the answer is Medium (the evidence module's authorship cap holds it there too).
+id: arjun-menon-shared-notebook
+people: [Arjun Menon]
+input:
+  competencies:
+    - id: c-retrieval
+      name: Retrieval and evaluation
+      evidenceExpected: An eval harness, retrieval metrics or a regression gate the candidate built.
+    - id: c-python
+      name: Python service engineering
+      evidenceExpected: Python services the candidate wrote and maintains, with tests.
+sources:
+  - id: S1
+    kind: repo
+    text: |-
+      rag-eval-notebooks
+      authored 140 of 410 commits
+      Skill signal Python: STRONG (code_corroborated)
+      Python in notebooks/eval_runner.py (path, code): Python source file
+      Python in requirements.txt (manifest, declaration): declares ragas
+expected:
+  match:
+    links[*].competencyId: [c-retrieval, c-python]
+    links[*].strength: [medium]
+recorded:
+  output:
+    links:
+      - competencyId: c-retrieval
+        strength: medium
+        label: submitted
+        level: 3
+        limit: He wrote about a third of the commits; which evaluations are his is unclear.
+        citations:
+          - sourceId: S1
+            quote: authored 140 of 410 commits
+      - competencyId: c-python
+        strength: medium
+        label: submitted
+        level: 3
+        limit: Shared authorship; the Python code may be mostly another contributor's.
+        citations:
+          - sourceId: S1
+            quote: 'Python in notebooks/eval_runner.py (path, code): Python source file'
+    changes:
+      - competencyId: c-retrieval
+        text: Ask which notebooks and metrics in rag-eval-notebooks he wrote himself.

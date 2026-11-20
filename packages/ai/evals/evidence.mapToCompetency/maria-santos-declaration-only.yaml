@@ -1,0 +1,44 @@
+# Maria Santos's repository grades Python PARTIAL: .py files only under tests/ and a requirements.txt. A declaration is
+# not evidence of use, so the answer stays at Supporting (the evidence module's guards cap it there whatever the model
+# says; modules/evidence/src/domain/mapping.test.ts).
+id: maria-santos-declaration-only
+people: [Maria Santos]
+input:
+  competencies:
+    - id: c-python
+      name: Python service engineering
+      evidenceExpected: Python services the candidate wrote and maintains, with tests.
+    - id: c-retrieval
+      name: Retrieval and evaluation
+      evidenceExpected: An eval harness, retrieval metrics or a regression gate the candidate built.
+sources:
+  - id: S1
+    kind: repo
+    text: |-
+      claims-indexer
+      authored 96 of 101 commits
+      Skill signal Python: PARTIAL (declaration_only)
+      Python in requirements.txt (manifest, declaration): declares fastapi
+      Python in tests/test_index.py (path, declaration): Python file under a test folder
+expected:
+  match:
+    links[*].competencyId: [c-python]
+    links[*].strength: [supporting]
+  safety:
+    forbidden: [strong]
+recorded:
+  output:
+    links:
+      - competencyId: c-python
+        strength: supporting
+        label: submitted
+        level: 1
+        limit: Declares Python packages and has test files only; no service code shows her using it.
+        citations:
+          - sourceId: S1
+            quote: 'Python in requirements.txt (manifest, declaration): declares fastapi'
+    changes:
+      - competencyId: c-python
+        text: Ask for the Python service code itself, outside the test folder.
+      - competencyId: c-retrieval
+        text: Ask for any evaluation she ran on the indexer's retrieval.

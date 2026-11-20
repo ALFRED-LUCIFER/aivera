@@ -1,23 +1,37 @@
-# Hessa Al Mazrouei's checkout-e2e repository maps to "Test automation", citing her share of the test cases.
+# Hessa Al Mazrouei's checkout-e2e repository maps to "Test automation" on her clear authorship; nothing shows CI
+# reliability, so it gets no link and a check instead.
 id: hessa-checkout-e2e
 people: [Hessa Al Mazrouei]
 input:
-  competencies: [Test automation, CI reliability]
+  competencies:
+    - id: c-test
+      name: Test automation
+      evidenceExpected: An end-to-end or integration suite the candidate wrote and maintains.
+    - id: c-ci
+      name: CI reliability
+      evidenceExpected: CI pipelines the candidate kept green, with their run history.
 sources:
   - id: S1
     kind: repo
-    text: checkout-e2e - wrote 148 of 171 test cases; Playwright suite for a checkout flow, run on every merge.
+    text: |-
+      checkout-e2e
+      authored 148 of 171 commits
 expected:
   match:
-    competency: Test automation
-    statements[*].label: [submitted]
+    links[*].competencyId: [c-test]
+    links[*].label: [submitted]
+    links[*].strength: [strong]
 recorded:
   output:
-    competency: Test automation
-    statements:
-      - text: She wrote most of the checkout end-to-end suite.
+    links:
+      - competencyId: c-test
+        strength: strong
         label: submitted
+        level: 4
+        limit: Shows her share of the commits, not how flaky the suite is or what it covers.
         citations:
           - sourceId: S1
-            quote: wrote 148 of 171 test cases
-    rationale: One repository shows her share of the suite; flakiness and CI history are not shown.
+            quote: authored 148 of 171 commits
+    changes:
+      - competencyId: c-ci
+        text: Ask for the suite's CI run history over the last three months.

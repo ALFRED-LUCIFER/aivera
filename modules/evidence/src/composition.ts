@@ -1,14 +1,17 @@
 // Builds the evidence module for an app (ADR-002: only apps import this).
 import { createHash, randomBytes } from 'node:crypto';
+import { MAP_TO_COMPETENCY_VERSION, mapToCompetencyRequest, modelOf, type AiClient } from '@credalent/ai';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
 import type { Tx } from '@credalent/db';
 import { enqueue, newEnvelope, type Envelope, type EventDefinition } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import { ApplicationReceivedV1 } from '@credalent/intake';
+import { RubricApprovedV1 } from '@credalent/jobs';
 import { log } from '@credalent/observability';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
+import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
 import {
   type ApprovedRubricPort,
   GitHubRateLimited,
@@ -26,6 +29,8 @@ import {
   type RequestOutcome,
 } from './application/requests.ts';
 import {
+  EvidenceMappedV1,
+  EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
   EvidenceRequestAnsweredV1,
   EvidenceRequestOpenedV1,
@@ -36,6 +41,7 @@ import {
   type EvidenceContract,
 } from './contracts/index.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
+import { mappingStore } from './infrastructure/mappingStore.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
 import { requestStore } from './infrastructure/requestStore.ts';
@@ -72,7 +78,7 @@ export function createEvidence(
   const ports: Ports = {
     storeFor: evidenceStore,
     publishRecorded,
-    authorize: (ctx, action) => workspaces.authorize(ctx, action),
+    authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     audit: (ctx, entry) =>
       audit.record({ tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } }, entry),
@@ -97,6 +103,7 @@ export function createEvidence(
           occurredAt: at,
         }),
     }),
+    ...mappingUseCases({ ...ports, mappingStoreFor: mappingStore }),
     ...requestUseCases({
       ...ports,
       ...outcomePorts(now),
@@ -248,4 +255,101 @@ export function createApplicationReceivedHandler(
     consumer: 'evidence.application.received',
     handle: (tx, payload, envelope) => queueArrivalReads(ports, tx, envelope.workspaceId, payload.sourceId),
   };
+}
+
+/** Who applied to what, read in the worker's transaction (the intake module's `createApplicationReads`). */
+export type ApplicationsPort = {
+  jobsForCandidate(tx: Tx, workspaceId: string, candidateId: string): Promise<string[]>;
+  candidatesForJob(tx: Tx, workspaceId: string, jobId: string): Promise<string[]>;
+};
+
+/**
+ * The evidence mapping jobs on the evidence queue (AIV-P1-027): `EvidenceRecorded.v1` and `RubricApproved.v1` fan out
+ * to one `EvidenceMappingRequested.v1` per candidate and job, and `evidence.mapping` maps each through `ai` against
+ * the job's approved rubric version (`approvedRubric`, the jobs module's `createApprovedRubricReads`). A model failure
+ * throws, so the consumer retries with back-off (AIV-P0-015) while the profile shows the assessment as in progress.
+ */
+export function createEvidenceMappingHandlers(config: {
+  ai: AiClient;
+  approvedRubric: MappingPorts['approvedRubric'];
+  applications: ApplicationsPort;
+  now?: () => Date;
+}): Handler<unknown>[] {
+  const now = config.now ?? (() => new Date());
+  const requestMapping = (tx: Tx, envelope: Envelope, candidateId: string, jobId: string) =>
+    enqueue(tx, outbox, EvidenceMappingRequestedV1, {
+      workspaceId: envelope.workspaceId,
+      payload: { candidateId, jobId },
+      dedupeKey: `mapping:${envelope.id}:${candidateId}:${jobId}`,
+      occurredAt: now(),
+    });
+  const ports: MappingPorts = {
+    storeFor: evidenceStore,
+    readStoreFor: repositoryReadStore,
+    mappingStoreFor: mappingStore,
+    approvedRubric: config.approvedRubric,
+    mapToCompetencies: async (workspaceId, competencies, sources) => {
+      const { links, changes } = await config.ai.generateStructured({
+        ...mapToCompetencyRequest(competencies, sources),
+        workspaceId,
+      });
+      return { links, changes };
+    },
+    promptVersion: MAP_TO_COMPETENCY_VERSION,
+    model: modelOf('evidence.mapToCompetency'),
+    publishMapped: (tx, run) =>
+      enqueue(tx, outbox, EvidenceMappedV1, {
+        workspaceId: run.workspaceId,
+        payload: {
+          candidateId: run.candidateId,
+          jobId: run.jobId,
+          rubricVersionId: run.rubricVersionId,
+          mappingId: run.id,
+        },
+        dedupeKey: `mapped:${run.id}`,
+        occurredAt: run.createdAt,
+      }),
+    logMapped: ({ discarded, ...counts }) =>
+      log.info(
+        {
+          'credalent.evidence.mapping_id': counts.mappingId,
+          'credalent.evidence.links': counts.links,
+          'credalent.evidence.gaps': counts.gaps,
+          'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          ...Object.fromEntries(Object.entries(discarded).map(([k, v]) => [`credalent.evidence.discarded.${k}`, v])),
+        },
+        'evidence mapped',
+      ),
+    newId: uuidv7,
+    now,
+  };
+  return [
+    {
+      event: EvidenceRecordedV1,
+      inbox,
+      consumer: 'evidence.mapping.recorded',
+      async handle(tx, { candidateId }, envelope) {
+        for (const jobId of await config.applications.jobsForCandidate(tx, envelope.workspaceId, candidateId))
+          await requestMapping(tx, envelope, candidateId, jobId);
+      },
+    } satisfies Handler<{ candidateId: string; sourceId: string; itemIds: string[] }>,
+    {
+      event: RubricApprovedV1,
+      inbox,
+      consumer: 'evidence.mapping.rubric-approved',
+      async handle(tx, { jobId }, envelope) {
+        for (const candidateId of await config.applications.candidatesForJob(tx, envelope.workspaceId, jobId))
+          await requestMapping(tx, envelope, candidateId, jobId);
+      },
+    } satisfies Handler<{ jobId: string; rubricVersionId: string; supersededVersionId: string | null }>,
+    {
+      event: EvidenceMappingRequestedV1,
+      inbox,
+      consumer: 'evidence.mapping',
+      async handle(tx, { candidateId, jobId }, envelope) {
+        const run = await mapEvidence(ports, tx, envelope.workspaceId, candidateId, jobId);
+        if (!run) log.info({ 'outbox.event_id': envelope.id }, 'evidence not mapped: the job has no approved rubric');
+      },
+    } satisfies Handler<{ candidateId: string; jobId: string }>,
+  ];
 }
