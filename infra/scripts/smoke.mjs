@@ -4,6 +4,9 @@
 // Usage: SMOKE_URL=https://<web fqdn> COMMIT=<sha> node infra/scripts/smoke.mjs
 import { pathToFileURL } from 'node:url';
 
+/** The sign-in page's logo URL (AuthPage renders it at w=96). */
+export const LOGO = '/_next/image?url=%2Fbrand%2Fcredalent-mark.png&w=96&q=75';
+
 /** Polls until the commit is live and ready, or the time runs out. */
 export async function smoke({
   base,
@@ -17,11 +20,17 @@ export async function smoke({
   while (Date.now() < deadline) {
     try {
       // A cold start can hold one request until ingress gives up (~4 min); cap each (above a ~54 s cold start) so the loop keeps retrying.
-      const health = await (await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(requestMs) })).json();
-      const ready = await fetch(`${base}/api/ready`, { signal: AbortSignal.timeout(requestMs) });
-      const logo = await fetch(`${base}/brand/credalent-mark.png`, { signal: AbortSignal.timeout(requestMs) });
-      log(`health commit=${health.commit} ready=${ready.status} logo=${logo.status}`);
-      if (health.commit === commit && ready.status === 200 && logo.status === 200) return true;
+      // Each request also stops at the deadline, so one pass of three requests cannot run far past it.
+      const signal = () => AbortSignal.timeout(Math.max(1, Math.min(requestMs, deadline - Date.now())));
+      const health = await (await fetch(`${base}/api/health`, { signal: signal() })).json();
+      const ready = await fetch(`${base}/api/ready`, { signal: signal() });
+      // The logo as pages load it, through the image optimizer: proves public/ is in the image and sharp works.
+      const logo = await fetch(`${base}${LOGO}`, { signal: signal() });
+      const logoType = logo.headers.get('content-type') ?? '';
+      await logo.arrayBuffer();
+      log(`health commit=${health.commit} ready=${ready.status} logo=${logo.status} ${logoType}`);
+      if (health.commit === commit && ready.status === 200 && logo.status === 200 && logoType.startsWith('image/'))
+        return true;
     } catch (error) {
       log(`not reachable yet: ${error.message}`);
     }
