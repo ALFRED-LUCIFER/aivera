@@ -226,7 +226,7 @@ describe('the golden set', () => {
   it('AIV-P2-044: the eval catalogue is the snapshot, and the snapshot is what the seed migration publishes', () => {
     // SAFETY: mutation check: renamed one pack key in catalogue-v1.json -> this test failed
     const seed = readFileSync(
-      join(import.meta.dirname, '../../../modules/jobs/src/infrastructure/migrations/0012_catalogue_v1_seed.sql'),
+      join(import.meta.dirname, '../../../modules/jobs/src/infrastructure/migrations/0017_catalogue_v1_seed.sql'),
       'utf8',
     );
     const keys = (table: string) => [
