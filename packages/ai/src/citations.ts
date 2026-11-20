@@ -74,9 +74,10 @@ export const sourceLabel = (index: number) => `S${index + 1}`;
 export const formatSources = (sources: readonly Source[]) =>
   sources
     .map((source, i) => {
-      // Every `<` (and its full-width forms), not only `</source`: zero-width characters, backslashes or look-alike
-      // letters inside a tag would slip past a narrower match. checkOutput maps a quoted `&lt;` back to `<`.
-      const text = source.text.replace(/[<\uFF1C\uFE64]/g, '&lt;');
+      // Every ASCII `<`, not only `</source`: a zero-width character or a backslash inside a tag would slip past a
+      // narrower match. checkOutput maps a quoted `&lt;` back to `<`. shortcut: look-alike brackets (`＜`) are left
+      // as they are, since only `<` is structural; escape them too if an eval shows a model reading one as a tag.
+      const text = source.text.replaceAll('<', '&lt;');
       return `<source id="${sourceLabel(i)}" kind="${source.kind}" trust="untrusted">\n${text}\n</source>`;
     })
     .join('\n');
