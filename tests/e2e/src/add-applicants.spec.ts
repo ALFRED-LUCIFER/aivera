@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-019: "Add applicants" on a job's Candidates tab, as AP, admin of "Demo" (seed.ts). This harness has no Blob
 // storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the upload-to-application path is proven against
@@ -61,6 +61,6 @@ for (const theme of themes) {
     await signIn(page, { email: AP });
     await openDialog(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
