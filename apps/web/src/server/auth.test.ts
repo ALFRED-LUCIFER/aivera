@@ -55,6 +55,11 @@ const silence = () => {
 };
 // Production minifies Auth.js class names; the stable `type` is what survives.
 const minified = (fields: object) => Object.assign(new Error('boom'), { name: 'Q' }, fields);
+// The logger's JSON line, for its cause fields (AIV-P0-930).
+const line = () => JSON.parse(raw().find((l) => l.startsWith('{')) ?? '{}') as Record<string, unknown>;
+// An Auth.js error of `type` wrapping `err` the way Auth.js does, with personal data in the cause's message.
+const causedBy = (type: string, err: object) =>
+  minified({ type, cause: { err: Object.assign(new Error('nadia.haddad@example.com Nadia Haddad'), err) } });
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -99,6 +104,62 @@ describe('auth logging and refusals never print personal data', () => {
     silence();
     config.logger?.error?.(minified({ type: 'nadia.haddad@example.com' }));
     expect(logged()).toBe('[auth] UnknownAuthError');
+  });
+
+  // Scenario: A token-endpoint failure logs its cause name and code (AIV-P0-930).
+  it('a token-endpoint failure logs its cause name and code, never its message', () => {
+    silence();
+    config.logger?.error?.(
+      causedBy('CallbackRouteError', { name: 'ResponseBodyError', code: 'OAUTH_RESPONSE_BODY_ERROR' }),
+    );
+    expect(line()).toMatchObject({
+      code: 'CallbackRouteError',
+      'credalent.auth.cause': 'ResponseBodyError',
+      'credalent.auth.cause_code': 'OAUTH_RESPONSE_BODY_ERROR',
+    });
+    expect(line()).not.toHaveProperty('err');
+    expect(raw().join('\n')).not.toMatch(PERSONAL);
+  });
+
+  // Scenario: A database error in the sign-in step logs its cause. An IdentityError never reaches the logger: the
+  // signIn callback turns it into `?error=<code>`; anything else it throws, Auth.js wraps in AccessDenied.
+  it('a database error in the sign-in step logs AccessDenied with its cause', () => {
+    silence();
+    config.logger?.error?.(causedBy('AccessDenied', { name: 'DatabaseError', code: '57P01' }));
+    expect(line()).toMatchObject({
+      code: 'AccessDenied',
+      'credalent.auth.cause': 'DatabaseError',
+      'credalent.auth.cause_code': '57P01',
+    });
+    expect(raw().join('\n')).not.toMatch(PERSONAL);
+  });
+
+  // Scenario: A cause whose name or code carries personal data is not echoed.
+  // SAFETY: mutation check: logged `err.name` without the CAUSE_NAME check -> this test failed
+  // SAFETY: mutation check: logged `err.code` without the CAUSE_CODE check -> this test failed
+  it('a cause named with an email and coded with a name is not echoed', () => {
+    silence();
+    config.logger?.error?.(causedBy('CallbackRouteError', { name: 'nadia.haddad@example.com', code: 'Nadia Haddad' }));
+    expect(line()).not.toHaveProperty(['credalent.auth.cause']);
+    expect(line()).not.toHaveProperty(['credalent.auth.cause_code']);
+    expect(raw().join('\n')).not.toMatch(PERSONAL);
+  });
+
+  // shortcut: a class name ending in "Error" is logged as is; class names come from code, not user input.
+  it('a plain-word code is not echoed, while an Error class name is', () => {
+    silence();
+    config.logger?.error?.(causedBy('CallbackRouteError', { name: 'NadiaError', code: 'Nadia' }));
+    expect(line()).toMatchObject({ 'credalent.auth.cause': 'NadiaError' });
+    expect(line()).not.toHaveProperty(['credalent.auth.cause_code']);
+  });
+
+  // Scenario: An error without a cause logs as before.
+  it('an error without a cause logs only its area and code', () => {
+    silence();
+    config.logger?.error?.(minified({ type: 'Configuration' }));
+    const pino = new Set(['level', 'time', 'pid', 'hostname', 'msg', 'trace_id', 'span_id', 'trace_flags']);
+    const own = Object.fromEntries(Object.entries(line()).filter(([key]) => !pino.has(key)));
+    expect(own).toEqual({ area: 'auth', code: 'Configuration' });
   });
 
   // Scenario: Warnings keep logging their code.
