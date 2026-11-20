@@ -25,7 +25,7 @@ recorded:
             {
               'role': 'Senior AI Engineer',
               'dates': null,
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Maria Santos, Senior AI Engineer' }],
+              'citations': [{ 'sourceId': 'S1', 'quote': 'Senior AI Engineer' }],
               'claim': true,
             },
           ],

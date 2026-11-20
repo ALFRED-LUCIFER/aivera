@@ -157,8 +157,11 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
       fileId: string,
     ): Promise<{ purpose: string; contentType: string; data: Buffer } | 'pending' | 'rejected'>;
     documentIntelligence: DocumentIntelligencePort;
-    /** `parseCvRequest` of @credalent/ai on the CV text as the one `cv` source, checked by the citation contract. */
-    extract(workspaceId: string, sourceId: string, text: string): Promise<CvExtraction>;
+    /**
+     * `parseCvRequest` of @credalent/ai on the CV text as the one `cv` source, checked by the citation contract, with
+     * the candidate's identifiers read in `tx` (AIV-P1-080).
+     */
+    extract(tx: Tx, workspaceId: string, candidateId: string, sourceId: string, text: string): Promise<CvExtraction>;
     /** `queueRepositoryRead` (AIV-P1-076): one pending read per candidate and link, as the system, in `tx`. */
     queueRead(tx: Tx, workspaceId: string, input: RequestRepositoryReadInput): Promise<unknown>;
     /** Adds the CV's emails and phones to the candidate record (the candidates module, in `tx`). */
@@ -232,7 +235,7 @@ export async function parseCv(
   const instructions = detectUnusualContent(layout.content);
   let extraction: CvExtraction;
   try {
-    extraction = await extract(workspaceId, sourceId, layout.content);
+    extraction = await extract(tx, workspaceId, source.candidateId, sourceId, layout.content);
   } catch (error) {
     if (AI_FAILURES.some((kind) => error instanceof kind)) return end('failed');
     throw error;

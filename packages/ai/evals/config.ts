@@ -6,7 +6,7 @@ import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
-import type { GoldenCase } from './golden.ts';
+import { identifiersOf, type GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
 const pairsInput = z.object({ pairs: z.array(z.tuple([z.string(), z.string()])).min(1) });
@@ -109,17 +109,22 @@ export const runners: Record<string, Runner> = {
     ai.generateStructured({
       ...mapToCompetencyRequest(rubricInput.parse(golden.input).competencies, golden.sources),
       workspaceId,
+      identifiers: identifiersOf(golden),
     }),
   // AIV-P1-078: the pair's two excerpts as sources; a flag citing anything but a requested pair fails the case.
   'evidence.compareExcerpts': async (ai, golden, workspaceId) => {
     const { pairs } = pairsInput.parse(golden.input);
-    const answer = await ai.generateStructured({ ...compareExcerptsRequest(golden.sources, pairs), workspaceId });
+    const answer = await ai.generateStructured({
+      ...compareExcerptsRequest(golden.sources, pairs),
+      workspaceId,
+      identifiers: identifiersOf(golden),
+    });
     flaggedPairs(answer, pairs);
     return answer;
   },
   // AIV-P1-025: the CV text Document Intelligence extracted is the one source, as the evidence module sends it.
   'evidence.parseCv': (ai, golden, workspaceId) =>
-    ai.generateStructured({ ...parseCvRequest(golden.sources), workspaceId }),
+    ai.generateStructured({ ...parseCvRequest(golden.sources), workspaceId, identifiers: identifiersOf(golden) }),
 };
 
 /** Tokens one live run may spend across all its calls; past it the remaining cases error and the run fails. */

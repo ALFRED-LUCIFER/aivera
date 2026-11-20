@@ -233,6 +233,23 @@ describe('claims from the extraction', () => {
     expect(claims).toEqual([]);
   });
 
+  // SAFETY: mutation check: removed the statement-text contact filter from cvClaims -> this test failed
+  it('AIV-P1-080: drops a statement whose text repeats the CV contact, though its quote is clean', () => {
+    const cost = 'cut cost per request by 40%';
+    const { claims } = cvClaims(
+      extraction({
+        statements: [
+          { text: 'Reach me at sara.alqahtani@example.com', citations: cite(cost) },
+          { text: 'Call +971 50 000 0001', citations: cite('Senior AI Engineer, Gulf Payments') },
+          { text: '[CANDIDATE] cut cost per request by 40%', citations: cite(cost) },
+        ],
+      }),
+      SARA_CV,
+      [],
+    );
+    expect(claims.map((c) => c.excerpt)).toEqual([cost]);
+  });
+
   // SAFETY: mutation check: removed the contact filter from cvClaims -> this test failed (the email line became an item)
   it('keeps contact details out of every excerpt and returns only those the CV writes', () => {
     const { claims, contact } = cvClaims(

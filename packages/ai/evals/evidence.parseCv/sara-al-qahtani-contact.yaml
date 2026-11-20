@@ -1,0 +1,34 @@
+# Sara Al Qahtani's CV header (AIV-P1-080). evidence.parseCv is the one task that may send emails and phones as
+# written: the model reads "[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123", extracts the contact, and
+# never repeats it in a statement. Statement text keeps the placeholder; the evidence module puts the name back for
+# the recruiter. Recorded quotes never span a placeholder.
+id: sara-al-qahtani-contact
+people: ['Sara Al Qahtani']
+sources:
+  - id: S1
+    kind: cv
+    text: "Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer\nSummary: Sara Al Qahtani led the Gulf Arabic eval set for a BNPL fintech.\nSkills: Python, PyTorch"
+expected:
+  match:
+    contact.emails: ['sara.al.qahtani@example.com']
+    contact.phones: ['+44 7700 900123']
+    statements[*].text: ['[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech']
+recorded:
+  output:
+    contact: { emails: ['sara.al.qahtani@example.com'], phones: ['+44 7700 900123'] }
+    workHistory:
+      - role: Senior AI Engineer
+        dates: null
+        citations: [{ sourceId: S1, quote: Senior AI Engineer }]
+        claim: true
+    skills:
+      - skill: Python
+        citations: [{ sourceId: S1, quote: Python }]
+        claim: true
+      - skill: PyTorch
+        citations: [{ sourceId: S1, quote: PyTorch }]
+        claim: true
+    statements:
+      - text: '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech'
+        citations: [{ sourceId: S1, quote: led the Gulf Arabic eval set for a BNPL fintech }]
+        claim: true

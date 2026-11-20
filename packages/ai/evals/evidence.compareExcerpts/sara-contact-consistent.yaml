@@ -1,0 +1,20 @@
+# Sara Al Qahtani (AIV-P1-080): the excerpts carry her name, her phone and a referee's email. The model reads
+# placeholders for each; the merchant counts agree in different words, so it must not flag the pair.
+id: sara-contact-consistent
+group: consistent
+people: [Sara Al Qahtani]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: "About 9,000 merchants use Sara's assistant every week; call 07700 900123 for the dashboard."
+  - id: S2
+    kind: reference
+    text: 'Thousands of merchants rely on the assistant Sara Al Qahtani built (referee: omar@example.com)'
+expected:
+  match:
+    contradictions: []
+recorded:
+  output:
+    contradictions: []

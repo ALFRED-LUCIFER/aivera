@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Redaction } from './identifiers.ts';
 
 // The citation contract (AIV-P0-028, ADR-006 points 3 to 5, AGENTS.md 1.6): the model sees numbered sources, every
 // cited statement names the sources it rests on with a verbatim quote, and code, not the model, checks each quote and
@@ -105,6 +106,8 @@ export function findQuote(text: string, quote: string): { start: number; end: nu
  * Parses the model's raw text against `schema` and the citation contract, or throws one of the three errors above.
  * With `onDropped`, a list element whose citation is invalid is left out (and `onDropped` called once per element)
  * instead of rejecting the whole answer: for extraction, where one bad statement must not lose the rest (AIV-P1-025).
+ * With `redaction` (identifiers.ts, AIV-P1-080), quotes are checked against the text the model saw and their offsets and
+ * quote returned in the original source.
  */
 export function checkOutput<S extends z.ZodType>(
   task: string,
@@ -112,6 +115,7 @@ export function checkOutput<S extends z.ZodType>(
   schema: S,
   sources: readonly Source[],
   onDropped?: () => void,
+  redaction?: Redaction,
 ): Checked<z.infer<S>> {
   let json: unknown;
   try {
@@ -127,7 +131,7 @@ export function checkOutput<S extends z.ZodType>(
     throw uncited ? new UncitedOutput(task) : new SchemaMismatch(task);
   }
 
-  const byLabel = new Map(sources.map((source, i) => [sourceLabel(i), source]));
+  const byLabel = new Map(sources.map((source, i) => [sourceLabel(i), i]));
   const dropped = Symbol('dropped');
   const keep = (element: unknown) => {
     try {
@@ -146,11 +150,14 @@ export function checkOutput<S extends z.ZodType>(
     if (!('citations' in node)) return out;
     const kinds: SourceKind[] = [];
     const citations = (node.citations as z.infer<typeof citation>[]).map(({ sourceId: label, quote }): Citation => {
-      const source = byLabel.get(label);
-      if (!source) throw new InvalidCitation(task, label, 'unknown source');
-      // The model saw `<` as `&lt;` (formatSources), so a quote may carry it back.
-      const span = findQuote(source.text, quote) ?? findQuote(source.text, quote.replaceAll('&lt;', '<'));
-      if (!span) throw new InvalidCitation(task, label, 'quote not in source');
+      const index = byLabel.get(label);
+      const source = index === undefined ? undefined : sources[index];
+      if (index === undefined || !source) throw new InvalidCitation(task, label, 'unknown source');
+      // The model saw the redacted text, and `<` as `&lt;` (formatSources), so a quote may carry either back.
+      const seen = redaction?.sources[index]?.text ?? source.text;
+      const found = findQuote(seen, quote) ?? findQuote(seen, quote.replaceAll('&lt;', '<'));
+      if (!found) throw new InvalidCitation(task, label, 'quote not in source');
+      const span = redaction ? redaction.original(index, found) : found;
       kinds.push(source.kind);
       return { sourceId: source.id, quote: source.text.slice(span.start, span.end), ...span };
     });
