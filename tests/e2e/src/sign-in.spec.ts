@@ -95,6 +95,9 @@ test('Scenario: The page offers only the two ways in and the artboard copy', asy
   await page.goto('/sign-in');
   // The SignIn artboard: logo home link, headline with "evidence" under the highlighter, the three promises, the lead.
   await expect(page.getByRole('link', { name: 'Credalent' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Credalent' }).locator('img')).toHaveAttribute('src', /credalent-mark/);
+  await expect(page).toHaveTitle(/Credalent/);
+  await expect(page.locator('body')).not.toContainText(/aivera/i);
   await expect(page.getByText('Hire on evidence, not claims.')).toBeVisible();
   await expect(page.locator('mark')).toHaveCount(1);
   await expect(page.locator('mark')).toHaveText('evidence');

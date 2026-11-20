@@ -121,7 +121,7 @@ describe('Scenario: A task resolves to its configured deployment', () => {
   });
 
   it('answers from the first fixture whose text is in the prompt, read from AI_FAKE_FIXTURES', async () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'aivera-ai-')), 'fixtures.json');
+    const file = join(mkdtempSync(join(tmpdir(), 'credalent-ai-')), 'fixtures.json');
     writeFileSync(
       file,
       JSON.stringify([

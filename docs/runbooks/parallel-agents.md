@@ -2,7 +2,7 @@
 
 Several Claude Code sessions (or people) can work on different tickets at once. These rules keep them from breaking each other.
 
-1. **One ticket, one branch, one worktree.** `git worktree add ../aivera-AIV-P1-013 -b feat/AIV-P1-013-<slug> origin/main`. Never two agents in one checkout.
+1. **One ticket, one branch, one worktree.** `git worktree add ../credalent-AIV-P1-013 -b feat/AIV-P1-013-<slug> origin/main`. Never two agents in one checkout.
 2. **Pick tickets whose files do not overlap.** Two tickets that touch the same module's migrations, the same feature folder, or `packages/ui` run one after the other, or as a stack (below). Check the "Depends on" field on Project 2.
 3. **Migrations are serialised per module.** Only one open PR per module may add a migration. If `main` gained a migration for your module, rebase and regenerate yours (`pnpm db:generate`) before merging.
 4. **Shared services from one checkout only.** Start PostgreSQL (`pnpm services:up`, from AIV-P0-002) once; other worktrees connect to it with their own database name. Integration tests use Testcontainers and need no shared database.
