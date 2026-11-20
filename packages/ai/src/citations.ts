@@ -75,8 +75,7 @@ export const formatSources = (sources: readonly Source[]) =>
   sources
     .map((source, i) => {
       // Every `<` (and its full-width forms), not only `</source`: zero-width characters, backslashes or look-alike
-      // letters inside a tag would slip past a narrower match. shortcut: a quote spanning a `<` no longer matches what
-      // the model saw and is rejected (fails closed); map `&lt;` back in findQuote if the eval set shows such misses.
+      // letters inside a tag would slip past a narrower match. checkOutput maps a quoted `&lt;` back to `<`.
       const text = source.text.replace(/[<\uFF1C\uFE64]/g, '&lt;');
       return `<source id="${sourceLabel(i)}" kind="${source.kind}" trust="untrusted">\n${text}\n</source>`;
     })
@@ -133,7 +132,8 @@ export function checkOutput<S extends z.ZodType>(
     const citations = (node.citations as z.infer<typeof citation>[]).map(({ sourceId: label, quote }): Citation => {
       const source = byLabel.get(label);
       if (!source) throw new InvalidCitation(task, label, 'unknown source');
-      const span = findQuote(source.text, quote);
+      // The model saw `<` as `&lt;` (formatSources), so a quote may carry it back.
+      const span = findQuote(source.text, quote) ?? findQuote(source.text, quote.replaceAll('&lt;', '<'));
       if (!span) throw new InvalidCitation(task, label, 'quote not in source');
       kinds.push(source.kind);
       return { sourceId: source.id, quote: source.text.slice(span.start, span.end), ...span };
