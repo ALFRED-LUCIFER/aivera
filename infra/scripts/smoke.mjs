@@ -1,5 +1,6 @@
 // Deploy smoke test (AIV-P0-006), run by deploy-dev.yml against the public dev URL: passes when /api/health reports
-// the expected commit and /api/ready answers 200, retrying while the app scales from zero. Exit 0 = live, 1 = roll back.
+// the expected commit, /api/ready answers 200 and the logo from public/ loads (AIV-P0-933), retrying while the app
+// scales from zero. Exit 0 = live, 1 = roll back.
 // Usage: SMOKE_URL=https://<web fqdn> COMMIT=<sha> node infra/scripts/smoke.mjs
 import { pathToFileURL } from 'node:url';
 
@@ -18,14 +19,15 @@ export async function smoke({
       // A cold start can hold one request until ingress gives up (~4 min); cap each (above a ~54 s cold start) so the loop keeps retrying.
       const health = await (await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(requestMs) })).json();
       const ready = await fetch(`${base}/api/ready`, { signal: AbortSignal.timeout(requestMs) });
-      log(`health commit=${health.commit} ready=${ready.status}`);
-      if (health.commit === commit && ready.status === 200) return true;
+      const logo = await fetch(`${base}/brand/credalent-mark.png`, { signal: AbortSignal.timeout(requestMs) });
+      log(`health commit=${health.commit} ready=${ready.status} logo=${logo.status}`);
+      if (health.commit === commit && ready.status === 200 && logo.status === 200) return true;
     } catch (error) {
       log(`not reachable yet: ${error.message}`);
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
-  log(`smoke failed: expected commit ${commit} live and ready`);
+  log(`smoke failed: expected commit ${commit} live and ready, with its logo`);
   return false;
 }
 

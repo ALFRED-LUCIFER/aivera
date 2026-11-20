@@ -41,6 +41,19 @@ test('fails when the commit never becomes ready', async () => {
   }
 });
 
+// SAFETY: mutation check: dropped `logo.status === 200` from the pass condition -> this test failed
+test('fails when the image leaves out public/ and the logo 404s (AIV-P0-933)', async () => {
+  const app = await serve((req, res) => {
+    res.writeHead(req.url === '/brand/credalent-mark.png' ? 404 : 200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ commit: 'new' }));
+  });
+  try {
+    assert.equal(await smoke({ base: app.base, commit: 'new', timeoutMs: 50, intervalMs: 5, log: () => {} }), false);
+  } finally {
+    app.close();
+  }
+});
+
 // SAFETY: mutation check: removed the per-request AbortSignal.timeout -> this test failed (hung past the test timeout)
 test('a hanging request times out and the loop retries', { timeout: 5_000 }, async () => {
   let calls = 0;
