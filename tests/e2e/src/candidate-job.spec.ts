@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P3-005, journey J5 step 4: each of the five synthetic jobs published by seed.ts, opened from the jobs list.
 const open = async (page: Page, title: string) => {
@@ -93,5 +93,5 @@ for (const theme of themes)
       await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
       await open(page, title);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
     });

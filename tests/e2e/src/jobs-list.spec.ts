@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-006: AP's workspace "Demo" has the five demo jobs (seed.ts); Nadia's workspace has none. Not Alex's
 // "Demo Hiring Co", where the add-job spec adds jobs.
@@ -84,12 +84,12 @@ for (const theme of themes) {
     await page.goto('/app/jobs');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.getByRole('radio', { name: 'All 5' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await expect(page).toHaveScreenshot(`jobs-list-${theme}.png`, { fullPage: true });
     await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'nadia@example.com' });
     await page.goto('/app/jobs');
     await expect(page.getByText('No jobs yet. Add a job to define what it needs.')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

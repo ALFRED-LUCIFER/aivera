@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-009 J1 step 4, Add a job step 2: what the description leaves out. The fake model answers from recorded fixtures
 // (tests/e2e/ai-fixtures.json, the eval set's senior-ai-engineer case). The suggestions per job type are the eval set's
@@ -51,7 +51,7 @@ for (const theme of themes) {
     );
     await expect(rowOf(page, 'Product judgement').getByRole('cell').nth(1)).toHaveText('15%');
     await expect(page.getByText('Weights total 100%')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario: Remove and restore. One button toggles, so focus stays where the recruiter is.
     await page.getByRole('button', { name: 'Remove Product judgement' }).focus();
@@ -63,7 +63,7 @@ for (const theme of themes) {
     await expect(restore).toBeFocused();
     await expect(page.getByText('Weights rebalance when you save')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Missing from your description · 1 suggestion' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     await page.keyboard.press('Enter');
     await expect(rowOf(page, 'Product judgement').getByRole('cell').nth(1)).toHaveText('15%');

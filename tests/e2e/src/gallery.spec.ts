@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { css, expectNoAxeViolations, openGallery, themes } from './gallery.ts';
+import { css, expectAccessible, openGallery, themes } from './gallery.ts';
 
 const sections = [
   'colours',
@@ -59,7 +59,7 @@ for (const theme of themes) {
     });
 
     test('Scenario: axe finds no violations', async ({ page }) => {
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
     });
 
     // Scenario: A visual change fails until approved. Each section is its own baseline, so a diff names the component.
@@ -73,20 +73,20 @@ for (const theme of themes) {
       await page.getByRole('button', { name: 'Open dialog' }).click();
       const dialog = page.getByRole('dialog', { name: 'Rename job' });
       await expect(dialog).toBeVisible();
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(dialog).toHaveScreenshot(`dialog-${theme}.png`);
       await page.keyboard.press('Escape');
 
       await page.getByRole('button', { name: 'Show toast' }).click();
       const toast = page.getByRole('status').filter({ hasText: 'Rubric saved' });
       await expect(toast).toBeVisible();
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await page.getByRole('button', { name: 'Close' }).click();
 
       await page.getByRole('button', { name: 'Ask Credalent' }).click();
       const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
       await expect(drawer.getByRole('button', { name: 'Which claims are still open?' })).toBeVisible();
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(drawer).toHaveScreenshot(`assistant-open-${theme}.png`);
       await page.keyboard.press('Escape');
 
@@ -94,7 +94,7 @@ for (const theme of themes) {
       const bulk = page.getByRole('dialog', { name: 'Preview: request evidence from 2 candidates' });
       await bulk.getByRole('button', { name: 'Send 2 requests' }).click();
       await expect(bulk.getByRole('button', { name: 'Sending…' })).toHaveAttribute('aria-busy', 'true');
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(bulk).toHaveScreenshot(`preview-pending-${theme}.png`);
     });
 
@@ -104,7 +104,7 @@ for (const theme of themes) {
       await expect(card).toHaveScreenshot(`preview-open-${theme}.png`);
       await card.getByRole('button', { name: 'Confirm move' }).click();
       await expect(card.getByRole('alert')).toHaveText('That did not go through. Nothing was changed.');
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(card).toHaveScreenshot(`preview-failed-${theme}.png`);
       await card.getByRole('button', { name: 'Cancel' }).click();
 
@@ -112,7 +112,7 @@ for (const theme of themes) {
       await expect(banner.getByRole('checkbox', { name: 'Send a reminder after three days' })).toBeChecked();
       await banner.getByRole('button', { name: 'Send 2 requests' }).click();
       await expect(page.locator('#preview output')).toHaveText(/2 evidence requests sent/);
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(page.locator('section#preview')).toHaveScreenshot(`preview-sent-${theme}.png`);
     });
   });

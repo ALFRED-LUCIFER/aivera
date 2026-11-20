@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 
 type SignInOptions = {
   email?: string;
@@ -23,3 +23,22 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   const tenantButton = button === 'Continue with Google' ? 'Sign in with Google' : 'Continue';
   await page.getByRole('button', { name: tenantButton }).click();
 }
+
+const signedIn =
+  (options: SignInOptions) =>
+  async ({ page }: { page: Page }, use: (page: Page) => Promise<void>) => {
+    await signIn(page, options);
+    await use(page);
+  };
+
+/**
+ * The synthetic cast's roles (seed.ts, personas.md) as pages signed in through the mocked tenant: AP runs workspace
+ * "Demo", the Head of Engineering is its hiring owner for the Senior AI Engineer, Sara Al Qahtani has a candidate account.
+ * Each signs in the test's own `page`, so a test takes one of them.
+ */
+export const test = base.extend<Record<'recruiter' | 'hiringOwner' | 'candidate' | 'anonymous', Page>>({
+  recruiter: signedIn({ email: 'ap@example.com' }),
+  hiringOwner: signedIn({ email: 'head.engineering@example.com' }),
+  candidate: signedIn({ email: 'sara@example.com', from: '/candidates/sign-in' }),
+  anonymous: ({ page }, use) => use(page),
+});

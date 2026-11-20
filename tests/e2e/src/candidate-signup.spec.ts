@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P3-007, journey J5 step 5: candidate sign-up and sign-in against the mocked tenant (tests/e2e/mock-oidc.ts),
 // which plays the tenant's hosted sign-up page. Synthetic people only; each sign-up uses a new address, so a reused
@@ -162,11 +162,11 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await page.goto('/candidates/signup');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await throughTenant(page, newAddress('omar.farouk'), 'Create free account');
     await fullName(page).fill('');
     await page.getByRole('button', { name: 'Create free account' }).click();
     await expect(page.getByText('Enter your full name.')).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // J7 step 1: the website hero (AIV-P5-001).
 
@@ -64,7 +64,7 @@ test.describe('reduced motion', () => {
       await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
       await page.goto('/');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-      await expectNoAxeViolations(page);
+      await expectAccessible(page);
       await expect(card(page)).toHaveScreenshot(`website-hero-card-${theme}.png`);
     });
   }
@@ -265,6 +265,6 @@ for (const theme of themes) {
       await reveal.scrollIntoViewIfNeeded();
       await expect(reveal).toHaveCSS('opacity', '1');
     }
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

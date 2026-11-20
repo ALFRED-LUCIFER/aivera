@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 import { approvalRow, PIA, signUpWorkspace, WAITING } from './workspaces.ts';
 
 // AIV-P2-039 (ADR-012): new workspaces wait for an operator while the pilot runs. Each run signs up fresh synthetic
@@ -31,7 +31,7 @@ for (const theme of themes) {
       await expect(nadia.page.getByText(WAITING)).toBeVisible();
     }
     await expect(nadia.page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(nadia.page);
+    await expectAccessible(nadia.page);
     // Add a job shows the same page; the refusal of the add itself (403) is the request context's, proven in
     // tests/integration/src/ops-approvals.test.ts and apps/web/src/server/workspace.test.ts.
     await nadia.page.goto('/app/jobs/new');
@@ -54,13 +54,13 @@ for (const theme of themes) {
       email,
       /Approve/,
     ]);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     const approve = row.getByRole('button', { name: `Approve ${name}` });
     await approve.focus();
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: `Approve ${name}?` });
     await expect(dialog).toContainText('Nothing changes until you confirm.');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     const confirm = dialog.getByRole('button', { name: 'Confirm' });
     await confirm.focus();
     await page.keyboard.press('Enter');
@@ -110,7 +110,7 @@ for (const theme of themes) {
       creator.page.getByText("Your workspace was not approved. Reason: Outside the pilot's agreed teams"),
     ).toBeVisible();
     await expect(creator.page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(creator.page);
+    await expectAccessible(creator.page);
     await creator.context.close();
   });
 }

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-008 J1 step 4, Add a job step 2: Draft competencies. The model is the fake, answering from recorded fixtures
 // (tests/e2e/ai-fixtures.json, the eval set's senior-ai-engineer case) by description text. Mira's "Draft Studio" and
@@ -85,7 +85,7 @@ for (const theme of themes) {
     await expect(
       page.getByRole('term').filter({ hasText: 'Evidence that counts for this job type' }).locator('+ dd'),
     ).toHaveText('Eval harnesses, prompt libraries, shipped assistants');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Keep, edit and remove, by keyboard. Nothing is applied beyond this page.
     await rowOf(page, 'Cost and reliability').getByRole('button', { name: 'Edit Cost and reliability' }).focus();
@@ -93,7 +93,7 @@ for (const theme of themes) {
     await expect(page.getByLabel('Competency name, Cost and reliability')).toBeFocused();
     await page.getByLabel('Level the job needs, Cost and reliability').selectOption({ label: '3 of 5' });
     await page.getByLabel('Type, Cost and reliability').selectOption({ label: 'Mandatory' });
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     // In edit mode the row holds inputs, not text: its one Done button.
     await table(page).getByRole('button', { name: 'Done' }).click();
     await expect(rowOf(page, 'Cost and reliability').getByRole('cell').nth(2)).toHaveText('3 of 5');
@@ -136,7 +136,7 @@ test('Scenario: Drafting in progress, then the AI service fails', async ({ page 
     { timeout: 20_000 },
   );
   await expect(draftButton(page)).toBeEnabled();
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
 
   // The recruiter writes competencies by hand, or starts from the job type's starters.
   await page.getByRole('button', { name: 'Add competency' }).click();
@@ -162,7 +162,7 @@ for (const theme of themes) {
       "This workspace has used today's AI allowance. You can add competencies yourself, or draft them tomorrow.",
     );
     await expect(page.getByRole('button', { name: 'Add competency' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
 
