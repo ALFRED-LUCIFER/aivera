@@ -21,9 +21,11 @@ test('Scenario: J0 smoke journey', async ({ recruiter: page }) => {
   await expectAccessible(page);
 });
 
-test('the hiring owner fixture lands on My desk', async ({ hiringOwner: page }) => {
-  await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
+test('the hiring owner fixture is signed in, without the recruiter desk', async ({ hiringOwner: page, context }) => {
+  expect((await context.cookies()).some((c) => c.name === '__Host-credalent-session')).toBe(true);
+  // My desk needs the recruiter capability (navigation.ts); a hiring owner reaches only the jobs she is granted.
+  await page.goto('/app');
+  await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible();
 });
 
 test('the candidate fixture lands on My applications', async ({ candidate: page }) => {

@@ -35,12 +35,12 @@ const signedIn =
 
 /**
  * The synthetic cast's roles (seed.ts, personas.md) as pages signed in through the mocked tenant: AP runs workspace
- * "Demo", the Head of Engineering is its hiring owner for the Senior AI Engineer, Sara Al Qahtani has a candidate account.
+ * "Demo", Hana Owner is a hiring owner there, Sara Al Qahtani has a candidate account.
  * Each signs in the test's own `page`, so a test takes one of them.
  */
 export const test = base.extend<Record<'recruiter' | 'hiringOwner' | 'candidate' | 'anonymous', Page>>({
   recruiter: signedIn({ email: 'ap@example.com' }),
-  hiringOwner: signedIn({ email: 'head.engineering@example.com' }),
+  hiringOwner: signedIn({ email: 'hana.owner@example.com' }),
   candidate: signedIn({ email: 'sara@example.com', from: '/candidates/sign-in' }),
   anonymous: ({ page }, use) => use(page),
 });
