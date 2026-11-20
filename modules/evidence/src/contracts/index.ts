@@ -4,24 +4,44 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
 import type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
-import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+import type {
+  EvidenceItemView,
+  RecordEvidenceInput,
+  RecordEvidenceResult,
+  RecordReferenceCallInput,
+} from '../application/evidence.ts';
+import type { Comparison } from '../domain/corroboration.ts';
 import type { EvidenceMappingView } from '../application/mapping.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
 import type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
-export { EvidenceError, PERSONAL_DATA_FIELDS, PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
+export {
+  EvidenceError,
+  PERSONAL_DATA_FIELDS,
+  PROVENANCES,
+  REFERENCE_ROLES,
+  SOURCE_KINDS,
+  STRENGTHS,
+} from '../domain/evidence.ts';
 export type {
   CompetencyLink,
   EvidenceErrorCode,
   EvidenceItem,
   EvidenceSource,
   Provenance,
+  ReferenceRole,
   SourceKind,
   Strength,
 } from '../domain/evidence.ts';
-export type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+export type {
+  EvidenceItemView,
+  RecordEvidenceInput,
+  RecordEvidenceResult,
+  RecordReferenceCallInput,
+} from '../application/evidence.ts';
+export type { Comparison, ComparisonOutcome } from '../domain/corroboration.ts';
 export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/fingerprint.ts';
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
@@ -136,6 +156,32 @@ export interface EvidenceContract {
    * Supporting", `limit` "State what this evidence does not show", `provenance`, `strength`, …) and writes nothing.
    */
   recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult>;
+  /**
+   * Stores a recruiter's reference call notes as a `reference_call` source ("Reference call, 11 Nov") with one
+   * Supporting, Candidate-submitted item; who was called is kept by role only (`REFERENCE_ROLES`), never a name. The
+   * notes are fingerprinted, so notes copied from the candidate's write-up are one origin with it. Admins and recruiters;
+   * anyone else gets `ForbiddenError` and nothing is stored. Throws `EvidenceError` (`reference_role`, `called_on`,
+   * `excerpt`) and writes nothing.
+   */
+  recordReferenceCall(ctx: WorkspaceContext, input: RecordReferenceCallInput): Promise<RecordEvidenceResult>;
+  /**
+   * The comparisons of the candidate's newest mapping run for the job (AIV-P1-029), oldest first: contradictions (open
+   * while `resolvedAt` is null) and agreement facts, each citing both items by id. An open contradiction shows both
+   * items as "Contradictory" in `listEvidenceForCandidate`, so the score leaves them out. Every role with a grant on
+   * the job.
+   */
+  listComparisons(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<Comparison[]>;
+  /**
+   * A person resolves a contradiction with a note and the limit both items then state; the items show their own
+   * provenance again. A re-map keeps the resolution while the same two excerpts contradict. Audited
+   * (`evidence.contradiction_resolved`: actor, time, note) as the last statement; changes no stage, rank or contact.
+   * Admins and recruiters. Throws `EvidenceError` (`resolution_note`, `limit`, `comparison_not_found`).
+   */
+  resolveContradiction(
+    ctx: WorkspaceContext,
+    comparisonId: string,
+    input: { note: string; limit: string },
+  ): Promise<void>;
   /** Links an item to a competency of a job's rubric; linking twice keeps one link. Admins and recruiters. */
   linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void>;
   /**

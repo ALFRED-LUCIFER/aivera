@@ -7,10 +7,13 @@ import {
   checkLink,
   checkSource,
   EvidenceError,
+  REFERENCE_ROLES,
   type CompetencyLink,
   type EvidenceItem,
   type EvidenceSource,
+  type ReferenceRole,
 } from '../domain/evidence.ts';
+import type { Comparison, Resolution } from '../domain/corroboration.ts';
 import {
   crossApplicantMatches,
   DUPLICATE_RESOLUTIONS,
@@ -53,6 +56,13 @@ export type EvidenceStore = {
     flagId: string,
     resolution: Pick<DuplicateFlag, 'resolution' | 'resolvedBy' | 'resolvedAt'>,
   ): Promise<DuplicateFlag | null>;
+  /**
+   * Resolves an open or resolved contradiction (never an agreement) and returns it as it was before, or null when the
+   * workspace has no such contradiction.
+   */
+  resolveComparison(workspaceId: string, comparisonId: string, resolution: Resolution): Promise<Comparison | null>;
+  /** The comparisons of the candidate's newest mapping run for the job, oldest first. */
+  comparisons(workspaceId: string, candidateId: string, jobId: string): Promise<Comparison[]>;
   /** Deletes all the workspace's evidence; false, with nothing deleted, if any source is not synthetic. */
   deleteSynthetic(workspaceId: string): Promise<boolean>;
 };
@@ -127,6 +137,19 @@ export async function flagCrossApplicantCopies(
     logFlagged({ flagId: f.id, sourceId: f.sourceId, otherSourceId: f.otherSourceId, similarity: f.similarity });
 }
 
+/** A recruiter's notes of a reference call: who was called by role only, never a name or contact (AGENTS.md 1.2). */
+export type RecordReferenceCallInput = {
+  candidateId: string;
+  /** The day of the call, YYYY-MM-DD. */
+  calledOn: string;
+  calledRole: ReferenceRole;
+  /** What the reference said, as the recruiter wrote it down. */
+  notes: string;
+  synthetic: boolean;
+};
+
+export const REFERENCE_LIMIT = "One person's account, noted by the recruiter; it does not show the work itself.";
+
 // shortcut: recording and linking are open to admins and recruiters (`candidate.create`), reading to them alone
 // (`candidate.view` with no job); hiring owners and interviewers reach a candidate's evidence through an application's
 // job once applications land (AIV-P1-017).
@@ -141,40 +164,119 @@ export function evidenceUseCases({
   newId,
   now,
 }: Ports) {
+  /** Stores a source and its items; the caller has authorised. */
+  async function record(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult> {
+    checkSource(input.source);
+    checkItems(input.items);
+    input.items.forEach(checkItem);
+    input.items.forEach((i) => i.competencies?.forEach(checkLink));
+    const createdAt = now();
+    const base = {
+      workspaceId: ctx.workspaceId,
+      candidateId: input.candidateId,
+      synthetic: input.synthetic,
+      createdAt,
+    };
+    const source: EvidenceSource = {
+      ...input.source,
+      ...base,
+      id: newId(),
+      label: input.source.label.trim(),
+      textFingerprint: input.text === undefined ? null : fingerprintText(input.text, sha1),
+    };
+    const items = input.items.map(({ competencies = [], ...item }) => ({
+      item: { ...item, ...base, id: newId(), sourceId: source.id } satisfies EvidenceItem,
+      competencies,
+    }));
+    await storeFor(ctx.tx).insert(
+      source,
+      items.map((i) => i.item),
+      items.flatMap((i) => i.competencies.map((c) => ({ ...c, itemId: i.item.id }))),
+    );
+    const itemIds = items.map((i) => i.item.id);
+    await publishRecorded(ctx.tx, source, itemIds);
+    await flagCrossApplicantCopies({ storeFor, newId, logFlagged }, ctx.tx, source);
+    return { sourceId: source.id, itemIds };
+  }
+
   return {
     async recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult> {
       await authorize(ctx, 'candidate.create');
-      checkSource(input.source);
-      checkItems(input.items);
-      input.items.forEach(checkItem);
-      input.items.forEach((i) => i.competencies?.forEach(checkLink));
-      const createdAt = now();
-      const base = {
-        workspaceId: ctx.workspaceId,
+      return record(ctx, input);
+    },
+
+    /**
+     * A reference call as a `reference_call` source ("Reference call, 11 Nov") with one Supporting item, the notes.
+     * Admins and recruiters only. The notes are fingerprinted, so notes copied from the candidate's own write-up are
+     * one origin with it and never corroborate it (AIV-P1-029).
+     */
+    async recordReferenceCall(ctx: WorkspaceContext, input: RecordReferenceCallInput): Promise<RecordEvidenceResult> {
+      await authorize(ctx, 'candidate.create');
+      if (!REFERENCE_ROLES.includes(input.calledRole)) throw new EvidenceError('reference_role');
+      const day = /^\d{4}-\d{2}-\d{2}$/u.test(input.calledOn) ? new Date(`${input.calledOn}T00:00:00Z`) : null;
+      // A real past or present day: 2026-02-31 would roll over to 3 March.
+      if (!day || Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== input.calledOn || day > now())
+        throw new EvidenceError('called_on');
+      const date = day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+      return record(ctx, {
         candidateId: input.candidateId,
+        source: {
+          kind: 'reference_call',
+          label: `Reference call, ${date}`,
+          url: null,
+          blobFileId: null,
+          capturedAt: day,
+          checkedAt: day,
+          checkMethod: `Reference call (${input.calledRole.replaceAll('_', ' ')})`,
+        },
+        items: [
+          {
+            excerpt: input.notes.trim(),
+            excerptSpan: null,
+            provenance: 'submitted',
+            strength: 'supporting',
+            limit: REFERENCE_LIMIT,
+          },
+        ],
         synthetic: input.synthetic,
-        createdAt,
-      };
-      const source: EvidenceSource = {
-        ...input.source,
-        ...base,
-        id: newId(),
-        label: input.source.label.trim(),
-        textFingerprint: input.text === undefined ? null : fingerprintText(input.text, sha1),
-      };
-      const items = input.items.map(({ competencies = [], ...item }) => ({
-        item: { ...item, ...base, id: newId(), sourceId: source.id } satisfies EvidenceItem,
-        competencies,
-      }));
-      await storeFor(ctx.tx).insert(
-        source,
-        items.map((i) => i.item),
-        items.flatMap((i) => i.competencies.map((c) => ({ ...c, itemId: i.item.id }))),
-      );
-      const itemIds = items.map((i) => i.item.id);
-      await publishRecorded(ctx.tx, source, itemIds);
-      await flagCrossApplicantCopies({ storeFor, newId, logFlagged }, ctx.tx, source);
-      return { sourceId: source.id, itemIds };
+        text: input.notes,
+      });
+    },
+
+    /**
+     * A person resolves a contradiction with a note and the limit both items then state; the items count again.
+     * Audited (`evidence.contradiction_resolved`: actor, time, note) as the last statement. Admins and recruiters.
+     */
+    async resolveContradiction(
+      ctx: WorkspaceContext,
+      comparisonId: string,
+      input: { note: string; limit: string },
+    ): Promise<void> {
+      await authorize(ctx, 'candidate.create');
+      const note = input.note.trim();
+      const limit = input.limit.trim();
+      if (!note) throw new EvidenceError('resolution_note');
+      if (!limit) throw new EvidenceError('limit');
+      const before = await storeFor(ctx.tx).resolveComparison(ctx.workspaceId, comparisonId, {
+        resolvedBy: ctx.userId,
+        resolvedAt: now(),
+        resolutionNote: note,
+        resolutionLimit: limit,
+      });
+      if (!before) throw new EvidenceError('comparison_not_found');
+      await audit(ctx, {
+        action: 'evidence.contradiction_resolved',
+        subject: { type: 'comparison', id: comparisonId },
+        note,
+        before: { resolved: before.resolvedAt !== null },
+        after: { resolved: true, itemId: before.itemId, otherItemId: before.otherItemId },
+      });
+    },
+
+    /** The newest mapping run's comparisons for the job: open and resolved contradictions, and agreements. */
+    async listComparisons(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<Comparison[]> {
+      await authorize(ctx, 'candidate.view', { jobId });
+      return storeFor(ctx.tx).comparisons(ctx.workspaceId, candidateId, jobId);
     },
 
     async linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void> {

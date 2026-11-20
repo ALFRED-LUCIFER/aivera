@@ -1,7 +1,9 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
+import { shownAs } from '../domain/corroboration.ts';
 import {
+  comparison,
   competencyLink,
   cvParse,
   documentRead,
@@ -91,8 +93,21 @@ export function evidenceStore(tx: Tx): EvidenceStore {
             jobId === null ? undefined : eq(competencyLink.jobId, jobId),
           ),
         );
+      const ids = rows.map((r) => r.item.id);
+      // An open contradiction shows its items as "Contradictory"; a resolved one, its limit (AIV-P1-029).
+      const comparisons = await tx
+        .select()
+        .from(comparison)
+        .where(
+          and(
+            eq(comparison.workspaceId, workspaceId),
+            eq(comparison.outcome, 'contradiction'),
+            or(inArray(comparison.itemId, ids), inArray(comparison.otherItemId, ids)),
+          ),
+        );
       return rows.map(({ item: { mappingId: _run, ...own }, source: src }) => ({
         ...own,
+        ...shownAs(own, comparisons),
         source: src,
         competencies: links
           .filter((l) => l.itemId === own.id)
@@ -136,6 +151,33 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.update(duplicateFlag).set(resolution).where(where);
       return before;
     },
+    async resolveComparison(workspaceId, comparisonId, resolution) {
+      const where = and(
+        eq(comparison.workspaceId, workspaceId),
+        eq(comparison.id, comparisonId),
+        eq(comparison.outcome, 'contradiction'),
+      );
+      // Locked, so two people resolving at once are audited in the order they changed it.
+      const [before] = await tx.select().from(comparison).where(where).for('update');
+      if (!before) return null;
+      await tx.update(comparison).set(resolution).where(where);
+      return before;
+    },
+    comparisons(workspaceId, candidateId, jobId) {
+      const newest = tx
+        .select({ id: mapping.id })
+        .from(mapping)
+        .where(
+          and(eq(mapping.workspaceId, workspaceId), eq(mapping.candidateId, candidateId), eq(mapping.jobId, jobId)),
+        )
+        .orderBy(desc(mapping.createdAt), desc(mapping.id))
+        .limit(1);
+      return tx
+        .select()
+        .from(comparison)
+        .where(and(eq(comparison.workspaceId, workspaceId), sql`${comparison.mappingId} = (${newest})`))
+        .orderBy(asc(comparison.createdAt), asc(comparison.id));
+    },
     async deleteSynthetic(workspaceId) {
       const [real] = await tx
         .select({ id: source.id })
@@ -154,6 +196,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(sourceNote).where(eq(sourceNote.workspaceId, workspaceId));
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
+      await tx.delete(comparison).where(eq(comparison.workspaceId, workspaceId));
       await tx.delete(item).where(eq(item.workspaceId, workspaceId));
       await tx.delete(evidenceGap).where(eq(evidenceGap.workspaceId, workspaceId));
       await tx.delete(mapping).where(eq(mapping.workspaceId, workspaceId));

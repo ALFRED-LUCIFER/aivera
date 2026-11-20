@@ -1,6 +1,15 @@
 import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
+import {
+  corroboratedCompetencies,
+  pairKey,
+  settledPairs,
+  type Comparison,
+  type OriginSource,
+  type Resolution,
+} from '../domain/corroboration.ts';
 import type { EvidenceItem, SourceKind } from '../domain/evidence.ts';
+import { groupOrigins } from '../domain/fingerprint.ts';
 import {
   findGaps,
   guardLinks,
@@ -9,6 +18,7 @@ import {
   type DiscardReason,
   type EvidenceGap,
   type MapGrade,
+  type MappedLink,
   type MapSource,
   type ModelLink,
   type StoredChange,
@@ -42,7 +52,10 @@ export type MappingStore = {
     items: (EvidenceItem & { mappingId: string })[],
     links: { itemId: string; jobId: string; competencyId: string; level: number }[],
     gaps: EvidenceGapRow[],
+    comparisons: Comparison[],
   ): Promise<void>;
+  /** Resolved contradictions of the candidate's earlier runs for the job, by `pairKey` of their two cited excerpts. */
+  resolutions(workspaceId: string, candidateId: string, jobId: string): Promise<Map<string, Resolution>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
 };
 
@@ -76,6 +89,7 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
     mappingId: string;
     links: number;
     gaps: number;
+    contradictions: number;
     discarded: Partial<Record<DiscardReason, number>>;
     uncitedChanges: number;
   }): void;
@@ -115,6 +129,8 @@ export async function mapEvidence(
   for (const i of await ports.storeFor(tx).list(workspaceId, { candidateId, unmapped: true }, null))
     bySource.set(i.sourceId, [...(bySource.get(i.sourceId) ?? []), i]);
   const mapSources: MapSource[] = [];
+  const originSources: OriginSource[] = [];
+  const { logins, pulls } = await reads.pullRequestOrigins(workspaceId, candidateId);
   const aiSources: Parameters<MappingPorts['mapToCompetencies']>[2] = [];
   const synthetic = new Map<string, boolean>();
   for (const [sourceId, own] of bySource) {
@@ -135,6 +151,12 @@ export async function mapEvidence(
       authorship: measured && classifyAuthorship(measured),
       declarationSpans,
     });
+    originSources.push({
+      id: sourceId,
+      kind: source.kind,
+      commitHistory: !!measured,
+      pullRequests: pulls.filter((pr) => pr.sourceId === sourceId),
+    });
     aiSources.push({ id: sourceId, kind: AI_KIND[source.kind], text });
     synthetic.set(sourceId, source.synthetic);
   }
@@ -144,12 +166,43 @@ export async function mapEvidence(
     : { links: [], changes: [] };
   const competencyIds = rubric.competencies.map((c) => c.id);
   const mapGrades: MapGrade[] = grades.map((g) => ({ ...g, sourceId: g.repositorySourceId }));
-  const { links, discarded } = guardLinks({
+  const guarded = guardLinks({
     competencyIds,
     sources: mapSources,
     grades: mapGrades,
     links: answer.links,
   });
+  const { discarded } = guarded;
+  // AIV-P1-029: the only place a link becomes "Independently corroborated"; near-duplicates are one origin.
+  const originGroups = groupOrigins(await ports.storeFor(tx).fingerprints(workspaceId, candidateId));
+  // shortcut: pairs the numeric pre-check leaves `not_settled` are not compared until the AI comparison (AIV-P1-078).
+  const resolutions = await ports.mappingStoreFor(tx).resolutions(workspaceId, candidateId, jobId);
+  const pairs = settledPairs(guarded.links, originGroups).map((pair) => ({
+    ...pair,
+    // A person's resolution of the same two excerpts stands on a re-map; it is not asked for again.
+    resolved:
+      pair.outcome === 'contradiction'
+        ? resolutions.get(pairKey(guarded.links[pair.a] as MappedLink, guarded.links[pair.b] as MappedLink))
+        : undefined,
+  }));
+  // A source in an open contradiction vouches for nothing until a person resolves it.
+  const withheld = new Set(
+    pairs
+      .filter((p) => p.outcome === 'contradiction' && !p.resolved)
+      .flatMap((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']),
+  );
+  const corroborated = corroboratedCompetencies({
+    links: guarded.links,
+    sources: originSources,
+    originGroups,
+    logins,
+    withheld,
+  });
+  const links = guarded.links.map((l) =>
+    l.provenance === 'submitted' && corroborated.has(l.competencyId)
+      ? { ...l, provenance: 'corroborated' as const }
+      : l,
+  );
   const gaps = findGaps(competencyIds, links, mapGrades);
   const ranked = rankChanges({
     competencies: rubric.competencies.map((c) => ({ id: c.id, weight: c.weightPercent })),
@@ -177,6 +230,24 @@ export async function mapEvidence(
     mappingId,
   }));
   const gapRows = gaps.map((g) => ({ ...g, id: ports.newId(), workspaceId, mappingId }));
+  const comparisons: Comparison[] = pairs.map(({ a, b, outcome, resolved }) => {
+    return {
+      id: ports.newId(),
+      workspaceId,
+      candidateId,
+      jobId,
+      mappingId,
+      competencyId: (links[a] as MappedLink).competencyId,
+      itemId: idOf(items, a),
+      otherItemId: idOf(items, b),
+      outcome,
+      resolvedBy: resolved?.resolvedBy ?? null,
+      resolvedAt: resolved?.resolvedAt ?? null,
+      resolutionNote: resolved?.resolutionNote ?? null,
+      resolutionLimit: resolved?.resolutionLimit ?? null,
+      createdAt,
+    };
+  });
   const run: MappingRun = {
     id: mappingId,
     workspaceId,
@@ -197,6 +268,7 @@ export async function mapEvidence(
     items,
     links.map((l, i) => ({ itemId: idOf(items, i), jobId, competencyId: l.competencyId, level: l.level })),
     gapRows,
+    comparisons,
   );
   await ports.publishMapped(tx, run);
   const counts: Partial<Record<DiscardReason, number>> = {};
@@ -205,6 +277,7 @@ export async function mapEvidence(
     mappingId,
     links: links.length,
     gaps: gaps.length,
+    contradictions: comparisons.filter((c) => c.outcome === 'contradiction').length,
     discarded: counts,
     uncitedChanges: ranked.uncited,
   });

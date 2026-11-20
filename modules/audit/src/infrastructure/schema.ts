@@ -34,11 +34,11 @@ export const entry = audit
       check('entry_actor_id_check', sql`${t.actorType} = 'system' or ${t.actorId} is not null`),
       check(
         'entry_action_check',
-        sql`${t.action} in ('rubric.approved', 'rubric.submitted', 'rubric.saved', 'rubric.returned', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'workspace.settings_changed', 'member.invited', 'invitation.revoked', 'invitation.accepted', 'member.removed', 'job.stage_changed', 'evidence.flag_resolved', 'evidence_request.created', 'evidence_request.sent', 'evidence_request.closed')`,
+        sql`${t.action} in ('rubric.approved', 'rubric.submitted', 'rubric.saved', 'rubric.returned', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'workspace.settings_changed', 'member.invited', 'invitation.revoked', 'invitation.accepted', 'member.removed', 'job.stage_changed', 'evidence.flag_resolved', 'evidence_request.created', 'evidence_request.sent', 'evidence_request.closed', 'evidence.contradiction_resolved')`,
       ),
       check(
         'entry_note_check',
-        sql`${t.action} not in ('score.changed', 'decision.recorded', 'ai_budget.changed') or coalesce(btrim(${t.note}), '') <> ''`,
+        sql`${t.action} not in ('score.changed', 'decision.recorded', 'ai_budget.changed', 'evidence.contradiction_resolved') or coalesce(btrim(${t.note}), '') <> ''`,
       ),
       tenantPolicy('entry_tenant_isolation', t.workspaceId),
     ],
