@@ -1,0 +1,60 @@
+# Sara Al Qahtani's CV with a long skills list and month-inclusive dates (AIV-P1-025). The recorded answer is a
+# model that summarised the skills and dropped the months: the evidence module's repair passes restore them from the
+# CV text (modules/evidence/src/domain/cv.golden.test.ts, 100% skill and date recall, nothing uncited).
+id: sara-al-qahtani-long-skills
+people: ['Sara Al Qahtani']
+sources:
+  - id: S1
+    kind: cv
+    text: "Sara Al Qahtani\nsara.alqahtani@example.com | +971 50 000 0001\nSkills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI\nLanguages: Arabic, English\nSenior AI Engineer, A BNPL fintech\nJun 2020 - Aug 2023\nMerchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.\nAI Engineer, A grocery delivery app\nMar 2018 - May 2020\nBuilt the Gulf Arabic evaluation set used before each release."
+expected:
+  {
+    'match':
+      {
+        'statements[*].text': ['cut cost per request by 40%'],
+        'skills[*].skill': ['Python', 'PyTorch'],
+        'contact.emails': ['sara.alqahtani@example.com'],
+      },
+  }
+recorded:
+  {
+    'output':
+      {
+        'contact': { 'emails': ['sara.alqahtani@example.com'], 'phones': ['+971 50 000 0001'] },
+        'workHistory':
+          [
+            {
+              'role': 'Senior AI Engineer, A BNPL fintech',
+              'dates': '2020 - 2023',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'Senior AI Engineer, A BNPL fintech' }],
+              'claim': true,
+            },
+            {
+              'role': 'AI Engineer, A grocery delivery app',
+              'dates': '2018 - 2020',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'AI Engineer, A grocery delivery app' }],
+              'claim': true,
+            },
+          ],
+        'skills':
+          [
+            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
+            { 'skill': 'PyTorch', 'citations': [{ 'sourceId': 'S1', 'quote': 'PyTorch' }], 'claim': true },
+            { 'skill': 'Azure OpenAI', 'citations': [{ 'sourceId': 'S1', 'quote': 'Azure OpenAI' }], 'claim': true },
+          ],
+        'statements':
+          [
+            {
+              'text': 'cut cost per request by 40%',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'cut cost per request by 40%' }],
+              'claim': true,
+            },
+            {
+              'text': 'Built the Gulf Arabic evaluation set used before each release',
+              'citations':
+                [{ 'sourceId': 'S1', 'quote': 'Built the Gulf Arabic evaluation set used before each release' }],
+              'claim': true,
+            },
+          ],
+      },
+  }

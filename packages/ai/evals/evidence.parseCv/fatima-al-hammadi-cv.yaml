@@ -1,0 +1,39 @@
+# Fatima Al Hammadi's CV (AIV-P1-025): contact details are read into contact only, never into a statement.
+id: fatima-al-hammadi-cv
+people: ['Fatima Al Hammadi']
+sources:
+  - id: S1
+    kind: cv
+    text: "Fatima Al Hammadi\nfatima.alhammadi@example.com\n+971 50 000 0002\nProduct Analyst, A retail bank, Apr 2021 - Present\nBuilt the weekly card-spend dashboard used by the risk team.\nSkills: SQL, Looker, Python"
+expected: { 'match': { 'contact.emails': ['fatima.alhammadi@example.com'], 'contact.phones': ['+971 50 000 0002'] } }
+recorded:
+  {
+    'output':
+      {
+        'contact': { 'emails': ['fatima.alhammadi@example.com'], 'phones': ['+971 50 000 0002'] },
+        'workHistory':
+          [
+            {
+              'role': 'Product Analyst, A retail bank',
+              'dates': 'Apr 2021 - Present',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'Product Analyst, A retail bank, Apr 2021 - Present' }],
+              'claim': true,
+            },
+          ],
+        'skills':
+          [
+            { 'skill': 'SQL', 'citations': [{ 'sourceId': 'S1', 'quote': 'SQL' }], 'claim': true },
+            { 'skill': 'Looker', 'citations': [{ 'sourceId': 'S1', 'quote': 'Looker' }], 'claim': true },
+            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
+          ],
+        'statements':
+          [
+            {
+              'text': 'Built the weekly card-spend dashboard used by the risk team',
+              'citations':
+                [{ 'sourceId': 'S1', 'quote': 'Built the weekly card-spend dashboard used by the risk team' }],
+              'claim': true,
+            },
+          ],
+      },
+  }

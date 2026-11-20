@@ -1,11 +1,11 @@
 // Builds the files module for an app (ADR-002: only apps and tests import this).
 // Not the @credalent/db index: it also exports the migrator, whose module paths do not resolve inside a Next.js bundle.
-import type { Db } from '@credalent/db/client';
+import type { Db, Tx } from '@credalent/db/client';
 import { enqueue } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import { withCandidateAccount, withWorkspace } from '@credalent/db/with-workspace';
 import type { WorkspacesContract } from '@credalent/workspaces';
-import { filesUseCases, type BlobStore } from './application/files.ts';
+import { filesUseCases, readCleanFile, type BlobStore } from './application/files.ts';
 import { FileCleanV1, FileRejectedV1, type FilesContract } from './contracts/index.ts';
 import { fileStore } from './infrastructure/repository.ts';
 import { parseScanResult } from './infrastructure/scanResult.ts';
@@ -55,4 +55,10 @@ export function createFiles(config: {
       if (result) await useCases.applyScanResult(result.target, result.verdict);
     },
   };
+}
+
+/** `readCleanFile` over the worker's transaction (CV parsing, AIV-P1-025). */
+export function createCleanFileReader(blobs: Pick<BlobStore, 'read'>) {
+  return (tx: Tx, workspaceId: string, fileId: string) =>
+    readCleanFile({ storeFor: fileStore, blobs }, tx, workspaceId, fileId);
 }

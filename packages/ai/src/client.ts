@@ -1,4 +1,4 @@
-import { annotateSpan, withSpan } from '@credalent/observability';
+import { annotateSpan, log, withSpan } from '@credalent/observability';
 import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
 import type { z } from 'zod';
 import { checkOutput, formatSources, type Checked, type Source } from './citations.ts';
@@ -223,6 +223,11 @@ export function createAiClient(options: {
       schema: S;
       /** Candidate and job text goes here, never in `prompt`: only sources are wrapped as untrusted (AIV-P1-070). */
       sources: readonly Source[];
+      /**
+       * Extraction only: a list element with an invalid citation is dropped and the run logged as a citation failure,
+       * instead of rejecting the answer (citations.ts checkOutput). A missing citation or a schema error still rejects.
+       */
+      dropInvalidCitations?: boolean;
     }): Promise<Checked<z.infer<S>>> {
       const { task, schema, sources } = input;
       const settings = settingsOf(generateTasks, task);
@@ -252,8 +257,18 @@ export function createAiClient(options: {
             return { value: result.text, usage };
           });
           try {
-            const value = checkOutput(task, text, schema, sources);
-            outcome('ok', { 'credalent.ai.attempts': attempts });
+            let dropped = 0;
+            const value = checkOutput(
+              task,
+              text,
+              schema,
+              sources,
+              input.dropInvalidCitations ? () => dropped++ : undefined,
+            );
+            outcome('ok', { 'credalent.ai.attempts': attempts, 'credalent.ai.citation_failures': dropped });
+            // The count and the task only: never the statement or its quote (AGENTS.md 1.2).
+            if (dropped)
+              log.warn({ 'credalent.ai.task': task, 'credalent.ai.citation_failures': dropped }, 'ai citation failure');
             return value;
           } catch (error) {
             // checkOutput throws only the contract's three errors, whose messages hold no output.
