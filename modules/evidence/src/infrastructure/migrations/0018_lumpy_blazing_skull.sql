@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "source_cv_file_key" ON "evidence"."source" USING btree ("workspace_id","candidate_id","blob_file_id") WHERE "evidence"."source"."kind" = 'cv';

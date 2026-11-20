@@ -38,7 +38,7 @@ export function createIntake(
 }
 
 /**
- * Reads an arrival's person, links and supplied GitHub login as the system, in a worker job's workspace-scoped
+ * Reads an arrival's person, links, supplied GitHub login and file ids as the system, in a worker job's workspace-scoped
  * transaction with no member (the evidence module's `ApplicationReceived.v1` handler, AIV-P1-076).
  */
 export const readApplicationSourceAsSystem = (tx: Tx, workspaceId: string, sourceId: string) =>
