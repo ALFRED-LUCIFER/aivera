@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -9,6 +10,7 @@ import type { CandidatesContract } from '@aivera/candidates';
 import { createCandidates } from '@aivera/candidates/composition';
 import type { JobsContract } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
+import { createNotifications } from '@aivera/notifications/composition';
 import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@aivera/db';
 import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
 import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
@@ -46,6 +48,25 @@ const isRelayPolicy = (p: { table: string; name: string; cmd: string; roles: str
   p.table.endsWith('.outbox') &&
   ((p.name === 'outbox_relay_read' && p.cmd === 'SELECT') || (p.name === 'outbox_relay_mark' && p.cmd === 'UPDATE')) &&
   p.roles.join() === 'aivera_relay';
+
+/**
+ * The ACS delivery-report webhook's policies (AIV-P0-017): on notifications.message only, for aivera_app, reaching the
+ * one row whose provider id the transaction names. Expression matched exactly (tests/integration/src/notifications.test.ts).
+ */
+const PROVIDER_ID_EXPR =
+  "(provider_message_id = NULLIF(current_setting('app.provider_message_id'::text, true), ''::text))";
+const isDeliveryReportPolicy = (p: {
+  table: string;
+  name: string;
+  cmd: string;
+  roles: string[];
+  qual: string | null;
+}) =>
+  p.table === 'notifications.message' &&
+  ((p.name === 'message_delivery_report_read' && p.cmd === 'SELECT') ||
+    (p.name === 'message_delivery_report_mark' && p.cmd === 'UPDATE')) &&
+  p.roles.join() === 'aivera_app' &&
+  p.qual === PROVIDER_ID_EXPR;
 
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
@@ -157,7 +178,9 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
     const isPublicRead = (p: Policy) =>
       PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
-    for (const loose of permissive.filter((p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p)))
+    for (const loose of permissive.filter(
+      (p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p) && !isDeliveryReportPolicy(p),
+    ))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with ${setting}`);
   }
   return violations;
@@ -264,6 +287,25 @@ async function seed(
       identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
       synthetic: true,
     });
+    // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
+    const { messageId } = await createNotifications({
+      encryptionKey: randomBytes(32).toString('base64'),
+      origin: 'https://aivera.example',
+      synthetic: true,
+    }).queueEmail(ctx, {
+      template: 'evidence-request',
+      to: `${person.toLowerCase().replaceAll(' ', '.')}@example.com`,
+      causedBy: rubric.id,
+      sender: { name: 'Layla Haddad', shortName: 'Layla', email: 'layla.haddad@example.com', workspace: name },
+      data: {
+        jobTitle: 'Senior AI Engineer',
+        items: [{ competency: 'Evaluation design', ask: 'Send a link to the evaluation set.' }],
+        link: 'https://aivera.example/l/9fK2xQ7mT4vB',
+        deleteUrl: 'https://aivera.example/l/delete-9fK2xQ',
+      },
+    });
+    await ctx.tx.execute(sql`insert into notifications.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('notifications.send', ${messageId}, ${workspaceId}, now())`);
     return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id, rubricId: rubric.id };
   });
 }

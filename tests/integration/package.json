@@ -16,6 +16,7 @@
     "@aivera/db": "workspace:*",
     "@aivera/identity": "workspace:*",
     "@aivera/jobs": "workspace:*",
+    "@aivera/notifications": "workspace:*",
     "@aivera/ops": "workspace:*",
     "@aivera/seed": "workspace:*",
     "@aivera/workspaces": "workspace:*",

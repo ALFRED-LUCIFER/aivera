@@ -110,6 +110,22 @@ module messaging 'modules/messaging.bicep' = {
   }
 }
 
+// Read for the Event Grid webhook URL key only; foundation.bicep creates the vault with this name.
+resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: 'kv-aivera-dev-${take(uniqueString(resourceGroup().id), 6)}'
+}
+
+// Email through ACS and its delivery reports (AIV-P0-017).
+module communication 'modules/communication.bicep' = {
+  name: 'aivera-communication'
+  params: {
+    tags: tags
+    appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+    webFqdn: web.outputs.webFqdn
+    webhookKey: vault.getSecret('acs-webhook-key')
+  }
+}
+
 // The worker host: outbox relay and queue consumers (AIV-P0-015).
 module worker 'modules/worker.bicep' = {
   name: 'aivera-worker'
@@ -126,6 +142,9 @@ module worker 'modules/worker.bicep' = {
     databaseName: database.outputs.databaseName
     serviceBusNamespace: messaging.outputs.serviceBusNamespace
     workerImage: '${images}/worker:${imageTag}'
+    keyVaultUri: foundation.outputs.keyVaultUri
+    acsEndpoint: communication.outputs.endpoint
+    emailSender: communication.outputs.senderAddress
   }
 }
 

@@ -39,4 +39,15 @@ Every screen is an artboard in the claude.ai Design canvas "Aivera — Evidence 
 
 Routes are planned; the ticket that builds a screen confirms its route and updates this table.
 
+### Emails (canvas page "Emails and print")
+
+Every email is a React Email template in `modules/notifications/src/infrastructure/templates`, all copy in `packages/i18n` under `emails`, with a plain-text version that matches the artboard's. [`ELayout.dc.html`](artboards/ELayout.dc.html) (shared layout and the development band), [`EComponents.dc.html`](artboards/EComponents.dc.html) and [`EStyle.dc.html`](artboards/EStyle.dc.html) (grid, type, colour tokens, the component names) are the spec for `components.tsx`.
+
+| Artboard file                                                                                                                                                                | Email                                        | Template                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------- |
+| [`EEvidence.dc.html`](artboards/EEvidence.dc.html)                                                                                                                           | Evidence request                             | `evidence-request` (built, AIV-P0-017)   |
+| [`EEvRemind.dc.html`](artboards/EEvRemind.dc.html)                                                                                                                           | Evidence request reminder                    | Planned (AIV-P1-040)                     |
+| [`EInvite.dc.html`](artboards/EInvite.dc.html), [`ERoles.dc.html`](artboards/ERoles.dc.html)                                                                                 | Workspace invitation and its role variants   | Planned (AIV-P1-003)                     |
+| `ERubric`, `EApproved`, `EReturned`, `ENewer`, `EIntro`, `EPack`, `EScore`, `EApplied`, `EForward`, `EClosed`, `EPlus`, `EFailed`, `ECancel`, `ESignIn`, `ERtl` (`.dc.html`) | The other emails and the right-to-left proof | Planned, with the ticket that sends each |
+
 Every route under `/app` is listed in `apps/web/src/features/shell/domain/navigation.ts` with its capability and flag; a test fails when the two drift (ADR-002 item 4). The sidebar sections (`/app`, `/app/inbox`, `/app/jobs`, `/app/candidates`, `/app/pool`, `/app/interviews`, `/app/packs`, `/app/value`) are placeholder pages from AIV-P0-020 until their screen tickets land. "Decision packs" in the sidebar lists open packs at `/app/packs`; each job's own pack stays at `/app/jobs/[jobId]/pack`.

@@ -1,4 +1,5 @@
 {
   "extends": "@aivera/config/tsconfig/base.json",
+  "compilerOptions": { "jsx": "react-jsx", "lib": ["es2024", "dom"] },
   "include": ["src", "fixtures"]
 }

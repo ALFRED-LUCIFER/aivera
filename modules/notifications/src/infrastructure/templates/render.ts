@@ -1,0 +1,77 @@
+import { dir as directionOf, getTranslations, type Locale } from '@aivera/i18n';
+import { render } from '@react-email/render';
+import type { ReactElement } from 'react';
+import type { Sender, TemplateData, TemplateName } from '../../domain/email.ts';
+import type { Direction, LayoutCopy } from './components.tsx';
+import { evidenceRequest } from './EvidenceRequest.tsx';
+
+// Renders a template to subject, HTML and plain text with React Email, every string from packages/i18n.
+// Loaded only where an email is queued (the web app); the worker sends what was rendered and never imports JSX.
+
+export type Rendered = { subject: string; html: string; text: string };
+
+export type RenderContext = {
+  locale: Locale;
+  timeZone: string;
+  /** The web app's public origin, for the hosted logo and the privacy page. */
+  origin: string;
+  /** Adds the synthetic-data band: every environment but the pilot and production (AGENTS.md 1.1). */
+  synthetic: boolean;
+  sender: Sender;
+};
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+export type TemplateContext = {
+  t: Translator;
+  sender: Sender;
+  layout: Omit<LayoutCopy, 'title' | 'preheader'> & { copyLinkLabel: string; noteLabel: string };
+};
+
+const TEMPLATES: {
+  [T in TemplateName]: (
+    data: TemplateData[T],
+    context: TemplateContext,
+  ) => { subject: string; element: ReactElement; text: string[] };
+} = { 'evidence-request': evidenceRequest };
+
+export async function renderEmail<T extends TemplateName>(
+  template: T,
+  data: TemplateData[T],
+  ctx: RenderContext,
+): Promise<Rendered> {
+  const t = await getTranslations(ctx.locale, ctx.timeZone);
+  const privacyUrl = `${ctx.origin}/privacy`;
+  const replies = t('emails.layout.repliesGoTo', { name: ctx.sender.name });
+  const reason = t('emails.layout.reasonCandidate');
+  const layout: TemplateContext['layout'] = {
+    lang: ctx.locale,
+    dir: directionOf(ctx.locale) as Direction,
+    logoUrl: `${ctx.origin}/brand/aivera-mark.png`,
+    logoAlt: t('emails.layout.logoAlt'),
+    brand: t('emails.layout.brand'),
+    sentBy: t('emails.layout.sentBy', { sender: ctx.sender.name, workspace: ctx.sender.workspace }),
+    devBand: ctx.synthetic ? t('emails.layout.devBand') : null,
+    footer: {
+      workspace: ctx.sender.workspace,
+      reason,
+      replies,
+      links: [
+        { label: t('emails.layout.privacy'), href: privacyUrl },
+        { label: t('emails.layout.deleteData'), href: data.deleteUrl },
+      ],
+    },
+    copyLinkLabel: t('emails.layout.copyLink'),
+    noteLabel: t('emails.layout.note'),
+  };
+  const { subject, element, text } = TEMPLATES[template](data, { t, layout, sender: ctx.sender });
+  const footer = [
+    '',
+    '--',
+    ctx.sender.workspace,
+    reason,
+    replies,
+    `${t('emails.layout.privacy')}: ${privacyUrl}`,
+    `${t('emails.layout.deleteData')}: ${data.deleteUrl}`,
+  ];
+  return { subject, html: await render(element), text: [...text, ...footer].join('\n') };
+}

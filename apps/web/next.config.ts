@@ -24,6 +24,7 @@ const config: NextConfig = {
     '@aivera/candidate-accounts',
     '@aivera/workspaces',
     '@aivera/audit',
+    '@aivera/notifications',
     '@aivera/observability',
   ],
   // The distro patches Node modules at runtime and reads files next to itself; bundled, it never starts (AIV-P0-018).
