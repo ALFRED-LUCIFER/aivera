@@ -11,6 +11,12 @@ export const OPS_SECTION_PAGES: Partial<Record<OpsSection, '/ops/workspaces' | '
   catalogue: '/ops/catalogue',
 };
 
+/** The section a console path belongs to, for the sidebar's current item: `home` for /ops itself. */
+export function activeOpsSection(pathname: string): OpsSection | 'home' | undefined {
+  if (pathname === '/ops') return 'home';
+  return OPS_SECTIONS.find((id) => pathname === `/ops/${id}` || pathname.startsWith(`/ops/${id}/`));
+}
+
 /**
  * Marks that this browser session already recorded "ops.console_opened" for this operator: a session cookie (no
  * max-age) holding the operator's opaque user id, cleared on sign-out, so the entry is written once per session.
