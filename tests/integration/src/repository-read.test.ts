@@ -249,9 +249,10 @@ beforeAll(async () => {
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
   relayDb = createDb(urlFor('aivera_relay'), { max: 1 });
-  workspaces = createWorkspaces(app, createAudit(app));
+  const audit = createAudit(app);
+  workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
-  evidence = createEvidence(workspaces, () => NOW);
+  evidence = createEvidence(workspaces, audit, () => NOW);
   // A throwaway key made per run: the token endpoint is msw, so nothing real is ever signed (AGENTS.md 1.11).
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   handler = createRepositoryReadHandler({

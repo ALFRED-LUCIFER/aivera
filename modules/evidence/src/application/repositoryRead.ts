@@ -159,6 +159,7 @@ export function repositoryReadUseCases(ports: RepositoryPorts) {
         checkMethod: null,
         synthetic: input.synthetic,
         createdAt: at,
+        textFingerprint: null,
       };
       await storeFor(ctx.tx).insert(source, [], []);
       await readStoreFor(ctx.tx).insert({
@@ -262,6 +263,7 @@ export async function readRepository(
       capturedAt: checkedAt,
       checkedAt,
       checkMethod: PULL_REQUEST_CHECK_METHOD,
+      textFingerprint: null,
     };
     const items: EvidenceItem[] = [];
     const rows: MergedPullRequestRow[] = [];
