@@ -9,7 +9,7 @@ import { redact } from './redact.ts';
 // Outbox and worker trace continuation (AIV-P0-014, AIV-P0-015): the outbox row stores the W3C `traceparent` of the
 // active span as the envelope's `correlationId` (`propagation.inject`), and the relay and the worker handler start their
 // spans with it as parent (`propagation.extract`), so one operation id runs from the server action to the worker.
-// The outbox half is built in packages/db (outbox.ts, relay.ts); the worker handler half is AIV-P0-015 (#47).
+// The outbox half is built in packages/db (outbox.ts, relay.ts); the worker handler half in packages/db/src/consumer.ts.
 
 export { registerPersonalDataKeys } from './redact.ts';
 

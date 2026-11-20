@@ -1,9 +1,11 @@
 // AIV-P0-018: dev alerts on Aivera's Application Insights, emailed to the team. Log search alerts: a rate needs a
 // query, and the cheapest metric alert cannot divide one count by another.
-// shortcut: the dead-letter alert comes with the Service Bus queues (AIV-P0-015, #47); production routing and on-call with AIV-P5-010
+// shortcut: production routing and on-call with AIV-P5-010
 param tags object
 param appInsightsId string
 param alertEmail string
+@description('Service Bus namespace whose dead-letter queues are watched (AIV-P0-015).')
+param serviceBusNamespaceId string
 
 resource team 'Microsoft.Insights/actionGroups@2023-01-01' = {
   name: 'ag-aivera-dev'
@@ -64,3 +66,38 @@ resource rules 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = [
     }
   }
 ]
+
+// AIV-P0-015: any message in a queue's dead-letter queue, from the platform metric (it also counts TTL expiry, which the
+// worker's own `aivera.worker.dead_lettered` counter cannot see). One rule, split per queue; about $0.10 a month each.
+// The metric counts messages sitting in the dead-letter queue, so it stays fired until someone drains it. Nothing
+// consumes `candidates` yet, so it fires 14 days after the first PersonCreated.v1 (shortcut in apps/worker/src/main.ts).
+resource deadLetters 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'alert-aivera-dead-letters-dev'
+  location: 'global'
+  tags: tags
+  properties: {
+    description: 'Dead-letter count above 0 in a Service Bus queue'
+    severity: 2
+    enabled: true
+    scopes: [serviceBusNamespaceId]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'dead-letters'
+          metricNamespace: 'Microsoft.ServiceBus/namespaces'
+          metricName: 'DeadletteredMessages'
+          dimensions: [{ name: 'EntityName', operator: 'Include', values: ['*'] }]
+          timeAggregation: 'Maximum'
+          operator: 'GreaterThan'
+          threshold: 0
+        }
+      ]
+    }
+    autoMitigate: true
+    actions: [{ actionGroupId: team.id }]
+  }
+}

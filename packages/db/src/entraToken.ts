@@ -5,19 +5,25 @@ import { z } from 'zod';
 const RESOURCE = 'https://ossrdbms-aad.database.windows.net';
 const tokenResponse = z.object({ access_token: z.string().min(1), expires_on: z.coerce.number().int().positive() });
 
-// shortcut: one process-wide cache that ignores `env` after the first fetch (one identity per process today); key it by client id if a process ever needs two identities
-let cached: { token: string; expiresAt: number } | undefined;
-let inflight: Promise<string> | undefined;
+// Keyed by client id: the worker signs in as two identities, the app's and the outbox relay's (AIV-P0-015).
+const cached = new Map<string, { token: string; expiresAt: number }>();
+const inflight = new Map<string, Promise<string>>();
 
 /** A token for the user-assigned identity in AZURE_CLIENT_ID, reused until five minutes before it expires. */
 export async function entraToken(env: NodeJS.ProcessEnv = process.env, now = Date.now()): Promise<string> {
-  if (cached && cached.expiresAt - 5 * 60_000 > now) return cached.token;
+  const key = env['AZURE_CLIENT_ID'] ?? '';
+  const hit = cached.get(key);
+  if (hit && hit.expiresAt - 5 * 60_000 > now) return hit.token;
   // Connections opened together share one request; a failure clears it so the next connection retries.
-  inflight ??= fetchToken(env).finally(() => (inflight = undefined));
-  return inflight;
+  let request = inflight.get(key);
+  if (!request) {
+    request = fetchToken(env, key).finally(() => inflight.delete(key));
+    inflight.set(key, request);
+  }
+  return request;
 }
 
-async function fetchToken(env: NodeJS.ProcessEnv): Promise<string> {
+async function fetchToken(env: NodeJS.ProcessEnv, key: string): Promise<string> {
   const endpoint = env['IDENTITY_ENDPOINT'];
   const header = env['IDENTITY_HEADER'];
   if (!endpoint || !header) throw new Error('No password in the database URL and no managed identity endpoint.');
@@ -29,6 +35,6 @@ async function fetchToken(env: NodeJS.ProcessEnv): Promise<string> {
   if (!response.ok) throw new Error(`Managed identity token request failed with ${response.status}.`);
   const parsed = tokenResponse.safeParse(await response.json());
   if (!parsed.success) throw new Error('Managed identity token response is malformed.');
-  cached = { token: parsed.data.access_token, expiresAt: parsed.data.expires_on * 1000 };
-  return cached.token;
+  cached.set(key, { token: parsed.data.access_token, expiresAt: parsed.data.expires_on * 1000 });
+  return parsed.data.access_token;
 }

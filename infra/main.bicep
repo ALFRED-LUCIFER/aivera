@@ -100,12 +100,32 @@ module web 'modules/web.bicep' = {
   }
 }
 
-// Service Bus and the outbox relay's identity (AIV-P0-014). The worker Container App that runs the relay: AIV-P0-015.
+// Service Bus and the outbox relay's identity (AIV-P0-014).
 module messaging 'modules/messaging.bicep' = {
   name: 'aivera-messaging'
   params: {
     location: location
     tags: tags
+    appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+  }
+}
+
+// The worker host: outbox relay and queue consumers (AIV-P0-015).
+module worker 'modules/worker.bicep' = {
+  name: 'aivera-worker'
+  params: {
+    location: location
+    tags: tags
+    containerAppsEnvName: environment.outputs.environmentName
+    appIdentityId: foundation.outputs.appIdentityId
+    appIdentityClientId: foundation.outputs.appIdentityClientId
+    relayIdentityId: messaging.outputs.relayIdentityId
+    relayIdentityClientId: messaging.outputs.relayIdentityClientId
+    appInsightsSecretUri: foundation.outputs.appInsightsSecretUri
+    databaseHost: database.outputs.databaseHost
+    databaseName: database.outputs.databaseName
+    serviceBusNamespace: messaging.outputs.serviceBusNamespace
+    workerImage: '${images}/worker:${imageTag}'
   }
 }
 
@@ -115,6 +135,7 @@ module alerts 'modules/alerts.bicep' = {
     tags: tags
     appInsightsId: foundation.outputs.appInsightsId
     alertEmail: alertEmail
+    serviceBusNamespaceId: messaging.outputs.namespaceId
   }
 }
 
@@ -124,7 +145,7 @@ module deployAccess 'modules/deploy-access.bicep' = {
     cicdPrincipalId: foundation.outputs.cicdIdentityPrincipalId
     containerAppsEnvName: environment.outputs.environmentName
   }
-  dependsOn: [database, web]
+  dependsOn: [database, web, worker, messaging]
 }
 
 output webFqdn string = web.outputs.webFqdn

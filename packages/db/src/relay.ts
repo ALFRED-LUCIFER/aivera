@@ -35,7 +35,7 @@ const lag = meter.createHistogram('aivera.outbox.lag', {
  * after a send and before the commit sends again with the same message id (Service Bus duplicate detection or the
  * consumer's inbox, AIV-P0-015, drops it).
  * shortcut: no cap on attempts and no dead letter for an event that never sends (an unmapped type), and lag is recorded
- * only on send, so an outage shows when it ends; add an attempts cap and an oldest-unsent gauge with AIV-P0-015 (#47).
+ * only on send, so an outage shows when it ends; add an attempts cap and an oldest-unsent gauge before the pilot (AIV-P5-E03, #34).
  */
 export function createRelay({ db, schemas, queueFor, send, now, batchSize = 50, signal }: RelayPorts) {
   const outboxes = schemas.map((schema) => ({ schema, table: outboxTable(pgSchema(schema)) }));

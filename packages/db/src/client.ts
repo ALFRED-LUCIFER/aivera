@@ -63,8 +63,10 @@ redactErrors(PostgresJsTransaction.prototype, 'transaction');
  * A URL without a password signs in with the managed identity's Entra token (Azure, ADR-008), always over verified
  * TLS because the token travels as the password. Without an identity endpoint the first connection fails clearly.
  */
-export function createDb(url: string, options: { max?: number } = {}): Db {
-  const entra = new URL(url).password ? {} : { password: () => entraToken(), ssl: 'verify-full' as const };
+export function createDb(url: string, options: { max?: number; clientId?: string } = {}): Db {
+  // `clientId` picks a second identity in one process (the worker's relay, AIV-P0-015); default AZURE_CLIENT_ID.
+  const env = options.clientId ? { ...process.env, AZURE_CLIENT_ID: options.clientId } : process.env;
+  const entra = new URL(url).password ? {} : { password: () => entraToken(env), ssl: 'verify-full' as const };
   return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...entra }));
 }
 

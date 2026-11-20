@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { AuditContract } from '@aivera/audit';
-import { consumeInWorkspace, createDb, withWorkspace, type Db } from '@aivera/db';
+import { createDb, withWorkspace, type Db } from '@aivera/db';
 import {
   DEFAULT_SETTINGS,
   ForbiddenError,
@@ -398,26 +398,7 @@ describe('Scenario: Switching workspace re-checks membership', () => {
   });
 });
 
-describe('Scenario: Worker jobs carry their workspace', () => {
-  it('an "assessment" message for W1 runs with app.workspace_id = W1; one with no workspace id is dead-lettered', async () => {
-    const w1 = (await newWorkspace('Worker W1')).id;
-    const settings: (string | undefined)[] = [];
-    const consume = consumeInWorkspace(app, async (_message, tx) => {
-      settings.push(await currentSetting(tx));
-    });
-    const deadLetter = vi.fn(async () => {});
-
-    await consume({ type: 'assessment', workspaceId: w1 }, deadLetter);
-    expect(settings).toEqual([w1]);
-    expect(deadLetter).not.toHaveBeenCalled();
-
-    // SAFETY: mutation check: made consumeInWorkspace skip the envelope check -> this test failed (withWorkspace threw instead of dead-lettering)
-    await consume({ type: 'assessment' }, deadLetter);
-    await consume({ type: 'assessment', workspaceId: 'not-a-uuid' }, deadLetter);
-    expect(deadLetter).toHaveBeenCalledTimes(2);
-    expect(settings).toEqual([w1]);
-  });
-});
+// Scenario: Worker jobs carry their workspace (AIV-P0-010) moved with the consumer wrapper to worker.test.ts (AIV-P0-015).
 
 // AIV-P0-906: workspace type, agency clients and job grants. Jobs do not exist yet (AIV-P1-005), so jobs are synthetic
 // ids and `viewCandidate` stands in for a server action wrapped by workspaceAction('candidate.view', ..., { resource }):

@@ -25,7 +25,7 @@ DATABASE_URL=postgres://aivera_app:local_dev_only@localhost:5432/aivera
 
 A database volume created before AIV-P0-014 lacks the outbox relay's role, so `pnpm db:migrate` fails on the candidates outbox migration (its policies name the role) and applies nothing of that module. Add it once: `docker compose exec postgres psql -U aivera -d aivera -c "CREATE ROLE aivera_relay LOGIN PASSWORD 'local_dev_only'; GRANT CONNECT ON DATABASE aivera TO aivera_relay"`.
 
-The worker (`pnpm --filter worker start`) runs the outbox relay and needs `RELAY_DATABASE_URL=postgres://aivera_relay:local_dev_only@localhost:5432/aivera` and `AZURE_SERVICE_BUS_NAMESPACE` (a real namespace, signed in with `az login`). It is not needed for the web app: events wait in the outbox until a relay sends them.
+The worker (`pnpm --filter worker start`) runs the outbox relay and the queue consumers, with probes on `PORT` (8080). It needs `DATABASE_URL`, `RELAY_DATABASE_URL=postgres://aivera_relay:local_dev_only@localhost:5432/aivera` and `AZURE_SERVICE_BUS_NAMESPACE` (a real namespace, signed in with `az login`). It is not needed for the web app: events wait in the outbox until a relay sends them.
 
 Leave `APPLICATIONINSIGHTS_CONNECTION_STRING` empty locally: telemetry then stays off and `@aivera/observability`'s logger writes redacted JSON lines to stdout only. Log through `log` from `@aivera/observability` (message template plus ids, never candidate values); it redacts keys like `email`, `phone`, `name`, `text` and `prompt`, and strips query strings, before anything is written or exported.
 

@@ -44,6 +44,15 @@ describe('entraToken (managed identity token for PostgreSQL)', () => {
     await entraToken(env, NOW + 56 * 60_000); // inside the five-minute margin: fetch a fresh one
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps one token per identity, so the worker can sign in as the app and as the relay', async () => {
+    const fetchMock = vi.fn(async (url: URL) => ok(`t-${url.searchParams.get('client_id')}`));
+    vi.stubGlobal('fetch', fetchMock);
+    const relay = { ...env, AZURE_CLIENT_ID: 'c2' };
+    expect(await Promise.all([entraToken(env, NOW), entraToken(relay, NOW)])).toEqual(['t1', 't-c2']);
+    expect(await entraToken(relay, NOW)).toBe('t-c2');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('createDb sign-in mode', () => {
