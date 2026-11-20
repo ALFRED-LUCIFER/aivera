@@ -1,7 +1,8 @@
 -- One-off, owner only (AIV-P0-004, ADR-008): Credalent's database roles on the shared Medvya dev server.
--- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database (then to "aivera" for pgvector, at the end), from inside
--- the VNet, with psql variables app_oid, cicd_oid and relay_oid. The Azure counterpart of packages/db/sql/roles.sql: the roles
--- map to managed identities (password sign-in is off on this server), so no password exists. Safe to rerun.
+-- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database (at the end to
+-- "aivera", for pgvector), from inside the VNet, with psql variables app_oid, cicd_oid and relay_oid. The Azure
+-- counterpart of packages/db/sql/roles.sql: the roles map to managed identities (password sign-in is off on this
+-- server), so no password exists. Safe to rerun.
 -- aivera_migrator (id-aivera-cicd-dev) owns Credalent's schemas and runs migrations.
 -- aivera_app (id-aivera-dev) has data access only, is never an owner, and is always subject to row-level security.
 -- aivera_relay (id-aivera-relay-dev, AIV-P0-014) reads and marks outbox rows only, through their relay policies.
@@ -38,8 +39,8 @@ FROM pg_roles r CROSS JOIN pg_database d
 WHERE r.rolname IN ('aivera_migrator', 'aivera_app', 'aivera_relay', 'aivera_public') AND NOT d.datistemplate
 GROUP BY r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole;
 
--- pgvector (AIV-P0-030), in the aivera database: allow-listed in azure.extensions, but not a trusted extension, so only a
--- member of azure_pg_admin (the Entra admin running this) may create it; the search migration's CREATE EXTENSION IF
--- NOT EXISTS then finds it. Needs the allow-list first (infra/README.md, pgvector).
+-- pgvector (AIV-P0-030), in the aivera database: allow-listed in azure.extensions, but not a trusted extension, so
+-- only a member of azure_pg_admin (the Entra admin running this) may create it; the search migration's
+-- CREATE EXTENSION IF NOT EXISTS then finds it. Needs the allow-list first (infra/README.md, pgvector).
 \connect aivera
 CREATE EXTENSION IF NOT EXISTS vector;

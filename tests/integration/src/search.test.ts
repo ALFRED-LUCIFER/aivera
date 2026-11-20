@@ -26,6 +26,7 @@ const SARA_HARNESS = '0190d4a2-0000-7000-8000-0000000e0002';
 const ARJUN_K8S = '0190d4a2-0000-7000-8000-0000000e0003';
 const MAYA_LEDGER = '0190d4a2-0000-7000-8000-0000000e0004';
 const LAYLA_TEXT = 'Arabic OCR pipeline, public and documented';
+const W2_ONLY = '0190d4a2-0000-7000-8000-0000000e00f2'; // the same write-up, indexed in W2 only
 
 /**
  * A stand-in for meaning: one dimension per concept, so "Arabic evaluation work" lands near the Arabic OCR write-up
@@ -86,12 +87,13 @@ beforeAll(async () => {
     workspaces.createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId });
   w1 = (await create('Demo hiring team', ALEX)).id;
   w2 = (await create('Gulf Talent Partners', OMAR)).id;
-  // W1's evidence, which every scenario starts from.
+  // The evidence every scenario starts from: W1's, and Layla's write-up again in W2 only.
   const search = indexWith(conceptProvider().provider);
   await search.indexDocument(w1, 'evidence', LAYLA_OCR, LAYLA_TEXT);
   await search.indexDocument(w1, 'evidence', SARA_HARNESS, 'Eval harness, 412 of 460 commits');
   await search.indexDocument(w1, 'evidence', ARJUN_K8S, 'Kubernetes cluster upgrades');
   await search.indexDocument(w1, 'evidence', MAYA_LEDGER, 'Payments ledger reconciliation');
+  await search.indexDocument(w2, 'evidence', W2_ONLY, LAYLA_TEXT);
 }, 120_000);
 
 afterAll(async () => {
@@ -118,11 +120,8 @@ describe('Scenario: Indexed evidence can be found by meaning', () => {
 });
 
 describe("Scenario: Another workspace's evidence is never returned", () => {
-  const W2_ONLY = '0190d4a2-0000-7000-8000-0000000e00f2';
-
   it('a search in W1 returns no W2 chunk, though W2 holds the nearest one', async () => {
     const search = indexWith(conceptProvider().provider);
-    await search.indexDocument(w2, 'evidence', W2_ONLY, LAYLA_TEXT);
     const hits = await search.searchSimilar(w1, 'Arabic OCR pipeline', { limit: 50 });
     expect(hits.length).toBeGreaterThan(0);
     expect(ownersOf(hits)).not.toContain(W2_ONLY);
