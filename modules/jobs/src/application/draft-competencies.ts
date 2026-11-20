@@ -1,6 +1,6 @@
 import { draftCompetenciesRequest, type AiClient, type Citation } from '@aivera/ai';
-import type { JobType } from '../domain/job-types.ts';
-import { newSuggestions, type Competency } from '../domain/job.ts';
+import { offeredJobTypes, type CatalogueVersion } from '../domain/catalogue.ts';
+import { JobError, newSuggestions, type Competency } from '../domain/job.ts';
 
 // "Draft competencies" (AIV-P1-008, ADR-006): the model drafts the competencies the job description states, and
 // suggests up to two it leaves out (AIV-P1-009), each citing the description. Both are suggestions the recruiter keeps,
@@ -17,7 +17,7 @@ export type SuggestedCompetency = Omit<Competency, 'origin'> & {
   citations: Citation[];
 };
 
-export type DraftInput = { jobType: JobType; title: string; description: string };
+export type DraftInput = { jobType: string; title: string; description: string };
 
 export type CompetencyDraft = {
   competencies: DraftedCompetency[];
@@ -43,14 +43,21 @@ const fields = (c: Answered) => ({
 
 /**
  * Drafts from the job type, title and description only: no candidate data and nothing else from the workspace reaches
- * the prompt. Throws `@aivera/ai`'s errors: `BudgetExceeded`, `AiUnavailable`, or, when the answer fails its schema or
+ * the prompt. The job type must be one `catalogue` (the published version) offers, else `JobError('job_type')` before any
+ * model call. Throws `@aivera/ai`'s errors: `BudgetExceeded`, `AiUnavailable`, or, when the answer fails its schema or
  * cites nothing twice, `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
  */
 export function competencyDrafting(ai: Pick<AiClient, 'generateStructured'>) {
   return {
-    async draftCompetencies(workspaceId: string, input: DraftInput): Promise<CompetencyDraft> {
+    async draftCompetencies(
+      workspaceId: string,
+      input: DraftInput,
+      catalogue: CatalogueVersion,
+    ): Promise<CompetencyDraft> {
+      if (!offeredJobTypes(catalogue).some((t) => t.key === input.jobType)) throw new JobError('job_type');
       const { competencies, suggestions, refused } = await ai.generateStructured({
         ...draftCompetenciesRequest(input, [{ id: 'description', kind: 'job_description', text: input.description }]),
+        catalogueVersion: catalogue.version,
         workspaceId,
       });
       return {

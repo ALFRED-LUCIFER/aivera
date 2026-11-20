@@ -1,8 +1,15 @@
-import { DOMAIN_KEYS, DOMAIN_PACK_CATALOGUE_VERSION, getDomainPack, JOB_TYPES } from '@aivera/jobs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { packForJobType, type CatalogueVersion } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
 import { CANDIDATES, HIRING_OWNERS, INDUSTRY_JOBS, industryRubric, JOBS, RECRUITER, WORKSPACE } from './cast.ts';
 
 const people = [RECRUITER, ...HIRING_OWNERS, ...CANDIDATES];
+// Catalogue version 1 from its committed snapshot, as migration 0012 publishes it.
+const v1: CatalogueVersion = JSON.parse(
+  readFileSync(join(import.meta.dirname, '../../../modules/jobs/src/infrastructure/catalogue-v1.json'), 'utf8'),
+);
+const jobTypeKeys = v1.jobTypes.map((t) => t.key);
 
 describe('the demo cast (AIV-P0-031)', () => {
   it('marks the workspace and every person synthetic, on example.com and the drama phone range', () => {
@@ -33,7 +40,7 @@ describe('the demo cast (AIV-P0-031)', () => {
       'Senior Product Designer',
     ]);
     for (const job of JOBS) {
-      expect(JOB_TYPES).toContain(job.jobType);
+      expect(jobTypeKeys).toContain(job.jobType);
       expect(HIRING_OWNERS.map((o) => o.key)).toContain(job.hiringOwner);
       expect(job.rubric.competencies.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
     }
@@ -67,15 +74,14 @@ describe('the industry demo jobs (AIV-P1-065)', () => {
     const job = INDUSTRY_JOBS.find((j) => j.title === title);
     if (!job) throw new Error(`no cast job ${title}`);
     expect([job.pack, job.region]).toEqual([key, region]);
-    const pack = getDomainPack(job.pack, job.jobType);
-    const rubric = industryRubric(job);
+    const pack = packForJobType(v1, job.pack, job.jobType);
+    const hints = pack?.hints.filter((h) => h.region === job.region) ?? [];
+    const rubric = industryRubric(job, v1);
     const packed = rubric.filter((c) => c.origin === 'domain_pack');
     expect(pack?.core.length).toBeGreaterThan(0);
-    expect(pack?.hints[job.region].length).toBeGreaterThan(0);
-    expect(packed.map((c) => c.name)).toEqual(
-      [...(pack?.core ?? []), ...(pack?.hints[job.region] ?? [])].map((c) => c.name),
-    );
-    for (const c of packed) expect(c).toMatchObject({ packKey: key, packVersion: DOMAIN_PACK_CATALOGUE_VERSION });
+    expect(hints.length).toBeGreaterThan(0);
+    expect(packed.map((c) => c.name)).toEqual([...(pack?.core ?? []), ...hints].map((c) => c.name));
+    for (const c of packed) expect(c).toMatchObject({ packKey: key, packVersion: 1 });
     expect(rubric.filter((c) => c.origin === 'added_by_recruiter')).toHaveLength(4);
   });
 
@@ -83,10 +89,10 @@ describe('the industry demo jobs (AIV-P1-065)', () => {
     expect(INDUSTRY_JOBS).toHaveLength(5);
     expect(new Set([...JOBS, ...INDUSTRY_JOBS].map((j) => j.title)).size).toBe(10);
     for (const job of INDUSTRY_JOBS) {
-      expect(JOB_TYPES).toContain(job.jobType);
-      expect(DOMAIN_KEYS).toContain(job.pack);
+      expect(jobTypeKeys).toContain(job.jobType);
+      expect(v1.packs.map((p) => p.key)).toContain(job.pack);
       expect(HIRING_OWNERS.map((o) => o.key)).toContain(job.hiringOwner);
-      for (const c of industryRubric(job)) {
+      for (const c of industryRubric(job, v1)) {
         expect(c.levelNeeded).toBeGreaterThanOrEqual(1);
         expect(c.levelNeeded).toBeLessThanOrEqual(5);
         if (c.origin === 'domain_pack') expect(c.type).toBe('desirable');

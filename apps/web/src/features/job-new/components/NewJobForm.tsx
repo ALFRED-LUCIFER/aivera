@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@aivera/ui';
-import { DESCRIPTION_MAX, descriptionPlaceholder, TEXT_MAX, type NewJobState } from '../domain/jobNew.ts';
+import {
+  DESCRIPTION_MAX,
+  descriptionPlaceholder,
+  TEXT_MAX,
+  type JobTypeOption,
+  type NewJobState,
+} from '../domain/jobNew.ts';
 
 type NewJobLabels = {
   steps: string;
@@ -64,8 +70,8 @@ type NewJobFormProps = {
   discardOpen: boolean;
   onDiscardOpenChange: (open: boolean) => void;
   onDiscard: () => void;
-  /** The ten job types, each with its label and "evidence that counts" line, translated. */
-  jobTypes: readonly (Option & { evidence: string })[];
+  /** The job types the published catalogue offers, each with its label, "evidence that counts" line and starters. */
+  jobTypes: readonly JobTypeOption[];
   hiringOwners: readonly Option[];
   /** An agency's clients; null for an in-house team, which names a team instead. */
   clients: readonly Option[] | null;
@@ -79,7 +85,7 @@ const id = (field: string) => `job-new-${field}`;
 /** Add a job, step 1 "Job and description" (RoleNew artboard, AIV-P1-007). */
 export function NewJobForm(props: NewJobFormProps) {
   const { state, errors, labels, jobType, pending } = props;
-  const evidence = props.jobTypes.find((t) => t.value === jobType)?.evidence;
+  const chosen = props.jobTypes.find((t) => t.value === jobType);
   const optional = <span className="ms-1 font-normal text-text-2">{labels.optional}</span>;
   return (
     <>
@@ -141,7 +147,7 @@ export function NewJobForm(props: NewJobFormProps) {
         </Select>
         <p id={id('type-hint')} className="text-meta text-text-2">
           {labels.jobTypeHint}
-          {evidence && ` ${labels.evidence} ${evidence}`}
+          {chosen?.evidence && ` ${labels.evidence} ${chosen.evidence}`}
         </p>
         {errors.jobType && (
           <p id={id('type-error')} role="alert" className="text-meta font-semibold text-err-text">
@@ -173,7 +179,7 @@ export function NewJobForm(props: NewJobFormProps) {
           rows={8}
           maxLength={DESCRIPTION_MAX}
           defaultValue={state.values.description}
-          placeholder={descriptionPlaceholder(labels.placeholderIntro, jobType)}
+          placeholder={descriptionPlaceholder(labels.placeholderIntro, chosen?.starters ?? [])}
           aria-describedby={id('description-hint')}
         />
         <p id={id('description-hint')} className="text-meta text-text-2">

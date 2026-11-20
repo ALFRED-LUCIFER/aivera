@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { useTranslations } from '@aivera/i18n/react';
-import { DOMAIN_KEYS, REGIONS, type DomainKey } from '@aivera/jobs';
 import {
   Button,
   buttonClassName,
@@ -15,6 +14,7 @@ import {
 import {
   RUBRIC_MAX,
   weightsTotal,
+  type Choice,
   type DraftCompetency,
   type DraftResult,
   type DraftRow,
@@ -43,12 +43,15 @@ type CompetencyDraftProps = RowHandlers & {
   /** Fields to fix in kept rows, once a save was tried (AIV-P1-010). */
   errors: RowErrors;
   /** The chosen industry, whose pack's suggestions are rows (AIV-P1-064); null for none. */
-  industry: DomainKey | null;
+  industry: string | null;
+  /** The industries to choose from and the regions whose hints show, from the published catalogue, in its order. */
+  packs: readonly Choice[];
+  regions: readonly Choice[];
   /** "More from this pack": the pack's other competencies, each with Add. */
   more: readonly DraftCompetency[];
   /** The regional hint the recruiter last tried to make mandatory. */
   refusedId: string | null;
-  onIndustry: (key: DomainKey | null) => void;
+  onIndustry: (key: string | null) => void;
   onAddFromPack: (competency: DraftCompetency) => void;
   /** A save was tried with no competency kept. */
   emptyRubric: boolean;
@@ -56,7 +59,14 @@ type CompetencyDraftProps = RowHandlers & {
   onUseStarters: () => void;
 };
 
-type Row = DraftRow & { editing: boolean; on: RowHandlers; error: RowErrors[string] | undefined; refused: boolean };
+type Row = DraftRow & {
+  editing: boolean;
+  on: RowHandlers;
+  error: RowErrors[string] | undefined;
+  refused: boolean;
+  /** The name of the pack the row came from; null for any other row. */
+  packLabel: string | null;
+};
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
 const strong = (chunks: ReactNode) => <strong className="font-semibold">{chunks}</strong>;
@@ -77,8 +87,8 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: 'competency' | 'weigh
 export function CompetencyDraft(props: CompetencyDraftProps) {
   const t = useTranslations('jobDraft');
   const tJob = useTranslations('jobNew');
-  const tPack = useTranslations('domainPacks');
   const { result, rows, industry } = props;
+  const packLabel = (key: string | undefined) => props.packs.find((p) => p.key === key)?.label ?? null;
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
   const on = {
     onEdit: props.onEdit,
@@ -94,12 +104,13 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       on,
       error: props.errors[row.id],
       refused: row.id === props.refusedId,
+      packLabel: packLabel(row.pack?.key),
     }));
   const suggested = rows.filter((row) => row.origin === 'suggested_by_aivera');
   const own = rows.filter((row) => row.origin !== 'suggested_by_aivera' && row.origin !== 'domain_pack');
   const fromPack = rows.filter((row) => row.pack && !row.pack.region);
   const kept = (origin: DraftRow['origin']) => rows.filter((row) => row.origin === origin && !row.removed).length;
-  const industryLabel = industry && tPack(`${industry}.label`);
+  const industryLabel = industry && packLabel(industry);
   const detected = result.status === 'drafted' && result.industry?.key === industry ? result.industry : null;
   const drafted = result.status === 'drafted';
   const total = weightsTotal(rows);
@@ -193,10 +204,14 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
               {industry ? t('notThisIndustry') : t('addIndustry')}
             </summary>
             <ul aria-label={t('industries')} className="mt-2 flex flex-wrap gap-2">
-              {[...DOMAIN_KEYS, null].map((key) => (
-                <li key={key ?? 'none'}>
-                  <Button size="compact" aria-pressed={key === industry} onClick={() => props.onIndustry(key)}>
-                    {key ? tPack(`${key}.label`) : t('noIndustry')}
+              {[...props.packs, null].map((pack) => (
+                <li key={pack?.key ?? 'none'}>
+                  <Button
+                    size="compact"
+                    aria-pressed={(pack?.key ?? null) === industry}
+                    onClick={() => props.onIndustry(pack?.key ?? null)}
+                  >
+                    {pack ? pack.label : t('noIndustry')}
                   </Button>
                 </li>
               ))}
@@ -247,14 +262,18 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
                   </ul>
                 </>
               )}
-              {REGIONS.map((region) => {
-                const hints = rows.filter((row) => row.pack?.region === region);
+              {props.regions.map(({ key, label }) => {
+                const hints = rows.filter((row) => row.pack?.region === key);
                 if (hints.length === 0) return null;
                 return (
-                  <div key={region} className="flex flex-col gap-3">
-                    <h3 className="mt-3 text-body font-semibold text-text">{t(`regions.${region}`)}</h3>
+                  <div key={key} className="flex flex-col gap-3">
+                    {/* shortcut: regionHeading and regionCaption keep version 1's wording ("the UAE") by region key in
+                        en.json; take the wording from the stored label alone when labels are edited (AIV-P2-045). */}
+                    <h3 className="mt-3 text-body font-semibold text-text">
+                      {t('regionHeading', { region: key, label })}
+                    </h3>
                     <DataTable
-                      caption={t(`regionCaptions.${region}`)}
+                      caption={t('regionCaption', { region: key, label })}
                       columns={columns}
                       rows={toRows(hints)}
                       getRowId={(row) => row.id}
@@ -310,7 +329,6 @@ function FieldError({ id, children }: { id: string; children: string }) {
 
 function CompetencyCell({ row }: { row: Row }) {
   const t = useTranslations('jobDraft');
-  const tPack = useTranslations('domainPacks');
   const label = useFieldLabel(row);
   const nameError = row.error?.name && <FieldError id={`${row.id}-name-error`}>{t('nameRequired')}</FieldError>;
   if (row.editing)
@@ -339,7 +357,7 @@ function CompetencyCell({ row }: { row: Row }) {
   return (
     <div className="flex max-w-xl flex-col items-start gap-1">
       {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
-      {row.pack && <Chip>{t('fromPack', { industry: tPack(`${row.pack.key}.label`) })}</Chip>}
+      {row.packLabel && <Chip>{t('fromPack', { industry: row.packLabel })}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
       {nameError}
       {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}

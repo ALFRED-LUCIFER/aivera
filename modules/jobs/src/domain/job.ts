@@ -1,7 +1,6 @@
 // A job and its own versioned rubric (AIV-P1-005). Assessment reads only the approved version; editing an approved
 // rubric starts a new version, and the approved one stays in force until the new one is approved.
-import { DOMAIN_KEYS, isRegionalHint, nameKey, type DomainKey } from './domain-packs.ts';
-import type { JobType } from './job-types.ts';
+import { isRegionalHint, nameKey, type CatalogueVersion } from './catalogue.ts';
 
 /** Must list exactly the `job_stage_check` values (infrastructure/schema.ts); changing it needs a new migration. */
 export const JOB_STAGES = ['defining_rubric', 'collecting_evidence', 'round_1', 'decision', 'closed'] as const;
@@ -27,7 +26,8 @@ export type Job = {
   id: string;
   workspaceId: string;
   title: string;
-  jobType: JobType;
+  /** A job type key of the catalogue (ADR-013); a retired one stays valid on the job. */
+  jobType: string;
   description: string;
   team: string | null;
   /** Opaque id of a `workspaces.client`; null is the team's own job (ADR-009). */
@@ -56,7 +56,7 @@ export type Competency = {
   type: (typeof COMPETENCY_TYPES)[number];
   origin: (typeof COMPETENCY_ORIGINS)[number];
   /** The domain pack (AIV-P1-064) and catalogue version that seeded it: set exactly when `origin` is `domain_pack`. */
-  packKey?: DomainKey | null;
+  packKey?: string | null;
   packVersion?: number | null;
 };
 
@@ -85,6 +85,7 @@ export type Rubric = RubricVersion & { competencies: Competency[] };
 
 const MESSAGES = {
   title: 'Enter the job title.',
+  job_type: 'Unknown job type.',
   pay_band: 'The pay band needs a minimum no higher than its maximum and a three-letter currency.',
   client_not_found: 'That client is not in this workspace.',
   no_competencies: 'A rubric needs at least one competency.',
@@ -118,19 +119,32 @@ export class JobError extends Error {
 
 /**
  * Throws unless the competencies form a valid rubric: named, weights 1–100 totalling 100, levels 1–5, a pack and its
- * version exactly on `domain_pack` competencies, and a regional hint only ever desirable (AGENTS.md 1.5).
+ * version exactly on `domain_pack` competencies, and a regional hint only ever desirable (AGENTS.md 1.5). A pack is one
+ * the published catalogue offers, at a version no newer than the published one; a retired pack only on a competency
+ * `kept` (the rubric's latest stored version) already holds with it (ADR-013 point 7).
  */
-export function assertValidCompetencies(competencies: Competency[]): void {
+export function assertValidCompetencies(
+  competencies: Competency[],
+  catalogue: CatalogueVersion,
+  kept: readonly Competency[] = [],
+): void {
   if (competencies.length === 0) throw new JobError('no_competencies');
   for (const c of competencies) {
     if (!c.name.trim()) throw new JobError('competency_name');
     if (!Number.isInteger(c.weightPercent) || c.weightPercent < 1 || c.weightPercent > 100)
       throw new JobError('weight');
     if (!Number.isInteger(c.levelNeeded) || c.levelNeeded < 1 || c.levelNeeded > 5) throw new JobError('level');
-    const packed = Boolean(c.packKey && c.packVersion && DOMAIN_KEYS.includes(c.packKey));
+    const packed = Boolean(
+      c.packKey &&
+      c.packVersion &&
+      c.packVersion <= catalogue.version &&
+      catalogue.packs.some(
+        (p) => p.key === c.packKey && (!p.retired || kept.some((k) => k.packKey === c.packKey && k.name === c.name)),
+      ),
+    );
     if ((c.origin === 'domain_pack') !== packed) throw new JobError('domain_pack');
     // Knowing a market's rules is evidence of a skill, never a residency requirement, so it can never be mandatory.
-    if (c.type !== 'desirable' && isRegionalHint(c.name)) throw new JobError('regional_desirable');
+    if (c.type !== 'desirable' && isRegionalHint(catalogue, c.name)) throw new JobError('regional_desirable');
   }
   if (competencies.reduce((sum, c) => sum + c.weightPercent, 0) !== 100) throw new JobError('weights_total');
 }
@@ -254,7 +268,7 @@ export const PUBLIC_DESCRIPTOR_MAX = 80;
  */
 export type PublicListing = {
   title: string;
-  jobType: JobType;
+  jobType: string;
   descriptor: string | null;
   location: string | null;
   // shortcut: a pay band has no period; the candidate site reads it as monthly (UAE norm), until a job states one.

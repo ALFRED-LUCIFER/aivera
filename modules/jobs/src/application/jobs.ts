@@ -8,6 +8,7 @@ import {
   type SetJobOwnerInput,
   type WorkspaceContext,
 } from '@aivera/workspaces';
+import { offeredJobTypes, type CatalogueVersion } from '../domain/catalogue.ts';
 import {
   approvesAs,
   assertTransition,
@@ -98,6 +99,8 @@ export type Ports = {
    * it. Refuses an owner who is not an active hiring owner.
    */
   setJobOwner(ctx: WorkspaceContext, input: SetJobOwnerInput): Promise<void>;
+  /** The latest published catalogue (ADR-013 point 15), read in `ctx.tx`. */
+  publishedCatalogue(ctx: WorkspaceContext): Promise<CatalogueVersion>;
   /** Whether the context's workspace is flagged synthetic (AGENTS.md 1.1). */
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   /**
@@ -165,6 +168,7 @@ export function jobsUseCases({
   authorize,
   listClients,
   setJobOwner,
+  publishedCatalogue,
   isSyntheticWorkspace,
   publishRubricApproved,
   publishListingChange,
@@ -225,10 +229,14 @@ export function jobsUseCases({
     return { job, version, actingAs };
   }
 
-  /** Validates and inserts a new job at stage "defining rubric"; the caller has authorised `job.create` and audits. */
-  async function insertNewJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job> {
+  /**
+   * Validates and inserts a new job at stage "defining rubric"; the caller has authorised `job.create` and audits. The
+   * job type must be one the published catalogue offers: a retired one stays on old jobs but starts no new one.
+   */
+  async function insertNewJob(ctx: WorkspaceContext, input: CreateJobInput, catalogue: CatalogueVersion): Promise<Job> {
     const title = input.title.trim();
     if (!title) throw new JobError('title');
+    if (!offeredJobTypes(catalogue).some((t) => t.key === input.jobType)) throw new JobError('job_type');
     const payBand = input.payBand ?? null;
     assertValidPayBand(payBand);
     const clientId = input.clientId ?? null;
@@ -270,7 +278,7 @@ export function jobsUseCases({
   return {
     async createJob(ctx: WorkspaceContext, input: CreateJobInput): Promise<Job> {
       await authorize(ctx, 'job.create');
-      const job = await insertNewJob(ctx, input);
+      const job = await insertNewJob(ctx, input, await publishedCatalogue(ctx));
       await grantOwner(ctx, job);
       await audit(ctx, {
         action: 'job.created',
@@ -290,8 +298,9 @@ export function jobsUseCases({
     ): Promise<{ job: Job; rubricVersion: RubricVersion }> {
       await authorize(ctx, 'job.create');
       const competencies = rebalanceWeights(input.competencies);
-      assertValidCompetencies(competencies);
-      const job = await insertNewJob(ctx, input);
+      const catalogue = await publishedCatalogue(ctx);
+      assertValidCompetencies(competencies, catalogue);
+      const job = await insertNewJob(ctx, input, catalogue);
       const rubricVersion: RubricVersion = {
         id: newId(),
         workspaceId: ctx.workspaceId,
@@ -431,9 +440,11 @@ export function jobsUseCases({
     async saveRubric(ctx: WorkspaceContext, jobId: string, input: SaveRubricInput): Promise<RubricVersion> {
       // Locks the job row, so two saves cannot both take the same next version number.
       const job = await visibleJob(ctx, jobId, 'rubric.edit', true);
-      assertValidCompetencies(input.competencies);
       const store = storeFor(ctx.tx);
       const latest = await store.latestVersion(ctx.workspaceId, job.id);
+      // A competency from a pack retired since keeps it; a retired pack starts no new one.
+      const kept = latest ? await store.competencies(ctx.workspaceId, latest.id) : [];
+      assertValidCompetencies(input.competencies, await publishedCatalogue(ctx), kept);
       // One open version per job (rubric_version_one_open_idx): editing resumes it.
       const open = latest && editsInPlace(latest) ? latest : null;
       const approved = await store.approvedVersion(ctx.workspaceId, job.id);

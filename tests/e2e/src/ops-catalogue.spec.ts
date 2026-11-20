@@ -90,13 +90,9 @@ test('Scenario: Nothing can be edited here', async ({ page }) => {
   await openPaymentsForSoftwareEngineering(page);
   await expect(page.locator('main').locator('button, input, textarea, select, form, [contenteditable]')).toHaveCount(0);
   await expect(page.getByText('The catalogue changes only through a reviewed pull request.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Job types file on GitHub' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Catalogue migrations on GitHub' })).toHaveAttribute(
     'href',
-    /\/modules\/jobs\/src\/domain\/job-types\.ts$/,
-  );
-  await expect(page.getByRole('link', { name: 'Domain packs file on GitHub' })).toHaveAttribute(
-    'href',
-    /\/modules\/jobs\/src\/domain\/domain-packs\.ts$/,
+    /\/modules\/jobs\/src\/infrastructure\/migrations$/,
   );
 });
 
@@ -109,9 +105,9 @@ test('Scenario: Non-operators are refused', async ({ page }) => {
   expect(await response?.text()).not.toMatch(/Payments and fintech|Job types · version|reviewed pull request/);
 });
 
-test('the keyboard path: from the source links into a pack and a job type', async ({ page }) => {
+test('the keyboard path: from the source link into a pack and a job type', async ({ page }) => {
   await openCatalogue(page);
-  await page.getByRole('link', { name: 'Domain packs file on GitHub' }).focus();
+  await page.getByRole('link', { name: 'Catalogue migrations on GitHub' }).focus();
   await page.keyboard.press('Tab');
   await expect(packSummary(page, 'Payments and fintech')).toBeFocused();
   await page.keyboard.press('Enter');

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultJobType, descriptionPlaceholder, parseNewJobForm } from './jobNew.ts';
+import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
+import { defaultJobType, descriptionPlaceholder, jobTypeOptions, parseNewJobForm } from './jobNew.ts';
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -13,6 +14,7 @@ describe('parseNewJobForm', () => {
     expect(
       parseNewJobForm(
         form({ jobType: 'ai_llm_engineering', title: ' Senior AI Engineer ', description: 'LLM work.', team: ' ' }),
+        CATALOGUE_V1,
       ),
     ).toEqual({
       input: {
@@ -28,12 +30,15 @@ describe('parseNewJobForm', () => {
   });
 
   it('keeps a hiring owner id', () => {
-    const parsed = parseNewJobForm(form({ jobType: 'sales', title: 'Account Executive', hiringOwnerUserId: owner }));
+    const parsed = parseNewJobForm(
+      form({ jobType: 'sales', title: 'Account Executive', hiringOwnerUserId: owner }),
+      CATALOGUE_V1,
+    );
     expect('input' in parsed && parsed.input.hiringOwnerUserId).toBe(owner);
   });
 
   it('asks for a title and a job type, keeping what was typed', () => {
-    expect(parseNewJobForm(form({ title: '  ', description: 'Thin.' }))).toEqual({
+    expect(parseNewJobForm(form({ title: '  ', description: 'Thin.' }), CATALOGUE_V1)).toEqual({
       state: {
         errors: { title: true, jobType: true },
         error: null,
@@ -57,8 +62,17 @@ describe('parseNewJobForm', () => {
     { jobType: 'sales', title: 'x', hiringOwnerUserId: 'not-an-id' },
     { jobType: 'sales', title: 'x', clientId: "' or 1=1" },
   ])('refuses a forged or over-long %o', (fields) => {
-    const parsed = parseNewJobForm(form(fields));
+    const parsed = parseNewJobForm(form(fields), CATALOGUE_V1);
     expect('state' in parsed && parsed.state.error).toBe(fields.jobType === 'astrology' ? null : 'failed');
+  });
+
+  it('AIV-P2-044: refuses a job type the published catalogue retired, as one it never had', () => {
+    const retired = {
+      ...CATALOGUE_V1,
+      jobTypes: CATALOGUE_V1.jobTypes.map((t) => ({ ...t, retired: t.key === 'sales' })),
+    };
+    const parsed = parseNewJobForm(form({ jobType: 'sales', title: 'Account Executive' }), retired);
+    expect('state' in parsed && parsed.state.errors).toEqual({ jobType: true });
   });
 });
 
@@ -71,20 +85,26 @@ describe('descriptionPlaceholder', () => {
     ['product_design', 'Interaction design craft'],
     ['technical_writing_support', 'Clear task documentation'],
   ])('lists the %s starters, %s first', (jobType, first) => {
-    const lines = descriptionPlaceholder('What this person must be able to do:', jobType).split('\n');
+    const starters = jobTypeOptions(CATALOGUE_V1).find((o) => o.value === jobType)?.starters ?? [];
+    const lines = descriptionPlaceholder('What this person must be able to do:', starters).split('\n');
     expect(lines[0]).toBe('What this person must be able to do:');
     expect(lines[1]).toBe(`- ${first}`);
     expect(lines).toHaveLength(5);
   });
 
   it('is the intro alone before a job type is chosen', () => {
-    expect(descriptionPlaceholder('Intro', '')).toBe('Intro');
+    expect(descriptionPlaceholder('Intro', [])).toBe('Intro');
   });
 });
 
 describe('defaultJobType', () => {
   it('preselects a hiring focus that is a job type, and nothing for a catch-all', () => {
-    expect(defaultJobType('data_ml')).toBe('data_ml');
-    expect(defaultJobType('several')).toBe('');
+    expect(defaultJobType('data_ml', CATALOGUE_V1)).toBe('data_ml');
+    expect(defaultJobType('several', CATALOGUE_V1)).toBe('');
+    const retired = {
+      ...CATALOGUE_V1,
+      jobTypes: CATALOGUE_V1.jobTypes.map((t) => ({ ...t, retired: t.key === 'data_ml' })),
+    };
+    expect(defaultJobType('data_ml', retired)).toBe('');
   });
 });

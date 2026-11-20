@@ -1,25 +1,20 @@
-// Writes the jobs migration that seeds catalogue version 1 from the code catalogue (ADR-013 point 9, AIV-P2-043):
+// Writes the jobs migration that seeds catalogue version 1 from its committed snapshot (ADR-013 point 9, AIV-P2-043):
 // pnpm --filter @aivera/seed catalogue:v1 > modules/jobs/src/infrastructure/migrations/0017_catalogue_v1_seed.sql
-// The output is committed and reviewed like any migration; rerunning it inserts nothing (ON CONFLICT DO NOTHING).
+// The snapshot, catalogue-v1.json, was generated from the code catalogue before AIV-P2-044 deleted it; the integration
+// suite proves version 1 in the database equals it. The output is committed and reviewed like any migration; rerunning
+// it inserts nothing (ON CONFLICT DO NOTHING).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { JOB_TYPE_CATALOGUE, listDomainPacks, REGIONS } from '@aivera/jobs';
+import type { CatalogueVersion } from '@aivera/jobs';
 
-const messages: unknown = JSON.parse(
-  readFileSync(join(import.meta.dirname, '..', '..', '..', 'packages', 'i18n', 'messages', 'en.json'), 'utf8'),
+const v1: Pick<CatalogueVersion, 'jobTypes' | 'regions' | 'packs'> = JSON.parse(
+  readFileSync(
+    join(import.meta.dirname, '..', '..', '..', 'modules', 'jobs', 'src', 'infrastructure', 'catalogue-v1.json'),
+    'utf8',
+  ),
 );
-/** The English text of a dotted `en.json` key; a missing key stops the script rather than seeding a blank label. */
-const english = (key: string): { en: string } => {
-  const text = key
-    .split('.')
-    .reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], messages);
-  if (typeof text !== 'string') throw new Error(`en.json has no ${key}`);
-  return { en: text };
-};
-// en.json has no plain region name (only "In the UAE" and captions), so version 1 names each market here.
-const REGION_LABELS = { uae: 'UAE', ksa: 'KSA', india: 'India' } as const;
 
-type Literal = string | number | readonly string[] | { en: string };
+type Literal = string | number | readonly string[] | { readonly en: string };
 /** A SQL literal of trusted code text: quotes doubled (standard_conforming_strings is on), arrays and labels typed. */
 const lit = (value: Literal): string =>
   typeof value === 'number'
@@ -36,7 +31,7 @@ const insert = (table: string, columns: string[], rows: Literal[][]) =>
     .join(',\n')}\nON CONFLICT DO NOTHING;`;
 
 const SKILL = ['name', 'meaning', 'evidence', 'level_1', 'level_3', 'level_5', 'applies_to', 'level_needed', 'type'];
-const packs = listDomainPacks();
+const { jobTypes, regions, packs } = v1;
 
 const statements = [
   `INSERT INTO "jobs"."catalogue_version" ("version", "status", "created_by", "created_at", "published_by", "published_at", "reason")
@@ -45,17 +40,17 @@ ON CONFLICT DO NOTHING;`,
   insert(
     'catalogue_job_type',
     ['version', 'key', 'position', 'label', 'evidence', 'starter_competencies'],
-    JOB_TYPE_CATALOGUE.map((t, i) => [t.key, i, english(t.labelKey), english(t.evidenceKey), t.starterCompetencies]),
+    jobTypes.map((t, i) => [t.key, i, t.label, t.evidence, t.starterCompetencies]),
   ),
   insert(
     'catalogue_region',
     ['version', 'key', 'position', 'label'],
-    REGIONS.map((r, i) => [r, i, { en: REGION_LABELS[r] }]),
+    regions.map((r, i) => [r.key, i, r.label]),
   ),
   insert(
     'catalogue_pack',
     ['version', 'key', 'position', 'label'],
-    packs.map((p, i) => [p.key, i, english(p.labelKey)]),
+    packs.map((p, i) => [p.key, i, p.label]),
   ),
   insert(
     'catalogue_pack_competency',
@@ -81,21 +76,23 @@ ON CONFLICT DO NOTHING;`,
     'catalogue_regional_hint',
     ['version', 'pack_key', 'region', 'position', ...SKILL],
     packs.flatMap((p) =>
-      REGIONS.flatMap((r) =>
-        p.hints[r].map((h, i) => [
-          p.key,
-          r,
-          i,
-          h.name,
-          h.meaning,
-          h.evidence,
-          h.levels[1],
-          h.levels[3],
-          h.levels[5],
-          h.appliesTo,
-          h.levelNeeded,
-          h.type,
-        ]),
+      regions.flatMap(({ key: r }) =>
+        p.hints
+          .filter((h) => h.region === r)
+          .map((h, i) => [
+            p.key,
+            r,
+            i,
+            h.name,
+            h.meaning,
+            h.evidence,
+            h.levels[1],
+            h.levels[3],
+            h.levels[5],
+            h.appliesTo,
+            h.levelNeeded,
+            h.type,
+          ]),
       ),
     ),
   ),

@@ -1,6 +1,6 @@
 'use server';
 
-import { COMPETENCY_ORIGINS, COMPETENCY_TYPES, DOMAIN_KEYS, JobError } from '@aivera/jobs';
+import { CATALOGUE_KEY, COMPETENCY_ORIGINS, COMPETENCY_TYPES, JobError } from '@aivera/jobs';
 import { log } from '@aivera/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
@@ -23,7 +23,7 @@ const input = z.object({
         levelNeeded: z.int(),
         type: z.enum(COMPETENCY_TYPES),
         origin: z.enum(COMPETENCY_ORIGINS),
-        packKey: z.enum(DOMAIN_KEYS).nullable().default(null),
+        packKey: z.string().regex(CATALOGUE_KEY).nullable().default(null),
         packVersion: z.int().nullable().default(null),
       }),
     )

@@ -1,7 +1,7 @@
 // The candidate site's read model of a published job (AIV-P3-002): the allow-listed listing (AIV-P1-015) plus its
 // public address and posted date. Nothing here may carry a weight, the client's name, a candidate, a score or an id.
 import { z } from 'zod';
-import { JOB_TYPES } from './job-types.ts';
+import { CATALOGUE_KEY } from './catalogue.ts';
 import type { PublicListing } from './job.ts';
 
 export type PublicJob = Omit<PublicListing, 'descriptor'> & {
@@ -38,7 +38,7 @@ export const slugFor = (title: string, suffix: string): string => {
 export const publicJobJson = z.strictObject({
   slug: z.string().regex(SLUG),
   title: z.string(),
-  jobType: z.enum(JOB_TYPES),
+  jobType: z.string().regex(CATALOGUE_KEY),
   descriptor: z.string(),
   location: z.string().nullable(),
   payBand: z.strictObject({ minMinor: z.int(), maxMinor: z.int(), currency: z.string().length(3) }).nullable(),

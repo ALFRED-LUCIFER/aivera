@@ -4,7 +4,7 @@ import { createCandidates } from '@aivera/candidates/composition';
 import type { Db } from '@aivera/db/client';
 import { createIdentity } from '@aivera/identity/composition';
 import type { Competency } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
+import { createCatalogueReads, createJobs } from '@aivera/jobs/composition';
 import type { WorkspaceContext } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import {
@@ -93,6 +93,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     // AIV-P1-065: a job is found again by its title; each new one gets its draft rubric v1, audited as `job.created`.
     // shortcut: a demo job renamed in the app is seeded again on the next run; match on a seed key if that matters.
     const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
+    const catalogue = await createCatalogueReads(db).getPublishedCatalogue();
     for (const job of INDUSTRY_JOBS)
       if (!jobIds.has(job.title)) {
         const created = await jobs.createJobWithDraftRubric(ctx, {
@@ -103,7 +104,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
           description: job.description,
           hiringOwnerUserId: ownerOf(job.hiringOwner),
           synthetic: true,
-          competencies: industryRubric(job),
+          competencies: industryRubric(job, catalogue),
         });
         jobIds.set(job.title, created.job.id);
       }

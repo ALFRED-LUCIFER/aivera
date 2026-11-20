@@ -8,8 +8,10 @@ import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, loadShellCounts, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
 import { AuthPage, inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
-import { HIRING_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
+import { offeredJobTypes } from '@aivera/jobs';
+import { CATCH_ALL_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
+import { getCatalogue } from '@/server/jobs';
 import { enabledFlags } from '@/server/flags';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
@@ -26,7 +28,10 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
   if (!(await getSessionUserId())) redirect('/sign-in');
   const member = await currentMember();
   if (!member) {
-    const t = await getTranslations(defaultLocale, defaultTimeZone);
+    const [t, catalogue] = await Promise.all([
+      getTranslations(defaultLocale, defaultTimeZone),
+      getCatalogue().getPublishedCatalogue(),
+    ]);
     // AIV-P1-001: or they create their own, and become its admin.
     return (
       <AuthPage
@@ -37,10 +42,10 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
         lead={t('access.noWorkspace')}
       >
         <CreateWorkspace
-          focusOptions={HIRING_FOCUS.map((value) => ({
-            value,
-            label: t(value === 'several' || value === 'other' ? `signup.focus.${value}` : `jobTypes.${value}.label`),
-          }))}
+          focusOptions={[
+            ...offeredJobTypes(catalogue).map((j) => ({ value: j.key, label: j.label.en })),
+            ...CATCH_ALL_FOCUS.map((value) => ({ value, label: t(`signup.focus.${value}`) })),
+          ]}
           labels={{
             title: t('signup.title'),
             company: t('signup.company'),

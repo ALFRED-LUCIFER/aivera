@@ -1,5 +1,6 @@
 'use client';
 
+import type { CatalogueContent } from '@aivera/jobs';
 import type { ComponentProps } from 'react';
 import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
 import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';
@@ -11,11 +12,11 @@ import { useSendRubricController } from '@/features/job-new/hooks/useSendRubricC
 type Props = Pick<
   ComponentProps<typeof NewJobForm>,
   'labels' | 'jobTypes' | 'hiringOwners' | 'clients' | 'membersHref'
-> & { defaultJobType: string };
+> & { defaultJobType: string; catalogue: CatalogueContent };
 
-export function NewJob({ defaultJobType, ...props }: Props) {
+export function NewJob({ defaultJobType, catalogue, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
-  const { result, onDraft, onSaving, onUseStarters, rubric, ...draft } = useCompetencyDraftController();
+  const { result, onDraft, onSaving, onUseStarters, rubric, ...draft } = useCompetencyDraftController(catalogue);
   const send = useSendRubricController(job.state.rubricVersionId);
   if (job.state.saved) return <JobSaved {...send} />;
   return (

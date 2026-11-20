@@ -1,5 +1,4 @@
 import { useTranslations } from '@aivera/i18n/react';
-import type { JobType } from '@aivera/jobs';
 import { Button, buttonClassName, Card, Chip, LevelMeter } from '@aivera/ui';
 import Link from 'next/link';
 
@@ -7,7 +6,8 @@ export type JobDetailProps = {
   title: string;
   descriptor: string;
   location: string | null;
-  jobType: JobType;
+  /** The job type's name from the published catalogue. */
+  jobTypeLabel: string;
   /** "AED 35,000 to 48,000 a month" or "Pay band not disclosed", formatted on the server. */
   pay: string;
   postedDays: number;
@@ -20,7 +20,7 @@ const section = 'font-display text-section tracking-tight';
 
 export function JobDetail(props: JobDetailProps) {
   const t = useTranslations();
-  const { title, descriptor, location, jobType, pay, postedDays, competencies } = props;
+  const { title, descriptor, location, jobTypeLabel, pay, postedDays, competencies } = props;
   return (
     <article className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex min-w-0 flex-col gap-8">
@@ -30,7 +30,7 @@ export function JobDetail(props: JobDetailProps) {
             {location ? t('candidate.jobs.descriptorAndLocation', { descriptor, location }) : descriptor}
           </p>
           <p className="flex flex-wrap gap-x-4 text-meta text-text-2">
-            <span>{t(`jobTypes.${jobType}.label`)}</span>
+            <span>{jobTypeLabel}</span>
             <span>{pay}</span>
             <span>{t('candidate.jobs.posted', { days: postedDays })}</span>
           </p>

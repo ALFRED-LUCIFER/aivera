@@ -206,9 +206,6 @@ importers:
       '@aivera/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/jobs':
-        specifier: workspace:*
-        version: link:../jobs
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)

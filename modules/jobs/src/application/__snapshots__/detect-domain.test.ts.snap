@@ -1,0 +1,127 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario: Only the published version is read (AIV-P2-044) > equals the request built from the code catalogue: the same prompt and output schema 1`] = `
+{
+  "prompt": "Job type: software_engineering
+Title: Senior Backend Engineer, Payments",
+  "promptVersion": "jobs.detectDomain@1",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "industry": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "domain": {
+                "enum": [
+                  "none",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "domain",
+            ],
+            "type": "object",
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string",
+                    },
+                    "sourceId": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "sourceId",
+                    "quote",
+                  ],
+                  "type": "object",
+                },
+                "minItems": 1,
+                "type": "array",
+              },
+              "domain": {
+                "enum": [
+                  "payments_fintech",
+                  "banking_islamic_finance",
+                  "healthcare",
+                  "ecommerce_marketplaces",
+                  "logistics_mobility",
+                  "government_public_sector",
+                  "telecom",
+                  "energy_utilities",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "domain",
+              "citations",
+            ],
+            "type": "object",
+          },
+        ],
+      },
+      "regions": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "citations": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "quote": {
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                  "sourceId": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "sourceId",
+                  "quote",
+                ],
+                "type": "object",
+              },
+              "minItems": 1,
+              "type": "array",
+            },
+            "region": {
+              "enum": [
+                "uae",
+                "ksa",
+                "india",
+              ],
+              "type": "string",
+            },
+          },
+          "required": [
+            "region",
+            "citations",
+          ],
+          "type": "object",
+        },
+        "type": "array",
+      },
+    },
+    "required": [
+      "industry",
+      "regions",
+    ],
+    "type": "object",
+  },
+  "system": "You read a job description and say which industry the hiring company is in, so Aivera can suggest that industry's skills. Choose one domain from the list in the schema only when the description clearly shows the company works in it, and cite the sentence that shows it. When no industry is clear, answer domain "none" with no citation. Regions: list a region from the schema only for where the job or the company is based or operates, each citing the location or the description sentence that says so. Never infer a region, or anything else, from a line about the people to hire: nationality, residency, where someone is from, an employer they worked at, age or gender.",
+  "task": "jobs.detectDomain",
+}
+`;

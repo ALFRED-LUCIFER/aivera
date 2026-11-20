@@ -29,6 +29,9 @@ vi.mock('@/server/jobs', () => ({
   getCompetencyDrafting: () => ({ draftCompetencies: draft }),
   getDomainDetection: () => ({ detectDomain: detect }),
   getJobs: () => ({ createJob }),
+  getCatalogue: () => ({
+    getPublishedCatalogue: async () => (await import('@/test/catalogue-v1.ts')).CATALOGUE_V1,
+  }),
 }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
@@ -83,7 +86,7 @@ beforeEach(() => {
 describe('draftCompetencies (server action)', () => {
   it('drafts from the job type, title and description only, with the cited sentence, and saves nothing', async () => {
     const result = await submit({ ...job, team: 'Engineering', location: 'DIFC, Dubai' });
-    expect(draft).toHaveBeenCalledWith('w1', job);
+    expect(draft).toHaveBeenCalledWith('w1', job, expect.objectContaining({ version: 1 }));
     expect(result).toEqual({
       status: 'drafted',
       competencies: [
@@ -105,7 +108,11 @@ describe('draftCompetencies (server action)', () => {
       industry: null,
       regions: [],
     });
-    expect(detect).toHaveBeenCalledWith('w1', { ...job, location: 'DIFC, Dubai' });
+    expect(detect).toHaveBeenCalledWith(
+      'w1',
+      { ...job, location: 'DIFC, Dubai' },
+      expect.objectContaining({ version: 1 }),
+    );
     // Scenario: Nothing is saved by drafting.
     expect(createJob).not.toHaveBeenCalled();
   });

@@ -1,21 +1,22 @@
-import { getTranslations } from '@aivera/i18n';
 import { describe, expect, it } from 'vitest';
 import {
-  DOMAIN_KEYS,
-  DOMAIN_PACK_CATALOGUE_VERSION,
-  JOB_TYPES,
-  REGIONS,
-  getDomainPack,
   isRegionalHint,
-  listDomainPacks,
-  type DomainPack,
-  type RegionalHint,
+  packForJobType,
+  type CatalogueHint,
+  type CataloguePack,
+  type CatalogueVersion,
 } from '../contracts/index.ts';
+import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
 
-// AIV-P1-061 Gherkin, read through the contracts entry as other modules do.
-const t = await getTranslations('en', 'Asia/Dubai');
+// AIV-P1-061 Gherkin over catalogue version 1 (ADR-013), read through the contracts entry as other modules do.
+const packs = CATALOGUE_V1.packs;
+const jobTypeKeys = CATALOGUE_V1.jobTypes.map((j) => j.key);
+const REGIONS = CATALOGUE_V1.regions.map((r) => r.key);
+const getPack = (key: string, jobType: string) => packForJobType(CATALOGUE_V1, key, jobType);
+const hintsIn = (pack: { hints: readonly CatalogueHint[] } | null | undefined, region: string) =>
+  pack?.hints.filter((h) => h.region === region) ?? [];
 const names = (list: readonly { name: string }[]) => list.map((c) => c.name).join('; ');
-const payments = listDomainPacks().find((p) => t(p.labelKey) === 'Payments and fintech');
+const payments = packs.find((p) => p.label.en === 'Payments and fintech');
 
 // Proxies, never skills (AGENTS.md 1.5, 1.6): employers, "worked at", nationality, residency, permits, language as
 // origin, age, gender, religion and marital status.
@@ -53,14 +54,14 @@ const stringsOf = (value: unknown): string[] =>
     : value && typeof value === 'object'
       ? Object.values(value).flatMap(stringsOf)
       : [];
-const catalogueStrings = (packs: readonly DomainPack[]) => [...stringsOf(packs), ...packs.map((p) => t(p.labelKey))];
+const catalogueStrings = (list: readonly CataloguePack[]) => stringsOf(list);
 const unknownProperNouns = (s: string) => [...s.matchAll(/(?<=.)\b[A-Z][\w-]*/g)].some(([w]) => !PROPER_NOUNS.has(w));
 const fairnessViolations = (strings: string[]) =>
   strings.filter((s) => PROXIES.some((re) => re.test(s)) || unknownProperNouns(s));
 
 describe('domain packs', () => {
   it('gives software engineering in payments niche core competencies, and the rest as more from this pack', () => {
-    const pack = payments && getDomainPack(payments.key, 'software_engineering');
+    const pack = payments && getPack(payments.key, 'software_engineering');
     expect(names(pack?.core ?? [])).toBe(
       'Idempotent payment APIs and retries; Ledger and double-entry accounting; Reconciliation and settlement; PCI DSS scope reduction and tokenisation',
     );
@@ -77,7 +78,7 @@ describe('domain packs', () => {
     ['data_ml', 'Fraud and risk signals'],
     ['qa_test_automation', 'Payment certification and test cards'],
   ] as const)('gives %s in payments its own core competencies', (jobType, core) => {
-    expect(names(getDomainPack('payments_fintech', jobType)?.core ?? [])).toBe(core);
+    expect(names(getPack('payments_fintech', jobType)?.core ?? [])).toBe(core);
   });
 
   it('states the evidence and level guide of a competency', () => {
@@ -97,7 +98,7 @@ describe('domain packs', () => {
     ['ksa', 'mada scheme integration; SADAD bill payments; SAMA payment rules'],
     ['india', 'UPI and NPCI rules; RBI payment aggregator guidelines; Card-on-file tokenisation'],
   ] as const)('gives payments %s hints as desirable knowledge with evidence', (region, hints) => {
-    const list = payments?.hints[region] ?? [];
+    const list = hintsIn(payments, region);
     expect(names(list)).toBe(hints);
     for (const hint of list) {
       expect(hint.type).toBe('desirable');
@@ -110,13 +111,13 @@ describe('domain packs', () => {
     // then "Payments at Emirates NBD" -> 'keeps every catalogue string a skill, never a proxy' failed each time.
     // SAFETY: mutation check (AIV-P1-062): renamed a banking competency to "Basel and IFRS 9 risk reporting for Saudi
     // banks" -> 'keeps every catalogue string a skill, never a proxy' failed.
-    expect(fairnessViolations(catalogueStrings(listDomainPacks()))).toEqual([]);
+    expect(fairnessViolations(catalogueStrings(packs))).toEqual([]);
   });
 
   it('fails the fairness check when a pack names an employer, a nationality, residency or an age', () => {
     // SAFETY: mutation check (AIV-P1-062): removed the "speaks Arabic", "Arabic proficiency" and "Islamic" proxies ->
     // 'fails the fairness check when a pack names an employer, a nationality, residency or an age' failed.
-    const [first, ...rest] = listDomainPacks();
+    const [first, ...rest] = packs;
     const template = first?.competencies[0];
     if (!first || !template) throw new Error('catalogue is empty');
     for (const proxy of [
@@ -153,27 +154,25 @@ describe('domain packs', () => {
   it('names regulators and schemes only as regional knowledge, never as a residency requirement', () => {
     // SAFETY: mutation check (AIV-P1-062): put "Nafath" in a banking competency's level guide -> 'names regulators and
     // schemes only as regional knowledge, never as a residency requirement' failed.
-    for (const pack of listDomainPacks()) {
+    for (const pack of packs) {
       expect(stringsOf(pack.competencies).filter((s) => REGIONAL_NAMES.test(s))).toEqual([]);
-      for (const hint of REGIONS.flatMap((r) => pack.hints[r])) {
+      for (const hint of pack.hints) {
         expect(hint.type).toBe('desirable');
         expect(hint.evidence).not.toBe('');
         expect(fairnessViolations(stringsOf(hint)), hint.name).toEqual([]);
       }
     }
     // @ts-expect-error the catalogue cannot make a regional hint mandatory
-    const mandatory: RegionalHint['type'] = 'mandatory';
+    const mandatory: CatalogueHint['type'] = 'mandatory';
     expect(mandatory).toBe('mandatory');
   });
 
   it('keeps the shape rules', () => {
-    const packs = listDomainPacks();
-    expect(packs.map((p) => p.key)).toEqual(DOMAIN_KEYS);
-    expect(new Set(DOMAIN_KEYS).size).toBe(DOMAIN_KEYS.length);
+    expect(new Set(packs.map((p) => p.key)).size).toBe(packs.length);
     for (const pack of packs) {
-      expect(t(pack.labelKey), pack.labelKey).not.toBe(pack.labelKey);
-      expect(Object.keys(pack.hints)).toEqual([...REGIONS]);
-      const all = [...pack.competencies, ...REGIONS.flatMap((r) => pack.hints[r])];
+      expect(pack.label.en, pack.key).not.toBe('');
+      expect([...new Set(pack.hints.map((h) => h.region))], pack.key).toEqual(REGIONS);
+      const all = [...pack.competencies, ...pack.hints];
       expect(new Set(all.map((c) => c.name)).size, pack.key).toBe(all.length);
       for (const c of all) {
         expect(c.meaning, c.name).toMatch(/^[^.]+\.$/);
@@ -183,7 +182,7 @@ describe('domain packs', () => {
         expect(c.type, c.name).toBe('desirable');
         expect(c.appliesTo.length, c.name).toBeGreaterThan(0);
         expect(
-          c.appliesTo.every((j) => JOB_TYPES.includes(j)),
+          c.appliesTo.every((j) => jobTypeKeys.includes(j)),
           c.name,
         ).toBe(true);
       }
@@ -192,7 +191,7 @@ describe('domain packs', () => {
           c.core.every((j) => c.appliesTo.includes(j)),
           c.name,
         ).toBe(true);
-      for (const jobType of JOB_TYPES)
+      for (const jobType of jobTypeKeys)
         expect(
           pack.competencies.filter((c) => c.core.includes(jobType)).length,
           `${pack.key} ${jobType}`,
@@ -209,14 +208,14 @@ describe('domain packs', () => {
     ['Telecom', 'OSS/BSS systems'],
     ['Energy and utilities', 'OT and SCADA security (IEC 62443)'],
   ])('gives software engineering in %s the core competency "%s" first, and hints for every region', (label, first) => {
-    const key = listDomainPacks().find((p) => t(p.labelKey) === label)?.key;
-    const pack = key && getDomainPack(key, 'software_engineering');
+    const key = packs.find((p) => p.label.en === label)?.key;
+    const pack = key ? getPack(key, 'software_engineering') : null;
     expect(pack?.core[0]?.name).toBe(first);
-    for (const region of REGIONS) expect(pack?.hints[region].length, region).toBeGreaterThan(0);
+    for (const region of REGIONS) expect(hintsIn(pack, region).length, region).toBeGreaterThan(0);
   });
 
   it('lists eight packs in a fixed order', () => {
-    const labels = listDomainPacks().map((p) => t(p.labelKey));
+    const labels = packs.map((p) => p.label.en);
     expect(labels).toHaveLength(8);
     expect([labels[0], labels.at(-1)]).toEqual(['Payments and fintech', 'Energy and utilities']);
   });
@@ -225,26 +224,54 @@ describe('domain packs', () => {
     ['healthcare', 'sales'],
     ['telecom', 'product_design'],
   ] as const)('gives %s for %s empty lists, so the job type starters stay the only defaults', (key, jobType) => {
-    expect(getDomainPack(key, jobType)).toMatchObject({
-      core: [],
-      more: [],
-      hints: { uae: [], ksa: [], india: [] },
-    });
-  });
-
-  it('is read-only and shows every change in review', () => {
-    const packs = listDomainPacks();
-    expect(Object.isFrozen(packs)).toBe(true);
-    expect(packs.every((p) => Object.isFrozen(p) && Object.isFrozen(p.competencies[0]?.levels))).toBe(true);
-    expect({ version: DOMAIN_PACK_CATALOGUE_VERSION, packs }).toMatchSnapshot();
+    expect(getPack(key, jobType)).toMatchObject({ core: [], more: [], hints: [] });
   });
 });
 
 describe('isRegionalHint (AIV-P1-064)', () => {
   it('knows every regional hint by name, and no pack competency is named like one', () => {
-    for (const pack of listDomainPacks()) {
-      for (const region of REGIONS) for (const hint of pack.hints[region]) expect(isRegionalHint(hint.name)).toBe(true);
-      for (const c of pack.competencies) expect(isRegionalHint(c.name)).toBe(false);
+    for (const pack of packs) {
+      for (const hint of pack.hints) expect(isRegionalHint(CATALOGUE_V1, hint.name)).toBe(true);
+      for (const c of pack.competencies) expect(isRegionalHint(CATALOGUE_V1, c.name)).toBe(false);
     }
+  });
+});
+
+/** Version 1 with the payments pack's first competency and UAE hint, the KSA region, or the whole pack retired. */
+const retiring = (change: (pack: CataloguePack) => CataloguePack, ksa = false): CatalogueVersion => ({
+  ...CATALOGUE_V1,
+  regions: CATALOGUE_V1.regions.map((r) => ({ ...r, retired: ksa && r.key === 'ksa' })),
+  packs: packs.map((p) => (p.key === 'payments_fintech' ? change(p) : p)),
+});
+
+describe('Retired entries (ADR-013 point 6, AIV-P2-044)', () => {
+  // SAFETY: mutation check: dropped `!c.retired &&` from packForJobType -> this test failed
+  it('are never suggested: a retired competency, hint, region or pack is left out of the pack view', () => {
+    const retired = retiring(
+      (p) => ({
+        ...p,
+        competencies: p.competencies.map((c, i) => ({ ...c, retired: i === 0 })),
+        hints: p.hints.map((h) => ({ ...h, retired: h.name === 'CBUAE payment and stored-value rules' })),
+      }),
+      true,
+    );
+    const pack = packForJobType(retired, 'payments_fintech', 'software_engineering');
+    expect(names(pack?.core ?? [])).not.toContain('Idempotent payment APIs and retries');
+    expect(names(pack?.hints ?? [])).not.toContain('CBUAE payment and stored-value rules');
+    expect(hintsIn(pack, 'ksa')).toEqual([]);
+    expect(hintsIn(pack, 'india').length).toBeGreaterThan(0);
+    expect(
+      packForJobType(
+        retiring((p) => ({ ...p, retired: true })),
+        'payments_fintech',
+        'sales',
+      ),
+    ).toBeNull();
+    expect(packForJobType(CATALOGUE_V1, 'insurance', 'software_engineering')).toBeNull();
+  });
+
+  it('still count as regional hints, so a retired hint kept in a rubric can never become mandatory', () => {
+    const retired = retiring((p) => ({ ...p, hints: p.hints.map((h) => ({ ...h, retired: true })) }));
+    expect(isRegionalHint(retired, 'cbuae payment and  stored-value rules')).toBe(true);
   });
 });

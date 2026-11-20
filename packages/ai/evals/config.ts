@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { AiClient } from '../src/client.ts';
 import { z } from 'zod';
 import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
@@ -6,23 +7,23 @@ import type { GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
 
+/** The catalogue version 1 snapshot committed with AIV-P2-043, which the jobs migration 0012 seeds (ADR-013 point 9). */
+export const CATALOGUE_SNAPSHOT = new URL(
+  '../../../modules/jobs/src/infrastructure/catalogue-v1.json',
+  import.meta.url,
+);
+const keys = z.array(z.object({ key: z.string() })).nonempty();
+const snapshot = z.object({ packs: keys, regions: keys }).parse(JSON.parse(readFileSync(CATALOGUE_SNAPSHOT, 'utf8')));
+
 /**
- * The jobs module's domain catalogue (AIV-P1-061), which this package cannot import (jobs depends on it). eval.test.ts
- * fails when it drifts from DOMAIN_KEYS and REGIONS in modules/jobs/src/domain/domain-packs.ts.
+ * The pack and region keys of catalogue version 1, read from its snapshot: this package cannot import the jobs module
+ * (jobs depends on it). eval.test.ts fails when the snapshot drifts from the seed migration. A later version is
+ * evaluated live with its draft as data before it can publish (ADR-013 point 12, AIV-P2-048).
  */
 export const domainCatalogue = {
-  domains: [
-    'payments_fintech',
-    'banking_islamic_finance',
-    'healthcare',
-    'ecommerce_marketplaces',
-    'logistics_mobility',
-    'government_public_sector',
-    'telecom',
-    'energy_utilities',
-  ],
-  regions: ['uae', 'ksa', 'india'],
-} as const;
+  domains: snapshot.packs.map((p) => p.key) as [string, ...string[]],
+  regions: snapshot.regions.map((r) => r.key) as [string, ...string[]],
+};
 
 // Thresholds per task (AIV-P0-029). A regression below one fails CI; never lower a threshold to get green
 // (AGENTS.md 2.7). A feature ticket adds its task here, its golden cases in evals/<task>/ and, with its prompt, a runner.

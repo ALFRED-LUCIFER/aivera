@@ -1,20 +1,16 @@
 import {
+  CATALOGUE_KEY,
   COMPETENCY_ORIGINS,
   COMPETENCY_TYPES,
-  DOMAIN_KEYS,
-  DOMAIN_PACK_CATALOGUE_VERSION,
-  getDomainPack,
   isRegionalHint,
-  JOB_TYPE_CATALOGUE,
   nameKey,
+  packForJobType,
+  type CatalogueCompetency,
+  type CatalogueHint,
+  type CatalogueContent,
   type Competency,
-  type DomainCompetency,
   type DomainDetection,
-  type DomainKey,
   type DraftedCompetency,
-  type JobType,
-  type Region,
-  type RegionalHint,
   type SuggestedCompetency,
 } from '@aivera/jobs';
 import { z } from 'zod';
@@ -37,7 +33,7 @@ export type DraftCompetency = Pick<
   /** Empty for a competency the recruiter added or took from the job type's starters, or from a domain pack. */
   excerpts: Excerpt[];
   /** The domain pack and catalogue version it came from, and a regional hint's region; null for any other competency. */
-  pack: { key: DomainKey; version: number; region: Region | null } | null;
+  pack: { key: string; version: number; region: string | null } | null;
 };
 /** `removed`: taken out of the rubric, kept on the page so it can be restored with its weight. */
 export type DraftRow = DraftCompetency & { id: string; removed: boolean };
@@ -57,11 +53,11 @@ export type DraftResult =
       competencies: DraftCompetency[];
       leftOutNonSkill: boolean;
       /** The job type drafted for, which picks each pack's suggestions. */
-      jobType: JobType;
+      jobType: string;
       /** The hiring company's industry and the description sentence it rests on; null when none is clear. */
-      industry: { key: DomainKey; excerpts: Excerpt[] } | null;
+      industry: { key: string; excerpts: Excerpt[] } | null;
       /** The job's regions, whose hints a pack suggests. */
-      regions: Region[];
+      regions: string[];
     }
   /** The model failed, or its answer was rejected twice by the citation contract. */
   | { status: 'failed' }
@@ -109,7 +105,19 @@ export const toDetectedIndustry = (description: string, detection: DomainDetecti
   regions: detection?.regions.map((r) => r.region) ?? [],
 });
 
-const fromPack = (c: DomainCompetency | RegionalHint, key: DomainKey, region: Region | null): DraftCompetency => ({
+/** The industries "Add industry skills" offers and the regions whose hints it shows: the catalogue's, not retired. */
+export const catalogueChoices = (catalogue: CatalogueContent) => ({
+  packs: catalogue.packs.filter((p) => !p.retired).map((p) => ({ key: p.key, label: p.label.en })),
+  regions: catalogue.regions.filter((r) => !r.retired).map((r) => ({ key: r.key, label: r.label.en })),
+});
+export type Choice = { key: string; label: string };
+
+const fromPack = (
+  c: CatalogueCompetency | CatalogueHint,
+  key: string,
+  version: number,
+  region: string | null,
+): DraftCompetency => ({
   name: c.name,
   evidenceExpected: c.evidence,
   weightPercent: 10,
@@ -118,24 +126,39 @@ const fromPack = (c: DomainCompetency | RegionalHint, key: DomainKey, region: Re
   origin: 'domain_pack',
   why: null,
   excerpts: [],
-  pack: { key, version: DOMAIN_PACK_CATALOGUE_VERSION, region },
+  pack: { key, version, region },
 });
 
-/** A pack's suggestions for the job type: its core competencies, then its hints for the job's regions (AIV-P1-064). */
-export function packCompetencies(key: DomainKey, jobType: JobType, regions: readonly Region[]): DraftCompetency[] {
-  const pack = getDomainPack(key, jobType);
+/**
+ * A pack's suggestions for the job type: its core competencies, then its hints for the job's regions (AIV-P1-064), each
+ * recording the catalogue version they are copied from.
+ */
+export function packCompetencies(
+  catalogue: CatalogueContent,
+  key: string,
+  jobType: string,
+  regions: readonly string[],
+): DraftCompetency[] {
+  const pack = packForJobType(catalogue, key, jobType);
   if (!pack) return [];
   return [
-    ...pack.core.map((c) => fromPack(c, key, null)),
-    ...regions.flatMap((region) => pack.hints[region].map((h) => fromPack(h, key, region))),
+    ...pack.core.map((c) => fromPack(c, key, catalogue.version, null)),
+    ...regions.flatMap((region) =>
+      pack.hints.filter((h) => h.region === region).map((h) => fromPack(h, key, catalogue.version, region)),
+    ),
   ];
 }
 
 /** "More from this pack": the pack's other competencies for the job type that no row is named like yet. */
-export const morePackCompetencies = (key: DomainKey, jobType: JobType, rows: readonly { name: string }[]) =>
-  (getDomainPack(key, jobType)?.more ?? [])
+export const morePackCompetencies = (
+  catalogue: CatalogueContent,
+  key: string,
+  jobType: string,
+  rows: readonly { name: string }[],
+) =>
+  (packForJobType(catalogue, key, jobType)?.more ?? [])
     .filter((c) => !rows.some((row) => nameKey(row.name) === nameKey(c.name)))
-    .map((c) => fromPack(c, key, null));
+    .map((c) => fromPack(c, key, catalogue.version, null));
 
 /**
  * The rows with the pack's suggestions swapped for `pack`: every row of the previous pack goes, kept or removed, and a
@@ -155,21 +178,25 @@ const GENERIC_INDUSTRY = /\s(domain|industry)( knowledge| expertise)?$/i;
  * The rows the step shows and saves: with an industry chosen, AIV-P1-009's generic industry suggestion gives way to the
  * pack's niche ones. It stays in the rows, so clearing the industry brings it back.
  */
-export const visibleRows = <T extends DraftCompetency>(rows: readonly T[], industry: DomainKey | null): T[] =>
+export const visibleRows = <T extends DraftCompetency>(rows: readonly T[], industry: string | null): T[] =>
   rows.filter((row) => !industry || row.origin !== 'suggested_by_aivera' || !GENERIC_INDUSTRY.test(row.name));
 
 /**
  * The row with the recruiter's change, or null when it is refused: regional knowledge is shown through evidence, so a
  * regional hint can only be desirable, never a mandatory requirement or a location filter (AGENTS.md 1.5).
  */
-export function changeRow<T extends DraftCompetency>(row: T, change: Partial<DraftCompetency>): T | null {
+export function changeRow<T extends DraftCompetency>(
+  catalogue: CatalogueContent,
+  row: T,
+  change: Partial<DraftCompetency>,
+): T | null {
   const next = { ...row, ...change };
-  return next.type === 'mandatory' && (row.pack?.region || isRegionalHint(next.name)) ? null : next;
+  return next.type === 'mandatory' && (row.pack?.region || isRegionalHint(catalogue, next.name)) ? null : next;
 }
 
 /** The fallback when there is no draft: the job type's four starter competencies, equal weights, for the recruiter to edit. */
-export const starterCompetencies = (jobType: string): DraftCompetency[] =>
-  (JOB_TYPE_CATALOGUE.find((e) => e.key === jobType)?.starterCompetencies ?? []).map((name) => ({
+export const starterCompetencies = (catalogue: CatalogueContent, jobType: string): DraftCompetency[] =>
+  (catalogue.jobTypes.find((e) => e.key === jobType)?.starterCompetencies ?? []).map((name) => ({
     name,
     evidenceExpected: '',
     weightPercent: 25,
@@ -207,9 +234,9 @@ const competency = z.object({
   levelNeeded: z.number().int().min(1).max(5),
   type: z.enum(COMPETENCY_TYPES),
   origin: z.enum(COMPETENCY_ORIGINS),
-  // The jobs module checks they are set exactly on `domain_pack` competencies; only the current catalogue seeds one.
-  packKey: z.enum(DOMAIN_KEYS).nullable().default(null),
-  packVersion: z.literal(DOMAIN_PACK_CATALOGUE_VERSION).nullable().default(null),
+  // The jobs module checks they are set exactly on `domain_pack` competencies, against the published catalogue.
+  packKey: z.string().regex(CATALOGUE_KEY).nullable().default(null),
+  packVersion: z.int().min(1).nullable().default(null),
 });
 
 /** The posted `rubric` field: the kept competencies in display order (AGENTS.md 3.7). Null when it is not valid. */

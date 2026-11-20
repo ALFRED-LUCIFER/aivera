@@ -7,6 +7,8 @@ import {
   type AiProvider,
 } from '@aivera/ai';
 import { describe, expect, it } from 'vitest';
+import { JobError } from '../domain/job.ts';
+import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
 import { competencyDrafting } from './draft-competencies.ts';
 
 // Feature: Draft competencies from the job description (AIV-P1-008). The Senior AI Engineer demo job (personas.md).
@@ -119,6 +121,7 @@ describe('Scenario: Drafting the Senior AI Engineer description', () => {
     const { competencies: drafted, leftOutNonSkill } = await setup(answer).drafting.draftCompetencies(
       workspaceId,
       input,
+      CATALOGUE_V1,
     );
     expect(leftOutNonSkill).toBe(false);
     expect(drafted.map((c) => [c.name, c.weightPercent, c.levelNeeded, c.type, c.origin])).toEqual([
@@ -132,7 +135,7 @@ describe('Scenario: Drafting the Senior AI Engineer description', () => {
 
 describe('Scenario: Every drafted competency cites the description', () => {
   it('links each competency to the exact span of the description it came from', async () => {
-    const { competencies: drafted } = await setup(answer).drafting.draftCompetencies(workspaceId, input);
+    const { competencies: drafted } = await setup(answer).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     for (const [i, c] of drafted.entries()) {
       const [citation] = c.citations;
       expect(citation?.sourceId).toBe('description');
@@ -144,7 +147,7 @@ describe('Scenario: Every drafted competency cites the description', () => {
   it('rejects a model answer with a competency citing no line, after one retry', async () => {
     const uncited = { ...answer, competencies: [{ ...answer.competencies[0], citations: [] }] };
     const { drafting, prompts } = setup(uncited);
-    await expect(drafting.draftCompetencies(workspaceId, input)).rejects.toBeInstanceOf(UncitedOutput);
+    await expect(drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1)).rejects.toBeInstanceOf(UncitedOutput);
     expect(prompts).toHaveLength(2);
   });
 
@@ -165,7 +168,7 @@ describe('Scenario: Every drafted competency cites the description', () => {
 describe('Scenario: No candidate data reaches the prompt', () => {
   it('sends only the job type, title and description, besides the fixed instructions', async () => {
     const { drafting, prompts } = setup(answer);
-    await drafting.draftCompetencies(workspaceId, input);
+    await drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     const [sent] = prompts;
     const messages = JSON.parse(sent ?? '[]') as { role: string; content: string | { text: string }[] }[];
     const text = (m: (typeof messages)[number]) =>
@@ -187,14 +190,14 @@ describe('Scenario: No candidate data reaches the prompt', () => {
 describe('Fairness: a line asking for something that is not a skill', () => {
   it('is reported as left out, so the recruiter is told', async () => {
     const refused = { ...answer, refused: true, reason: 'Nationality is not evidence of work, so it was left out.' };
-    const draft = await setup(refused).drafting.draftCompetencies(workspaceId, input);
+    const draft = await setup(refused).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(draft.leftOutNonSkill).toBe(true);
   });
 });
 
 describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
   it('returns the suggestions with why, evidence expected, weight, level and type, marked Suggested by Aivera', async () => {
-    const { suggestions } = await setup(answer).drafting.draftCompetencies(workspaceId, input);
+    const { suggestions } = await setup(answer).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(suggestions.map((s) => [s.name, s.why, s.evidenceExpected, s.weightPercent, s.levelNeeded, s.type])).toEqual(
       [
         [
@@ -225,12 +228,16 @@ describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
 
   it('Scenario: Suggestions never duplicate drafted competencies', async () => {
     const duplicate = { ...answer, suggestions: [{ ...answer.suggestions[1], name: 'Cost and reliability' }] };
-    const { suggestions } = await setup(duplicate).drafting.draftCompetencies(workspaceId, input);
+    const { suggestions } = await setup(duplicate).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(suggestions).toEqual([]);
   });
 
   it('Scenario: No suggestions', async () => {
-    const { suggestions } = await setup({ ...answer, suggestions: [] }).drafting.draftCompetencies(workspaceId, input);
+    const { suggestions } = await setup({ ...answer, suggestions: [] }).drafting.draftCompetencies(
+      workspaceId,
+      input,
+      CATALOGUE_V1,
+    );
     expect(suggestions).toEqual([]);
   });
 
@@ -238,7 +245,7 @@ describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
   it('rejects a suggestion citing no line of the description, after one retry', async () => {
     const uncited = { ...answer, suggestions: [{ ...answer.suggestions[0], citations: [] }] };
     const { drafting, prompts } = setup(uncited);
-    await expect(drafting.draftCompetencies(workspaceId, input)).rejects.toBeInstanceOf(UncitedOutput);
+    await expect(drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1)).rejects.toBeInstanceOf(UncitedOutput);
     expect(prompts).toHaveLength(2);
   });
 
@@ -247,5 +254,21 @@ describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
     expect(draftCompetenciesSchema.safeParse(three).success).toBe(false);
     const heavy = { ...answer, suggestions: answer.suggestions.map((s) => ({ ...s, weight: 20 })) };
     expect(draftCompetenciesSchema.safeParse(heavy).success).toBe(false);
+  });
+});
+
+describe('Scenario: Server validation follows the catalogue (AIV-P2-044)', () => {
+  // SAFETY: mutation check: removed the offeredJobTypes check in draftCompetencies -> this test failed
+  it('refuses a job type the published catalogue does not offer, before any model call', async () => {
+    const { drafting, prompts } = setup(answer);
+    const retired = { ...CATALOGUE_V1, jobTypes: CATALOGUE_V1.jobTypes.map((t) => ({ ...t, retired: true })) };
+    for (const [jobType, catalogue] of [
+      ['astrology', CATALOGUE_V1],
+      ['ai_llm_engineering', retired],
+    ] as const)
+      await expect(drafting.draftCompetencies(workspaceId, { ...input, jobType }, catalogue)).rejects.toMatchObject(
+        new JobError('job_type'),
+      );
+    expect(prompts).toEqual([]);
   });
 });

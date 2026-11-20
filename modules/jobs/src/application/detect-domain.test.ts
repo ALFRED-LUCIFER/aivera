@@ -4,10 +4,13 @@ import {
   DETECT_DOMAIN_SYSTEM,
   detectDomainSchema,
   fakeProvider,
+  type AiClient,
   type AiProvider,
 } from '@aivera/ai';
 import { describe, expect, it } from 'vitest';
-import { DOMAIN_KEYS, REGIONS } from '../domain/domain-packs.ts';
+import { z } from 'zod';
+import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
+import type { CatalogueVersion } from '../domain/catalogue.ts';
 import { domainDetection } from './detect-domain.ts';
 
 // Feature: Detect the job's industry from its description (AIV-P1-063). Synthetic job text only.
@@ -51,7 +54,7 @@ function setup(completion: unknown, budgetLimit = 1_000_000) {
 
 describe('Scenario: A payments description', () => {
   it('detects payments_fintech citing the sentence, and uae citing the location', async () => {
-    const detected = await setup(payments).detection.detectDomain(workspaceId, input);
+    const detected = await setup(payments).detection.detectDomain(workspaceId, input, CATALOGUE_V1);
     expect(detected.domain).toBe('payments_fintech');
     const [citation] = detected.citations;
     expect(citation?.sourceId).toBe('description');
@@ -68,6 +71,7 @@ describe('Scenario: No clear domain', () => {
     const detected = await setup({ industry: { domain: 'none' }, regions: [] }).detection.detectDomain(
       workspaceId,
       plain,
+      CATALOGUE_V1,
     );
     expect(detected).toEqual({ domain: 'none', citations: [], regions: [] });
   });
@@ -77,7 +81,11 @@ describe('Scenario: Invented domains and citations are rejected', () => {
   it('rejects a domain not in the catalogue, retries once, then returns none', async () => {
     const invented = { ...payments, industry: { ...payments.industry, domain: 'crypto_gaming' } };
     const { detection, prompts } = setup(invented);
-    expect(await detection.detectDomain(workspaceId, input)).toEqual({ domain: 'none', citations: [], regions: [] });
+    expect(await detection.detectDomain(workspaceId, input, CATALOGUE_V1)).toEqual({
+      domain: 'none',
+      citations: [],
+      regions: [],
+    });
     expect(prompts).toHaveLength(2);
   });
 
@@ -86,12 +94,16 @@ describe('Scenario: Invented domains and citations are rejected', () => {
     const quote = 'We are the largest payments company in the Gulf.';
     const invented = { ...payments, industry: { ...payments.industry, citations: [{ sourceId: 'S1', quote }] } };
     const { detection, prompts } = setup(invented);
-    expect(await detection.detectDomain(workspaceId, input)).toEqual({ domain: 'none', citations: [], regions: [] });
+    expect(await detection.detectDomain(workspaceId, input, CATALOGUE_V1)).toEqual({
+      domain: 'none',
+      citations: [],
+      regions: [],
+    });
     expect(prompts).toHaveLength(2);
   });
 
   it('rejects a region named twice or not in the catalogue, rather than patching it', () => {
-    const schema = detectDomainSchema({ domains: DOMAIN_KEYS, regions: REGIONS });
+    const schema = detectDomainSchema({ domains: ['payments_fintech'], regions: ['uae', 'ksa', 'india'] });
     const uae = payments.regions[0];
     expect(schema.safeParse(payments).success).toBe(true);
     expect(schema.safeParse({ ...payments, regions: [uae, uae] }).success).toBe(false);
@@ -103,7 +115,9 @@ describe('Scenario: Invented domains and citations are rejected', () => {
   });
 
   it('still throws when the budget is spent: an outage is not a "none"', async () => {
-    await expect(setup(payments, 0).detection.detectDomain(workspaceId, input)).rejects.toBeInstanceOf(BudgetExceeded);
+    await expect(setup(payments, 0).detection.detectDomain(workspaceId, input, CATALOGUE_V1)).rejects.toBeInstanceOf(
+      BudgetExceeded,
+    );
   });
 });
 
@@ -111,7 +125,11 @@ describe('Scenario: Protected traits in a description are not turned into anythi
   it('returns only a domain, its citations and regions, whatever else the model adds', async () => {
     const traits = `${sentence} UAE nationals preferred. Candidates must have worked at a big bank.`;
     const answer = { ...payments, nationality: 'UAE', employer: 'a big bank', reason: 'UAE nationals preferred' };
-    const detected = await setup(answer).detection.detectDomain(workspaceId, { ...input, description: traits });
+    const detected = await setup(answer).detection.detectDomain(
+      workspaceId,
+      { ...input, description: traits },
+      CATALOGUE_V1,
+    );
     expect(Object.keys(detected).toSorted()).toEqual(['citations', 'domain', 'regions']);
     const regionQuotes = detected.regions.flatMap((r) => r.citations.map((c) => c.quote));
     expect(regionQuotes).toEqual(['DIFC, Dubai']);
@@ -122,7 +140,7 @@ describe('Scenario: Protected traits in a description are not turned into anythi
 describe('Scenario: No candidate data reaches the prompt', () => {
   it('sends only the job type, title, description and location, besides the fixed instructions', async () => {
     const { detection, prompts } = setup(payments);
-    await detection.detectDomain(workspaceId, input);
+    await detection.detectDomain(workspaceId, input, CATALOGUE_V1);
     const messages = JSON.parse(prompts[0] ?? '[]') as { role: string; content: string | { text: string }[] }[];
     const text = (m: (typeof messages)[number]) =>
       typeof m.content === 'string' ? m.content : m.content.map((p) => p.text).join('');
@@ -143,7 +161,56 @@ describe('Scenario: No candidate data reaches the prompt', () => {
 
   it('leaves out an empty location rather than sending a blank source', async () => {
     const { detection, prompts } = setup({ industry: { domain: 'none' }, regions: [] });
-    await detection.detectDomain(workspaceId, { ...input, location: null });
+    await detection.detectDomain(workspaceId, { ...input, location: null }, CATALOGUE_V1);
     expect(prompts[0]).not.toContain('S2');
+  });
+});
+
+/** The request the module sends for `catalogue`, from a fake client that answers "none". */
+const sent = async (catalogue: CatalogueVersion) => {
+  let request: Parameters<AiClient['generateStructured']>[0] | undefined;
+  await domainDetection({
+    generateStructured: async (r) => ((request = r), { industry: { domain: 'none' }, regions: [] }) as never,
+  }).detectDomain(workspaceId, input, catalogue);
+  if (!request) throw new Error('nothing sent');
+  return request;
+};
+const answer = (domain: string, region: string) => ({
+  industry: { domain, citations: [{ sourceId: 'S1', quote: sentence }] },
+  regions: [{ region, citations: [{ sourceId: 'S1', quote: sentence }] }],
+});
+
+describe('Scenario: Only the published version is read (AIV-P2-044)', () => {
+  it('equals the request built from the code catalogue: the same prompt and output schema', async () => {
+    const { schema, sources: _, workspaceId: __, catalogueVersion, ...request } = await sent(CATALOGUE_V1);
+    expect({ ...request, schema: z.toJSONSchema(schema, { unrepresentable: 'any' }) }).toMatchSnapshot();
+    expect(catalogueVersion).toBe(1);
+  });
+
+  // SAFETY: mutation check: offered() kept retired entries in detect-domain.ts -> this test failed
+  it('lists only the published packs and regions not retired, so a draft or retired key fails the schema', async () => {
+    const retired: CatalogueVersion = {
+      ...CATALOGUE_V1,
+      version: 2,
+      packs: CATALOGUE_V1.packs.map((p) => ({ ...p, retired: p.key === 'telecom' })),
+      regions: CATALOGUE_V1.regions.map((r) => ({ ...r, retired: r.key === 'india' })),
+    };
+    const { schema, catalogueVersion } = await sent(retired);
+    expect(schema.safeParse(answer('healthcare', 'uae')).success).toBe(true);
+    expect(schema.safeParse(answer('telecom', 'uae')).success).toBe(false);
+    expect(schema.safeParse(answer('insurance', 'uae')).success).toBe(false);
+    expect(schema.safeParse(answer('healthcare', 'india')).success).toBe(false);
+    expect(catalogueVersion).toBe(2);
+  });
+
+  it('makes no model call and detects nothing when every pack or every region is retired', async () => {
+    const { detection, prompts } = setup(payments);
+    const noRegions = { ...CATALOGUE_V1, regions: CATALOGUE_V1.regions.map((r) => ({ ...r, retired: true })) };
+    expect(await detection.detectDomain(workspaceId, input, noRegions)).toEqual({
+      domain: 'none',
+      citations: [],
+      regions: [],
+    });
+    expect(prompts).toEqual([]);
   });
 });

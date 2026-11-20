@@ -1,5 +1,4 @@
 // The candidate's own side of Aivera (ADR-009): an account per identity user, owned by the person, not a workspace.
-import type { JobType } from '@aivera/jobs';
 
 export const CONSENT_PURPOSES = ['apply_to_job', 'answer_evidence_request', 'cv_check'] as const;
 export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
@@ -18,7 +17,8 @@ export type Account = {
   id: string;
   /** Set at sign-up (AIV-P3-007); null until then. */
   fullName: string | null;
-  workType: JobType | null;
+  /** A job type key of the jobs catalogue, checked against the published version at sign-up (ADR-013 point 7). */
+  workType: string | null;
   headline: string | null;
   location: string | null;
   createdAt: Date;
@@ -78,7 +78,7 @@ export class CandidateAccountError extends Error {
 }
 
 /** What sign-up records (AIV-P3-007). Its caller (a server action) validates the shape with zod (AGENTS.md 3.7). */
-export type SignUpInput = { fullName: string; workType: JobType };
+export type SignUpInput = { fullName: string; workType: string };
 
 /** Signed up once full name and work type are set; until then the account exists only from `withAccount`. */
 export const isSignedUp = (account: Pick<Account, 'fullName' | 'workType'>): boolean =>

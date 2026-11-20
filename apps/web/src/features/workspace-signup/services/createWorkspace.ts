@@ -4,6 +4,7 @@ import { log } from '@aivera/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, redirect } from 'next/navigation';
 import { getIdentity, getSessionUserId } from '@/server/auth';
+import { getCatalogue } from '@/server/jobs';
 import { getPlatformSettings } from '@/server/platformSettings';
 import { getWorkspaces } from '@/server/workspace';
 import { DESK } from '@/features/sign-in/domain/signIn.ts';
@@ -26,9 +27,9 @@ export async function createWorkspace(_previous: CreateWorkspaceState, form: For
     error: 'failed',
     values: { company: String(form.get('company') ?? ''), hiringFocus: String(form.get('hiringFocus') ?? '') },
   };
-  const input = parseCreateWorkspaceForm(form);
-  if (!input) return failed;
   try {
+    const input = parseCreateWorkspaceForm(form, await getCatalogue().getPublishedCatalogue());
+    if (!input) return failed;
     await getWorkspaces().createWorkspace({
       // No display name from the tenant: the workspace is named after the email, which only its members see.
       name: workspaceName(input.company, user.displayName ?? user.email),

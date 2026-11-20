@@ -3,13 +3,17 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { createAudit } from '@aivera/audit/composition';
 import { createDb, type Db } from '@aivera/db';
-import { JOB_TYPE_CATALOGUE, listDomainPacks, REGIONS } from '@aivera/jobs';
-import { createCatalogueReads } from '@aivera/jobs/composition';
+import { JobError, type Competency, type JobsContract } from '@aivera/jobs';
+import { createCatalogueReads, createJobs } from '@aivera/jobs/composition';
+import type { WorkspaceContext, WorkspacesContract } from '@aivera/workspaces';
+import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// AIV-P2-043: the catalogue tables and published version 1 (ADR-013), on real PostgreSQL.
+// AIV-P2-043: the catalogue tables and published version 1 (ADR-013), on real PostgreSQL. AIV-P2-044: readers take the
+// latest published version, and the jobs module validates keys against it.
 
 const repo = join(import.meta.dirname, '..', '..', '..');
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
@@ -18,10 +22,10 @@ const seedSql = readFileSync(
   join(repo, 'modules', 'jobs', 'src', 'infrastructure', 'migrations', '0017_catalogue_v1_seed.sql'),
   'utf8',
 );
-const en: unknown = JSON.parse(readFileSync(join(repo, 'packages', 'i18n', 'messages', 'en.json'), 'utf8'));
-const text = (key: string) => ({
-  en: key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], en),
-});
+// The snapshot generated from the code catalogue before AIV-P2-044 deleted it; the seed migration is written from it.
+const snapshot: unknown = JSON.parse(
+  readFileSync(join(repo, 'modules', 'jobs', 'src', 'infrastructure', 'catalogue-v1.json'), 'utf8'),
+);
 
 const TABLES = [
   'catalogue_version',
@@ -80,40 +84,21 @@ afterAll(async () => {
 });
 
 describe('Feature: Catalogue tables seeded with version 1', () => {
-  it('Scenario: Version 1 equals the code catalogue', async () => {
+  // The drift test (AIV-P2-044): the snapshot the AI evals and unit tests read is what the database publishes.
+  // SAFETY: mutation check: renamed one competency in catalogue-v1.json -> this test failed
+  it('Scenario: Version 1 equals the committed snapshot of the code catalogue', async () => {
     const catalogue = await createCatalogueReads(app).getPublishedCatalogue();
     expect(catalogue).toEqual({
-      version: 1,
+      ...(snapshot as object),
       status: 'published',
       publishedAt: expect.any(Date),
       publishedBy: 'system:seed',
       reason: 'Catalogue version 1 from code (AIV-P1-004, AIV-P1-061)',
-      jobTypes: JOB_TYPE_CATALOGUE.map((t) => ({
-        key: t.key,
-        label: text(t.labelKey),
-        evidence: text(t.evidenceKey),
-        starterCompetencies: t.starterCompetencies,
-        retired: false,
-      })),
-      regions: [
-        { key: 'uae', label: { en: 'UAE' }, retired: false },
-        { key: 'ksa', label: { en: 'KSA' }, retired: false },
-        { key: 'india', label: { en: 'India' }, retired: false },
-      ],
-      packs: listDomainPacks().map((p) => ({
-        key: p.key,
-        label: text(p.labelKey),
-        retired: false,
-        competencies: p.competencies.map((c) => ({ ...c, retired: false })),
-        hints: REGIONS.flatMap((region) => p.hints[region].map((h) => ({ ...h, region, retired: false }))),
-      })),
     });
     // The snapshot really reaches every entry, so an empty catalogue on both sides cannot pass.
-    expect(catalogue?.jobTypes).toHaveLength(10);
-    expect(catalogue?.packs).toHaveLength(8);
-    expect(catalogue?.packs.every((p) => p.competencies.length > 0 && p.hints.length > 0)).toBe(true);
-    expect(await createCatalogueReads(app).getCatalogueVersion(1)).toEqual(catalogue);
-    expect(await createCatalogueReads(app).getCatalogueVersion(2)).toBeNull();
+    expect(catalogue.jobTypes).toHaveLength(10);
+    expect(catalogue.packs).toHaveLength(8);
+    expect(catalogue.packs.every((p) => p.competencies.length > 0 && p.hints.length > 0)).toBe(true);
   });
 
   it('version 1 has at most 4 core competencies per job type per pack (the rule the editor enforces)', async () => {
@@ -268,4 +253,126 @@ describe('Scenario Outline: Keys are validated by format, not by a hard-coded li
         workType: await write(account, key),
       }).toEqual({ competency: result, job: result, workType: result });
     });
+});
+
+/** "created", or the JobError message a create was refused with. */
+const refusal = (promise: Promise<unknown>) =>
+  promise.then(
+    () => 'created',
+    (error: unknown) => (error instanceof JobError ? `refused: ${error.message}` : Promise.reject(error)),
+  );
+
+// AIV-P2-044 Gherkin, through the jobs contract as the app calls it. Last in the file: the final scenario publishes
+// version 2, which can never be removed.
+describe('Feature: Read the published catalogue from the database', () => {
+  const NOW = new Date('2026-11-20T09:00:00.000Z');
+  const RIYA = '0190d4a2-0000-7000-8000-00000000a1e2';
+  let jobs: JobsContract;
+  let workspaces: WorkspacesContract;
+  let ws: string;
+  const as = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) => workspaces.withWorkspace({ userId: RIYA }, ws, fn);
+  const ledger: Competency = {
+    name: 'Ledger and double-entry accounting',
+    evidenceExpected: 'Ledger code with balancing tests',
+    weightPercent: 100,
+    levelNeeded: 3,
+    type: 'desirable',
+    origin: 'domain_pack',
+    packKey: 'payments_fintech',
+    packVersion: 1,
+  };
+  const create = (jobType: string, competencies: Competency[] = [ledger]) =>
+    as((ctx) =>
+      jobs.createJobWithDraftRubric(ctx, {
+        title: 'Backend Engineer, Payments',
+        jobType,
+        description: 'Synthetic.',
+        synthetic: true,
+        competencies,
+      }),
+    );
+  beforeAll(async () => {
+    const audit = createAudit(app, () => NOW);
+    workspaces = createWorkspaces(app, audit);
+    jobs = createJobs(workspaces, audit, () => NOW);
+    ws = (
+      await workspaces.createWorkspace({
+        name: 'Demo',
+        company: 'Demo',
+        hiringFocus: 'software_engineering',
+        synthetic: true,
+        creatorUserId: RIYA,
+      })
+    ).id;
+  });
+
+  it('Scenario: Only the published version is read outside /ops', async () => {
+    await admin.execute(sql`insert into jobs.catalogue_version (version, status, created_by, created_at)
+      values (2, 'draft', ${RIYA}, now())`);
+    await admin.execute(sql`insert into jobs.catalogue_pack (version, key, position, label)
+      values (2, 'insurance', 8, '{"en":"Insurance"}'::jsonb)`);
+    try {
+      const published = await createCatalogueReads(app).getPublishedCatalogue();
+      expect(published.version).toBe(1);
+      expect(published.packs.map((p) => p.key)).not.toContain('insurance');
+      expect(await refusal(create('software_engineering', [{ ...ledger, packKey: 'insurance' }]))).toBe(
+        'refused: A competency from a domain pack names its pack and version, and no other competency does.',
+      );
+    } finally {
+      await admin.execute(sql`delete from jobs.catalogue_pack where version = 2`);
+      await admin.execute(sql`delete from jobs.catalogue_version where version = 2`);
+    }
+  });
+
+  // SAFETY: mutation check: removed the offeredJobTypes check in insertNewJob -> this test failed (astrology created)
+  it('Scenario Outline: Server validation follows the catalogue', async () => {
+    expect(await refusal(create('software_engineering'))).toBe('created');
+    expect(await refusal(create('astrology'))).toBe('refused: Unknown job type.');
+    expect(
+      await refusal(
+        as((ctx) => jobs.createJob(ctx, { title: 'x', jobType: 'astrology', description: '', synthetic: true })),
+      ),
+    ).toBe('refused: Unknown job type.');
+  });
+
+  it('Scenario: A kept pack competency records the version that seeded it', async () => {
+    const { job: created } = await create('software_engineering');
+    const [rubric] = (await as((ctx) => jobs.listRubricVersions(ctx, created.id))) ?? [];
+    expect(rubric?.competencies).toEqual([
+      expect.objectContaining({
+        name: 'Ledger and double-entry accounting',
+        packKey: 'payments_fintech',
+        packVersion: 1,
+      }),
+    ]);
+  });
+
+  it('a retired job type or pack stays where it is but starts no new job or competency', async () => {
+    const { job: created } = await create('software_engineering');
+    // Version 2 retires Software engineering and Payments and fintech; published by hand, as the editor (AIV-P2-047) will.
+    await admin.transaction(async (tx) => {
+      await tx.execute(sql`insert into jobs.catalogue_version (version, status, created_by, created_at)
+        values (2, 'draft', ${RIYA}, now())`);
+      await tx.execute(sql`insert into jobs.catalogue_job_type (version, key, position, label, evidence,
+          starter_competencies, retired)
+        select 2, key, position, label, evidence, starter_competencies, key = 'software_engineering'
+        from jobs.catalogue_job_type where version = 1`);
+      await tx.execute(sql`insert into jobs.catalogue_pack (version, key, position, label, retired)
+        select 2, key, position, label, key = 'payments_fintech' from jobs.catalogue_pack where version = 1`);
+      await tx.execute(sql`update jobs.catalogue_version set status = 'published', published_by = ${RIYA},
+        published_at = now(), reason = 'Retire two entries for the test' where version = 2`);
+    });
+    expect((await createCatalogueReads(app).getPublishedCatalogue()).version).toBe(2);
+    const own: Competency = { ...ledger, origin: 'added_by_recruiter', packKey: null, packVersion: null };
+    expect(await refusal(create('software_engineering', [own]))).toBe('refused: Unknown job type.');
+    // SAFETY: mutation check: accepted a retired pack without a kept competency in assertValidCompetencies -> this test failed
+    expect(await refusal(create('qa_test_automation'))).toBe(
+      'refused: A competency from a domain pack names its pack and version, and no other competency does.',
+    );
+    const saved = as((ctx) =>
+      jobs.saveRubric(ctx, created.id, { successStatement: 'Ships reliable work.', competencies: [ledger] }),
+    );
+    await expect(saved).resolves.toMatchObject({ jobId: created.id });
+    expect((await as((ctx) => jobs.getJob(ctx, created.id)))?.jobType).toBe('software_engineering');
+  });
 });

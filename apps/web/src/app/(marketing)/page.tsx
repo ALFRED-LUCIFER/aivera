@@ -1,4 +1,5 @@
-import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
+import { offeredJobTypes } from '@aivera/jobs';
+import { log } from '@aivera/observability';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
@@ -9,6 +10,7 @@ import { TrustAndPilot } from '@/features/marketing-home/components/TrustAndPilo
 import { ScrollSweep } from '@/features/marketing-home/components/ScrollSweep.tsx';
 import { citeExact, heroCandidate as h } from '@/features/marketing-home/domain/hero.ts';
 import { howSteps, trustPrinciples } from '@/features/marketing-home/domain/sections.ts';
+import { getCatalogue } from '@/server/jobs';
 // The website's motion stylesheet: here, because a feature's components/ holds .tsx only (ADR-003).
 import './marketing.css';
 
@@ -19,9 +21,22 @@ const mark = (chunks: ReactNode) => (
 const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
 const sweep = (chunks: ReactNode) => <ScrollSweep>{chunks}</ScrollSweep>;
 
-// Public: the website (AIV-P5-001). It reads no session and no candidate data.
+// Public: the website (AIV-P5-001). It reads no session and no candidate data; the job types come from the published
+// catalogue (ADR-013 point 15).
 export default async function WebsitePage() {
-  const t = await getTranslations(defaultLocale, defaultTimeZone);
+  const [t, catalogue] = await Promise.all([
+    getTranslations(defaultLocale, defaultTimeZone),
+    // A failed read leaves out the role families, never a list from code; the rest of the website still renders.
+    getCatalogue()
+      .getPublishedCatalogue()
+      .catch((error: unknown) => {
+        log.error(
+          { area: 'website', 'error.type': error instanceof Error ? error.name : 'unknown' },
+          'catalogue failed',
+        );
+        return null;
+      }),
+  ]);
   const evidence = t('home.card.evidence');
   return (
     <MarketingHome
@@ -87,15 +102,17 @@ export default async function WebsitePage() {
           body: t(`home.how.steps.${key}.body`),
         }))}
       />
-      <RoleFamilies
-        title={t('home.roleFamilies.title')}
-        lead={t('home.roleFamilies.lead')}
-        noPublicWork={t('home.roleFamilies.noPublicWork')}
-        familyHeader={t('home.roleFamilies.family')}
-        evidenceHeader={t('home.roleFamilies.evidence')}
-        rows={JOB_TYPE_CATALOGUE.map((j) => ({ key: j.key, family: t(j.labelKey), evidence: t(j.evidenceKey) }))}
-        more={t.rich('home.roleFamilies.more', { strong })}
-      />
+      {catalogue && (
+        <RoleFamilies
+          title={t('home.roleFamilies.title')}
+          lead={t('home.roleFamilies.lead')}
+          noPublicWork={t('home.roleFamilies.noPublicWork')}
+          familyHeader={t('home.roleFamilies.family')}
+          evidenceHeader={t('home.roleFamilies.evidence')}
+          rows={offeredJobTypes(catalogue).map((j) => ({ key: j.key, family: j.label.en, evidence: j.evidence.en }))}
+          more={t.rich('home.roleFamilies.more', { strong })}
+        />
+      )}
       <TrustAndPilot
         trustTitle={t('home.trust.title')}
         principles={trustPrinciples.map((key) => ({

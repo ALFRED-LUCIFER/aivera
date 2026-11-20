@@ -26,8 +26,6 @@ import {
   type PublicListing,
 } from '../domain/job.ts';
 import { CATALOGUE_STATUSES, type Labels } from '../domain/catalogue.ts';
-import { DOMAIN_KEYS } from '../domain/domain-packs.ts';
-import { JOB_TYPES } from '../domain/job-types.ts';
 
 export const jobs = pgSchema('jobs');
 
@@ -57,7 +55,7 @@ export const job = jobs
       id: uuid().primaryKey(),
       workspaceId: uuid('workspace_id').notNull(),
       title: text().notNull(),
-      jobType: text('job_type', { enum: JOB_TYPES }).notNull(),
+      jobType: text('job_type').notNull(),
       description: text().notNull(),
       team: text(),
       // Opaque id of a workspaces.client (ADR-004 6: no foreign key across modules); null is the team's own job.
@@ -173,7 +171,7 @@ export const competency = jobs
       levelNeeded: integer('level_needed').notNull(),
       type: text({ enum: COMPETENCY_TYPES }).notNull(),
       origin: text({ enum: COMPETENCY_ORIGINS }).notNull(),
-      packKey: text('pack_key', { enum: DOMAIN_KEYS }),
+      packKey: text('pack_key'),
       packVersion: integer('pack_version'),
       position: integer().notNull(),
     },
@@ -219,7 +217,7 @@ export const publicJob = jobs
       workspaceId: uuid('workspace_id').notNull(),
       slug: text().notNull(),
       title: text().notNull(),
-      jobType: text('job_type', { enum: JOB_TYPES }).notNull(),
+      jobType: text('job_type').notNull(),
       descriptor: text().notNull(),
       location: text(),
       payMinMinor: integer('pay_min_minor'),

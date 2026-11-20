@@ -17,7 +17,7 @@ const props: JobDetailProps = {
   title: 'Senior AI Engineer',
   descriptor: 'A BNPL fintech',
   location: 'DIFC, Dubai',
-  jobType: 'ai_llm_engineering',
+  jobTypeLabel: 'AI and LLM engineering',
   pay: 'AED 35,000 to 48,000 a month',
   postedDays: 6,
   competencies: [

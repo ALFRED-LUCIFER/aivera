@@ -1,0 +1,1 @@
+export const DOMAIN_PACK_CATALOGUE_VERSION = 1;

@@ -1,5 +1,5 @@
 import { isSignedUp, type Account } from '@aivera/candidate-accounts';
-import { JOB_TYPES } from '@aivera/jobs';
+import { offeredJobTypes, type CatalogueVersion } from '@aivera/jobs';
 import { z } from 'zod';
 import { CANDIDATE_HOME, candidateSafeNext } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 
@@ -33,12 +33,13 @@ export const signUpStep = (
   account: Pick<Account, 'fullName' | 'workType'> | null,
 ): SignUpStep => (!userId ? 'signedOut' : account && isSignedUp(account) ? 'done' : 'profile');
 
-// Messages are keys under candidate.signup.errors (i18n).
-const signUpForm = z.object({
-  fullName: z.string().trim().min(1, 'fullNameRequired').max(200, 'fullNameTooLong'),
-  workType: z.enum(JOB_TYPES, 'workTypeRequired'),
-});
-type SignUpForm = z.infer<typeof signUpForm>;
+// Messages are keys under candidate.signup.errors (i18n). The work type is a job type the published catalogue offers.
+const signUpForm = (catalogue: CatalogueVersion) =>
+  z.object({
+    fullName: z.string().trim().min(1, 'fullNameRequired').max(200, 'fullNameTooLong'),
+    workType: z.string().refine((key) => offeredJobTypes(catalogue).some((t) => t.key === key), 'workTypeRequired'),
+  });
+type SignUpForm = z.infer<ReturnType<typeof signUpForm>>;
 type SignUpField = keyof SignUpForm;
 type SignUpErrorKey = 'fullNameRequired' | 'fullNameTooLong' | 'workTypeRequired';
 
@@ -58,9 +59,9 @@ export const initialSignUpState = (fullName: string): SignUpState => ({
  * The posted form, validated (AGENTS.md 3.7). Reads only the two fields: anything else posted, such as a user id, is
  * ignored; the user always comes from the session.
  */
-export function parseSignUpForm(form: FormData): { input: SignUpForm } | SignUpState {
+export function parseSignUpForm(form: FormData, catalogue: CatalogueVersion): { input: SignUpForm } | SignUpState {
   const values = { fullName: String(form.get('fullName') ?? ''), workType: String(form.get('workType') ?? '') };
-  const result = signUpForm.safeParse(values);
+  const result = signUpForm(catalogue).safeParse(values);
   if (result.success) return { input: result.data };
   const errors: SignUpState['errors'] = {};
   for (const issue of result.error.issues) errors[issue.path[0] as SignUpField] ??= issue.message as SignUpErrorKey;

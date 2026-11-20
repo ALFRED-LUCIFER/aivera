@@ -223,13 +223,20 @@ describe('the golden set', () => {
     expect(fairness).toHaveLength(4);
   });
 
-  it('AIV-P1-063: the eval catalogue is the jobs module catalogue', () => {
-    const packs = readFileSync(join(import.meta.dirname, '../../../modules/jobs/src/domain/domain-packs.ts'), 'utf8');
-    const keys = (name: string) => [
-      ...(packs.match(new RegExp(`${name} = \\[([^\\]]*)\\]`))?.[1] ?? '').matchAll(/'(\w+)'/g),
+  it('AIV-P2-044: the eval catalogue is the snapshot, and the snapshot is what the seed migration publishes', () => {
+    // SAFETY: mutation check: renamed one pack key in catalogue-v1.json -> this test failed
+    const seed = readFileSync(
+      join(import.meta.dirname, '../../../modules/jobs/src/infrastructure/migrations/0017_catalogue_v1_seed.sql'),
+      'utf8',
+    );
+    const keys = (table: string) => [
+      ...(seed.split(`INSERT INTO "jobs"."${table}" `)[1]?.split('ON CONFLICT')[0] ?? '').matchAll(
+        /\(1, '(\w+)', \d+,/g,
+      ),
     ];
-    expect(keys('DOMAIN_KEYS').map((m) => m[1])).toEqual(domainCatalogue.domains);
-    expect(keys('REGIONS').map((m) => m[1])).toEqual(domainCatalogue.regions);
+    expect(keys('catalogue_pack').map((m) => m[1])).toEqual(domainCatalogue.domains);
+    expect(keys('catalogue_region').map((m) => m[1])).toEqual(domainCatalogue.regions);
+    expect(domainCatalogue.domains).toHaveLength(8);
   });
 
   it('AIV-P1-063: the registered runner sends the product request, and its checked answer passes the gates', async () => {

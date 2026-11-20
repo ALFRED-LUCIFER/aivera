@@ -1,7 +1,6 @@
 import type { WorkspaceContext } from '@aivera/workspaces';
 import { getIdentity } from '@/server/auth';
 import { getWorkspaces } from '@/server/workspace';
-import { defaultJobType } from '../domain/jobNew.ts';
 
 type Option = { value: string; label: string };
 type NewJobOptions = {
@@ -10,7 +9,8 @@ type NewJobOptions = {
   /** An agency's clients that are not archived; null for an in-house team, which names a team instead. */
   clients: Option[] | null;
   synthetic: boolean;
-  defaultJobType: string;
+  /** The workspace's hiring focus, which preselects the job type when the catalogue offers it. */
+  hiringFocus: string;
 };
 
 /**
@@ -42,6 +42,6 @@ export async function newJobOptions(ctx: WorkspaceContext): Promise<NewJobOption
     hiringOwners: hiringOwners.toSorted((a, b) => a.label.localeCompare(b.label)),
     clients,
     synthetic: workspace.synthetic,
-    defaultJobType: defaultJobType(workspace.hiringFocus),
+    hiringFocus: workspace.hiringFocus,
   };
 }

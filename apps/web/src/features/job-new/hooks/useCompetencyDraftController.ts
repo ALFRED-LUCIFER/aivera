@@ -1,7 +1,8 @@
 import { useState, useTransition } from 'react';
-import type { DomainKey } from '@aivera/jobs';
+import type { CatalogueContent } from '@aivera/jobs';
 import {
   blankCompetency,
+  catalogueChoices,
   changeRow,
   morePackCompetencies,
   packCompetencies,
@@ -22,18 +23,18 @@ const withId = (c: DraftCompetency): DraftRow => ({ ...c, id: crypto.randomUUID(
  * Steps 2 and 3 of Add a job: drafts competencies and suggestions from step 1's form, holds the rows the recruiter
  * keeps, edits, removes or restores, with the chosen industry's pack suggestions (AIV-P1-064), and checks them before
  * "Save job and rubric" posts them (AIV-P1-010). Nothing is saved here: the rows live in the page until that save, and
- * stay when it fails.
+ * stay when it fails. `catalogue` is the published version the page read; pack rows record its version.
  */
-export function useCompetencyDraftController() {
+export function useCompetencyDraftController(catalogue: CatalogueContent) {
   const [result, setResult] = useState<DraftResult>({ status: 'idle' });
   const [allRows, setRows] = useState<DraftRow[]>([]);
-  const [industry, setIndustry] = useState<DomainKey | null>(null);
+  const [industry, setIndustry] = useState<string | null>(null);
   // A regional hint the recruiter tried to make mandatory, until the next accepted change.
   const [refusedId, setRefusedId] = useState<string | null>(null);
   const rows = visibleRows(allRows, industry);
   const drafted = result.status === 'drafted' ? result : null;
-  const pack = (key: DomainKey | null) =>
-    key && drafted ? packCompetencies(key, drafted.jobType, drafted.regions).map(withId) : [];
+  const pack = (key: string | null) =>
+    key && drafted ? packCompetencies(catalogue, key, drafted.jobType, drafted.regions).map(withId) : [];
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafting, startDrafting] = useTransition();
   const [removedId, setRemovedId] = useState<string | null>(null);
@@ -43,8 +44,10 @@ export function useCompetencyDraftController() {
     result,
     rows,
     industry,
+    /** The industries to choose from and the regions whose hints show, in catalogue order. */
+    ...catalogueChoices(catalogue),
     /** "More from this pack", each with Add. */
-    more: industry && drafted ? morePackCompetencies(industry, drafted.jobType, allRows) : [],
+    more: industry && drafted ? morePackCompetencies(catalogue, industry, drafted.jobType, allRows) : [],
     refusedId,
     editingId,
     removedId,
@@ -62,7 +65,7 @@ export function useCompetencyDraftController() {
         setResult(next);
         if (next.status === 'drafted') {
           const key = next.industry?.key ?? null;
-          const suggested = key ? packCompetencies(key, next.jobType, next.regions).map(withId) : [];
+          const suggested = key ? packCompetencies(catalogue, key, next.jobType, next.regions).map(withId) : [];
           setRows(withPack(next.competencies.map(withId), suggested));
           setIndustry(key);
           setEditingId(null);
@@ -85,12 +88,12 @@ export function useCompetencyDraftController() {
     onDone: () => setEditingId(null),
     onChange: (id: string, change: Partial<DraftCompetency>) => {
       const row = allRows.find((r) => r.id === id);
-      const next = row && changeRow(row, change);
+      const next = row && changeRow(catalogue, row, change);
       setRefusedId(row && !next ? id : null);
       if (next) setRows((current) => current.map((r) => (r.id === id ? next : r)));
     },
     /** "Not this industry" or "Add industry skills": the previous pack's suggestions give way to this one's, or none. */
-    onIndustry: (key: DomainKey | null) => {
+    onIndustry: (key: string | null) => {
       setIndustry(key);
       setRows((current) => withPack(current, pack(key)));
       setEditingId(null);
@@ -109,6 +112,7 @@ export function useCompetencyDraftController() {
       setRows((current) => [...current, row]);
       setEditingId(row.id);
     },
-    onUseStarters: (jobType: string) => setRows((current) => [...current, ...starterCompetencies(jobType).map(withId)]),
+    onUseStarters: (jobType: string) =>
+      setRows((current) => [...current, ...starterCompetencies(catalogue, jobType).map(withId)]),
   };
 }

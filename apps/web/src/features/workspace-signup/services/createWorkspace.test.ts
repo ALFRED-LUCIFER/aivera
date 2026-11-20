@@ -12,6 +12,11 @@ vi.mock('@/server/auth', () => ({
   }),
 }));
 vi.mock('@/server/workspace', () => ({ getWorkspaces: () => workspaces }));
+vi.mock('@/server/jobs', () => ({
+  getCatalogue: () => ({
+    getPublishedCatalogue: async () => (await import('@/test/catalogue-v1.ts')).CATALOGUE_V1,
+  }),
+}));
 const approvalRequired = vi.fn(async () => true);
 vi.mock('@/server/platformSettings', () => ({ getPlatformSettings: () => ({ approvalRequired }) }));
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
