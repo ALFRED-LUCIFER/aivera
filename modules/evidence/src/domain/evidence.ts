@@ -26,8 +26,8 @@ export const STRENGTHS = ['strong', 'medium', 'supporting', 'claim'] as const;
 export type Strength = (typeof STRENGTHS)[number];
 
 /** Provenances that are still only the candidate's word: never stronger than Supporting. */
-export const UNPROVEN: readonly Provenance[] = ['claim', 'awaiting-defence'];
-export const UNPROVEN_STRENGTHS: readonly Strength[] = ['supporting', 'claim'];
+const UNPROVEN: readonly Provenance[] = ['claim', 'awaiting-defence'];
+const UNPROVEN_STRENGTHS: readonly Strength[] = ['supporting', 'claim'];
 
 /** Where evidence came from: a link, a stored file, or neither (a reference call, interview notes). */
 export type EvidenceSource = {
@@ -69,7 +69,8 @@ export type EvidenceItem = {
 
 /**
  * Field names in this module's contract that hold candidate personal data (AGENTS.md 1.2), for the telemetry scrubber
- * (AIV-P0-018) to register. Never log them.
+ * (AIV-P0-018) to register once apps/web first builds this module (as instrumentation.ts does for candidates).
+ * Never log them.
  */
 export const PERSONAL_DATA_FIELDS = ['label', 'url', 'checkMethod', 'excerpt', 'excerptSpan', 'limit'] as const;
 

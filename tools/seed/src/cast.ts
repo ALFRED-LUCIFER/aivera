@@ -406,7 +406,13 @@ const repo = (handle: string, name: string) => `https://code.credalent.example/$
 export const EVIDENCE: CastEvidence[] = [
   {
     candidate: 'Sara Al Qahtani',
-    source: { kind: 'shipped_product', label: 'Merchant help assistant', capturedOn: '2026-11-10' },
+    source: {
+      kind: 'shipped_product',
+      label: 'Merchant help assistant',
+      capturedOn: '2026-11-10',
+      checkedOn: '2026-11-11',
+      checkMethod: 'Reference call',
+    },
     items: [
       {
         competency: 'LLM systems in production',

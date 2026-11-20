@@ -170,7 +170,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     if (!jobId) throw new Error('No Senior AI Engineer job');
     for (const name of new Set(EVIDENCE.map((e) => e.candidate))) {
       const candidateId = people.get(name);
-      if (!candidateId) throw new Error(`No candidate ${name}`);
+      if (!candidateId) throw new Error('A design candidate with evidence is missing from the cast');
       if ((await evidence.listEvidenceForCandidate(ctx, candidateId, jobId)).length > 0) continue;
       for (const { source, items } of EVIDENCE.filter((e) => e.candidate === name))
         await evidence.recordEvidence(ctx, {

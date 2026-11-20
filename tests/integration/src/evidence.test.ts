@@ -190,6 +190,9 @@ describe('Scenario: Recording a repository as evidence', () => {
     expect((await as(ALEX, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId)))?.competencies).toEqual([
       { jobId: JOB, competencyId: RETRIEVAL },
     ]);
+    await expect(
+      as(ALEX, w2, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL })),
+    ).rejects.toThrow('No such evidence item');
   });
 });
 
@@ -305,5 +308,12 @@ describe('Authorisation (ADR-005 point 6)', () => {
       ForbiddenError,
     );
     await expect(as(LINA, w1, (ctx) => evidence.recordEvidence(ctx, repository(sara)))).rejects.toThrow(ForbiddenError);
+    const { itemIds } = await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, repository(sara)));
+    const itemId = itemIds[0] ?? '';
+    await expect(as(LINA, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId))).rejects.toThrow(ForbiddenError);
+    await expect(
+      as(LINA, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL })),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(as(LINA, w1, (ctx) => evidence.purgeSyntheticEvidence(ctx))).rejects.toThrow(ForbiddenError);
   });
 });
