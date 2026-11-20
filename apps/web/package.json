@@ -16,6 +16,7 @@
     "@credalent/candidate-accounts": "workspace:*",
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/files": "workspace:*",
     "@credalent/i18n": "workspace:*",
     "@credalent/identity": "workspace:*",
     "@credalent/intake": "workspace:*",

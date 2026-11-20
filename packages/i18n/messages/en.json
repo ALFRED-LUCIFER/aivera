@@ -1325,5 +1325,16 @@
     "loading": "Loading what is waiting",
     "error": "We could not load your desk. Try again.",
     "retry": "Try again"
+  },
+  "files": {
+    "upload": "Upload a file",
+    "uploadCv": "Upload CV",
+    "limits": {
+      "cv": "PDF or Word, up to 10 MB.",
+      "evidence": "PDF, image or document, up to 20 MB."
+    },
+    "uploading": "Uploading, {percent}%",
+    "notAccepted": "This file could not be accepted.",
+    "failed": "The upload did not finish. Try again."
   }
 }

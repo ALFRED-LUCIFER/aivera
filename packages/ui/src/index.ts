@@ -57,3 +57,7 @@ export type { NeedVsProvenBarProps, ScoreWithUncertaintyProps } from './ScoreBar
 // AIV-P3-003: the level a job needs, on the candidate site
 export { LevelMeter } from './LevelMeter.tsx';
 export type { LevelMeterProps } from './LevelMeter.tsx';
+
+// AIV-P0-016: the upload control of the Portal and CApply artboards
+export { FilePicker } from './FilePicker.tsx';
+export type { FilePickerProps } from './FilePicker.tsx';

@@ -26,6 +26,7 @@ const config: NextConfig = {
     '@credalent/workspaces',
     '@credalent/audit',
     '@credalent/notifications',
+    '@credalent/files',
     '@credalent/observability',
   ],
   // The distro patches Node modules at runtime and reads files next to itself; bundled, it never starts (AIV-P0-018).

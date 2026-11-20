@@ -261,14 +261,21 @@ describe('Scenario: Nothing else reaches the workspace', () => {
       ].toSorted(),
     );
     expect(JSON.stringify(person)).not.toContain(SARA);
-    // No recruiter-side table has a column that could hold the account or the profile.
+    // No recruiter-side table has a column that could hold the account or the profile. The one exception is the
+    // platform files table (AIV-P0-016): a candidate-site upload is owned by its account, and a row has exactly one
+    // owner, so a workspace's file never carries an account id (and the workspace's scope never sees an account's).
     const columns = await admin.execute<{
       name: string;
     }>(sql`select table_schema || '.' || table_name || '.' || column_name as name
       from information_schema.columns
       where table_schema not in ('candidate_accounts', 'migrations', 'information_schema', 'pg_catalog')
         and (column_name like '%account%' or column_name in ('headline', 'identity_user_id'))`);
-    expect([...columns]).toEqual([]);
+    expect([...columns]).toEqual([{ name: 'files.file.candidate_account_id' }]);
+    // SAFETY: mutation check: removed file_one_owner_check from files 0000_init.sql -> this test failed (no constraint)
+    const [owners] = await admin.execute<{ def: string }>(
+      sql`select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'file_one_owner_check'`,
+    );
+    expect(owners?.def).toBe('CHECK ((num_nonnulls(workspace_id, candidate_account_id) = 1))');
   });
 });
 

@@ -12,6 +12,7 @@
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",
+    "@credalent/files": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/observability": "workspace:*",

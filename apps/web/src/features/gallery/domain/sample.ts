@@ -43,7 +43,9 @@ export const sample = {
     table: 'Table, tabs and bulk actions',
     preview: 'Preview and confirm',
     assistant: 'Assistant drawer',
+    upload: 'File picker',
   },
+  uploadStates: { resting: 'Resting', uploading: 'Uploading', refused: 'Refused after the scan' },
   colourTable: { light: 'Light theme', dark: 'Dark theme', token: 'Token', value: 'Value', swatch: 'Swatch' },
   type: {
     title: 'Title 28 · Senior AI Engineer',

@@ -25,6 +25,11 @@ const env = z
     GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
     GITHUB_APP_INSTALLATION_ID: z.string().min(1).optional(),
     PORT: z.coerce.number().int().default(8080),
+    // Uploads (AIV-P0-016): on and with the blob endpoint, the worker settles each upload from Defender's scan result.
+    // Without either it never settles one, so uploads stay pending: fail closed (the worker never skips the scan).
+    // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
+    MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
+    AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
   })
   .refine(
     (e) =>
@@ -45,14 +50,17 @@ const { createRepositoryReadHandler, EVIDENCE_QUEUE } = await import('@credalent
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
+const { createBlobStore, createFiles, SCAN_RESULTS_QUEUE } = await import('@credalent/files/composition');
 const { createDb, isReachable } = await import('@credalent/db');
-const { createConsumer } = await import('@credalent/db/consumer');
+const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
 const { log } = await import('@credalent/observability');
 const { createScheduler, subscribe, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
+// shortcut: `files` (FileClean.v1, FileRejected.v1) is left out until something consumes them (CV parsing, AIV-P1-025):
+// its events wait unsent in files.outbox rather than retry with no queue; that ticket adds the schema and the mapping.
 const OUTBOXES = ['candidates', 'jobs', 'evidence', 'notifications'];
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
@@ -133,6 +141,40 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
 // the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-026 PR, owner to-dos).
 else log.warn('GitHub App not configured: repository reads are not consumed');
 
+// Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
+// not outbox envelopes, so not through createConsumer. A settled file ignores a redelivery, so no inbox is needed.
+// Invalid bodies are dead-lettered at once; any other failure backs off and is redelivered, up to 10 times.
+const scanResults =
+  env.MALWARE_SCANNING === 'on' && env.AZURE_STORAGE_BLOB_URL
+    ? (() => {
+        const files = createFiles({
+          db: appDb,
+          // Scan results carry no member: every request-context call is refused here.
+          workspaces: { authorize: () => Promise.reject(new Error('no request context in the worker')) },
+          blobs: createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID }),
+          malwareScanning: true,
+          now,
+        });
+        const receiver = appBus.createReceiver(SCAN_RESULTS_QUEUE);
+        const subscription = subscribe(receiver, async (delivery) => {
+          try {
+            await files.handleScanResult(delivery.body);
+            await delivery.complete();
+          } catch (error) {
+            if (error instanceof z.ZodError) return delivery.deadLetter('invalid payload');
+            log.warn({ err: error, area: 'files' }, 'scan result failed');
+            // The consumers' retry table: back off under the lock, then dead-letter after 10 deliveries (AIV-P0-015).
+            const settlement = decide('failed', delivery.deliveryCount);
+            if (settlement.action === 'deadLetter') return delivery.deadLetter(settlement.reason);
+            if (settlement.action === 'abandon')
+              await sleep(settlement.delayMs, undefined, { signal: stop.signal }).catch(() => undefined);
+            await delivery.abandon();
+          }
+        });
+        return { receiver, subscription };
+      })()
+    : null;
+
 const consumers = Object.entries(CONSUMERS).map(([queue, handlers]) => {
   const consumer = createConsumer({ db: appDb, queue, handlers, now, signal: stop.signal });
   const receiver = appBus.createReceiver(queue);
@@ -174,9 +216,11 @@ while (!stop.signal.aborted) {
 
 // Shutdown: stop receiving, let messages in flight complete (or abandon those waiting out a back-off), then close.
 // A message whose lock lapses meanwhile is redelivered by Service Bus, never lost.
-await Promise.all(consumers.map(({ subscription }) => subscription.close()));
+await Promise.all(
+  [...consumers, ...(scanResults ? [scanResults] : [])].map(({ subscription }) => subscription.close()),
+);
 await Promise.all(consumers.map(({ consumer }) => consumer.drain()));
-await Promise.all(consumers.map(({ receiver }) => receiver.close()));
+await Promise.all([...consumers, ...(scanResults ? [scanResults] : [])].map(({ receiver }) => receiver.close()));
 // The relay pass in progress finished above, so every claimed row is marked sent or scheduled for retry.
 await Promise.all([...senders.values()].map((sender) => sender.close()));
 await Promise.all([relayBus.close(), appBus.close()]);

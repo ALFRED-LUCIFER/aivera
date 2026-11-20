@@ -31,4 +31,5 @@ export const MODULES: MigratableModule[] = [
   'candidate_accounts',
   'ops',
   'notifications',
+  'files',
 ].map(moduleAt);

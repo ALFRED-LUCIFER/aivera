@@ -20,6 +20,7 @@ const sections = [
   'table',
   'preview',
   'assistant',
+  'upload',
 ];
 
 test('Scenario: The colour table matches the tokens', async ({ page }) => {
