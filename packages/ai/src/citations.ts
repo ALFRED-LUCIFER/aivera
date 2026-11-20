@@ -66,12 +66,17 @@ export class InvalidCitation extends Error {
 export const sourceLabel = (index: number) => `S${index + 1}`;
 
 /**
- * The sources as the model sees them, numbered in order. Text is not escaped: a source that fakes a `<source>` tag can
- * confuse the model, but labels resolve only to the real sources and code sets `claim`, so it cannot forge backing.
+ * The sources as the model sees them, numbered in order, each in a block marked untrusted (AIV-P1-070). A closing tag
+ * inside the text is neutralised, so a CV cannot end its own block and write outside it. The model is told the block is
+ * data (client.ts UNTRUSTED_CONTENT_RULES); labels resolve only to the real sources and code sets `claim`, so even an
+ * obeyed instruction cannot forge backing.
  */
 export const formatSources = (sources: readonly Source[]) =>
   sources
-    .map((source, i) => `<source id="${sourceLabel(i)}" kind="${source.kind}">\n${source.text}\n</source>`)
+    .map((source, i) => {
+      const text = source.text.replace(/<(\s*\/\s*source)/gi, '&lt;$1');
+      return `<source id="${sourceLabel(i)}" kind="${source.kind}" trust="untrusted">\n${text}\n</source>`;
+    })
     .join('\n');
 
 /**

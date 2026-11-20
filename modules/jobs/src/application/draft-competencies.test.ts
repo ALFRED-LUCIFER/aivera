@@ -182,7 +182,7 @@ describe('Scenario: No candidate data reaches the prompt', () => {
     // The citation rules and the numbered source wrapper are the AI package's; what varies is exactly our three fields.
     expect(user).toBe(
       `Job type: ai_llm_engineering\nTitle: Senior AI Engineer\n\nSources:\n` +
-        `<source id="S1" kind="job_description">\n${description}\n</source>`,
+        `<source id="S1" kind="job_description" trust="untrusted">\n${description}\n</source>`,
     );
   });
 });
