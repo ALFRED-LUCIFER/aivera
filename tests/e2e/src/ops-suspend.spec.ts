@@ -1,14 +1,14 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
-import { approveAsOperator, PIA, signUpWorkspace } from './workspaces.ts';
+import { approvedWorkspace, PIA } from './workspaces.ts';
 
 // AIV-P2-037 (ADR-012): Pia Platform suspends and reactivates a workspace; its admin reads but cannot start work. Each
-// run's admin creates a new workspace through the app (the Omar Agency persona, as a fresh synthetic address), so the
-// seeded "Gulf Talent Partners", which other specs read in parallel, stays active. The worker, AI and email parts of the
-// ticket have no code to stop yet (no worker, no AI call, no email); the server refusal is mutation-checked in the
-// workspaces module and tests/integration/src/ops-status.test.ts. While new workspaces need approval (AIV-P2-039), the
-// operator approves it first. Synthetic people only.
+// run's admin gets a new workspace that Pia approved (the Omar Agency persona, as a fresh synthetic address;
+// approvedWorkspace in workspaces.ts), so the seeded "Gulf Talent Partners", which other specs read in parallel, stays
+// active. The worker, AI and email parts of the ticket have no code to stop yet (no worker, no AI call, no email); the
+// server refusal is mutation-checked in the workspaces module and tests/integration/src/ops-status.test.ts. Synthetic
+// people only.
 
 const BANNER = 'This workspace is paused by Credalent. You can read everything; new work is paused.';
 const PREVIEW = 'Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.';
@@ -17,9 +17,13 @@ const PREVIEW = 'Members can still read everything. New work, AI calls and email
 async function newWorkspace(browser: Browser, theme: (typeof themes)[number], baseURL: string) {
   const stamp = `${theme}-${Date.now()}`;
   const name = `Harbour Talent ${stamp}`;
-  const { page, context } = await signUpWorkspace(browser, baseURL, `omar.agency+suspend-${stamp}@example.com`, name);
+  const email = `omar.agency+suspend-${stamp}@example.com`;
+  await approvedWorkspace(email, name);
+  const context = await browser.newContext({ baseURL });
   await context.addCookies([{ name: 'theme', value: theme, url: baseURL }]);
-  await approveAsOperator(browser, baseURL, name);
+  const page = await context.newPage();
+  await signIn(page, { email });
+  await expect(page).toHaveURL(/\/app$/);
   return { page, name, close: () => context.close() };
 }
 

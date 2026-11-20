@@ -9,7 +9,9 @@ const port = 3200;
 const unconfiguredPort = 3201;
 const oidcPort = 3299;
 const googlePort = 3298;
-const databaseUrl = process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera';
+/** The dev server's database; specs that set up rows directly use it too. */
+export const databaseUrl =
+  process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera';
 const oidc = `http://localhost:${oidcPort}`;
 const google = `http://localhost:${googlePort}`;
 const ci = Boolean(process.env['CI']);
