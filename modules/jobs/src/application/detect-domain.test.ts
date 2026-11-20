@@ -2,11 +2,13 @@ import {
   BudgetExceeded,
   createAiClient,
   DETECT_DOMAIN_SYSTEM,
+  detectDomainRequest,
   detectDomainSchema,
   fakeProvider,
   type AiProvider,
 } from '@aivera/ai';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { DOMAIN_KEYS, REGIONS } from '../domain/domain-packs.ts';
 import { domainDetection } from './detect-domain.ts';
 
@@ -145,5 +147,12 @@ describe('Scenario: No candidate data reaches the prompt', () => {
     const { detection, prompts } = setup({ industry: { domain: 'none' }, regions: [] });
     await detection.detectDomain(workspaceId, { ...input, location: null });
     expect(prompts[0]).not.toContain('S2');
+  });
+});
+
+describe('Scenario: Only the published version is read (AIV-P2-044)', () => {
+  it('sends the request built from the code catalogue: the same prompt and output schema', () => {
+    const { schema, ...request } = detectDomainRequest(input, { domains: DOMAIN_KEYS, regions: REGIONS }, []);
+    expect({ ...request, schema: z.toJSONSchema(schema, { unrepresentable: 'any' }) }).toMatchSnapshot();
   });
 });
