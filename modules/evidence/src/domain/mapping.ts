@@ -129,7 +129,7 @@ export function guardLinks(input: {
         strength: lowest(link.strength, ceiling),
         provenance: claim ? 'claim' : 'submitted',
         level: link.level,
-        limit: cv ? CLAIM_LIMIT : link.limit,
+        limit: claim ? CLAIM_LIMIT : link.limit,
         ceiling,
       });
     }
@@ -228,15 +228,17 @@ export function rankChanges(input: {
 
 /**
  * The text the model sees for one source: its label, its items' excerpts, then a repository's skill grades and their
- * file citations as measured facts, one per line. Returns the spans of the declaration-level citation lines.
+ * file citations as measured facts, one per line. Returns the spans that show no use on their own: the label, grade
+ * lines below STRONG and declaration-level citation lines.
  */
 export function sourceText(
   label: string,
   excerpts: readonly string[],
   grades: readonly { skill: string; grade: SkillGrade; reason: GradeReason; citations: readonly Citation[] }[],
 ): { text: string; declarationSpans: { start: number; end: number }[] } {
+  // The label (a repository name the candidate chose) shows nothing by itself: quoting it caps like a declaration.
   let text = [label, ...excerpts].join('\n');
-  const declarationSpans: { start: number; end: number }[] = [];
+  const declarationSpans: { start: number; end: number }[] = [{ start: 0, end: label.length }];
   const line = (value: string, declaration: boolean) => {
     text += '\n';
     if (declaration) declarationSpans.push({ start: text.length, end: text.length + value.length });
@@ -244,7 +246,8 @@ export function sourceText(
   };
   // One grade per skill: a skill two competencies share is graded the same against the same signals.
   for (const g of new Map(grades.map((one) => [one.skill, one])).values()) {
-    line(`Skill signal ${g.skill}: ${g.grade} (${g.reason})`, false);
+    // A grade line below STRONG says the skill was declared or not found: never more than Supporting when quoted.
+    line(`Skill signal ${g.skill}: ${g.grade} (${g.reason})`, g.grade !== 'STRONG');
     for (const c of g.citations)
       line(`${g.skill} in ${c.path} (${c.kind}, ${c.weight}): ${c.detail}`, c.weight === 'declaration');
   }

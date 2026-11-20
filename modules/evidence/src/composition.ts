@@ -276,6 +276,8 @@ export function createEvidenceMappingHandlers(config: {
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
+  // shortcut: every EvidenceRecorded.v1 (a repository read emits one per source it records) maps each of the
+  // candidate's jobs again, one model call each; coalesce per candidate and job if pilot token use or queue depth shows it.
   const requestMapping = (tx: Tx, envelope: Envelope, candidateId: string, jobId: string) =>
     enqueue(tx, outbox, EvidenceMappingRequestedV1, {
       workspaceId: envelope.workspaceId,

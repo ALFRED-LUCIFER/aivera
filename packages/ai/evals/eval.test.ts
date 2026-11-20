@@ -209,6 +209,15 @@ describe('the golden set', () => {
     }
   });
 
+  it('AIV-P1-027: an excerpt not in the source fails citation validity and the contract (failing fixture)', async () => {
+    const [invented] = loadGolden(join(import.meta.dirname, 'fixtures/failing')).get('evidence.mapToCompetency') ?? [];
+    if (!invented) throw new Error('no invented-excerpt fixture');
+    const report = await run('evidence.mapToCompetency', [invented]);
+    expect(report.cases[0]?.scores.citationValidity?.failures).toEqual(['$.links[0].citations[0]: quote not in S1']);
+    expect(report.cases[0]?.scores.contract?.failures).toEqual(['contract: InvalidCitation']);
+    expect(report.passed).toBe(false);
+  });
+
   // SAFETY: mutation check: dropped the CV strength rule from claimLabelling -> this test failed
   it('AIV-P1-027: a CV item rated above Supporting fails claim labelling (a guard failure in the eval metrics)', async () => {
     const maria = caseOf('evidence.mapToCompetency', 'maria-santos-injection');

@@ -483,8 +483,8 @@ async function readSource(
     };
     await store.insertItems(null, [item], []);
     // A re-read is a new event for the same source, so it needs its own key; the earlier item stays as history.
-    // shortcut: a re-read appends an authorship item and both list under the source; AIV-P1-027 and the evidence-profile
-    // tickets must show only the newest per source.
+    // shortcut: a re-read appends an authorship item and both list under the source, beside the mapped copies of
+    // AIV-P1-027 (which maps only the newest); the evidence-profile ticket must show only the newest per source.
     const key = read.status === 'pending' ? undefined : `source:${sourceId}:${checkedAt.toISOString()}`;
     await publishRecorded(tx, source, [item.id], key);
   }

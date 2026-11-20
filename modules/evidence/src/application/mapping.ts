@@ -81,12 +81,20 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
   }): void;
 };
 
+const idOf = (rows: readonly { id: string }[], i: number) => {
+  const row = rows[i];
+  if (!row) throw new Error('mapping row index out of range');
+  return row.id;
+};
+
 /**
  * The worker job `evidence.mapping` (AIV-P1-027): maps the candidate's recorded evidence to the job's approved rubric
  * version through the model, applies the guards, and stores the links, the gaps and "What would change this" as one
  * run, then writes `EvidenceMapped.v1`. Before a rubric is approved it stores nothing (the evidence stays recorded).
  * A model failure throws, so the consumer retries with back-off and nothing is half-stored.
  */
+// shortcut: an invented quote rejects the whole answer (citation contract), so a model repeating it dead-letters the
+// candidate's mapping; drop only that link if pilot telemetry shows it happening.
 // shortcut: the model call runs inside the consumer's workspace transaction, as the GitHub reads do; call it before
 // opening the write transaction if pilot mappings hold connections too long.
 export async function mapEvidence(
@@ -115,8 +123,9 @@ export async function mapEvidence(
     const measured = read && authorshipOf(read.read);
     // A re-read appends an authorship item and keeps the earlier one as history: only the newest is mapped.
     const excerpts = (read ? own.slice(-1) : own).map((i) => i.excerpt);
+    // A recruiter-typed label could carry a name (AGENTS.md 3.12): only a repository's own name goes to the model.
     const { text, declarationSpans } = sourceText(
-      source.label,
+      source.kind === 'repository' ? source.label : source.kind,
       excerpts,
       grades.filter((g) => g.repositorySourceId === sourceId),
     );
@@ -178,7 +187,7 @@ export async function mapEvidence(
     model: ports.model,
     changes: ranked.changes.map(({ competencyId, closes, text }) => ({
       competencyId,
-      closes: 'gap' in closes ? { gapId: gapRows[closes.gap]?.id ?? '' } : { itemId: items[closes.link]?.id ?? '' },
+      closes: 'gap' in closes ? { gapId: idOf(gapRows, closes.gap) } : { itemId: idOf(items, closes.link) },
       text,
     })),
     createdAt,
@@ -186,7 +195,7 @@ export async function mapEvidence(
   await ports.mappingStoreFor(tx).insert(
     run,
     items,
-    links.map((l, i) => ({ itemId: items[i]?.id ?? '', jobId, competencyId: l.competencyId, level: l.level })),
+    links.map((l, i) => ({ itemId: idOf(items, i), jobId, competencyId: l.competencyId, level: l.level })),
     gapRows,
   );
   await ports.publishMapped(tx, run);

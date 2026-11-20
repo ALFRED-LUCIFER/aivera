@@ -87,7 +87,7 @@ describe('Feature: Evidence mapped to competencies with cited excerpts (AIV-P1-0
     expect(stored).toMatchObject({ strength: 'supporting', provenance: 'claim', limit: CLAIM_LIMIT });
     // A submitted source the model itself labels a claim is capped the same way.
     const [labelled] = guard([link({ label: 'claim', strength: 'strong' })]).links;
-    expect(labelled).toMatchObject({ strength: 'supporting', provenance: 'claim', ceiling: 'supporting' });
+    expect(labelled).toMatchObject({ strength: 'supporting', provenance: 'claim', limit: CLAIM_LIMIT });
   });
 
   // SAFETY: mutation check: lower a CV-sourced Strong to Supporting instead of rejecting it -> "a CV item returned with strength Strong is rejected" failed
@@ -322,7 +322,21 @@ describe('sourceText', () => {
       ].join('\n'),
     );
     expect(declarationSpans.map((s) => text.slice(s.start, s.end))).toEqual([
+      'llm-eval-harness',
       'Python in pyproject.toml (manifest, declaration): declares pytest',
     ]);
+  });
+
+  // SAFETY: mutation check: left the label and grade lines below STRONG out of the declaration spans -> this test failed
+  it('a quote of the repository name or of a grade line below STRONG is capped at Supporting', () => {
+    const { text, declarationSpans } = sourceText(
+      'retrieval-evaluation-expert',
+      ['authored 50 of 52 commits'],
+      [{ skill: 'Python', grade: 'NO_EVIDENCE', reason: 'not_found', citations: [] }],
+    );
+    for (const quote of ['retrieval-evaluation-expert', 'Skill signal Python: NO_EVIDENCE (not_found)']) {
+      const quoted = link({ quote, start: text.indexOf(quote) });
+      expect(guard([quoted], [repo({ declarationSpans })]).links[0]?.strength, quote).toBe('supporting');
+    }
   });
 });

@@ -30,7 +30,7 @@ export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
-export { CLAIM_LIMIT, GAP_KINDS, MAX_CHANGES } from '../domain/mapping.ts';
+export { CLAIM_LIMIT } from '../domain/mapping.ts';
 export type { EvidenceGap, GapKind, StoredChange } from '../domain/mapping.ts';
 export type { OpenClaim, RequestStatus } from '../domain/request.ts';
 
@@ -197,7 +197,7 @@ export interface EvidenceContract {
   /**
    * The candidate's newest evidence mapping run for the job (AIV-P1-027), or null before one: the rubric version, the
    * prompt and model its links rest on, its evidence gaps (never negative evidence) and its "What would change this"
-   * list (at most `MAX_CHANGES`, each closing a gap or a capped item by id; `text` null when the model named no check).
+   * list (at most 3, each closing a gap or a capped item by id; `text` null when the model named no check).
    * The mapped items themselves come from `listEvidenceForCandidate`. Every role with a grant on the job.
    */
   getEvidenceMapping(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;

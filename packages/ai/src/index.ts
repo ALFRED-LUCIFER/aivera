@@ -32,10 +32,9 @@ export {
   detectDomainRequest,
   detectDomainSchema,
 } from './prompts/jobs.detectDomain.ts';
+// The system prompt is exported so eval.test.ts checks it never repeats or overrides the shared untrusted-content rule.
 export {
   MAP_TO_COMPETENCY_SYSTEM,
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
-  mapToCompetencySchema,
-  type RubricCompetencyInput,
 } from './prompts/evidence.mapToCompetency.ts';
