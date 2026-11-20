@@ -1,8 +1,19 @@
 import type { EvidenceRequestData } from '../../domain/email.ts';
-import { Button, Callout, CopyLink, EmailLayout, Evidence, Heading, Text, type LayoutCopy } from './components.tsx';
+import {
+  Button,
+  Callout,
+  CopyLink,
+  EmailLayout,
+  Heading,
+  Required,
+  requiredText,
+  Text,
+  type LayoutCopy,
+} from './components.tsx';
 import type { TemplateContext } from './render.ts';
 
-// The "Email: evidence request" artboard (docs/01-design/artboards/EEvidence.dc.html), HTML and plain text.
+// The "Email: evidence request" artboard (docs/01-design/artboards/EEvidence.dc.html), HTML and plain text. The
+// highlighter marks each ask, what the candidate must provide, never their own claim quoted back (DESIGN.md).
 
 export function evidenceRequest(data: EvidenceRequestData, { t, layout, sender }: TemplateContext) {
   const dir = layout.dir;
@@ -34,10 +45,10 @@ export function evidenceRequest(data: EvidenceRequestData, { t, layout, sender }
               <strong>{item.competency}.</strong>{' '}
               {item.claim && (
                 <>
-                  {youSaid} <Evidence>{quoted(item.claim)}</Evidence>{' '}
+                  {youSaid} {quoted(item.claim)}{' '}
                 </>
               )}
-              {item.ask}
+              <Required>{item.ask}</Required>
             </li>
           ))}
         </ul>
@@ -62,7 +73,8 @@ export function evidenceRequest(data: EvidenceRequestData, { t, layout, sender }
     t('emails.evidenceRequest.whatToSend'),
     '',
     ...data.items.map(
-      (item) => `- ${item.competency}. ${item.claim ? `${youSaid} ${quoted(item.claim)} ` : ''}${item.ask}`,
+      (item) =>
+        `- ${item.competency}. ${item.claim ? `${youSaid} ${quoted(item.claim)} ` : ''}${requiredText(item.ask)}`,
     ),
     '',
     `${layout.noteLabel} ${t('emails.evidenceRequest.callout')}`,

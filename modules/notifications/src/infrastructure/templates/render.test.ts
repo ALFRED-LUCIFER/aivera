@@ -47,14 +47,14 @@ describe('evidence-request template', () => {
     await expect(text).toMatchFileSnapshot('__snapshots__/evidence-request.txt');
   });
 
-  it('renders the HTML: preheader, heading, cited claims highlighted, one button with its copy link, footer', async () => {
+  it('renders the HTML: preheader, heading, the asks highlighted, one button with its copy link, footer', async () => {
     const { html } = await renderEmail('evidence-request', data, ctx(false));
     expect(html).toMatch(/^<!DOCTYPE html/);
     expect(html).toContain('<html lang="en" dir="ltr">');
     expect(html).toContain('The recruiter would like to see more of your work. About two minutes.');
     expect(html).toContain('More evidence would help your application');
     expect(html).toContain('Sent by Layla Haddad at Demo Hiring Co through Aivera');
-    // The highlighter marks the cited evidence and nothing else.
+    // The highlighter marks the two asks (highlight.test.ts).
     expect(html.match(/class="e-hl"/g)).toHaveLength(2);
     expect(html).toContain(`background-color:${color.light.highlight}`);
     expect(html.match(/class="e-button"/g)).toHaveLength(1);
@@ -85,7 +85,7 @@ describe('evidence-request template', () => {
       { ...data, items: [{ competency: 'Cost and reliability', ask: 'Send a dashboard export.' }] },
       ctx(false),
     );
-    expect(text).toContain('- Cost and reliability. Send a dashboard export.');
+    expect(text).toContain('- Cost and reliability. *Send a dashboard export.*');
     expect(text).not.toContain('You said');
   });
 });

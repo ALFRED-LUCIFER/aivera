@@ -49,7 +49,7 @@ describe('rubric-approval template (ERubric)', () => {
         '',
         'SENIOR AI ENGINEER: VERSION 2 OF THE RUBRIC IS WAITING FOR YOUR APPROVAL',
         '',
-        'Layla Haddad at Demo Hiring Co sent you version 2 of the rubric. Review the competencies below, then approve it or return it with a note.',
+        'Layla Haddad at Demo Hiring Co sent you version 2 of the rubric. *Approve or return version 2* once you have reviewed the competencies below; if you return it, add a note.',
         '',
         'Competency | Weight | Level needed',
         'LLM systems in production | 25% | 4 of 5',
@@ -74,8 +74,6 @@ describe('rubric-approval template (ERubric)', () => {
     expect(html).toContain('Version 2, with what changed. Nothing is assessed until you approve.');
     expect(html).toContain('<th scope="col"');
     expect(html.match(/class="e-button"/g)).toHaveLength(1);
-    // The highlighter marks cited evidence only; a rubric email cites none.
-    expect(html).not.toContain('e-hl"');
   });
 
   it('version 1, with nothing approved yet, has no "what changed"', async () => {
@@ -131,7 +129,7 @@ describe('rubric-returned template (EReturned)', () => {
       'Head of Engineering returned version 3 for Senior AI Engineer with a note. Open the rubric to change it and send it again.',
       '',
       'Note from Head of Engineering',
-      '“Arabic NLP should be desirable”',
+      '*“Arabic NLP should be desirable”*',
       '',
       'Note: The previously approved version stays in force.',
       '',

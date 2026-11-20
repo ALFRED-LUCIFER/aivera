@@ -1,6 +1,16 @@
 import type { ReactNode } from 'react';
 import type { MemberInvitationData } from '../../domain/email.ts';
-import { Button, Callout, CopyLink, EmailLayout, Heading, Text, type LayoutCopy } from './components.tsx';
+import {
+  Button,
+  Callout,
+  CopyLink,
+  EmailLayout,
+  Heading,
+  Required,
+  requiredText,
+  Text,
+  type LayoutCopy,
+} from './components.tsx';
 import type { TemplateContext } from './render.ts';
 
 // The "Email: workspace invitation" artboard (docs/01-design/artboards/EInvite.dc.html) and its four role variants
@@ -26,7 +36,6 @@ export function memberInvitation(data: MemberInvitationData, { t, layout, sender
   const cannot = t(`emails.memberInvitation.cannot.${data.role}`);
   const youCan = t('emails.memberInvitation.youCan');
   const youCannot = t('emails.memberInvitation.youCannot');
-  const expires = t('emails.memberInvitation.expires', { expiresAt: data.expiresAt });
   const button = t('emails.memberInvitation.button');
 
   const element = (
@@ -41,7 +50,12 @@ export function memberInvitation(data: MemberInvitationData, { t, layout, sender
       <Text dir={dir}>
         <strong>{youCannot}</strong> {cannot}
       </Text>
-      <Callout dir={dir}>{expires}</Callout>
+      <Callout dir={dir}>
+        {t.rich('emails.memberInvitation.expires', {
+          expiresAt: data.expiresAt,
+          hl: (chunks: ReactNode) => <Required>{chunks}</Required>,
+        })}
+      </Callout>
       <Button dir={dir} href={data.link}>
         {button}
       </Button>
@@ -61,7 +75,7 @@ export function memberInvitation(data: MemberInvitationData, { t, layout, sender
     '',
     `${youCannot} ${cannot}`,
     '',
-    `${layout.noteLabel} ${expires}`,
+    `${layout.noteLabel} ${t.markup('emails.memberInvitation.expires', { expiresAt: data.expiresAt, hl: requiredText })}`,
     '',
     `${button}:`,
     data.link,

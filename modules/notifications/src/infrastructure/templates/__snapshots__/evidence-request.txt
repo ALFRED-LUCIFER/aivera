@@ -6,8 +6,8 @@ Layla Haddad at Demo Hiring Co would like more evidence for your application to 
 
 What to send, by competency
 
-- Arabic and bilingual NLP. You said: “I built a Gulf Arabic evaluation set.” Send a link, a sample, or a short note on how you built it.
-- Cost and reliability. You said: “I cut cost per request by 40%.” Send a dashboard export, or a few lines on what you changed and how it was measured.
+- Arabic and bilingual NLP. You said: “I built a Gulf Arabic evaluation set.” *Send a link, a sample, or a short note on how you built it.*
+- Cost and reliability. You said: “I cut cost per request by 40%.” *Send a dashboard export, or a few lines on what you changed and how it was measured.*
 
 Note: This is a gap to close, not a decision. If you cannot share something, these points are discussed in the interview.
 
