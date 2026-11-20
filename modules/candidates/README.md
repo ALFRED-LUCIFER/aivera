@@ -9,5 +9,5 @@ One person per workspace, however many jobs they apply to (AIV-P1-016). The pers
 - **Synthetic:** `synthetic` has no column default and is required in the input, so every seed and import states it (AGENTS.md 1.1).
 - **Personal data (AGENTS.md 1.2):** names, emails, phones, location and identifier values are personal data. `PERSONAL_DATA_FIELDS` lists the contract's fields for the telemetry scrubber (AIV-P0-018). The module never logs; `CandidateError` never repeats the refused value, and database errors are redacted by `@credalent/db`.
 - **Event:** `PersonCreated.v1` (`{ personId }`, a strict zod schema in the contract, so personal data is refused) is written to `candidates.outbox` in the transaction that creates the person, and the relay sends it to the `candidates` queue (AIV-P0-014). A rolled-back create writes nothing.
-- **Not here:** duplicate detection and merge (AIV-P1-018), applications (AIV-P1-017), the people page (AIV-P1-048).
+- **Not here:** duplicate detection and merge (AIV-P1-018), the people page (AIV-P1-048).
 - **Tests:** normalisation in `src/domain/person.test.ts`; database scenarios in `tests/integration/src/candidates.test.ts`.

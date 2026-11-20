@@ -18,6 +18,7 @@
     "@credalent/evidence": "workspace:*",
     "@credalent/files": "workspace:*",
     "@credalent/identity": "workspace:*",
+    "@credalent/intake": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/ops": "workspace:*",

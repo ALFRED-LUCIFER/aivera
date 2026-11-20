@@ -66,12 +66,20 @@ export class InvalidCitation extends Error {
 export const sourceLabel = (index: number) => `S${index + 1}`;
 
 /**
- * The sources as the model sees them, numbered in order. Text is not escaped: a source that fakes a `<source>` tag can
- * confuse the model, but labels resolve only to the real sources and code sets `claim`, so it cannot forge backing.
+ * The sources as the model sees them, numbered in order, each in a block marked untrusted (AIV-P1-070). A closing tag
+ * or a fake opening tag inside the text is neutralised, so a CV cannot end its own block or forge another one. The model is told the block is
+ * data (client.ts UNTRUSTED_CONTENT_RULES); labels resolve only to the real sources and code sets `claim`, so even an
+ * obeyed instruction cannot forge backing.
  */
 export const formatSources = (sources: readonly Source[]) =>
   sources
-    .map((source, i) => `<source id="${sourceLabel(i)}" kind="${source.kind}">\n${source.text}\n</source>`)
+    .map((source, i) => {
+      // Every ASCII `<`, not only `</source`: a zero-width character or a backslash inside a tag would slip past a
+      // narrower match. checkOutput maps a quoted `&lt;` back to `<`. shortcut: look-alike brackets (`＜`) are left
+      // as they are, since only `<` is structural; escape them too if an eval shows a model reading one as a tag.
+      const text = source.text.replaceAll('<', '&lt;');
+      return `<source id="${sourceLabel(i)}" kind="${source.kind}" trust="untrusted">\n${text}\n</source>`;
+    })
     .join('\n');
 
 /**
@@ -125,7 +133,8 @@ export function checkOutput<S extends z.ZodType>(
     const citations = (node.citations as z.infer<typeof citation>[]).map(({ sourceId: label, quote }): Citation => {
       const source = byLabel.get(label);
       if (!source) throw new InvalidCitation(task, label, 'unknown source');
-      const span = findQuote(source.text, quote);
+      // The model saw `<` as `&lt;` (formatSources), so a quote may carry it back.
+      const span = findQuote(source.text, quote) ?? findQuote(source.text, quote.replaceAll('&lt;', '<'));
       if (!span) throw new InvalidCitation(task, label, 'quote not in source');
       kinds.push(source.kind);
       return { sourceId: source.id, quote: source.text.slice(span.start, span.end), ...span };

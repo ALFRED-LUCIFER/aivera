@@ -1,4 +1,5 @@
 import type { Tx } from '@credalent/db';
+import type { NewEntry } from '@credalent/audit';
 import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import {
   checkItem,
@@ -9,6 +10,16 @@ import {
   type EvidenceItem,
   type EvidenceSource,
 } from '../domain/evidence.ts';
+import {
+  crossApplicantMatches,
+  DUPLICATE_RESOLUTIONS,
+  fingerprintText,
+  groupOrigins,
+  type DuplicateFlag,
+  type DuplicateResolution,
+  type FingerprintedSource,
+  type Sha1,
+} from '../domain/fingerprint.ts';
 
 /** An item with its source and the links to the asked job's competencies. */
 export type EvidenceItemView = EvidenceItem & { source: EvidenceSource; competencies: CompetencyLink[] };
@@ -24,6 +35,20 @@ export type EvidenceStore = {
     filter: { candidateId?: string; itemId?: string },
     jobId: string | null,
   ): Promise<EvidenceItemView[]>;
+  /**
+   * One candidate's sources with their fingerprints, or with no candidate every fingerprinted source; oldest first.
+   * With no candidate it first takes the workspace's comparison lock, held until commit.
+   */
+  fingerprints(workspaceId: string, candidateId?: string): Promise<FingerprintedSource[]>;
+  insertFlags(flags: DuplicateFlag[]): Promise<void>;
+  /** Flags on either side of which the candidate stands, oldest first. */
+  flags(workspaceId: string, candidateId: string): Promise<DuplicateFlag[]>;
+  /** Sets the resolution and returns the flag as it was before, or null when the workspace has no such flag. */
+  resolveFlag(
+    workspaceId: string,
+    flagId: string,
+    resolution: Pick<DuplicateFlag, 'resolution' | 'resolvedBy' | 'resolvedAt'>,
+  ): Promise<DuplicateFlag | null>;
   /** Deletes all the workspace's evidence; false, with nothing deleted, if any source is not synthetic. */
   deleteSynthetic(workspaceId: string): Promise<boolean>;
 };
@@ -34,6 +59,11 @@ export type Ports = {
   publishRecorded(tx: Tx, source: EvidenceSource, itemIds: string[]): Promise<void>;
   authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
+  /** Appends an audit entry in `ctx.tx`; the last statement before commit (AGENTS.md 3.6). */
+  audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
+  /** Logs a raised flag: source ids and the similarity only, never text, names or fingerprints (AGENTS.md 1.2). */
+  logFlagged(fields: { flagId: string; sourceId: string; otherSourceId: string; similarity: number }): void;
+  sha1: Sha1;
   newId(): string;
   now(): Date;
 };
@@ -47,6 +77,11 @@ export type RecordEvidenceInput = {
   })[];
   /** Required, so no seed or import can forget it (AGENTS.md 1.1); every item takes the source's. */
   synthetic: boolean;
+  /**
+   * The source's full prose text when its importer has it (a write-up, a document), used only to compute its
+   * fingerprint (AIV-P1-071) and never stored here: the text stays where it already is (database or Blob).
+   */
+  text?: string;
 };
 
 export type RecordEvidenceResult = { sourceId: string; itemIds: string[] };
@@ -54,7 +89,48 @@ export type RecordEvidenceResult = { sourceId: string; itemIds: string[] };
 // shortcut: recording and linking are open to admins and recruiters (`candidate.create`), reading to them alone
 // (`candidate.view` with no job); hiring owners and interviewers reach a candidate's evidence through an application's
 // job once applications land (AIV-P1-017).
-export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSyntheticWorkspace, newId, now }: Ports) {
+export function evidenceUseCases({
+  storeFor,
+  publishRecorded,
+  authorize,
+  isSyntheticWorkspace,
+  audit,
+  logFlagged,
+  sha1,
+  newId,
+  now,
+}: Ports) {
+  /**
+   * "Also submitted by another applicant": flags each other candidate's near-duplicate source in this workspace. The
+   * store filters by workspace and row-level security hides every other workspace's sources (ADR-005), so a flag never
+   * crosses workspaces. It records the flag and nothing else.
+   */
+  // shortcut: compares against every fingerprinted source in the workspace in memory; index fingerprint bands when a
+  // workspace holds tens of thousands of sources.
+  async function flagCrossApplicantCopies(ctx: WorkspaceContext, source: EvidenceSource) {
+    if (!source.textFingerprint) return;
+    const store = storeFor(ctx.tx);
+    const others = (await store.fingerprints(ctx.workspaceId)).filter((o) => o.id !== source.id);
+    const flags = crossApplicantMatches(source, others).map((match): DuplicateFlag => ({
+      id: newId(),
+      workspaceId: ctx.workspaceId,
+      sourceId: source.id,
+      candidateId: source.candidateId,
+      otherSourceId: match.id,
+      otherCandidateId: match.candidateId,
+      similarity: match.similarity,
+      resolution: null,
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: source.createdAt,
+    }));
+    if (!flags.length) return;
+    await store.insertFlags(flags);
+    // Logged before commit: a rolled-back record leaves a line with ids only, never a flag.
+    for (const f of flags)
+      logFlagged({ flagId: f.id, sourceId: f.sourceId, otherSourceId: f.otherSourceId, similarity: f.similarity });
+  }
+
   return {
     async recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult> {
       await authorize(ctx, 'candidate.create');
@@ -68,7 +144,13 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
         synthetic: input.synthetic,
         createdAt,
       };
-      const source: EvidenceSource = { ...input.source, ...base, id: newId(), label: input.source.label.trim() };
+      const source: EvidenceSource = {
+        ...input.source,
+        ...base,
+        id: newId(),
+        label: input.source.label.trim(),
+        textFingerprint: input.text === undefined ? null : fingerprintText(input.text, sha1),
+      };
       const items = input.items.map(({ competencies = [], ...item }) => ({
         item: { ...item, ...base, id: newId(), sourceId: source.id } satisfies EvidenceItem,
         competencies,
@@ -80,6 +162,7 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
       );
       const itemIds = items.map((i) => i.item.id);
       await publishRecorded(ctx.tx, source, itemIds);
+      await flagCrossApplicantCopies(ctx, source);
       return { sourceId: source.id, itemIds };
     },
 
@@ -98,6 +181,35 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
       await authorize(ctx, 'candidate.view');
       const [item] = await storeFor(ctx.tx).list(ctx.workspaceId, { itemId }, null);
       return item ?? null;
+    },
+
+    /** The candidate's sources grouped into origins: near-duplicate sources form one (AIV-P1-071, for AIV-P1-029). */
+    async listOriginGroups(ctx: WorkspaceContext, candidateId: string): Promise<string[][]> {
+      await authorize(ctx, 'candidate.view');
+      return groupOrigins(await storeFor(ctx.tx).fingerprints(ctx.workspaceId, candidateId));
+    },
+
+    async listDuplicateFlags(ctx: WorkspaceContext, candidateId: string): Promise<DuplicateFlag[]> {
+      await authorize(ctx, 'candidate.view');
+      return storeFor(ctx.tx).flags(ctx.workspaceId, candidateId);
+    },
+
+    /** A person's reading of a flag. Changes the flag alone: no score, rank, stage or contact (AGENTS.md 1.5). */
+    async resolveDuplicateFlag(ctx: WorkspaceContext, flagId: string, resolution: DuplicateResolution): Promise<void> {
+      await authorize(ctx, 'candidate.create');
+      if (!DUPLICATE_RESOLUTIONS.includes(resolution)) throw new EvidenceError('resolution');
+      const before = await storeFor(ctx.tx).resolveFlag(ctx.workspaceId, flagId, {
+        resolution,
+        resolvedBy: ctx.userId,
+        resolvedAt: now(),
+      });
+      if (!before) throw new EvidenceError('flag_not_found');
+      await audit(ctx, {
+        action: 'evidence.flag_resolved',
+        subject: { type: 'duplicate_flag', id: flagId },
+        before: { resolution: before.resolution },
+        after: { resolution, sourceId: before.sourceId, otherSourceId: before.otherSourceId },
+      });
     },
 
     /** The demo seed's reset (AIV-P0-031): admins; refuses a workspace holding any evidence not synthetic. */

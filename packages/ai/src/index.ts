@@ -18,6 +18,7 @@ export {
   type SourceKind,
 } from './citations.ts';
 export type { EmbedTask, GenerateTask } from './config.ts';
+export { detectUnusualContent, type UnusualContent } from './untrusted.ts';
 export { azureProvider, fakeProvider, providerFromEnv, type AiProvider } from './providers.ts';
 export {
   DRAFT_COMPETENCIES_SYSTEM,

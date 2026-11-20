@@ -8,6 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
+import type { IntakeContract } from '@credalent/intake';
+import { createIntake } from '@credalent/intake/composition';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
@@ -236,17 +238,21 @@ type Modules = {
   candidates: CandidatesContract;
   evidence: EvidenceContract;
   jobs: JobsContract;
+  intake: IntakeContract;
   audit: AuditContract;
 };
 const modulesOn = (db: Db): Modules => {
   const audit = createAudit(db);
   const workspaces = createWorkspaces(db, audit);
+  const candidates = createCandidates(workspaces, () => NOW);
+  const jobs = createJobs(workspaces, audit, () => NOW);
   return {
     audit,
     workspaces,
-    candidates: createCandidates(workspaces, () => NOW),
-    evidence: createEvidence(workspaces, () => NOW),
-    jobs: createJobs(workspaces, audit, () => NOW),
+    candidates,
+    evidence: createEvidence(workspaces, audit, () => NOW),
+    jobs,
+    intake: createIntake(workspaces, candidates, jobs, () => NOW),
   };
 };
 
@@ -269,7 +275,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, evidence, jobs }: Modules,
+  { workspaces, evidence, jobs, intake }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -325,10 +331,15 @@ async function seed(
       jobIds: [job.id],
       clientIds: [],
     });
-    const { personId } = await candidates.findOrCreatePerson(ctx, {
-      displayName: person,
-      identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
-      synthetic: true,
+    // An application (intake.application and .application_source, AIV-P1-017); it finds or creates the person.
+    const { personId } = await intake.receiveApplication(ctx, {
+      jobId: job.id,
+      person: {
+        displayName: person,
+        identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
+        synthetic: true,
+      },
+      source: 'email',
     });
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
     await evidence.recordEvidence(ctx, {
@@ -354,6 +365,31 @@ async function seed(
       ],
       synthetic: true,
     });
+    // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
+    for (const candidateId of [personId, crypto.randomUUID()])
+      await evidence.recordEvidence(ctx, {
+        candidateId,
+        source: {
+          kind: 'document',
+          label: 'Write-up',
+          url: null,
+          blobFileId: null,
+          capturedAt: NOW,
+          checkedAt: null,
+          checkMethod: null,
+        },
+        items: [
+          {
+            excerpt: 'scored the top five passages every week',
+            excerptSpan: null,
+            provenance: 'submitted',
+            strength: 'medium',
+            limit: 'Shows the method, not who wrote it.',
+          },
+        ],
+        synthetic: true,
+        text: 'We built an evaluation set of four hundred support questions for the merchant help assistant, scored the top five passages for relevance every week, and compared recall with the previous release before shipping.',
+      });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),

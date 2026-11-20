@@ -25,6 +25,7 @@ export const MODULES: MigratableModule[] = [
   'identity',
   'candidates',
   'jobs',
+  'intake',
   'evidence',
   'candidate_accounts',
   'ops',

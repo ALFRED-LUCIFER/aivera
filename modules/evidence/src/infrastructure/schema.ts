@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  doublePrecision,
   foreignKey,
   index,
   pgSchema,
@@ -14,6 +15,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
+import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 
 export const evidence = pgSchema('evidence');
 
@@ -38,6 +40,8 @@ export const source = evidence
       // No default: every insert states it (AGENTS.md 1.1).
       synthetic: boolean().notNull(),
       createdAt: timestamp('created_at', tz).notNull(),
+      // The SimHash of the source's text (AIV-P1-071); null when it carried too little signal. Never the text itself.
+      textFingerprint: text('text_fingerprint'),
     },
     (t) => [
       unique('source_workspace_candidate_key').on(t.workspaceId, t.id, t.candidateId),
@@ -47,6 +51,7 @@ export const source = evidence
         sql`${t.kind} in ('cv', 'repository', 'document', 'shipped_product', 'reference_call', 'portal_submission', 'interview_note')`,
       ),
       check('source_url_check', sql`${t.url} is null or ${t.url} like 'https://%'`),
+      check('source_text_fingerprint_check', sql`${t.textFingerprint} ~ '^[0-9a-f]{16}$'`),
       tenantPolicy('source_tenant_isolation', t.workspaceId),
     ],
   )
@@ -114,6 +119,55 @@ export const competencyLink = evidence
       }),
       index('competency_link_job_idx').on(t.workspaceId, t.jobId),
       tenantPolicy('competency_link_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// "Also submitted by another applicant" (AIV-P1-071): two different candidates' near-duplicate sources, both in this
+// workspace (the foreign keys include it). Neutral; a person resolves it with a reason, audited.
+export const duplicateFlag = evidence
+  .table(
+    'duplicate_flag',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      otherSourceId: uuid('other_source_id').notNull(),
+      otherCandidateId: uuid('other_candidate_id').notNull(),
+      similarity: doublePrecision().notNull(),
+      resolution: text({ enum: DUPLICATE_RESOLUTIONS }),
+      resolvedBy: uuid('resolved_by'),
+      resolvedAt: timestamp('resolved_at', tz),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      foreignKey({
+        name: 'duplicate_flag_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      foreignKey({
+        name: 'duplicate_flag_other_source_fk',
+        columns: [t.workspaceId, t.otherSourceId, t.otherCandidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      unique('duplicate_flag_pair_key').on(t.workspaceId, t.sourceId, t.otherSourceId),
+      index('duplicate_flag_candidate_idx').on(t.workspaceId, t.candidateId),
+      index('duplicate_flag_other_candidate_idx').on(t.workspaceId, t.otherCandidateId),
+      check('duplicate_flag_candidates_check', sql`${t.candidateId} <> ${t.otherCandidateId}`),
+      check('duplicate_flag_similarity_check', sql`${t.similarity} between 0 and 1`),
+      // Must list exactly DUPLICATE_RESOLUTIONS (domain/fingerprint.ts); changing it needs a new migration.
+      check(
+        'duplicate_flag_resolution_check',
+        sql`${t.resolution} in ('shared_group_project', 'same_template', 'needs_follow_up')`,
+      ),
+      // Resolved means a reason, a person and a time, together.
+      check(
+        'duplicate_flag_resolved_check',
+        sql`(${t.resolution} is null) = (${t.resolvedBy} is null) and (${t.resolution} is null) = (${t.resolvedAt} is null)`,
+      ),
+      tenantPolicy('duplicate_flag_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
