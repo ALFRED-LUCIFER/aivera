@@ -1,0 +1,44 @@
+# Paolo Garcia's CV (AIV-P1-025): statements and a short skills list, every one a claim.
+id: paolo-garcia-cv
+people: ['Paolo Garcia']
+sources:
+  - id: S1
+    kind: cv
+    text: "Paolo Garcia\nML Engineer, A travel marketplace, Jan 2021 - Present\nBuilt a customer support assistant on a retrieval pipeline.\nDesigned the offline eval set used before each release.\nSkills: Python, Kafka, dbt"
+expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*].skill': ['Python', 'Kafka', 'dbt'] } }
+recorded:
+  {
+    'output':
+      {
+        'contact': { 'emails': [], 'phones': [] },
+        'workHistory':
+          [
+            {
+              'role': 'ML Engineer, A travel marketplace',
+              'dates': 'Jan 2021 - Present',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'ML Engineer, A travel marketplace, Jan 2021 - Present' }],
+              'claim': true,
+            },
+          ],
+        'skills':
+          [
+            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
+            { 'skill': 'Kafka', 'citations': [{ 'sourceId': 'S1', 'quote': 'Kafka' }], 'claim': true },
+            { 'skill': 'dbt', 'citations': [{ 'sourceId': 'S1', 'quote': 'dbt' }], 'claim': true },
+          ],
+        'statements':
+          [
+            {
+              'text': 'Built a customer support assistant on a retrieval pipeline',
+              'citations':
+                [{ 'sourceId': 'S1', 'quote': 'Built a customer support assistant on a retrieval pipeline' }],
+              'claim': true,
+            },
+            {
+              'text': 'Designed the offline eval set used before each release',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'Designed the offline eval set used before each release' }],
+              'claim': true,
+            },
+          ],
+      },
+  }

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle
 import type { EvidenceStore } from '../application/evidence.ts';
 import {
   competencyLink,
+  cvParse,
   duplicateFlag,
   evidenceGap,
   item,
@@ -13,6 +14,7 @@ import {
   repositorySkillSignal,
   request,
   source,
+  sourceNote,
 } from './schema.ts';
 
 /**
@@ -146,6 +148,8 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(repositorySkillGrade).where(eq(repositorySkillGrade.workspaceId, workspaceId));
       await tx.delete(repositorySkillSignal).where(eq(repositorySkillSignal.workspaceId, workspaceId));
       await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
+      await tx.delete(cvParse).where(eq(cvParse.workspaceId, workspaceId));
+      await tx.delete(sourceNote).where(eq(sourceNote.workspaceId, workspaceId));
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
       await tx.delete(item).where(eq(item.workspaceId, workspaceId));

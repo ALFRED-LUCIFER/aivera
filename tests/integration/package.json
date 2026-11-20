@@ -22,6 +22,7 @@
     "@credalent/intake": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
+    "@credalent/observability": "workspace:*",
     "@credalent/ops": "workspace:*",
     "@credalent/seed": "workspace:*",
     "@credalent/workspaces": "workspace:*",

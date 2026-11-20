@@ -30,6 +30,10 @@ const env = z
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
     MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
+    // CV parsing (AIV-P1-025): Document Intelligence on the AI resource, signed in with AZURE_CLIENT_ID's identity. Set,
+    // with AZURE_STORAGE_BLOB_URL, the worker parses clean CVs; the model comes from AI_PROVIDER or
+    // AZURE_OPENAI_RESOURCE_NAME (packages/ai providerFromEnv).
+    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: z.url({ protocol: /^https$/ }).optional(),
     // Evidence mapping (AIV-P1-027): the AI Foundry resource, called with the app identity; or AI_PROVIDER=fake in
     // local and dev (packages/ai providerFromEnv). Without either, evidence is recorded but not mapped.
     AZURE_OPENAI_RESOURCE_NAME: z.string().min(1).optional(),
@@ -50,8 +54,9 @@ const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
-const { readPersonAsSystem } = await import('@credalent/candidates/composition');
+const { createContactRecorder, readPersonAsSystem } = await import('@credalent/candidates/composition');
 const {
+  CvParseRequestedV1,
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
@@ -60,6 +65,7 @@ const {
 } = await import('@credalent/evidence');
 const {
   createApplicationReceivedHandler,
+  createCvParseHandlers,
   createEvidenceMappingHandlers,
   createRepositoryReadHandler,
   createRepositoryRefreshHandler,
@@ -72,7 +78,9 @@ const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@cr
 const { createApprovedRubricReads } = await import('@credalent/jobs/composition');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
-const { createBlobStore, createFiles, SCAN_RESULTS_QUEUE } = await import('@credalent/files/composition');
+const { FileCleanV1, FileRejectedV1 } = await import('@credalent/files');
+const { createBlobStore, createCleanFileReader, createFiles, SCAN_RESULTS_QUEUE } =
+  await import('@credalent/files/composition');
 const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
@@ -83,8 +91,12 @@ const { createScheduler, subscribe, systemConsumer, toMessage } = await import('
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is left out until something consumes them (CV parsing, AIV-P1-025):
 // its events wait unsent in files.outbox rather than retry with no queue; that ticket adds the schema and the mapping.
-const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications'];
 const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID;
+// Each evidence integration's events are mapped only when its consumer runs: an event with no handler is dead-lettered
+// on arrival, while an unmapped one waits in its outbox (retried by the relay) until the owner configures it.
+const cvParsing = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
+// shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with CV parsing, their one consumer (AIV-P1-025).
+const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(cvParsing ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App, below); otherwise they go to `assessment` as before, so the evidence queue never
 // receives an event nothing handles.
@@ -103,9 +115,18 @@ const QUEUES: Record<string, string> = {
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
-  [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
-  [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
-  [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
+  // Arrivals queue repository reads, so they wait for the GitHub App with them (AIV-P1-076).
+  ...(githubApp && {
+    [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
+    [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
+    [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
+  }),
+  // CV parsing (AIV-P1-025): a parse waits for its file's scan; a clean file runs it, a rejected one ends it.
+  ...(cvParsing && {
+    [CvParseRequestedV1.type]: EVIDENCE_QUEUE,
+    [FileCleanV1.type]: EVIDENCE_QUEUE,
+    [FileRejectedV1.type]: EVIDENCE_QUEUE,
+  }),
   // shortcut: EvidenceRequestSent/Opened/Answered/Quiet.v1 (AIV-P1-037) have no queue until the follow-up consumer
   // (AIV-P1-040) maps them; nothing sends a request before its screen (AIV-P1-039), so none are written meanwhile.
 };
@@ -188,9 +209,33 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
     createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
   );
 }
-// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads and arrivals wait (and
-// dead-letter after the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-074).
+// shortcut: without the GitHub App, repository reads and arrivals wait unsent in their outboxes until the owner
+// provisions the app and its Key Vault secrets (AIV-P1-074).
 else log.warn('GitHub App not configured: repository reads are not consumed');
+if (cvParsing && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL)
+  evidenceHandlers.push(
+    ...createCvParseHandlers({
+      db: appDb,
+      documentIntelligence: {
+        endpoint: env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+        // The app identity holds Cognitive Services User on the AI resource (owner to-do, AIV-P1-025 PR).
+        token: async () => {
+          const token = await appCredential.getToken('https://cognitiveservices.azure.com/.default');
+          if (!token) throw new Error('No Entra token for Document Intelligence');
+          return token.token;
+        },
+      },
+      ai: createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) }),
+      readCleanFile: createCleanFileReader(
+        createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID }),
+      ),
+      recordContact: createContactRecorder(),
+      now,
+    }),
+  );
+// shortcut: without Document Intelligence, CV parses stay pending and their events wait unsent in evidence.outbox and
+// files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025 PR, owner to-dos).
+else log.warn('Document Intelligence not configured: CV parses are not consumed');
 if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,

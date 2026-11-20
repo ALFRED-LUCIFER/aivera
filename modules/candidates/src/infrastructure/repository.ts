@@ -59,6 +59,21 @@ export function candidateStore(tx: Tx): CandidateStore {
         .set({ emails: [...row.emails, ...of('email')], phones: [...row.phones, ...of('phone')] })
         .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)));
     },
+    async appendContact(workspaceId, personId, contact) {
+      const [row] = await tx
+        .select({ emails: person.emails, phones: person.phones })
+        .from(person)
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)))
+        .for('update');
+      if (!row) throw new Error('person to add contact to not found');
+      await tx
+        .update(person)
+        .set({
+          emails: [...new Set([...row.emails, ...contact.emails])],
+          phones: [...new Set([...row.phones, ...contact.phones])],
+        })
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)));
+    },
     async getPerson(workspaceId, personId) {
       const [row] = await tx
         .select()

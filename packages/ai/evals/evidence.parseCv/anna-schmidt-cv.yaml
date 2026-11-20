@@ -1,0 +1,39 @@
+# Anna Schmidt's CV (AIV-P1-025): a role with years only stays years only.
+id: anna-schmidt-cv
+people: ['Anna Schmidt']
+sources:
+  - id: S1
+    kind: cv
+    text: "Anna Schmidt\nQA Engineer, A ride-hailing app, 2019 - 2023\nWrote the end-to-end checkout suite in Playwright.\nSkills: Playwright, TypeScript, k6"
+expected:
+  { 'match': { 'workHistory[*].dates': ['2019 - 2023'], 'skills[*].skill': ['Playwright', 'TypeScript', 'k6'] } }
+recorded:
+  {
+    'output':
+      {
+        'contact': { 'emails': [], 'phones': [] },
+        'workHistory':
+          [
+            {
+              'role': 'QA Engineer, A ride-hailing app',
+              'dates': '2019 - 2023',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'QA Engineer, A ride-hailing app, 2019 - 2023' }],
+              'claim': true,
+            },
+          ],
+        'skills':
+          [
+            { 'skill': 'Playwright', 'citations': [{ 'sourceId': 'S1', 'quote': 'Playwright' }], 'claim': true },
+            { 'skill': 'TypeScript', 'citations': [{ 'sourceId': 'S1', 'quote': 'TypeScript' }], 'claim': true },
+            { 'skill': 'k6', 'citations': [{ 'sourceId': 'S1', 'quote': 'k6' }], 'claim': true },
+          ],
+        'statements':
+          [
+            {
+              'text': 'Wrote the end-to-end checkout suite in Playwright',
+              'citations': [{ 'sourceId': 'S1', 'quote': 'Wrote the end-to-end checkout suite in Playwright' }],
+              'claim': true,
+            },
+          ],
+      },
+  }

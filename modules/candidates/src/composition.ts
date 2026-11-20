@@ -1,9 +1,9 @@
 // Builds the candidates module for an app (ADR-002: only apps import this).
-import { enqueue } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
+import { enqueue } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { WorkspacesContract } from '@credalent/workspaces';
-import { peopleUseCases } from './application/people.ts';
+import { peopleUseCases, recordCvContact } from './application/people.ts';
 import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
 import { candidateStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
@@ -38,3 +38,9 @@ export function createCandidates(
  */
 export const readPersonAsSystem = (tx: Tx, workspaceId: string, personId: string) =>
   candidateStore(tx).getPerson(workspaceId, personId);
+
+/** `recordCvContact` over the worker's transaction (AIV-P1-025): the CV's contact on the record, never as identifiers. */
+export function createContactRecorder() {
+  return (tx: Tx, workspaceId: string, personId: string, contact: { emails: string[]; phones: string[] }) =>
+    recordCvContact(candidateStore(tx), workspaceId, personId, contact);
+}

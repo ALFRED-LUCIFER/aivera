@@ -52,6 +52,8 @@ const ALLOWED = [
   'credalent.ai.template_version',
   // How alike two evidence sources' fingerprints are, 0..1, logged with their ids when a flag is raised (AIV-P1-071).
   'credalent.evidence.similarity',
+  // "Unusual content in this source" notes found on one CV parse (AIV-P1-025): a count, never the notes.
+  'credalent.evidence.unusual_count',
   // Evidence mapping counts per run (AIV-P1-027): numbers only, so guard failures show in telemetry.
   'credalent.evidence.links',
   'credalent.evidence.gaps',

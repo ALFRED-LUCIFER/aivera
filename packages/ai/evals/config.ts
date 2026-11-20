@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { AiClient } from '../src/client.ts';
 import { z } from 'zod';
+import { parseCvRequest } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
@@ -64,6 +65,10 @@ export const taskThresholds: Record<
   },
   'evidence.mapToCompetency': { statements: ['links[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.firstPass': { statements: ['mustHaves[*]'], fieldMatch: 0.9, judge: 1 },
+  // AIV-P1-025: every role, skill and statement must cite the CV and is a claim. Recorded answers are checked ones
+  // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
+  // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
+  'evidence.parseCv': { statements: ['workHistory[*]', 'skills[*]', 'statements[*]'], fieldMatch: 1, judge: 1 },
 };
 
 /**
@@ -90,6 +95,9 @@ export const runners: Record<string, Runner> = {
       ...mapToCompetencyRequest(rubricInput.parse(golden.input).competencies, golden.sources),
       workspaceId,
     }),
+  // AIV-P1-025: the CV text Document Intelligence extracted is the one source, as the evidence module sends it.
+  'evidence.parseCv': (ai, golden, workspaceId) =>
+    ai.generateStructured({ ...parseCvRequest(golden.sources), workspaceId }),
 };
 
 /** Tokens one live run may spend across all its calls; past it the remaining cases error and the run fails. */

@@ -1,6 +1,12 @@
 import type { Tx } from '@credalent/db';
 import type { Action, WorkspaceContext } from '@credalent/workspaces';
-import { CandidateError, normaliseIdentifiers, type Identifier, type Person } from '../domain/person.ts';
+import {
+  CandidateError,
+  normaliseIdentifier,
+  normaliseIdentifiers,
+  type Identifier,
+  type Person,
+} from '../domain/person.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type CandidateStore = {
@@ -11,6 +17,8 @@ export type CandidateStore = {
   /** Adds the identifiers no person holds yet to the person, and their emails and phones to its record. */
   attachIdentifiers(workspaceId: string, personId: string, identifiers: Identifier[]): Promise<void>;
   getPerson(workspaceId: string, personId: string): Promise<Person | null>;
+  /** Adds emails and phones the record does not list yet to the person's record only: no identifier, no matching. */
+  appendContact(workspaceId: string, personId: string, contact: { emails: string[]; phones: string[] }): Promise<void>;
   listPeople(workspaceId: string): Promise<Person[]>;
   /** Deletes every person and identifier in the workspace; false, with nothing deleted, if any person is not synthetic. */
   deleteSyntheticPeople(workspaceId: string): Promise<boolean>;
@@ -99,4 +107,32 @@ export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSy
       return storeFor(ctx.tx).listPeople(ctx.workspaceId);
     },
   };
+}
+
+const normalised = (type: 'email' | 'phone', values: string[]) =>
+  values.flatMap((value) => {
+    try {
+      return [normaliseIdentifier({ type, value }).value];
+    } catch {
+      return [];
+    }
+  });
+
+/**
+ * Adds contact details read from a CV to the person's record, as the system, in the worker's workspace-scoped
+ * transaction (AIV-P1-025). They are display contact only, never identifiers: a CV can name a referee or plant someone
+ * else's address, so CV contact must never make another applicant match this person. Values that are not a valid
+ * email or E.164 phone are skipped.
+ */
+// shortcut: CV contact is unverified and never matched on; duplicate detection and merge (AIV-P1-018) decides whether
+// a CV address may become an identifier.
+export async function recordCvContact(
+  store: Pick<CandidateStore, 'appendContact'>,
+  workspaceId: string,
+  personId: string,
+  contact: { emails: string[]; phones: string[] },
+): Promise<void> {
+  const emails = normalised('email', contact.emails);
+  const phones = normalised('phone', contact.phones);
+  if (emails.length || phones.length) await store.appendContact(workspaceId, personId, { emails, phones });
 }

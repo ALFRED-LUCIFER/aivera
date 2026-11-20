@@ -101,12 +101,17 @@ export function findQuote(text: string, quote: string): { start: number; end: nu
   return { start: at[found] ?? 0, end: (at[found + needle.length - 1] ?? 0) + 1 };
 }
 
-/** Parses the model's raw text against `schema` and the citation contract, or throws one of the three errors above. */
+/**
+ * Parses the model's raw text against `schema` and the citation contract, or throws one of the three errors above.
+ * With `onDropped`, a list element whose citation is invalid is left out (and `onDropped` called once per element)
+ * instead of rejecting the whole answer: for extraction, where one bad statement must not lose the rest (AIV-P1-025).
+ */
 export function checkOutput<S extends z.ZodType>(
   task: string,
   text: string,
   schema: S,
   sources: readonly Source[],
+  onDropped?: () => void,
 ): Checked<z.infer<S>> {
   let json: unknown;
   try {
@@ -123,8 +128,18 @@ export function checkOutput<S extends z.ZodType>(
   }
 
   const byLabel = new Map(sources.map((source, i) => [sourceLabel(i), source]));
+  const dropped = Symbol('dropped');
+  const keep = (element: unknown) => {
+    try {
+      return check(element);
+    } catch (error) {
+      if (!onDropped || !(error instanceof InvalidCitation)) throw error;
+      onDropped();
+      return dropped;
+    }
+  };
   const check = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(check);
+    if (Array.isArray(node)) return node.map(keep).filter((element) => element !== dropped);
     if (node === null || typeof node !== 'object') return node;
     const entries = Object.entries(node).filter(([key]) => key !== 'citations');
     const out = Object.fromEntries(entries.map(([key, value]) => [key, check(value)]));
