@@ -47,6 +47,18 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ).toEqual(['apps/web/src/features/jobs/services/x.ts', 'apps/web/src/features/signup/services/y.ts']);
   });
 
+  // AIV-P2-053 (ADR-012 point 8): only console code reads the platform audit log.
+  // SAFETY: mutation check: removed the platform-audit-read-console-only check -> this test failed
+  // SAFETY: mutation check: allowed every apps file (dropped the OPS_READ_AREA test) -> this test failed (features/jobs missing)
+  it('a call to listPlatformEntries outside app/(ops), features/ops*, server/ops*, server/operator.ts or modules/ops is reported', () => {
+    expect(
+      findViolations(fixture('platform-audit-read'))
+        .filter((v) => v.rule === 'platform-audit-read-console-only')
+        .map((v) => v.file)
+        .toSorted(),
+    ).toEqual(['apps/web/src/features/jobs/services/x.ts', 'modules/jobs/src/application/x.ts']);
+  });
+
   // SAFETY: mutation check: removed the job-owner-from-jobs check -> this test failed
   it('a call to setJobOwner outside the jobs module is reported (AIV-P1-056)', () => {
     expect(

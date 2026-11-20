@@ -1,7 +1,14 @@
 // The only public surface of @aivera/audit (ADR-002).
 import type { Tx } from '@aivera/db';
 import type { AuditContext } from '../application/audit.ts';
-import type { AuditEntry, NewEntry, NewPlatformEntry, Subject } from '../domain/entry.ts';
+import type {
+  AuditEntry,
+  NewEntry,
+  NewPlatformEntry,
+  PlatformEntryPage,
+  PlatformEntryQuery,
+  Subject,
+} from '../domain/entry.ts';
 
 export { AuditError } from '../domain/entry.ts';
 export type {
@@ -13,6 +20,9 @@ export type {
   NewEntry,
   NewPlatformEntry,
   PlatformAction,
+  PlatformEntry,
+  PlatformEntryPage,
+  PlatformEntryQuery,
   Subject,
   Values,
 } from '../domain/entry.ts';
@@ -42,4 +52,12 @@ export interface AuditContract {
    * `personal_data`, as `record` does.
    */
   recordPlatform(entry: NewPlatformEntry, tx?: Tx): Promise<void>;
+  /**
+   * The platform audit log for the operator console (ADR-012 point 8, AIV-P2-053): opaque ids, action, reason, time and
+   * platform values, newest first, at most 50 a page. Filters by action, operator, target id and a time range (`from`
+   * inclusive, `to` exclusive); pass the previous page's `nextCursor` as `cursor`. Reads through the database function
+   * `audit.list_platform_entries`, so `aivera_app` still has no privilege on the table. Throws a `ZodError` for invalid
+   * input before any query. Console code only (architecture rule `platform-audit-read-console-only`).
+   */
+  listPlatformEntries(query?: PlatformEntryQuery): Promise<PlatformEntryPage>;
 }

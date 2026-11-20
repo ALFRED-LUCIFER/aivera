@@ -7,6 +7,10 @@ import {
   type NewEntry,
   type NewPlatformEntry,
   type PlatformEntry,
+  type PlatformEntryFilter,
+  type PlatformEntryPage,
+  type PlatformEntryQuery,
+  platformEntryQuerySchema,
   type Subject,
 } from '../domain/entry.ts';
 
@@ -24,6 +28,8 @@ export type Ports = {
   inWorkspace<T>(workspaceId: string, work: (store: AuditStore) => Promise<T>): Promise<T>;
   /** Appends one platform entry in `tx`, or in its own transaction: it belongs to no workspace (ADR-012). */
   insertPlatform(entry: PlatformEntry, tx?: Tx): Promise<void>;
+  /** One page of the platform log through its named read function (ADR-012 point 8), newest first. */
+  readPlatform(filter: PlatformEntryFilter): Promise<PlatformEntry[]>;
   newId(): string;
   now(): Date;
 };
@@ -34,7 +40,7 @@ export type Ports = {
  */
 export type AuditContext = { tx: Tx; workspaceId: string; actor: Actor; correlationId?: string };
 
-export function auditUseCases({ storeFor, inWorkspace, insertPlatform, newId, now }: Ports) {
+export function auditUseCases({ storeFor, inWorkspace, insertPlatform, readPlatform, newId, now }: Ports) {
   return {
     async record({ tx, workspaceId, actor, correlationId }: AuditContext, input: NewEntry): Promise<void> {
       assertValidEntry(input);
@@ -60,6 +66,13 @@ export function auditUseCases({ storeFor, inWorkspace, insertPlatform, newId, no
 
     listOperatorEntries(workspaceId: string): Promise<AuditEntry[]> {
       return inWorkspace(workspaceId, (store) => store.listOperatorEntries(workspaceId));
+    },
+
+    async listPlatformEntries(query: PlatformEntryQuery = {}): Promise<PlatformEntryPage> {
+      // Throws a ZodError before any query: a page size over 50, a malformed cursor, an unknown key.
+      const filter = platformEntryQuerySchema.parse(query);
+      const entries = await readPlatform(filter);
+      return { entries, nextCursor: entries.length === filter.pageSize ? (entries.at(-1)?.id ?? null) : null };
     },
 
     async recordPlatform(input: NewPlatformEntry, tx?: Tx): Promise<void> {

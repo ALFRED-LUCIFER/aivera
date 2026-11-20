@@ -193,10 +193,11 @@ describe('Feature: Public read model of published jobs', () => {
   });
 
   // Catalogue-wide, so a table any module adds later (assessment, intake) is covered without editing this test.
-  // EXECUTE on functions is left to PostgreSQL's default (PUBLIC); the guard there is that no app function is SECURITY
-  // DEFINER, checked below. TEMPORARY on the database is PUBLIC's default too and reaches no app data.
+  // EXECUTE on functions is left to PostgreSQL's default (PUBLIC); the guard there is that aivera_public can execute no
+  // SECURITY DEFINER function (audit.list_platform_entries, AIV-P2-053, is revoked from PUBLIC), checked below. TEMPORARY on the database is PUBLIC's default too and reaches no app data.
   // SAFETY: mutation check: GRANT SELECT ON workspaces.client TO aivera_public -> this test failed (named the table)
   // SAFETY: mutation check: GRANT UPDATE (title) ON jobs.public_job TO aivera_public -> this test failed (named the column)
+  // SAFETY: mutation check: removed the REVOKE ... FROM PUBLIC on audit.list_platform_entries -> this test failed
   it("aivera_public's only privileges are USAGE on jobs and SELECT on public_job's public columns", async () => {
     const reach = await admin.execute<{ what: string }>(sql`
       with public_columns(name) as (values ('slug'), ('title'), ('job_type'), ('descriptor'), ('location'),
@@ -232,6 +233,7 @@ describe('Feature: Public read model of published jobs', () => {
       select 'security definer ' || p.oid::regprocedure::text
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where p.prosecdef and n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg_%'
+          and has_function_privilege('aivera_public', p.oid, 'EXECUTE')
       order by 1`);
     expect([...reach]).toEqual([]);
     expect(await asPublicRole(sql`select slug from jobs.public_job`)).toBe('none');
