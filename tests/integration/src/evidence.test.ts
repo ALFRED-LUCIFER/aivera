@@ -79,7 +79,7 @@ const repository = (
       provenance: 'corroborated',
       strength: 'strong',
       limit: 'Shows the tooling, not how results changed product decisions.',
-      competencies: [{ jobId: JOB, competencyId: RETRIEVAL }],
+      competencies: [{ jobId: JOB, competencyId: RETRIEVAL, level: 4 }],
       ...item,
     },
   ],
@@ -153,7 +153,7 @@ describe('Scenario: Recording a repository as evidence', () => {
       strength: 'strong',
       synthetic: true,
       createdAt: NOW,
-      competencies: [{ jobId: JOB, competencyId: RETRIEVAL }],
+      competencies: [{ jobId: JOB, competencyId: RETRIEVAL, level: 4 }],
       source: {
         id: sourceId,
         kind: 'repository',
@@ -186,12 +186,14 @@ describe('Scenario: Recording a repository as evidence', () => {
     );
     const itemId = itemIds[0] ?? '';
     for (let i = 0; i < 2; i++)
-      await as(ALEX, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL }));
+      await as(ALEX, w1, (ctx) =>
+        evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 }),
+      );
     expect((await as(ALEX, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId)))?.competencies).toEqual([
-      { jobId: JOB, competencyId: RETRIEVAL },
+      { jobId: JOB, competencyId: RETRIEVAL, level: 4 },
     ]);
     await expect(
-      as(ALEX, w2, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL })),
+      as(ALEX, w2, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 })),
     ).rejects.toThrow('No such evidence item');
   });
 });
@@ -313,7 +315,7 @@ describe('Authorisation (ADR-005 point 6)', () => {
     const itemId = itemIds[0] ?? '';
     await expect(as(LINA, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId))).rejects.toThrow(ForbiddenError);
     await expect(
-      as(LINA, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL })),
+      as(LINA, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 })),
     ).rejects.toThrow(ForbiddenError);
     await expect(as(LINA, w1, (ctx) => evidence.purgeSyntheticEvidence(ctx))).rejects.toThrow(ForbiddenError);
   });

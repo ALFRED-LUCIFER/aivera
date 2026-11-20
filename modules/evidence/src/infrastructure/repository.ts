@@ -18,13 +18,19 @@ export function evidenceStore(tx: Tx): EvidenceStore {
           .values(links.map((l) => ({ ...l, workspaceId: src.workspaceId })))
           .onConflictDoNothing();
     },
-    async link(workspaceId, itemId, { jobId, competencyId }) {
+    async link(workspaceId, itemId, { jobId, competencyId, level }) {
       const [found] = await tx
         .select({ id: item.id })
         .from(item)
         .where(and(eq(item.workspaceId, workspaceId), eq(item.id, itemId)));
       if (!found) return false;
-      await tx.insert(competencyLink).values({ workspaceId, itemId, jobId, competencyId }).onConflictDoNothing();
+      await tx
+        .insert(competencyLink)
+        .values({ workspaceId, itemId, jobId, competencyId, level })
+        .onConflictDoUpdate({
+          target: [competencyLink.workspaceId, competencyLink.itemId, competencyLink.competencyId],
+          set: { level },
+        });
       return true;
     },
     async list(workspaceId, { candidateId, itemId }, jobId) {
@@ -59,7 +65,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
         source: r.source,
         competencies: links
           .filter((l) => l.itemId === r.item.id)
-          .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId })),
+          .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId, level: l.level })),
       }));
     },
     async deleteSynthetic(workspaceId) {

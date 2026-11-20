@@ -3,6 +3,7 @@ import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import {
   checkItem,
   checkItems,
+  checkLink,
   checkSource,
   EvidenceError,
   type CompetencyLink,
@@ -16,7 +17,7 @@ export type EvidenceItemView = EvidenceItem & { source: EvidenceSource; competen
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type EvidenceStore = {
   insert(source: EvidenceSource, items: EvidenceItem[], links: (CompetencyLink & { itemId: string })[]): Promise<void>;
-  /** False when the workspace has no such item. Linking twice keeps one link. */
+  /** False when the workspace has no such item. Linking twice keeps one link, at the latest level. */
   link(workspaceId: string, itemId: string, link: CompetencyLink): Promise<boolean>;
   /** The candidate's items, oldest first; `jobId` set narrows `competencies` to that job's, null keeps every link. */
   list(
@@ -61,6 +62,7 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
       checkSource(input.source);
       checkItems(input.items);
       input.items.forEach(checkItem);
+      input.items.forEach((i) => i.competencies?.forEach(checkLink));
       const createdAt = now();
       const base = {
         workspaceId: ctx.workspaceId,
@@ -85,6 +87,7 @@ export function evidenceUseCases({ storeFor, publishRecorded, authorize, isSynth
 
     async linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void> {
       await authorize(ctx, 'candidate.create');
+      checkLink(link);
       if (!(await storeFor(ctx.tx).link(ctx.workspaceId, itemId, link))) throw new EvidenceError('not_found');
     },
 

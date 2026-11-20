@@ -8,6 +8,7 @@ import {
   index,
   pgSchema,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -104,6 +105,8 @@ export const competencyLink = evidence
       // The jobs module's job and competency ids: opaque, no foreign key across modules.
       jobId: uuid('job_id').notNull(),
       competencyId: uuid('competency_id').notNull(),
+      // 0 until the item is mapped to a level (AIV-P1-027); 0 adds nothing to a score.
+      level: smallint().notNull().default(0),
     },
     (t) => [
       primaryKey({ name: 'competency_link_pkey', columns: [t.workspaceId, t.itemId, t.competencyId] }),
@@ -113,6 +116,7 @@ export const competencyLink = evidence
         foreignColumns: [item.workspaceId, item.id],
       }),
       index('competency_link_job_idx').on(t.workspaceId, t.jobId),
+      check('competency_link_level_check', sql`${t.level} between 0 and 5`),
       tenantPolicy('competency_link_tenant_isolation', t.workspaceId),
     ],
   )

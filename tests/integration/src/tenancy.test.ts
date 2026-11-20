@@ -8,6 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
+import type { AssessmentContract } from '@credalent/assessment';
+import { createAssessment } from '@credalent/assessment/composition';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
@@ -211,6 +213,7 @@ type Modules = {
   workspaces: WorkspacesContract;
   candidates: CandidatesContract;
   evidence: EvidenceContract;
+  assessment: AssessmentContract;
   jobs: JobsContract;
   audit: AuditContract;
 };
@@ -222,6 +225,7 @@ const modulesOn = (db: Db): Modules => {
     workspaces,
     candidates: createCandidates(workspaces, () => NOW),
     evidence: createEvidence(workspaces, () => NOW),
+    assessment: createAssessment(workspaces, audit, () => NOW),
     jobs: createJobs(workspaces, audit, () => NOW),
   };
 };
@@ -245,7 +249,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, evidence, jobs }: Modules,
+  { workspaces, candidates, evidence, assessment, jobs }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -307,6 +311,7 @@ async function seed(
       synthetic: true,
     });
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
+    const competencyId = crypto.randomUUID();
     await evidence.recordEvidence(ctx, {
       candidateId: personId,
       source: {
@@ -325,10 +330,20 @@ async function seed(
           provenance: 'claim',
           strength: 'supporting',
           limit: 'A claim until a second source supports it.',
-          competencies: [{ jobId: job.id, competencyId: crypto.randomUUID() }],
+          competencies: [{ jobId: job.id, competencyId, level: 3 }],
         },
       ],
       synthetic: true,
+    });
+    // An assessment result (assessment.result, AIV-P1-030).
+    await assessment.assessCandidate(ctx, {
+      candidateId: personId,
+      jobId: job.id,
+      rubric: {
+        versionId: rubric.id,
+        competencies: [{ id: competencyId, weightPercent: 100, levelNeeded: 4, type: 'mandatory' }],
+      },
+      evidence: await evidence.listEvidenceForCandidate(ctx, personId, job.id),
     });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
@@ -514,14 +529,15 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       ).toEqual([w1.workspaceId]);
 
       // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only; the app
-      // cannot mark an outbox event, AIV-P0-014).
+      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030).
       const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
         (result) => result.count,
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
-      expect(name === 'audit.entry' || name.endsWith('.outbox') ? [0, '42501'] : [0], name).toContain(updated);
+      const noUpdate = name === 'audit.entry' || name === 'assessment.result' || name.endsWith('.outbox');
+      expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);
     }
   });
 });

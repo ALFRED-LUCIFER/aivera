@@ -6,7 +6,7 @@ export type Violation = { rule: string; file: string; detail: string };
 /** Pairs a module may never import: paying never changes ranking (AGENTS.md 1.8). */
 export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   // ops holds platform settings (ADR-012 point 9): nothing that ranks may read them either.
-  assessment: ['billing', 'portfolio', 'ops'],
+  assessment: ['billing', 'portfolio', 'ops', 'candidate-accounts'],
   jobs: ['billing', 'portfolio', 'ops'],
   evidence: ['billing', 'portfolio', 'ops'],
   intake: ['billing', 'portfolio', 'ops'],

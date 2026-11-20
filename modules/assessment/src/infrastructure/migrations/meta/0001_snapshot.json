@@ -1,0 +1,170 @@
+{
+  "id": "078f1cea-4ef8-44eb-8e7b-ae00142f89be",
+  "prevId": "6b3ae6f8-e765-4cc4-87e5-85aaeb040fae",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "assessment.result": {
+      "name": "result",
+      "schema": "assessment",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "backed_score": {
+          "name": "backed_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "upper_bound": {
+          "name": "upper_bound",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meets_need": {
+          "name": "meets_need",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competency_count": {
+          "name": "competency_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missing_critical": {
+          "name": "missing_critical",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competencies": {
+          "name": "competencies",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessed_at": {
+          "name": "assessed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "result_candidate_job_idx": {
+          "name": "result_candidate_job_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "assessed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "result_tenant_isolation": {
+          "name": "result_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"assessment\".\"result\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"assessment\".\"result\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "result_scores_check": {
+          "name": "result_scores_check",
+          "value": "\"assessment\".\"result\".\"backed_score\" between 0 and 100 and \"assessment\".\"result\".\"upper_bound\" between \"assessment\".\"result\".\"backed_score\" and 100"
+        },
+        "result_meets_need_check": {
+          "name": "result_meets_need_check",
+          "value": "\"assessment\".\"result\".\"meets_need\" between 0 and \"assessment\".\"result\".\"competency_count\""
+        },
+        "result_confidence_check": {
+          "name": "result_confidence_check",
+          "value": "\"assessment\".\"result\".\"confidence\" in ('High', 'Medium', 'Low')"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "assessment": "assessment"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

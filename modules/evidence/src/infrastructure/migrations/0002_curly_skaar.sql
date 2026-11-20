@@ -1,0 +1,2 @@
+ALTER TABLE "evidence"."competency_link" ADD COLUMN "level" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "evidence"."competency_link" ADD CONSTRAINT "competency_link_level_check" CHECK ("evidence"."competency_link"."level" between 0 and 5);

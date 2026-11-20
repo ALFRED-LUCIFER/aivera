@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@credalent/ai": "workspace:*",
+    "@credalent/assessment": "workspace:*",
     "@credalent/audit": "workspace:*",
     "@credalent/candidate-accounts": "workspace:*",
     "@credalent/candidates": "workspace:*",
