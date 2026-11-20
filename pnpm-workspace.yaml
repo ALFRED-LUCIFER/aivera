@@ -17,9 +17,3 @@ allowBuilds:
   unrs-resolver: false
   # msw's postinstall copies its browser service worker; the Node tests (msw/node) do not need it.
   msw: false
-# Time-boxed audit exception (AGENTS.md 6.3): picomatch ReDoS, every version <= 4.0.7 and no patched release on npm yet.
-# Only dev tooling pulls it in (Vitest -> Vite, tinyglobby); `pnpm why picomatch --prod -r` finds no production path
-# (checked 18 Nov 2026). Owner-approved 18 Nov 2026, expires 31 Dec 2026. Removal: AIV-P0-900 (#197).
-auditConfig:
-  ignoreGhsas:
-    - GHSA-fc5q-39xc-vjpf
