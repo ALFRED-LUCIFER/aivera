@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-003, J1 step: Tariq, admin of the agency "Harbour Talent" (clients Falcon Pay and Dune Logistics, one job
 // each), invites people on Members; Faisal opens the invitation seed.ts sent him to all of Dune Logistics' jobs.
@@ -173,7 +173,7 @@ for (const theme of themes) {
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await page
@@ -181,7 +181,7 @@ for (const theme of themes) {
       .first()
       .click();
     await expect(dialog).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
   });
@@ -192,15 +192,15 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await openMembers(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.getByLabel('Role', { exact: true }).selectOption({ label: 'Interviewer' });
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.goto('/invite?token=not-a-real-token');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await context.clearCookies({ name: '__Host-credalent-session' });
     await page.goto(`/invite?token=${encodeURIComponent(token())}`);
     await expect(page.getByText(/invited you to Credalent|no longer valid/)).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
 

@@ -13,10 +13,13 @@ export async function openGallery(page: Page, theme: Theme) {
   }).toPass();
 }
 
-/** Zero axe violations on the whole page; the Next.js dev-tools badge is not ours. */
-export async function expectNoAxeViolations(page: Page) {
+/**
+ * Zero axe violations on the whole page, of any impact (stricter than serious and critical only, AIV-P0-032); a failure
+ * names each rule, its impact and the selectors. The Next.js dev-tools badge is not ours.
+ */
+export async function expectAccessible(page: Page) {
   const { violations } = await new AxeBuilder({ page }).exclude('nextjs-portal').analyze();
-  expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map((n) => n.target) }))).toEqual([]);
+  expect(violations.map(({ id, impact, nodes }) => ({ id, impact, targets: nodes.map((n) => n.target) }))).toEqual([]);
 }
 
 export const css = (locator: Locator, property: string) =>

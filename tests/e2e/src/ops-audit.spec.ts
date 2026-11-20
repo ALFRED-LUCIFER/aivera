@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 import { approveAsOperator, signUpWorkspace } from './workspaces.ts';
 
 // AIV-P2-054 (ADR-012 point 8): the platform audit log at /ops/audit. Other specs write to the same log in parallel, so
@@ -63,7 +63,7 @@ for (const theme of themes) {
     await expect(page).toHaveTitle('Audit log');
     await expect(nav).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario: The log lists entries newest first (this workspace's entries, by its target id)
     await page.getByLabel('Target id').fill(workspace.id);
@@ -87,7 +87,7 @@ for (const theme of themes) {
       'None',
       'Status: Waiting for approval → Active',
     ]);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario Outline: Filters narrow the list: operator, as her opaque id (Scenario: No personal data in URLs)
     await page.getByLabel('Operator').selectOption({ label: 'pia.platform' });

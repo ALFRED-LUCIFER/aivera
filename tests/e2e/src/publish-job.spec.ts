@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-015 J1 step: Tariq (admin of "Approvals Co", seed.ts) previews, publishes, views and unpublishes Senior AI
 // Engineer (approved rubric, AED 35,000 to 48,000) from its rubric page; Senior Product Designer has only a draft. Its
@@ -40,7 +40,7 @@ test('Scenarios: preview, cancel, publish, view the listing, unpublish', async (
     await publishThis(page).focus();
     await page.keyboard.press('Enter');
     await expect(preview).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   }
   await expect(preview).toContainText(
     'Shown: title, location, pay band, the two competencies and the level each needs.',
@@ -63,7 +63,7 @@ test('Scenarios: preview, cancel, publish, view the listing, unpublish', async (
   for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await page.reload();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   }
 
   // The public listing: title, location and pay band; no weight.

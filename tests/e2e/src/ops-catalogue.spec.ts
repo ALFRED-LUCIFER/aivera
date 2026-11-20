@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P5-015 (ADR-012): the read-only catalogue of job types and domain packs at /ops/catalogue, from the jobs
 // contracts. playwright.config.ts makes Pia Platform an operator. Synthetic people only (docs/00-product/personas.md).
@@ -126,6 +126,6 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await openPaymentsForSoftwareEngineering(page);
     await expect(page.getByRole('heading', { name: 'Idempotent payment APIs and retries' })).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
