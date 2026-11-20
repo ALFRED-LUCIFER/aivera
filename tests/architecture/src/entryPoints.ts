@@ -5,21 +5,25 @@ import { walk, type Violation } from './rules.ts';
 
 // AGENTS.md 1.3 (AIV-P0-907): every server action, route handler and worker consumer declares its policy or is
 // explicitly public. Declared means one of:
-// - the export is the call result of a wrapper: `workspaceAction(...)` or `publicEntry('<reason>', handler)`;
+// - the export is the call result of a wrapper: `workspaceAction(...)`, `publicEntry('<reason>', handler)` or, for an
+//   action that needs only the signed-in session because there is no workspace yet, `sessionEntry('<reason>', handler)`;
 // - the exported function calls a policy guard itself, directly or through a function of the same file: the workspace
-//   context (`inActiveWorkspace`), the operator policy (`platformOperator`), or the recruiter or candidate session.
+//   context (`inActiveWorkspace`) or the operator policy (`platformOperator`).
 // A worker consumer is the `.handle` of a `createConsumer(...)` (each handler runs in its envelope's workspace
 // transaction) or `systemConsumer('<reason>', handler)`.
 // shortcut: by name, without the type checker, and a guard call anywhere in the body counts (not proven to run on every
 // path); code review checks the guard is the right one, as the ticket says.
 const WRAPPERS = new Set(['workspaceAction']);
-const REASONED = new Set(['publicEntry', 'systemConsumer']);
-const GUARDS = new Set(['inActiveWorkspace', 'platformOperator', 'getSessionUserId', 'getCandidateSessionUserId']);
+const REASONED = { web: new Set(['publicEntry', 'sessionEntry']), worker: new Set(['systemConsumer']) };
+const GUARDS = new Set(['inActiveWorkspace', 'platformOperator']);
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
-const ROUTE = /[/\\]src[/\\]app[/\\](?:.+[/\\])?route\.tsx?$/;
-const USE_SERVER = /^\s*['"]use server['"]/;
-const SOURCE = /\.tsx?$/;
-const TEST = /\.test\.tsx?$/;
+// Every extension Next.js serves a route from (the default pageExtensions, plus dev.tsx in dev, next.config.ts).
+const ROUTE = /[/\\]src[/\\]app[/\\](?:.+[/\\])?route\.(?:dev\.)?[cm]?[jt]sx?$/;
+const SOURCE = /\.[cm]?[jt]sx?$/;
+const TEST = /\.test\.[cm]?[jt]sx?$/;
+// The worker's one Service Bus adapter: anything else receiving messages is a consumer this check cannot see.
+const SERVICE_BUS = /[/\\]serviceBus\.ts$/;
+const RAW_RECEIVE = new Set(['subscribe', 'receiveMessages', 'processMessage']);
 
 type Fn = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
 const isFn = (node: ts.Node | undefined): node is Fn =>
@@ -28,6 +32,20 @@ const callee = (node: ts.Node) =>
   ts.isCallExpression(node) && ts.isIdentifier(node.expression) ? node.expression.text : undefined;
 const exported = (node: ts.Node) =>
   ts.canHaveModifiers(node) && !!ts.getModifiers(node)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+const violation = (file: string, name: string, detail: string): Violation => ({
+  rule: 'entry-point-policy',
+  file,
+  detail: `${name}: ${detail}`,
+});
+
+/** Whether the statements open with the `'use server'` directive (the prologue, after any comments). */
+function useServer(statements: readonly ts.Statement[]): boolean {
+  for (const s of statements) {
+    if (!ts.isExpressionStatement(s) || !ts.isStringLiteral(s.expression)) return false;
+    if (s.expression.text === 'use server') return true;
+  }
+  return false;
+}
 
 /** Whether `node` contains a call to one of `names`. */
 function calls(node: ts.Node, names: Set<string>): boolean {
@@ -55,11 +73,11 @@ function guardsOf(file: ts.SourceFile): Set<string> {
 }
 
 /** Why `value` is not a declared entry point, or null when it is. */
-function problem(value: ts.Node | undefined, guards: Set<string>): string | null {
+function problem(value: ts.Node | undefined, guards: Set<string>, reasoned: Set<string>): string | null {
   if (value && ts.isCallExpression(value)) {
     const name = callee(value) ?? '';
     if (WRAPPERS.has(name)) return null;
-    if (REASONED.has(name)) {
+    if (reasoned.has(name)) {
       const [reason] = value.arguments;
       return reason && ts.isStringLiteralLike(reason) && reason.text.trim() ? null : `${name} needs a reason`;
     }
@@ -69,29 +87,45 @@ function problem(value: ts.Node | undefined, guards: Set<string>): string | null
 }
 
 function webViolations(rel: string, file: ts.SourceFile, route: boolean): Violation[] {
-  const guards = guardsOf(file);
   const found: Violation[] = [];
+  if (!route && !useServer(file.statements)) {
+    // An inline `'use server'` closure in a component is an entry point no export shows: refused, so actions live in a
+    // services file this check reads.
+    const visit = (node: ts.Node) => {
+      if (isFn(node) && node.body && ts.isBlock(node.body) && useServer(node.body.statements))
+        found.push(
+          violation(
+            rel,
+            node.name?.getText(file) ?? 'inline action',
+            "inline 'use server': move it to a 'use server' file",
+          ),
+        );
+      ts.forEachChild(node, visit);
+    };
+    visit(file);
+    return found;
+  }
+  const guards = guardsOf(file);
   const check = (name: string, value: ts.Node | undefined) => {
     if (route && !HTTP_METHODS.has(name)) return;
-    const detail = problem(value, guards);
-    if (detail) found.push({ rule: 'entry-point-policy', file: rel, detail: `${name}: ${detail}` });
+    const detail = problem(value, guards, REASONED.web);
+    if (detail) found.push(violation(rel, name, detail));
   };
   for (const statement of file.statements) {
     if (ts.isFunctionDeclaration(statement) && exported(statement)) check(statement.name?.text ?? 'default', statement);
     else if (ts.isVariableStatement(statement) && exported(statement)) {
-      for (const d of statement.declarationList.declarations) check(d.name.getText(file), d.initializer);
+      for (const d of statement.declarationList.declarations)
+        if (ts.isIdentifier(d.name)) check(d.name.text, d.initializer);
+        // `export const { GET, POST } = handlers` hides each handler's declaration: refused.
+        else found.push(violation(rel, d.name.getText(file), 'destructured export; declare each entry point by name'));
     } else if (ts.isExportAssignment(statement)) check('default', statement.expression);
     // A re-export hides the declaration from this check: refused, so every entry point is declared where it is defined.
     else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
       const names =
         statement.exportClause && ts.isNamedExports(statement.exportClause) ? statement.exportClause.elements : [];
       for (const name of names.length ? names.map((n) => n.name.text) : ['*'])
-        if (!route || HTTP_METHODS.has(name))
-          found.push({
-            rule: 'entry-point-policy',
-            file: rel,
-            detail: `${name}: re-exported; declare it where it is defined`,
-          });
+        if (!route || name === '*' || HTTP_METHODS.has(name))
+          found.push(violation(rel, name, 're-exported; declare it where it is defined'));
     }
   }
   return found;
@@ -100,6 +134,7 @@ function webViolations(rel: string, file: ts.SourceFile, route: boolean): Violat
 function workerViolations(rel: string, file: ts.SourceFile): Violation[] {
   const consumers = new Set<string>();
   const subscribed: ts.Expression[] = [];
+  const found: Violation[] = [];
   const visit = (node: ts.Node) => {
     if (
       ts.isVariableDeclaration(node) &&
@@ -110,20 +145,30 @@ function workerViolations(rel: string, file: ts.SourceFile): Violation[] {
       consumers.add(node.name.text);
     if (ts.isCallExpression(node) && callee(node) === 'subscribe' && node.arguments[1])
       subscribed.push(node.arguments[1]);
+    // Straight on the SDK (`receiver.subscribe`, `receiveMessages`, a `processMessage` handler): refused outside the adapter.
+    const name =
+      ts.isPropertyAccessExpression(node) || ts.isPropertyAssignment(node) || ts.isMethodDeclaration(node)
+        ? node.name
+        : undefined;
+    if (!SERVICE_BUS.test(rel) && name && ts.isIdentifier(name) && RAW_RECEIVE.has(name.text))
+      found.push(
+        violation(rel, name.text, 'receives from Service Bus outside serviceBus.ts; use subscribe (AGENTS.md 1.3)'),
+      );
     ts.forEachChild(node, visit);
   };
   visit(file);
-  return subscribed.flatMap((handler) => {
+  for (const handler of subscribed) {
     const fromConsumer =
       ts.isPropertyAccessExpression(handler) &&
       handler.name.text === 'handle' &&
       ts.isIdentifier(handler.expression) &&
       consumers.has(handler.expression.text);
-    const reasoned = callee(handler) === 'systemConsumer' ? problem(handler, new Set()) : undefined;
-    if (fromConsumer || reasoned === null) return [];
+    const reasoned = callee(handler) === 'systemConsumer' ? problem(handler, new Set(), REASONED.worker) : undefined;
+    if (fromConsumer || reasoned === null) continue;
     const detail = reasoned ?? 'consumed outside createConsumer and systemConsumer (AGENTS.md 1.3)';
-    return [{ rule: 'entry-point-policy', file: rel, detail: `${handler.getText(file).split('\n')[0]}: ${detail}` }];
-  });
+    found.push(violation(rel, handler.getText(file).split('\n')[0] ?? '', detail));
+  }
+  return found;
 }
 
 /** Every server action, route handler and worker consumer under `root` that declares no policy. */
@@ -137,7 +182,7 @@ export function findUndeclaredEntryPoints(root: string): Violation[] {
       if (!SOURCE.test(path) || TEST.test(path)) continue;
       const text = readFileSync(path, 'utf8');
       const route = ROUTE.test(path);
-      if (app === 'web' && !route && !USE_SERVER.test(text)) continue;
+      if (app === 'web' && !route && !text.includes('use server')) continue;
       const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
       found.push(...check(relative(root, path), file, route));
     }

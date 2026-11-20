@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { forbidden, redirect } from 'next/navigation';
 import { DESK, signInPath } from '@/features/sign-in/domain/signIn.ts';
 import { getIdentity, getSessionUserId } from '@/server/auth';
+import { sessionEntry } from '@/server/publicEntry';
 import { getWorkspaces } from '@/server/workspace';
 import { invitationToken, inviteQuery, type AcceptError, type AcceptState } from '../domain/accept.ts';
 
@@ -21,26 +22,29 @@ const ERRORS: Partial<Record<WorkspaceErrorCode, AcceptError>> = {
  * verified email (from identity, never the form) must be the invited one; the module then adds them with the invited
  * role and job grants, makes the workspace their active one and audits it, in one transaction.
  */
-export async function acceptInvitation(_previous: AcceptState, form: FormData): Promise<AcceptState> {
-  const token = invitationToken.safeParse(form.get('token'));
-  if (!token.success) return { error: 'invalid' };
-  const userId = await getSessionUserId();
-  if (!userId) redirect(signInPath('/invite', inviteQuery(token.data)) as Route);
-  const user = await getIdentity().getUser(userId);
-  if (!user) forbidden();
-  try {
-    await getWorkspaces().acceptInvitation({ userId, email: user.email }, token.data);
-  } catch (error) {
-    if (error instanceof WorkspacePausedError) return { error: 'paused' };
-    const known = error instanceof WorkspaceError ? ERRORS[error.code] : undefined;
-    if (known) return { error: known };
-    log.error(
-      { area: 'members-accept', 'error.type': error instanceof Error ? error.name : 'unknown' },
-      'accept failed',
-    );
-    return { error: 'failed' };
-  }
-  // The recruiter layout may have rendered the no-workspace page for this user; drop it so the shell renders.
-  revalidatePath(DESK, 'layout');
-  redirect(DESK);
-}
+export const acceptInvitation = sessionEntry(
+  "joins the workspace that invited the signed-in user's verified email",
+  async (_previous: AcceptState, form: FormData): Promise<AcceptState> => {
+    const token = invitationToken.safeParse(form.get('token'));
+    if (!token.success) return { error: 'invalid' };
+    const userId = await getSessionUserId();
+    if (!userId) redirect(signInPath('/invite', inviteQuery(token.data)) as Route);
+    const user = await getIdentity().getUser(userId);
+    if (!user) forbidden();
+    try {
+      await getWorkspaces().acceptInvitation({ userId, email: user.email }, token.data);
+    } catch (error) {
+      if (error instanceof WorkspacePausedError) return { error: 'paused' };
+      const known = error instanceof WorkspaceError ? ERRORS[error.code] : undefined;
+      if (known) return { error: known };
+      log.error(
+        { area: 'members-accept', 'error.type': error instanceof Error ? error.name : 'unknown' },
+        'accept failed',
+      );
+      return { error: 'failed' };
+    }
+    // The recruiter layout may have rendered the no-workspace page for this user; drop it so the shell renders.
+    revalidatePath(DESK, 'layout');
+    redirect(DESK);
+  },
+);

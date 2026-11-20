@@ -20,11 +20,23 @@ describe('every server entry point declares its policy or is explicitly public (
     [`${web}/app/api/jobs/route.ts`, 'GET'],
     ['apps/worker/src/consumers/assessment.ts', 'handle'],
     [`${web}/features/jobs/services/reexport.ts`, 'makeJob'],
+    // SAFETY: mutation check: put getSessionUserId back in GUARDS -> this case failed
+    [`${web}/features/signup/services/session.ts`, 'readsSession'],
+    [`${web}/app/(recruiter)/app/page.tsx`, 'save'],
+    [`${web}/app/api/auth/route.ts`, '{ GET, POST }'],
+    [`${web}/app/api/star/route.ts`, '\\*'],
+    [`${web}/app/api/legacy/route.js`, 'GET'],
+    [`${web}/app/api/mixed/route.ts`, 'GET'],
+    ['apps/worker/src/consumers/raw.ts', 'subscribe'],
+    ['apps/worker/src/consumers/raw.ts', 'processMessage'],
   ])('an undeclared entry point fails and names %s and %s', (file, name) => {
-    expect(reported).toContainEqual(expect.stringMatching(new RegExp(`^${file.replace(/[.[\]]/g, '\\$&')} ${name}: `)));
+    expect(reported).toContainEqual(
+      expect.stringMatching(new RegExp(`^${file.replace(/[.[\]()]/g, '\\$&')} ${name.replace(/[{}]/g, '\\$&')}: `)),
+    );
   });
 
-  it('declared entry points pass: workspaceAction, publicEntry with a reason, a policy guard, the consumer wrapper', () => {
+  it('declared entry points pass: workspaceAction, publicEntry or sessionEntry with a reason, a policy guard, the consumer wrapper', () => {
+    expect(reported.filter((r) => / createWorkspace:/.test(r))).toEqual([]);
     expect(reported.filter((r) => /declared\.ts|clients\.ts|api\/health\//.test(r))).toEqual([
       // the only one in those files: systemConsumer('') below
       expect.stringContaining('apps/worker/src/consumers/declared.ts systemConsumer('),
