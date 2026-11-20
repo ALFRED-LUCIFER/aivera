@@ -14,7 +14,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 // The operator console (AIV-P2-035, ADR-012). The layout and every page await the policy: Next.js renders them in
 // parallel, so the layout's check alone would not stop a page.
 export default async function OpsLayout({ children }: { children: ReactNode }) {
-  await platformOperator();
+  const operator = await platformOperator();
   // Operators have no workspace, so dates show in the platform's default time zone, stated beside them.
   const [t, intl, theme] = await Promise.all([
     getTranslations(defaultLocale, defaultTimeZone),
@@ -36,6 +36,8 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
           metadataOnly: t('ops.metadataOnly'),
         }}
         sections={OPS_SECTIONS.map((id) => ({ id, label: t(`ops.nav.${id}`), href: OPS_SECTION_PAGES[id] }))}
+        // Who is acting, on every page: the operator's own name and email (AIV-P2-052).
+        operator={{ name: operator.name, email: operator.email }}
         theme={theme}
       >
         <ConsoleOpened />

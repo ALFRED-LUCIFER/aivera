@@ -30,11 +30,16 @@ import { getWorkspaces } from './workspace';
  * every call, never cached in the session, so an email removed from the list stops working on the next request.
  */
 export async function isPlatformOperator(userId: string): Promise<boolean> {
+  return (await operatorUser(userId)) !== null;
+}
+
+/** The identity user when they are a configured operator, else null: one read serves the check and the shell. */
+async function operatorUser(userId: string) {
   const operators = env().platformOperators;
   // No list, an empty list or an invalid one: nobody is an operator (fails closed), and no database read is needed.
-  if (operators.size === 0) return false;
+  if (operators.size === 0) return null;
   const user = await getIdentity().getUser(userId);
-  return user !== null && operators.has(user.email);
+  return user !== null && operators.has(user.email) ? user : null;
 }
 
 /**
@@ -43,13 +48,19 @@ export async function isPlatformOperator(userId: string): Promise<boolean> {
  * action or route handler, and nothing of the console. Memoised for one request only (layout, page and metadata share
  * one check); every new request checks again.
  */
-export const platformOperator = cache(async (): Promise<{ userId: string }> => {
+export const platformOperator = cache(async (): Promise<PlatformOperator> => {
   const userId = await getSessionUserId();
   // signInPath('/ops', '') as a literal, which typed routes accept; a deeper /ops path keeps its own return in the proxy.
   if (!userId) redirect('/sign-in?next=%2Fops');
-  if (!(await isPlatformOperator(userId))) forbidden();
-  return { userId };
+  const user = await operatorUser(userId);
+  if (!user) forbidden();
+  // AIV-P2-052: the operator's own name and email for the shell, from the same read; the email is the name when
+  // there is no display name. Only ever the caller's own (ADR-012 point 1 keeps the list itself out of pages).
+  return { userId, name: user.displayName?.trim() || user.email, email: user.email };
 });
+
+/** The signed-in operator: their opaque id, and their own name and email for the console shell. */
+export type PlatformOperator = { userId: string; name: string; email: string };
 
 let audit: AuditContract | undefined;
 /** The audit module for operator actions: `recordPlatform`, and `record` inside the target workspace (ADR-012). */
