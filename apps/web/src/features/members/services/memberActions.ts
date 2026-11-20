@@ -5,9 +5,8 @@ import { log } from '@aivera/observability';
 import { WorkspaceError, type Invitation, type WorkspaceContext } from '@aivera/workspaces';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
-import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
-import { getNotifications } from '@/server/notifications';
+import { getNotifications, senderFor } from '@/server/notifications';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
 import { inviteQuery } from '../domain/accept.ts';
 import {
@@ -36,29 +35,25 @@ const assertOwnJobs = async (ctx: WorkspaceContext, jobIds: string[]) => {
 async function queueInvitationEmail(ctx: WorkspaceContext, invitation: Invitation, token: string): Promise<void> {
   const email = getNotifications();
   if (!email) throw new Error('email is not configured in this environment');
-  const workspaces = getWorkspaces();
-  const [workspace, inviter, jobs, clients, t] = [
-    await workspaces.getWorkspace(ctx),
-    await getIdentity().getUser(ctx.userId),
+  const [sender, jobs, clients, t] = [
+    await senderFor(ctx),
     await getJobs().listJobs(ctx),
-    invitation.clientIds.length ? await workspaces.listClients(ctx) : [],
+    invitation.clientIds.length ? await getWorkspaces().listClients(ctx) : [],
     await getTranslations(defaultLocale, defaultTimeZone),
   ];
-  if (!workspace || !inviter) throw new Error('inviter or workspace not found');
   const scope = [
     ...jobs.filter((j) => invitation.jobIds.includes(j.id)).map((j) => j.title),
     ...clients
       .filter((c) => invitation.clientIds.includes(c.id))
       .map((c) => t('emails.memberInvitation.allOfClient', { client: possessive(c.name) })),
   ].join(', ');
-  const name = inviter.displayName ?? inviter.email;
   await email.notifications.queueEmail(
     { tx: ctx.tx, workspaceId: ctx.workspaceId },
     {
       template: 'member-invitation',
       to: invitation.email,
       causedBy: invitation.id,
-      sender: { name, shortName: name.split(' ')[0] ?? name, email: inviter.email, workspace: workspace.name },
+      sender,
       data: {
         role: invitation.role,
         scope: scope || null,

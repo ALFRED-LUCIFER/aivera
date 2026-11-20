@@ -1,3 +1,4 @@
+import { outboxTable } from '@aivera/db/outbox';
 import { tenantPolicy } from '@aivera/db/tenant-policy';
 import { sql, type SQL } from 'drizzle-orm';
 import {
@@ -112,6 +113,9 @@ export const rubricVersion = jobs
       createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
       approvedBy: uuid('approved_by'),
       approvedAt: timestamp('approved_at', { withTimezone: true }),
+      // Who last sent it for approval, and the hiring owner's note when they returned it (AIV-P1-014).
+      submittedBy: uuid('submitted_by'),
+      returnNote: text('return_note'),
       // Bumped on every save of a version not yet approved, so a save of an older copy is refused (AIV-P1-013).
       revision: integer().notNull().default(0),
     },
@@ -141,6 +145,8 @@ export const rubricVersion = jobs
         'rubric_version_approval_check',
         sql`(${t.status} in ('approved', 'superseded')) = (${t.approvedBy} is not null and ${t.approvedAt} is not null)`,
       ),
+      // RETURN_NOTE_MAX in domain/job.ts.
+      check('rubric_version_return_note_check', sql`char_length(${t.returnNote}) between 1 and 1000`),
       tenantPolicy('rubric_version_tenant_isolation', t.workspaceId),
       // Visible only through a job the transaction may see, so job scope reaches the rubric too.
       restrictive('rubric_version_job_scope', sql`exists (select 1 from ${job} where ${job.id} = ${t.jobId})`),
@@ -241,3 +247,6 @@ export const publicJob = jobs
     ],
   )
   .enableRLS();
+
+// Events written in the same transaction as the change; the relay sends them to Service Bus (AIV-P0-014).
+export const outbox = outboxTable(jobs);

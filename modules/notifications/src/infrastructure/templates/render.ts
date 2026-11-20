@@ -5,6 +5,7 @@ import type { Sender, TemplateData, TemplateName } from '../../domain/email.ts';
 import type { Direction, LayoutCopy } from './components.tsx';
 import { evidenceRequest } from './EvidenceRequest.tsx';
 import { memberInvitation } from './MemberInvitation.tsx';
+import { rubricApproval, rubricApproved, rubricReturned } from './Rubric.tsx';
 
 // Renders a template to subject, HTML and plain text with React Email, every string from packages/i18n.
 // Loaded only where an email is queued (the web app); the worker sends what was rendered and never imports JSX.
@@ -33,7 +34,22 @@ const TEMPLATES: {
     data: TemplateData[T],
     context: TemplateContext,
   ) => { subject: string; element: ReactElement; text: string[] };
-} = { 'evidence-request': evidenceRequest, 'member-invitation': memberInvitation };
+} = {
+  'evidence-request': evidenceRequest,
+  'member-invitation': memberInvitation,
+  'rubric-approval': rubricApproval,
+  'rubric-approved': rubricApproved,
+  'rubric-returned': rubricReturned,
+};
+
+/** Why the recipient gets the email: a member was invited, a member's job needs them, or a candidate applied. */
+const REASONS = {
+  'evidence-request': 'emails.layout.reasonCandidate',
+  'member-invitation': 'emails.layout.reasonInvited',
+  'rubric-approval': 'emails.layout.reasonMember',
+  'rubric-approved': 'emails.layout.reasonMember',
+  'rubric-returned': 'emails.layout.reasonMember',
+} as const satisfies Record<TemplateName, string>;
 
 export async function renderEmail<T extends TemplateName>(
   template: T,
@@ -43,8 +59,7 @@ export async function renderEmail<T extends TemplateName>(
   const t = await getTranslations(ctx.locale, ctx.timeZone);
   const privacyUrl = `${ctx.origin}/privacy`;
   const replies = t('emails.layout.repliesGoTo', { name: ctx.sender.name });
-  // Why the recipient gets the email: a member was invited, or a candidate applied.
-  const reason = t(template === 'member-invitation' ? 'emails.layout.reasonInvited' : 'emails.layout.reasonCandidate');
+  const reason = t(REASONS[template as TemplateName]);
   // Only a candidate's email carries their signed "Ask us to delete your data" link; a member's has none.
   const deleteData = 'deleteUrl' in data && { label: t('emails.layout.deleteData'), href: data.deleteUrl };
   const layout: TemplateContext['layout'] = {

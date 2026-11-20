@@ -42,5 +42,11 @@ export async function addJob(_previous: NewJobState, form: FormData): Promise<Ne
   if (!result) forbidden();
   if (!result.value) return failed;
   revalidatePath('/app/jobs');
-  return { errors: {}, error: null, saved: true, values: failed.values };
+  return {
+    errors: {},
+    error: null,
+    saved: true,
+    rubricVersionId: result.value.rubricVersion.id,
+    values: failed.values,
+  };
 }

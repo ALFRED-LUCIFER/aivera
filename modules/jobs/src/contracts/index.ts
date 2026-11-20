@@ -1,6 +1,8 @@
 // The only public surface of @aivera/jobs (ADR-002).
 import type { Tx } from '@aivera/db';
+import type { EventDefinition } from '@aivera/db/outbox';
 import type { WorkspaceContext } from '@aivera/workspaces';
+import { z } from 'zod';
 import type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
 import type {
@@ -9,7 +11,7 @@ import type {
   PublishJobInput,
   SaveRubricInput,
 } from '../application/jobs.ts';
-import type { DeskJob, Job, JobHeader, PublicListing, Rubric, RubricVersion } from '../domain/job.ts';
+import type { DeskJob, Job, JobHeader, PublicListing, Rubric, RubricApproval, RubricVersion } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
@@ -31,7 +33,15 @@ export type {
   Region,
   RegionalHint,
 } from '../domain/domain-packs.ts';
-export { COMPETENCY_ORIGINS, COMPETENCY_TYPES, JOB_STAGES, JobError, RUBRIC_STATUSES } from '../domain/job.ts';
+export {
+  approvesAs,
+  COMPETENCY_ORIGINS,
+  COMPETENCY_TYPES,
+  JOB_STAGES,
+  JobError,
+  RETURN_NOTE_MAX,
+  RUBRIC_STATUSES,
+} from '../domain/job.ts';
 export type {
   Competency,
   DeskJob,
@@ -43,6 +53,7 @@ export type {
   PayBand,
   PublicListing,
   Rubric,
+  RubricApproval,
   RubricState,
   RubricStatus,
   RubricVersion,
@@ -64,17 +75,14 @@ export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
 /**
- * Emitted when a hiring owner approves a rubric version. Opaque ids only (AGENTS.md 3.1).
- * shortcut: defined but not yet published; the outbox (AIV-P0-014) carries it from approveRubric.
+ * Written to `jobs.outbox` in the transaction that approves a rubric version (AIV-P1-014), and sent to the `assessment`
+ * queue: it is what starts assessment for the job (AIV-P1-031). Strict and opaque ids only (AGENTS.md 1.2, 3.1); the
+ * envelope carries the workspace id and the time.
  */
-export type RubricApprovedV1 = {
-  type: 'RubricApproved.v1';
-  workspaceId: string;
-  jobId: string;
-  rubricVersionId: string;
-  supersededVersionId: string | null;
-  occurredAt: string;
-};
+export const RubricApprovedV1 = {
+  type: 'RubricApproved.v1',
+  payload: z.strictObject({ jobId: z.uuid(), rubricVersionId: z.uuid(), supersededVersionId: z.uuid().nullable() }),
+} satisfies EventDefinition<{ jobId: string; rubricVersionId: string; supersededVersionId: string | null }>;
 
 /**
  * Emitted when a job is published to the candidate site. Opaque ids only.
@@ -146,10 +154,45 @@ export interface JobsContract {
    * 100%.", `level`, …).
    */
   saveRubric(ctx: WorkspaceContext, jobId: string, input: SaveRubricInput): Promise<RubricVersion>;
-  /** Admins and recruiters: a draft goes to the hiring owner for approval; the approved version stays in force. Audited. */
-  submitRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;
-  /** Admins and the job's granted hiring owner. The previous approved version becomes superseded. Audited. */
-  approveRubric(ctx: WorkspaceContext, rubricVersionId: string): Promise<void>;
+  /**
+   * Admins and recruiters: a draft goes to the hiring owner for approval, recorded as sent by the caller; the approved
+   * version stays in force. Returns the version as sent. `alongside(sent)` runs in the same transaction before the audit
+   * write: the caller queues the approval email there (AIV-P1-014). Audited.
+   */
+  submitRubric(
+    ctx: WorkspaceContext,
+    rubricVersionId: string,
+    alongside?: (sent: RubricVersion) => Promise<void>,
+  ): Promise<RubricVersion>;
+  /**
+   * The job's own hiring owner, or an admin acting as owner (audited as such), approves the version awaiting approval
+   * (AIV-P1-014): the previous approved version becomes superseded and RubricApproved.v1, which starts assessment, is
+   * written to the outbox in the same transaction. Anyone else throws `ForbiddenError`. `revision` is the copy the
+   * approver read: an older one throws `JobError('stale')`; a version not awaiting approval `version_status`.
+   * `alongside` runs in the same transaction before the audit write: the caller queues the decision email there.
+   */
+  approveRubric(
+    ctx: WorkspaceContext,
+    rubricVersionId: string,
+    revision?: number,
+    alongside?: () => Promise<void>,
+  ): Promise<void>;
+  /**
+   * As `approveRubric`, but returns the version with a note of 1 to 1,000 characters (`JobError('return_note')`); the
+   * approved version stays in force. Audited with the note.
+   */
+  returnRubric(
+    ctx: WorkspaceContext,
+    rubricVersionId: string,
+    note: string,
+    revision?: number,
+    alongside?: () => Promise<void>,
+  ): Promise<void>;
+  /**
+   * The recruiter's desk (AIV-P1-014): per visible job, the version awaiting approval and any approved in the past
+   * week, oldest job first. Every role; job-scoped roles get their granted jobs only.
+   */
+  listRubricApprovals(ctx: WorkspaceContext): Promise<RubricApproval[]>;
   /**
    * Admins and recruiters: what the candidate site would show (the allow-listed listing, from the approved rubric),
    * for the publish preview. Null when no rubric version is approved.

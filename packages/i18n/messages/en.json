@@ -504,7 +504,12 @@
       "title": "Add a job title.",
       "jobType": "Choose a job type.",
       "failed": "We could not save the job. Your edits are still here."
-    }
+    },
+    "sendRubric": "Send rubric for approval",
+    "sent": "Sent to the hiring owner. The job shows in Jobs as \"Draft, needs approval\", and My desk tells you when it is approved. Meanwhile you can line up people who already have evidence.",
+    "goToJobs": "Go to Jobs",
+    "sendFailed": "We could not send the rubric. Try again, or send it later from the rubric page.",
+    "sentNoOwner": "Sent for approval. This job has no hiring owner yet, so a workspace admin approves it. The job shows in Jobs as \"Draft, needs approval\", and My desk tells you when it is approved."
   },
   "jobDraft": {
     "heading": "Competencies",
@@ -618,7 +623,6 @@
     },
     "rubric": {
       "approved": "Approved",
-      "awaiting_approval": "Awaiting approval",
       "draft": "Draft, needs approval",
       "returned": "Returned, needs changes"
     },
@@ -1074,7 +1078,28 @@
       "stale": "This rubric changed since you opened it. Reload to see the latest.",
       "failed": "We could not save the rubric. Check each competency has a name, a weight from 1 to 100 and a level, then try again."
     },
-    "percentSign": "%"
+    "percentSign": "%",
+    "returnNote": "Returned with a note: “{note}”",
+    "decide": {
+      "title": "Version {version} is waiting for your approval",
+      "doneTitle": "Your approval",
+      "intro": "Review the competencies, then approve this version or return it with a note. Nothing is assessed against it until you approve.",
+      "changed": "What changed since version {version}",
+      "changedNone": "What changed",
+      "actingAsAdmin": "You are not this job's hiring owner. As an admin you decide on their behalf, and the audit log records it.",
+      "approve": "Approve version {version}",
+      "return": "Return with a note",
+      "noteLabel": "Note for the recruiter",
+      "confirmReturn": "Return version {version}",
+      "cancel": "Cancel",
+      "footer": "The approved version stays in force until a new one is approved.",
+      "approved": "Version {version} is approved. Assessment can now start for this job.",
+      "returned": "Version {version} was returned with your note. {inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "stale": "This version changed since you opened it. Reload to see the latest.",
+      "failed": "That did not go through. Nothing was changed.",
+      "newer": "A newer version is waiting for you",
+      "newerBody": "The link you opened was for an earlier copy of this rubric. Review version {version} below instead. Nothing from the earlier copy was approved."
+    }
   },
   "emails": {
     "layout": {
@@ -1088,7 +1113,8 @@
       "deleteData": "Ask us to delete your data",
       "copyLink": "Button not working? Copy this link:",
       "note": "Note:",
-      "reasonInvited": "You are receiving this because a member of this workspace invited you."
+      "reasonInvited": "You are receiving this because a member of this workspace invited you.",
+      "reasonMember": "You are receiving this because you are a member of this workspace."
     },
     "evidenceRequest": {
       "subject": "A request about your application: {jobTitle}",
@@ -1124,6 +1150,43 @@
       "expires": "This invitation expires on {expiresAt, date, short}.",
       "button": "Accept invitation",
       "allOfClient": "all of {client} jobs"
+    },
+    "rubricApproval": {
+      "subject": "Rubric waiting for your approval: {jobTitle}",
+      "preheader": "{changed, select, yes {Version {version}, with what changed.} other {Version {version}.}} Nothing is assessed until you approve.",
+      "heading": "{jobTitle}: version {version} of the rubric is waiting for your approval",
+      "intro": "{sender} at {workspace} sent you version {version} of the rubric. Review the competencies below, then approve it or return it with a note.",
+      "competency": "Competency",
+      "weight": "Weight",
+      "level": "Level needed",
+      "weightValue": "{weight}%",
+      "levelValue": "{level} of 5",
+      "changedSince": "What changed since version {version}",
+      "changed": "Changed",
+      "callout": "Nothing is assessed until you approve.",
+      "button": "Review and approve"
+    },
+    "rubricApproved": {
+      "subject": "Rubric approved: {jobTitle}",
+      "preheader": "Version {version} is approved. Assessment can now start for this job.",
+      "status": "Approved",
+      "version": "Version {version}",
+      "heading": "The rubric for {jobTitle} is approved",
+      "body": "{approver} approved version {version} · {approvedAt, date, short}. Assessment can now start for this job.",
+      "next": "You do not need to do anything.",
+      "button": "Open the job"
+    },
+    "rubricReturned": {
+      "subject": "Rubric returned with a note: {jobTitle}",
+      "preheader": "Version {version} was not approved. {inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "status": "Returned",
+      "version": "Version {version}",
+      "heading": "{owner} returned version {version} of the rubric",
+      "intro": "{owner} returned version {version} for {jobTitle} with a note. Open the rubric to change it and send it again.",
+      "noteFrom": "Note from {owner}",
+      "quoted": "“{note}”",
+      "callout": "{inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "button": "Open the rubric"
     }
   },
   "members": {
@@ -1211,5 +1274,19 @@
       "invalidTitle": "Invitation not valid",
       "invalid": "This invitation is no longer valid. Ask your workspace admin for a new one."
     }
+  },
+  "desk": {
+    "waitingOnOthers": "Waiting on others",
+    "nothingWaiting": "Nothing is waiting on others.",
+    "rubricApproval": "Rubric approval",
+    "rubricApproved": "Rubric approved",
+    "approvalWith": "{job}, version {version}. With the {owner}.",
+    "approvalOf": "{job}, version {version}.",
+    "done": "Done",
+    "open": "Open",
+    "openLabel": "Open the {job} rubric",
+    "loading": "Loading what is waiting",
+    "error": "We could not load your desk. Try again.",
+    "retry": "Try again"
   }
 }

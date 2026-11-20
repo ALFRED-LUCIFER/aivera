@@ -2,7 +2,7 @@
 
 import { useTranslations } from '@aivera/i18n/react';
 import { Button, Card, DataTable, Label, StatusBadge, StrengthMeter, Textarea } from '@aivera/ui';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { STRENGTHS, weightsTotal, type RubricEditorView, type RubricView } from '../domain/rubric.ts';
 import { cells, type Row } from './RubricCells.tsx';
 
@@ -15,6 +15,8 @@ type Props = {
   editor?: RubricEditorView | undefined;
   /** Who approves the new version, for the "sent" message. */
   hiringOwner?: string | null;
+  /** The hiring owner's approval panel (AIV-P1-014), first in the side column; absent for everyone else. */
+  decision?: ReactNode;
 };
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * In edit mode (AIV-P1-013) weights, levels and types change locally, and competencies can be added or removed;
  * nothing changes until the recruiter saves the draft or sends it for approval.
  */
-export function Rubric({ state, editor, hiringOwner = null }: Props) {
+export function Rubric({ state, editor, hiringOwner = null, decision }: Props) {
   const t = useTranslations('rubric');
   const successId = useId();
   const rubric = state.status === 'ready' ? state.rubric : null;
@@ -92,6 +94,7 @@ export function Rubric({ state, editor, hiringOwner = null }: Props) {
       </section>
       {rubric && (
         <div className="flex min-w-0 flex-[4_1_320px] flex-col gap-6">
+          {decision}
           <Card title={editing ? undefined : t('success')} level={2}>
             {editing ? (
               <div className="flex flex-col gap-2">
@@ -138,6 +141,9 @@ export function Rubric({ state, editor, hiringOwner = null }: Props) {
                           : t('approvedOn', { date: h.approved.at })
                         : h.note}
                     </span>
+                  )}
+                  {h.returnNote && (
+                    <span className="text-meta text-text-2">{t('returnNote', { note: h.returnNote })}</span>
                   )}
                 </li>
               ))}

@@ -73,7 +73,8 @@ describe('Jobs list filters', () => {
 describe('Rubric label and job link', () => {
   it.each([
     [{ approved: true, latest: 'awaiting_approval' }, 'approved'],
-    [{ approved: false, latest: 'awaiting_approval' }, 'awaiting_approval'],
+    // Scenario: Send version 1 for approval from Add a job (AIV-P1-014): sent, it still reads "Draft, needs approval".
+    [{ approved: false, latest: 'awaiting_approval' }, 'draft'],
     [{ approved: false, latest: 'returned' }, 'returned'],
     [{ approved: false, latest: 'draft' }, 'draft'],
     [{ approved: false, latest: null }, 'draft'],

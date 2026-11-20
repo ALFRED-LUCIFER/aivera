@@ -52,9 +52,12 @@ export const filterCounts = (rows: JobRow[]) =>
     number
   >;
 
-/** An approved version in force reads "Approved"; otherwise the latest version's status, none yet reading as a draft. */
+/**
+ * An approved version in force reads "Approved"; a returned one "Returned, needs changes"; any other, sent or not, "Draft,
+ * needs approval" (AIV-P1-014, RoleNew artboard), and the next action column says whether it is with the hiring owner.
+ */
 export const rubricLabel = ({ approved, latest }: RubricState) =>
-  approved ? 'approved' : latest === 'awaiting_approval' || latest === 'returned' ? latest : 'draft';
+  approved ? 'approved' : latest === 'returned' ? latest : 'draft';
 
 /** A job without an approved rubric opens on its rubric; with one, on its ranked candidates (docs/01-design/screens.md). */
 export const jobHref = (row: Pick<JobRow, 'id' | 'rubric'>) =>

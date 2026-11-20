@@ -1,0 +1,766 @@
+{
+  "id": "07ebaf4a-c98f-4831-bafe-ab08368c9525",
+  "prevId": "0875ea9d-ee1c-4b78-9bc8-3618e969c480",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "jobs.competency": {
+      "name": "competency",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_expected": {
+          "name": "evidence_expected",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weight_percent": {
+          "name": "weight_percent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_needed": {
+          "name": "level_needed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pack_key": {
+          "name": "pack_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pack_version": {
+          "name": "pack_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "competency_rubric_version_fk": {
+          "name": "competency_rubric_version_fk",
+          "tableFrom": "competency",
+          "tableTo": "rubric_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "rubric_version_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "competency_version_position_key": {
+          "name": "competency_version_position_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "rubric_version_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {
+        "competency_tenant_isolation": {
+          "name": "competency_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "competency_job_scope": {
+          "name": "competency_job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")",
+          "withCheck": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")"
+        }
+      },
+      "checkConstraints": {
+        "competency_weight_check": {
+          "name": "competency_weight_check",
+          "value": "\"jobs\".\"competency\".\"weight_percent\" between 1 and 100"
+        },
+        "competency_level_check": {
+          "name": "competency_level_check",
+          "value": "\"jobs\".\"competency\".\"level_needed\" between 1 and 5"
+        },
+        "competency_type_check": {
+          "name": "competency_type_check",
+          "value": "\"jobs\".\"competency\".\"type\" in ('mandatory', 'desirable')"
+        },
+        "competency_origin_check": {
+          "name": "competency_origin_check",
+          "value": "\"jobs\".\"competency\".\"origin\" in ('from_description', 'suggested_by_aivera', 'added_by_recruiter', 'domain_pack')"
+        },
+        "competency_domain_pack_check": {
+          "name": "competency_domain_pack_check",
+          "value": "(\"jobs\".\"competency\".\"origin\" = 'domain_pack') = (\"jobs\".\"competency\".\"pack_key\" is not null and \"jobs\".\"competency\".\"pack_version\" is not null)"
+        },
+        "competency_pack_key_check": {
+          "name": "competency_pack_key_check",
+          "value": "\"jobs\".\"competency\".\"pack_key\" in ('payments_fintech', 'banking_islamic_finance', 'healthcare', 'ecommerce_marketplaces', 'logistics_mobility', 'government_public_sector', 'telecom', 'energy_utilities') and \"jobs\".\"competency\".\"pack_version\" >= 1"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "jobs.job": {
+      "name": "job",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team": {
+          "name": "team",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hiring_owner_user_id": {
+          "name": "hiring_owner_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_descriptor": {
+          "name": "public_descriptor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_min_minor": {
+          "name": "pay_min_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_max_minor": {
+          "name": "pay_max_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_currency": {
+          "name": "pay_currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synthetic": {
+          "name": "synthetic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "job_workspace_created_idx": {
+          "name": "job_workspace_created_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "job_workspace_id_key": {
+          "name": "job_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {
+        "job_tenant_isolation": {
+          "name": "job_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "job_scope": {
+          "name": "job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))",
+          "withCheck": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))"
+        }
+      },
+      "checkConstraints": {
+        "job_title_check": {
+          "name": "job_title_check",
+          "value": "btrim(\"jobs\".\"job\".\"title\") <> ''"
+        },
+        "job_type_check": {
+          "name": "job_type_check",
+          "value": "\"jobs\".\"job\".\"job_type\" in ('software_engineering', 'qa_test_automation', 'ai_llm_engineering', 'forward_deployed_engineering', 'data_ml', 'devops_sre', 'product_management', 'product_design', 'sales', 'technical_writing_support')"
+        },
+        "job_stage_check": {
+          "name": "job_stage_check",
+          "value": "\"jobs\".\"job\".\"stage\" in ('defining_rubric', 'collecting_evidence', 'round_1', 'decision', 'closed')"
+        },
+        "job_pay_band_check": {
+          "name": "job_pay_band_check",
+          "value": "(\"jobs\".\"job\".\"pay_min_minor\" is null and \"jobs\".\"job\".\"pay_max_minor\" is null and \"jobs\".\"job\".\"pay_currency\" is null) or (0 <= \"jobs\".\"job\".\"pay_min_minor\" and \"jobs\".\"job\".\"pay_min_minor\" <= \"jobs\".\"job\".\"pay_max_minor\" and \"jobs\".\"job\".\"pay_currency\" ~ '^[A-Z]{3}$')"
+        },
+        "job_publication_check": {
+          "name": "job_publication_check",
+          "value": "not \"jobs\".\"job\".\"published\" or (coalesce(btrim(\"jobs\".\"job\".\"public_descriptor\"), '') <> '' and char_length(\"jobs\".\"job\".\"public_descriptor\") <= 80 and \"jobs\".\"job\".\"published_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "jobs.public_job": {
+      "name": "public_job",
+      "schema": "jobs",
+      "columns": {
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descriptor": {
+          "name": "descriptor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_min_minor": {
+          "name": "pay_min_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_max_minor": {
+          "name": "pay_max_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_currency": {
+          "name": "pay_currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "competencies": {
+          "name": "competencies",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "posted_at": {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "open": {
+          "name": "open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paused": {
+          "name": "paused",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "public_job_open_posted_idx": {
+          "name": "public_job_open_posted_idx",
+          "columns": [
+            {
+              "expression": "open",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "posted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "public_job_job_fk": {
+          "name": "public_job_job_fk",
+          "tableFrom": "public_job",
+          "tableTo": "job",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "public_job_slug_key": {
+          "name": "public_job_slug_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {
+        "public_job_tenant_isolation": {
+          "name": "public_job_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "public_job_public_read": {
+          "name": "public_job_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "current_user = 'aivera_public'"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "jobs.rubric_version": {
+      "name": "rubric_version",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "success_statement": {
+          "name": "success_statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "change_note": {
+          "name": "change_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_by": {
+          "name": "submitted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "return_note": {
+          "name": "return_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "rubric_version_one_approved_idx": {
+          "name": "rubric_version_one_approved_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"rubric_version\".\"status\" = 'approved'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rubric_version_one_open_idx": {
+          "name": "rubric_version_one_open_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"rubric_version\".\"status\" in ('draft', 'awaiting_approval', 'returned')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rubric_version_job_fk": {
+          "name": "rubric_version_job_fk",
+          "tableFrom": "rubric_version",
+          "tableTo": "job",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rubric_version_workspace_id_key": {
+          "name": "rubric_version_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        },
+        "rubric_version_job_version_key": {
+          "name": "rubric_version_job_version_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "job_id",
+            "version"
+          ]
+        }
+      },
+      "policies": {
+        "rubric_version_tenant_isolation": {
+          "name": "rubric_version_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "rubric_version_job_scope": {
+          "name": "rubric_version_job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")",
+          "withCheck": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")"
+        }
+      },
+      "checkConstraints": {
+        "rubric_version_version_check": {
+          "name": "rubric_version_version_check",
+          "value": "\"jobs\".\"rubric_version\".\"version\" >= 1"
+        },
+        "rubric_version_status_check": {
+          "name": "rubric_version_status_check",
+          "value": "\"jobs\".\"rubric_version\".\"status\" in ('draft', 'awaiting_approval', 'approved', 'superseded', 'returned')"
+        },
+        "rubric_version_approval_check": {
+          "name": "rubric_version_approval_check",
+          "value": "(\"jobs\".\"rubric_version\".\"status\" in ('approved', 'superseded')) = (\"jobs\".\"rubric_version\".\"approved_by\" is not null and \"jobs\".\"rubric_version\".\"approved_at\" is not null)"
+        },
+        "rubric_version_return_note_check": {
+          "name": "rubric_version_return_note_check",
+          "value": "char_length(\"jobs\".\"rubric_version\".\"return_note\") between 1 and 1000"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "jobs": "jobs"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

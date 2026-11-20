@@ -134,6 +134,13 @@
       "when": 1795125306492,
       "tag": "0018_invitation_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795125669349,
+      "tag": "0019_rubric_returned_action",
+      "breakpoints": true
     }
   ]
 }

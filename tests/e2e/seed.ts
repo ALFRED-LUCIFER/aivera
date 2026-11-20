@@ -89,6 +89,15 @@ export default async function seed() {
     const spent = await workspaceOf('Spent Budget Co', await person('karim@example.com', 'Karim Recruiter'));
     await createAiTokenBudget(db).add(spent, new Date().toISOString().slice(0, 10), 2_000_000);
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
+    // AIV-P1-014: Tariq adds jobs owned by the Head of Engineering, who approves them. Its own workspace, as drafting
+    // spends its AI tokens.
+    const approvals = await workspaceOf('Approvals Co', await person('tariq@example.com', 'Tariq Recruiter'));
+    const approver = await person('head.approvals@example.com', 'Head of Engineering');
+    await withWorkspace(db, approvals, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status, title)
+        values (${approvals}, ${approver}, 'hiring_owner', 'active', 'Head of Engineering')`),
+    );
+    await workspaces.switchWorkspace({ userId: approver }, approvals);
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 
     // Lina was an interviewer at Gulf Talent Partners with it as her active workspace, then her membership was removed.

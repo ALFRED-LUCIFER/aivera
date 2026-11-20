@@ -1,4 +1,5 @@
 import type { Competency, Rubric, RubricStatus } from '@aivera/jobs';
+import { z } from 'zod';
 
 /** One line of the approval history: who approved and when, or the change that made the next version. */
 type HistoryEntry = {
@@ -7,6 +8,20 @@ type HistoryEntry = {
   /** `by` is null when the approver's name cannot be read. */
   approved: { by: string | null; at: Date } | null;
   note: string | null;
+  /** The hiring owner's note when they returned it (AIV-P1-014), until it is sent again. */
+  returnNote: string | null;
+};
+
+/** The version awaiting the hiring owner's approval (AIV-P1-014), with what changed since the approved one. */
+export type ReviewView = {
+  versionId: string;
+  revision: number;
+  version: number;
+  changeNote: string | null;
+  /** The version in force that this one would supersede; null when none is approved yet. */
+  approvedVersion: number | null;
+  successStatement: string;
+  competencies: Competency[];
 };
 
 /** The rubric page as the server hands it to the browser: plain data, only what it shows. */
@@ -19,6 +34,8 @@ export type RubricView = {
    * null when there is neither. `base` goes back with the save, which is refused if the version moved on since.
    */
   edit: { base: RubricBase; successStatement: string; competencies: Competency[] } | null;
+  /** The version awaiting approval, or null when none is. */
+  review: ReviewView | null;
 };
 
 export type RubricBase = { versionId: string; revision: number };
@@ -42,6 +59,58 @@ export type RubricEditorView = {
   onSend: () => void;
 };
 
+/** The approval panel as the rubric component shows it: the decision controller's view model and handlers (AIV-P1-014). */
+export type RubricDecisionView = {
+  returning: boolean;
+  note: string;
+  pending: boolean;
+  status: 'idle' | 'approved' | 'returned' | 'stale' | 'failed';
+  /** The version the last decision was about, and whether an approved one stays in force, for its message after the
+   * page reloads without it. */
+  decided: { version: number; inForce: boolean } | null;
+  onApprove: () => void;
+  onStartReturn: () => void;
+  onCancelReturn: () => void;
+  onNote: (value: string) => void;
+  onReturn: () => void;
+};
+
+/** What a decision returns to the page. */
+export type DecisionResult = { ok: true } | { error: 'stale' | 'failed' };
+
+/**
+ * The approver reads the version awaiting approval, the one they decide on, in place of the approved one (AIV-P1-014).
+ * `link` is the version and revision the approval email pointed to: when another copy awaits now, the link is outdated.
+ */
+export function approverView(view: RubricView, link: { versionId: string; revision: number } | null) {
+  const { review } = view;
+  return {
+    rubric: review
+      ? {
+          ...view,
+          shown: {
+            version: review.version,
+            successStatement: review.successStatement,
+            competencies: review.competencies,
+          },
+        }
+      : view,
+    outdatedLink: Boolean(review && link && (link.versionId !== review.versionId || link.revision !== review.revision)),
+  };
+}
+
+const linkSchema = z.object({ version: z.uuid(), revision: z.coerce.number().int().min(0) });
+
+/** The version and revision an approval email links to (`?version=<id>&revision=<n>`); null when absent or malformed. */
+export function reviewLink(params: Record<string, string | string[] | undefined>) {
+  const parsed = linkSchema.safeParse(params);
+  return parsed.success ? { versionId: parsed.data.version, revision: parsed.data.revision } : null;
+}
+
+/** The approval email's link to the version awaiting approval: opaque ids only (AGENTS.md 1.2). */
+export const reviewPath = (jobId: string, review: { versionId: string; revision: number }) =>
+  `/app/jobs/${jobId}/rubric?version=${review.versionId}&revision=${review.revision}`;
+
 /** What saving a draft returns to the page: the saved version as the next base, or why it was not saved. */
 export type SaveResult = { base: RubricBase } | { error: 'stale' | 'failed' };
 
@@ -57,7 +126,19 @@ export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string
     (v) => v.status === 'draft' || v.status === 'awaiting_approval' || v.status === 'returned',
   );
   const editable = open ?? approved;
+  const awaiting = open?.status === 'awaiting_approval' ? open : null;
   return {
+    review: awaiting
+      ? {
+          versionId: awaiting.id,
+          revision: awaiting.revision,
+          version: awaiting.version,
+          changeNote: awaiting.changeNote,
+          approvedVersion: approved?.version ?? null,
+          successStatement: awaiting.successStatement,
+          competencies: awaiting.competencies,
+        }
+      : null,
     edit: editable
       ? {
           base: { versionId: editable.id, revision: editable.revision },
@@ -83,6 +164,7 @@ export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string
           : v.status === 'approved'
             ? null
             : v.changeNote,
+      returnNote: v.returnNote,
     })),
   };
 }
