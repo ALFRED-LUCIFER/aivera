@@ -32,6 +32,13 @@ const GLOBAL_TABLES: Record<string, string> = {
     'What Aivera operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
   'ops.platform_setting':
     'One row of platform settings the operators change (ADR-012 point 9, AIV-P2-039): no tenant data, no personal data.',
+  // SAFETY: mutation check: removed 'regional_hint' from this list -> the forced-RLS test failed (named jobs.catalogue_regional_hint)
+  ...Object.fromEntries(
+    ['version', 'job_type', 'region', 'pack', 'pack_competency', 'regional_hint'].map((t) => [
+      `jobs.catalogue_${t}`,
+      'The catalogue every workspace is offered (ADR-013 point 2): no workspace or candidate data, no personal data; its actors are opaque operator ids or system:seed.',
+    ]),
+  ),
 };
 /**
  * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role

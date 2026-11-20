@@ -106,6 +106,27 @@
       "when": 1795145612335,
       "tag": "0014_synthetic_rubric_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1795150821773,
+      "tag": "0015_catalogue_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795150822022,
+      "tag": "0016_freeze_published_catalogue",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795150822273,
+      "tag": "0017_catalogue_v1_seed",
+      "breakpoints": true
     }
   ]
 }

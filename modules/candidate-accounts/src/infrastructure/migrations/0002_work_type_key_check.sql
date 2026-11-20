@@ -1,0 +1,2 @@
+ALTER TABLE "candidate_accounts"."account" DROP CONSTRAINT "account_work_type_check";--> statement-breakpoint
+ALTER TABLE "candidate_accounts"."account" ADD CONSTRAINT "account_work_type_key_check" CHECK ("candidate_accounts"."account"."work_type" ~ '^[a-z][a-z0-9_]{2,47}$' and "candidate_accounts"."account"."work_type" not in ('none', 'several', 'other'));

@@ -9,7 +9,8 @@
   "scripts": {
     "lint": "oxlint --deny-warnings .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "catalogue:v1": "node src/catalogue-v1.ts"
   },
   "dependencies": {
     "@aivera/audit": "workspace:*",

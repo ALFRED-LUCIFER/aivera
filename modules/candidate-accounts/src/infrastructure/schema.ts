@@ -20,10 +20,10 @@ export const account = candidateAccounts
       updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
     },
     (t) => [
-      // Must list exactly JOB_TYPES (@aivera/jobs); changing it needs a new migration.
+      // A job type key of the jobs catalogue, by format (ADR-013 points 5 and 7); the application checks the catalogue.
       check(
-        'account_work_type_check',
-        sql`${t.workType} in ('software_engineering', 'qa_test_automation', 'ai_llm_engineering', 'forward_deployed_engineering', 'data_ml', 'devops_sre', 'product_management', 'product_design', 'sales', 'technical_writing_support')`,
+        'account_work_type_key_check',
+        sql`${t.workType} ~ '^[a-z][a-z0-9_]{2,47}$' and ${t.workType} not in ('none', 'several', 'other')`,
       ),
       candidateAccountPolicy('account_owner_isolation', t.identityUserId),
     ],
