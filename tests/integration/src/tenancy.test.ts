@@ -8,6 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
+import type { EvidenceContract } from '@credalent/evidence';
+import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
 import { createNotifications } from '@credalent/notifications/composition';
@@ -208,6 +210,7 @@ let app: Db;
 type Modules = {
   workspaces: WorkspacesContract;
   candidates: CandidatesContract;
+  evidence: EvidenceContract;
   jobs: JobsContract;
   audit: AuditContract;
 };
@@ -218,6 +221,7 @@ const modulesOn = (db: Db): Modules => {
     audit,
     workspaces,
     candidates: createCandidates(workspaces, () => NOW),
+    evidence: createEvidence(workspaces, () => NOW),
     jobs: createJobs(workspaces, audit, () => NOW),
   };
 };
@@ -241,7 +245,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, jobs }: Modules,
+  { workspaces, candidates, evidence, jobs }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -300,6 +304,30 @@ async function seed(
     const { personId } = await candidates.findOrCreatePerson(ctx, {
       displayName: person,
       identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
+      synthetic: true,
+    });
+    // A source, its item and a competency link (evidence.*, AIV-P1-024).
+    await evidence.recordEvidence(ctx, {
+      candidateId: personId,
+      source: {
+        kind: 'cv',
+        label: 'CV',
+        url: null,
+        blobFileId: null,
+        capturedAt: NOW,
+        checkedAt: null,
+        checkMethod: null,
+      },
+      items: [
+        {
+          excerpt: 'built an evaluation set',
+          excerptSpan: 'page 1',
+          provenance: 'claim',
+          strength: 'supporting',
+          limit: 'A claim until a second source supports it.',
+          competencies: [{ jobId: job.id, competencyId: crypto.randomUUID() }],
+        },
+      ],
       synthetic: true,
     });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).

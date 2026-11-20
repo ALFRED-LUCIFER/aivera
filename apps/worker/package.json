@@ -11,6 +11,7 @@
   "dependencies": {
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/evidence": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/observability": "workspace:*",
