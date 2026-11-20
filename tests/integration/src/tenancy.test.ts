@@ -411,13 +411,21 @@ async function seed(
       });
     // A repository read, a merged pull request on the item and a handled message (evidence.*, AIV-P1-026).
     const login = `${person.split(' ')[0]?.toLowerCase()}-credalent-example`;
-    await evidence.requestRepositoryRead(ctx, {
+    const { sourceId: repositorySourceId } = await evidence.requestRepositoryRead(ctx, {
       candidateId: personId,
       url: `https://github.com/${login}/eval-harness`,
       githubLogin: login,
       emails: [],
       synthetic: true,
     });
+    // A skill signal and a grade on the read (evidence.repository_skill_signal and _grade, AIV-P1-072).
+    await ctx.tx.execute(sql`insert into evidence.repository_skill_signal
+      (workspace_id, source_id, position, skill, path, kind, weight, detail)
+      values (${workspaceId}, ${repositorySourceId}, 0, 'Python', 'src/run.py', 'path', 'code', '1 .py file')`);
+    await ctx.tx.execute(sql`insert into evidence.repository_skill_grade
+      (workspace_id, source_id, rubric_version_id, competency_id, skill, grade, reason, citations)
+      values (${workspaceId}, ${repositorySourceId}, ${rubric.id}, ${crypto.randomUUID()}, 'Python', 'PARTIAL',
+        'single_code_file', '[]'::jsonb)`);
     await ctx.tx.execute(sql`insert into evidence.merged_pull_request
       (workspace_id, item_id, candidate_id, repository, number, merged_at, merged_by, self_merged)
       values (${workspaceId}, ${itemIds[0]}, ${personId}, 'saga-maintainer-credalent-example/saga', 41, now(),

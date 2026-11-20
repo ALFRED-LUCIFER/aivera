@@ -45,9 +45,12 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
-const { EvidenceRecordedV1, RepositoryReadRequestedV1 } = await import('@credalent/evidence');
-const { createRepositoryReadHandler, EVIDENCE_QUEUE } = await import('@credalent/evidence/composition');
+const { EvidenceRecordedV1, RepositoryReadRequestedV1, RepositoryRefreshRequestedV1 } =
+  await import('@credalent/evidence');
+const { createRepositoryReadHandler, createRepositoryRefreshHandler, EVIDENCE_QUEUE } =
+  await import('@credalent/evidence/composition');
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
+const { createApprovedRubricReads } = await import('@credalent/jobs/composition');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { createBlobStore, createFiles, SCAN_RESULTS_QUEUE } = await import('@credalent/files/composition');
@@ -74,6 +77,7 @@ const QUEUES: Record<string, string> = {
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
+  [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
   // shortcut: EvidenceRequestSent/Opened/Answered/Quiet.v1 (AIV-P1-037) have no queue until the follow-up consumer
   // (AIV-P1-040) maps them; nothing sends a request before its screen (AIV-P1-039), so none are written meanwhile.
 };
@@ -125,20 +129,20 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
     }),
   ],
 };
-if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID)
+if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID) {
+  const github = {
+    appId: env.GITHUB_APP_ID,
+    privateKey: env.GITHUB_APP_PRIVATE_KEY,
+    installationId: env.GITHUB_APP_INSTALLATION_ID,
+  };
+  // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
+  // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
+  const scheduler = createScheduler(senderFor);
   CONSUMERS[EVIDENCE_QUEUE] = [
-    createRepositoryReadHandler({
-      github: {
-        appId: env.GITHUB_APP_ID,
-        privateKey: env.GITHUB_APP_PRIVATE_KEY,
-        installationId: env.GITHUB_APP_INSTALLATION_ID,
-      },
-      // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
-      // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
-      scheduler: createScheduler(senderFor),
-      now,
-    }),
+    createRepositoryReadHandler({ github, scheduler, now }),
+    createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
   ];
+}
 // shortcut: without the GitHub App the evidence queue has no consumer, so repository reads wait (and dead-letter after
 // the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-026 PR, owner to-dos).
 else log.warn('GitHub App not configured: repository reads are not consumed');

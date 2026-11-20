@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isStale,
   authorshipExcerpt,
   authorshipShare,
   classifyAuthorship,
@@ -128,5 +129,26 @@ describe('repository links, tests and CI', () => {
     });
     expect(detectTestsAndCi(['src/a.ts', 'src/a.test.ts'])).toEqual({ hasTests: true, hasCi: false });
     expect(detectTestsAndCi(['README.md', 'src/latest.py'])).toEqual({ hasTests: false, hasCi: false });
+  });
+});
+
+describe('isStale', () => {
+  const checkedAt = new Date('2026-11-12T09:00:00Z');
+  const days = (n: number) => new Date(checkedAt.getTime() + n * 24 * 60 * 60 * 1000);
+
+  it('is stale only when the last check is more than 30 days old (29, 30, 31 days)', () => {
+    expect(isStale({ checkedAt }, days(29), null)).toBe(false);
+    expect(isStale({ checkedAt }, days(30), null)).toBe(false);
+    expect(isStale({ checkedAt }, days(31), null)).toBe(true);
+  });
+
+  it('is stale when pushed after the check, not before or at it', () => {
+    expect(isStale({ checkedAt }, days(8), days(-2))).toBe(false);
+    expect(isStale({ checkedAt }, days(8), checkedAt)).toBe(false);
+    expect(isStale({ checkedAt }, days(8), days(6))).toBe(true);
+  });
+
+  it('a source never checked is stale', () => {
+    expect(isStale({ checkedAt: null }, days(0), null)).toBe(true);
   });
 });

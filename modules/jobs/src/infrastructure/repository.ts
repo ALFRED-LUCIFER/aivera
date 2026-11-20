@@ -241,3 +241,44 @@ export async function countJobs(tx: Tx, workspaceId: string): Promise<number> {
   const [found] = await tx.select({ n: count() }).from(job).where(eq(job.workspaceId, workspaceId));
   return found?.n ?? 0;
 }
+
+/**
+ * The job's approved rubric version id and its competencies in order, for a worker job in the workspace's scoped
+ * transaction (AIV-P1-072), with the job scope lifted to all for these two reads only: a worker acts for the workspace,
+ * not for a member with job grants.
+ */
+export async function approvedRubric(
+  tx: Tx,
+  workspaceId: string,
+  jobId: string,
+): Promise<{ id: string; competencies: { id: string; name: string; evidenceExpected: string }[] } | null> {
+  const [before] = await tx.execute<{ scope: string | null }>(
+    sql`select current_setting('app.job_scope', true) as scope, set_config('app.job_scope', 'all', true)`,
+  );
+  try {
+    return await readApproved(tx, workspaceId, jobId);
+  } finally {
+    // Put the caller's scope back, so a member's transaction never keeps the lifted scope.
+    await tx.execute(sql`select set_config('app.job_scope', ${before?.scope ?? ''}, true)`);
+  }
+}
+
+async function readApproved(tx: Tx, workspaceId: string, jobId: string) {
+  const [version] = await tx
+    .select({ id: rubricVersion.id })
+    .from(rubricVersion)
+    .where(
+      and(
+        eq(rubricVersion.workspaceId, workspaceId),
+        eq(rubricVersion.jobId, jobId),
+        eq(rubricVersion.status, 'approved'),
+      ),
+    );
+  if (!version) return null;
+  const competencies = await tx
+    .select({ id: competency.id, name: competency.name, evidenceExpected: competency.evidenceExpected })
+    .from(competency)
+    .where(and(eq(competency.workspaceId, workspaceId), eq(competency.rubricVersionId, version.id)))
+    .orderBy(asc(competency.position));
+  return { id: version.id, competencies };
+}

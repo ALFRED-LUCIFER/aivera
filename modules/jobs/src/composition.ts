@@ -14,6 +14,7 @@ import {
   JobPublishedV1,
   JobUnpublishedV1,
   RubricApprovedV1,
+  type ApprovedRubricReads,
   type CatalogueReads,
   type CompetencyDrafting,
   type DomainDetecting,
@@ -23,7 +24,7 @@ import {
 } from './contracts/index.ts';
 import { readPublishedCatalogue } from './infrastructure/catalogue.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
-import { countJobs, jobStore } from './infrastructure/repository.ts';
+import { approvedRubric, countJobs, jobStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 /**
@@ -103,3 +104,9 @@ export const createCompetencyDrafting = (ai: Pick<AiClient, 'generateStructured'
 
 /** "Detect the job's industry" on the app's AI client, as `createCompetencyDrafting`. */
 export const createDomainDetection = (ai: Pick<AiClient, 'generateStructured'>): DomainDetecting => domainDetection(ai);
+
+/**
+ * A job's approved rubric version for worker jobs (AIV-P1-072: grading repository skill signals), in the consumer's
+ * workspace-scoped transaction. No session: the worker acts for the workspace whose message it handles.
+ */
+export const createApprovedRubricReads = (): ApprovedRubricReads => ({ approvedRubric });

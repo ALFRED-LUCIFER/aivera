@@ -88,6 +88,10 @@ export const PERSONAL_DATA_FIELDS = [
   'emails',
   'repository',
   'mergedBy',
+  // Repository file paths and what was found in them (AIV-P1-072).
+  'path',
+  'detail',
+  'citations',
 ] as const;
 
 const MESSAGES = {
