@@ -262,9 +262,15 @@ importers:
 
   modules/evidence:
     dependencies:
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces

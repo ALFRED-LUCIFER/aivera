@@ -221,7 +221,7 @@ const modulesOn = (db: Db): Modules => {
     audit,
     workspaces,
     candidates: createCandidates(workspaces, () => NOW),
-    evidence: createEvidence(workspaces, () => NOW),
+    evidence: createEvidence(workspaces, audit, () => NOW),
     jobs: createJobs(workspaces, audit, () => NOW),
   };
 };
@@ -330,6 +330,31 @@ async function seed(
       ],
       synthetic: true,
     });
+    // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
+    for (const candidateId of [personId, crypto.randomUUID()])
+      await evidence.recordEvidence(ctx, {
+        candidateId,
+        source: {
+          kind: 'document',
+          label: 'Write-up',
+          url: null,
+          blobFileId: null,
+          capturedAt: NOW,
+          checkedAt: null,
+          checkMethod: null,
+        },
+        items: [
+          {
+            excerpt: 'scored the top five passages every week',
+            excerptSpan: null,
+            provenance: 'submitted',
+            strength: 'medium',
+            limit: 'Shows the method, not who wrote it.',
+          },
+        ],
+        synthetic: true,
+        text: 'We built an evaluation set of four hundred support questions for the merchant help assistant, scored the top five passages for relevance every week, and compared recall with the previous release before shipping.',
+      });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),
