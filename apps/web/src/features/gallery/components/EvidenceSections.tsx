@@ -8,6 +8,7 @@ import {
   NeedVsProvenBar,
   ProvenanceTag,
   ScoreWithUncertainty,
+  StatTile,
   StrengthMeter,
   ValueBasis,
 } from '@aivera/ui';
@@ -58,6 +59,27 @@ export function EvidenceSections() {
           <ValueBasis basis="baseline" label={sample.basis.baseline} />
           <ValueBasis basis="projection" label={sample.basis.projection} />
           <ValueBasis basis="not-available" label={sample.basis.notAvailable} />
+        </div>
+      </Section>
+
+      <Section id="stat" title={s.stat}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatTile
+            label={sample.stat.waiting}
+            value="3"
+            basis="observed"
+            basisLabel={sample.basis.observed}
+            notAvailableLabel={sample.basis.notAvailable}
+            detail={sample.stat.oldest}
+            action={<a href="#stat">{sample.stat.view}</a>}
+          />
+          <StatTile
+            label={sample.stat.ai}
+            value={null}
+            basis="observed"
+            basisLabel={sample.basis.observed}
+            notAvailableLabel={sample.basis.notAvailable}
+          />
         </div>
       </Section>
 

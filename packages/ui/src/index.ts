@@ -21,6 +21,8 @@ export { ProvenanceTag } from './ProvenanceTag.tsx';
 export type { Provenance, ProvenanceTagProps } from './ProvenanceTag.tsx';
 export { StrengthMeter } from './StrengthMeter.tsx';
 export type { Strength, StrengthMeterProps } from './StrengthMeter.tsx';
+export { StatTile } from './StatTile.tsx';
+export type { StatTileProps } from './StatTile.tsx';
 export { ValueBasis } from './ValueBasis.tsx';
 export type { ValueBasisKind, ValueBasisProps } from './ValueBasis.tsx';
 

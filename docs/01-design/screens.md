@@ -36,6 +36,7 @@ Every screen is an artboard in the claude.ai Design canvas "Aivera — Evidence 
 | [`CName.dc.html`](artboards/CName.dc.html)                       | Candidate site: portfolio address                       | J6      | `/candidates/plus/address`        |
 | [`CFolio.dc.html`](artboards/CFolio.dc.html)                     | Candidate site: public portfolio                        | J6      | `<name>.aivera…`                  |
 | [`CTailor.dc.html`](artboards/CTailor.dc.html)                   | Candidate site: tailored CV                             | J6      | `/candidates/me/cv/[jobSlug]`     |
+| [`operator-console.md`](operator-console.md) (no artboard)       | Operator console                                        | J0      | `/ops/**`                         |
 
 Routes are planned; the ticket that builds a screen confirms its route and updates this table.
 

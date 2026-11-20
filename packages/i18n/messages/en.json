@@ -646,9 +646,13 @@
   "ops": {
     "title": "Aivera operations",
     "signedIn": "Signed in as an Aivera operator.",
+    "operator": "Operator",
+    "metadataOnly": "Platform metadata only. Candidate data never appears here.",
     "nav": {
       "label": "Operations",
       "soon": "Coming soon",
+      "later": "Coming later",
+      "overview": "Overview",
       "workspaces": "Workspaces",
       "approvals": "Approvals",
       "catalogue": "Catalogue",

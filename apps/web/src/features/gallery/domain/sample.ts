@@ -32,6 +32,7 @@ export const sample = {
     overlays: 'Dialog, tooltip and toast',
     status: 'Status and chips',
     basis: 'Value basis',
+    stat: 'Stat tile',
     provenance: 'Provenance',
     strength: 'Strength',
     level: 'Level needed',
@@ -109,6 +110,12 @@ export const sample = {
     },
   },
   basis: { observed: 'Observed', baseline: 'Baseline', projection: 'Projection', notAvailable: 'Not yet available' },
+  stat: {
+    waiting: 'Workspaces waiting for approval',
+    oldest: 'Oldest waiting 2 days',
+    view: 'View approvals',
+    ai: 'AI tokens today',
+  },
   provenance: {
     corroborated: 'Independently corroborated',
     submitted: 'Candidate-submitted',

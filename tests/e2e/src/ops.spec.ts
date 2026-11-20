@@ -107,7 +107,7 @@ test('Scenario: No operator email reaches URLs', async ({ page }) => {
   expect(urls.filter((url) => /pia\.platform|example\.com/i.test(decodeURIComponent(url)))).toEqual([]);
 });
 
-test('the keyboard path: skip link to the page, then the console link, Workspaces, Approvals, Catalogue and Sign out', async ({
+test('the keyboard path: skip link to the page, then Overview, Workspaces, Approvals, Catalogue, Sign out and the theme', async ({
   page,
 }) => {
   await signIn(page, { email: PIA });
@@ -121,7 +121,8 @@ test('the keyboard path: skip link to the page, then the console link, Workspace
   await expectConsole(page);
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Aivera operations' })).toBeFocused();
+  await expect(page.getByRole('link', { name: 'Overview' })).toBeFocused();
+  await expect(page.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Workspaces' })).toBeFocused();
   await page.keyboard.press('Tab');
@@ -130,6 +131,9 @@ test('the keyboard path: skip link to the page, then the console link, Workspace
   await expect(page.getByRole('link', { name: 'Catalogue' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Switch to dark theme' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/sign-in/);
   // Signing out also ended the console's once-per-session marker.
