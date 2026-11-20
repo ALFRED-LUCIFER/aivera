@@ -30,9 +30,8 @@ export type DomainDetection = {
 
 const NONE: DomainDetection = { domain: 'none', citations: [], regions: [] };
 
-// The schema's enum takes a non-empty list; an empty one (every entry retired) is an enum nothing matches.
 const offered = (entries: readonly { key: string; retired: boolean }[]) =>
-  entries.filter((e) => !e.retired).map((e) => e.key) as unknown as readonly [string, ...string[]];
+  entries.filter((e) => !e.retired).map((e) => e.key);
 
 export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
   return {
@@ -45,22 +44,23 @@ export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
       // The location is its own source, so a region can cite it apart from the description.
       const sources: Source[] = [{ id: 'description', kind: 'job_description', text: input.description }];
       if (input.location?.trim()) sources.push({ id: 'location', kind: 'job_description', text: input.location });
+      const [domain, ...domains] = offered(catalogue.packs);
+      const [region, ...regions] = offered(catalogue.regions);
+      // Nothing to detect against (every pack or every region retired): no model call, no industry.
+      if (!domain || !region) return NONE;
       try {
-        const { industry, regions } = await ai.generateStructured({
-          ...detectDomainRequest(
-            input,
-            { domains: offered(catalogue.packs), regions: offered(catalogue.regions) },
-            sources,
-          ),
+        const answer = await ai.generateStructured({
+          ...detectDomainRequest(input, { domains: [domain, ...domains], regions: [region, ...regions] }, sources),
           catalogueVersion: catalogue.version,
           workspaceId,
         });
+        const { industry } = answer;
         return {
           domain: industry.domain,
           citations: 'citations' in industry ? industry.citations : [],
           // shortcut: a region citing a line about the people to hire (nationality, residency) is not rejected in code;
           // the prompt forbids it and the eval safety case gates it. Upgrade if AIV-P1-066 shows a miss.
-          regions: regions.map((r) => ({ region: r.region, citations: r.citations })),
+          regions: answer.regions.map((r) => ({ region: r.region, citations: r.citations })),
         };
       } catch (error) {
         // An answer the contract rejected twice (an invented domain or quote) is no detection; outages still throw.

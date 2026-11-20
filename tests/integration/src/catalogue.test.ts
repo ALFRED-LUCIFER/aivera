@@ -99,8 +99,6 @@ describe('Feature: Catalogue tables seeded with version 1', () => {
     expect(catalogue.jobTypes).toHaveLength(10);
     expect(catalogue.packs).toHaveLength(8);
     expect(catalogue.packs.every((p) => p.competencies.length > 0 && p.hints.length > 0)).toBe(true);
-    expect(await createCatalogueReads(app).getCatalogueVersion(1)).toEqual(catalogue);
-    expect(await createCatalogueReads(app).getCatalogueVersion(2)).toBeNull();
   });
 
   it('version 1 has at most 4 core competencies per job type per pack (the rule the editor enforces)', async () => {
@@ -349,7 +347,7 @@ describe('Feature: Read the published catalogue from the database', () => {
     ]);
   });
 
-  it('a retired job type stays on its jobs but starts no new one; a retired pack stays in a rubric', async () => {
+  it('a retired job type or pack stays where it is but starts no new job or competency', async () => {
     const { job: created } = await create('software_engineering');
     // Version 2 retires Software engineering and Payments and fintech; published by hand, as the editor (AIV-P2-047) will.
     await admin.transaction(async (tx) => {
@@ -365,7 +363,12 @@ describe('Feature: Read the published catalogue from the database', () => {
         published_at = now(), reason = 'Retire two entries for the test' where version = 2`);
     });
     expect((await createCatalogueReads(app).getPublishedCatalogue()).version).toBe(2);
-    expect(await refusal(create('software_engineering'))).toBe('refused: Unknown job type.');
+    const own: Competency = { ...ledger, origin: 'added_by_recruiter', packKey: null, packVersion: null };
+    expect(await refusal(create('software_engineering', [own]))).toBe('refused: Unknown job type.');
+    // SAFETY: mutation check: accepted a retired pack without a kept competency in assertValidCompetencies -> this test failed
+    expect(await refusal(create('qa_test_automation'))).toBe(
+      'refused: A competency from a domain pack names its pack and version, and no other competency does.',
+    );
     const saved = as((ctx) =>
       jobs.saveRubric(ctx, created.id, { successStatement: 'Ships reliable work.', competencies: [ledger] }),
     );

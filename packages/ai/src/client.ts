@@ -220,7 +220,7 @@ export function createAiClient(options: {
       return withSpan(`ai structured ${task}`, async () => {
         annotateSpan({
           'aivera.ai.task': task,
-          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}${input.catalogueVersion ? `+catalogue@${input.catalogueVersion}` : ''}`,
+          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`,
           'workspace.id': input.workspaceId,
         });
         for (let attempts = 1; ; attempts++) {

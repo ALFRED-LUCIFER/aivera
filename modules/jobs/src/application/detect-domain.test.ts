@@ -202,4 +202,15 @@ describe('Scenario: Only the published version is read (AIV-P2-044)', () => {
     expect(schema.safeParse(answer('healthcare', 'india')).success).toBe(false);
     expect(catalogueVersion).toBe(2);
   });
+
+  it('makes no model call and detects nothing when every pack or every region is retired', async () => {
+    const { detection, prompts } = setup(payments);
+    const noRegions = { ...CATALOGUE_V1, regions: CATALOGUE_V1.regions.map((r) => ({ ...r, retired: true })) };
+    expect(await detection.detectDomain(workspaceId, input, noRegions)).toEqual({
+      domain: 'none',
+      citations: [],
+      regions: [],
+    });
+    expect(prompts).toEqual([]);
+  });
 });

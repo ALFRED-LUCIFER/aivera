@@ -6,7 +6,7 @@ import { enqueue } from '@aivera/db/outbox';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
@@ -21,10 +21,10 @@ import {
   type JobsContract,
   type PublicJobsContract,
 } from './contracts/index.ts';
-import { readCatalogueVersion, readPublishedCatalogue } from './infrastructure/catalogue.ts';
+import { readPublishedCatalogue } from './infrastructure/catalogue.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
-import { catalogueVersion, outbox } from './infrastructure/schema.ts';
+import { outbox } from './infrastructure/schema.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -91,11 +91,9 @@ export function createJobCounts(db: Db): JobCounts {
  * show in request latency.
  */
 export function createCatalogueReads(db: Db): CatalogueReads {
-  const snapshot = <T>(read: (tx: Tx) => Promise<T>) =>
-    db.transaction(read, { isolationLevel: 'repeatable read', accessMode: 'read only' });
   return {
-    getPublishedCatalogue: () => snapshot(readPublishedCatalogue),
-    getCatalogueVersion: (n) => snapshot((tx) => readCatalogueVersion(tx, eq(catalogueVersion.version, n))),
+    getPublishedCatalogue: () =>
+      db.transaction(readPublishedCatalogue, { isolationLevel: 'repeatable read', accessMode: 'read only' }),
   };
 }
 

@@ -267,6 +267,8 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
                 if (hints.length === 0) return null;
                 return (
                   <div key={key} className="flex flex-col gap-3">
+                    {/* shortcut: regionHeading and regionCaption keep version 1's wording ("the UAE") by region key in
+                        en.json; take the wording from the stored label alone when labels are edited (AIV-P2-045). */}
                     <h3 className="mt-3 text-body font-semibold text-text">
                       {t('regionHeading', { region: key, label })}
                     </h3>

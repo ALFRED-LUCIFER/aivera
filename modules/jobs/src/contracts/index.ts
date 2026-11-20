@@ -34,6 +34,7 @@ export {
 } from '../domain/catalogue.ts';
 export type {
   CatalogueCompetency,
+  CatalogueContent,
   CatalogueHint,
   CatalogueJobType,
   CataloguePack,
@@ -265,8 +266,7 @@ export interface DomainDetecting {
 export interface CatalogueReads {
   /** The latest published version, retired entries flagged. Throws when the read fails. */
   getPublishedCatalogue(): Promise<CatalogueVersion>;
-  /** Version `n`, draft or published, or null when there is none: for `/ops` only, behind `platformOperator()`. */
-  getCatalogueVersion(n: number): Promise<CatalogueVersion | null>;
+  // Draft reads join this contract with the editor (AIV-P2-045), on the ops allow-list behind platformOperator().
 }
 
 /**

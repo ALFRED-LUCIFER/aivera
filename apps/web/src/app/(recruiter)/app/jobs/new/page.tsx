@@ -23,7 +23,9 @@ export default async function NewJobPage() {
   await requireScreen('jobs');
   const { hiringOwners, clients, hiringFocus } = result.value;
   // The published version only (ADR-013 point 15). A failed read throws to ./error.tsx: never a list from code.
-  const catalogue = await getCatalogue().getPublishedCatalogue();
+  const { version, jobTypes, regions, packs } = await getCatalogue().getPublishedCatalogue();
+  // The entries only, not who published them: this goes to the browser.
+  const catalogue = { version, jobTypes, regions, packs };
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>

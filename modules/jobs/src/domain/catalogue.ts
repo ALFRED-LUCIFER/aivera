@@ -50,17 +50,20 @@ export type CatalogueVersion = {
   readonly packs: readonly CataloguePack[];
 };
 
+/** A version's entries without who published it and why: what a recruiter's page needs. */
+export type CatalogueContent = Pick<CatalogueVersion, 'version' | 'jobTypes' | 'regions' | 'packs'>;
+
 /** A catalogue key (ADR-013 point 5), as the database's key format check has it. */
 export const CATALOGUE_KEY = /^[a-z][a-z0-9_]{2,47}$/;
 
 /** The job types Add a job and the sign-up pickers offer: every one not retired, in catalogue order. */
-export const offeredJobTypes = (catalogue: CatalogueVersion) => catalogue.jobTypes.filter((t) => !t.retired);
+export const offeredJobTypes = (catalogue: CatalogueContent) => catalogue.jobTypes.filter((t) => !t.retired);
 
 /**
  * A job type's name, retired ones too (an old job keeps its label); the key itself only for a key no version has.
  * shortcut: English only; pick the viewer's locale when the recruiter app ships in Arabic (AIV-P5-009).
  */
-export const jobTypeLabel = (catalogue: CatalogueVersion, key: string): string =>
+export const jobTypeLabel = (catalogue: CatalogueContent, key: string): string =>
   catalogue.jobTypes.find((t) => t.key === key)?.label.en ?? key;
 
 /** A competency name compared without case or extra spaces, so the same skill is never listed twice. */
@@ -79,7 +82,7 @@ export type PackForJobType = {
  * The pack as one job type sees it, leaving out anything retired; null for an unknown or retired pack. A job type the
  * pack does not cover gets empty lists.
  */
-export function packForJobType(catalogue: CatalogueVersion, key: string, jobType: string): PackForJobType | null {
+export function packForJobType(catalogue: CatalogueContent, key: string, jobType: string): PackForJobType | null {
   const pack = catalogue.packs.find((p) => p.key === key && !p.retired);
   if (!pack) return null;
   const regions = new Set(catalogue.regions.filter((r) => !r.retired).map((r) => r.key));
@@ -98,5 +101,5 @@ export function packForJobType(catalogue: CatalogueVersion, key: string, jobType
  * shortcut: a hint the recruiter renamed is no longer recognised; store the hint's region if a rubric editor shows that
  * renaming is used to make one mandatory.
  */
-export const isRegionalHint = (catalogue: CatalogueVersion, name: string): boolean =>
+export const isRegionalHint = (catalogue: CatalogueContent, name: string): boolean =>
   catalogue.packs.some((p) => p.hints.some((h) => nameKey(h.name) === nameKey(name)));

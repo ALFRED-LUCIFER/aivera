@@ -1,4 +1,5 @@
 import { offeredJobTypes } from '@aivera/jobs';
+import { log } from '@aivera/observability';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
@@ -25,7 +26,16 @@ const sweep = (chunks: ReactNode) => <ScrollSweep>{chunks}</ScrollSweep>;
 export default async function WebsitePage() {
   const [t, catalogue] = await Promise.all([
     getTranslations(defaultLocale, defaultTimeZone),
-    getCatalogue().getPublishedCatalogue(),
+    // A failed read leaves out the role families, never a list from code; the rest of the website still renders.
+    getCatalogue()
+      .getPublishedCatalogue()
+      .catch((error: unknown) => {
+        log.error(
+          { area: 'website', 'error.type': error instanceof Error ? error.name : 'unknown' },
+          'catalogue failed',
+        );
+        return null;
+      }),
   ]);
   const evidence = t('home.card.evidence');
   return (
@@ -92,15 +102,17 @@ export default async function WebsitePage() {
           body: t(`home.how.steps.${key}.body`),
         }))}
       />
-      <RoleFamilies
-        title={t('home.roleFamilies.title')}
-        lead={t('home.roleFamilies.lead')}
-        noPublicWork={t('home.roleFamilies.noPublicWork')}
-        familyHeader={t('home.roleFamilies.family')}
-        evidenceHeader={t('home.roleFamilies.evidence')}
-        rows={offeredJobTypes(catalogue).map((j) => ({ key: j.key, family: j.label.en, evidence: j.evidence.en }))}
-        more={t.rich('home.roleFamilies.more', { strong })}
-      />
+      {catalogue && (
+        <RoleFamilies
+          title={t('home.roleFamilies.title')}
+          lead={t('home.roleFamilies.lead')}
+          noPublicWork={t('home.roleFamilies.noPublicWork')}
+          familyHeader={t('home.roleFamilies.family')}
+          evidenceHeader={t('home.roleFamilies.evidence')}
+          rows={offeredJobTypes(catalogue).map((j) => ({ key: j.key, family: j.label.en, evidence: j.evidence.en }))}
+          more={t.rich('home.roleFamilies.more', { strong })}
+        />
+      )}
       <TrustAndPilot
         trustTitle={t('home.trust.title')}
         principles={trustPrinciples.map((key) => ({

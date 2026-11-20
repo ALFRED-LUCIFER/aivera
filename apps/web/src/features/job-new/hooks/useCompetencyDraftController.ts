@@ -1,5 +1,5 @@
 import { useState, useTransition } from 'react';
-import type { CatalogueVersion } from '@aivera/jobs';
+import type { CatalogueContent } from '@aivera/jobs';
 import {
   blankCompetency,
   catalogueChoices,
@@ -25,7 +25,7 @@ const withId = (c: DraftCompetency): DraftRow => ({ ...c, id: crypto.randomUUID(
  * "Save job and rubric" posts them (AIV-P1-010). Nothing is saved here: the rows live in the page until that save, and
  * stay when it fails. `catalogue` is the published version the page read; pack rows record its version.
  */
-export function useCompetencyDraftController(catalogue: CatalogueVersion) {
+export function useCompetencyDraftController(catalogue: CatalogueContent) {
   const [result, setResult] = useState<DraftResult>({ status: 'idle' });
   const [allRows, setRows] = useState<DraftRow[]>([]);
   const [industry, setIndustry] = useState<string | null>(null);

@@ -7,7 +7,7 @@ import {
   packForJobType,
   type CatalogueCompetency,
   type CatalogueHint,
-  type CatalogueVersion,
+  type CatalogueContent,
   type Competency,
   type DomainDetection,
   type DraftedCompetency,
@@ -106,7 +106,7 @@ export const toDetectedIndustry = (description: string, detection: DomainDetecti
 });
 
 /** The industries "Add industry skills" offers and the regions whose hints it shows: the catalogue's, not retired. */
-export const catalogueChoices = (catalogue: CatalogueVersion) => ({
+export const catalogueChoices = (catalogue: CatalogueContent) => ({
   packs: catalogue.packs.filter((p) => !p.retired).map((p) => ({ key: p.key, label: p.label.en })),
   regions: catalogue.regions.filter((r) => !r.retired).map((r) => ({ key: r.key, label: r.label.en })),
 });
@@ -134,7 +134,7 @@ const fromPack = (
  * recording the catalogue version they are copied from.
  */
 export function packCompetencies(
-  catalogue: CatalogueVersion,
+  catalogue: CatalogueContent,
   key: string,
   jobType: string,
   regions: readonly string[],
@@ -151,7 +151,7 @@ export function packCompetencies(
 
 /** "More from this pack": the pack's other competencies for the job type that no row is named like yet. */
 export const morePackCompetencies = (
-  catalogue: CatalogueVersion,
+  catalogue: CatalogueContent,
   key: string,
   jobType: string,
   rows: readonly { name: string }[],
@@ -186,7 +186,7 @@ export const visibleRows = <T extends DraftCompetency>(rows: readonly T[], indus
  * regional hint can only be desirable, never a mandatory requirement or a location filter (AGENTS.md 1.5).
  */
 export function changeRow<T extends DraftCompetency>(
-  catalogue: CatalogueVersion,
+  catalogue: CatalogueContent,
   row: T,
   change: Partial<DraftCompetency>,
 ): T | null {
@@ -195,7 +195,7 @@ export function changeRow<T extends DraftCompetency>(
 }
 
 /** The fallback when there is no draft: the job type's four starter competencies, equal weights, for the recruiter to edit. */
-export const starterCompetencies = (catalogue: CatalogueVersion, jobType: string): DraftCompetency[] =>
+export const starterCompetencies = (catalogue: CatalogueContent, jobType: string): DraftCompetency[] =>
   (catalogue.jobTypes.find((e) => e.key === jobType)?.starterCompetencies ?? []).map((name) => ({
     name,
     evidenceExpected: '',

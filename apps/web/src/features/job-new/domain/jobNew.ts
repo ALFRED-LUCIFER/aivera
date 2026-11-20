@@ -1,4 +1,4 @@
-import { offeredJobTypes, type CatalogueVersion } from '@aivera/jobs';
+import { offeredJobTypes, type CatalogueContent } from '@aivera/jobs';
 import { z } from 'zod';
 
 // Add a job, step 1 (AIV-P1-007, RoleNew "1. The job"). Pure: no React, no I/O (ADR-003).
@@ -20,7 +20,7 @@ export const TEXT_MAX = 200;
 export const DESCRIPTION_MAX = 20_000;
 
 /** The form's schema: the job type must be one the published catalogue offers (ADR-013 point 7). */
-const newJobForm = (catalogue: CatalogueVersion) =>
+const newJobForm = (catalogue: CatalogueContent) =>
   z.object({
     jobType: z.string().refine((key) => offeredJobTypes(catalogue).some((t) => t.key === key), { error: 'jobType' }),
     title: z.string().trim().min(1, { error: 'title' }).max(TEXT_MAX),
@@ -34,7 +34,7 @@ const newJobForm = (catalogue: CatalogueVersion) =>
 export type NewJobInput = z.infer<ReturnType<typeof newJobForm>>;
 
 /** The job types Add a job offers, in catalogue order, with their label, "Evidence that counts" and starters. */
-export const jobTypeOptions = (catalogue: CatalogueVersion) =>
+export const jobTypeOptions = (catalogue: CatalogueContent) =>
   offeredJobTypes(catalogue).map((t) => ({
     value: t.key,
     label: t.label.en,
@@ -67,7 +67,7 @@ export const initialNewJobState = (jobType: string): NewJobState => ({
 /** The validated form, against the published catalogue, or the state to show again (AGENTS.md 3.7). */
 export function parseNewJobForm(
   form: FormData,
-  catalogue: CatalogueVersion,
+  catalogue: CatalogueContent,
 ): { input: NewJobInput } | { state: NewJobState } {
   const values = formValues(form);
   const parsed = newJobForm(catalogue).safeParse(values);
@@ -83,5 +83,5 @@ export const descriptionPlaceholder = (intro: string, starters: readonly string[
   [intro, ...starters.map((c) => `- ${c}`)].join('\n');
 
 /** The workspace's hiring focus preselects the job type when the catalogue offers it. */
-export const defaultJobType = (hiringFocus: string, catalogue: CatalogueVersion): string =>
+export const defaultJobType = (hiringFocus: string, catalogue: CatalogueContent): string =>
   offeredJobTypes(catalogue).some((t) => t.key === hiringFocus) ? hiringFocus : '';

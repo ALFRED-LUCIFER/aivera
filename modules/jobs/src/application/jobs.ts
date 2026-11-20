@@ -440,9 +440,11 @@ export function jobsUseCases({
     async saveRubric(ctx: WorkspaceContext, jobId: string, input: SaveRubricInput): Promise<RubricVersion> {
       // Locks the job row, so two saves cannot both take the same next version number.
       const job = await visibleJob(ctx, jobId, 'rubric.edit', true);
-      assertValidCompetencies(input.competencies, await publishedCatalogue(ctx));
       const store = storeFor(ctx.tx);
       const latest = await store.latestVersion(ctx.workspaceId, job.id);
+      // A competency from a pack retired since keeps it; a retired pack starts no new one.
+      const kept = latest ? await store.competencies(ctx.workspaceId, latest.id) : [];
+      assertValidCompetencies(input.competencies, await publishedCatalogue(ctx), kept);
       // One open version per job (rubric_version_one_open_idx): editing resumes it.
       const open = latest && editsInPlace(latest) ? latest : null;
       const approved = await store.approvedVersion(ctx.workspaceId, job.id);

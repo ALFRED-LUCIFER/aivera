@@ -119,10 +119,15 @@ export class JobError extends Error {
 
 /**
  * Throws unless the competencies form a valid rubric: named, weights 1–100 totalling 100, levels 1–5, a pack and its
- * version exactly on `domain_pack` competencies, and a regional hint only ever desirable (AGENTS.md 1.5). A pack is any of
- * the published catalogue's, retired ones too (an existing rubric keeps it), at a version no newer than the published one.
+ * version exactly on `domain_pack` competencies, and a regional hint only ever desirable (AGENTS.md 1.5). A pack is one
+ * the published catalogue offers, at a version no newer than the published one; a retired pack only on a competency
+ * `kept` (the rubric's latest stored version) already holds with it (ADR-013 point 7).
  */
-export function assertValidCompetencies(competencies: Competency[], catalogue: CatalogueVersion): void {
+export function assertValidCompetencies(
+  competencies: Competency[],
+  catalogue: CatalogueVersion,
+  kept: readonly Competency[] = [],
+): void {
   if (competencies.length === 0) throw new JobError('no_competencies');
   for (const c of competencies) {
     if (!c.name.trim()) throw new JobError('competency_name');
@@ -133,7 +138,9 @@ export function assertValidCompetencies(competencies: Competency[], catalogue: C
       c.packKey &&
       c.packVersion &&
       c.packVersion <= catalogue.version &&
-      catalogue.packs.some((p) => p.key === c.packKey),
+      catalogue.packs.some(
+        (p) => p.key === c.packKey && (!p.retired || kept.some((k) => k.packKey === c.packKey && k.name === c.name)),
+      ),
     );
     if ((c.origin === 'domain_pack') !== packed) throw new JobError('domain_pack');
     // Knowing a market's rules is evidence of a skill, never a residency requirement, so it can never be mandatory.

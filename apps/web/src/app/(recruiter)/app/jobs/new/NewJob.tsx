@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogueVersion } from '@aivera/jobs';
+import type { CatalogueContent } from '@aivera/jobs';
 import type { ComponentProps } from 'react';
 import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
 import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';
@@ -12,7 +12,7 @@ import { useSendRubricController } from '@/features/job-new/hooks/useSendRubricC
 type Props = Pick<
   ComponentProps<typeof NewJobForm>,
   'labels' | 'jobTypes' | 'hiringOwners' | 'clients' | 'membersHref'
-> & { defaultJobType: string; catalogue: CatalogueVersion };
+> & { defaultJobType: string; catalogue: CatalogueContent };
 
 export function NewJob({ defaultJobType, catalogue, ...props }: Props) {
   const job = useNewJobController(defaultJobType);

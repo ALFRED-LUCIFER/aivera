@@ -100,13 +100,18 @@ describe('Domain pack competencies (AIV-P1-064)', () => {
     );
   });
 
-  it('AIV-P2-044: the pack is checked against the published catalogue: a newer version is refused, a retired pack kept', () => {
+  it('AIV-P2-044: the pack is checked against the published catalogue: a newer version is refused, a retired pack only kept', () => {
     // SAFETY: mutation check: removed `c.packVersion <= catalogue.version` in assertValidCompetencies -> this test failed
     expect(() => assertValidCompetencies(one({ ...pack, packVersion: 2 }), CATALOGUE_V1)).toThrow(
       'A competency from a domain pack names its pack',
     );
     const retired = { ...CATALOGUE_V1, packs: CATALOGUE_V1.packs.map((p) => ({ ...p, retired: true })) };
-    expect(() => assertValidCompetencies(one(pack), retired)).not.toThrow();
+    // SAFETY: mutation check: accepted a retired pack without a kept competency in assertValidCompetencies -> this test failed
+    expect(() => assertValidCompetencies(one(pack), retired)).toThrow('A competency from a domain pack names its pack');
+    expect(() => assertValidCompetencies(one(pack), retired, one(pack))).not.toThrow();
+    expect(() => assertValidCompetencies(one(pack), retired, one({ ...pack, name: 'Another' }))).toThrow(
+      'A competency from a domain pack names its pack',
+    );
   });
 
   // SAFETY: mutation check: removed the isRegionalHint check in assertValidCompetencies -> this test failed
