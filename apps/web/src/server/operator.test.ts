@@ -6,6 +6,7 @@ import {
   isPlatformOperator,
   listOperatorActions,
   listWorkspaceFacts,
+  operatorName,
   platformOperator,
   setWorkspaceAiBudget,
 } from './operator';
@@ -230,5 +231,23 @@ describe('listOperatorActions', () => {
     session.mockResolvedValue(ALEX);
     await expect(listOperatorActions(GULF)).rejects.toThrow('403');
     expect(listOperatorEntries).not.toHaveBeenCalled();
+  });
+});
+
+describe('operatorName (AIV-P2-052)', () => {
+  it("is the operator's display name", async () => {
+    expect(await operatorName(THEO)).toBe('Theo Platform');
+  });
+
+  // SAFETY: mutation check: returned user.email when there is no display name -> 'never the whole email' failed
+  it('without a display name, the part of the email before "@": never the whole email', async () => {
+    getUser.mockResolvedValueOnce({ ...(users[PIA] as User), displayName: null });
+    const name = await operatorName(PIA);
+    expect(name).toBe('pia.platform');
+    expect(name).not.toContain('@');
+  });
+
+  it('no user: no name', async () => {
+    expect(await operatorName('0190d4a2-0000-7000-8000-00000000ffff')).toBeNull();
   });
 });

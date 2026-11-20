@@ -51,6 +51,17 @@ export const platformOperator = cache(async (): Promise<{ userId: string }> => {
   return { userId };
 });
 
+/**
+ * The name the console frame shows for the signed-in operator (AIV-P2-052): their display name, or the part of their
+ * email before the "@" when they have none. Never the whole email: the operator list is configuration that stays out
+ * of pages, URLs and logs (ADR-012 point 1). Only ever the caller's own user.
+ */
+export async function operatorName(userId: string): Promise<string | null> {
+  const user = await getIdentity().getUser(userId);
+  if (!user) return null;
+  return user.displayName?.trim() || user.email.split('@')[0] || null;
+}
+
 let audit: AuditContract | undefined;
 /** The audit module for operator actions: `recordPlatform`, and `record` inside the target workspace (ADR-012). */
 export const getAudit = (): AuditContract => (audit ??= createAudit(getDb()));
