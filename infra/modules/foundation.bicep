@@ -57,6 +57,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
     enablePurgeProtection: true
+    // main.bicep reads acs-webhook-key with getSecret (AIV-P0-017); ARM may only fetch it with this on. Readers still need RBAC.
+    enabledForTemplateDeployment: true
     // shortcut: public endpoint with RBAC only (a private endpoint is about $7/month), add one in AIV-P5-E03 (#34).
     publicNetworkAccess: 'Enabled'
   }
