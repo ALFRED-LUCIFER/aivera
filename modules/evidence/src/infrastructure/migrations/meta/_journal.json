@@ -50,6 +50,20 @@
       "when": 1795166649086,
       "tag": "0006_flat_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795169419034,
+      "tag": "0007_parallel_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795169434536,
+      "tag": "0008_force_rls_requests",
+      "breakpoints": true
     }
   ]
 }

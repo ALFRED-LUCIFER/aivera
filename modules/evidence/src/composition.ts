@@ -1,5 +1,5 @@
 // Builds the evidence module for an app (ADR-002: only apps import this).
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
 import { enqueue, newEnvelope } from '@credalent/db/outbox';
@@ -8,10 +8,20 @@ import { log } from '@credalent/observability';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { GitHubRateLimited, readRepository, repositoryReadUseCases } from './application/repositoryRead.ts';
-import { EvidenceRecordedV1, RepositoryReadRequestedV1, type EvidenceContract } from './contracts/index.ts';
+import { requestUseCases } from './application/requests.ts';
+import {
+  EvidenceRecordedV1,
+  EvidenceRequestAnsweredV1,
+  EvidenceRequestOpenedV1,
+  EvidenceRequestQuietV1,
+  EvidenceRequestSentV1,
+  RepositoryReadRequestedV1,
+  type EvidenceContract,
+} from './contracts/index.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
+import { requestStore } from './infrastructure/requestStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
 /** The queue RepositoryReadRequested.v1 goes to (infra/modules/messaging.bicep). */
@@ -60,8 +70,30 @@ export function createEvidence(
           occurredAt: source.createdAt,
         }),
     }),
+    ...requestUseCases({
+      ...ports,
+      requestStoreFor: requestStore,
+      publishRequestEvent: (tx, request, status) =>
+        enqueue(tx, outbox, REQUEST_EVENTS[status], {
+          workspaceId: request.workspaceId,
+          payload: { requestId: request.id, candidateId: request.candidateId, jobId: request.jobId },
+          dedupeKey: `request:${request.id}:${status}`,
+          occurredAt: now(),
+        }),
+      newToken: () => {
+        const token = randomBytes(32).toString('base64url');
+        return { token, hash: createHash('sha256').update(token).digest('hex') };
+      },
+    }),
   };
 }
+
+const REQUEST_EVENTS = {
+  sent: EvidenceRequestSentV1,
+  opened: EvidenceRequestOpenedV1,
+  answered: EvidenceRequestAnsweredV1,
+  quiet: EvidenceRequestQuietV1,
+} as const;
 
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request

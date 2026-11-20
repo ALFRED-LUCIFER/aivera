@@ -4,6 +4,7 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 import type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
+import type { EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
@@ -22,6 +23,24 @@ export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/finge
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 export type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
+export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
+export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
+export type { OpenClaim, RequestStatus } from '../domain/request.ts';
+
+const requestEvent = <T extends string>(type: T) =>
+  ({
+    type,
+    payload: z.strictObject({ requestId: z.uuid(), candidateId: z.uuid(), jobId: z.uuid() }),
+  }) satisfies EventDefinition<{ requestId: string; candidateId: string; jobId: string }>;
+
+/**
+ * An evidence request's life after a person sent it (AIV-P1-037), written to `evidence.outbox` with the change: the
+ * ticket's `evidence_request.sent`, `.opened`, `.answered` and `.quiet`. Strict, opaque ids only (AGENTS.md 1.2, 3.1).
+ */
+export const EvidenceRequestSentV1 = requestEvent('EvidenceRequestSent.v1');
+export const EvidenceRequestOpenedV1 = requestEvent('EvidenceRequestOpened.v1');
+export const EvidenceRequestAnsweredV1 = requestEvent('EvidenceRequestAnswered.v1');
+export const EvidenceRequestQuietV1 = requestEvent('EvidenceRequestQuiet.v1');
 
 /**
  * The ticket's "evidence.recorded": written to `evidence.outbox` in the transaction that records a source and its
@@ -101,4 +120,28 @@ export interface EvidenceContract {
    * Admins and recruiters.
    */
   getRepositoryRead(ctx: WorkspaceContext, sourceId: string): Promise<RepositoryReadView | null>;
+  /**
+   * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
+   * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.
+   * Admins and recruiters. Throws `EvidenceError` (`nothing_to_request` "Nothing rests on a claim for this job",
+   * `open_request`) and creates nothing.
+   */
+  createDraftRequest(
+    ctx: WorkspaceContext,
+    input: { candidateId: string; jobId: string },
+  ): Promise<EvidenceRequestView>;
+  /**
+   * A person sends a draft: status "sent", a portal token issued (stored only as its SHA-256, valid 30 days) and
+   * returned once, `EvidenceRequestSent.v1` written. Audited. Throws `EvidenceError('request_status')` unless a draft.
+   */
+  sendRequest(ctx: WorkspaceContext, requestId: string): Promise<{ request: EvidenceRequestView; portalToken: string }>;
+  /**
+   * The system records what happened after sending (opened, answered, quiet) and writes its event. It can never send:
+   * a move the system may not make throws `EvidenceError('request_status')` and changes nothing.
+   */
+  recordRequestOutcome(ctx: WorkspaceContext, requestId: string, outcome: RequestOutcome): Promise<void>;
+  /** A person closes the request. Audited. Throws `EvidenceError('request_status')` when already closed. */
+  closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void>;
+  /** The request with its items, or null when the workspace has none. Admins and recruiters. */
+  getRequest(ctx: WorkspaceContext, requestId: string): Promise<EvidenceRequestView | null>;
 }

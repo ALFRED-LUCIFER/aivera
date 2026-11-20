@@ -267,6 +267,7 @@ type Seeded = {
   grantId: string;
   jobId: string;
   rubricId: string;
+  requestId: string;
 };
 let w1: Seeded;
 let w2: Seeded;
@@ -370,6 +371,9 @@ async function seed(
       ],
       synthetic: true,
     });
+    // An evidence request on that claim, sent, so its item and hashed portal token exist (evidence.request*, AIV-P1-037).
+    const draft = await evidence.createDraftRequest(ctx, { candidateId: personId, jobId: job.id });
+    await evidence.sendRequest(ctx, draft.id);
     // An assessment result (assessment.result, AIV-P1-030).
     await assessment.assessCandidate(ctx, {
       candidateId: personId,
@@ -455,7 +459,15 @@ async function seed(
     await ctx.tx.execute(sql`insert into files.outbox (id, workspace_id, type, payload, dedupe_key, occurred_at,
       next_attempt_at) values (gen_random_uuid(), ${workspaceId}, 'FileClean.v1', ${JSON.stringify({ fileId })}::jsonb,
       ${`file:${fileId}`}, now(), now())`);
-    return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id, rubricId: rubric.id };
+    return {
+      workspaceId,
+      personId,
+      clientId: client.id,
+      grantId: grant?.id ?? '',
+      jobId: job.id,
+      rubricId: rubric.id,
+      requestId: draft.id,
+    };
   });
 }
 
@@ -669,6 +681,7 @@ const listedInW1 = async (m: Modules) => ({
     people: (await m.candidates.listPeople(ctx)).map((r) => r.id),
     jobs: (await m.jobs.listJobs(ctx)).map((r) => r.id),
     w2Assessment: await m.assessment.getLatestAssessment(ctx, w2.personId, w2.jobId),
+    w2Request: await m.evidence.getRequest(ctx, w2.requestId),
   }))),
 });
 
@@ -682,6 +695,7 @@ const onlyW1 = () => ({
   ownAudit: new Set([w1.workspaceId]),
   w2Audit: [],
   w2Assessment: null,
+  w2Request: null,
 });
 
 describe('Scenario: Repositories return nothing from another workspace', () => {
@@ -738,6 +752,7 @@ describe('Scenario: Both layers are needed', () => {
   // SAFETY: mutation check: removed inWorkspace(workspaceId) from listMembers -> this test failed (saw W2's member rows)
   // SAFETY: mutation check: removed eq(person.workspaceId, workspaceId) from listPeople -> this test failed (saw W2's person)
   // SAFETY: mutation check: removed eq(job.workspaceId, workspaceId) from jobWhere -> this test failed (saw W2's job)
+  // SAFETY: mutation check: removed eq(request.workspaceId, workspaceId) from the request store's get -> this test failed (saw W2's request)
   // SAFETY: mutation check: removed eq(result.workspaceId, workspaceId) from the assessment store's latest -> this test failed (saw W2's result)
   it('with row-level security out of the way, the repository filter alone still returns no W2 rows', async () => {
     const [role] = await admin.execute<{ bypass: boolean }>(

@@ -15,11 +15,13 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { REPOSITORY_READ_STATUSES } from '../domain/repository.ts';
+import { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 
 export const evidence = pgSchema('evidence');
 
@@ -248,6 +250,96 @@ export const mergedPullRequest = evidence
       // A pull request is one item per candidate, however many of their repositories are read.
       unique('merged_pull_request_candidate_key').on(t.workspaceId, t.candidateId, t.repository, t.number),
       tenantPolicy('merged_pull_request_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// An evidence request (AIV-P1-037): one open request per candidate per job, with its follow-up policy. The message
+// and each item's claim text are candidate personal data (never logged).
+export const request = evidence
+  .table(
+    'request',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      // Opaque ids of the candidates and jobs modules, and the identity user who created it.
+      candidateId: uuid('candidate_id').notNull(),
+      jobId: uuid('job_id').notNull(),
+      requestedBy: uuid('requested_by').notNull(),
+      message: text(),
+      status: text({ enum: REQUEST_STATUSES }).notNull(),
+      followUpAfterDays: smallint('follow_up_after_days').notNull().default(DEFAULT_FOLLOW_UP.afterDays),
+      followUpMaxCount: smallint('follow_up_max_count').notNull().default(DEFAULT_FOLLOW_UP.maxCount),
+      sentAt: timestamp('sent_at', tz),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      unique('request_workspace_id_key').on(t.workspaceId, t.id),
+      // One open request per candidate per job; a closed one may be followed by a new one.
+      uniqueIndex('request_open_key')
+        .on(t.workspaceId, t.candidateId, t.jobId)
+        .where(sql`${t.status} <> 'closed'`),
+      // Must list exactly REQUEST_STATUSES (domain/request.ts); changing it needs a new migration.
+      check('request_status_check', sql`${t.status} in ('draft', 'sent', 'opened', 'answered', 'quiet', 'closed')`),
+      check('request_sent_check', sql`(${t.status} = 'draft') = (${t.sentAt} is null) or ${t.status} = 'closed'`),
+      check(
+        'request_follow_up_check',
+        sql`${t.followUpAfterDays} between 1 and 14 and ${t.followUpMaxCount} between 0 and 5`,
+      ),
+      tenantPolicy('request_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// One line per open claim the request asks about: the competency and the claim's own words.
+export const requestItem = evidence
+  .table(
+    'request_item',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      requestId: uuid('request_id').notNull(),
+      competencyId: uuid('competency_id').notNull(),
+      itemId: uuid('item_id').notNull(),
+      claim: text().notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'request_item_pkey', columns: [t.workspaceId, t.requestId, t.competencyId] }),
+      foreignKey({
+        name: 'request_item_request_fk',
+        columns: [t.workspaceId, t.requestId],
+        foreignColumns: [request.workspaceId, request.id],
+      }).onDelete('cascade'),
+      foreignKey({
+        name: 'request_item_item_fk',
+        columns: [t.workspaceId, t.itemId],
+        foreignColumns: [item.workspaceId, item.id],
+      }),
+      tenantPolicy('request_item_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// The upload portal's link (AIV-P1-041): only the SHA-256 of the token is stored, so a database read cannot open it.
+export const portalToken = evidence
+  .table(
+    'portal_token',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      requestId: uuid('request_id').notNull(),
+      tokenHash: text('token_hash').notNull(),
+      expiresAt: timestamp('expires_at', tz).notNull(),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'portal_token_pkey', columns: [t.workspaceId, t.requestId] }),
+      unique('portal_token_hash_key').on(t.tokenHash),
+      foreignKey({
+        name: 'portal_token_request_fk',
+        columns: [t.workspaceId, t.requestId],
+        foreignColumns: [request.workspaceId, request.id],
+      }).onDelete('cascade'),
+      check('portal_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+      tenantPolicy('portal_token_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
