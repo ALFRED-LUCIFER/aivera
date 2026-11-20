@@ -262,6 +262,9 @@ export async function queueRepositoryRead(
     filesInspected: null,
     coverageGap: null,
   });
+  // shortcut: an existing read keeps the login and emails it was queued with, so a login supplied later (first arrival
+  // without one) is not used, even by stale re-reads; fill a null login on the existing read once the apply form collects
+  // logins (AIV-P3-008).
   if (existing) return { sourceId: existing, queued: false };
   await ports.publishReadRequested(tx, source);
   return { sourceId: source.id, queued: true };
@@ -303,7 +306,7 @@ export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId
 }
 
 export function repositoryReadUseCases(ports: RepositoryPorts) {
-  const { readStoreFor, publishRefreshRequested, authorize, newId, now } = ports;
+  const { readStoreFor, publishRefreshRequested, authorize, now } = ports;
   return {
     /** Stores a pending repository source and asks the worker to read it (`evidence.repository.read`). */
     async requestRepositoryRead(
