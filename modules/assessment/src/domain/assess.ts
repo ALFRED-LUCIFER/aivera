@@ -39,7 +39,7 @@ export type CompetencyResult = {
   proven: Proven;
   /** The level if every claim holds; never below the proven level. */
   claimedLevel: Level;
-  /** Items that count only toward the claimed level (claims, unconfirmed or contradicted evidence). */
+  /** Items that count only toward the claimed level: claims and unconfirmed signals. Contradicted items count nowhere. */
   claimItemIds: string[];
 };
 
@@ -98,7 +98,8 @@ export function assess(rubric: RubricInput, links: readonly EvidenceLink[]): Ass
       .filter((l) => l.level > 0)
       .map((l) => l.itemId)
       .toSorted(byText);
-    const claims = own.filter((l) => !counts(l));
+    // A contradicted item is not a claim that could hold: a second source said otherwise, so it widens nothing.
+    const claims = own.filter((l) => !counts(l) && l.provenance !== 'contradictory');
     const claimedLevel = Math.max(provenLevel, ...claims.map((l) => toLevel(l.level))) as Level;
     const [first, ...rest] = cited;
     return {
@@ -115,9 +116,16 @@ export function assess(rubric: RubricInput, links: readonly EvidenceLink[]): Ass
     };
   });
 
-  const strongItems = new Set(links.filter((l) => l.strength === 'strong' && counts(l)).map((l) => l.itemId));
+  // A competency's weight is Strong-backed only when a Strong item reaches its proven level, not a weaker one beside it.
   const strongWeight = competencies
-    .filter((c) => (c.proven.itemIds as readonly string[]).some((id) => strongItems.has(id)))
+    .filter(
+      (c) =>
+        c.proven.level > 0 &&
+        links.some(
+          (l) =>
+            l.competencyId === c.competencyId && l.strength === 'strong' && counts(l) && l.level === c.proven.level,
+        ),
+    )
     .reduce((sum, c) => sum + c.weightPercent, 0);
   const totalWeight = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
 

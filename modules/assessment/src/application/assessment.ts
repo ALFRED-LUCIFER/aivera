@@ -17,12 +17,22 @@ export type AssessmentStore = {
   insert(row: StoredAssessment): Promise<void>;
 };
 
-export type ScoreChange = {
-  candidateId: string;
-  rubricVersionId: string;
-  before: Pick<Assessment, 'backedScore' | 'upperBound'> | null;
-  after: Pick<Assessment, 'backedScore' | 'upperBound'>;
-};
+/** The audited summary of a stored result: ids, levels and numbers only (AGENTS.md 1.2). */
+export type ScoreSummary = Record<string, string | number>;
+
+export type ScoreChange = { candidateId: string; before: ScoreSummary | null; after: ScoreSummary };
+
+/** Scores, confidence, the rubric version and each competency's proven level (`proven:<competency id>`). */
+export function summarise(a: Assessment): ScoreSummary {
+  return {
+    rubricVersionId: a.rubricVersionId,
+    backedScore: a.backedScore,
+    upperBound: a.upperBound,
+    meetsNeed: a.meetsNeed,
+    confidence: a.confidence,
+    ...Object.fromEntries(a.competencies.map((c) => [`proven:${c.competencyId}`, c.proven.level])),
+  };
+}
 
 export type Ports = {
   storeFor(tx: Tx): AssessmentStore;
@@ -46,18 +56,21 @@ export type AssessCandidateInput = {
  * and the provenance. Everything else on an item or its source (an "Unusual content in this source" note, the
  * excerpt, the source) is dropped here, so it can never act on the candidate (AGENTS.md 1.5, 1.6).
  */
-export function toLinks(jobId: string, evidence: readonly EvidenceItemView[]): EvidenceLink[] {
-  return evidence.flatMap((item) =>
-    item.competencies
-      .filter((c) => c.jobId === jobId)
-      .map((c) => ({
-        itemId: item.id,
-        competencyId: c.competencyId,
-        level: c.level,
-        strength: item.strength,
-        provenance: item.provenance,
-      })),
-  );
+export function toLinks(candidateId: string, jobId: string, evidence: readonly EvidenceItemView[]): EvidenceLink[] {
+  // Another candidate's item can never be cited in this candidate's score, whatever list the caller passed.
+  return evidence
+    .filter((item) => item.candidateId === candidateId)
+    .flatMap((item) =>
+      item.competencies
+        .filter((c) => c.jobId === jobId)
+        .map((c) => ({
+          itemId: item.id,
+          competencyId: c.competencyId,
+          level: c.level,
+          strength: item.strength,
+          provenance: item.provenance,
+        })),
+    );
 }
 
 // jsonb stores object keys in its own order, so compare with keys sorted.
@@ -87,9 +100,12 @@ export function assessmentUseCases({ storeFor, authorize, auditScoreChange, newI
      * upper bound is audited. Nothing is rejected, advanced or sent: the result only orders attention (AGENTS.md 1.5).
      */
     async assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment> {
+      // No job passed on purpose: only admins and recruiters assess; job-scoped roles read scores through their job later.
       await authorize(ctx, 'candidate.create');
+      // shortcut: read-latest-then-insert is not serialised, so two concurrent runs can both store and audit; the worker
+      // that assesses on events serialises per candidate and job (AIV-P1-031).
       const store = storeFor(ctx.tx);
-      const next = assess(input.rubric, toLinks(input.jobId, input.evidence));
+      const next = assess(input.rubric, toLinks(input.candidateId, input.jobId, input.evidence));
       const previous = await store.latest(ctx.workspaceId, input.candidateId, input.jobId);
       if (previous && sameResult(pickAssessment(previous), next)) return previous;
       const row: StoredAssessment = {
@@ -101,13 +117,12 @@ export function assessmentUseCases({ storeFor, authorize, auditScoreChange, newI
         assessedAt: now(),
       };
       await store.insert(row);
-      if (!previous || previous.backedScore !== next.backedScore || previous.upperBound !== next.upperBound)
-        await auditScoreChange(ctx, {
-          candidateId: input.candidateId,
-          rubricVersionId: next.rubricVersionId,
-          before: previous && { backedScore: previous.backedScore, upperBound: previous.upperBound },
-          after: { backedScore: next.backedScore, upperBound: next.upperBound },
-        });
+      // Every stored result is a score change (a level, a citation, the rubric version), so every one is audited.
+      await auditScoreChange(ctx, {
+        candidateId: input.candidateId,
+        before: previous && summarise(pickAssessment(previous)),
+        after: summarise(next),
+      });
       return row;
     },
 

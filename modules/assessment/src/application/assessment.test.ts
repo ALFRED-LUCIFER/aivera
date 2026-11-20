@@ -67,8 +67,8 @@ const NOTED = CLEAN.map((item) => ({
 describe('Scenario Outline: The note never acts on the candidate', () => {
   // SAFETY: mutation check: toLinks lowered the level of items whose source carries a note -> this test failed
   it('the same CV with and without the note gives an identical assessment', () => {
-    const clean = assess(RUBRIC, toLinks(JOB, CLEAN));
-    const noted = assess(RUBRIC, toLinks(JOB, NOTED));
+    const clean = assess(RUBRIC, toLinks('maria', JOB, CLEAN));
+    const noted = assess(RUBRIC, toLinks('maria', JOB, NOTED));
     expect(noted).toEqual(clean);
     expect([noted.backedScore, noted.upperBound, noted.confidence]).toEqual([
       clean.backedScore,
@@ -81,9 +81,17 @@ describe('Scenario Outline: The note never acts on the candidate', () => {
   });
 
   it('only the item id, competency, level, strength and provenance reach the score', () => {
-    expect(toLinks(JOB, NOTED)).toEqual([
+    expect(toLinks('maria', JOB, NOTED)).toEqual([
       { itemId: 'i1', competencyId: 'c-llm', level: 3, strength: 'medium', provenance: 'submitted' },
       { itemId: 'i2', competencyId: 'c-python', level: 4, strength: 'supporting', provenance: 'claim' },
     ]);
+  });
+});
+
+describe("only the assessed candidate's evidence reaches the score", () => {
+  // SAFETY: mutation check: removed the candidate filter from toLinks -> this test failed (cited another candidate's item)
+  it("another candidate's item in the list is dropped, so it can never be cited", () => {
+    const other = { ...cvItem('i9', 'c-llm', 5, 'medium'), candidateId: 'someone-else' };
+    expect(toLinks('maria', JOB, [...CLEAN, other]).map((l) => l.itemId)).toEqual(['i1', 'i2']);
   });
 });

@@ -48,6 +48,14 @@ const ARJUN = [
 ];
 
 const of = (result: ReturnType<typeof assess>, id: string) => result.competencies.find((c) => c.competencyId === id);
+// The fields a non-counting item must never move.
+const proven = (r: ReturnType<typeof assess>) => ({
+  backed: r.backedScore,
+  meets: r.meetsNeed,
+  missing: r.missingCritical,
+  confidence: r.confidence,
+  levels: r.competencies.map((c) => c.proven),
+});
 
 describe("Scenario: Sara's assessment on rubric version 2", () => {
   // Owner decision 20 Nov 2026: the formula wins over the artboard's 68 up to 84 (AIV-P1-030 PR).
@@ -93,22 +101,31 @@ describe('Scenario: A new claim moves only the range', () => {
   });
 
   // SAFETY: mutation check: counted claim links in the proven level (counts() returning true) -> this test failed
-  it('property: adding any claim to any evidence never changes the backed score', () => {
+  it('property: adding any item that does not count never changes the backed score or any proven field', () => {
     let seed = 7;
     const next = () => (seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648) / 2_147_483_648;
     const pick = <T>(list: readonly T[]) => list[Math.floor(next() * list.length)] as T;
+    const level = () => Math.floor(next() * 6);
     const ids = SAE_V2.competencies.map((c) => c.id);
     for (let run = 0; run < 500; run++) {
       const evidence = Array.from({ length: Math.floor(next() * 8) }, (_, i) =>
-        link(`e${run}-${i}`, pick(ids), Math.floor(next() * 6), pick(STRENGTHS), pick(PROVENANCES)),
+        link(`e${run}-${i}`, pick(ids), level(), pick(STRENGTHS), pick(PROVENANCES)),
       ).filter(
         (l) => !['claim', 'awaiting-defence'].includes(l.provenance) || ['supporting', 'claim'].includes(l.strength),
       );
-      const claim = link(`c${run}`, pick(ids), Math.floor(next() * 6), pick(['supporting', 'claim'] as const), 'claim');
-      expect(assess(SAE_V2, [...evidence, claim]).backedScore).toBe(assess(SAE_V2, evidence).backedScore);
-      expect(assess(SAE_V2, [...evidence, claim]).upperBound).toBeGreaterThanOrEqual(
-        assess(SAE_V2, evidence).upperBound,
-      );
+      const before = assess(SAE_V2, evidence);
+      const extras = [
+        link(`c${run}`, pick(ids), level(), pick(['supporting', 'claim'] as const), 'claim'),
+        link(`d${run}`, pick(ids), level(), pick(['supporting', 'claim'] as const), 'awaiting-defence'),
+        link(`x${run}`, pick(ids), level(), pick(STRENGTHS), 'contradictory'),
+        link(`u${run}`, pick(ids), level(), 'supporting', 'submitted'),
+      ];
+      for (const added of extras) {
+        expect(counts(added)).toBe(false);
+        const after = assess(SAE_V2, [...evidence, added]);
+        expect(proven(after)).toEqual(proven(before));
+        expect(after.upperBound).toBeGreaterThanOrEqual(before.upperBound);
+      }
     }
   });
 });
@@ -138,6 +155,14 @@ describe('what counts as proven', () => {
   });
 });
 
+describe('contradicted evidence and the range', () => {
+  it('a contradicted item widens nothing: neither the claimed level nor the claim items', () => {
+    const result = assess(SAE_V2, [link('x', ARABIC, 5, 'medium', 'contradictory')]);
+    expect(of(result, ARABIC)).toMatchObject({ proven: { level: 0 }, claimedLevel: 0, claimItemIds: [] });
+    expect(result.upperBound).toBe(0);
+  });
+});
+
 describe('Scenario: Every non-zero level cites evidence', () => {
   it('each competency proven above 0 lists at least one item id, sorted', () => {
     const result = assess(SAE_V2, [...SARA, link('sara-second', LLM, 4, 'medium', 'submitted')]);
@@ -160,6 +185,18 @@ describe('Scenario Outline: Confidence follows how much weight rests on strong e
     [0.1, 'Low'],
   ] as const)('%s of the weight backed by Strong evidence is %s', (share, confidence) => {
     expect(confidenceFor(share)).toBe(confidence);
+  });
+
+  // SAFETY: mutation check: counted any cited Strong item instead of one at the proven level -> this test failed (Medium)
+  it('a weak Strong item beside a stronger Medium one does not make the competency Strong-backed', () => {
+    const mixed = [
+      link('m', LLM, 5, 'medium', 'submitted'),
+      link('s', LLM, 1, 'strong', 'corroborated'),
+      link('s2', RETRIEVAL, 1, 'strong', 'corroborated'),
+      link('r', RETRIEVAL, 5, 'medium', 'submitted'),
+      link('p', PYTHON, 5, 'medium', 'submitted'),
+    ];
+    expect(assess(SAE_V2, mixed).confidence).toBe('Low');
   });
 
   it('end to end: Strong work on 70% of the weight is High', () => {

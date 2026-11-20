@@ -1,7 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkItem, checkItems, checkSource, PROVENANCES, STRENGTHS, type EvidenceItem } from './evidence.ts';
+import {
+  checkItem,
+  checkItems,
+  checkLink,
+  checkSource,
+  PROVENANCES,
+  STRENGTHS,
+  type EvidenceItem,
+} from './evidence.ts';
 
 const item = (over: Partial<EvidenceItem> = {}) => ({
   excerpt: 'authored 412 of 460 commits',
@@ -70,4 +78,11 @@ describe('labels', () => {
     for (const p of PROVENANCES) expect(en.evidence.provenance[p]).toEqual(expect.any(String));
     for (const s of STRENGTHS) expect(en.rubric.strength[s]).toEqual(expect.any(String));
   });
+});
+
+describe('competency link levels (AIV-P1-030)', () => {
+  it.each([0, 3, 5])('level %s is accepted', (level) => expect(() => checkLink({ level })).not.toThrow());
+  it.each([6, -1, 2.5])('level %s is refused with "A level is a whole number from 0 to 5"', (level) =>
+    expect(() => checkLink({ level })).toThrow('A level is a whole number from 0 to 5'),
+  );
 });

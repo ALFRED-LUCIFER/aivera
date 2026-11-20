@@ -556,6 +556,7 @@ const listedInW1 = async (m: Modules) => ({
     grants: (await m.workspaces.listJobGrants(ctx)).map((r) => r.id),
     people: (await m.candidates.listPeople(ctx)).map((r) => r.id),
     jobs: (await m.jobs.listJobs(ctx)).map((r) => r.id),
+    w2Assessment: await m.assessment.getLatestAssessment(ctx, w2.personId, w2.jobId),
   }))),
 });
 
@@ -568,6 +569,7 @@ const onlyW1 = () => ({
   jobs: [w1.jobId],
   ownAudit: new Set([w1.workspaceId]),
   w2Audit: [],
+  w2Assessment: null,
 });
 
 describe('Scenario: Repositories return nothing from another workspace', () => {
@@ -624,6 +626,7 @@ describe('Scenario: Both layers are needed', () => {
   // SAFETY: mutation check: removed inWorkspace(workspaceId) from listMembers -> this test failed (saw W2's member rows)
   // SAFETY: mutation check: removed eq(person.workspaceId, workspaceId) from listPeople -> this test failed (saw W2's person)
   // SAFETY: mutation check: removed eq(job.workspaceId, workspaceId) from jobWhere -> this test failed (saw W2's job)
+  // SAFETY: mutation check: removed eq(result.workspaceId, workspaceId) from the assessment store's latest -> this test failed (saw W2's result)
   it('with row-level security out of the way, the repository filter alone still returns no W2 rows', async () => {
     const [role] = await admin.execute<{ bypass: boolean }>(
       sql`select rolsuper or rolbypassrls as bypass from pg_roles where rolname = current_user`,

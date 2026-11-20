@@ -3,7 +3,6 @@
 import type { WorkspaceContext } from '@credalent/workspaces';
 import type { AssessCandidateInput, StoredAssessment } from '../application/assessment.ts';
 
-export { assess, confidenceFor, counts } from '../domain/assess.ts';
 export type {
   Assessment,
   CompetencyResult,

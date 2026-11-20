@@ -103,6 +103,23 @@ const claim = (competencyId: string, level: number): RecordEvidenceInput => ({
   synthetic: true,
 });
 
+// The audited summary of a stored result (application/assessment.ts summarise).
+const summary = (
+  backedScore: number,
+  upperBound: number,
+  meetsNeed: number,
+  confidence: string,
+  retrieval: number,
+) => ({
+  rubricVersionId: RUBRIC.versionId,
+  backedScore,
+  upperBound,
+  meetsNeed,
+  confidence,
+  [`proven:${RETRIEVAL}`]: retrieval,
+  [`proven:${ARABIC}`]: 0,
+});
+
 const assessSara = (workspaceId: string) =>
   as(ALEX, workspaceId, async (ctx) =>
     assessment.assessCandidate(ctx, {
@@ -163,7 +180,7 @@ describe('Migrations', () => {
 });
 
 describe('Scenario: Claims count zero in the backed score, stored and audited', () => {
-  it('a claim alone scores 0 backed; real work raises it; a re-run with nothing new stores nothing', async () => {
+  it('a claim alone scores 0 backed; real work raises it; a re-run with nothing new stores nothing; every stored change is audited', async () => {
     await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, claim(ARABIC, 4)));
     const first = await assessSara(w1);
     expect([first.backedScore, first.upperBound]).toEqual([0, 32]);
@@ -177,14 +194,19 @@ describe('Scenario: Claims count zero in the backed score, stored and audited', 
     expect(again.id).toBe(second.id);
     expect(await as(ALEX, w1, (ctx) => assessment.getLatestAssessment(ctx, SARA, JOB))).toEqual(second);
 
+    // A second piece of real work at the same level: the totals stay, the citations change, so it is stored and audited.
+    await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, harness(RETRIEVAL, 5)));
+    const third = await assessSara(w1);
+    expect(third.id).not.toBe(second.id);
+    expect([third.backedScore, third.upperBound]).toEqual([60, 92]);
+    expect(third.competencies[0]?.proven.itemIds).toHaveLength(2);
+
     const entries = await audit.listFor(w1, { type: 'candidate', id: SARA });
+    // SAFETY: mutation check: audited only when the backed score or upper bound changed -> this test failed (2 entries)
     expect(entries.map((e) => [e.action, e.before, e.after])).toEqual([
-      ['score.changed', null, { backedScore: 0, upperBound: 32, rubricVersionId: RUBRIC.versionId }],
-      [
-        'score.changed',
-        { backedScore: 0, upperBound: 32, rubricVersionId: RUBRIC.versionId },
-        { backedScore: 60, upperBound: 92, rubricVersionId: RUBRIC.versionId },
-      ],
+      ['score.changed', null, summary(0, 32, 0, 'Low', 0)],
+      ['score.changed', summary(0, 32, 0, 'Low', 0), summary(60, 92, 1, 'High', 5)],
+      ['score.changed', summary(60, 92, 1, 'High', 5), summary(60, 92, 1, 'High', 5)],
     ]);
   });
 });
