@@ -47,6 +47,18 @@ test('the skip link moves focus to main', async ({ page }) => {
   await expect(page.locator('main#content')).toBeFocused();
 });
 
+// AIV-P1-081 (owner decision): the sidebar never links out to the website; Settings is followed by Sign out.
+test('the sidebar footer has Settings then Sign out and no website link', async ({ page }) => {
+  await page.goto('/app');
+  const primary = page.getByRole('navigation', { name: 'Primary' });
+  await expect(primary.getByRole('link', { name: /website/i })).toHaveCount(0);
+  await expect(primary.locator('a[href="/"]')).toHaveCount(0);
+  await primary.getByRole('link', { name: 'Settings' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(primary.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  expect(await focusInView(page)).toBe('visible');
+});
+
 test('the sidebar collapses at 768 px behind "Open navigation"', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto('/app');
@@ -58,6 +70,8 @@ test('the sidebar collapses at 768 px behind "Open navigation"', async ({ page }
   await expect(primary).toBeVisible();
   // The opened menu takes focus on its first section link; Escape closes it and returns focus to the button.
   await expect(primary.getByRole('link', nav(/^My desk/))).toBeFocused();
+  // AIV-P1-081: the drawer has no link out to the website either.
+  await expect(primary.getByRole('link', { name: /website/i })).toHaveCount(0);
   await expect(page).toHaveScreenshot('shell-menu-open-768.png');
   await page.keyboard.press('Escape');
   await expect(primary).toBeHidden();
