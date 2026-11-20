@@ -25,6 +25,10 @@ export type Provenance = (typeof PROVENANCES)[number];
 export const STRENGTHS = ['strong', 'medium', 'supporting', 'claim'] as const;
 export type Strength = (typeof STRENGTHS)[number];
 
+/** Who was called for a reference, by role only: never a name or contact (AGENTS.md 1.2). */
+export const REFERENCE_ROLES = ['manager', 'peer', 'direct_report', 'client', 'other'] as const;
+export type ReferenceRole = (typeof REFERENCE_ROLES)[number];
+
 /** Provenances that are still only the candidate's word: never stronger than Supporting. */
 const UNPROVEN: readonly Provenance[] = ['claim', 'awaiting-defence'];
 const UNPROVEN_STRENGTHS: readonly Strength[] = ['supporting', 'claim'];
@@ -94,6 +98,10 @@ export const PERSONAL_DATA_FIELDS = [
   'citations',
   // "What would change this" items carry the model's words about the candidate (AIV-P1-027).
   'changes',
+  // Reference call notes and a person's resolution of a contradiction (AIV-P1-029).
+  'notes',
+  'resolutionNote',
+  'resolutionLimit',
 ] as const;
 
 const MESSAGES = {
@@ -117,6 +125,10 @@ const MESSAGES = {
   request_not_found: 'No such evidence request',
   request_status: 'This request cannot move to that status',
   open_request: 'This candidate already has an open request for this job',
+  reference_role: 'Choose the role of the person called from the list',
+  called_on: 'Give the date of the call',
+  resolution_note: 'Write a note on how the contradiction was resolved',
+  comparison_not_found: 'No such contradiction',
 } as const;
 
 export type EvidenceErrorCode = keyof typeof MESSAGES;

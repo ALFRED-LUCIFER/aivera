@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import type { RepositoryReadStore } from '../application/repositoryRead.ts';
 import type { SkillSignal } from '../domain/skill-signals/classify.ts';
 import {
@@ -208,6 +208,32 @@ export function repositoryReadStore(tx: Tx): RepositoryReadStore {
         .from(mergedPullRequest)
         .where(and(eq(mergedPullRequest.workspaceId, workspaceId), eq(mergedPullRequest.candidateId, candidateId)));
       return new Set(rows.map((r) => `${r.repository}#${r.number}`));
+    },
+    async pullRequestOrigins(workspaceId, candidateId) {
+      const logins = await tx
+        .selectDistinct({ login: repositoryRead.githubLogin })
+        .from(repositoryRead)
+        .where(
+          and(
+            eq(repositoryRead.workspaceId, workspaceId),
+            eq(repositoryRead.candidateId, candidateId),
+            isNotNull(repositoryRead.githubLogin),
+          ),
+        );
+      const pulls = await tx
+        .select({
+          sourceId: item.sourceId,
+          repository: mergedPullRequest.repository,
+          mergedBy: mergedPullRequest.mergedBy,
+          selfMerged: mergedPullRequest.selfMerged,
+        })
+        .from(mergedPullRequest)
+        .innerJoin(
+          item,
+          and(eq(item.workspaceId, mergedPullRequest.workspaceId), eq(item.id, mergedPullRequest.itemId)),
+        )
+        .where(and(eq(mergedPullRequest.workspaceId, workspaceId), eq(mergedPullRequest.candidateId, candidateId)));
+      return { logins: logins.flatMap((l) => (l.login ? [l.login.toLowerCase()] : [])), pulls };
     },
   };
 }

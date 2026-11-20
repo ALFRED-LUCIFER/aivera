@@ -369,6 +369,7 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.mapping_id': counts.mappingId,
           'credalent.evidence.links': counts.links,
           'credalent.evidence.gaps': counts.gaps,
+          'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
           ...Object.fromEntries(Object.entries(discarded).map(([k, v]) => [`credalent.evidence.discarded.${k}`, v])),
         },

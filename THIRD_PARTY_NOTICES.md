@@ -16,6 +16,10 @@ Credalent includes material adapted from the third-party works listed below, und
 - Used in: `modules/evidence/src/domain/skill-signals/classify.ts`, `modules/evidence/src/domain/skill-signals/vocabulary.ts` and `isStale` in `modules/evidence/src/domain/repository.ts` (AIV-P1-072).
 - Modified: ported to TypeScript and changed: grades for one repository source with reason codes instead of report text, compose files read line by line only (no YAML parser), manifests also declare their project's language, certification, marketing and analytics vocabulary left out, report rendering and GitHub transport not ported.
 
+- Source: the scoped number matching of `story-provenance-check.mjs` of career-ops, and the cases of its `tests/story-provenance-*.test.mjs`.
+- Used in: `modules/evidence/src/domain/numericCheck.ts` and its tests in `numericCheck.test.ts` (the numeric pre-check before the AI contradiction comparison; AIV-P1-029).
+- Modified: ported to TypeScript and changed: compares two evidence excerpts both ways instead of a story bank against a CV, returns contradiction, agreement, not settled or not compared instead of four provenance buckets, reads thousands separators, treats headcount nouns ("engineers", "developers", "staff") as one unit, folds plurals in context words; story-bank parsing, provenance markers, the CLI and report output not ported. Tests rewritten in Vitest.
+
 ```text
 MIT License
 
