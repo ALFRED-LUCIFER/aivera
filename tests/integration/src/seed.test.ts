@@ -299,6 +299,39 @@ describe('Scenario: Seeding a fresh database', () => {
     });
   });
 
+  it('every design rubric reads as the artboards do: evidence expected, level, type and a success statement', async () => {
+    const empty = await admin.execute(sql`select c.name from jobs.competency c
+      join jobs.rubric_version v on v.id = c.rubric_version_id join jobs.job j on j.id = v.job_id
+      where j.workspace_id = ${workspaceId} and j.title not in ${industryTitles}
+      and (btrim(c.evidence_expected) = '' or btrim(v.success_statement) = '')`);
+    expect([...empty]).toEqual([]);
+    // The Rubric artboard: version 2 with its change note, two rows suggested by Aivera, Arabic NLP desirable.
+    const [v2] = await admin.execute<{ change_note: string; success_statement: string }>(sql`select v.change_note,
+      v.success_statement from jobs.rubric_version v join jobs.job j on j.id = v.job_id
+      where j.workspace_id = ${workspaceId} and j.title = 'Senior AI Engineer' and v.version = 2`);
+    expect(v2?.change_note).toBe('Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.');
+    expect(v2?.success_statement).toMatch(/^Within six months, a bilingual assistant/);
+    const rows = await admin.execute(sql`select c.name, c.weight_percent, c.level_needed, c.type, c.origin
+      from jobs.competency c join jobs.rubric_version v on v.id = c.rubric_version_id join jobs.job j on j.id = v.job_id
+      where j.workspace_id = ${workspaceId} and j.title = 'Senior AI Engineer' and v.version = 2 order by c.position`);
+    expect([...rows]).toEqual(
+      [
+        ['LLM systems in production', 25, 4, 'mandatory', 'from_description'],
+        ['Retrieval and evaluation', 20, 4, 'mandatory', 'from_description'],
+        ['Python service engineering', 15, 3, 'mandatory', 'from_description'],
+        ['Cost and reliability', 15, 2, 'desirable', 'from_description'],
+        ['Arabic and bilingual NLP', 10, 2, 'desirable', 'suggested_by_aivera'],
+        ['Product judgement', 15, 3, 'mandatory', 'suggested_by_aivera'],
+      ].map(([name, weight_percent, level_needed, type, origin]) => ({
+        name,
+        weight_percent,
+        level_needed,
+        type,
+        origin,
+      })),
+    );
+  });
+
   it('Scenario: Every approval is audited as a person decision, with no candidate value', async () => {
     const approvals = await admin.execute<{ version_id: string; approved_at: Date; approver: string }>(
       sql`select v.id as version_id, v.approved_at, v.approved_by as approver from jobs.rubric_version v

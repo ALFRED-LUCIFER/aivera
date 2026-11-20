@@ -15,7 +15,7 @@ import {
   JOBS,
   RECRUITER,
   WORKSPACE,
-  type CastJob,
+  type CastCompetency,
   type CastUser,
 } from './cast.ts';
 
@@ -136,35 +136,34 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         competencies: rubricOf(versions[0]?.competencies ?? []),
       }),
     );
-    for (const { approvedOn, competencies } of versions) {
+    for (const { approvedOn, competencies, ...version } of versions) {
       // Version 1 is the draft above, edited in place; a later one starts the next version.
-      const version = await asRecruiter((ctx) =>
+      const saved = await asRecruiter((ctx) =>
         designJobs.saveRubric(ctx, created.id, {
-          successStatement: `Within six months, the new ${job.title} has shipped work the team relies on.`,
+          successStatement: job.successStatement,
+          changeNote: 'changeNote' in version ? version.changeNote : null,
           competencies: rubricOf(competencies),
         }),
       );
       if (!approvedOn) break;
       at(approvedOn, 8);
-      await asRecruiter((ctx) => designJobs.submitRubric(ctx, version.id));
+      await asRecruiter((ctx) => designJobs.submitRubric(ctx, saved.id));
       at(approvedOn, 10);
-      await workspaces.withWorkspace({ userId: owner }, workspaceId, (ctx) =>
-        designJobs.approveRubric(ctx, version.id),
-      );
+      await workspaces.withWorkspace({ userId: owner }, workspaceId, (ctx) => designJobs.approveRubric(ctx, saved.id));
     }
     await asRecruiter((ctx) => designJobs.changeStage(ctx, created.id, job.stage));
   }
   return workspaceId;
 }
 
-/** The cast's competencies as rubric rows: mandatory, from the description, level 3. */
-function rubricOf(competencies: CastJob['rubric']['competencies']): Competency[] {
+/** The cast's competencies as rubric rows: from the description, or suggested by Aivera and accepted. */
+function rubricOf(competencies: CastCompetency[]): Competency[] {
   return competencies.map((c) => ({
     name: c.name,
-    evidenceExpected: '',
+    evidenceExpected: c.evidence,
     weightPercent: c.weight,
-    levelNeeded: 3,
-    type: 'mandatory',
-    origin: 'from_description',
+    levelNeeded: c.level,
+    type: c.type,
+    origin: c.suggested ? 'suggested_by_aivera' : 'from_description',
   }));
 }
