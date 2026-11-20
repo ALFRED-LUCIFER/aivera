@@ -80,6 +80,9 @@ export default defineConfig({
         AUTH_GOOGLE_CLIENT_SECRET: 'e2e-only',
         // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.
         PLATFORM_OPERATOR_EMAILS: 'pia.platform@example.com,Theo.Platform@example.com',
+        // AIV-P1-003: invitations queue their email (AIV-P0-017); a test-only key that seals nothing anywhere else.
+        NOTIFICATIONS_ENCRYPTION_KEY: Buffer.from('e2e-only-not-a-secret-e2e-only!!').toString('base64'),
+        AUTH_URL: `http://localhost:${port}`,
         // AIV-P1-008: the fake model answers "Draft competencies" from recorded fixtures, by description text.
         AI_PROVIDER: 'fake',
         AI_FAKE_FIXTURES: join(import.meta.dirname, 'ai-fixtures.json'),

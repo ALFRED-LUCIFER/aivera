@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ import {
   ForbiddenError,
   SettingsError,
   WorkspaceError,
+  WorkspacePausedError,
   type Client,
   type MemberStatus,
   type Role,
@@ -18,6 +20,7 @@ import {
   type WorkspacesContract,
 } from '@aivera/workspaces';
 import { createAudit } from '@aivera/audit/composition';
+import { createNotifications } from '@aivera/notifications/composition';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -85,9 +88,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(14);
+    expect(await applied()).toBe(16);
     dbMigrate();
-    expect(await applied()).toBe(14);
+    expect(await applied()).toBe(16);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -102,6 +105,7 @@ describe('Scenario: Migrations are forward-only and per schema', () => {
       { name: 'client', owner: 'aivera_migrator', rls: true, forced: true },
       // The operator console's list (AIV-P2-036, ADR-012): workspace id and created date only, no tenant data.
       { name: 'directory', owner: 'aivera_migrator', rls: false, forced: false },
+      { name: 'invitation', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'job_grant', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'member', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'settings', owner: 'aivera_migrator', rls: true, forced: true },
@@ -124,6 +128,7 @@ describe('Scenario: Creating a workspace makes the creator its admin', () => {
       workspaceId: created.id,
       role: 'admin',
       status: 'active',
+      title: null,
     });
     expect(await workspaces.activeWorkspace(ALEX)).toBe(created.id);
   });
@@ -803,5 +808,386 @@ describe('AIV-P1-051: workspace settings with approved defaults', () => {
     await as(ALEX, id, (ctx) => workspaces.updateSettings(ctx, { clientShareLinkDays: 7 }));
     expect(issuedWith.clientShareLinkDays).toBe(14);
     expect((await as(ALEX, id, (ctx) => workspaces.getSettings(ctx))).clientShareLinkDays).toBe(7);
+  });
+});
+
+describe('AIV-P1-003: invitations to the workspace and to its jobs', () => {
+  const OMAR = user(1031); // admin of the agency
+  const NADIA = user(1032);
+  const FAISAL = user(1033);
+  const LINA = user(1034);
+  const RANA = user(1035); // a recruiter of the agency
+  const HUDA = user(1036);
+  const [STAFF_BACKEND, PM_PAYMENTS] = [job(1031), job(1032)] as [string, string];
+  let gulf: string;
+  let dune: Client;
+  let falcon: Client;
+  const asOmar = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) => as(OMAR, gulf, fn);
+  const invite = (email: string, role: Role, access: { jobIds?: string[]; clientIds?: string[] } = {}) =>
+    asOmar((ctx) => workspaces.inviteMember(ctx, { email, role, title: null, jobIds: [], clientIds: [], ...access }));
+  const openJob = (userId: string, jobId: string, clientId: string) =>
+    as(userId, gulf, (ctx) => workspaces.authorize(ctx, 'job.view', { jobId, clientId })).then(
+      () => 'allowed',
+      (error: unknown) => (error instanceof ForbiddenError ? '403' : `threw ${String(error)}`),
+    );
+  const listed = () => asOmar((ctx) => workspaces.listInvitations(ctx));
+  const tryAccept = (token: string) => workspaces.acceptInvitation({ userId: HUDA, email: 'huda@example.com' }, token);
+  const rawInvitationInsert = (role: Role, jobIds: ReturnType<typeof sql>) =>
+    withWorkspace(app, gulf, (tx) =>
+      tx.execute(sql`insert into workspaces.invitation (id, workspace_id, email, role, job_ids, token_hash, invited_by, expires_at)
+        values (gen_random_uuid(), ${gulf}, 'huda@example.com', ${role}, ${jobIds}, gen_random_uuid()::text, ${OMAR}, now())`),
+    );
+
+  beforeAll(async () => {
+    gulf = (await newWorkspace('Gulf Talent Partners', OMAR)).id;
+    await addMember(gulf, RANA, 'recruiter');
+    await asOmar((ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+    falcon = await asOmar((ctx) => workspaces.addClient(ctx, 'Falcon Pay'));
+    dune = await asOmar((ctx) => workspaces.addClient(ctx, 'Dune Logistics'));
+  });
+
+  describe("Scenario: Invite a client's hiring owner to that client's jobs", () => {
+    it('stores an invitation that expires in 7 days, listed with its role and client', async () => {
+      const before = Date.now();
+      const { invitation } = await asOmar((ctx) =>
+        workspaces.inviteMember(ctx, {
+          email: 'faisal@example.com',
+          role: 'hiring_owner',
+          title: 'Head of Engineering, Dune Logistics',
+          jobIds: [],
+          clientIds: [dune.id],
+        }),
+      );
+      const days = (invitation.expiresAt.getTime() - before) / 86_400_000;
+      expect(days).toBeGreaterThan(6.99);
+      expect(days).toBeLessThan(7.01);
+      expect(await listed()).toContainEqual(
+        expect.objectContaining({ email: 'faisal@example.com', role: 'hiring_owner', clientIds: [dune.id] }),
+      );
+    });
+
+    // SAFETY: mutation check: swallowed the error from alongside in inviteMember -> this test failed (the invitation was kept)
+    it('queues its invitation email in the same transaction; a failed queue stores no invitation', async () => {
+      const notifications = createNotifications({
+        encryptionKey: randomBytes(32).toString('base64'),
+        origin: 'https://aivera.example',
+        synthetic: true,
+      });
+      const sender = { name: 'Omar Agency', shortName: 'Omar', email: 'omar.agency@example.com', workspace: 'Gulf' };
+      const input = {
+        email: 'faisal@example.com',
+        role: 'hiring_owner',
+        title: null,
+        jobIds: [],
+        clientIds: [dune.id],
+      };
+      const { invitation } = await asOmar((ctx) =>
+        workspaces.inviteMember(ctx, { ...input, role: 'hiring_owner' }, async (sent, token) => {
+          await notifications.queueEmail(ctx, {
+            template: 'member-invitation',
+            to: sent.email,
+            causedBy: sent.id,
+            sender,
+            data: {
+              role: sent.role,
+              scope: "all of Dune Logistics' jobs",
+              expiresAt: sent.expiresAt,
+              link: `https://aivera.example/invite?token=${encodeURIComponent(token)}`,
+            },
+          });
+        }),
+      );
+      const queued = await withWorkspace(app, gulf, (tx) =>
+        tx.execute(sql`select template from notifications.message where caused_by = ${invitation.id}`),
+      );
+      expect([...queued]).toEqual([{ template: 'member-invitation' }]);
+
+      const count = (await listed()).length;
+      await expect(
+        asOmar((ctx) =>
+          workspaces.inviteMember(ctx, { ...input, role: 'hiring_owner' }, async () => {
+            throw new Error('email refused');
+          }),
+        ),
+      ).rejects.toThrow('email refused');
+      expect(await listed()).toHaveLength(count);
+    });
+
+    // SAFETY: mutation check: stored the token itself as token_hash -> this test failed (the token was in the row)
+    it('keeps only the hash of the link token', async () => {
+      const { invitation, token } = await invite('huda@example.com', 'hiring_owner', { clientIds: [falcon.id] });
+      const [row] = await withWorkspace(app, gulf, (tx) =>
+        tx.execute<Record<string, unknown>>(sql`select * from workspaces.invitation where id = ${invitation.id}`),
+      );
+      expect(JSON.stringify(row)).not.toContain(token.split('.')[1]);
+      await asOmar((ctx) => workspaces.revokeInvitation(ctx, invitation.id));
+    });
+  });
+
+  it('Scenario: Invite an interviewer to one job: the invitation names only that job', async () => {
+    const { invitation } = await invite('lina@example.com', 'interviewer', { jobIds: [STAFF_BACKEND] });
+    expect(invitation).toMatchObject({ jobIds: [STAFF_BACKEND], clientIds: [] });
+  });
+
+  describe('Scenario: A hiring owner or interviewer needs at least one job', () => {
+    // SAFETY: mutation check: removed the jobs_required throw in assertAccessFitsRole -> this test failed (the database refused it instead)
+    it('is refused with "Choose the jobs this person works on." and no invitation is created', async () => {
+      const count = (await listed()).length;
+      await expect(invite('huda@example.com', 'hiring_owner')).rejects.toThrow(new WorkspaceError('jobs_required'));
+      expect(await listed()).toHaveLength(count);
+    });
+
+    // SAFETY: mutation check: dropped constraint invitation_access_check -> this test failed (both inserts succeeded)
+    it('the check constraint refuses a hiring owner invitation without jobs, and a recruiter one with jobs', async () => {
+      await expect(rawInvitationInsert('hiring_owner', sql`'{}'::uuid[]`)).rejects.toThrow(
+        expect.objectContaining({ code: '23514', constraint: 'invitation_access_check' }),
+      );
+      await expect(rawInvitationInsert('recruiter', sql`array[${STAFF_BACKEND}]::uuid[]`)).rejects.toThrow(
+        expect.objectContaining({ code: '23514', constraint: 'invitation_access_check' }),
+      );
+    });
+  });
+
+  describe('Scenario: Accepting joins the workspace with the invited role and jobs', () => {
+    let token: string;
+    let invitationId: string;
+
+    beforeAll(async () => {
+      const sent = await invite('faisal@example.com', 'hiring_owner', { clientIds: [dune.id] });
+      token = sent.token;
+      invitationId = sent.invitation.id;
+    });
+
+    it('a different signed-in email is refused and nothing changes', async () => {
+      await expect(workspaces.acceptInvitation({ userId: HUDA, email: 'huda@example.com' }, token)).rejects.toThrow(
+        new WorkspaceError('invitation_email'),
+      );
+      expect(await workspaces.getMembership(HUDA, gulf)).toBeNull();
+    });
+
+    // SAFETY: mutation check: removed insertGrant from acceptInvitation -> this test failed (Staff Backend Engineer was 403)
+    // SAFETY: mutation check: removed store.audit from acceptInvitation -> this test failed (no acceptance entry)
+    it("makes them a hiring owner who opens Dune's job and gets 403 on Falcon Pay's, with the acceptance audited", async () => {
+      await workspaces.acceptInvitation({ userId: FAISAL, email: 'Faisal@Example.com' }, token);
+      expect(await workspaces.getMembership(FAISAL, gulf)).toMatchObject({ role: 'hiring_owner', status: 'active' });
+      expect(await workspaces.activeWorkspace(FAISAL)).toBe(gulf);
+      expect(await openJob(FAISAL, STAFF_BACKEND, dune.id)).toBe('allowed');
+      expect(await openJob(FAISAL, PM_PAYMENTS, falcon.id)).toBe('403');
+      expect(await audit.listFor(gulf, { type: 'invitation', id: invitationId })).toContainEqual(
+        expect.objectContaining({ action: 'invitation.accepted', actor: { type: 'user', id: FAISAL } }),
+      );
+    });
+
+    // One transaction: PostgreSQL aborts it at the failed grant, so even a swallowed error cannot leave the member.
+    it('a failing grant leaves no member and the invitation open', async () => {
+      const doomed = job(1039);
+      const { token: broken, invitation } = await invite('huda@example.com', 'hiring_owner', { jobIds: [doomed] });
+      // A grant the database refuses, after the member row is written: the whole acceptance must roll back. sql.raw:
+      // a CHECK constraint takes no bind parameter; `doomed` is a test constant.
+      await admin.execute(
+        sql`alter table workspaces.job_grant add constraint test_refuse_grant check (job_id is distinct from ${sql.raw(`'${doomed}'`)}::uuid)`,
+      );
+      try {
+        await expect(
+          workspaces.acceptInvitation({ userId: HUDA, email: 'huda@example.com' }, broken),
+        ).rejects.toThrow();
+      } finally {
+        await admin.execute(sql`alter table workspaces.job_grant drop constraint test_refuse_grant`);
+      }
+      const members = await withWorkspace(app, gulf, (tx) =>
+        tx.execute(sql`select 1 from workspaces.member where user_id = ${HUDA}`),
+      );
+      expect(members).toHaveLength(0);
+      expect((await workspaces.findInvitation(broken))?.state).toBe('open');
+      await asOmar((ctx) => workspaces.revokeInvitation(ctx, invitation.id));
+    });
+  });
+
+  // SAFETY: mutation check: removed the status check in acceptInvitation -> this test failed (Huda joined the suspended workspace)
+  it('a suspended workspace takes no new members: accepting is refused and nothing changes', async () => {
+    const admin1 = user(1041);
+    const paused = (await newWorkspace('Paused agency', admin1)).id;
+    const { token } = await as(admin1, paused, (ctx) =>
+      workspaces.inviteMember(ctx, {
+        email: 'huda@example.com',
+        role: 'recruiter',
+        title: null,
+        jobIds: [],
+        clientIds: [],
+      }),
+    );
+    await admin.execute(sql`update workspaces.workspace set status = 'suspended' where id = ${paused}`);
+    await expect(workspaces.acceptInvitation({ userId: HUDA, email: 'huda@example.com' }, token)).rejects.toThrow(
+      WorkspacePausedError,
+    );
+    expect(await workspaces.getMembership(HUDA, paused)).toBeNull();
+    expect((await workspaces.findInvitation(token))?.state).toBe('open');
+  });
+
+  // SAFETY: mutation check: dropped the archivedAt filter in acceptInvitation -> this test failed (Falcon Pay was granted)
+  // SAFETY: mutation check: removed the job_access.granted audit in acceptInvitation -> this test failed (no entry)
+  it("accepting grants each job and client, audited, but not an archived client's jobs", async () => {
+    const admin2 = user(1042);
+    const member = user(1043);
+    const agency = (await newWorkspace('Archive agency', admin2)).id;
+    const asAdmin = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) => as(admin2, agency, fn);
+    await asAdmin((ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+    const kept = await asAdmin((ctx) => workspaces.addClient(ctx, 'Dune Logistics'));
+    const archived = await asAdmin((ctx) => workspaces.addClient(ctx, 'Falcon Pay'));
+    const { token } = await asAdmin((ctx) =>
+      workspaces.inviteMember(ctx, {
+        email: 'faisal@example.com',
+        role: 'hiring_owner',
+        title: null,
+        jobIds: [STAFF_BACKEND],
+        clientIds: [kept.id, archived.id],
+      }),
+    );
+    await asAdmin((ctx) => workspaces.archiveClient(ctx, archived.id));
+    await workspaces.acceptInvitation({ userId: member, email: 'faisal@example.com' }, token);
+    const grants = (await asAdmin((ctx) => workspaces.listJobGrants(ctx))).filter((g) => g.userId === member);
+    expect(grants.map((g) => g.jobId ?? g.clientId).toSorted()).toEqual([STAFF_BACKEND, kept.id].toSorted());
+    const granted = (await audit.listFor(agency, { type: 'member', id: member })).filter(
+      (e) => e.action === 'job_access.granted',
+    );
+    expect(granted).toHaveLength(2);
+  });
+
+  // SAFETY: mutation check: used a fixed 7 days in inviteMember -> this test failed (7 days, not 3)
+  it("an invitation stays open for the workspace's invitationDays setting", async () => {
+    const admin3 = user(1044);
+    const id = (await newWorkspace('Short invites', admin3)).id;
+    await as(admin3, id, (ctx) => workspaces.updateSettings(ctx, { invitationDays: 3 }));
+    const before = Date.now();
+    const { invitation } = await as(admin3, id, (ctx) =>
+      workspaces.inviteMember(ctx, {
+        email: 'huda@example.com',
+        role: 'recruiter',
+        title: null,
+        jobIds: [],
+        clientIds: [],
+      }),
+    );
+    expect(Math.round((invitation.expiresAt.getTime() - before) / 86_400_000)).toBe(3);
+  });
+
+  it('Scenario: An existing account joins a second workspace', async () => {
+    const own = (await newWorkspace('Nadia Freelance', NADIA)).id;
+    const { token } = await invite('nadia@example.com', 'recruiter');
+    await workspaces.acceptInvitation({ userId: NADIA, email: 'nadia@example.com' }, token);
+    expect(await workspaces.getMembership(NADIA, own)).toMatchObject({ role: 'admin' });
+    expect(await workspaces.getMembership(NADIA, gulf)).toMatchObject({ role: 'recruiter' });
+  });
+
+  it('Scenario: Recruiters and admins get the whole workspace; giving them jobs is refused', async () => {
+    const { invitation } = await invite('omar.agency@example.com', 'recruiter');
+    expect(invitation).toMatchObject({ jobIds: [], clientIds: [] });
+    await expect(invite('omar.agency@example.com', 'admin', { jobIds: [STAFF_BACKEND] })).rejects.toThrow(
+      new WorkspaceError('jobs_not_allowed'),
+    );
+  });
+
+  // SAFETY: mutation check: skipped the revoke loop in changeJobAccess -> this test failed (Staff Backend Engineer still allowed)
+  it("Scenario: Changing a member's jobs takes effect on the next request, audited", async () => {
+    const { token } = await invite('lina@example.com', 'interviewer', { jobIds: [STAFF_BACKEND, PM_PAYMENTS] });
+    await workspaces.acceptInvitation({ userId: LINA, email: 'lina@example.com' }, token);
+    expect(await openJob(LINA, STAFF_BACKEND, dune.id)).toBe('allowed');
+    await asOmar((ctx) => workspaces.changeJobAccess(ctx, LINA, { jobIds: [PM_PAYMENTS], clientIds: [] }));
+    expect(await openJob(LINA, STAFF_BACKEND, dune.id)).toBe('403');
+    expect(await openJob(LINA, PM_PAYMENTS, falcon.id)).toBe('allowed');
+    expect(await audit.listFor(gulf, { type: 'member', id: LINA })).toContainEqual(
+      expect.objectContaining({
+        action: 'job_access.revoked',
+        before: expect.objectContaining({ jobId: STAFF_BACKEND }),
+      }),
+    );
+  });
+
+  describe('Scenario Outline: Expired, revoked and used invitations do nothing', () => {
+    // SAFETY: mutation check: made invitationState ignore expiresAt -> the expired row failed (Huda joined)
+    // SAFETY: mutation check: made invitationState ignore revokedAt -> the revoked row failed (Huda joined)
+    it.each(['expired', 'revoked', 'accepted'])('%s', async (state) => {
+      const { token, invitation } = await invite('huda@example.com', 'recruiter');
+      if (state === 'expired')
+        await withWorkspace(app, gulf, (tx) =>
+          tx.execute(
+            sql`update workspaces.invitation set expires_at = now() - interval '1 second' where id = ${invitation.id}`,
+          ),
+        );
+      if (state === 'revoked') await asOmar((ctx) => workspaces.revokeInvitation(ctx, invitation.id));
+      if (state === 'accepted') {
+        await tryAccept(token);
+        await asOmar((ctx) => workspaces.removeMember(ctx, HUDA));
+      }
+      expect((await workspaces.findInvitation(token))?.state).toBe(state);
+      await expect(tryAccept(token)).rejects.toThrow(new WorkspaceError('invitation_invalid'));
+      expect(await workspaces.getMembership(HUDA, gulf)).toBeNull();
+    });
+
+    it('a link that matches no invitation is invalid', async () => {
+      expect(await workspaces.findInvitation(`${gulf}.not-a-token`)).toBeNull();
+      expect(await workspaces.findInvitation('not-a-token')).toBeNull();
+      await expect(tryAccept(`${gulf}.not-a-token`)).rejects.toThrow(new WorkspaceError('invitation_invalid'));
+    });
+  });
+
+  // SAFETY: mutation check: removed authorize from inviteMember -> this test failed (the invitation was created)
+  it('Scenario: Only an admin can invite: a recruiter gets 403 and no invitation is created', async () => {
+    const count = (await listed()).length;
+    await expect(
+      as(RANA, gulf, (ctx) =>
+        workspaces.inviteMember(ctx, {
+          email: 'huda@example.com',
+          role: 'recruiter',
+          title: null,
+          jobIds: [],
+          clientIds: [],
+        }),
+      ),
+    ).rejects.toThrow(ForbiddenError);
+    expect(await listed()).toHaveLength(count);
+  });
+
+  // SAFETY: mutation check: removed assertCanChangeRole from removeMember -> this test failed (the last admin was removed)
+  it('Scenario: The last admin cannot be removed', async () => {
+    await expect(asOmar((ctx) => workspaces.removeMember(ctx, OMAR))).rejects.toThrow(new WorkspaceError('last_admin'));
+    expect(await workspaces.getMembership(OMAR, gulf)).toMatchObject({ role: 'admin' });
+  });
+
+  it('removing a member ends their access and their grants, audited', async () => {
+    await asOmar((ctx) => workspaces.removeMember(ctx, LINA));
+    expect(await workspaces.getMembership(LINA, gulf)).toBeNull();
+    expect((await asOmar((ctx) => workspaces.listJobGrants(ctx))).some((g) => g.userId === LINA)).toBe(false);
+    expect(await audit.listFor(gulf, { type: 'member', id: LINA })).toContainEqual(
+      expect.objectContaining({ action: 'member.removed' }),
+    );
+  });
+
+  describe('Scenario: Invitations never cross workspaces', () => {
+    let w1: string;
+
+    beforeAll(async () => {
+      w1 = (await newWorkspace('W1 invitations')).id;
+      const w2 = (await newWorkspace('W2 invitations')).id;
+      await as(ALEX, w2, (ctx) =>
+        workspaces.inviteMember(ctx, {
+          email: 'huda@example.com',
+          role: 'recruiter',
+          title: null,
+          jobIds: [],
+          clientIds: [],
+        }),
+      );
+    });
+
+    // SAFETY: mutation check: NO FORCE + DISABLE ROW LEVEL SECURITY on workspaces.invitation -> this test failed (saw the W2 invitation)
+    // SAFETY: mutation check: replaced policy invitation_tenant_isolation with USING (true) -> this test failed (saw the W2 invitation)
+    it('a W1 query with no WHERE clause returns no W2 invitation', async () => {
+      const rows = await withWorkspace(app, w1, (tx) =>
+        tx.execute<{ workspace_id: string }>(sql`select workspace_id from workspaces.invitation`),
+      );
+      expect(rows.filter((r) => r.workspace_id !== w1)).toEqual([]);
+      expect(await as(ALEX, w1, (ctx) => workspaces.listInvitations(ctx))).toEqual([]);
+    });
   });
 });

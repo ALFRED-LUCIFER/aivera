@@ -7,6 +7,7 @@ import { withWorkspace } from '@aivera/db/with-workspace';
 import { clientsUseCases } from './application/clients.ts';
 import { directoryUseCases } from './application/directory.ts';
 import { settingsUseCases } from './application/settings.ts';
+import { invitationsUseCases } from './application/invitations.ts';
 import { statusUseCases } from './application/status.ts';
 import { syntheticUseCases } from './application/synthetic.ts';
 import { contextUseCases, type ContextPorts, type JobGrants } from './application/context.ts';
@@ -25,8 +26,8 @@ import {
 
 const newId = () => uuidv7();
 
-/** `audit` records role, client, grant and status changes in the same transaction (AIV-P0-013). */
-export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContract {
+/** `audit` records role, client, grant and status changes in the same transaction (AIV-P0-013); `now` is the clock (AGENTS.md 3.9). */
+export function createWorkspaces(db: Db, audit: AuditContract, now: () => Date = () => new Date()): WorkspacesContract {
   const inWorkspace: ContextPorts<Tx>['inWorkspace'] = (workspaceId, work) =>
     withWorkspace(db, workspaceId, (tx) => work(workspaceStore(tx, audit), tx));
   const storeFor = (tx: Tx) => workspaceStore(tx, audit);
@@ -44,10 +45,20 @@ export function createWorkspaces(db: Db, audit: AuditContract): WorkspacesContra
       set: (userId, workspaceId) => db.transaction((tx) => activeWorkspaceStore(tx).set(userId, workspaceId)),
     },
   });
+  const clients = clientsUseCases({ storeFor, newId, authorize: context.authorize });
   return {
     ...workspacesUseCases({ inWorkspace, newId }),
     ...context,
-    ...clientsUseCases({ storeFor, newId, authorize: context.authorize }),
+    ...clients,
+    ...invitationsUseCases({
+      storeFor,
+      inWorkspace,
+      newId,
+      now,
+      authorize: context.authorize,
+      grantJobAccess: clients.grantJobAccess,
+      revokeJobAccess: clients.revokeJobAccess,
+    }),
     ...syntheticUseCases({ storeFor, authorize: context.authorize }),
     ...settingsUseCases({ storeFor, authorize: context.authorize }),
     ...statusUseCases({ inWorkspace }),

@@ -7,6 +7,7 @@ const member = (userId: string, role: Role, status: MemberStatus = 'active'): Me
   workspaceId: W,
   role,
   status,
+  title: null,
 });
 
 describe('assertCanChangeRole', () => {

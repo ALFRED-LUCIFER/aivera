@@ -135,6 +135,42 @@ export default async function seed() {
     await workspaces.switchWorkspace({ userId: zaid }, oasis);
     // AIV-P1-056: Oasis Talent is an agency with no clients yet; Faisal is its hiring owner with no grants.
     await workspaces.withWorkspace({ userId: leila }, oasis, (ctx) => workspaces.setWorkspaceType(ctx, 'agency'));
+
+    // AIV-P1-003: Tariq's agency "Harbour Talent" has the same two clients and jobs as Gulf Talent Partners, so
+    // invite-members.spec.ts can invite and accept without changing the counts the operator specs read. Faisal's
+    // invitation to all of Dune Logistics' jobs is opened by its link; the token reaches the spec through the environment.
+    const tariq = await person('tariq.agency@example.com', 'Tariq Agency');
+    const harbour = await workspaceOf('Harbour Talent', tariq);
+    process.env['E2E_INVITE_TOKEN'] = await workspaces.withWorkspace({ userId: tariq }, harbour, async (ctx) => {
+      await workspaces.setWorkspaceType(ctx, 'agency');
+      const falcon = await workspaces.addClient(ctx, 'Falcon Pay');
+      const dune = await workspaces.addClient(ctx, 'Dune Logistics');
+      for (const [title, clientId] of [
+        ['Senior Product Manager, Payments', falcon.id],
+        ['Staff Backend Engineer', dune.id],
+      ] as const)
+        await gulfJobs.createJob(ctx, {
+          title,
+          jobType: 'software_engineering',
+          clientId,
+          description: `${title}, synthetic demo job.`,
+          synthetic: true,
+        });
+      // Rami interviews for Staff Backend Engineer (his jobs are edited) and Lina recruits (she is removed); neither has
+      // Harbour Talent as their active workspace, so their other specs are unchanged.
+      await ctx.tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${harbour}, ${rami}, 'interviewer', 'active'), (${harbour}, ${lina}, 'recruiter', 'active')`);
+      const [staffBackend] = (await gulfJobs.listJobs(ctx)).filter((j) => j.title === 'Staff Backend Engineer');
+      if (staffBackend) await workspaces.grantJobAccess(ctx, { userId: rami, jobId: staffBackend.id });
+      const { token } = await workspaces.inviteMember(ctx, {
+        email: 'faisal@example.com',
+        role: 'hiring_owner',
+        title: 'Head of Engineering, Dune Logistics',
+        jobIds: [],
+        clientIds: [dune.id],
+      });
+      return token;
+    });
   } finally {
     await db.$client.end();
   }

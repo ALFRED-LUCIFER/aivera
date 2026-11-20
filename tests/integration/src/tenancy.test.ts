@@ -282,6 +282,14 @@ async function seed(
     await jobs.publishJob(ctx, job.id, { publicDescriptor: 'A synthetic employer' });
     await workspaces.grantJobAccess(ctx, { userId: LINA, jobId: job.id });
     const [grant] = await workspaces.listJobGrants(ctx);
+    // An open invitation (workspaces.invitation, AIV-P1-003).
+    await workspaces.inviteMember(ctx, {
+      email: 'huda@example.com',
+      role: 'interviewer',
+      title: null,
+      jobIds: [job.id],
+      clientIds: [],
+    });
     const { personId } = await candidates.findOrCreatePerson(ctx, {
       displayName: person,
       identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],

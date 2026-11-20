@@ -67,6 +67,11 @@ const webEnvSchema = z
     PLATFORM_OPERATOR_EMAILS: z.string().optional(),
     // The ACS delivery-report webhook's key (AIV-P0-017, Key Vault acs-webhook-key). Unset, the webhook answers 404.
     ACS_WEBHOOK_KEY: z.string().min(32).optional(),
+    // Email (AIV-P0-017, AIV-P1-003): the send log's column key (Key Vault notifications-encryption-key) and the public
+    // origin for links in emails (also read by Auth.js; set on Azure in infra/modules/web.bicep). Unset, no email can be
+    // queued, so nothing that sends one (an invitation) can be done.
+    NOTIFICATIONS_ENCRYPTION_KEY: z.string().min(1).optional(),
+    AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
   })
   // Deployed environments must say which commit runs (health and the deploy smoke test rely on it).
   .refine((e) => e.APP_ENV === 'local' || e.COMMIT_SHA, { path: ['COMMIT_SHA'] })

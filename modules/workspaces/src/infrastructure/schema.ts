@@ -63,6 +63,8 @@ export const member = workspaces
       userId: uuid('user_id').notNull(),
       role: text({ enum: ROLES }).notNull(),
       status: text({ enum: MEMBER_STATUSES }).notNull(),
+      // The job title shown in the app ("CPO, Payments"), from the invitation (AIV-P1-003); null when none was given.
+      title: text(),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [
@@ -145,6 +147,47 @@ export const jobGrant = workspaces
       check('job_grant_target_check', sql`(${t.jobId} is null) <> (${t.clientId} is null)`),
       unique('job_grant_member_target_key').on(t.workspaceId, t.userId, t.jobId, t.clientId).nullsNotDistinct(),
       tenantPolicy('job_grant_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// An invitation to join the workspace (AIV-P1-003). Only the SHA-256 of the link's token is stored. Job ids are opaque
+// jobs-module ids; accepting turns them and the client ids into job grants. Kept after it is accepted or revoked, so
+// the audit trail resolves.
+export const invitation = workspaces
+  .table(
+    'invitation',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id')
+        .notNull()
+        .references(() => workspace.id),
+      email: text().notNull(),
+      role: text({ enum: ROLES }).notNull(),
+      title: text(),
+      jobIds: uuid('job_ids')
+        .array()
+        .notNull()
+        .default(sql`'{}'`),
+      clientIds: uuid('client_ids')
+        .array()
+        .notNull()
+        .default(sql`'{}'`),
+      tokenHash: text('token_hash').notNull().unique(),
+      invitedBy: uuid('invited_by').notNull(),
+      expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+      acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+      revokedAt: timestamp('revoked_at', { withTimezone: true }),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      check('invitation_role_check', sql`${t.role} in ('admin', 'recruiter', 'hiring_owner', 'interviewer')`),
+      // Hiring owners and interviewers name at least one job or client; admins and recruiters none (assertAccessFitsRole).
+      check(
+        'invitation_access_check',
+        sql`(${t.role} in ('hiring_owner', 'interviewer')) = (cardinality(${t.jobIds}) + cardinality(${t.clientIds}) > 0)`,
+      ),
+      tenantPolicy('invitation_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

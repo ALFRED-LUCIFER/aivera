@@ -124,14 +124,14 @@ describe('Scenario: Members of a suspended workspace can read but not start work
   });
 
   it('withWorkspace hands the status read in its transaction to the context', async () => {
-    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active' };
+    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active', title: null };
     expect(await useCases(member, 'suspended').withWorkspace({ userId: 'u' }, W1, async (c) => c.status)).toBe(
       'suspended',
     );
   });
 
   it('refuses when the workspace itself is gone', async () => {
-    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active' };
+    const member: Member = { userId: 'u', workspaceId: W1, role: 'admin', status: 'active', title: null };
     await expect(useCases(member, null).withWorkspace({ userId: 'u' }, W1, async () => 'ran')).rejects.toBeInstanceOf(
       ForbiddenError,
     );
@@ -141,8 +141,8 @@ describe('Scenario: Members of a suspended workspace can read but not start work
 describe('withWorkspace', () => {
   it.each([
     ['not a member', null],
-    ['invited', { userId: 'u', workspaceId: W1, role: 'admin', status: 'invited' }],
-    ['removed', { userId: 'u', workspaceId: W1, role: 'admin', status: 'removed' }],
+    ['invited', { userId: 'u', workspaceId: W1, role: 'admin', status: 'invited', title: null }],
+    ['removed', { userId: 'u', workspaceId: W1, role: 'admin', status: 'removed', title: null }],
   ] as const)('refuses a user who is %s and never runs the handler', async (_label, member) => {
     let ran = false;
     await expect(
@@ -154,7 +154,7 @@ describe('withWorkspace', () => {
   });
 
   it('passes an active member their role and the scoped transaction', async () => {
-    const member: Member = { userId: 'u', workspaceId: W1, role: 'interviewer', status: 'active' };
+    const member: Member = { userId: 'u', workspaceId: W1, role: 'interviewer', status: 'active', title: null };
     expect(await useCases(member).withWorkspace({ userId: 'u' }, W1, async (c) => c)).toEqual(ctx('interviewer'));
   });
 });

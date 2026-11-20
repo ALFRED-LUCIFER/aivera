@@ -4,8 +4,8 @@ import { workspacesUseCases, type WorkspaceStore } from './workspaces.ts';
 
 const W = '0190d4a2-0000-7000-8000-000000000001';
 const members: Member[] = [
-  { userId: 'alex', workspaceId: W, role: 'admin', status: 'active' },
-  { userId: 'lina', workspaceId: W, role: 'interviewer', status: 'active' },
+  { userId: 'alex', workspaceId: W, role: 'admin', status: 'active', title: null },
+  { userId: 'lina', workspaceId: W, role: 'interviewer', status: 'active', title: null },
 ];
 
 describe('changeRole and job grants', () => {

@@ -89,6 +89,12 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
         }
         // ACS delivery-report webhook key (AIV-P0-017). Must exist in the vault before an apply.
         { name: 'acs-webhook-key', keyVaultUrl: '${keyVaultUri}secrets/acs-webhook-key', identity: appIdentityId }
+        // The send log's column key (AIV-P0-017): the web app seals the invitation emails it queues (AIV-P1-003).
+        {
+          name: 'notifications-encryption-key'
+          keyVaultUrl: '${keyVaultUri}secrets/notifications-encryption-key'
+          identity: appIdentityId
+        }
       ], candidateSecrets, googleSecrets)
     }
     template: {
@@ -117,6 +123,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
             { name: 'PLATFORM_OPERATOR_EMAILS', secretRef: 'platform-operator-emails' }
             { name: 'ACS_WEBHOOK_KEY', secretRef: 'acs-webhook-key' }
+            { name: 'NOTIFICATIONS_ENCRYPTION_KEY', secretRef: 'notifications-encryption-key' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
           ], candidateEnv, googleEnv)

@@ -8,7 +8,8 @@ export const DESK = '/app';
 const PROBE = 'http://aivera.invalid';
 
 /**
- * Same-origin paths in the recruiter app or the operator console only (`/app`, `/ops` and below, AIV-P2-035): anything
+ * Same-origin paths in the recruiter app, the operator console (`/app`, `/ops` and below, AIV-P2-035) or an invitation
+ * link (`/invite`, AIV-P1-003) only: anything
  * else (another origin, `//host`, `/\host`, a scheme, another part of the site, a non-string) becomes the desk. The URL
  * parser decides the origin; the normalised path is checked again because removing dot segments (`/app/..//host`) can
  * leave the recruiter app or the origin.
@@ -17,7 +18,7 @@ export function safeNext(value: unknown): string {
   if (typeof value !== 'string' || !value.startsWith('/')) return DESK;
   const url = URL.parse(value, PROBE);
   const path = url?.origin === PROBE ? `${url.pathname}${url.search}${url.hash}` : DESK;
-  return /^\/(?:app|ops)(?:[/?#]|$)/.test(path) ? path : DESK;
+  return /^\/(?:app|ops|invite)(?:[/?#]|$)/.test(path) ? path : DESK;
 }
 
 /**

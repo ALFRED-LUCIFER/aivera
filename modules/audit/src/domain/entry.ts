@@ -28,6 +28,10 @@ export const ACTIONS = [
   'workspace.approved',
   'workspace.rejected',
   'workspace.settings_changed',
+  'member.invited',
+  'invitation.revoked',
+  'invitation.accepted',
+  'member.removed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

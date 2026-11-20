@@ -933,6 +933,7 @@
       }
     },
     "clientsLink": "Clients",
+    "membersLink": "Members",
     "sections": "Settings sections"
   },
   "clients": {
@@ -1086,7 +1087,8 @@
       "privacy": "Privacy",
       "deleteData": "Ask us to delete your data",
       "copyLink": "Button not working? Copy this link:",
-      "note": "Note:"
+      "note": "Note:",
+      "reasonInvited": "You are receiving this because a member of this workspace invited you."
     },
     "evidenceRequest": {
       "subject": "A request about your application: {jobTitle}",
@@ -1099,6 +1101,115 @@
       "callout": "This is a gap to close, not a decision. If you cannot share something, these points are discussed in the interview.",
       "button": "Add your evidence",
       "questions": "Questions? Reply to this email and it goes to {name}."
+    },
+    "memberInvitation": {
+      "subject": "You are invited to {workspace} on Aivera",
+      "preheader": "Accept to see what this role covers. The invitation expires on {expiresAt, date, short}.",
+      "heading": "{inviter} invited you to {workspace}",
+      "intro": "{inviter} invited you to {workspace} as <b>{role}</b>{scoped, select, yes { for {scope}} other {}}. Accept the invitation to get started.",
+      "youCan": "You can:",
+      "youCannot": "You cannot:",
+      "can": {
+        "admin": "manage members and billing, and see every job and every candidate in the workspace.",
+        "recruiter": "create jobs, draft rubrics, and assess candidates on every job in the workspace.",
+        "hiring_owner": "approve the rubric for {scope}, review its shortlist, and record the hiring decision.",
+        "interviewer": "see the candidates you interview for {scope}, and submit your scorecards."
+      },
+      "cannot": {
+        "admin": "be limited to single jobs. Admins see the whole workspace.",
+        "recruiter": "approve a rubric or record a hiring decision. Those belong to the hiring owner.",
+        "hiring_owner": "see other jobs or their candidates. Hiring owners see only the jobs they are given.",
+        "interviewer": "see rankings, other interviewers’ scores, or other jobs. Interviewers see only the jobs they are given."
+      },
+      "expires": "This invitation expires on {expiresAt, date, short}.",
+      "button": "Accept invitation",
+      "allOfClient": "all of {client} jobs"
+    }
+  },
+  "members": {
+    "title": "Members",
+    "breadcrumb": "Breadcrumb",
+    "error": "The members could not be loaded. Nothing was changed.",
+    "retry": "Try again",
+    "roles": {
+      "admin": "Workspace admin",
+      "recruiter": "Recruiter",
+      "hiring_owner": "Hiring owner",
+      "interviewer": "Interviewer"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited",
+      "expired": "Expired"
+    },
+    "table": {
+      "title": "People in this workspace",
+      "caption": "Members and open invitations",
+      "person": "Person",
+      "role": "Role",
+      "jobs": "Jobs",
+      "status": "Status",
+      "actions": "Actions",
+      "allJobs": "All jobs",
+      "noJobs": "No jobs yet",
+      "empty": "No members yet."
+    },
+    "actions": {
+      "roleFor": "Role for {email}",
+      "changeRole": "Change role",
+      "editJobs": "Edit jobs",
+      "editJobsFor": "Edit jobs for {email}",
+      "remove": "Remove",
+      "removeFor": "Remove {email}",
+      "revoke": "Revoke",
+      "revokeFor": "Revoke the invitation for {email}",
+      "cancel": "Cancel",
+      "close": "Close"
+    },
+    "errors": {
+      "lastAdmin": "A workspace needs at least one admin.",
+      "failed": "That change did not go through. Try again."
+    },
+    "jobsDialog": {
+      "title": "Jobs for {email}",
+      "save": "Save jobs"
+    },
+    "removeDialog": {
+      "title": "Remove {email}?",
+      "body": "They lose access to this workspace on their next request. Their job access is removed too.",
+      "confirm": "Remove member"
+    },
+    "picker": {
+      "legend": "Jobs this person works on",
+      "allOfClient": "All of {client} jobs",
+      "noJobs": "There are no jobs yet. Add a job first, then invite its hiring owner."
+    },
+    "invite": {
+      "title": "Invite someone",
+      "email": "Email",
+      "role": "Role",
+      "jobTitle": "Job title",
+      "optional": "(optional)",
+      "jobTitleHint": "Shown in the app, such as \"CPO, Payments\".",
+      "allJobs": "Workspace admins and recruiters see every job.",
+      "submit": "Send invitation",
+      "sent": "Invitation sent to {email}. It expires on {expiresAt, date, short}.",
+      "errors": {
+        "email": "Enter an email address.",
+        "jobsRequired": "Choose the jobs this person works on.",
+        "failed": "The invitation was not sent. Try again."
+      }
+    },
+    "accept": {
+      "title": "Join a workspace",
+      "body": "{workspace} invited you to Aivera as {role}.",
+      "signIn": "Sign in or create an account",
+      "join": "Join {workspace}",
+      "otherEmail": "This invitation was sent to another email address. Sign out, then open the link again and sign in with the address it was sent to.",
+      "alreadyMember": "You are already a member of this workspace.",
+      "failed": "Joining did not work. Try again.",
+      "invalidTitle": "Invitation not valid",
+      "invalid": "This invitation is no longer valid. Ask your workspace admin for a new one."
     }
   }
 }

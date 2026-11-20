@@ -34,8 +34,23 @@ export const senderSchema = z.strictObject({
 });
 export type Sender = z.infer<typeof senderSchema>;
 
+/** An invitation to join a workspace (EInvite and ERoles artboards, AIV-P1-003). Sent to a member, never a candidate. */
+export const memberInvitationData = z.strictObject({
+  role: z.enum(['admin', 'recruiter', 'hiring_owner', 'interviewer']),
+  /** Hiring owners and interviewers: the jobs they are invited to, already named; null for the whole workspace. */
+  scope: z.string().min(1).nullable(),
+  expiresAt: z.date(),
+  /** The accept page: an opaque workspace id and a random token in the query string only (AGENTS.md 1.2). http only
+   * for a local or end-to-end origin; deployed origins are https (AUTH_URL). */
+  link: z.url({ protocol: /^https?$/ }),
+});
+export type MemberInvitationData = z.infer<typeof memberInvitationData>;
+
 /** Each template's data schema. A later ticket adds its template here and in infrastructure/templates. */
-export const TEMPLATES = { 'evidence-request': evidenceRequestData } as const;
+export const TEMPLATES = {
+  'evidence-request': evidenceRequestData,
+  'member-invitation': memberInvitationData,
+} as const;
 export type TemplateName = keyof typeof TEMPLATES;
 export type TemplateData = { [T in TemplateName]: z.infer<(typeof TEMPLATES)[T]> };
 
