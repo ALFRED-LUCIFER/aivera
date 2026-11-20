@@ -62,6 +62,7 @@ const {
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
+  LinkReadRequestedV1,
   RepositoryReadRequestedV1,
   RepositoryRefreshRequestedV1,
 } = await import('@credalent/evidence');
@@ -69,6 +70,7 @@ const {
   createApplicationReceivedHandler,
   createEvidenceMappingHandlers,
   createFileReadHandlers,
+  createLinkReadHandler,
   createRepositoryReadHandler,
   createRepositoryRefreshHandler,
   EVIDENCE_QUEUE,
@@ -129,6 +131,8 @@ const QUEUES: Record<string, string> = {
   ...(fileReading && {
     [CvParseRequestedV1.type]: EVIDENCE_QUEUE,
     [DocumentReadRequestedV1.type]: EVIDENCE_QUEUE,
+    // Link reads (AIV-P1-077) share file reading's search index client, so they run with it.
+    [LinkReadRequestedV1.type]: EVIDENCE_QUEUE,
     [FileCleanV1.type]: EVIDENCE_QUEUE,
     [FileRejectedV1.type]: EVIDENCE_QUEUE,
   }),
@@ -246,12 +250,17 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
       index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
       now,
     }),
+    createLinkReadHandler({
+      db: appDb,
+      index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
+      now,
+    }),
   );
 }
-// shortcut: without Document Intelligence, CV parses and document reads stay pending and their events wait unsent in
+// shortcut: without Document Intelligence, CV parses, document reads and link reads stay pending and their events wait unsent in
 // evidence.outbox and files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025
 // PR, owner to-dos).
-else log.warn('Document Intelligence not configured: CV parses and document reads are not consumed');
+else log.warn('Document Intelligence not configured: CV parses, document reads and link reads are not consumed');
 if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,

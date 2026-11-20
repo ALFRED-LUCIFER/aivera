@@ -321,6 +321,10 @@
       "unreadable": "We could not read this CV",
       "failed": "Parsing failed, retry"
     },
+    "linkStatus": {
+      "pending": "Reading the link",
+      "not_reachable": "We could not open this link"
+    },
     "unusualContent": {
       "title": "Unusual content in this source",
       "hidden_text": "This text is hidden in the file"

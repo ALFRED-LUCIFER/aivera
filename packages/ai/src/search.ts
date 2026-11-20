@@ -1,7 +1,7 @@
 // Workspace-scoped embeddings in pgvector (AIV-P0-030): the owning module keeps the text; search.chunk keeps each
 // chunk's hash, offsets and vector. Callers authorise the workspace first; RLS keeps every query inside it.
 import { createHash } from 'node:crypto';
-import { uuidv7, withWorkspace, type Db } from '@credalent/db';
+import { uuidv7, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { and, cosineDistance, eq, sql } from 'drizzle-orm';
 import type { AiClient } from './client.ts';
 import { chunk } from './infrastructure/schema.ts';
@@ -36,6 +36,11 @@ export type SearchHit = { ownerModule: string; ownerId: string; chunkIndex: numb
 // The repository's workspace filter, under RLS (two layers, ADR-005).
 const ofOwner = (workspaceId: string, ownerModule: string, ownerId: string) =>
   and(eq(chunk.workspaceId, workspaceId), eq(chunk.ownerModule, ownerModule), eq(chunk.ownerId, ownerId));
+
+/** Deletes every vector a module owns in the workspace, in the caller's workspace-scoped transaction (a purge). */
+export async function removeModuleVectors(tx: Tx, workspaceId: string, ownerModule: string): Promise<void> {
+  await tx.delete(chunk).where(and(eq(chunk.workspaceId, workspaceId), eq(chunk.ownerModule, ownerModule)));
+}
 
 export function createSearchIndex({ db, ai, now }: { db: Db; ai: AiClient; now: () => Date }) {
   const embed = async (workspaceId: string, value: string) =>

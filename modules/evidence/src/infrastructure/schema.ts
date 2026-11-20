@@ -20,6 +20,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
 import { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
+import { LINK_READ_STATUSES } from '../domain/link.ts';
 import { COMPARISON_METHODS, COMPARISON_OUTCOMES } from '../domain/corroboration.ts';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
@@ -562,6 +563,36 @@ export const documentRead = evidence
       // Must list exactly DOCUMENT_READ_STATUSES (domain/document.ts); changing it needs a new migration.
       check('document_read_status_check', sql`${t.status} in ('pending', 'read', 'unreadable', 'failed')`),
       tenantPolicy('document_read_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A shipped-product or write-up link's read (AIV-P1-077). `url` is the link exactly as supplied (an http or
+// credentialed one is kept to show "We could not open this link" beside it, as text, never as a link) and `title` the
+// page's title: candidate personal data, never logged.
+export const linkRead = evidence
+  .table(
+    'link_read',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      url: text().notNull(),
+      status: text({ enum: LINK_READ_STATUSES }).notNull(),
+      title: text(),
+    },
+    (t) => [
+      primaryKey({ name: 'link_read_pkey', columns: [t.workspaceId, t.sourceId] }),
+      foreignKey({
+        name: 'link_read_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      // One read per candidate and link, so a repeated or redelivered arrival reads it once.
+      unique('link_read_candidate_url_key').on(t.workspaceId, t.candidateId, t.url),
+      // Must list exactly LINK_READ_STATUSES (domain/link.ts); changing it needs a new migration.
+      check('link_read_status_check', sql`${t.status} in ('pending', 'read', 'not_reachable', 'failed')`),
+      tenantPolicy('link_read_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

@@ -29,6 +29,7 @@ import { cvParseUseCases, isTransient, parseCv, type CvPorts, type ParsePorts } 
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
+import { linkReadUseCases, readLink, type FetchPage, type LinkPorts } from './application/linkRead.ts';
 import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
 import {
   type ApprovedRubricPort,
@@ -57,6 +58,7 @@ import {
   EvidenceRequestOpenedV1,
   EvidenceRequestQuietV1,
   EvidenceRequestSentV1,
+  LinkReadRequestedV1,
   RepositoryReadRequestedV1,
   RepositoryRefreshRequestedV1,
   type EvidenceContract,
@@ -65,11 +67,15 @@ import { cvParseStore } from './infrastructure/cvParseStore.ts';
 import { createDocumentIntelligence, type DocumentIntelligenceConfig } from './infrastructure/documentIntelligence.ts';
 import { documentReadStore } from './infrastructure/documentReadStore.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
+import { createLinkFetcher } from './infrastructure/linkFetch.ts';
+import { linkReadStore } from './infrastructure/linkReadStore.ts';
 import { mappingStore } from './infrastructure/mappingStore.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
 import { requestStore } from './infrastructure/requestStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
+
+export { createLinkFetcher, type Resolve } from './infrastructure/linkFetch.ts';
 
 /** The queue RepositoryReadRequested.v1 and RepositoryRefreshRequested.v1 go to (infra/modules/messaging.bicep). */
 export const EVIDENCE_QUEUE = 'evidence';
@@ -87,6 +93,14 @@ const publishParseRequested: CvPorts['publishParseRequested'] = (tx, source) =>
     workspaceId: source.workspaceId,
     payload: { candidateId: source.candidateId, sourceId: source.id },
     dedupeKey: `cv-parse:${source.id}`,
+    occurredAt: source.createdAt,
+  });
+
+const publishLinkReadRequested: LinkPorts['publishLinkReadRequested'] = (tx, source) =>
+  enqueue(tx, outbox, LinkReadRequestedV1, {
+    workspaceId: source.workspaceId,
+    payload: { candidateId: source.candidateId, sourceId: source.id },
+    dedupeKey: `link-read:${source.id}`,
     occurredAt: source.createdAt,
   });
 
@@ -183,6 +197,12 @@ export function createEvidence(
           dedupeKey: `document-read:${source.id}`,
           occurredAt: source.createdAt,
         }),
+    }),
+    ...linkReadUseCases({
+      ...ports,
+      cvStoreFor: cvParseStore,
+      linkStoreFor: linkReadStore,
+      publishLinkReadRequested,
     }),
     ...requestUseCases({
       ...ports,
@@ -315,11 +335,13 @@ export function createRepositoryRefreshHandler(config: {
 const QUEUED_MESSAGES = {
   repository: ['repository read queued', 'repository read already queued'],
   cv: ['cv parse queued', 'cv parse already queued'],
+  link: ['link read queued', 'link read already queued'],
 } as const;
 
 /**
  * The worker job `evidence.application.received` on the evidence queue: queues one read per GitHub repository link an
- * arrival or a member's link brings (AIV-P1-076) and one parse per CV file it carries (AIV-P1-079), as the system in
+ * arrival or a member's link brings (AIV-P1-076), one link read per other link (AIV-P1-077) and one parse per CV file
+ * it carries (AIV-P1-079), as the system in
  * the envelope's workspace. The intake, candidates and files reads come from the worker's composition root, so this
  * module imports none of their internals.
  */
@@ -332,6 +354,8 @@ export function createApplicationReceivedHandler(
     publishReadRequested,
     cvStoreFor: cvParseStore,
     publishParseRequested,
+    linkStoreFor: linkReadStore,
+    publishLinkReadRequested,
     newId: uuidv7,
     now: config.now ?? (() => new Date()),
     logQueued: (kind, { queued, ...ids }) => log.info(ids, QUEUED_MESSAGES[kind][queued ? 0 : 1]),
@@ -467,6 +491,60 @@ export function createEvidenceMappingHandlers(config: {
   ];
 }
 
+type IndexItem = (workspaceId: string, itemId: string, text: string) => Promise<void>;
+
+/**
+ * Chunks and embeds each item's excerpt, one owner per item, so a search hit's offsets point into that excerpt. An
+ * embedding outage (AiUnavailable) is transient: the read is retried, and indexing replaces the vectors.
+ */
+// shortcut: indexing runs inside the delivery, on its own connections, while the read's row is locked, and its vectors
+// commit first (a rolled-back read leaves vectors without items: hashes and offsets, no text). Index after commit, and
+// call removeOwner from candidate deletion when deletion requests are built; the synthetic purge already removes them.
+async function indexItems(
+  index: IndexItem,
+  workspaceId: string,
+  sourceId: string,
+  items: readonly { id: string; excerpt: string }[],
+) {
+  try {
+    for (const item of items) await index(workspaceId, item.id, item.excerpt);
+  } catch (error) {
+    // The day's AI budget spent: keep the read; its items are simply not searchable yet.
+    if (!(error instanceof BudgetExceeded)) throw error;
+    log.warn({ 'evidence.source_id': sourceId, 'error.type': error.name }, 'evidence index skipped');
+  }
+}
+
+/**
+ * Runs one read in its span. A transient failure is written as `failed` in its own transaction, since the delivery's
+ * rolls back on the rethrow; the consumer then backs off, redelivers (a failed read runs again) and dead-letters after
+ * its last delivery.
+ */
+const tracedRead =
+  (db: Db) =>
+  (
+    name: string,
+    workspaceId: string,
+    sourceId: string,
+    run: () => Promise<{ notes: number } | null>,
+    fail: (own: Tx) => Promise<unknown>,
+  ) =>
+    withSpan(name, async () => {
+      let result: { notes: number } | null;
+      try {
+        result = await run();
+      } catch (error) {
+        if (!isTransient(error)) throw error;
+        // shortcut: the write takes a second pooled connection while the delivery holds one; give the worker a small
+        // pool of its own if an outage ever stalls the shared pool.
+        await withWorkspace(db, workspaceId, fail);
+        log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed, will retry`);
+        throw error;
+      }
+      // SAFETY: the count only; a note's reason and excerpt quote the source and stay in the database (AGENTS.md 1.2).
+      if (result) annotateSpan({ 'credalent.evidence.unusual_count': result.notes });
+    });
+
 /**
  * The worker jobs that read uploaded files, on the evidence queue: `evidence.cv.parse` (CvParseRequested.v1),
  * `evidence.document.read` (DocumentReadRequested.v1, AIV-P1-028), and on FileClean.v1 the CV parses and document reads
@@ -482,7 +560,7 @@ export function createFileReadHandlers(config: {
   recordContact: ParsePorts['recordContact'];
   readPerson: ReadPerson;
   /** Chunks and embeds one page item's excerpt for citation lookups (`indexDocument` of @credalent/ai/search). */
-  index(workspaceId: string, itemId: string, text: string): Promise<void>;
+  index: IndexItem;
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
@@ -513,33 +591,7 @@ export function createFileReadHandlers(config: {
     newId: uuidv7,
     now,
   };
-  /**
-   * Runs one read in its span. A transient failure is written as `failed` in its own transaction, since the delivery's
-   * rolls back on the rethrow; the consumer then backs off, redelivers (a failed read runs again) and dead-letters after
-   * its last delivery.
-   */
-  const traced = (
-    name: string,
-    workspaceId: string,
-    sourceId: string,
-    run: () => Promise<{ notes: number } | null>,
-    fail: (own: Tx) => Promise<unknown>,
-  ) =>
-    withSpan(name, async () => {
-      let result: { notes: number } | null;
-      try {
-        result = await run();
-      } catch (error) {
-        if (!isTransient(error)) throw error;
-        // shortcut: the write takes a second pooled connection while the delivery holds one; give the worker a small
-        // pool of its own if an outage ever stalls the shared pool.
-        await withWorkspace(config.db, workspaceId, fail);
-        log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed, will retry`);
-        throw error;
-      }
-      // SAFETY: the count only; a note's reason and excerpt quote the file and stay in the database (AGENTS.md 1.2).
-      if (result) annotateSpan({ 'credalent.evidence.unusual_count': result.notes });
-    });
+  const traced = tracedRead(config.db);
   const parse = (tx: Tx, workspaceId: string, sourceId: string) =>
     traced(
       'evidence cv parse',
@@ -555,19 +607,7 @@ export function createFileReadHandlers(config: {
       sourceId,
       async () => {
         const result = await readDocument(ports, tx, workspaceId, sourceId);
-        // One owner per page item, so a search hit's offsets point into that item's excerpt. An embedding outage
-        // (AiUnavailable) is transient: the read is retried, and indexing replaces the vectors.
-        // shortcut: indexing runs inside the delivery, on its own connections, while the read's row is locked, and its
-        // vectors commit first (a rolled-back read leaves vectors without items); the synthetic purge does not remove
-        // them (hashes and vectors, no text). Index after commit, and call removeOwner from the purge and candidate
-        // deletion, when deletion requests are built.
-        try {
-          for (const item of result?.items ?? []) await config.index(workspaceId, item.id, item.excerpt);
-        } catch (error) {
-          // The day's AI budget spent: keep the read; its pages are simply not searchable yet.
-          if (!(error instanceof BudgetExceeded)) throw error;
-          log.warn({ 'evidence.source_id': sourceId, 'error.type': error.name }, 'document index skipped');
-        }
+        await indexItems(config.index, workspaceId, sourceId, result?.items ?? []);
         return result;
       },
       (own) => documentReadStore(own).finish(workspaceId, sourceId, 'failed'),
@@ -611,4 +651,49 @@ export function createFileReadHandlers(config: {
     },
   };
   return [cvRequested, documentRequested, clean, rejected] as Handler<unknown>[];
+}
+
+/**
+ * The worker job `evidence.link.read` on the evidence queue (AIV-P1-077): fetches a shipped-product or write-up link
+ * behind the SSRF guard (`fetchPage`, by default `createLinkFetcher()`), stores the page as one Candidate-submitted
+ * item and indexes it. The span carries the number of "Unusual content in this source" notes and nothing else: no URL,
+ * host, title or page text (AGENTS.md 1.2).
+ */
+export function createLinkReadHandler(config: {
+  /** The consumers' database: a transient failure is recorded in its own transaction before the delivery retries. */
+  db: Db;
+  /** Chunks and embeds the item's excerpt (`indexDocument` of @credalent/ai/search). */
+  index: IndexItem;
+  fetchPage?: FetchPage;
+  now?: () => Date;
+}): Handler<{ candidateId: string; sourceId: string }> {
+  const ports = {
+    storeFor: evidenceStore,
+    cvStoreFor: cvParseStore,
+    linkStoreFor: linkReadStore,
+    publishRecorded,
+    fetchPage: config.fetchPage ?? createLinkFetcher(),
+    logFlagged,
+    sha1,
+    newId: uuidv7,
+    now: config.now ?? (() => new Date()),
+  };
+  const traced = tracedRead(config.db);
+  return {
+    event: LinkReadRequestedV1,
+    inbox,
+    consumer: 'evidence.link.read',
+    handle: (tx, { sourceId }, { workspaceId }) =>
+      traced(
+        'evidence link read',
+        workspaceId,
+        sourceId,
+        async () => {
+          const result = await readLink(ports, tx, workspaceId, sourceId);
+          await indexItems(config.index, workspaceId, sourceId, result?.items ?? []);
+          return result;
+        },
+        (own) => linkReadStore(own).finish(workspaceId, sourceId, 'failed'),
+      ),
+  };
 }

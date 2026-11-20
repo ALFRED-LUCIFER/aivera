@@ -1,3 +1,4 @@
+import { removeModuleVectors } from '@credalent/ai/search';
 import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
@@ -10,6 +11,7 @@ import {
   duplicateFlag,
   evidenceGap,
   item,
+  linkRead,
   mapping,
   mergedPullRequest,
   repositoryRead,
@@ -193,6 +195,9 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
       await tx.delete(cvParse).where(eq(cvParse.workspaceId, workspaceId));
       await tx.delete(documentRead).where(eq(documentRead.workspaceId, workspaceId));
+      await tx.delete(linkRead).where(eq(linkRead.workspaceId, workspaceId));
+      // The items' vectors (hashes and offsets, owned by the item ids) go with them.
+      await removeModuleVectors(tx, workspaceId, 'evidence');
       await tx.delete(sourceNote).where(eq(sourceNote.workspaceId, workspaceId));
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
