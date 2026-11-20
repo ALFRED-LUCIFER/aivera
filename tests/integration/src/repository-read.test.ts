@@ -241,8 +241,6 @@ const mergedPullRequests = async (candidateId: string) =>
   ].map((r) => ({ ...r, merged_at: new Date(r.merged_at).toISOString() }));
 
 beforeAll(async () => {
-  // Every GitHub request must hit a fixture; the Docker API Testcontainers calls passes through.
-  github.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(API) && print.error()) });
   container = await new PostgreSqlContainer('pgvector/pgvector:pg17').withDatabase('aivera').start();
   admin = createDb(container.getConnectionUri(), { max: 1 });
   await admin.$client.unsafe(rolesSql);
@@ -278,6 +276,9 @@ beforeAll(async () => {
       sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${LINA}, 'interviewer', 'active')`,
     ),
   );
+  // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through (EPIPE in CI).
+  // Every GitHub request must hit a fixture.
+  github.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(API) && print.error()) });
 });
 
 afterAll(async () => {
@@ -416,7 +417,7 @@ describe('Scenario: README claims are not evidence of authorship', () => {
 });
 
 describe('Scenario: A fork is never counted as authored work', () => {
-  // SAFETY: mutation check: count forks as authored (removed the `meta.fork` early return in readRepository) -> "a fork is never counted as authored work" failed
+  // SAFETY: mutation check: count forks as authored (dropped `!meta.fork` from the measure condition in readRepository) -> "a fork is never counted as authored work" failed
   it('a fork is never counted as authored work', async () => {
     const maria = await person('Maria Santos');
     repos.set('maria-credalent-example/vector-store', {
@@ -489,7 +490,8 @@ describe("Scenario: Merged pull requests into someone else's repository are thei
       { owner: TAREK, name: 'saga-examples', number: 2, mergedBy: TAREK },
       { owner: 'orbit-credalent-example', name: 'saga-fork', number: 1, mergedBy: 'orbit-credalent-example' },
     ]);
-    const { view, items } = await read(tarek, TAREK, TAREK, 'saga-examples');
+    const { view, sourceId } = await read(tarek, TAREK, TAREK, 'saga-examples');
+    const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, tarek.id, JOB));
     const merged = (n: number) => ({
       repository: `${MAINTAINER}/saga`,
       number: n,
@@ -506,17 +508,30 @@ describe("Scenario: Merged pull requests into someone else's repository are thei
       'authored 10 of 10 commits',
     ]);
     expect(items.every((i) => i.provenance === 'submitted')).toBe(true);
+    // Each pull request cites the upstream repository it was merged into, not the repository that was read.
+    const prSources = items.filter((i) => i.sourceId !== sourceId).map((i) => i.source);
+    expect(prSources).toHaveLength(3);
+    expect(new Set(prSources.map((src) => src.id)).size).toBe(1);
+    expect(prSources[0]).toMatchObject({
+      kind: 'repository',
+      url: `https://github.com/${MAINTAINER}/saga`,
+      checkMethod: 'Merged pull request',
+      checkedAt: NOW,
+    });
   });
 
   it('a pull request Tarek authored and merged himself is recorded as self-merged, and the three are not recorded twice', async () => {
     repos.set(`${TAREK}/outbox-demo`, { commits: commits(4, { login: TAREK }) });
     repos.set('ledger-credalent-example/ledger', { commits: [] });
     pulls.get(TAREK)?.push({ owner: 'ledger-credalent-example', name: 'ledger', number: 9, mergedBy: TAREK });
+    const before = (await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, tarek.id, JOB))).length;
     const { items } = await read(tarek, TAREK, TAREK, 'outbox-demo');
-    expect(items.map((i) => i.excerpt).toSorted()).toEqual([
+    expect(items.map((i) => i.excerpt)).toEqual(['authored 4 of 4 commits']);
+    const all = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, tarek.id, JOB));
+    expect(all).toHaveLength(before + 2);
+    expect(all.find((i) => i.excerptSpan === 'ledger-credalent-example/ledger#9')?.excerpt).toBe(
       'Pull request #9 to ledger-credalent-example/ledger, merged on 2026-10-03 by the candidate (self-merged)',
-      'authored 4 of 4 commits',
-    ]);
+    );
     expect((await mergedPullRequests(tarek.id)).map((r) => [r.number, r.merged_by, r.self_merged])).toEqual([
       [9, TAREK, true],
       [41, MAINTAINER, false],

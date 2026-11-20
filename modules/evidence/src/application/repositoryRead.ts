@@ -83,9 +83,13 @@ export type MergedPullRequestRow = MergedPullRequest & {
 export type RepositoryReadStore = {
   insert(read: RepositoryRead): Promise<void>;
   find(workspaceId: string, sourceId: string): Promise<{ read: RepositoryRead; source: EvidenceSource } | null>;
-  /** Stores the outcome and marks the source checked at `checkedAt` by `checkMethod`. */
-  finish(read: RepositoryRead, checkedAt: Date, checkMethod: string | null): Promise<void>;
-  insertItems(items: EvidenceItem[], pulls: MergedPullRequestRow[]): Promise<void>;
+  /**
+   * Stores the outcome and marks the source checked at `checkedAt` by `checkMethod`, only while the read is still
+   * pending; false when another delivery finished it first.
+   */
+  finish(read: RepositoryRead, checkedAt: Date, checkMethod: string | null): Promise<boolean>;
+  /** Inserts `source` (unless null), then its items and merged pull requests. */
+  insertItems(source: EvidenceSource | null, items: EvidenceItem[], pulls: MergedPullRequestRow[]): Promise<void>;
   /** "owner/name#12" for every merged pull request already recorded for the candidate. */
   knownPullRequests(workspaceId: string, candidateId: string): Promise<Set<string>>;
 };
@@ -101,7 +105,7 @@ export type RequestRepositoryReadInput = {
   /** https://github.com/<owner>/<repository>; only public repositories are read. */
   url: string;
   githubLogin: string;
-  /** Emails the candidate verified with us; commits by these count as theirs. */
+  /** Emails the candidate verified with us, zod-checked by the caller; commits by these count as theirs. */
   emails: string[];
   synthetic: boolean;
 };
@@ -114,8 +118,9 @@ export type RepositoryReadView = Omit<RepositoryRead, 'githubLogin' | 'emails'> 
 };
 
 const CHECK_METHOD = 'Commit history';
+const PULL_REQUEST_CHECK_METHOD = 'Merged pull request';
 
-function measured(read: RepositoryRead) {
+function authorshipOf(read: RepositoryRead) {
   const { totalCommits, authoredCommits, generatedOnlyCommits, generatedChecked, commitsTruncated } = read;
   if (read.status !== 'read' || totalCommits === null || authoredCommits === null) return null;
   return {
@@ -182,7 +187,7 @@ export function repositoryReadUseCases(ports: RepositoryPorts) {
       const found = await readStoreFor(ctx.tx).find(ctx.workspaceId, sourceId);
       if (!found) return null;
       const { githubLogin: _login, emails: _emails, ...read } = found.read;
-      const authorship = measured(found.read);
+      const authorship = authorshipOf(found.read);
       const cls = authorship && classifyAuthorship(authorship);
       return {
         ...read,
@@ -199,6 +204,9 @@ export function repositoryReadUseCases(ports: RepositoryPorts) {
  * stores everything in `tx` at the end, so a GitHubRateLimited or failed call midway writes nothing. A source no
  * longer pending (a redelivery, or a rescheduled duplicate) is left alone.
  */
+// shortcut: every GitHub call (up to ~400 for a large repository) runs inside the consumer's workspace transaction and
+// message lock (auto-renewed by the Service Bus SDK); fetch before opening the write transaction if pilot reads hold a
+// connection too long or outlive the lock.
 export async function readRepository(
   ports: Pick<RepositoryPorts, 'readStoreFor' | 'publishRecorded' | 'newId' | 'now'> & { github: GitHubPort },
   tx: Tx,
@@ -213,10 +221,86 @@ export async function readRepository(
   const who = { login: read.githubLogin, emails: read.emails };
   const repo = source.url ? parseRepositoryUrl(source.url) : null;
   const meta = repo && (await github.repository(repo.owner, repo.name));
-  if (!repo || !meta || meta.private) return store.finish({ ...read, status: 'not_accessible' }, now(), null);
-  // A fork is never the candidate's authored work; their work there counts only through merged pull requests.
-  if (meta.fork) return store.finish({ ...read, status: 'fork' }, now(), null);
+  // A fork or an inaccessible repository is never measured; the candidate's work counts there only through pull
+  // requests merged upstream, which are read whatever this repository turns out to be.
+  const measured = repo && meta && !meta.private && !meta.fork ? await measure(github, repo, meta, who) : null;
+  const pulls = await mergedElsewhere(github, who.login, await store.knownPullRequests(workspaceId, read.candidateId));
 
+  const checkedAt = now();
+  const base = { workspaceId, candidateId: read.candidateId, synthetic: source.synthetic, createdAt: checkedAt };
+  const status = measured ? 'read' : meta && !meta.private ? 'fork' : 'not_accessible';
+  const finished = await store.finish(
+    { ...read, ...measured?.read, status },
+    checkedAt,
+    measured ? CHECK_METHOD : null,
+  );
+  if (!finished) return;
+  if (measured) {
+    const item: EvidenceItem = {
+      ...base,
+      sourceId,
+      id: newId(),
+      excerpt: authorshipExcerpt(measured.authorship),
+      excerptSpan: null,
+      provenance: 'submitted',
+      strength: itemStrength(measured.authorship),
+      limit: AUTHORSHIP_LIMIT,
+    };
+    await store.insertItems(null, [item], []);
+    await publishRecorded(tx, source, [item.id]);
+  }
+
+  // Each upstream repository is the source its merged pull requests cite, never the repository read above.
+  for (const repository of new Set(pulls.map((pr) => pr.repository))) {
+    const prSource: EvidenceSource = {
+      ...base,
+      id: newId(),
+      kind: 'repository',
+      label: repository.split('/')[1] ?? repository,
+      url: `https://github.com/${repository}`,
+      blobFileId: null,
+      capturedAt: checkedAt,
+      checkedAt,
+      checkMethod: PULL_REQUEST_CHECK_METHOD,
+    };
+    const items: EvidenceItem[] = [];
+    const rows: MergedPullRequestRow[] = [];
+    for (const pr of pulls.filter((p) => p.repository === repository)) {
+      const id = newId();
+      items.push({
+        ...base,
+        sourceId: prSource.id,
+        id,
+        excerpt: mergedPullRequestExcerpt(pr, who.login),
+        excerptSpan: `${pr.repository}#${pr.number}`,
+        provenance: 'submitted',
+        // Corroboration by another maintainer's merge is decided in AIV-P1-029, not here.
+        strength: 'supporting',
+        limit: MERGED_PULL_REQUEST_LIMIT,
+      });
+      rows.push({
+        ...pr,
+        workspaceId,
+        itemId: id,
+        candidateId: read.candidateId,
+        selfMerged: isSelfMerged(pr, who.login),
+      });
+    }
+    await store.insertItems(prSource, items, rows);
+    await publishRecorded(
+      tx,
+      prSource,
+      items.map((i) => i.id),
+    );
+  }
+}
+
+async function measure(
+  github: GitHubPort,
+  repo: { owner: string; name: string },
+  meta: GitHubRepository,
+  who: { login: string; emails: string[] },
+) {
   const [languages, paths, { commits, truncated }] = await Promise.all([
     github.languages(repo.owner, repo.name),
     github.paths(repo.owner, repo.name, meta.defaultBranch),
@@ -234,46 +318,10 @@ export async function readRepository(
     generatedChecked: checked.length,
     truncated,
   };
-  const pulls = await mergedElsewhere(github, who.login, await store.knownPullRequests(workspaceId, read.candidateId));
-
-  const checkedAt = now();
-  const base = {
-    workspaceId,
-    sourceId,
-    candidateId: read.candidateId,
-    synthetic: source.synthetic,
-    createdAt: checkedAt,
-  };
-  const items: EvidenceItem[] = [
-    {
-      ...base,
-      id: newId(),
-      excerpt: authorshipExcerpt(authorship),
-      excerptSpan: null,
-      provenance: 'submitted',
-      strength: itemStrength(authorship),
-      limit: AUTHORSHIP_LIMIT,
-    },
-  ];
-  const pullRows: MergedPullRequestRow[] = pulls.map((pr) => {
-    const id = newId();
-    items.push({
-      ...base,
-      id,
-      excerpt: mergedPullRequestExcerpt(pr, who.login),
-      excerptSpan: `${pr.repository}#${pr.number}`,
-      provenance: 'submitted',
-      // Corroboration by another maintainer's merge is decided in AIV-P1-029, not here.
-      strength: 'supporting',
-      limit: MERGED_PULL_REQUEST_LIMIT,
-    });
-    return { ...pr, workspaceId, itemId: id, candidateId: read.candidateId, selfMerged: isSelfMerged(pr, who.login) };
-  });
-  await store.finish(
-    {
-      ...read,
+  return {
+    authorship,
+    read: {
       ...detectTestsAndCi(paths),
-      status: 'read',
       totalCommits: authorship.totalCommits,
       authoredCommits: authorship.authoredCommits,
       generatedOnlyCommits: generatedOnly,
@@ -282,15 +330,7 @@ export async function readRepository(
       languages,
       pushedAt: meta.pushedAt,
     },
-    checkedAt,
-    CHECK_METHOD,
-  );
-  await store.insertItems(items, pullRows);
-  await publishRecorded(
-    tx,
-    source,
-    items.map((i) => i.id),
-  );
+  };
 }
 
 // shortcut: reads the first 100 merged pull requests search returns; page further when a pilot candidate has more.

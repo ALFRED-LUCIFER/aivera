@@ -41,7 +41,7 @@ const repo = (owner: string, name: string) => `/repos/${encodeURIComponent(owner
  * The response, or null on 404 (or 409, an empty repository). Throws GitHubRateLimited when the limit is spent, an
  * Error on anything else.
  */
-async function call(url: string, bearer: string, method = 'GET'): Promise<Response | null> {
+async function call(url: string, bearer: string, now: () => Date, method = 'GET'): Promise<Response | null> {
   const response = await fetch(url, {
     method,
     headers: {
@@ -54,6 +54,10 @@ async function call(url: string, bearer: string, method = 'GET'): Promise<Respon
   if (response.status === 404 || response.status === 409) return null;
   if ([403, 429].includes(response.status) && response.headers.get('x-ratelimit-remaining') === '0')
     throw new GitHubRateLimited(new Date(resetSchema.parse(response.headers.get('x-ratelimit-reset')) * 1000));
+  // GitHub's secondary limit (common on search) names a wait in seconds instead.
+  const retryAfter = response.headers.get('retry-after');
+  if ([403, 429].includes(response.status) && retryAfter)
+    throw new GitHubRateLimited(new Date(now().getTime() + resetSchema.parse(retryAfter) * 1000));
   throw new Error(`GitHub request failed with ${response.status}`);
 }
 
@@ -70,14 +74,14 @@ export function createGitHub(config: GitHubConfig): GitHubPort {
     const iat = Math.floor(now().getTime() / 1000) - 60;
     const unsigned = `${b64({ alg: 'RS256', typ: 'JWT' })}.${b64({ iat, exp: iat + 600, iss: config.appId })}`;
     const jwt = `${unsigned}.${createSign('RSA-SHA256').update(unsigned).sign(config.privateKey, 'base64url')}`;
-    const body = await call(`${api}/app/installations/${config.installationId}/access_tokens`, jwt, 'POST');
+    const body = await call(`${api}/app/installations/${config.installationId}/access_tokens`, jwt, now, 'POST');
     const parsed = tokenSchema.parse(await body?.json());
     cached = { token: parsed.token, expiresAt: Date.parse(parsed.expires_at) };
     return parsed.token;
   }
 
   async function get<T>(path: string, schema: z.ZodType<T>): Promise<T | null> {
-    const response = await call(`${api}${path}`, await token());
+    const response = await call(`${api}${path}`, await token(), now);
     return response && schema.parse(await response.json());
   }
 
@@ -86,7 +90,7 @@ export function createGitHub(config: GitHubConfig): GitHubPort {
     const items: T[] = [];
     let url: string | undefined = `${api}${path}`;
     while (url && items.length < limit) {
-      const response = await call(url, await token());
+      const response = await call(url, await token(), now);
       if (!response) break;
       items.push(...z.array(schema).parse(await response.json()));
       const next = /<([^>]+)>;\s*rel="next"/.exec(response.headers.get('link') ?? '')?.[1];

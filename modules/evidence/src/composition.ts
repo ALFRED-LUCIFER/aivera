@@ -14,8 +14,6 @@ import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
-export type { GitHubConfig } from './infrastructure/github.ts';
-
 /** The queue RepositoryReadRequested.v1 goes to (infra/modules/messaging.bicep). */
 export const EVIDENCE_QUEUE = 'evidence';
 

@@ -22,16 +22,26 @@ export function repositoryReadStore(tx: Tx): RepositoryReadStore {
     },
     async finish(read, checkedAt, checkMethod) {
       const { workspaceId, sourceId, ...change } = read;
-      await tx
+      const updated = await tx
         .update(repositoryRead)
         .set(change)
-        .where(and(eq(repositoryRead.workspaceId, workspaceId), eq(repositoryRead.sourceId, sourceId)));
+        .where(
+          and(
+            eq(repositoryRead.workspaceId, workspaceId),
+            eq(repositoryRead.sourceId, sourceId),
+            eq(repositoryRead.status, 'pending'),
+          ),
+        )
+        .returning({ sourceId: repositoryRead.sourceId });
+      if (updated.length === 0) return false;
       await tx
         .update(source)
         .set({ checkedAt, checkMethod })
         .where(and(eq(source.workspaceId, workspaceId), eq(source.id, sourceId)));
+      return true;
     },
-    async insertItems(items, pulls) {
+    async insertItems(src, items, pulls) {
+      if (src) await tx.insert(source).values(src);
       if (items.length) await tx.insert(item).values(items);
       if (pulls.length) await tx.insert(mergedPullRequest).values(pulls);
     },

@@ -46,7 +46,7 @@ export function isAuthoredBy(commit: Commit, who: CommitIdentity): boolean {
 const LOCKFILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'poetry.lock', 'Cargo.lock', 'go.sum']);
 const GENERATED_DIRS = new Set(['node_modules', 'vendor', 'third_party', 'dist', 'build', 'target']);
 
-export function isGeneratedPath(path: string): boolean {
+function isGeneratedPath(path: string): boolean {
   const parts = path.split('/');
   const file = parts.pop() ?? '';
   return LOCKFILES.has(file) || /\.min\.(?:js|css)$/.test(file) || parts.some((dir) => GENERATED_DIRS.has(dir));
