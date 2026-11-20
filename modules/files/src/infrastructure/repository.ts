@@ -1,0 +1,25 @@
+import type { Tx } from '@credalent/db/client';
+import { and, eq } from 'drizzle-orm';
+import type { FileRecord, FileStore } from '../application/files.ts';
+import type { Owner } from '../domain/files.ts';
+import { file } from './schema.ts';
+
+const ownedBy = (owner: Owner) =>
+  'workspaceId' in owner
+    ? eq(file.workspaceId, owner.workspaceId)
+    : eq(file.candidateAccountId, owner.candidateAccountId);
+
+/** The file store over an owner-scoped transaction: the owner filter here, row-level security underneath (ADR-005). */
+export function fileStore(tx: Tx): FileStore {
+  return {
+    insert: async (record) => void (await tx.insert(file).values(record)),
+    async find(owner, id) {
+      const [found] = await tx
+        .select()
+        .from(file)
+        .where(and(ownedBy(owner), eq(file.id, id)));
+      return (found as FileRecord | undefined) ?? null;
+    },
+    settle: async (id, change) => void (await tx.update(file).set(change).where(eq(file.id, id))),
+  };
+}

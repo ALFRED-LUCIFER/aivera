@@ -1,0 +1,166 @@
+import { createHash } from 'node:crypto';
+import type { Tx } from '@credalent/db/client';
+import type { Action, WorkspaceContext } from '@credalent/workspaces';
+import {
+  blobName,
+  checkUpload,
+  FileError,
+  finalContainer,
+  QUARANTINE,
+  UPLOAD_TTL_MS,
+  type FileStatus,
+  type Owner,
+  type Purpose,
+  type UploadRequest,
+} from '../domain/files.ts';
+
+export type FileRecord = {
+  id: string;
+  workspaceId: string | null;
+  candidateAccountId: string | null;
+  purpose: Purpose;
+  contentType: string;
+  sizeBytes: number;
+  sha256: string | null;
+  status: FileStatus;
+  blobPath: string;
+  uploadedBy: string;
+  createdAt: Date;
+};
+
+/** The store over one owner-scoped transaction. `find` filters by owner (the first layer; RLS is the second). */
+export type FileStore = {
+  insert(file: FileRecord): Promise<void>;
+  find(owner: Owner, id: string): Promise<FileRecord | null>;
+  settle(
+    id: string,
+    change: Pick<FileRecord, 'status'> & Partial<Pick<FileRecord, 'sha256' | 'blobPath'>>,
+  ): Promise<void>;
+};
+
+/** Blob storage. Paths are `<container>/<blob name>`. */
+export type BlobStore = {
+  /** A URL that may create and write the one blob at `path` until `expiresOn`, and nothing else. */
+  uploadUrl(path: string, expiresOn: Date): Promise<string>;
+  /** The blob's bytes and stored content type; null when there is no such blob. */
+  read(path: string): Promise<{ data: Buffer; contentType: string | undefined } | null>;
+  write(path: string, data: Buffer, contentType: string): Promise<void>;
+  /** Deletes the blob if it exists. */
+  delete(path: string): Promise<void>;
+  stream(path: string): Promise<ReadableStream<Uint8Array>>;
+};
+
+export type Ports = {
+  storeFor(tx: Tx): FileStore;
+  blobs: BlobStore;
+  /** Runs `work` in the owner's row-level security scope (a workspace, or a candidate account). */
+  inScope<T>(owner: Owner, work: (tx: Tx) => Promise<T>): Promise<T>;
+  /** Writes FileClean.v1 or FileRejected.v1 to the outbox in `tx`; only a workspace's file has a workspace to send to. */
+  publishSettled(
+    tx: Tx,
+    file: FileRecord & { workspaceId: string },
+    status: Exclude<FileStatus, 'pending'>,
+  ): Promise<void>;
+  authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
+  /** True wherever the environment requires Defender's scan (the pilot and production); never configurable per call. */
+  malwareScanning: boolean;
+  newId(): string;
+  now(): Date;
+};
+
+export type UploadTicket = { fileId: string; uploadUrl: string; expiresAt: Date };
+export type Download = { contentType: string; sizeBytes: number; body: ReadableStream<Uint8Array> };
+export type ScanVerdict = 'clean' | 'infected';
+
+const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex');
+
+export function filesUseCases(p: Ports) {
+  /**
+   * Moves a pending file out of quarantine. Clean, and the blob's real size and type match the request: copied to its
+   * final container, hashed, `clean`. Infected, or not what was asked for: deleted, `infected` or `rejected`. Settling
+   * an already settled file changes nothing, so a redelivered scan result is harmless.
+   */
+  async function settle(tx: Tx, file: FileRecord, verdict: ScanVerdict): Promise<FileStatus> {
+    if (file.status !== 'pending') return file.status;
+    const store = p.storeFor(tx);
+    const quarantine = file.blobPath;
+    const final = `${finalContainer(file.purpose)}/${quarantine.slice(QUARANTINE.length + 1)}`;
+    const publish = (status: Exclude<FileStatus, 'pending'>) =>
+      file.workspaceId ? p.publishSettled(tx, { ...file, workspaceId: file.workspaceId }, status) : undefined;
+    if (verdict === 'clean') {
+      // The final copy too: a retry after a failed commit finds quarantine already emptied.
+      const blob = (await p.blobs.read(quarantine)) ?? (await p.blobs.read(final));
+      if (blob && blob.data.length === file.sizeBytes && blob.contentType === file.contentType) {
+        await p.blobs.write(final, blob.data, file.contentType);
+        await store.settle(file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });
+        await publish('clean');
+        await p.blobs.delete(quarantine);
+        return 'clean';
+      }
+    }
+    // Deleted before the row changes, so a failed commit is retried with the blob already gone, never left behind.
+    await p.blobs.delete(quarantine);
+    const status = verdict === 'infected' ? 'infected' : 'rejected';
+    await store.settle(file.id, { status });
+    await publish(status);
+    return status;
+  }
+
+  return {
+    async requestUpload(ctx: WorkspaceContext, input: UploadRequest): Promise<UploadTicket> {
+      await p.authorize(ctx, 'file.upload');
+      const refused = checkUpload(input);
+      if (refused) throw new FileError(refused);
+      const id = p.newId();
+      const createdAt = p.now();
+      const blobPath = `${QUARANTINE}/${blobName({ workspaceId: ctx.workspaceId }, id)}`;
+      await p.storeFor(ctx.tx).insert({
+        id,
+        workspaceId: ctx.workspaceId,
+        candidateAccountId: null,
+        purpose: input.purpose,
+        contentType: input.contentType,
+        sizeBytes: input.size,
+        sha256: null,
+        status: 'pending',
+        blobPath,
+        uploadedBy: ctx.userId,
+        createdAt,
+      });
+      const expiresAt = new Date(createdAt.getTime() + UPLOAD_TTL_MS);
+      return { fileId: id, uploadUrl: await p.blobs.uploadUrl(blobPath, expiresAt), expiresAt };
+    },
+
+    async getStatus(ctx: WorkspaceContext, fileId: string): Promise<FileStatus | null> {
+      await p.authorize(ctx, 'file.upload');
+      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
+      return file?.uploadedBy === ctx.userId ? file.status : null;
+    },
+
+    // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets
+    // MALWARE_SCANNING=on, and this path then refuses before reading anything.
+    async markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus> {
+      await p.authorize(ctx, 'file.upload');
+      if (p.malwareScanning) throw new FileError('scanning_required');
+      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
+      if (file?.uploadedBy !== ctx.userId) throw new FileError('not_found');
+      return settle(ctx.tx, file, 'clean');
+    },
+
+    async openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null> {
+      await p.authorize(ctx, 'file.download');
+      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
+      // SAFETY: only a clean file leaves storage; pending, infected and rejected files read as not found.
+      if (file?.status !== 'clean') return null;
+      return { contentType: file.contentType, sizeBytes: file.sizeBytes, body: await p.blobs.stream(file.blobPath) };
+    },
+
+    /** Applies one Defender scan result to the file its blob URL names; a URL naming no file is ignored. */
+    async applyScanResult(target: { owner: Owner; fileId: string }, verdict: ScanVerdict): Promise<FileStatus | null> {
+      return p.inScope(target.owner, async (tx) => {
+        const file = await p.storeFor(tx).find(target.owner, target.fileId);
+        return file ? settle(tx, file, verdict) : null;
+      });
+    },
+  };
+}

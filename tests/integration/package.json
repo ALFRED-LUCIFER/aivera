@@ -8,6 +8,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@azure/storage-blob": "12.34.0",
     "@credalent/ai": "workspace:*",
     "@credalent/audit": "workspace:*",
     "@credalent/candidate-accounts": "workspace:*",
@@ -15,6 +16,7 @@
     "@credalent/config": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",
+    "@credalent/files": "workspace:*",
     "@credalent/identity": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
@@ -26,6 +28,7 @@
     "@opentelemetry/core": "2.12.0",
     "@opentelemetry/sdk-metrics": "2.12.1",
     "@opentelemetry/sdk-trace-base": "2.12.0",
+    "@testcontainers/azurite": "12.2.1",
     "@testcontainers/postgresql": "12.2.1",
     "@types/node": "24.19.2",
     "ai": "7.0.162",
