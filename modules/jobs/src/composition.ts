@@ -11,6 +11,8 @@ import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
 import {
+  JobPublishedV1,
+  JobUnpublishedV1,
   RubricApprovedV1,
   type CompetencyDrafting,
   type DomainDetecting,
@@ -42,6 +44,14 @@ export function createJobs(
         workspaceId: ctx.workspaceId,
         payload,
         dedupeKey: `rubric-approved:${payload.rubricVersionId}`,
+        occurredAt,
+      }),
+    // A job may be published and unpublished many times: each change is its own event.
+    publishListingChange: (ctx, { listed, jobId, occurredAt }) =>
+      enqueue(ctx.tx, outbox, listed ? JobPublishedV1 : JobUnpublishedV1, {
+        workspaceId: ctx.workspaceId,
+        payload: { jobId },
+        dedupeKey: `${listed ? 'job-published' : 'job-unpublished'}:${jobId}:${occurredAt.toISOString()}`,
         occurredAt,
       }),
     audit: (ctx, entry) =>

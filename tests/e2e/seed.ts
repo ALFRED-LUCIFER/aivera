@@ -91,13 +91,47 @@ export default async function seed() {
     await workspaceOf('Nadia Freelance', await person('nadia@example.com', 'Nadia Freelance'));
     // AIV-P1-014: Tariq adds jobs owned by the Head of Engineering, who approves them. Its own workspace, as drafting
     // spends its AI tokens.
-    const approvals = await workspaceOf('Approvals Co', await person('tariq@example.com', 'Tariq Recruiter'));
+    const tariqRecruiter = await person('tariq@example.com', 'Tariq Recruiter');
+    const approvals = await workspaceOf('Approvals Co', tariqRecruiter);
     const approver = await person('head.approvals@example.com', 'Head of Engineering');
     await withWorkspace(db, approvals, (tx) =>
       tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status, title)
         values (${approvals}, ${approver}, 'hiring_owner', 'active', 'Head of Engineering')`),
     );
     await workspaces.switchWorkspace({ userId: approver }, approvals);
+    // AIV-P1-015: Senior AI Engineer with an approved rubric and the ticket's pay band, and Senior Product Designer with
+    // only a draft, for publishing.
+    const tariqJobs = createJobs(workspaces, createAudit(db));
+    await workspaces.withWorkspace({ userId: tariqRecruiter }, approvals, async (ctx) => {
+      for (const [title, approve] of [
+        ['Senior AI Engineer', true],
+        ['Senior Product Designer', false],
+      ] as const) {
+        const job = await tariqJobs.createJob(ctx, {
+          title,
+          jobType: 'ai_llm_engineering',
+          location: 'DIFC, Dubai',
+          payBand: { minMinor: 3_500_000, maxMinor: 4_800_000, currency: 'AED' },
+          description: `${title}, synthetic demo job.`,
+          synthetic: true,
+        });
+        const version = await tariqJobs.saveRubric(ctx, job.id, {
+          successStatement: 'Ships reliable work.',
+          competencies: [
+            {
+              name: 'LLM systems in production',
+              evidenceExpected: 'A shipped assistant',
+              weightPercent: 60,
+              levelNeeded: 4,
+            },
+            { name: 'Retrieval and evaluation', evidenceExpected: 'Eval sets', weightPercent: 40, levelNeeded: 3 },
+          ].map((c) => ({ ...c, type: 'mandatory', origin: 'from_description' })),
+        });
+        if (!approve) continue;
+        await tariqJobs.submitRubric(ctx, version.id);
+        await tariqJobs.approveRubric(ctx, version.id);
+      }
+    });
     const gulf = await workspaceOf('Gulf Talent Partners', await person('omar.agency@example.com', 'Omar Agency'));
 
     // Lina was an interviewer at Gulf Talent Partners with it as her active workspace, then her membership was removed.

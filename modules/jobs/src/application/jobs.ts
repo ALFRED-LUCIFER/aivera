@@ -64,6 +64,8 @@ export type JobStore = {
    * keep working; everything else is replaced.
    */
   upsertPublicJob(row: PublicJobRow): Promise<void>;
+  /** The slug of the job's public listing, or null when it was never published. */
+  publicSlug(workspaceId: string, jobId: string): Promise<string | null>;
   /** Marks the job's public listing as no longer open. */
   closePublicJob(workspaceId: string, jobId: string): Promise<void>;
   /** Hides (or shows again) every public listing of the workspace, open or not, without changing `open`. */
@@ -101,6 +103,11 @@ export type Ports = {
    * assessment (AIV-P1-031). Nothing else publishes it.
    */
   publishRubricApproved(ctx: WorkspaceContext, event: RubricApprovedEvent): Promise<void>;
+  /** Writes `JobPublished.v1` or `JobUnpublished.v1` to the jobs outbox in `ctx.tx` (AIV-P1-015). */
+  publishListingChange(
+    ctx: WorkspaceContext,
+    event: { listed: boolean; jobId: string; occurredAt: Date },
+  ): Promise<void>;
   /** The audit contract's `record` in `ctx.tx`; always the last write before commit (AGENTS.md 3.6). */
   audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
   newId(): string;
@@ -158,6 +165,7 @@ export function jobsUseCases({
   setJobOwner,
   isSyntheticWorkspace,
   publishRubricApproved,
+  publishListingChange,
   audit,
   newId,
   now,
@@ -369,9 +377,10 @@ export function jobsUseCases({
       await authorize(ctx, 'job.view', resourceOf(job));
       const approved = await store.approvedVersion(ctx.workspaceId, jobId);
       const latest = await store.latestVersion(ctx.workspaceId, jobId);
+      const publicSlug = job.published ? await store.publicSlug(ctx.workspaceId, jobId) : null;
       // shortcut: assessed comes from assessment (AIV-P1-031) as in listJobsForDesk; interviews (AIV-P2-001) and the
       // decision pack (AIV-P2-010) report nothing yet, so the header shows them as not started.
-      return { job, approved, latest, assessed: approved ? null : 0 };
+      return { job, approved, latest, assessed: approved ? null : 0, publicSlug };
     },
 
     /** The rubric page (AIV-P1-012): every version with its competencies, newest first; null as `getJob`. */
@@ -592,7 +601,7 @@ export function jobsUseCases({
       const publishedAt = now();
       await store.setPublication(ctx.workspaceId, job.id, { published: true, publicDescriptor, publishedAt });
       await writePublicJob(ctx, job, approved.id, publicDescriptor, publishedAt);
-      // shortcut: JobPublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
+      await publishListingChange(ctx, { listed: true, jobId: job.id, occurredAt: publishedAt });
       await audit(ctx, {
         action: 'job.published',
         subject: { type: 'job', id: job.id },
@@ -611,7 +620,7 @@ export function jobsUseCases({
         publishedAt: job.publishedAt,
       });
       await storeFor(ctx.tx).closePublicJob(ctx.workspaceId, job.id);
-      // shortcut: JobUnpublished.v1 is not published; write it to the outbox here, in ctx.tx, once AIV-P0-014 lands.
+      await publishListingChange(ctx, { listed: false, jobId: job.id, occurredAt: now() });
       await audit(ctx, {
         action: 'job.unpublished',
         subject: { type: 'job', id: job.id },

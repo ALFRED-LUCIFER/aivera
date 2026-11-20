@@ -15,8 +15,11 @@ type Props = {
   editor?: RubricEditorView | undefined;
   /** Who approves the new version, for the "sent" message. */
   hiringOwner?: string | null;
-  /** The hiring owner's approval panel (AIV-P1-014), first in the side column; absent for everyone else. */
-  decision?: ReactNode;
+  /**
+   * Panels first in the side column: the hiring owner's approval panel (AIV-P1-014) and, for admins and recruiters,
+   * Publish (AIV-P1-015); absent for everyone else.
+   */
+  aside?: ReactNode;
 };
 
 /**
@@ -24,7 +27,7 @@ type Props = {
  * In edit mode (AIV-P1-013) weights, levels and types change locally, and competencies can be added or removed;
  * nothing changes until the recruiter saves the draft or sends it for approval.
  */
-export function Rubric({ state, editor, hiringOwner = null, decision }: Props) {
+export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
   const t = useTranslations('rubric');
   const successId = useId();
   const rubric = state.status === 'ready' ? state.rubric : null;
@@ -94,7 +97,7 @@ export function Rubric({ state, editor, hiringOwner = null, decision }: Props) {
       </section>
       {rubric && (
         <div className="flex min-w-0 flex-[4_1_320px] flex-col gap-6">
-          {decision}
+          {aside}
           <Card title={editing ? undefined : t('success')} level={2}>
             {editing ? (
               <div className="flex flex-col gap-2">

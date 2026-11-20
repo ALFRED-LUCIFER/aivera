@@ -187,6 +187,13 @@ export function jobStore(tx: Tx): JobStore {
         .values({ jobId, workspaceId, slug, ...values })
         .onConflictDoUpdate({ target: publicJob.jobId, set: values });
     },
+    async publicSlug(workspaceId, jobId) {
+      const [row] = await tx
+        .select({ slug: publicJob.slug })
+        .from(publicJob)
+        .where(and(eq(publicJob.workspaceId, workspaceId), eq(publicJob.jobId, jobId)));
+      return row?.slug ?? null;
+    },
     async closePublicJob(workspaceId, jobId) {
       await tx
         .update(publicJob)

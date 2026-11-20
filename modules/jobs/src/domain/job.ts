@@ -338,4 +338,6 @@ export type JobHeader = {
   approved: RubricVersion | null;
   latest: RubricVersion | null;
   assessed: number | null;
+  /** The candidate site's slug while the job is published (AIV-P1-015, "View public listing"); null otherwise. */
+  publicSlug: string | null;
 };

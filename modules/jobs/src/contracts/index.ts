@@ -39,6 +39,7 @@ export {
   COMPETENCY_TYPES,
   JOB_STAGES,
   JobError,
+  PUBLIC_DESCRIPTOR_MAX,
   RETURN_NOTE_MAX,
   RUBRIC_STATUSES,
 } from '../domain/job.ts';
@@ -84,24 +85,17 @@ export const RubricApprovedV1 = {
   payload: z.strictObject({ jobId: z.uuid(), rubricVersionId: z.uuid(), supersededVersionId: z.uuid().nullable() }),
 } satisfies EventDefinition<{ jobId: string; rubricVersionId: string; supersededVersionId: string | null }>;
 
-/**
- * Emitted when a job is published to the candidate site. Opaque ids only.
- * shortcut: defined but not yet published; publishJob sends it through the outbox once AIV-P0-014 lands.
- */
-export type JobPublishedV1 = {
-  type: 'JobPublished.v1';
-  workspaceId: string;
-  jobId: string;
-  occurredAt: string;
-};
+/** Written to `jobs.outbox` in the transaction that lists a job on the candidate site (AIV-P1-015). Opaque ids only. */
+export const JobPublishedV1 = {
+  type: 'JobPublished.v1',
+  payload: z.strictObject({ jobId: z.uuid() }),
+} satisfies EventDefinition<{ jobId: string }>;
 
-/** Emitted when a job is taken off the candidate site. Opaque ids only. shortcut: as JobPublished.v1. */
-export type JobUnpublishedV1 = {
-  type: 'JobUnpublished.v1';
-  workspaceId: string;
-  jobId: string;
-  occurredAt: string;
-};
+/** Written to `jobs.outbox` in the transaction that takes a job off the candidate site (AIV-P1-015). */
+export const JobUnpublishedV1 = {
+  type: 'JobUnpublished.v1',
+  payload: z.strictObject({ jobId: z.uuid() }),
+} satisfies EventDefinition<{ jobId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
@@ -198,9 +192,15 @@ export interface JobsContract {
    * for the publish preview. Null when no rubric version is approved.
    */
   getPublicListing(ctx: WorkspaceContext, jobId: string): Promise<PublicListing | null>;
-  /** Admins and recruiters. Needs an approved rubric (`JobError` `rubric_not_approved`). Audited. */
+  /**
+   * Admins and recruiters. Needs an approved rubric (`JobError` `rubric_not_approved`). Writes JobPublished.v1 to the
+   * outbox in the same transaction. Audited.
+   */
   publishJob(ctx: WorkspaceContext, jobId: string, input: PublishJobInput): Promise<void>;
-  /** Admins and recruiters. Unpublishing an unpublished job does nothing. Audited. */
+  /**
+   * Admins and recruiters. Unpublishing an unpublished job does nothing. Writes JobUnpublished.v1 to the outbox in the
+   * same transaction; applications already received stay where they are. Audited.
+   */
   unpublishJob(ctx: WorkspaceContext, jobId: string): Promise<void>;
   /**
    * Deletes every job of the workspace with its rubrics and listings, for the demo seed's reset (AIV-P1-065); the

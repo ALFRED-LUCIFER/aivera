@@ -30,7 +30,7 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@aivera/candidates');
-const { RubricApprovedV1 } = await import('@aivera/jobs');
+const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@aivera/jobs');
 const { EmailQueuedV1 } = await import('@aivera/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@aivera/notifications/composition');
 const { createDb, isReachable } = await import('@aivera/db');
@@ -47,6 +47,10 @@ const QUEUES: Record<string, string> = {
   // shortcut: nothing consumes `assessment` until AIV-P1-031, so RubricApproved.v1 dead-letters after its 14-day TTL like
   // PersonCreated.v1 above; the assessment consumer replaces this note.
   [RubricApprovedV1.type]: 'assessment',
+  // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
+  // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
+  [JobPublishedV1.type]: 'candidates',
+  [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
 };
 
