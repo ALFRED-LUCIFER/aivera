@@ -46,6 +46,31 @@ test('Scenario: An operator opens the console', async ({ page, context }) => {
   expect(await cookie(context, OPENED_COOKIE)).toMatchObject({ httpOnly: true, secure: true, path: '/' });
 });
 
+// AIV-P2-058: where an operator lands. Pia is listed and belongs to no workspace (seed.ts).
+// SAFETY: mutation check: removed the isPlatformOperator redirect from the /app layout -> this test failed (create-workspace page)
+// Theo takes the Google case: the unverified-email scenario below needs Pia's Google method to be new.
+for (const [email, button] of [
+  [PIA, 'Sign in'],
+  ['theo.platform@example.com', 'Continue with Google'],
+])
+  test(`Scenario: An operator signing in from the sign-in page lands on the console (${button})`, async ({ page }) => {
+    await signIn(page, { email, button });
+    await expect(page).toHaveURL(/\/ops$/);
+    await expectConsole(page);
+  });
+
+test('Scenario: An operator with no workspace who opens /app goes to the console', async ({ page }) => {
+  await signIn(page, { email: PIA });
+  await page.goto('/app');
+  await expect(page).toHaveURL(/\/ops$/);
+  await expect(page.getByRole('heading', { name: 'You are not in a workspace yet' })).toHaveCount(0);
+});
+
+test('Scenario: A recruiter who is not an operator still lands on My desk', async ({ page }) => {
+  await signIn(page, { email: 'alex@example.com' });
+  await expect(page).toHaveURL(/\/app$/);
+});
+
 test('Scenario: Email matching ignores case', async ({ page }) => {
   // Listed as "Theo.Platform@example.com"; he signs in as "theo.platform@example.com".
   await signIn(page, { email: 'theo.platform@example.com' });
@@ -93,13 +118,13 @@ test('Scenario: An unverified email never makes an operator', async ({ page }) =
 
 test('Scenario: Being an operator grants nothing inside workspaces', async ({ page }) => {
   await signIn(page, { email: PIA });
-  await page.goto('/app');
-  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-  // No recruiter page opens for her: the recruiter layout shows the no-workspace message instead. Recruiter server
-  // actions refuse a user with no workspace in inActiveWorkspace (addJob.test.ts, workspace.test.ts).
-  await page.goto('/app/jobs');
-  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
+  // No recruiter page opens for her: with no workspace the recruiter layout sends her to the console (AIV-P2-058).
+  // Recruiter server actions refuse a user with no workspace in inActiveWorkspace (addJob.test.ts, workspace.test.ts).
+  for (const path of ['/app', '/app/jobs']) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/ops$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
+  }
 });
 
 test('Scenario: No operator email reaches URLs', async ({ page }) => {
