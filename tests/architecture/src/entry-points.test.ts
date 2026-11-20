@@ -23,9 +23,9 @@ describe('every server entry point declares its policy or is explicitly public (
     // SAFETY: mutation check: put getSessionUserId back in GUARDS -> this case failed
     [`${web}/features/signup/services/session.ts`, 'readsSession'],
     // SAFETY: mutation check: declared every export of a file holding a wrapped binding, called or not -> these two cases failed
-    // SAFETY: mutation check: counted every call-initialised binding as a guard, wrapper or not -> addViaUnreasoned failed
+    // SAFETY: mutation check: counted a publicEntry binding as a guard (problem(...) === null instead of WRAPPERS) -> addViaPublic failed
     [`${web}/features/applicants/services/addApplicants.ts`, 'addApplicantsDirect'],
-    [`${web}/features/applicants/services/addApplicants.ts`, 'addViaUnreasoned'],
+    [`${web}/features/applicants/services/addApplicants.ts`, 'addViaPublic'],
     // SAFETY: mutation check: dropped the handler's session-read requirement for sessionEntry -> this case failed
     [`${web}/features/signup/services/label.ts`, 'listAll'],
     // SAFETY: mutation check: removed the inline 'use server' branch -> these two cases failed

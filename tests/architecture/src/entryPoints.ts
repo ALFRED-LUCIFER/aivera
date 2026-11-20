@@ -8,8 +8,8 @@ import { walk, type Violation } from './rules.ts';
 // - the export is the call result of a wrapper: `workspaceAction(...)`, `publicEntry('<reason>', handler)` or, for an
 //   action that needs only the signed-in session because there is no workspace yet, `sessionEntry('<reason>', handler)`;
 // - the exported function calls a policy guard itself, directly or through a function of the same file: the workspace
-//   context (`inActiveWorkspace`), the operator policy (`platformOperator`), or a same-file binding that holds one of
-//   the wrappers above (`const add = workspaceAction(...)`).
+//   context (`inActiveWorkspace`), the operator policy (`platformOperator`), or a same-file binding that holds
+//   workspaceAction (`const add = workspaceAction(...)`; publicEntry and sessionEntry are labels, not guards).
 // A worker consumer is the `.handle` of a `createConsumer(...)` (each handler runs in its envelope's workspace
 // transaction) or `systemConsumer('<reason>', handler)`.
 // shortcut: by name, without the type checker, and a guard call anywhere in the body counts (not proven to run on every
@@ -64,7 +64,7 @@ function calls(node: ts.Node, names: Set<string>): boolean {
 }
 
 /**
- * The policy guards, this file's top-level bindings that hold a declared wrapper (`const add = workspaceAction(...)`),
+ * The policy guards, this file's top-level bindings that hold `workspaceAction(...)` (the only wrapper that authorises),
  * and its top-level functions that call either, until no more are found.
  */
 function guardsOf(file: ts.SourceFile): Set<string> {
@@ -76,12 +76,7 @@ function guardsOf(file: ts.SourceFile): Set<string> {
       for (const d of statement.declarationList.declarations) {
         if (!ts.isIdentifier(d.name)) continue;
         if (isFn(d.initializer)) local.set(d.name.text, d.initializer);
-        else if (
-          d.initializer &&
-          ts.isCallExpression(d.initializer) &&
-          !problem(d.initializer, new Set(), REASONED.web)
-        )
-          guards.add(d.name.text);
+        else if (d.initializer && WRAPPERS.has(callee(d.initializer) ?? '')) guards.add(d.name.text);
       }
   }
   for (let grew = true; grew;) {
