@@ -123,14 +123,18 @@ Until both have run, the public job pages on Azure dev show their "could not loa
 
 The roles are mapped to the identities' object ids. If `id-aivera-dev`, `id-aivera-cicd-dev` or `id-aivera-relay-dev` is ever deleted and recreated, its new object id no longer matches: drop the stale role (`DROP ROLE aivera_app` after reassigning what it owns) and rerun the script.
 
-### pgvector (AIV-P0-030, not now)
+### pgvector (AIV-P0-030)
 
-The shared server's `azure.extensions` allows `PGCRYPTO,PG_STAT_STATEMENTS,PGAUDIT,PG_TRGM`. Before the first migration that needs `vector`, the owner adds it, keeping Medvya's entries (it is a dynamic parameter, no restart):
+The `search` schema's migrations (`packages/ai`, workspace-scoped embeddings) need the `vector` extension. Two owner steps, in order:
 
-```sh
-az postgres flexible-server parameter set -g rg-medvya-dev-in -s psql-medvya-dev-3afs7i \
-  -n azure.extensions -v PGCRYPTO,PG_STAT_STATEMENTS,PGAUDIT,PG_TRGM,VECTOR
-```
+1. **Allow-list it (applied 20 Nov 2026).** The shared server's `azure.extensions` is now `PGCRYPTO,PG_STAT_STATEMENTS,PGAUDIT,PG_TRGM,VECTOR` (Medvya's entries kept; a dynamic parameter, no restart). Done with:
+
+   ```sh
+   az postgres flexible-server parameter set -g rg-medvya-dev-in -s psql-medvya-dev-3afs7i \
+     -n azure.extensions -v PGCRYPTO,PG_STAT_STATEMENTS,PGAUDIT,PG_TRGM,VECTOR
+   ```
+
+2. **Create it in the `aivera` database: rerun `sh infra/scripts/bootstrap-db.sh`** before the deploy that carries the `search` migrations. `vector` is not a trusted extension, so on Flexible Server only a member of `azure_pg_admin` may create it; `aivera_migrator` has `CREATE` on the database but is not an admin, so its migration (`CREATE EXTENSION IF NOT EXISTS vector`) only finds what the bootstrap made. Without this step the migrate job fails on the `search` module and applies none of it; the other modules are already migrated by then.
 
 ### Medvya's VNet and the new subnet
 

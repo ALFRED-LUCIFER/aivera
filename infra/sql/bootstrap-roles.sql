@@ -37,3 +37,9 @@ SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole,
 FROM pg_roles r CROSS JOIN pg_database d
 WHERE r.rolname IN ('aivera_migrator', 'aivera_app', 'aivera_relay', 'aivera_public') AND NOT d.datistemplate
 GROUP BY r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole;
+
+-- pgvector (AIV-P0-030), in the aivera database: allow-listed in azure.extensions, but not a trusted extension, so only a
+-- member of azure_pg_admin (the Entra admin running this) may create it; the search migration's CREATE EXTENSION IF
+-- NOT EXISTS then finds it. Needs the allow-list first (infra/README.md, pgvector).
+\connect aivera
+CREATE EXTENSION IF NOT EXISTS vector;

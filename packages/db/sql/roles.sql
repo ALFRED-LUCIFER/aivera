@@ -20,3 +20,7 @@ CREATE ROLE aivera_public NOLOGIN;
 GRANT aivera_public TO aivera_app WITH INHERIT FALSE, SET TRUE;
 
 -- Default privileges for aivera_app are set by the migrator itself on every migrate (packages/db/src/migrate.ts).
+
+-- pgvector (AIV-P0-030) is not a trusted extension, so the superuser creates it; the search migration's
+-- CREATE EXTENSION IF NOT EXISTS then finds it. In Azure: infra/sql/bootstrap-roles.sql.
+CREATE EXTENSION IF NOT EXISTS vector;

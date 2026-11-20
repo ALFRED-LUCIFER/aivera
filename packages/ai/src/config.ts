@@ -23,6 +23,8 @@ export const generateTasks = {
 
 export const embedTasks = {
   'evidence.embed': { deployment: 'embedding-main', timeoutMs: 15_000 },
+  // Indexing and searching search.chunk (AIV-P0-030): one task, so a query and its documents share a model.
+  'search.embed': { deployment: 'embedding-main', timeoutMs: 15_000 },
 } as const satisfies Record<string, TaskSettings>;
 
 export type GenerateTask = keyof typeof generateTasks;
