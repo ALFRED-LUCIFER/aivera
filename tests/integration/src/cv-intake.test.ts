@@ -12,7 +12,7 @@ import { createRelay } from '@credalent/db/relay';
 import { CvParseRequestedV1, type EvidenceContract } from '@credalent/evidence';
 import {
   createApplicationReceivedHandler,
-  createCvParseHandlers,
+  createFileReadHandlers,
   createEvidence,
   EVIDENCE_QUEUE,
 } from '@credalent/evidence/composition';
@@ -263,12 +263,13 @@ beforeAll(async () => {
       readFilePurpose: readFilePurposeAsSystem,
       now: () => NOW,
     }) as Handler<unknown>,
-    ...createCvParseHandlers({
+    ...createFileReadHandlers({
       db: app,
       documentIntelligence: { endpoint: DI, token: async () => 'synthetic-entra-token', wait: async () => undefined },
       ai: createAiClient({ provider: fakeProvider({ completion: COMPLETION }), budget: createAiTokenBudget(app) }),
       readCleanFile: createCleanFileReader(blobs),
       recordContact: createContactRecorder(),
+      index: async () => undefined,
       now: () => NOW,
     }),
   ];
@@ -344,7 +345,7 @@ describe('Scenario: The same file redelivered is parsed once', () => {
     expect(await parseRequests([maria.sourceId])).toHaveLength(1);
   });
 
-  // SAFETY: mutation check: dropped the unique index source_cv_file_key (emptied 0016) -> this test failed (42P10: no index matches ON CONFLICT)
+  // SAFETY: mutation check: dropped the unique index source_cv_file_key (emptied 0018) -> this test failed (42P10: no index matches ON CONFLICT)
   it('two deliveries of one arrival at once keep one source, one parse row and one CvParseRequested.v1', async () => {
     const fileId = await upload();
     await apply('Daniel Novak', [fileId]);
