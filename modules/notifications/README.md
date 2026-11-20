@@ -1,6 +1,6 @@
-# @aivera/notifications
+# @credalent/notifications
 
-The only place that sends email (AIV-P0-017). Candidates are contacted only when a person has confirmed something, so every email names the action that caused it. Other code imports only `@aivera/notifications` (the contract, `EmailQueuedV1`, `EmailError`); apps build it from `@aivera/notifications/composition`.
+The only place that sends email (AIV-P0-017). Candidates are contacted only when a person has confirmed something, so every email names the action that caused it. Other code imports only `@credalent/notifications` (the contract, `EmailQueuedV1`, `EmailError`); apps build it from `@credalent/notifications/composition`.
 
 - **Queue (web app):** `createNotifications({ encryptionKey, origin, synthetic })` gives `queueEmail({ tx, workspaceId }, { template, to, data, causedBy, sender })`, called inside the confirmed action's workspace transaction. It refuses before writing (`EmailError`): no `causedBy` ("Every email needs the action that caused it"), data that fails the template's zod schema (naming the fields), a bad address. It renders the template, seals the recipient, reply-to, subject and bodies with AES-256-GCM, and writes the `queued` row plus `EmailQueued.v1` (`{ messageId }`) to `notifications.outbox`. A rolled-back action queues nothing.
 - **Send (worker):** `createEmailHandler({ encryptionKey, acs })` is the `notifications` queue's handler. It opens the row, POSTs to ACS (`Operation-Id` = row id, no open or click tracking), and marks the row `sent` with ACS's message id. A final refusal marks it `failed`; 429 and 5xx retry through the worker host. The worker never imports the JSX templates.

@@ -1,4 +1,4 @@
-import { newEnvelope } from '@aivera/db';
+import { newEnvelope } from '@credalent/db';
 import type { ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender } from '@azure/service-bus';
 import Long from 'long';
 import { describe, expect, it, vi } from 'vitest';

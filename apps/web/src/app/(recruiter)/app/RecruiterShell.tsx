@@ -1,6 +1,6 @@
 'use client';
 
-import { IntlProvider } from '@aivera/i18n/react';
+import { IntlProvider } from '@credalent/i18n/react';
 import type { ComponentProps } from 'react';
 import { AppShell, type AppShellProps } from '@/features/shell/components/AppShell.tsx';
 import type { Theme } from '@/features/shell/domain/shell.ts';

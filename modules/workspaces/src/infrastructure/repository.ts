@@ -1,5 +1,5 @@
-import type { AuditContract } from '@aivera/audit';
-import { DbQueryError, type Tx } from '@aivera/db/client';
+import type { AuditContract } from '@credalent/audit';
+import { DbQueryError, type Tx } from '@credalent/db/client';
 import { and, asc, count, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';

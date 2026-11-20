@@ -1,4 +1,4 @@
-// The candidate's own side of Aivera (ADR-009): an account per identity user, owned by the person, not a workspace.
+// The candidate's own side of Credalent (ADR-009): an account per identity user, owned by the person, not a workspace.
 
 export const CONSENT_PURPOSES = ['apply_to_job', 'answer_evidence_request', 'cv_check'] as const;
 export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
@@ -42,7 +42,7 @@ export type WorkspaceLink = {
   id: string;
   accountId: string;
   workspaceId: string;
-  /** The workspace's own candidate record (opaque id from @aivera/candidates). */
+  /** The workspace's own candidate record (opaque id from @credalent/candidates). */
   workspaceCandidateId: string;
   reason: LinkReason;
   consentId: string;

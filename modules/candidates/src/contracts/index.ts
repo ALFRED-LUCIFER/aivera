@@ -1,6 +1,6 @@
-// The only public surface of @aivera/candidates (ADR-002).
-import type { EventDefinition } from '@aivera/db/outbox';
-import type { WorkspaceContext } from '@aivera/workspaces';
+// The only public surface of @credalent/candidates (ADR-002).
+import type { EventDefinition } from '@credalent/db/outbox';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 import type { Person } from '../domain/person.ts';
@@ -12,7 +12,7 @@ export type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../appli
 /**
  * Written to `candidates.outbox` in the transaction that creates a person, and sent to the `candidates` queue.
  * Strict and opaque ids only: an email or a name in the payload is refused (AGENTS.md 1.2, 3.1). The envelope
- * (`Envelope` from `@aivera/db`) carries the workspace id and the time.
+ * (`Envelope` from `@credalent/db`) carries the workspace id and the time.
  */
 export const PersonCreatedV1 = {
   type: 'PersonCreated.v1',

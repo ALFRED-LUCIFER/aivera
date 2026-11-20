@@ -1,4 +1,4 @@
-import { log, meter } from '@aivera/observability';
+import { log, meter } from '@credalent/observability';
 import { context, propagation, ROOT_CONTEXT, SpanStatusCode, trace } from '@opentelemetry/api';
 import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { pgSchema } from 'drizzle-orm/pg-core';
@@ -24,7 +24,7 @@ export type RelayPorts = {
 /** Delay before attempt `attempts + 1`: 1 s, 2 s, 4 s… capped at 5 minutes. */
 export const backoffMs = (attempts: number) => Math.min(1000 * 2 ** (attempts - 1), 300_000);
 
-const lag = meter.createHistogram('aivera.outbox.lag', {
+const lag = meter.createHistogram('credalent.outbox.lag', {
   unit: 'ms',
   description: 'Time from an event being written to the outbox to Service Bus accepting it',
 });
@@ -39,7 +39,7 @@ const lag = meter.createHistogram('aivera.outbox.lag', {
  */
 export function createRelay({ db, schemas, queueFor, send, now, batchSize = 50, signal }: RelayPorts) {
   const outboxes = schemas.map((schema) => ({ schema, table: outboxTable(pgSchema(schema)) }));
-  const tracer = trace.getTracer('aivera');
+  const tracer = trace.getTracer('credalent');
 
   return async function relayOnce(): Promise<{ sent: number; failed: number }> {
     let sent = 0;

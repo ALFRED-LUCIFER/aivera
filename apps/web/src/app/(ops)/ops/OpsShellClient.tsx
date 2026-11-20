@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
+import { useTranslations } from '@credalent/i18n/react';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { OpsShell, type OpsShellProps } from '@/features/ops/components/OpsShell.tsx';

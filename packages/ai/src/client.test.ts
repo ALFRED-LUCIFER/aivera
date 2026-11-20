@@ -80,7 +80,7 @@ describe('Scenario: A task resolves to its configured deployment', () => {
   it('sends jobs.draftCompetencies to gpt-main with a managed-identity token and no API key', async () => {
     const requests: Request[] = [];
     const provider = azureProvider({
-      resourceName: 'oai-aivera-test',
+      resourceName: 'oai-credalent-test',
       credential: { getToken: async () => ({ token: 'entra-token', expiresOnTimestamp: Date.now() + 3_600_000 }) },
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -98,14 +98,17 @@ describe('Scenario: A task resolves to its configured deployment', () => {
 
     expect(output).toEqual({ ready: true });
     const [request] = requests;
-    expect(request?.url).toBe('https://oai-aivera-test.openai.azure.com/openai/v1/chat/completions?api-version=v1');
+    expect(request?.url).toBe('https://oai-credalent-test.openai.azure.com/openai/v1/chat/completions?api-version=v1');
     expect(request?.headers.get('authorization')).toBe('Bearer entra-token');
     expect(request?.headers.get('api-key')).toBeNull();
     expect(await request?.json()).toMatchObject({
       model: 'gpt-main',
       response_format: { type: 'json_schema', json_schema: { schema: { properties: { ready: { type: 'boolean' } } } } },
     });
-    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.deployment': 'gpt-main', 'aivera.ai.outcome': 'ok' });
+    expect(lastSpan()?.attributes).toMatchObject({
+      'credalent.ai.deployment': 'gpt-main',
+      'credalent.ai.outcome': 'ok',
+    });
   });
 
   it('selects the fake by configuration, never in pilot or production', () => {
@@ -118,7 +121,7 @@ describe('Scenario: A task resolves to its configured deployment', () => {
   });
 
   it('answers from the first fixture whose text is in the prompt, read from AI_FAKE_FIXTURES', async () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'aivera-ai-')), 'fixtures.json');
+    const file = join(mkdtempSync(join(tmpdir(), 'credalent-ai-')), 'fixtures.json');
     writeFileSync(
       file,
       JSON.stringify([
@@ -157,7 +160,7 @@ describe('Scenario: Transient failures are retried', () => {
     await expect(ai.generateStructured(draft)).resolves.toEqual({ ready: true });
     expect(calls).toEqual(['gpt-main', 'gpt-main', 'gpt-main']);
     expect(sleeps).toEqual([1000, 2000]);
-    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.attempts': 3, 'aivera.ai.outcome': 'ok' });
+    expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.attempts': 3, 'credalent.ai.outcome': 'ok' });
   });
 
   it("waits as long as Azure's retry-after-ms asks", async () => {
@@ -208,7 +211,7 @@ describe('Scenario: Transient failures are retried', () => {
       timers[attempt]?.abort(new DOMException('timed out', 'TimeoutError'));
     }
     expect(await result).toEqual(new AiUnavailable(draft.task, 'timeout'));
-    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.attempts': 3, 'error.type': 'timeout' });
+    expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.attempts': 3, 'error.type': 'timeout' });
   });
 
   it('does not retry a request the model refuses (400)', async () => {
@@ -229,7 +232,7 @@ describe('Scenario: The model is down', () => {
     clock.now += 29_999;
     await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
     expect(calls).toHaveLength(5);
-    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.outcome': 'circuit_open' });
+    expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.outcome': 'circuit_open' });
 
     clock.now += 2;
     await expect(ai.generateStructured(draft)).resolves.toEqual({ ready: true });
@@ -249,7 +252,7 @@ describe('Scenario: Telemetry never holds prompt text', () => {
   const cv = 'Sara Al Qahtani, senior data engineer, led the merchant risk pipeline at a BNPL fintech.';
   const personal = /sara|qahtani|merchant risk|bnpl/i;
 
-  // SAFETY: mutation check: added annotateSpan({ 'aivera.ai.prompt': input.prompt }) before generateText -> this test failed
+  // SAFETY: mutation check: added annotateSpan({ 'credalent.ai.prompt': input.prompt }) before generateText -> this test failed
   it('the span has task, latency, tokens and cost, and no field holds the prompt or completion', async () => {
     const { ai } = setup(
       fake({ completion: JSON.stringify({ ready: true, note: 'Sara Al Qahtani shows strong pipeline ownership.' }) }),
@@ -258,12 +261,12 @@ describe('Scenario: Telemetry never holds prompt text', () => {
 
     const span = lastSpan();
     expect(span?.attributes).toMatchObject({
-      'aivera.ai.task': 'jobs.draftCompetencies',
-      'aivera.ai.deployment': 'gpt-main',
-      'aivera.ai.outcome': 'ok',
+      'credalent.ai.task': 'jobs.draftCompetencies',
+      'credalent.ai.deployment': 'gpt-main',
+      'credalent.ai.outcome': 'ok',
       'gen_ai.usage.input_tokens': expect.any(Number),
       'gen_ai.usage.output_tokens': expect.any(Number),
-      'aivera.ai.cost_usd_micros': expect.any(Number),
+      'credalent.ai.cost_usd_micros': expect.any(Number),
     });
     expect(span?.duration).toBeDefined();
     expect(JSON.stringify({ name: span?.name, attributes: span?.attributes, events: span?.events })).not.toMatch(
@@ -291,7 +294,7 @@ describe('Scenario: Workspace budget', () => {
     await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(BudgetExceeded);
     await expect(ai.embed({ task: 'evidence.embed', workspaceId, value: 'x' })).rejects.toBeInstanceOf(BudgetExceeded);
     expect(calls).toHaveLength(1);
-    expect(lastSpan()?.attributes).toMatchObject({ 'aivera.ai.outcome': 'budget_exceeded' });
+    expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.outcome': 'budget_exceeded' });
 
     await expect(
       ai.generateStructured({ ...draft, workspaceId: '0190d4a2-0000-7000-8000-000000000002' }),
@@ -335,7 +338,7 @@ describe('Scenario: Workspace budget', () => {
       expect((error as Error).message).not.toContain('Draft competencies');
       expect(calls).toHaveLength(requests);
       expect(lastSpan()?.attributes).toMatchObject({
-        'aivera.ai.outcome': 'unavailable',
+        'credalent.ai.outcome': 'unavailable',
         'error.type': 'budget_store',
       });
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packForJobType } from '@aivera/jobs';
+import { packForJobType } from '@credalent/jobs';
 import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 import { catalogueView } from './catalogue.ts';
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Card, DataTable, ValueBasis } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Card, DataTable, ValueBasis } from '@credalent/ui';
 import type { ReactNode } from 'react';
 import type { WorkspaceRow } from '../domain/workspaces.ts';
 

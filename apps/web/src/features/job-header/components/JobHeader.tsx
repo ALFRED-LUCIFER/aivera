@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { StatusBadge } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { StatusBadge } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { rubricLabel } from '@/features/jobs-list/domain/jobsList.ts';

@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { notFound } from 'next/navigation';
 import { toJobRow } from '@/features/jobs-list/domain/jobsList.ts';
 import { requireScreen } from '@/features/shell/services/request.ts';

@@ -4,16 +4,16 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import type { CandidatesContract } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import type { JobsContract } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
-import { createNotifications } from '@aivera/notifications/composition';
-import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@aivera/db';
-import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
-import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
+import type { AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import type { CandidatesContract } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import type { JobsContract } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
+import { createNotifications } from '@credalent/notifications/composition';
+import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@credalent/db';
+import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
+import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -29,7 +29,7 @@ const GLOBAL_TABLES: Record<string, string> = {
   'workspaces.directory':
     'The operator console lists workspaces from it (ADR-012): workspace id and created date only, nothing a tenant wrote.',
   'audit.platform_entry':
-    'What Aivera operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
+    'What Credalent operators did, outside any workspace (ADR-012); aivera_app may only insert, never read it.',
   'ops.platform_setting':
     'One row of platform settings the operators change (ADR-012 point 9, AIV-P2-039): no tenant data, no personal data.',
   // SAFETY: mutation check: removed 'regional_hint' from this list -> the forced-RLS test failed (named jobs.catalogue_regional_hint)
@@ -193,7 +193,7 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
   return violations;
 }
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
@@ -305,7 +305,7 @@ async function seed(
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),
-      origin: 'https://aivera.example',
+      origin: 'https://credalent.example',
       synthetic: true,
     }).queueEmail(ctx, {
       template: 'evidence-request',
@@ -315,8 +315,8 @@ async function seed(
       data: {
         jobTitle: 'Senior AI Engineer',
         items: [{ competency: 'Evaluation design', ask: 'Send a link to the evaluation set.' }],
-        link: 'https://aivera.example/l/9fK2xQ7mT4vB',
-        deleteUrl: 'https://aivera.example/l/delete-9fK2xQ',
+        link: 'https://credalent.example/l/9fK2xQ7mT4vB',
+        deleteUrl: 'https://credalent.example/l/delete-9fK2xQ',
       },
     });
     await ctx.tx.execute(sql`insert into notifications.inbox (consumer, message_id, workspace_id, handled_at)

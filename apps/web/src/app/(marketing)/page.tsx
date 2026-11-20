@@ -1,6 +1,6 @@
-import { offeredJobTypes } from '@aivera/jobs';
-import { log } from '@aivera/observability';
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { offeredJobTypes } from '@credalent/jobs';
+import { log } from '@credalent/observability';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { ReactNode } from 'react';
 import { HowItWorks } from '@/features/marketing-home/components/HowItWorks.tsx';
 import { MarketingHome } from '@/features/marketing-home/components/MarketingHome.tsx';

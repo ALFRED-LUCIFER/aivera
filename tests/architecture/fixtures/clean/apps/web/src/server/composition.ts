@@ -1,1 +1,1 @@
-export { jobsModule } from '@aivera/jobs/composition';
+export { jobsModule } from '@credalent/jobs/composition';

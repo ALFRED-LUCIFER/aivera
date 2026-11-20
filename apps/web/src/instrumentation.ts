@@ -5,8 +5,8 @@ export async function register(): Promise<void> {
   const config = (await import('./server/checkEnvOnStart')).checkEnvOnStart();
   if (!config) return;
   // The modules' personal-data field names are redacted in logs and telemetry even where the allowlist would keep them.
-  const { registerPersonalDataKeys } = await import('@aivera/observability');
-  registerPersonalDataKeys((await import('@aivera/candidates')).PERSONAL_DATA_FIELDS);
-  registerPersonalDataKeys((await import('@aivera/candidate-accounts')).PERSONAL_DATA_FIELDS);
-  (await import('@aivera/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
+  const { registerPersonalDataKeys } = await import('@credalent/observability');
+  registerPersonalDataKeys((await import('@credalent/candidates')).PERSONAL_DATA_FIELDS);
+  registerPersonalDataKeys((await import('@credalent/candidate-accounts')).PERSONAL_DATA_FIELDS);
+  (await import('@credalent/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
 }

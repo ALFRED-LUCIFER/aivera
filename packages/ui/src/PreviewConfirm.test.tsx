@@ -300,14 +300,14 @@ function Drawer({ onAsk = () => {} }: { onAsk?: (q: string) => void }) {
     <>
       <p>Ranking for Senior AI Engineer</p>
       <AssistantDrawer
-        title="Aivera assistant"
+        title="Credalent assistant"
         context="Context: Senior AI Engineer, 64 candidates"
         inputLabel="Ask about what is on this page"
         askLabel="Ask"
         footer="Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
         closeLabel="Close assistant"
         onAsk={onAsk}
-        trigger={<Button>Ask Aivera</Button>}
+        trigger={<Button>Ask Credalent</Button>}
       >
         <Button>Who has the strongest evidence for evaluation?</Button>
       </AssistantDrawer>
@@ -318,8 +318,8 @@ function Drawer({ onAsk = () => {} }: { onAsk?: (q: string) => void }) {
 describe('AssistantDrawer', () => {
   it('Scenario: The assistant drawer frame', async () => {
     render(<Drawer />);
-    await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
-    const drawer = screen.getByRole('dialog', { name: 'Aivera assistant' });
+    await userEvent.click(screen.getByRole('button', { name: 'Ask Credalent' }));
+    const drawer = screen.getByRole('dialog', { name: 'Credalent assistant' });
     expect(screen.getByText('Context: Senior AI Engineer, 64 candidates').id).toBe(
       drawer.getAttribute('aria-describedby'),
     );
@@ -335,7 +335,7 @@ describe('AssistantDrawer', () => {
   // SAFETY: mutation check: removed onInteractOutside preventDefault -> this test failed (page click closed it)
   it('is non-modal: the page stays available, Escape closes and focus returns to the opener', async () => {
     render(<Drawer />);
-    const trigger = screen.getByRole('button', { name: 'Ask Aivera' });
+    const trigger = screen.getByRole('button', { name: 'Ask Credalent' });
     await userEvent.click(trigger);
     expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBeNull();
     expect(screen.getByText('Ranking for Senior AI Engineer').closest('[aria-hidden="true"]')).toBeNull();
@@ -350,14 +350,14 @@ describe('AssistantDrawer', () => {
   // SAFETY: mutation check: removed onOpenAutoFocus -> this test failed (focus went to Close assistant)
   it('Scenario: Opening the drawer focuses the question field', async () => {
     render(<Drawer />);
-    await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ask Credalent' }));
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Ask about what is on this page' }));
   });
 
   // SAFETY: mutation check: removed the re-entry onClick -> this test failed (the drawer closed)
   it('pressing the opener again takes focus back into the open drawer instead of closing it', async () => {
     render(<Drawer />);
-    const trigger = screen.getByRole('button', { name: 'Ask Aivera' });
+    const trigger = screen.getByRole('button', { name: 'Ask Credalent' });
     await userEvent.click(trigger);
     await userEvent.click(trigger);
     expect(screen.getByRole('dialog')).toBeTruthy();
@@ -367,7 +367,7 @@ describe('AssistantDrawer', () => {
   // SAFETY: mutation check: removed the onKeyDown edge handler -> this test failed (Tab looped to Close assistant)
   it('Scenario: Desktop: Tab off either end of the drawer goes to the opener and the drawer stays open', async () => {
     render(<Drawer />);
-    const trigger = screen.getByRole('button', { name: 'Ask Aivera' });
+    const trigger = screen.getByRole('button', { name: 'Ask Credalent' });
     await userEvent.click(trigger);
     await userEvent.tab(); // question field -> Ask, the drawer's last control
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ask' }));
@@ -389,7 +389,7 @@ describe('AssistantDrawer', () => {
     }));
     try {
       render(<Drawer />);
-      await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Ask Credalent' }));
       expect(screen.getByText('Ranking for Senior AI Engineer').closest('[aria-hidden="true"]')).toBeTruthy();
       await userEvent.tab(); // question field -> Ask
       await userEvent.tab(); // trapped: back to the drawer's first control, never the opener
@@ -402,7 +402,7 @@ describe('AssistantDrawer', () => {
   it('sends the trimmed question and ignores an empty one', async () => {
     const onAsk = vi.fn();
     render(<Drawer onAsk={onAsk} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Ask Aivera' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ask Credalent' }));
     await userEvent.click(screen.getByRole('button', { name: 'Ask' }));
     expect(onAsk).not.toHaveBeenCalled();
     const input = screen.getByRole('textbox', { name: 'Ask about what is on this page' });

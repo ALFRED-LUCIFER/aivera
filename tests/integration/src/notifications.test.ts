@@ -4,24 +4,24 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, uuidv7, withWorkspace, type Db, type Envelope } from '@aivera/db';
-import { createConsumer, type Delivery, type Handler } from '@aivera/db/consumer';
-import { createRelay } from '@aivera/db/relay';
-import { EmailError, EmailQueuedV1, type QueueEmailInput } from '@aivera/notifications';
+import { createDb, uuidv7, withWorkspace, type Db, type Envelope } from '@credalent/db';
+import { createConsumer, type Delivery, type Handler } from '@credalent/db/consumer';
+import { createRelay } from '@credalent/db/relay';
+import { EmailError, EmailQueuedV1, type QueueEmailInput } from '@credalent/notifications';
 import {
   createEmailHandler,
   createNotifications,
   handleEventGrid,
   NOTIFICATIONS_QUEUE,
   ReportTooEarly,
-} from '@aivera/notifications/composition';
+} from '@credalent/notifications/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // AIV-P0-017 acceptance scenarios against real PostgreSQL as aivera_app, the relay as aivera_relay. Service Bus is the
 // relay's fake sender handing envelopes to the consumer; ACS is faked at the HTTP boundary (fetch). Synthetic cast.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const W1 = '0190d4a2-0000-7000-8000-000000000011';
@@ -42,7 +42,7 @@ const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
 
 const notifications = () =>
-  createNotifications({ encryptionKey: KEY, origin: 'https://aivera.example', synthetic: true, now: () => NOW });
+  createNotifications({ encryptionKey: KEY, origin: 'https://credalent.example', synthetic: true, now: () => NOW });
 
 const evidenceRequest = (overrides: Partial<QueueEmailInput<'evidence-request'>> = {}) =>
   ({
@@ -59,8 +59,8 @@ const evidenceRequest = (overrides: Partial<QueueEmailInput<'evidence-request'>>
           ask: 'Send a dashboard export, or a few lines on what you changed and how it was measured.',
         },
       ],
-      link: 'https://aivera.example/l/9fK2xQ7mT4vB',
-      deleteUrl: 'https://aivera.example/l/delete-9fK2xQ',
+      link: 'https://credalent.example/l/9fK2xQ7mT4vB',
+      deleteUrl: 'https://credalent.example/l/delete-9fK2xQ',
     },
     ...overrides,
   }) as QueueEmailInput<'evidence-request'>;
@@ -98,7 +98,7 @@ async function relayAndConsume() {
     now: () => NOW,
     acs: {
       endpoint: 'https://acs-aivera-dev.communication.azure.com',
-      senderAddress: 'DoNotReply@aivera.example',
+      senderAddress: 'DoNotReply@credalent.example',
       token: async () => 'test-token',
       fetch: vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
         const headers = (init?.headers ?? {}) as Record<string, string>;
@@ -170,7 +170,7 @@ describe('Scenario: An email is queued in the transaction and sent by the worker
     expect(acsCalls[0]?.url).toBe('https://acs-aivera-dev.communication.azure.com/emails:send?api-version=2023-03-31');
     expect(acsCalls[0]?.headers['operation-id']).toBe(messageId);
     expect(acsCalls[0]?.body).toMatchObject({
-      senderAddress: 'DoNotReply@aivera.example',
+      senderAddress: 'DoNotReply@credalent.example',
       recipients: { to: [{ address: SARA }] },
       content: { subject: 'A request about your application: Senior AI Engineer' },
     });
@@ -238,10 +238,10 @@ const report = (messageId: string, status: string) => [
   {
     id: uuidv7(),
     eventType: 'Microsoft.Communication.EmailDeliveryReportReceived',
-    subject: `sender/DoNotReply@aivera.example/message/${messageId}`,
+    subject: `sender/DoNotReply@credalent.example/message/${messageId}`,
     eventTime: NOW.toISOString(),
     dataVersion: '1.0',
-    data: { sender: 'DoNotReply@aivera.example', recipient: SARA, messageId, status },
+    data: { sender: 'DoNotReply@credalent.example', recipient: SARA, messageId, status },
   },
 ];
 

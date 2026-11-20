@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Aivera — Design system foundations</title>
+<title>Credalent — Design system foundations</title>
 <script src="./support.js"></script>
 </head>
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 body{margin:0}
-/* Aivera "Case file" tokens. Ink carries text, actions, scores and selection; the highlighter marks cited evidence only. */
+/* Credalent "Case file" tokens. Ink carries text, actions, scores and selection; the highlighter marks cited evidence only. */
 .av{--bg:#F6F4F1;--surface:#FFFFFF;--surface-subtle:#EFECE8;--surface-raised:#FFFFFF;--border:#E4DFD9;--border-strong:#CFC8C0;--text:#1B1720;--text-2:#55505A;--text-3:#6A6470;--action:#1B1720;--action-hover:#3A3242;--on-action:#FFFFFF;--brand:#1B1720;--brand-hover:#000000;--brand-subtle:#E9E5DF;--brand-text:#1B1720;--hl:#FFE873;--hl-text:#1B1720;--focus:#1B1720;--ok-bg:#E8F3EA;--ok-text:#1F6B3A;--ok-border:#BFDCC5;--warn-bg:#FDEDE0;--warn-text:#9A3412;--warn-border:#F2C7A5;--err-bg:#FCE8E8;--err-text:#A1161D;--err-border:#F1BDBD;--info-bg:#E8EFFB;--info-text:#1D4E9E;--info-border:#BCD0F2;--shadow-1:0 1px 2px rgba(27,23,32,.05);--shadow-pop:0 16px 36px -12px rgba(27,23,32,.22),0 3px 8px rgba(27,23,32,.06)}
 .av[data-theme="dark"]{--bg:#141118;--surface:#1D1922;--surface-subtle:#18141D;--surface-raised:#262130;--border:#322C3B;--border-strong:#4A4355;--text:#F4F1F6;--text-2:#BDB5C6;--text-3:#9A91A5;--action:#F4F1F6;--action-hover:#FFFFFF;--on-action:#1B1720;--brand:#F4F1F6;--brand-hover:#FFFFFF;--brand-subtle:#2C2636;--brand-text:#F4F1F6;--hl:#4D4208;--hl-text:#FFF3B0;--focus:#FFE873;--ok-bg:#14281B;--ok-text:#8FE0A8;--ok-border:#24502F;--warn-bg:#33200F;--warn-text:#FDBA8C;--warn-border:#6A3F1C;--err-bg:#351717;--err-text:#FCA5A5;--err-border:#6E2A2A;--info-bg:#142440;--info-text:#A9C8FF;--info-border:#284A80;--shadow-1:none;--shadow-pop:0 18px 44px -10px rgba(0,0,0,.65)}
 .av{font-family:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:20px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;caret-color:var(--brand);accent-color:var(--brand);scrollbar-color:var(--border-strong) transparent}
@@ -93,7 +93,7 @@ body{margin:0}
 <div class="av" data-theme="light" style="box-sizing: border-box; width: 1440px; padding: 64px; display: flex; flex-direction: column; gap: 48px">
   <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
     <div style="display: flex; flex-direction: column; gap: 8px">
-      <h1 style="font-size: 40px; line-height: 48px; font-weight: 700; letter-spacing: -0.025em">Aivera design foundations: the case file</h1>
+      <h1 style="font-size: 40px; line-height: 48px; font-weight: 700; letter-spacing: -0.025em">Credalent design foundations: the case file</h1>
       <p style="font-size: 16px; line-height: 24px; color: var(--text-2); max-width: 720px">Ink does the work: text, actions, scores and selection, in the black and white of the logo. The highlighter marks cited evidence and nothing else. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.</p>
     </div>
     <span class="sub mono">v0.1 · 18 Nov 2026</span>
@@ -116,7 +116,7 @@ body{margin:0}
   <div style="border-top: 1px solid var(--border)"></div>
 <div style="display: flex; flex-direction: column; gap: 28px">
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Buttons · 40px, one primary per view</span>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px"><button type="button" class="btn btn-primary">Confirm move</button><button type="button" class="btn">Draft evidence request</button><button type="button" class="btn btn-ghost">Cancel</button><button type="button" class="btn" disabled="">Unavailable</button></div></div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px"><button type="button" class="btn btn-primary">Confirm move</button><button type="button" class="btn">Draft evidence request</button><button type="button" class="btn btn-ghost">Cancel</button><button type="button" class="btn" disabled>Unavailable</button></div></div>
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Value basis · every metric carries one</span>
     <div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="tag"><i class="mk mk-obs"></i>Observed</span><span class="tag"><i class="mk mk-base"></i>Baseline</span><span class="tag"><i class="mk mk-proj"></i>Projection</span><span class="tag"><i class="mk mk-na"></i>Not yet available</span></div></div>
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Evidence provenance · icon and word, never colour alone</span>
@@ -160,7 +160,7 @@ body{margin:0}
   <div style="border-top: 1px solid var(--border)"></div>
 <div style="display: flex; flex-direction: column; gap: 28px">
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Buttons · 40px, one primary per view</span>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px"><button type="button" class="btn btn-primary">Confirm move</button><button type="button" class="btn">Draft evidence request</button><button type="button" class="btn btn-ghost">Cancel</button><button type="button" class="btn" disabled="">Unavailable</button></div></div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px"><button type="button" class="btn btn-primary">Confirm move</button><button type="button" class="btn">Draft evidence request</button><button type="button" class="btn btn-ghost">Cancel</button><button type="button" class="btn" disabled>Unavailable</button></div></div>
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Value basis · every metric carries one</span>
     <div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="tag"><i class="mk mk-obs"></i>Observed</span><span class="tag"><i class="mk mk-base"></i>Baseline</span><span class="tag"><i class="mk mk-proj"></i>Projection</span><span class="tag"><i class="mk mk-na"></i>Not yet available</span></div></div>
   <div style="display: flex; flex-direction: column; gap: 10px"><span class="lab">Evidence provenance · icon and word, never colour alone</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Label, PreviewConfirmCard, SuccessBanner, Textarea } from '@aivera/ui';
+import { Button, Label, PreviewConfirmCard, SuccessBanner, Textarea } from '@credalent/ui';
 import { useId, type ReactNode } from 'react';
 
 export type ReasonedChangeProps = {

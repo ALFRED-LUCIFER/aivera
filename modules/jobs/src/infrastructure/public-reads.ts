@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db/client';
+import type { Tx } from '@credalent/db/client';
 import { and, desc, eq } from 'drizzle-orm';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 import { publicJob } from './schema.ts';

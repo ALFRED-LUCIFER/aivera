@@ -3,7 +3,7 @@ import { rows, type SampleRow } from '../domain/sample.ts';
 import { applyTheme } from '../services/dom.ts';
 
 type GalleryTheme = 'light' | 'dark';
-// The shape of @aivera/ui's DataTableSort; hooks/ may not import the UI package (ADR-003).
+// The shape of @credalent/ui's DataTableSort; hooks/ may not import the UI package (ADR-003).
 type DataTableSort = { columnId: string; direction: 'ascending' | 'descending' };
 
 const byColumn = (sort: DataTableSort) => (a: SampleRow, b: SampleRow) => {

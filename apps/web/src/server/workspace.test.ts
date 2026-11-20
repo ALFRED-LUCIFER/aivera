@@ -1,5 +1,5 @@
-import type { IdentityContract, User } from '@aivera/identity';
-import { ForbiddenError, WorkspacePausedError, type Member, type WorkspaceContext } from '@aivera/workspaces';
+import type { IdentityContract, User } from '@credalent/identity';
+import { ForbiddenError, WorkspacePausedError, type Member, type WorkspaceContext } from '@credalent/workspaces';
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
 import { currentMembership, workspaceAction } from './workspace.ts';
@@ -16,11 +16,11 @@ const telemetry = vi.hoisted(() => ({
   annotateSpan: vi.fn(),
   withSpan: vi.fn((_name: string, fn: () => Promise<unknown>) => fn()),
 }));
-vi.mock('@aivera/observability', () => telemetry);
+vi.mock('@credalent/observability', () => telemetry);
 vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({}) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
-vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({}) }));
-vi.mock('@aivera/workspaces/composition', () => ({ createWorkspaces: () => fake }));
+vi.mock('@credalent/audit/composition', () => ({ createAudit: () => ({}) }));
+vi.mock('@credalent/workspaces/composition', () => ({ createWorkspaces: () => fake }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');

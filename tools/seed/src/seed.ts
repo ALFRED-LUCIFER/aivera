@@ -1,12 +1,12 @@
 // pnpm db:seed (AIV-P0-031): the synthetic demo workspace, written through each module's contract, never raw SQL.
-import { createAudit } from '@aivera/audit/composition';
-import { createCandidates } from '@aivera/candidates/composition';
-import type { Db } from '@aivera/db/client';
-import { createIdentity } from '@aivera/identity/composition';
-import type { Competency } from '@aivera/jobs';
-import { createCatalogueReads, createJobs } from '@aivera/jobs/composition';
-import type { WorkspaceContext } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { createCandidates } from '@credalent/candidates/composition';
+import type { Db } from '@credalent/db/client';
+import { createIdentity } from '@credalent/identity/composition';
+import type { Competency } from '@credalent/jobs';
+import { createCatalogueReads, createJobs } from '@credalent/jobs/composition';
+import type { WorkspaceContext } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import {
   CANDIDATES,
   HIRING_OWNERS,
@@ -20,6 +20,7 @@ import {
 } from './cast.ts';
 
 /** The cast's sign-in method: no real issuer, so no one can sign in as a seeded user. */
+// Kept after the Credalent rename: seeded identities on dev are keyed by this issuer; a new one would duplicate them.
 export const SEED_ISSUER = 'https://seed.aivera.example';
 
 /** The APP_ENV values that hold synthetic data only (apps/web/src/server/env.ts); anything else, unset too, is refused. */
@@ -157,7 +158,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   return workspaceId;
 }
 
-/** The cast's competencies as rubric rows: from the description, or suggested by Aivera and accepted. */
+/** The cast's competencies as rubric rows: from the description, or suggested by Credalent and accepted. */
 function rubricOf(competencies: CastCompetency[]): Competency[] {
   return competencies.map((c) => ({
     name: c.name,

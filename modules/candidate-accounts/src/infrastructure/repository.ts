@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db/client';
+import type { Tx } from '@credalent/db/client';
 import { and, asc, eq, isNull, or } from 'drizzle-orm';
 import type { AccountStore } from '../application/accounts.ts';
 import { account, consent, profile, workspaceLink } from './schema.ts';

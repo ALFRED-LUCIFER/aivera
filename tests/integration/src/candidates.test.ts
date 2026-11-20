@@ -4,19 +4,19 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import type { CandidatesContract, FindOrCreatePersonInput, Identifier } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
-import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import type { CandidatesContract, FindOrCreatePersonInput, Identifier } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, withWorkspace, type Db } from '@credalent/db';
+import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-016 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
 // Synthetic cast only (docs/00-product/personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';

@@ -85,20 +85,20 @@ describe('Scenario Outline: Personal data is redacted', () => {
 
   it('AI call telemetry keeps its values, and any other AI key is redacted', () => {
     const attributes = {
-      'aivera.ai.operation': 'chat',
-      'aivera.ai.task': 'jobs.draftCompetencies',
-      'aivera.ai.deployment': 'gpt-main',
-      'aivera.ai.outcome': 'ok',
-      'aivera.ai.attempts': 3,
-      'aivera.ai.cost_usd_micros': 41,
-      'aivera.ai.template_version': 'jobs.draftCompetencies@1+citations@1',
+      'credalent.ai.operation': 'chat',
+      'credalent.ai.task': 'jobs.draftCompetencies',
+      'credalent.ai.deployment': 'gpt-main',
+      'credalent.ai.outcome': 'ok',
+      'credalent.ai.attempts': 3,
+      'credalent.ai.cost_usd_micros': 41,
+      'credalent.ai.template_version': 'jobs.draftCompetencies@1+citations@1',
       'gen_ai.usage.input_tokens': 90,
       'gen_ai.usage.output_tokens': 4,
     };
-    const leaky = { 'aivera.ai.prompt': 'Sara Al Qahtani', 'gen_ai.completion': 'Sara Al Qahtani' };
+    const leaky = { 'credalent.ai.prompt': 'Sara Al Qahtani', 'gen_ai.completion': 'Sara Al Qahtani' };
     expect(exportSpan({ ...attributes, ...leaky } as unknown as Record<string, string>)?.attributes).toEqual({
       ...attributes,
-      'aivera.ai.prompt': REDACTED,
+      'credalent.ai.prompt': REDACTED,
       'gen_ai.completion': REDACTED,
     });
   });
@@ -152,12 +152,12 @@ describe('Scenario: URLs lose their query strings', () => {
   it('"/portal/r?token=abc" is exported as "/portal/r"', () => {
     const span = exportSpan({
       'http.target': '/portal/r?token=abc',
-      'url.full': 'https://app.aivera.example/portal/r?token=abc#x',
+      'url.full': 'https://app.credalent.example/portal/r?token=abc#x',
       'url.path': '/portal/r',
       'url.query': 'token=abc',
     });
     expect(span?.attributes['http.target']).toBe('/portal/r');
-    expect(span?.attributes['url.full']).toBe('https://app.aivera.example/portal/r');
+    expect(span?.attributes['url.full']).toBe('https://app.credalent.example/portal/r');
     expect(span?.attributes).not.toHaveProperty('url.query');
     expect(JSON.stringify(span?.attributes)).not.toMatch(/abc/);
   });

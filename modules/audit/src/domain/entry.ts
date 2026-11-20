@@ -39,7 +39,7 @@ export const ACTIONS = [
 export type Action = (typeof ACTIONS)[number];
 
 /**
- * What an Aivera operator did, recorded in the platform audit log with no workspace (ADR-012). Adding one also needs a
+ * What a Credalent operator did, recorded in the platform audit log with no workspace (ADR-012). Adding one also needs a
  * migration for the `platform_entry_action_check` constraint (infrastructure/schema.ts).
  */
 export const PLATFORM_ACTIONS = [
@@ -72,11 +72,11 @@ export const PLATFORM_VALUE_KEYS: readonly string[] = ['dailyTokenBudget', 'stat
 /** Actions where a person changes an outcome, so the reason must be written down. */
 export const NOTE_REQUIRED: readonly Action[] = ['score.changed', 'decision.recorded', 'ai_budget.changed'];
 
-/** `operator` is an Aivera operator acting on a workspace from the console, by identity user id (ADR-012 point 8). */
+/** `operator` is a Credalent operator acting on a workspace from the console, by identity user id (ADR-012 point 8). */
 export const ACTOR_TYPES = ['user', 'system', 'candidate', 'client', 'operator'] as const;
 export type ActorType = (typeof ACTOR_TYPES)[number];
 
-/** `system` is Aivera itself and has no id; every other actor is an opaque id from its owning module. */
+/** `system` is Credalent itself and has no id; every other actor is an opaque id from its owning module. */
 export type Actor = { type: 'system' } | { type: Exclude<ActorType, 'system'>; id: string };
 
 /** The record the entry is about, by opaque id (`{ type: 'candidate', id }`). */

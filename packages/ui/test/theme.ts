@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 export type Theme = 'light' | 'dark';
 
-export const tokens = createRequire(import.meta.url)('@aivera/tokens/tokens.json') as {
+export const tokens = createRequire(import.meta.url)('@credalent/tokens/tokens.json') as {
   color: Record<Theme, Record<string, string>>;
   radius: Record<string, string>;
   control: Record<string, string>;

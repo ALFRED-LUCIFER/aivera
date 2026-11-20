@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db';
+import type { Tx } from '@credalent/db';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { statusForDelivery, type MessageStatus } from '../domain/email.ts';

@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/observability",
+  "name": "@credalent/observability",
   "private": true,
   "type": "module",
   "exports": {
@@ -20,7 +20,7 @@
     "pino": "10.3.1"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@opentelemetry/context-async-hooks": "2.10.0",
     "@types/node": "24.19.2",
     "oxlint": "1.94.0",

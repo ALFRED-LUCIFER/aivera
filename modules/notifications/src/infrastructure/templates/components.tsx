@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 // the dark ones in a prefers-color-scheme block, logical alignment from `dir`. Only the components a template uses
 // are built; TextLink and DetailTable come with their templates.
 
-// The EStyle colour tokens. Mail clients need literal values, and modules may not import @aivera/tokens (AGENTS.md
+// The EStyle colour tokens. Mail clients need literal values, and modules may not import @credalent/tokens (AGENTS.md
 // 9.4), so they are written here; each equals its Case file token (packages/tokens/src/tokens.json).
 // shortcut: nothing fails when a token changes and these do not; add a check under tests/ if the palette starts moving (AIV-P5-E03, #34)
 export const color = {

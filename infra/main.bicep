@@ -1,4 +1,4 @@
-// Aivera dev environment (epic AIV-P0-E02). Deployed into Medvya's dev resource group, Central India (ADR-008):
+// Credalent dev environment (epic AIV-P0-E02). Deployed into Medvya's dev resource group, Central India (ADR-008):
 //   az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha> alertEmail=<team address>
 // Owner only (infra/README.md). Never --mode Complete: the resource group is Medvya's, and Complete deletes everything
 // this template does not declare.
@@ -24,7 +24,7 @@ param googleClientId string = ''
 var location = resourceGroup().location
 var tags = { product: 'aivera', env: 'dev', data: 'synthetic' }
 var images = 'ghcr.io/${toLower(githubRepo)}'
-// Aivera's own group in UAE North for the AI resource (ADR-011): Medvya's group allows Indian regions only.
+// Credalent's own group in UAE North for the AI resource (ADR-011): Medvya's group allows Indian regions only.
 var aiResourceGroup = 'rg-aivera-ai-dev'
 
 // Shared Medvya dev resources, referenced with `existing` and never changed.
@@ -44,7 +44,7 @@ module foundation 'modules/foundation.bicep' = {
   }
 }
 
-// Aivera's external environment on a new subnet of Medvya's VNet (10.20.5.0/27 is free: Medvya uses 10.20.1.0/24,
+// Credalent's external environment on a new subnet of Medvya's VNet (10.20.5.0/27 is free: Medvya uses 10.20.1.0/24,
 // 10.20.2.0/24 and 10.20.4.0/27 of 10.20.0.0/16, checked 18 Nov 2026). /27 is the minimum for a consumption environment.
 module environment 'modules/environment.bicep' = {
   name: 'aivera-environment'

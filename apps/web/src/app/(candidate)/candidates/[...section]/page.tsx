@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { placeholderKey } from '@/features/candidate-shell/domain/links.ts';
@@ -8,7 +8,7 @@ import { placeholderKey } from '@/features/candidate-shell/domain/links.ts';
 type Props = PageProps<'/candidates/[...section]'>;
 const pageKey = async ({ params }: Props) => placeholderKey(`/candidates/${(await params).section.join('/')}`);
 
-// Each placeholder is titled after its page ("Plans · Aivera for candidates", WCAG 2.4.2).
+// Each placeholder is titled after its page ("Plans · Credalent for candidates", WCAG 2.4.2).
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const key = await pageKey(props);
   return key ? { title: (await getTranslations(defaultLocale, defaultTimeZone))(`candidate.shell.${key}`) } : {};

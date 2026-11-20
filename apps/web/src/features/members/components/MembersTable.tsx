@@ -1,6 +1,6 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { ROLES } from '@aivera/workspaces';
-import { Button, DataTable, Dialog, Select, type DataTableColumn } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { ROLES } from '@credalent/workspaces';
+import { Button, DataTable, Dialog, Select, type DataTableColumn } from '@credalent/ui';
 import {
   JOB_SCOPED,
   jobsCell,

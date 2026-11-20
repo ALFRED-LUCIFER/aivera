@@ -1,4 +1,4 @@
-# Aivera documentation
+# Credalent documentation
 
 | Folder                                 | What is in it                                               |
 | -------------------------------------- | ----------------------------------------------------------- |

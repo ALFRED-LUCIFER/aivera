@@ -14,7 +14,7 @@ export type IdentityStore = {
 export type Ports = {
   inTransaction<T>(work: (store: IdentityStore) => Promise<T>): Promise<T>;
   newId(): string;
-  /** Aivera's own External ID tenant issuer, whose emails count as verified without the claim. */
+  /** Credalent's own External ID tenant issuer, whose emails count as verified without the claim. */
   trustedIssuer: string;
 };
 

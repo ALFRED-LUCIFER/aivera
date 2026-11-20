@@ -1,4 +1,4 @@
-import type { InvitationState } from '@aivera/workspaces';
+import type { InvitationState } from '@credalent/workspaces';
 import { z } from 'zod';
 
 // Opening an invitation link (AIV-P1-003). Pure: no React, no I/O (ADR-003).

@@ -4,7 +4,7 @@ exports[`Scenario: Only the published version is read (AIV-P2-044) > equals the 
 {
   "prompt": "Job type: software_engineering
 Title: Senior Backend Engineer, Payments",
-  "promptVersion": "jobs.detectDomain@1",
+  "promptVersion": "jobs.detectDomain@2",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,
@@ -121,7 +121,7 @@ Title: Senior Backend Engineer, Payments",
     ],
     "type": "object",
   },
-  "system": "You read a job description and say which industry the hiring company is in, so Aivera can suggest that industry's skills. Choose one domain from the list in the schema only when the description clearly shows the company works in it, and cite the sentence that shows it. When no industry is clear, answer domain "none" with no citation. Regions: list a region from the schema only for where the job or the company is based or operates, each citing the location or the description sentence that says so. Never infer a region, or anything else, from a line about the people to hire: nationality, residency, where someone is from, an employer they worked at, age or gender.",
+  "system": "You read a job description and say which industry the hiring company is in, so Credalent can suggest that industry's skills. Choose one domain from the list in the schema only when the description clearly shows the company works in it, and cite the sentence that shows it. When no industry is clear, answer domain "none" with no citation. Regions: list a region from the schema only for where the job or the company is based or operates, each citing the location or the description sentence that says so. Never infer a region, or anything else, from a line about the people to hire: nationality, residency, where someone is from, an employer they worked at, age or gender.",
   "task": "jobs.detectDomain",
 }
 `;

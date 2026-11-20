@@ -1,5 +1,5 @@
-import type { NewEntry } from '@aivera/audit';
-import type { Tx } from '@aivera/db';
+import type { NewEntry } from '@credalent/audit';
+import type { Tx } from '@credalent/db';
 import {
   ForbiddenError,
   type Action,
@@ -7,7 +7,7 @@ import {
   type JobResource,
   type SetJobOwnerInput,
   type WorkspaceContext,
-} from '@aivera/workspaces';
+} from '@credalent/workspaces';
 import { offeredJobTypes, type CatalogueVersion } from '../domain/catalogue.ts';
 import {
   approvesAs,

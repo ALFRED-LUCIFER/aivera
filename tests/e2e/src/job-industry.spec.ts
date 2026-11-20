@@ -42,7 +42,7 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await draft(page, `Senior Backend Engineer, Payments ${theme} ${Date.now()}`, PAYMENTS, 'DIFC, Dubai');
 
-    await expect(page.getByText('Aivera read this as a Payments and fintech job')).toBeVisible();
+    await expect(page.getByText('Credalent read this as a Payments and fintech job')).toBeVisible();
     // The detected industry cites its sentence, in the shared highlight.
     await expect(page.locator('mark').filter({ hasText: SENTENCE }).first()).toHaveText(
       `cited from your description ${SENTENCE}`,
@@ -130,7 +130,7 @@ test('Scenario: No clear domain, and nothing changes until I save', async ({ pag
   const title = `Studio Tools Engineer ${Date.now()}`;
   await draft(page, title, STUDIO, 'Al Quoz studio');
   await expect(page.getByRole('table', { name: 'Drafted competencies' })).toContainText('Internal tools engineering');
-  await expect(page.getByText(/Aivera read this as/)).toHaveCount(0);
+  await expect(page.getByText(/Credalent read this as/)).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /^For an? .* job/ })).toHaveCount(0);
 
   await page.getByText('Add industry skills').focus();

@@ -1,4 +1,4 @@
-// AIV-P0-015: the worker host in Aivera's environment: the outbox relay and the queue consumers (apps/worker).
+// AIV-P0-015: the worker host in Credalent's environment: the outbox relay and the queue consumers (apps/worker).
 // No ingress; the probes reach its internal port. Two identities: id-aivera-dev (aivera_app, Service Bus receive)
 // and id-aivera-relay-dev (aivera_relay, Service Bus send).
 // shortcut: one replica always on, because the relay polls the outbox every second (smallest size, about $5 to $10 a
@@ -15,7 +15,7 @@ param databaseHost string
 param databaseName string
 param serviceBusNamespace string
 param workerImage string
-@description('Aivera Key Vault URI (ends with a slash): notifications-encryption-key must exist before an apply.')
+@description('Credalent Key Vault URI (ends with a slash): notifications-encryption-key must exist before an apply.')
 param keyVaultUri string
 param acsEndpoint string
 param emailSender string

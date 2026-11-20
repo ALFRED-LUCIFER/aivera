@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, buttonClassName } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, buttonClassName } from '@credalent/ui';
 import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { accountLink, footerLinks, headerLinks, isCurrent } from '../domain/links.ts';

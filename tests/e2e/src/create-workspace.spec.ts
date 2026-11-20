@@ -21,7 +21,7 @@ for (const theme of themes) {
 
     // The ink panel's logo link comes first (SignUp artboard, AIV-P1-068).
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('link', { name: 'Aivera' })).toBeFocused();
+    await expect(page.getByRole('link', { name: 'Credalent' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(page.getByLabel('Company')).toBeFocused();
     await page.keyboard.type('Demo Hiring Co');
@@ -72,7 +72,7 @@ for (const theme of themes) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await signIn(page, { email: `nadia+panel-${theme}-${Date.now()}@example.com` });
     const panel = page.getByRole('complementary');
-    await expect(panel.getByRole('link', { name: 'Aivera' })).toHaveAttribute('href', '/');
+    await expect(panel.getByRole('link', { name: 'Credalent' })).toHaveAttribute('href', '/');
     await expect(panel.locator('mark')).toHaveText('evidence');
     for (const point of [
       'Define a role and agree its competencies with the hiring manager.',

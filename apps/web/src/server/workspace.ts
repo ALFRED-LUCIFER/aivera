@@ -1,13 +1,13 @@
-import { createAudit } from '@aivera/audit/composition';
+import { createAudit } from '@credalent/audit/composition';
 import {
   ForbiddenError,
   type Action,
   type JobResource,
   type WorkspaceContext,
   type WorkspacesContract,
-} from '@aivera/workspaces';
-import { annotateSpan, withSpan } from '@aivera/observability';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { annotateSpan, withSpan } from '@credalent/observability';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
 import type { z } from 'zod';

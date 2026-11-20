@@ -1,5 +1,5 @@
 // The public jobs list (AIV-P3-004): search, filter chips and paging over the open jobs, all from the URL.
-import type { PublicJob } from '@aivera/jobs';
+import type { PublicJob } from '@credalent/jobs';
 import { z } from 'zod';
 
 /** The chip each job type counts under; a job type not listed counts under "all" only. */

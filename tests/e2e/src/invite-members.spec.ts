@@ -100,7 +100,7 @@ test("Scenario: Accepting joins the workspace with the invited role and only tha
   baseURL,
 }) => {
   await page.goto(`/invite?token=${encodeURIComponent(token())}`);
-  await expect(page.getByText('Harbour Talent invited you to Aivera as Hiring owner.')).toBeVisible();
+  await expect(page.getByText('Harbour Talent invited you to Credalent as Hiring owner.')).toBeVisible();
   await page.getByRole('link', { name: 'Sign in or create an account' }).click();
   await expect(page).toHaveURL(/\/sign-in\?next=/);
   await signIn(page, { email: 'faisal@example.com' });
@@ -197,9 +197,9 @@ for (const theme of themes) {
     await expectNoAxeViolations(page);
     await page.goto('/invite?token=not-a-real-token');
     await expectNoAxeViolations(page);
-    await context.clearCookies({ name: '__Host-aivera-session' });
+    await context.clearCookies({ name: '__Host-credalent-session' });
     await page.goto(`/invite?token=${encodeURIComponent(token())}`);
-    await expect(page.getByText(/invited you to Aivera|no longer valid/)).toBeVisible();
+    await expect(page.getByText(/invited you to Credalent|no longer valid/)).toBeVisible();
     await expectNoAxeViolations(page);
   });
 }

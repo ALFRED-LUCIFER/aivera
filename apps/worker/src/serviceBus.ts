@@ -1,9 +1,9 @@
 // The Service Bus side of the worker host (AIV-P0-015): the message shape, scheduled enqueue, and the adapter from a
-// received message to the consumer's Delivery. The consumer logic itself is SDK-free (@aivera/db/consumer).
-import type { Delivery, Scheduler } from '@aivera/db/consumer';
-import type { Envelope } from '@aivera/db';
-import { envelopeSchema } from '@aivera/db';
-import { log } from '@aivera/observability';
+// received message to the consumer's Delivery. The consumer logic itself is SDK-free (@credalent/db/consumer).
+import type { Delivery, Scheduler } from '@credalent/db/consumer';
+import type { Envelope } from '@credalent/db';
+import { envelopeSchema } from '@credalent/db';
+import { log } from '@credalent/observability';
 import type { ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender } from '@azure/service-bus';
 import Long from 'long';
 

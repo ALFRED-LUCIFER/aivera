@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/jobs",
+  "name": "@credalent/jobs",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,16 +12,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aivera/ai": "workspace:*",
-    "@aivera/audit": "workspace:*",
-    "@aivera/db": "workspace:*",
-    "@aivera/workspaces": "workspace:*",
+    "@credalent/ai": "workspace:*",
+    "@credalent/audit": "workspace:*",
+    "@credalent/db": "workspace:*",
+    "@credalent/workspaces": "workspace:*",
     "drizzle-orm": "0.45.4",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
-    "@aivera/i18n": "workspace:*",
+    "@credalent/config": "workspace:*",
+    "@credalent/i18n": "workspace:*",
     "@types/node": "24.19.2",
     "oxlint": "1.94.0",
     "typescript": "6.0.3",

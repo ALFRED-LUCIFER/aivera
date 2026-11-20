@@ -5,8 +5,8 @@ const { initTelemetry, registerPersonalDataKeys } = vi.hoisted(() => ({
   initTelemetry: vi.fn(),
   registerPersonalDataKeys: vi.fn(),
 }));
-vi.mock('@aivera/observability/init', () => ({ initTelemetry }));
-vi.mock('@aivera/observability', () => ({ registerPersonalDataKeys }));
+vi.mock('@credalent/observability/init', () => ({ initTelemetry }));
+vi.mock('@credalent/observability', () => ({ registerPersonalDataKeys }));
 
 afterEach(() => {
   vi.unstubAllEnvs();

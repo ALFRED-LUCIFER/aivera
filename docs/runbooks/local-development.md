@@ -27,7 +27,7 @@ A database volume created before AIV-P0-014 lacks the outbox relay's role, so `p
 
 The worker (`pnpm --filter worker start`) runs the outbox relay and the queue consumers, with probes on `PORT` (8080). It needs `ACS_ENDPOINT`, `EMAIL_SENDER` and `NOTIFICATIONS_ENCRYPTION_KEY` (email, AIV-P0-017; a real ACS resource, signed in with `az login`), `DATABASE_URL`, `RELAY_DATABASE_URL=postgres://aivera_relay:local_dev_only@localhost:5432/aivera` and `AZURE_SERVICE_BUS_NAMESPACE` (a real namespace, signed in with `az login`). It is not needed for the web app: events wait in the outbox until a relay sends them.
 
-Leave `APPLICATIONINSIGHTS_CONNECTION_STRING` empty locally: telemetry then stays off and `@aivera/observability`'s logger writes redacted JSON lines to stdout only. Log through `log` from `@aivera/observability` (message template plus ids, never candidate values); it redacts keys like `email`, `phone`, `name`, `text` and `prompt`, and strips query strings, before anything is written or exported.
+Leave `APPLICATIONINSIGHTS_CONNECTION_STRING` empty locally: telemetry then stays off and `@credalent/observability`'s logger writes redacted JSON lines to stdout only. Log through `log` from `@credalent/observability` (message template plus ids, never candidate values); it redacts keys like `email`, `phone`, `name`, `text` and `prompt`, and strips query strings, before anything is written or exported.
 
 Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruiter-sign-in.md)); without them `/sign-in` renders but every `/app` page redirects to it. Candidate sign-in works the same way with its own two settings ([candidate-sign-in.md](candidate-sign-in.md)); without them every `/candidates/me` page redirects to `/candidates/sign-in`. `pnpm e2e` signs in through a mocked provider instead and needs the migrated database above (or `E2E_DATABASE_URL`).
 
@@ -36,24 +36,24 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 | Command                                                     | What it does                                                                                                                                                                           |
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Every package, through Turborepo                                                                                                                                                       |
-| `pnpm --filter <pkg> test`                                  | One package (`web`, `@aivera/ui`, `@aivera/db`, `@aivera/tests-integration`…)                                                                                                          |
+| `pnpm --filter <pkg> test`                                  | One package (`web`, `@credalent/ui`, `@credalent/db`, `@credalent/tests-integration`…)                                                                                                 |
 | `pnpm format`                                               | Prettier over the repository                                                                                                                                                           |
 | `pnpm db:generate`                                          | Drizzle Kit generates SQL migrations for every module whose schema changed (ADR-004)                                                                                                   |
 | `pnpm db:migrate`                                           | Applies every module's migrations in order; a rerun applies nothing                                                                                                                    |
 | `pnpm db:seed` / `pnpm db:seed --reset`                     | Seeds the demo workspace "Demo" from `tools/seed/src/cast.ts`; a rerun changes nothing; `--reset` purges and reseeds it (synthetic only). Refused unless `APP_ENV` is `local` or `dev` |
-| `pnpm --filter @aivera/tokens build`                        | Regenerates `tokens.css` after editing `tokens.json`                                                                                                                                   |
+| `pnpm --filter @credalent/tokens build`                     | Regenerates `tokens.css` after editing `tokens.json`                                                                                                                                   |
 | `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                                                                                                                            |
 
 ## End-to-end tests and the component gallery (Playwright)
 
-`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@aivera/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`; its global setup (`tests/e2e/seed.ts`) gives the synthetic cast their workspaces in the e2e database before the browser signs in.
+`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@credalent/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`; its global setup (`tests/e2e/seed.ts`) gives the synthetic cast their workspaces in the e2e database before the browser signs in.
 
-| Command                                                            | What it does                                                                                                       |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `pnpm --filter @aivera/tests-e2e exec playwright install chromium` | Once per machine: the browser Playwright drives                                                                    |
-| `pnpm e2e`                                                         | Starts `next dev` on port 3200 (never 3000) and runs `tests/e2e`: axe in light and dark, browser checks, snapshots |
-| `pnpm e2e -g "forced colours"`                                     | Only the tests whose title matches                                                                                 |
-| `pnpm e2e:update`                                                  | Regenerates every baseline in the Playwright image, removing orphans; add `-g "<title>"` for only some             |
+| Command                                                               | What it does                                                                                                       |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `pnpm --filter @credalent/tests-e2e exec playwright install chromium` | Once per machine: the browser Playwright drives                                                                    |
+| `pnpm e2e`                                                            | Starts `next dev` on port 3200 (never 3000) and runs `tests/e2e`: axe in light and dark, browser checks, snapshots |
+| `pnpm e2e -g "forced colours"`                                        | Only the tests whose title matches                                                                                 |
+| `pnpm e2e:update`                                                     | Regenerates every baseline in the Playwright image, removing orphans; add `-g "<title>"` for only some             |
 
 **Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in, on `linux/amd64` like the runner (emulated on Apple Silicon, so the update takes a few minutes; arm64 Chromium antialiases differently).
 
@@ -63,8 +63,8 @@ When `@playwright/test` is upgraded, change the image tag in `.github/workflows/
 
 ## Adding a module's schema change
 
-1. Edit `modules/<m>/src/infrastructure/schema.ts` (a workspace-owned table gets `workspace_id`, `tenantPolicy(name, t.workspaceId)` from `@aivera/db/tenant-policy` (the `nullif(current_setting('app.workspace_id', true), '')::uuid` policy) and `.enableRLS()`; ADR-005).
-2. `pnpm db:generate`, read the SQL, commit it. For a new workspace-owned table also run `pnpm --filter @aivera/db exec drizzle-kit generate --custom --name force_rls` from the module folder and add `ALTER TABLE … FORCE ROW LEVEL SECURITY;`.
+1. Edit `modules/<m>/src/infrastructure/schema.ts` (a workspace-owned table gets `workspace_id`, `tenantPolicy(name, t.workspaceId)` from `@credalent/db/tenant-policy` (the `nullif(current_setting('app.workspace_id', true), '')::uuid` policy) and `.enableRLS()`; ADR-005).
+2. `pnpm db:generate`, read the SQL, commit it. For a new workspace-owned table also run `pnpm --filter @credalent/db exec drizzle-kit generate --custom --name force_rls` from the module folder and add `ALTER TABLE … FORCE ROW LEVEL SECURITY;`.
 3. Add an integration test proving RLS isolates workspaces with the repository filter removed (copy `tests/integration/src/migrations-and-rls.test.ts`).
 4. A new module adds its name to `MODULES` in `packages/db/src/modules.ts`, in dependency order.
 

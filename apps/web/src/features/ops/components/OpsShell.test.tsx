@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 const labels: OpsShellProps['labels'] = {
   skipToContent: 'Skip to content',
-  home: 'Aivera operations',
+  home: 'Credalent operations',
   overview: 'Overview',
   nav: 'Operations',
   soon: 'Coming soon',

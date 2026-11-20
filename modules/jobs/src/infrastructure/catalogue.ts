@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db/client';
+import type { Tx } from '@credalent/db/client';
 import { and, desc, eq, type SQL } from 'drizzle-orm';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
 import {

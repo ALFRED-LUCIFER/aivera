@@ -1,8 +1,8 @@
 'use server';
 
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { log } from '@aivera/observability';
-import { WorkspaceError, type Invitation, type WorkspaceContext } from '@aivera/workspaces';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { log } from '@credalent/observability';
+import { WorkspaceError, type Invitation, type WorkspaceContext } from '@credalent/workspaces';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { getJobs } from '@/server/jobs';

@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Button } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button } from '@credalent/ui';
 
 /** A candidate page that could not load (X4), inside the candidate frame; the reason is in the server log. */
 export function PageFailed({ onRetry }: { onRetry: () => void }) {

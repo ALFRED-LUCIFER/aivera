@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { packForJobType, type CatalogueVersion } from '@aivera/jobs';
+import { packForJobType, type CatalogueVersion } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
 import { CANDIDATES, HIRING_OWNERS, INDUSTRY_JOBS, industryRubric, JOBS, RECRUITER, WORKSPACE } from './cast.ts';
 

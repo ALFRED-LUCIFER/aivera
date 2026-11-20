@@ -8,7 +8,7 @@ import { redactingLogRecordProcessor, redactingSpanProcessor } from './redact.ts
 export function initTelemetry(service: 'web' | 'worker', connectionString: string | undefined): void {
   if (!connectionString) return;
   // The cloud role name in Application Insights.
-  process.env['OTEL_SERVICE_NAME'] ??= `aivera-${service}`;
+  process.env['OTEL_SERVICE_NAME'] ??= `credalent-${service}`;
   // Statsbeat (the SDK's own usage counters) goes to a West US endpoint, outside the region (AGENTS.md 1.10). The
   // legacy name turns all of it off; the current one only the non-essential part.
   // shortcut: the distro still polls settings.sdk.monitor.azure.com for its config; no switch exists in 1.20.1, recheck on upgrade

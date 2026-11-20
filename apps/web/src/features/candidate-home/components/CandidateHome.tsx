@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { buttonClassName, Input, Label, LevelMeter } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { buttonClassName, Input, Label, LevelMeter } from '@credalent/ui';
 import Link from 'next/link';
 import { useId, type CSSProperties, type ReactNode } from 'react';
 import type { JobCardData } from '@/features/public-jobs/index.ts';

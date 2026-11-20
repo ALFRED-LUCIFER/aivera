@@ -1,5 +1,5 @@
-import { PLATFORM_ACTIONS } from '@aivera/audit';
-import { intlConfig } from '@aivera/i18n';
+import { PLATFORM_ACTIONS } from '@credalent/audit';
+import { intlConfig } from '@credalent/i18n';
 import { describe, expect, it } from 'vitest';
 import { auditHref, auditParamsSchema, auditQuery, toEntryQuery, utcMinute } from './audit.ts';
 

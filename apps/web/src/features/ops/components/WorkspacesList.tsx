@@ -1,8 +1,8 @@
 'use client';
 
-import type { Messages } from '@aivera/i18n';
-import { useTimeZone, useTranslations } from '@aivera/i18n/react';
-import { Button, DataTable, Input, Label, ValueBasis, type DataTableColumn } from '@aivera/ui';
+import type { Messages } from '@credalent/i18n';
+import { useTimeZone, useTranslations } from '@credalent/i18n/react';
+import { Button, DataTable, Input, Label, ValueBasis, type DataTableColumn } from '@credalent/ui';
 import Link from 'next/link';
 import { workspaceHref, type WorkspaceRow, type WorkspacesListView } from '../domain/workspaces.ts';
 import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';

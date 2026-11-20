@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 import { parseSignUpForm, signUpHref, signUpNext, signUpStep } from './signup.ts';

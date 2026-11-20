@@ -1,4 +1,4 @@
-import { SLUG } from '@aivera/jobs';
+import { SLUG } from '@credalent/jobs';
 
 // URLs from docs/01-design/screens.md; each page arrives with its own ticket (AIV-P3-004, -010, -012, AIV-P4).
 export const headerLinks = [

@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/identity",
+  "name": "@credalent/identity",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,11 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aivera/db": "workspace:*",
+    "@credalent/db": "workspace:*",
     "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@types/node": "24.19.2",
     "oxlint": "1.94.0",
     "typescript": "6.0.3",

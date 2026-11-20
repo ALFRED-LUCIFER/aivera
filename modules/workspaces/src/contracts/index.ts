@@ -1,5 +1,5 @@
-// The only public surface of @aivera/workspaces (ADR-002).
-import type { Tx } from '@aivera/db/client';
+// The only public surface of @credalent/workspaces (ADR-002).
+import type { Tx } from '@credalent/db/client';
 import type { Session, WorkspaceContext as Context } from '../application/context.ts';
 import type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';
 import type { Action, JobResource } from '../domain/permissions.ts';
@@ -67,9 +67,9 @@ export type WorkspaceContext = Context<Tx>;
 
 /**
  * Input plus output AI tokens per workspace and UTC day (`YYYY-MM-DD`), shared by every process (AIV-P0-033). The store
- * behind `@aivera/ai`'s daily budget; apps wire it into `createAiClient`. Server-side only: the workspace id comes from
+ * behind `@credalent/ai`'s daily budget; apps wire it into `createAiClient`. Server-side only: the workspace id comes from
  * the caller's checked context or job envelope, and each call runs in that workspace's scoped transaction.
- * Mirrors `@aivera/ai`'s `TokenBudgetStore` structurally, so this module needs no dependency on the AI package.
+ * Mirrors `@credalent/ai`'s `TokenBudgetStore` structurally, so this module needs no dependency on the AI package.
  */
 export interface AiTokenBudget {
   /**

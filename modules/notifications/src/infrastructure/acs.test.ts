@@ -15,7 +15,7 @@ const ID = '0190d4a2-0000-7000-8000-0000000000e1';
 const sender = (response: () => Response) =>
   createAcsSender({
     endpoint: 'https://acs-aivera-dev.communication.azure.com',
-    senderAddress: 'DoNotReply@aivera.example',
+    senderAddress: 'DoNotReply@credalent.example',
     token: async () => 'test-token',
     fetch: vi.fn(async () => response()),
   });

@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Card, Input, Label, Select } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Card, Input, Label, Select } from '@credalent/ui';
 import Link from 'next/link';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 import { signUpHref, type SignUpState, type SignUpStep } from '../domain/signup.ts';

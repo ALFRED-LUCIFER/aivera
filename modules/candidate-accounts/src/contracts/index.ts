@@ -1,4 +1,4 @@
-// The only public surface of @aivera/candidate-accounts (ADR-002). Recruiter-side modules never import it (ADR-009).
+// The only public surface of @credalent/candidate-accounts (ADR-002). Recruiter-side modules never import it (ADR-009).
 import type { CandidateAccountContext, LinkToWorkspaceInput, RecordConsentInput } from '../application/accounts.ts';
 import type { Account, Consent, SignUpInput, WorkspaceLink } from '../domain/account.ts';
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Card, Skeleton, StatusBadge } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Card, Skeleton, StatusBadge } from '@credalent/ui';
 import Link from 'next/link';
 import type { ApprovalItem } from '../domain/desk.ts';
 

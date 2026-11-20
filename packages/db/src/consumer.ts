@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { log, meter } from '@aivera/observability';
+import { log, meter } from '@credalent/observability';
 import { context, propagation, ROOT_CONTEXT, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { Db, Tx } from './client.ts';
 import { envelopeSchema, type Envelope, type EventDefinition, type InboxTable } from './outbox.ts';
@@ -47,7 +47,7 @@ export function decide(outcome: Outcome, deliveryCount: number): Settlement {
   return { action: 'abandon', delayMs: Math.min(backoffMs(deliveryCount), 30_000) };
 }
 
-const deadLettered = meter.createCounter('aivera.worker.dead_lettered', {
+const deadLettered = meter.createCounter('credalent.worker.dead_lettered', {
   description: 'Messages the worker dead-lettered, per queue',
 });
 
@@ -66,7 +66,7 @@ export function createConsumer(opts: {
 }) {
   const { db, queue, now, signal } = opts;
   const handlers = new Map(opts.handlers.map((h) => [h.event.type, h]));
-  const tracer = trace.getTracer('aivera');
+  const tracer = trace.getTracer('credalent');
   const inFlight = new Set<Promise<void>>();
 
   async function run(delivery: Delivery): Promise<Outcome> {

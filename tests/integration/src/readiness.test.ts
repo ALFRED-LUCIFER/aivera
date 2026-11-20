@@ -1,5 +1,5 @@
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, isReachable } from '@aivera/db';
+import { createDb, isReachable } from '@credalent/db';
 import { expect, it } from 'vitest';
 
 // AIV-P0-007: /api/ready rests on isReachable; prove it against a real PostgreSQL that goes away.

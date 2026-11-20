@@ -1,3 +1,3 @@
-import { createCandidateAccounts } from '@aivera/candidate-accounts/composition';
+import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
 
 export const getCandidateAccounts = createCandidateAccounts;

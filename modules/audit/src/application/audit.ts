@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db';
+import type { Tx } from '@credalent/db';
 import {
   assertValidEntry,
   assertValidPlatformEntry,

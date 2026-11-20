@@ -10,7 +10,7 @@ import { approveAsOperator, PIA, signUpWorkspace } from './workspaces.ts';
 // workspaces module and tests/integration/src/ops-status.test.ts. While new workspaces need approval (AIV-P2-039), the
 // operator approves it first. Synthetic people only.
 
-const BANNER = 'This workspace is paused by Aivera. You can read everything; new work is paused.';
+const BANNER = 'This workspace is paused by Credalent. You can read everything; new work is paused.';
 const PREVIEW = 'Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.';
 
 /** A new workspace and its admin, signed in, in a browser context of their own. */

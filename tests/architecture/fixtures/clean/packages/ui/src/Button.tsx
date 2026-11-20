@@ -1,2 +1,2 @@
-import tokens from '@aivera/tokens/tokens.json';
+import tokens from '@credalent/tokens/tokens.json';
 export const Button = () => tokens;

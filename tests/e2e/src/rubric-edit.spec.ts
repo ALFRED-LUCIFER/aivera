@@ -9,7 +9,7 @@ async function openRubric(page: Page) {
   await page.goto('/app/jobs');
   await page.getByRole('link', { name: 'Applied AI Engineer' }).click();
   await page.getByRole('link', { name: /^Competencies and rubric/ }).click();
-  await expect(page).toHaveTitle('Applied AI Engineer: Competencies and rubric · Aivera');
+  await expect(page).toHaveTitle('Applied AI Engineer: Competencies and rubric · Credalent');
 }
 
 const weight = (page: Page, name: string) => page.getByRole('spinbutton', { name: `Weight for ${name}` });

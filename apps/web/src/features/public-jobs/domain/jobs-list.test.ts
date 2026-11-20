@@ -1,4 +1,4 @@
-import type { PublicJob } from '@aivera/jobs';
+import type { PublicJob } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
 import { jobsHref, jobsListView, parseJobsQuery, postedDaysAgo, PAGE_SIZE } from './jobs-list.ts';
 

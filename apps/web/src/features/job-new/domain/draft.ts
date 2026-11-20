@@ -12,7 +12,7 @@ import {
   type DomainDetection,
   type DraftedCompetency,
   type SuggestedCompetency,
-} from '@aivera/jobs';
+} from '@credalent/jobs';
 import { z } from 'zod';
 import type { NewJobState } from './jobNew.ts';
 
@@ -26,7 +26,7 @@ export type DraftCompetency = Pick<
   DraftedCompetency,
   'name' | 'evidenceExpected' | 'weightPercent' | 'levelNeeded' | 'type'
 > & {
-  /** Drafted from the description, suggested by Aivera, or added by the recruiter (by hand or from the starters). */
+  /** Drafted from the description, suggested by Credalent, or added by the recruiter (by hand or from the starters). */
   origin: Competency['origin'];
   /** A suggestion's "Why:" sentence; null for any other competency. */
   why: string | null;

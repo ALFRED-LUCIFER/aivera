@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Card, Chip } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Card, Chip } from '@credalent/ui';
 import { CATALOGUE_SOURCE, type CatalogueView } from '../domain/catalogue.ts';
 
 type PackJobType = CatalogueView['domainPacks']['packs'][number]['jobTypes'][number];

@@ -1,7 +1,7 @@
-// The only public surface of @aivera/jobs (ADR-002).
-import type { Tx } from '@aivera/db';
-import type { EventDefinition } from '@aivera/db/outbox';
-import type { WorkspaceContext } from '@aivera/workspaces';
+// The only public surface of @credalent/jobs (ADR-002).
+import type { Tx } from '@credalent/db';
+import type { EventDefinition } from '@credalent/db/outbox';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
@@ -238,7 +238,7 @@ export interface JobsContract {
 export interface CompetencyDrafting {
   /**
    * The competencies the description states, each citing it, and whether a line asking for something that is not a
-   * skill was left out. Throws `@aivera/ai`'s `BudgetExceeded`, `AiUnavailable`,
+   * skill was left out. Throws `@credalent/ai`'s `BudgetExceeded`, `AiUnavailable`,
    * or (an answer rejected twice) `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
    */
   draftCompetencies(workspaceId: string, input: DraftInput, catalogue: CatalogueVersion): Promise<CompetencyDraft>;
@@ -252,7 +252,7 @@ export interface DomainDetecting {
   /**
    * The hiring company's likely industry from `catalogue`'s packs, or `none`, and the job's regions from its regions,
    * each citing the description or the location; pass the published version. An answer the citation contract rejects
-   * twice (a domain not in the catalogue, a quote not in the job's text) is `none`. Throws `@aivera/ai`'s
+   * twice (a domain not in the catalogue, a quote not in the job's text) is `none`. Throws `@credalent/ai`'s
    * `BudgetExceeded` or `AiUnavailable`.
    */
   detectDomain(workspaceId: string, input: DetectDomainInput, catalogue: CatalogueVersion): Promise<DomainDetection>;

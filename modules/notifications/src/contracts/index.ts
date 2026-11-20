@@ -1,6 +1,6 @@
-// The only public surface of @aivera/notifications (ADR-002): the one place that sends email.
-import type { Tx } from '@aivera/db';
-import type { EventDefinition } from '@aivera/db/outbox';
+// The only public surface of @credalent/notifications (ADR-002): the one place that sends email.
+import type { Tx } from '@credalent/db';
+import type { EventDefinition } from '@credalent/db/outbox';
 import { z } from 'zod';
 import type { QueueEmailInput } from '../application/emails.ts';
 import type { TemplateName } from '../domain/email.ts';

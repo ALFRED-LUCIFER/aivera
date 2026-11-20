@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
+import { useTranslations } from '@credalent/i18n/react';
 import {
   CompetencyRow,
   EvidenceHighlight,
@@ -11,7 +11,7 @@ import {
   StatTile,
   StrengthMeter,
   ValueBasis,
-} from '@aivera/ui';
+} from '@credalent/ui';
 import type { ComponentProps } from 'react';
 import { citations, evidenceText, sample } from '../domain/sample.ts';
 import { Section, State } from './Section.tsx';

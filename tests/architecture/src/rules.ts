@@ -26,19 +26,19 @@ export const RECRUITER_SIDE_MODULES = new Set([
 
 // shortcut: catches named imports of Db or createDb only, not `import * as` or a direct postgres/drizzle client; widen it
 // if a module ever needs another way to reach the database.
-const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@aivera\/db(?:\/client)?['"]/g;
+const RAW_POOL_IMPORT = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]@credalent\/db(?:\/client)?['"]/g;
 const CANDIDATE_SITE = /[/\\]src[/\\](?:app[/\\]\(candidate\)|features[/\\]candidate-[^/\\]+)[/\\]/;
 // `@/…` or a relative path resolved to src/: the session readers (server/auth, server/workspace) and the recruiter shell.
 const RECRUITER_SESSION =
   /^(?:next-auth|@auth\/)|(?:^@|[/\\]src)[/\\](?:server[/\\](?:auth|workspace)\b|features[/\\]shell(?:[/\\]|$))/;
 // AIV-P3-007, ADR-009: the candidate account and session reach only the candidate site, its server readers
 // (src/server/candidate*), and the roots that wire them (the proxy, instrumentation, the candidate Auth.js route).
-const CANDIDATE_DATA = /^@aivera\/candidate-accounts(?:\/|$)|(?:^@|[/\\]src)[/\\]server[/\\]candidate[^/\\.]*/;
+const CANDIDATE_DATA = /^@credalent\/candidate-accounts(?:\/|$)|(?:^@|[/\\]src)[/\\]server[/\\]candidate[^/\\.]*/;
 const CANDIDATE_DATA_READERS =
   /[/\\]src[/\\](?:app[/\\]\(candidate\)[/\\]|features[/\\]candidate-[^/\\]+[/\\]|server[/\\]candidate[^/\\]*$|app[/\\]api[/\\]candidate-auth[/\\]|proxy\.ts$|instrumentation\.ts$)/;
 // AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.
 const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
-const PUBLIC_API_ALLOWED = new Set(['@aivera/jobs', '@/server/publicJobs']);
+const PUBLIC_API_ALLOWED = new Set(['@credalent/jobs', '@/server/publicJobs']);
 // AIV-P2-035 (ADR-012): the operator console's pages, layouts and route handlers, and its server action files.
 const OPS_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)|features[/\\]ops(?:-[^/\\]+)?)[/\\]/;
 // template and default render children like a layout; loading, error and not-found render no console data.
@@ -57,7 +57,7 @@ const everyExportChecked = (text: string) => {
 // metadata only through these modules' contracts, and never holds the pool; server/operator.ts wires the reads.
 const OPS_READ_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)[/\\]|features[/\\]ops(?:-[^/\\]+)?[/\\]|server[/\\]ops[^/\\]*$)/;
 const OPS_CONTRACTS = new Set(['workspaces', 'jobs', 'audit']);
-const RAW_DATABASE = /^(?:@aivera\/db(?:\/.*)?|drizzle-orm(?:\/.*)?|postgres|pg)$/;
+const RAW_DATABASE = /^(?:@credalent\/db(?:\/.*)?|drizzle-orm(?:\/.*)?|postgres|pg)$/;
 // `@/server/…` or a relative path resolved to src/server/: of the app's server code (the pool, the full workspaces and
 // jobs contracts), console code imports only operator.ts, which holds the policy and the metadata reads.
 const APP_SERVER = /(?:^@|[/\\]src)[/\\]server[/\\]([^/\\]+?)(?:\.tsx?)?$/;
@@ -205,14 +205,14 @@ export function findViolations(root: string): Violation[] {
         const add = (rule: string, detail: string) =>
           violations.push({ rule, file: rel, detail: `${spec}: ${detail}` });
 
-        const scoped = /^@aivera\/([^/]+)(?:\/(.+))?$/.exec(spec);
+        const scoped = /^@credalent\/([^/]+)(?:\/(.+))?$/.exec(spec);
         if (scoped) {
           const [, target = '', subpath] = scoped;
           if (modules.has(target) && target !== name) {
             if (subpath === 'composition' && kind !== 'apps')
               add('composition-apps-only', "only apps import a module's composition (ADR-002)");
             else if (subpath && subpath !== 'composition')
-              add('module-contracts-only', 'import a module only as @aivera/<m> (ADR-002)');
+              add('module-contracts-only', 'import a module only as @credalent/<m> (ADR-002)');
             if (kind === 'modules' && FORBIDDEN_MODULE_IMPORTS[name]?.includes(target))
               add('paying-never-changes-ranking', `${name} may not import ${target} (AGENTS.md 1.8)`);
             if (kind === 'modules' && target === 'candidate-accounts' && RECRUITER_SIDE_MODULES.has(name))
@@ -255,12 +255,15 @@ export function findViolations(root: string): Violation[] {
           kind === 'apps' &&
           PUBLIC_API.test(file) &&
           !/\.test\.tsx?$/.test(file) &&
-          (spec.startsWith('.') || /^@(?:aivera\/|\/)/.test(spec)) &&
+          (spec.startsWith('.') || /^@(?:credalent\/|\/)/.test(spec)) &&
           !PUBLIC_API_ALLOWED.has(spec)
         )
-          add('public-api-jobs-only', 'the public API imports only @aivera/jobs and @/server/publicJobs (AIV-P3-002)');
+          add(
+            'public-api-jobs-only',
+            'the public API imports only @credalent/jobs and @/server/publicJobs (AIV-P3-002)',
+          );
         if (unit !== 'packages/ai' && (spec === 'ai' || spec.startsWith('ai/') || spec.startsWith('@ai-sdk/')))
-          add('ai-sdk-only-in-packages-ai', 'call a model through @aivera/ai only (ADR-006)');
+          add('ai-sdk-only-in-packages-ai', 'call a model through @credalent/ai only (ADR-006)');
         if (kind === 'packages' && appPackages.has(spec.split('/')[0] ?? ''))
           add('package-imports-app', 'no package imports an app (AGENTS.md 9.4)');
 

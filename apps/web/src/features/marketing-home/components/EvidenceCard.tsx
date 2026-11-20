@@ -1,6 +1,6 @@
 'use client';
 
-import { EvidenceHighlight, ProvenanceTag, ScoreWithUncertainty, StrengthMeter, type Citation } from '@aivera/ui';
+import { EvidenceHighlight, ProvenanceTag, ScoreWithUncertainty, StrengthMeter, type Citation } from '@credalent/ui';
 import { animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { caseEase, playsIntro } from '../domain/hero.ts';

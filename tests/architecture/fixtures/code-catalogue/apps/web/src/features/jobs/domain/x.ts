@@ -1,3 +1,3 @@
-import { JOB_TYPES } from '@aivera/jobs';
+import { JOB_TYPES } from '@credalent/jobs';
 
 export const x = JOB_TYPES;

@@ -1,4 +1,4 @@
-import { tenantPolicy } from '@aivera/db/tenant-policy';
+import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { bigint, check, index, jsonb, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { ACTIONS, ACTOR_TYPES, PLATFORM_ACTIONS, type Values } from '../domain/entry.ts';
@@ -45,7 +45,7 @@ export const entry = audit
   )
   .enableRLS();
 
-// The platform audit log (ADR-012): what Aivera operators did, outside any workspace, so no workspace id and no tenant
+// The platform audit log (ADR-012): what Credalent operators did, outside any workspace, so no workspace id and no tenant
 // policy. aivera_app may only INSERT (no SELECT, UPDATE, DELETE or TRUNCATE) and the same append-only triggers as
 // audit.entry hold for every role (migration 0010_platform_entry_append_only).
 export const platformEntry = audit.table(

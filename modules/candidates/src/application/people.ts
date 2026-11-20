@@ -1,5 +1,5 @@
-import type { Tx } from '@aivera/db';
-import type { Action, WorkspaceContext } from '@aivera/workspaces';
+import type { Tx } from '@credalent/db';
+import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import { CandidateError, normaliseIdentifiers, type Identifier, type Person } from '../domain/person.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */

@@ -28,7 +28,7 @@ for (const theme of themes) {
     await signIn(page, { email: 'huda@example.com' });
     await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
     await expectNoAxeViolations(page);
-    await context.clearCookies({ name: '__Host-aivera-session' });
+    await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'lina@example.com' });
     await expect(page.getByText(noAccess)).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);

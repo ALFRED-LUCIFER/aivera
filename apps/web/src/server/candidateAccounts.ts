@@ -1,5 +1,5 @@
-import type { CandidateAccountsContract } from '@aivera/candidate-accounts';
-import { createCandidateAccounts } from '@aivera/candidate-accounts/composition';
+import type { CandidateAccountsContract } from '@credalent/candidate-accounts';
+import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
 import { getIdentity } from './auth';
 import { getDb } from './db';
 

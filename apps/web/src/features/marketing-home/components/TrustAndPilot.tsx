@@ -1,4 +1,4 @@
-import { buttonClassName } from '@aivera/ui';
+import { buttonClassName } from '@credalent/ui';
 import { links } from '../domain/links.ts';
 import { column, sectionTitle } from '../domain/layout.ts';
 import { DrawnRule, Reveal } from './Reveal.tsx';

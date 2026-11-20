@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@aivera/ui/styles.css';
+@import '@credalent/ui/styles.css';
 
 /* The highlighter laid down like a pen stroke over "evidence" on load: the website, the candidate home and the sign-in
    pages (DESIGN.md). marketing.css reuses the keyframes for the evidence card. Off under reduced motion. */

@@ -1,6 +1,6 @@
 'use client';
 
-import { IntlProvider } from '@aivera/i18n/react';
+import { IntlProvider } from '@credalent/i18n/react';
 import type { ComponentProps } from 'react';
 import { Gallery } from '@/features/gallery/components/Gallery.tsx';
 import { useGalleryController } from '@/features/gallery/hooks/useGalleryController.ts';

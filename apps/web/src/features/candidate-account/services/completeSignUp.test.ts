@@ -1,4 +1,4 @@
-import { CandidateAccountError } from '@aivera/candidate-accounts';
+import { CandidateAccountError } from '@credalent/candidate-accounts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { initialSignUpState } from '../domain/signup.ts';
 import { completeSignUp } from './completeSignUp.ts';
@@ -18,7 +18,7 @@ vi.mock('@/server/jobs', () => ({
     getPublishedCatalogue: async () => (await import('@/test/catalogue-v1.ts')).CATALOGUE_V1,
   }),
 }));
-vi.mock('@aivera/observability', () => ({ log }));
+vi.mock('@credalent/observability', () => ({ log }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`NEXT_REDIRECT;${to}`);

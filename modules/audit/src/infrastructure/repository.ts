@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db';
+import type { Tx } from '@credalent/db';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { AuditStore } from '../application/audit.ts';
 import type { Actor, AuditEntry, PlatformAction, PlatformEntry, PlatformEntryFilter, Values } from '../domain/entry.ts';

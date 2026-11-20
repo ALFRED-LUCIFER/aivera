@@ -1,4 +1,4 @@
-# Claude Code instructions for Aivera
+# Claude Code instructions for Credalent
 
 @AGENTS.md
 

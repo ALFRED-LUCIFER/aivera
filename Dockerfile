@@ -21,7 +21,7 @@ USER node
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
 
-# shortcut: the migrate and worker images are the whole install stage (about 1.3 GB with dev tooling) because cli.ts finds modules/*/migrations through the repo layout; slim it with `pnpm deploy --filter @aivera/db --prod` plus the migration folders when pull time or image scanning matters (AIV-P5-E03, #34)
+# shortcut: the migrate and worker images are the whole install stage (about 1.3 GB with dev tooling) because cli.ts finds modules/*/migrations through the repo layout; slim it with `pnpm deploy --filter @credalent/db --prod` plus the migration folders when pull time or image scanning matters (AIV-P5-E03, #34)
 FROM source AS migrate
 USER node
 CMD ["node", "packages/db/src/cli.ts", "migrate"]

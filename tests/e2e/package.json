@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/tests-e2e",
+  "name": "@credalent/tests-e2e",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,13 +9,13 @@
     "e2e:update": "sh docker.sh"
   },
   "devDependencies": {
-    "@aivera/audit": "workspace:*",
-    "@aivera/candidate-accounts": "workspace:*",
-    "@aivera/config": "workspace:*",
-    "@aivera/db": "workspace:*",
-    "@aivera/identity": "workspace:*",
-    "@aivera/jobs": "workspace:*",
-    "@aivera/workspaces": "workspace:*",
+    "@credalent/audit": "workspace:*",
+    "@credalent/candidate-accounts": "workspace:*",
+    "@credalent/config": "workspace:*",
+    "@credalent/db": "workspace:*",
+    "@credalent/identity": "workspace:*",
+    "@credalent/jobs": "workspace:*",
+    "@credalent/workspaces": "workspace:*",
     "@auth/core": "0.41.3",
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.65.0",

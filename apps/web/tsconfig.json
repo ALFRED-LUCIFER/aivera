@@ -1,5 +1,5 @@
 {
-  "extends": "@aivera/config/tsconfig/nextjs.json",
+  "extends": "@credalent/config/tsconfig/nextjs.json",
   "compilerOptions": {
     "paths": { "@/*": ["./src/*"] }
   },

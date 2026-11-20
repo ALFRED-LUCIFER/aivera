@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/notifications",
+  "name": "@credalent/notifications",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aivera/db": "workspace:*",
-    "@aivera/i18n": "workspace:*",
-    "@aivera/observability": "workspace:*",
+    "@credalent/db": "workspace:*",
+    "@credalent/i18n": "workspace:*",
+    "@credalent/observability": "workspace:*",
     "@react-email/render": "2.1.1",
     "drizzle-orm": "0.45.4",
     "react": "19.3.1",
@@ -22,7 +22,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

@@ -1,4 +1,4 @@
-import type { PublicJob, PublicJobLookup } from '@aivera/jobs';
+import type { PublicJob, PublicJobLookup } from '@credalent/jobs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const findPublicJob = vi.fn<(slug: string) => Promise<PublicJobLookup>>();
@@ -17,7 +17,7 @@ const job: PublicJob = {
 
 const get = async (slug: string) => {
   const { GET } = await import('./route');
-  const response = await GET(new Request(`https://aivera.example/api/public/jobs/${slug}`), {
+  const response = await GET(new Request(`https://credalent.example/api/public/jobs/${slug}`), {
     params: Promise.resolve({ slug }),
   });
   return { status: response.status, body: (await response.json()) as Record<string, unknown> };

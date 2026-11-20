@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { candidateSignOut } from '@/features/candidate-sign-in/services/candidateSignOut.ts';
@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: { template: t('candidate.shell.titleTemplate'), default: t('candidate.shell.siteTitle') } };
 }
 
-// The candidate site reads only `__Host-aivera-candidate`, never the recruiter session (ADR-009, AIV-P0-011).
+// The candidate site reads only `__Host-credalent-candidate`, never the recruiter session (ADR-009, AIV-P0-011).
 export default async function CandidateLayout({ children }: { children: ReactNode }) {
   const intl = await intlConfig(defaultLocale, defaultTimeZone);
   const signedIn = (await getCandidateSessionUserId()) !== null;

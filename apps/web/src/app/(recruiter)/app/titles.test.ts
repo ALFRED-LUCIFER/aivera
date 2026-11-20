@@ -7,9 +7,9 @@ vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined })
 
 describe('page titles (WCAG 2.4.2)', () => {
   // SAFETY: mutation check: inbox page used screenMetadata('jobs') -> this test failed
-  it('each section has its own title inside the "· Aivera" template', async () => {
+  it('each section has its own title inside the "· Credalent" template', async () => {
     expect((await inbox()).title).toBe('Inbox');
     expect((await jobs()).title).toBe('Jobs');
-    expect((await appLayout()).title).toEqual({ template: '%s · Aivera', default: 'Aivera' });
+    expect((await appLayout()).title).toEqual({ template: '%s · Credalent', default: 'Credalent' });
   });
 });

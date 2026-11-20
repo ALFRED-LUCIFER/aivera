@@ -148,7 +148,7 @@ test('Scenario: Non-operators are refused', async ({ page, context }) => {
   await search(page, 'Gulf Talent Partners');
   const href = (await rowOf(page, 'Gulf Talent Partners').getByRole('link').getAttribute('href')) ?? '';
   expect(href).toMatch(ID);
-  await context.clearCookies({ name: '__Host-aivera-session' });
+  await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: 'alex@example.com' });
   for (const path of ['/ops/workspaces', href]) {
     const response = await page.goto(path);

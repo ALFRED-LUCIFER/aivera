@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { intlConfig } from '@aivera/i18n';
+import { intlConfig } from '@credalent/i18n';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,7 +79,11 @@ describe('Recruiter app shell', () => {
       expect(within(sidebar()).getByRole('link', { name })).toBeTruthy();
     expect(within(sidebar()).getByRole('link', { name: 'My desk 4' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Aivera website' }).getAttribute('href')).toBe('/');
+    // The Main artboard draws the Credalent mark beside the wordmark (AIV-P0-035).
+    expect(
+      within(sidebar()).getByRole('link', { name: 'Credalent' }).querySelector('img')?.getAttribute('src'),
+    ).toContain('credalent-mark');
+    expect(screen.getByRole('link', { name: 'Credalent website' }).getAttribute('href')).toBe('/');
   });
 
   // Scenario: Sign out (the cookie and the redirect are proven end to end in tests/e2e/src/sign-in.spec.ts).
@@ -106,7 +110,7 @@ describe('Recruiter app shell', () => {
   });
 
   it('Scenario: Members of a suspended workspace can read but not start work: the banner, and never the reason', () => {
-    const banner = 'This workspace is paused by Aivera. You can read everything; new work is paused.';
+    const banner = 'This workspace is paused by Credalent. You can read everything; new work is paused.';
     renderShell({ status: 'suspended' });
     expect(within(screen.getByRole('main')).getByText(banner)).toBeTruthy();
     expect(screen.getByText('Page body')).toBeTruthy();
@@ -116,11 +120,11 @@ describe('Recruiter app shell', () => {
   });
 
   // SAFETY: mutation check: removed onOpenAutoFocus in AssistantDrawer -> this test failed
-  it('Scenario: Ask Aivera opens the assistant drawer', async () => {
+  it('Scenario: Ask Credalent opens the assistant drawer', async () => {
     renderShell();
-    const ask = screen.getByRole('button', { name: 'Ask Aivera' });
+    const ask = screen.getByRole('button', { name: 'Ask Credalent' });
     await userEvent.click(ask);
-    const drawer = screen.getByRole('dialog', { name: 'Aivera assistant' });
+    const drawer = screen.getByRole('dialog', { name: 'Credalent assistant' });
     expect(within(drawer).getByText('Context: My desk')).toBeTruthy();
     await waitFor(() =>
       expect(document.activeElement).toBe(
@@ -176,7 +180,7 @@ describe('Recruiter app shell', () => {
   it('Scenario: Counts fail softly', () => {
     renderShell({ counts: null });
     expect(sectionNames()).toEqual([
-      'Aivera',
+      'Credalent',
       'My desk',
       'Inbox',
       'Jobs',
@@ -186,7 +190,7 @@ describe('Recruiter app shell', () => {
       'Decision packs',
       'Value dashboard',
       'Settings',
-      'Aivera website',
+      'Credalent website',
     ]);
     expect(screen.getByRole('main').textContent).toBe('Page body');
   });

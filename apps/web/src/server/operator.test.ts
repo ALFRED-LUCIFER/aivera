@@ -1,4 +1,4 @@
-import type { User } from '@aivera/identity';
+import type { User } from '@credalent/identity';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyStatusChange,
@@ -41,7 +41,7 @@ const session = vi.fn<() => Promise<string | null>>();
 const getUser = vi.fn(async (id: string) => users[id] ?? null);
 
 const warn = vi.hoisted(() => vi.fn());
-vi.mock('@aivera/observability', () => ({ log: { warn } }));
+vi.mock('@credalent/observability', () => ({ log: { warn } }));
 // AIV-P2-038: the console's reads and the budget change, behind their contracts.
 const DEMO = '0190d4a2-0000-7000-8000-000000000001';
 const summary = {
@@ -54,14 +54,14 @@ const summary = {
   activeMembers: 3,
 };
 const ai = vi.hoisted(() => ({ usage: vi.fn(), setDailyBudget: vi.fn(async (_input: unknown) => undefined) }));
-vi.mock('@aivera/workspaces/composition', () => ({
+vi.mock('@credalent/workspaces/composition', () => ({
   createWorkspaceDirectory: () => ({
     getSummary: async () => summary,
     listSummaries: async () => ({ total: 1, summaries: [summary] }),
   }),
   createAiBudgetConsole: () => ai,
 }));
-vi.mock('@aivera/jobs/composition', () => ({ createJobCounts: () => ({ countJobs: async () => 2 }) }));
+vi.mock('@credalent/jobs/composition', () => ({ createJobCounts: () => ({ countJobs: async () => 2 }) }));
 // The list is parsed on every env() call here, so changing `config.list` is "the app reloads its configuration".
 vi.mock('./env', async (actual) => {
   const real = await actual<typeof import('./env')>();
@@ -71,7 +71,7 @@ vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () =>
 vi.mock('./db', () => ({ getDb: () => ({}) }));
 const listOperatorEntries = vi.fn();
 const listPlatformEntries = vi.fn();
-vi.mock('@aivera/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries, listPlatformEntries }) }));
+vi.mock('@credalent/audit/composition', () => ({ createAudit: () => ({ listOperatorEntries, listPlatformEntries }) }));
 const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
 const pausePublicListings = vi.fn(async () => {});
 vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { intlConfig } from '@aivera/i18n';
-import { IntlProvider } from '@aivera/i18n/react';
+import { intlConfig } from '@credalent/i18n';
+import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuditLogView, AuditRow } from '../domain/audit.ts';

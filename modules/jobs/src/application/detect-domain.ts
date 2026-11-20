@@ -6,7 +6,7 @@ import {
   type AiClient,
   type Citation,
   type Source,
-} from '@aivera/ai';
+} from '@credalent/ai';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
 
 // "Detect the job's industry" (AIV-P1-063, ADR-006): runs beside "Draft competencies" (AIV-P1-008) under the same

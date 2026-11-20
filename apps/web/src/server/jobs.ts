@@ -1,11 +1,11 @@
-import { createAudit } from '@aivera/audit/composition';
-import type { CatalogueReads, CompetencyDrafting, DomainDetecting, JobsContract } from '@aivera/jobs';
+import { createAudit } from '@credalent/audit/composition';
+import type { CatalogueReads, CompetencyDrafting, DomainDetecting, JobsContract } from '@credalent/jobs';
 import {
   createCatalogueReads,
   createCompetencyDrafting,
   createDomainDetection,
   createJobs,
-} from '@aivera/jobs/composition';
+} from '@credalent/jobs/composition';
 import { getAi } from './ai';
 import { getDb } from './db';
 import { getWorkspaces } from './workspace';

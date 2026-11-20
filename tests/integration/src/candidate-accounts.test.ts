@@ -3,26 +3,26 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { CandidateAccountError, type CandidateAccountsContract, type Consent } from '@aivera/candidate-accounts';
-import { createCandidateAccounts } from '@aivera/candidate-accounts/composition';
-import type { CandidatesContract } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, withCandidateAccount, type Db } from '@aivera/db';
-import { createIdentity } from '@aivera/identity/composition';
-import type { WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { CandidateAccountError, type CandidateAccountsContract, type Consent } from '@credalent/candidate-accounts';
+import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
+import type { CandidatesContract } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, withCandidateAccount, type Db } from '@credalent/db';
+import { createIdentity } from '@credalent/identity/composition';
+import type { WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P3-006 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-009).
 // Synthetic cast only (docs/00-product/personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
-// Identity user ids (opaque, from @aivera/identity), which are also the account ids.
+// Identity user ids (opaque, from @credalent/identity), which are also the account ids.
 const SARA = '0190d4a2-0000-7000-8000-00000000c501';
 const ARJUN = '0190d4a2-0000-7000-8000-00000000c502';
 const JOB = '0190d4a2-0000-7000-8000-00000000a001';
@@ -300,9 +300,9 @@ describe('Scenario: Withdrawing consent is recorded, not deleted', () => {
 // AIV-P3-007: a recruiter's verified email becomes the same login on the candidate site (ADR-009).
 describe('Scenario: A recruiter signs up on the candidate site', () => {
   it('the existing identity user gets a candidate account, not a second user; a second sign-up is refused', async () => {
-    const identity = createIdentity(app, { trustedIssuer: 'https://tenant.aivera.example' });
+    const identity = createIdentity(app, { trustedIssuer: 'https://tenant.credalent.example' });
     const token = {
-      issuer: 'https://tenant.aivera.example',
+      issuer: 'https://tenant.credalent.example',
       subject: 'nadia-sub',
       email: 'nadia@example.com',
       emailVerified: true,

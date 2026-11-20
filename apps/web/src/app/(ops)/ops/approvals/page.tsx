@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { ApprovalsList } from '@/features/ops/components/ApprovalsList.tsx';
 import { daysWaiting } from '@/features/ops/domain/workspaces.ts';

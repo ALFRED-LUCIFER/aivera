@@ -1,4 +1,4 @@
-import type { NewPlatformEntry } from '@aivera/audit';
+import type { NewPlatformEntry } from '@credalent/audit';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_APPROVAL_REQUIRED, OpsError } from '../domain/settings.ts';
 import { settingsUseCases, type SettingsStore } from './settings.ts';

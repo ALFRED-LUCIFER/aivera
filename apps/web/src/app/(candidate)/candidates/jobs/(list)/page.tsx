@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { jobTypeLabel } from '@aivera/jobs';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { jobTypeLabel } from '@credalent/jobs';
 import type { Metadata } from 'next';
 import { jobsListView, parseJobsQuery, postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';
 import { getCatalogue } from '@/server/jobs';

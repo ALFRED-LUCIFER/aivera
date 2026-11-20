@@ -25,13 +25,13 @@ const data: EvidenceRequestData = {
       ask: 'Send a dashboard export, or a few lines on what you changed and how it was measured.',
     },
   ],
-  link: 'https://aivera.example/l/9fK2xQ7mT4vB',
-  deleteUrl: 'https://aivera.example/l/delete-9fK2xQ',
+  link: 'https://credalent.example/l/9fK2xQ7mT4vB',
+  deleteUrl: 'https://credalent.example/l/delete-9fK2xQ',
 };
 const ctx = (synthetic: boolean) => ({
   locale: 'en' as const,
   timeZone: 'Asia/Dubai',
-  origin: 'https://aivera.example',
+  origin: 'https://credalent.example',
   synthetic,
   sender,
 });
@@ -53,17 +53,19 @@ describe('evidence-request template', () => {
     expect(html).toContain('<html lang="en" dir="ltr">');
     expect(html).toContain('The recruiter would like to see more of your work. About two minutes.');
     expect(html).toContain('More evidence would help your application');
-    expect(html).toContain('Sent by Layla Haddad at Demo Hiring Co through Aivera');
+    expect(html).toContain('Sent by Layla Haddad at Demo Hiring Co through Credalent');
     // The highlighter marks the two asks (highlight.test.ts).
     expect(html.match(/class="e-hl"/g)).toHaveLength(2);
     expect(html).toContain(`background-color:${color.light.highlight}`);
     expect(html.match(/class="e-button"/g)).toHaveLength(1);
-    expect(html.match(/href="https:\/\/aivera.example\/l\/9fK2xQ7mT4vB"/g)).toHaveLength(1);
+    expect(html.match(/href="https:\/\/credalent.example\/l\/9fK2xQ7mT4vB"/g)).toHaveLength(1);
     expect(html).toContain('Button not working? Copy this link:');
     expect(html).toContain('Questions? Reply to this email and it goes to Layla.');
-    expect(html).toContain('href="https://aivera.example/l/delete-9fK2xQ"');
-    expect(html).toContain('src="https://aivera.example/brand/aivera-mark.png"');
+    expect(html).toContain('href="https://credalent.example/l/delete-9fK2xQ"');
+    expect(html).toContain('src="https://credalent.example/brand/credalent-mark.png"');
     expect(html).not.toContain('Synthetic data');
+    // SAFETY: mutation check: logo path back to /brand/aivera-mark.png -> this assertion failed
+    expect(html).not.toMatch(/aivera/i);
   });
 
   it('ships the dark colours in a prefers-color-scheme block', async () => {
@@ -99,7 +101,7 @@ describe('evidence-request data schema', () => {
   });
 
   it('refuses a link that is not https and an empty list', () => {
-    expect(evidenceRequestData.safeParse({ ...data, link: 'http://aivera.example/l/x' }).success).toBe(false);
+    expect(evidenceRequestData.safeParse({ ...data, link: 'http://credalent.example/l/x' }).success).toBe(false);
     expect(evidenceRequestData.safeParse({ ...data, items: [] }).success).toBe(false);
   });
 });

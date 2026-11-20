@@ -1,5 +1,5 @@
 // The platform audit log page (AIV-P2-054, ADR-012 point 8). Pure: no React, no I/O (ADR-003).
-import { PLATFORM_ACTIONS, type PlatformEntry, type PlatformEntryQuery } from '@aivera/audit';
+import { PLATFORM_ACTIONS, type PlatformEntry, type PlatformEntryQuery } from '@credalent/audit';
 import { z } from 'zod';
 
 // A missing, empty, repeated or malformed parameter is dropped, never an error: the page redirects to the valid rest.

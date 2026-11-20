@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { StatusBadge } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { StatusBadge } from '@credalent/ui';
 import { useId } from 'react';
 import type { ApprovalModeView } from '../domain/workspaces.ts';
 import { ReasonedChange } from './ReasonedChange.tsx';

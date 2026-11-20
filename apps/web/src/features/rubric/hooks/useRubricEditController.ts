@@ -1,4 +1,4 @@
-import type { Competency } from '@aivera/jobs';
+import type { Competency } from '@credalent/jobs';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { canSave, newCompetency, weightsTotal, type RubricEditorView, type RubricView } from '../domain/rubric.ts';

@@ -14,11 +14,11 @@ const sender = (name: string): Sender => ({
 const ctx = (name: string) => ({
   locale: 'en' as const,
   timeZone: 'Asia/Dubai',
-  origin: 'https://aivera.example',
+  origin: 'https://credalent.example',
   synthetic: false,
   sender: sender(name),
 });
-const link = 'https://aivera.example/l/9fK2xQ7mT4vB';
+const link = 'https://credalent.example/l/9fK2xQ7mT4vB';
 
 /** Every highlighted run, with whether it also carries its ink underline. */
 const highlights = (html: string) =>

@@ -1,5 +1,6 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { AssistantDrawer, Button, Input, Label } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { AssistantDrawer, Button, Input, Label } from '@credalent/ui';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { NavigationEntry, ScreenId } from '../domain/navigation.ts';
@@ -141,8 +142,15 @@ export function AppShell({
         <Link
           href="/app"
           onClick={onCloseNav}
-          className="flex h-10 items-center px-2.5 font-display text-section text-text pointer-coarse:min-h-11"
+          className="flex h-10 items-center gap-2.5 px-2.5 font-display text-section text-text pointer-coarse:min-h-11"
         >
+          <Image
+            src="/brand/credalent-mark.png"
+            alt=""
+            width={30}
+            height={30}
+            className="rounded-lg ring-1 ring-border-strong"
+          />
           {t('wordmark')}
         </Link>
         <ul ref={listRef} className="flex flex-col gap-0.5">

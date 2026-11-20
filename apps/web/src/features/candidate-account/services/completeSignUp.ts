@@ -1,7 +1,7 @@
 'use server';
 
-import { CandidateAccountError } from '@aivera/candidate-accounts';
-import { log } from '@aivera/observability';
+import { CandidateAccountError } from '@credalent/candidate-accounts';
+import { log } from '@credalent/observability';
 import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';

@@ -1,5 +1,5 @@
-import { inboxTable, outboxTable } from '@aivera/db/outbox';
-import { tenantPolicy } from '@aivera/db/tenant-policy';
+import { inboxTable, outboxTable } from '@credalent/db/outbox';
+import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { check, pgPolicy, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { MESSAGE_STATUSES } from '../domain/email.ts';

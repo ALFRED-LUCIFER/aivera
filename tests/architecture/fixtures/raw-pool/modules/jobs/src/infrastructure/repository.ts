@@ -1,3 +1,3 @@
-import type { Db } from '@aivera/db';
+import type { Db } from '@credalent/db';
 
 export const jobStore = (db: Db) => db;

@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { WorkspacesList } from '@/features/ops/components/WorkspacesList.tsx';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 

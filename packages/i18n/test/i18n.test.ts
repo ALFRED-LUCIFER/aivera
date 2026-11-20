@@ -116,3 +116,12 @@ describe('score and competency wording', () => {
     expect(t(key, values)).toBe(text);
   });
 });
+
+describe('Scenario: No user-visible text carries the old product name', () => {
+  // SAFETY: mutation check: one en.json value set back to "Aivera" -> this test failed
+  it('every message says Credalent, never Aivera', () => {
+    const text = JSON.stringify(en);
+    expect(text).not.toMatch(/aivera/i);
+    expect(text).toContain('Credalent');
+  });
+});

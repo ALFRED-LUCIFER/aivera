@@ -10,7 +10,7 @@ Not user-visible. Repository rules, toolchain, migrations, CI, Azure dev environ
 
 1. Create a workspace (name, any email, company if there is one, in-house team or agency, what they hire for most; email and password or one-time code, Google or Microsoft) → lands on Add a job. A solo recruiter gets a one-member workspace ([ADR-009](../adr/ADR-009-identity-and-account-model.md)).
 2. Sign in (email, Google or Microsoft; company SSO per workspace later) → My desk. A person in several workspaces switches between them in the app shell.
-3. Add a job: choose the job type (sets which evidence counts), title, description, team or client (agencies), location, hiring owner → **Draft competencies**: Aivera drafts those the description states (weight, level 1–5, mandatory/desirable, evidence expected) and suggests what it leaves out with a reason; keep, edit or remove each.
+3. Add a job: choose the job type (sets which evidence counts), title, description, team or client (agencies), location, hiring owner → **Draft competencies**: Credalent drafts those the description states (weight, level 1–5, mandatory/desirable, evidence expected) and suggests what it leaves out with a reason; keep, edit or remove each.
 4. Save as the job's rubric (weights total 100%) → send to the hiring owner → approved (version 1). Editing a weight creates a new version that needs approval; rankings do not change until it is approved.
 5. Optionally publish the job on the candidate site (preview of what candidates see; weights, client name and scores stay hidden).
 
@@ -27,16 +27,16 @@ Not user-visible. Repository rules, toolchain, migrations, CI, Azure dev environ
 
 1. Interviews list (ongoing, completed) with competencies to investigate.
 2. Scorecard: evidence-linked questions per gap, rating (Not shown → Strongly shown) with a live preview of the backed-score change, notes, recommendation; submit is logged.
-3. Decision pack: what the role needs, per candidate strengths, risks and Round 1 finding, Aivera's recommendation; the hiring owner records Advance, Hold or Do not advance. No candidate is contacted.
+3. Decision pack: what the role needs, per candidate strengths, risks and Round 1 finding, Credalent's recommendation; the hiring owner records Advance, Hold or Do not advance. No candidate is contacted.
 4. Client view of the shortlist (signed link): Interview, Hold or Pass with optional feedback, sent to the recruiter.
 
 ## J4 Recruiter desk and insight
 
-1. My desk: waiting on you (oldest first), waiting on others (Aivera chases), jobs by pace, monthly target with observed and projected values.
+1. My desk: waiting on you (oldest first), waiting on others (Credalent chases), jobs by pace, monthly target with observed and projected values.
 2. Candidates across all jobs, one row per person.
 3. Talent pool: evidence carries over, re-scored against a new job's rubric; invite with a drafted, previewed message.
 4. Value dashboard: interviews per completed hire (north star), supporting metrics, each with its basis and next step; "not yet available" until a hire completes.
-5. Aivera assistant on every page: page-aware suggestions, answers cite evidence, any change is a preview awaiting confirmation.
+5. Credalent assistant on every page: page-aware suggestions, answers cite evidence, any change is a preview awaiting confirmation.
 
 ## J5 Candidate site
 

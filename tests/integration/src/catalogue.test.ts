@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, type Db } from '@aivera/db';
-import { JobError, type Competency, type JobsContract } from '@aivera/jobs';
-import { createCatalogueReads, createJobs } from '@aivera/jobs/composition';
-import type { WorkspaceContext, WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, type Db } from '@credalent/db';
+import { JobError, type Competency, type JobsContract } from '@credalent/jobs';
+import { createCatalogueReads, createJobs } from '@credalent/jobs/composition';
+import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // latest published version, and the jobs module validates keys against it.
 
 const repo = join(import.meta.dirname, '..', '..', '..');
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(repo, 'packages', 'db', 'src', 'cli.ts');
 const seedSql = readFileSync(
   join(repo, 'modules', 'jobs', 'src', 'infrastructure', 'migrations', '0017_catalogue_v1_seed.sql'),

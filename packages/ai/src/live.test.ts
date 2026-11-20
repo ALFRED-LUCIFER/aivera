@@ -5,7 +5,7 @@ import { createAiClient, memoryTokenBudget } from './client';
 import { azureProvider } from './providers';
 
 // Opt-in smoke test against the Azure dev resource, skipped in PR CI. Signs in with `az login` (DefaultAzureCredential):
-//   AI_LIVE_SMOKE=1 AZURE_OPENAI_RESOURCE_NAME=<dev resource> pnpm --filter @aivera/ai test src/live.test.ts
+//   AI_LIVE_SMOKE=1 AZURE_OPENAI_RESOURCE_NAME=<dev resource> pnpm --filter @credalent/ai test src/live.test.ts
 const resourceName = process.env['AZURE_OPENAI_RESOURCE_NAME'];
 
 describe.skipIf(!process.env['AI_LIVE_SMOKE'] || !resourceName)('live Azure OpenAI smoke test', () => {

@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Chip, StatusBadge, type StatusBadgeStatus } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Chip, StatusBadge, type StatusBadgeStatus } from '@credalent/ui';
 import type { WorkspaceRow } from '../domain/workspaces.ts';
 
 const badges: Record<WorkspaceRow['status'], StatusBadgeStatus> = {

@@ -1,4 +1,4 @@
-import { tenantPolicy } from '@aivera/db/tenant-policy';
+import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { pgSchema, text, uuid } from 'drizzle-orm/pg-core';
 
 // A workspace-owned table in the shape every module uses (ADR-004, ADR-005).

@@ -43,7 +43,7 @@ jobs:
           lint=$(az bicep lint --file infra/main.bicep 2>&1)
           if [ -n "$lint" ]; then echo "$lint"; exit 1; fi
 
-  # Playwright on the @aivera/ui gallery: axe and visual snapshots in light and dark (AIV-P0-025). Should become a
+  # Playwright on the @credalent/ui gallery: axe and visual snapshots in light and dark (AIV-P0-025). Should become a
   # required check (owner setting).
   e2e:
     runs-on: ubuntu-latest

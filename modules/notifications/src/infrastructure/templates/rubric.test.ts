@@ -21,11 +21,11 @@ const head: Sender = {
 const ctx = (sender: Sender) => ({
   locale: 'en' as const,
   timeZone: 'Asia/Dubai',
-  origin: 'https://aivera.example',
+  origin: 'https://credalent.example',
   synthetic: false,
   sender,
 });
-const link = 'https://aivera.example/app/jobs/0190d4a2/rubric?version=0190d4a3&revision=2';
+const link = 'https://credalent.example/app/jobs/0190d4a2/rubric?version=0190d4a3&revision=2';
 const footer = ['', '--', 'Demo Hiring Co', 'You are receiving this because you are a member of this workspace.'];
 
 describe('rubric-approval template (ERubric)', () => {
@@ -45,7 +45,7 @@ describe('rubric-approval template (ERubric)', () => {
     expect(subject).toBe('Rubric waiting for your approval: Senior AI Engineer');
     expect(text).toBe(
       [
-        'Sent by Layla Haddad at Demo Hiring Co through Aivera',
+        'Sent by Layla Haddad at Demo Hiring Co through Credalent',
         '',
         'SENIOR AI ENGINEER: VERSION 2 OF THE RUBRIC IS WAITING FOR YOUR APPROVAL',
         '',
@@ -64,7 +64,7 @@ describe('rubric-approval template (ERubric)', () => {
         link,
         ...footer,
         'Replies go to Layla Haddad.',
-        'Privacy: https://aivera.example/privacy',
+        'Privacy: https://credalent.example/privacy',
       ].join('\n'),
     );
   });
@@ -94,7 +94,7 @@ describe('rubric-approved template (EApproved)', () => {
     const { subject, text, html } = await renderEmail('rubric-approved', data, ctx(head));
     expect(subject).toBe('Rubric approved: Senior AI Engineer');
     expect(text.split('\n').slice(0, 9)).toEqual([
-      'Sent by Head of Engineering at Demo Hiring Co through Aivera',
+      'Sent by Head of Engineering at Demo Hiring Co through Credalent',
       '',
       'Approved · Version 2',
       '',

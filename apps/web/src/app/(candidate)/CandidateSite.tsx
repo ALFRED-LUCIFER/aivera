@@ -1,6 +1,6 @@
 'use client';
 
-import { IntlProvider } from '@aivera/i18n/react';
+import { IntlProvider } from '@credalent/i18n/react';
 import type { ComponentProps, ReactNode } from 'react';
 import { CandidateShell } from '@/features/candidate-shell/components/CandidateShell.tsx';
 import { useCandidateShellController } from '@/features/candidate-shell/hooks/useCandidateShellController.ts';

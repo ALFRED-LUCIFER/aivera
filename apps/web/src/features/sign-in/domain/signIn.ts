@@ -5,7 +5,7 @@ import { z } from 'zod';
 /** Where a signed-in recruiter lands: My desk. */
 export const DESK = '/app';
 
-const PROBE = 'http://aivera.invalid';
+const PROBE = 'http://credalent.invalid';
 
 /**
  * Same-origin paths in the recruiter app, the operator console (`/app`, `/ops` and below, AIV-P2-035) or an invitation
@@ -25,7 +25,7 @@ export function safeNext(value: unknown): string {
  * The short-lived cookie that carries "Keep me signed in" through the round trip to the tenant (HTTP-only, never in a
  * URL); auth.ts reads it on the sign-in callback to choose the session length (apps/web/src/server/auth.ts).
  */
-export const REMEMBER_COOKIE = '__Host-aivera-remember';
+export const REMEMBER_COOKIE = '__Host-credalent-remember';
 
 /** That cookie, set for 15 minutes when ticked, or cleared (max-age 0). Every way into the tenant sets it. */
 export const rememberCookie = (remember: boolean) => ({

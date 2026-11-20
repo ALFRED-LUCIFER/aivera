@@ -1,4 +1,4 @@
-import base from '@aivera/config/vitest';
+import base from '@credalent/config/vitest';
 import { mergeConfig } from 'vitest/config';
 
 // Components render in jsdom for Testing Library (roles, keyboard, focus).

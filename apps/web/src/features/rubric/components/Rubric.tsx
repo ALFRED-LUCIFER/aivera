@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Card, DataTable, Label, StatusBadge, StrengthMeter, Textarea } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Card, DataTable, Label, StatusBadge, StrengthMeter, Textarea } from '@credalent/ui';
 import { useId, type ReactNode } from 'react';
 import { STRENGTHS, weightsTotal, type RubricEditorView, type RubricView } from '../domain/rubric.ts';
 import { cells, type Row } from './RubricCells.tsx';

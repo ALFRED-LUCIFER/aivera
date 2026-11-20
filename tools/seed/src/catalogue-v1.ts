@@ -1,11 +1,11 @@
 // Writes the jobs migration that seeds catalogue version 1 from its committed snapshot (ADR-013 point 9, AIV-P2-043):
-// pnpm --filter @aivera/seed catalogue:v1 > modules/jobs/src/infrastructure/migrations/0017_catalogue_v1_seed.sql
+// pnpm --filter @credalent/seed catalogue:v1 > modules/jobs/src/infrastructure/migrations/0017_catalogue_v1_seed.sql
 // The snapshot, catalogue-v1.json, was generated from the code catalogue before AIV-P2-044 deleted it; the integration
 // suite proves version 1 in the database equals it. The output is committed and reviewed like any migration; rerunning
 // it inserts nothing (ON CONFLICT DO NOTHING).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CatalogueVersion } from '@aivera/jobs';
+import type { CatalogueVersion } from '@credalent/jobs';
 
 const v1: Pick<CatalogueVersion, 'jobTypes' | 'regions' | 'packs'> = JSON.parse(
   readFileSync(

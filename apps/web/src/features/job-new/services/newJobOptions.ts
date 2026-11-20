@@ -1,4 +1,4 @@
-import type { WorkspaceContext } from '@aivera/workspaces';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from '@/server/auth';
 import { getWorkspaces } from '@/server/workspace';
 

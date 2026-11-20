@@ -1,4 +1,4 @@
-import { Button } from '@aivera/ui';
+import { Button } from '@credalent/ui';
 import Link from 'next/link';
 import { signUpHref } from '@/features/candidate-account/domain/signup.ts';
 

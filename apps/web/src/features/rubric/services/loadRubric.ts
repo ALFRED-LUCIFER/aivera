@@ -1,4 +1,4 @@
-import { approvesAs } from '@aivera/jobs';
+import { approvesAs } from '@credalent/jobs';
 import { z } from 'zod';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';

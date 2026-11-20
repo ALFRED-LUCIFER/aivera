@@ -1,4 +1,4 @@
-import { dir as directionOf, getTranslations, type Locale } from '@aivera/i18n';
+import { dir as directionOf, getTranslations, type Locale } from '@credalent/i18n';
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
 import type { Sender, TemplateData, TemplateName } from '../../domain/email.ts';
@@ -65,7 +65,7 @@ export async function renderEmail<T extends TemplateName>(
   const layout: TemplateContext['layout'] = {
     lang: ctx.locale,
     dir: directionOf(ctx.locale) as Direction,
-    logoUrl: `${ctx.origin}/brand/aivera-mark.png`,
+    logoUrl: `${ctx.origin}/brand/credalent-mark.png`,
     logoAlt: t('emails.layout.logoAlt'),
     brand: t('emails.layout.brand'),
     sentBy: t('emails.layout.sentBy', { sender: ctx.sender.name, workspace: ctx.sender.workspace }),

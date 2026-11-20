@@ -1,10 +1,10 @@
-import { draftCompetenciesRequest, type AiClient, type Citation } from '@aivera/ai';
+import { draftCompetenciesRequest, type AiClient, type Citation } from '@credalent/ai';
 import { offeredJobTypes, type CatalogueVersion } from '../domain/catalogue.ts';
 import { JobError, newSuggestions, type Competency } from '../domain/job.ts';
 
 // "Draft competencies" (AIV-P1-008, ADR-006): the model drafts the competencies the job description states, and
 // suggests up to two it leaves out (AIV-P1-009), each citing the description. Both are suggestions the recruiter keeps,
-// edits or removes; nothing is saved here (AIV-P1-010). The prompt and schema are versioned in @aivera/ai, where the
+// edits or removes; nothing is saved here (AIV-P1-010). The prompt and schema are versioned in @credalent/ai, where the
 // eval set runs them.
 
 /** A drafted competency, as the rubric stores one, with the description spans it cites (offsets for `EvidenceHighlight`). */
@@ -44,7 +44,7 @@ const fields = (c: Answered) => ({
 /**
  * Drafts from the job type, title and description only: no candidate data and nothing else from the workspace reaches
  * the prompt. The job type must be one `catalogue` (the published version) offers, else `JobError('job_type')` before any
- * model call. Throws `@aivera/ai`'s errors: `BudgetExceeded`, `AiUnavailable`, or, when the answer fails its schema or
+ * model call. Throws `@credalent/ai`'s errors: `BudgetExceeded`, `AiUnavailable`, or, when the answer fails its schema or
  * cites nothing twice, `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
  */
 export function competencyDrafting(ai: Pick<AiClient, 'generateStructured'>) {

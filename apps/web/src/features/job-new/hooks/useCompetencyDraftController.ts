@@ -1,5 +1,5 @@
 import { useState, useTransition } from 'react';
-import type { CatalogueContent } from '@aivera/jobs';
+import type { CatalogueContent } from '@credalent/jobs';
 import {
   blankCompetency,
   catalogueChoices,

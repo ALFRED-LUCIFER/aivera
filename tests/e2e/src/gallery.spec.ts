@@ -82,8 +82,8 @@ for (const theme of themes) {
       await expectNoAxeViolations(page);
       await page.getByRole('button', { name: 'Close' }).click();
 
-      await page.getByRole('button', { name: 'Ask Aivera' }).click();
-      const drawer = page.getByRole('dialog', { name: 'Aivera assistant' });
+      await page.getByRole('button', { name: 'Ask Credalent' }).click();
+      const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
       await expect(drawer.getByRole('button', { name: 'Which claims are still open?' })).toBeVisible();
       await expectNoAxeViolations(page);
       await expect(drawer).toHaveScreenshot(`assistant-open-${theme}.png`);

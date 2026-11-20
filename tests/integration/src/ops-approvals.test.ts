@@ -3,28 +3,28 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
-import type { JobsContract } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
-import { OpsError, type OpsSettingsContract } from '@aivera/ops';
-import { createOpsSettings } from '@aivera/ops/composition';
+import type { AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, withWorkspace, type Db } from '@credalent/db';
+import type { JobsContract } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
+import { OpsError, type OpsSettingsContract } from '@credalent/ops';
+import { createOpsSettings } from '@credalent/ops/composition';
 import {
   WorkspaceError,
   WorkspacePausedError,
   type WorkspaceDirectory,
   type WorkspaceContext,
   type WorkspacesContract,
-} from '@aivera/workspaces';
-import { createWorkspaceDirectory, createWorkspaces } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { createWorkspaceDirectory, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P2-039 (ADR-012 points 7 to 9): new workspaces wait for approval while the pilot runs, against real PostgreSQL
 // as the non-owner aivera_app role under the unchanged tenant policies. Synthetic cast only (personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 const user = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const NADIA = user(1);

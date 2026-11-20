@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, buttonClassName, Card, Chip, LevelMeter } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, buttonClassName, Card, Chip, LevelMeter } from '@credalent/ui';
 import Link from 'next/link';
 
 export type JobDetailProps = {

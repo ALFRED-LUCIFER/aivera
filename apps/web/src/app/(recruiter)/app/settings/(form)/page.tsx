@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { ForbiddenError, type Action, type WorkspaceContext } from '@aivera/workspaces';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { ForbiddenError, type Action, type WorkspaceContext } from '@credalent/workspaces';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';

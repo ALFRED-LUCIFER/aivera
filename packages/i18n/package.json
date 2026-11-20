@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/i18n",
+  "name": "@credalent/i18n",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,7 +18,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

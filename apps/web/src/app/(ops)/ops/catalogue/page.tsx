@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { Catalogue } from '@/features/ops/components/Catalogue.tsx';
 import { catalogueView } from '@/features/ops/domain/catalogue.ts';

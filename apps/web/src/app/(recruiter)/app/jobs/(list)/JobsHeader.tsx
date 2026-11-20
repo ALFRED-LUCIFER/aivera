@@ -1,4 +1,4 @@
-import { buttonClassName } from '@aivera/ui';
+import { buttonClassName } from '@credalent/ui';
 import Link from 'next/link';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isReachable = vi.fn<(db: unknown, timeoutMs: number) => Promise<boolean>>();
 const createDb = vi.fn(() => ({}));
-vi.mock('@aivera/db/client', () => ({ isReachable, createDb }));
+vi.mock('@credalent/db/client', () => ({ isReachable, createDb }));
 
 beforeEach(() => {
   vi.stubEnv('APP_ENV', 'dev');

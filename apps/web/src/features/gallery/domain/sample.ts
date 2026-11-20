@@ -20,7 +20,7 @@ export const citations = [cite('412 of 460 commits', 'src-1'), cite('nightly run
 
 export const sample = {
   title: 'Component gallery',
-  intro: 'Every @aivera/ui component in each state, on synthetic data. Development builds only.',
+  intro: 'Every @credalent/ui component in each state, on synthetic data. Development builds only.',
   theme: 'Theme',
   light: 'Light',
   dark: 'Dark',
@@ -179,8 +179,8 @@ export const sample = {
     close: 'Close preview',
   },
   assistant: {
-    open: 'Ask Aivera',
-    title: 'Aivera assistant',
+    open: 'Ask Credalent',
+    title: 'Credalent assistant',
     context: 'Context: Senior AI Engineer, 64 candidates',
     input: 'Ask about what is on this page',
     ask: 'Ask',

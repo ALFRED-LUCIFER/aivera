@@ -19,7 +19,7 @@ for (const [path, heading, link] of [
       'aria-current',
       'page',
     );
-    await expect(page.getByRole('button', { name: 'Ask Aivera' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ask Credalent' })).toBeVisible();
   });
 }
 
@@ -74,10 +74,10 @@ for (const theme of themes) {
   });
 }
 
-// AIV-P0-920: from lg up the assistant drawer sits beside the page; "Ask Aivera" is top right, where the drawer is.
+// AIV-P0-920: from lg up the assistant drawer sits beside the page; "Ask Credalent" is top right, where the drawer is.
 for (const theme of themes) {
   // mutation check: removed the onKeyDown edge handler in AssistantDrawer -> this test failed (Tab looped inside)
-  // mutation check: removed the open-drawer padding in styles.css -> this test failed (Ask Aivera under the drawer)
+  // mutation check: removed the open-drawer padding in styles.css -> this test failed (Ask Credalent under the drawer)
   test(`the assistant drawer at 1280 px lets Tab leave for the page and come back (${theme})`, async ({
     page,
     context,
@@ -86,9 +86,9 @@ for (const theme of themes) {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
     await page.goto('/app');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    const ask = page.getByRole('button', { name: 'Ask Aivera' });
+    const ask = page.getByRole('button', { name: 'Ask Credalent' });
     await ask.click();
-    const drawer = page.getByRole('dialog', { name: 'Aivera assistant' });
+    const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
     const question = drawer.getByRole('textbox', { name: 'Ask about what is on this page' });
     await expect(question).toBeFocused();
     await expectNoAxeViolations(page);
@@ -103,7 +103,7 @@ for (const theme of themes) {
     await page.keyboard.press('Tab');
     expect(await focusInDrawer(page)).toBe(false);
     expect(await focusInView(page)).toBe('visible');
-    // The documented way back: Shift+Tab to "Ask Aivera" and press it.
+    // The documented way back: Shift+Tab to "Ask Credalent" and press it.
     await page.keyboard.press('Shift+Tab');
     await expect(ask).toBeFocused();
     await page.keyboard.press('Enter');

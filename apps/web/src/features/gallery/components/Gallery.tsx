@@ -1,6 +1,6 @@
 'use client';
 
-import tokens from '@aivera/tokens/tokens.json' with { type: 'json' };
+import tokens from '@credalent/tokens/tokens.json' with { type: 'json' };
 import {
   Button,
   Card,
@@ -18,7 +18,7 @@ import {
   Toast,
   ToastProvider,
   Tooltip,
-} from '@aivera/ui';
+} from '@credalent/ui';
 import { sample } from '../domain/sample.ts';
 import { Section } from './Section.tsx';
 import { EvidenceSections } from './EvidenceSections.tsx';

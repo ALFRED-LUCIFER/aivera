@@ -1,4 +1,4 @@
-import type { Job, JobHeader, RubricVersion } from '@aivera/jobs';
+import type { Job, JobHeader, RubricVersion } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
 import { jobHeaderView, parseJobPage } from './jobHeader.ts';
 

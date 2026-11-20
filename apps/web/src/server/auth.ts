@@ -1,6 +1,6 @@
-import { IdentityError, type IdentityContract } from '@aivera/identity';
-import { createIdentity } from '@aivera/identity/composition';
-import { log } from '@aivera/observability';
+import { IdentityError, type IdentityContract } from '@credalent/identity';
+import { createIdentity } from '@credalent/identity/composition';
+import { log } from '@credalent/observability';
 import NextAuth, { customFetch, type AuthError, type NextAuthConfig } from 'next-auth';
 import { encode } from 'next-auth/jwt';
 import Google from 'next-auth/providers/google';
@@ -113,7 +113,7 @@ export type SignInSide = {
 };
 
 const RECRUITER: SignInSide = {
-  cookie: '__Host-aivera-session',
+  cookie: '__Host-credalent-session',
   basePath: '/api/auth',
   signInPage: '/sign-in',
 };
@@ -135,7 +135,7 @@ export function authConfig(
     providers: [
       {
         id: 'entra',
-        name: 'Aivera',
+        name: 'Credalent',
         type: 'oidc',
         issuer: auth.issuer,
         clientId: auth.clientId,

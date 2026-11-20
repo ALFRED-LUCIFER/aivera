@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Checkbox, Input, Label, Skeleton, SuccessBanner } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Checkbox, Input, Label, Skeleton, SuccessBanner } from '@credalent/ui';
 import {
   changedFromDefault,
   DEFAULT_SETTINGS,

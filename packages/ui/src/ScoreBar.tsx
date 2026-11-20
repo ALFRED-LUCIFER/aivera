@@ -3,7 +3,7 @@ import { cx } from './cx.ts';
 
 // Foundations and Candidate artboards .score/.hatch. Solid to the proven value, hatched over the range resting on
 // claims (AGENTS.md 1.6: claims count zero, so the hatched range is never the score). Values arrive as props; scoring
-// lives in @aivera/assessment, so nothing here computes a score.
+// lives in @credalent/assessment, so nothing here computes a score.
 
 /** A wrong number must never reach a recruiter: loud in development, a plain "unavailable" in production. */
 function refuse(component: string, unavailableLabel: string) {

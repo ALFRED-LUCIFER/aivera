@@ -1,7 +1,7 @@
 'use server';
 
-import { log } from '@aivera/observability';
-import { WorkspaceError, WorkspacePausedError, type WorkspaceErrorCode } from '@aivera/workspaces';
+import { log } from '@credalent/observability';
+import { WorkspaceError, WorkspacePausedError, type WorkspaceErrorCode } from '@credalent/workspaces';
 import type { Route } from 'next';
 import { revalidatePath } from 'next/cache';
 import { forbidden, redirect } from 'next/navigation';

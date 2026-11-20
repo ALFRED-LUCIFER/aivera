@@ -1,1 +1,1 @@
-import { plus } from '@aivera/billing';
+import { plus } from '@credalent/billing';

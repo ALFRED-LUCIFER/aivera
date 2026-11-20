@@ -1,8 +1,8 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { PUBLIC_DESCRIPTOR_MAX } from '@aivera/jobs';
-import { Button, buttonClassName, Card, Input, Label, PreviewBanner, StatusBadge, SuccessBanner } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { PUBLIC_DESCRIPTOR_MAX } from '@credalent/jobs';
+import { Button, buttonClassName, Card, Input, Label, PreviewBanner, StatusBadge, SuccessBanner } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useId } from 'react';
@@ -14,7 +14,7 @@ type Props = { publication: PublicationView; publish: PublishView };
 const focusOnMount = (element: HTMLElement | null) => element?.focus();
 
 /**
- * "Publish on Aivera jobs" on the rubric page (Rubric artboard, AIV-P1-015): not published, the preview of what
+ * "Publish on Credalent jobs" on the rubric page (Rubric artboard, AIV-P1-015): not published, the preview of what
  * candidates see and what stays hidden, then published with "View public listing" and "Unpublish". Deviations: the
  * preview asks how candidates see the employer ("A BNPL fintech"), which the listing needs and the artboard omits; it is
  * the shared PreviewBanner (AGENTS.md 4: the preview-confirm card, with its "Nothing changes until you confirm."

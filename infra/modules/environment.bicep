@@ -1,4 +1,4 @@
-// Aivera's own external Container Apps environment (owner decision 18 Nov 2026, ADR-008): consumption only, free, on a
+// Credalent's own external Container Apps environment (owner decision 18 Nov 2026, ADR-008): consumption only, free, on a
 // new subnet of Medvya's VNet so it reaches the shared PostgreSQL server privately. The private DNS zone
 // medvya-dev-3afs7i.private.postgres.database.azure.com is linked to the whole VNet, so it resolves from this subnet.
 param location string

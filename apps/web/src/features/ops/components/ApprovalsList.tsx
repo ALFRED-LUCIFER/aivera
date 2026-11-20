@@ -1,8 +1,8 @@
 'use client';
 
-import type { Messages } from '@aivera/i18n';
-import { useTimeZone, useTranslations } from '@aivera/i18n/react';
-import { DataTable, type DataTableColumn } from '@aivera/ui';
+import type { Messages } from '@credalent/i18n';
+import { useTimeZone, useTranslations } from '@credalent/i18n/react';
+import { DataTable, type DataTableColumn } from '@credalent/ui';
 import type { ReactNode } from 'react';
 import type { PendingRow } from '../domain/workspaces.ts';
 

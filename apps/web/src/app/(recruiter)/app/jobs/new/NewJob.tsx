@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogueContent } from '@aivera/jobs';
+import type { CatalogueContent } from '@credalent/jobs';
 import type { ComponentProps } from 'react';
 import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
 import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';

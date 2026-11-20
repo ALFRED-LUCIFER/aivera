@@ -1,9 +1,9 @@
 // Builds the workspaces module for an app (ADR-002: only apps import this).
-// Not the @aivera/db index: it also exports the migrator, whose module paths do not resolve inside a Next.js bundle.
-import type { AuditContract } from '@aivera/audit';
-import type { Db, Tx } from '@aivera/db/client';
-import { uuidv7 } from '@aivera/db/uuidv7';
-import { withWorkspace } from '@aivera/db/with-workspace';
+// Not the @credalent/db index: it also exports the migrator, whose module paths do not resolve inside a Next.js bundle.
+import type { AuditContract } from '@credalent/audit';
+import type { Db, Tx } from '@credalent/db/client';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import { withWorkspace } from '@credalent/db/with-workspace';
 import { clientsUseCases } from './application/clients.ts';
 import { directoryUseCases } from './application/directory.ts';
 import { settingsUseCases } from './application/settings.ts';
@@ -65,7 +65,7 @@ export function createWorkspaces(db: Db, audit: AuditContract, now: () => Date =
   };
 }
 
-/** The PostgreSQL store behind `@aivera/ai`'s daily token budget (AIV-P0-033): `createAiClient({ budget })`. */
+/** The PostgreSQL store behind `@credalent/ai`'s daily token budget (AIV-P0-033): `createAiClient({ budget })`. */
 export function createAiTokenBudget(db: Db): AiTokenBudget {
   return {
     spentToday: (workspaceId, day) =>

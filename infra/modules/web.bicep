@@ -1,4 +1,4 @@
-// AIV-P0-005: the Aivera web app in Aivera's external environment cae-aivera-dev (ADR-008). Consumption, scale to zero.
+// AIV-P0-005: the Credalent web app in Credalent's external environment cae-aivera-dev (ADR-008). Consumption, scale to zero.
 // shortcut: no Front Door and no custom domain in dev; the public default FQDN serves it. Front Door, a dev host and portfolio subdomains come with the launch epic AIV-P5-E03 (#34)
 param location string
 param tags object
@@ -6,7 +6,7 @@ param containerAppsEnvName string
 param appIdentityId string
 param appIdentityClientId string
 param appInsightsSecretUri string
-@description('Aivera Key Vault URI (ends with a slash); recruiter sign-in secrets live there (docs/runbooks/recruiter-sign-in.md).')
+@description('Credalent Key Vault URI (ends with a slash); recruiter sign-in secrets live there (docs/runbooks/recruiter-sign-in.md).')
 param keyVaultUri string
 param databaseHost string
 param databaseName string
@@ -111,7 +111,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'postgres://aivera_app@${databaseHost}:5432/${databaseName}?sslmode=verify-full'
             }
             { name: 'AZURE_CLIENT_ID', value: appIdentityClientId }
-            // @aivera/ai calls https://<name>.openai.azure.com with the identity's token (AIV-P0-034).
+            // @credalent/ai calls https://<name>.openai.azure.com with the identity's token (AIV-P0-034).
             { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
             // The dev External ID tenant and its recruiter app registration (not secrets).

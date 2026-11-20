@@ -1,5 +1,5 @@
-import type { Tx } from '@aivera/db/client';
-import { uuidv7 } from '@aivera/db/uuidv7';
+import type { Tx } from '@credalent/db/client';
+import { uuidv7 } from '@credalent/db/uuidv7';
 import { and, asc, count, desc, eq, gte, or, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
 import type { Competency, Job, RubricStatus } from '../domain/job.ts';

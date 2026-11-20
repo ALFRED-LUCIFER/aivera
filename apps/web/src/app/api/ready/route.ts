@@ -1,4 +1,4 @@
-import { isReachable } from '@aivera/db/client';
+import { isReachable } from '@credalent/db/client';
 import { getDb } from '../../../server/db';
 
 // Public: readiness probe for Container Apps and the deploy smoke test. Names failing dependencies, nothing else.

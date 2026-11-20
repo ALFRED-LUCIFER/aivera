@@ -33,9 +33,9 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
 
 /** The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only. */
 export const judgePrompt = {
-  id: 'evals.judge@1',
+  id: 'evals.judge@2',
   system:
-    'You grade one AI output for Aivera, a hiring tool, against a rubric. Read the rubric, the output and the ' +
+    'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
     'point it fails or confirms in one sentence.',
 };

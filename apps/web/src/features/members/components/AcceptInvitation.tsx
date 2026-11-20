@@ -1,4 +1,4 @@
-import { Button } from '@aivera/ui';
+import { Button } from '@credalent/ui';
 import type { ReactNode } from 'react';
 
 type AcceptInvitationProps = {
