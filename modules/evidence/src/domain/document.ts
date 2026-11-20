@@ -31,6 +31,13 @@ export function isDocument(contentType: string, data: Uint8Array): boolean {
 /** The item's limit, which the evidence profile shows: "Decision document supplied, authorship unverified." */
 export const documentLimit = (label: string) => `${label} supplied, authorship unverified.`;
 
+/** The text with each note's span masked with NUL, so every offset still holds; callers drop the NULs. */
+export function maskNotes(text: string, notes: readonly UnusualContent[]): string {
+  let masked = text;
+  for (const n of notes) masked = masked.slice(0, n.start) + '\0'.repeat(n.end - n.start) + masked.slice(n.end);
+  return masked;
+}
+
 export type DocumentItem = Pick<EvidenceItem, 'excerpt' | 'excerptSpan' | 'provenance' | 'strength' | 'limit'>;
 
 /**
@@ -39,9 +46,7 @@ export type DocumentItem = Pick<EvidenceItem, 'excerpt' | 'excerptSpan' | 'prove
  * person to see.
  */
 export function documentItems(layout: CvLayout, label: string, notes: readonly UnusualContent[]): DocumentItem[] {
-  // Masked with NUL first so every offset still holds, then dropped.
-  let masked = layout.content;
-  for (const n of notes) masked = masked.slice(0, n.start) + '\0'.repeat(n.end - n.start) + masked.slice(n.end);
+  const masked = maskNotes(layout.content, notes);
   return layout.pages.flatMap((page) => {
     const text = page.spans.map((s) => masked.slice(s.offset, s.offset + s.length)).join('');
     const excerpt = text.replaceAll('\0', '').trim();

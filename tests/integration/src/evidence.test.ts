@@ -149,6 +149,7 @@ describe('Migrations', () => {
         'evidence_gap',
         'inbox',
         'item',
+        'link_read',
         'mapping',
         'merged_pull_request',
         'outbox',
