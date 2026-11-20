@@ -22,6 +22,8 @@ export const COMPARE_EXCERPTS_SYSTEM = [
 ].join(' ');
 
 // Azure strict mode needs every property present (client.ts generateStructured): an entry is its citations only.
+// shortcut: more than 40 flags in one run rejects the answer whole (counted, nothing stored); chunk the pairs per call if
+// pilot runs ever come near it.
 export const compareExcerptsSchema = z.object({ contradictions: z.array(cited(z.object({}))).max(40) });
 
 /**
@@ -42,7 +44,8 @@ export const compareExcerptsRequest = (sources: readonly Source[], pairs: readon
 
 /**
  * The indexes into `pairs` the checked answer flags. A flag must cite exactly the two sources of one requested pair;
- * anything else rejects the whole answer (InvalidCitation), never patched up (AGENTS.md 3.7).
+ * anything else rejects the whole answer (InvalidCitation), never patched up (AGENTS.md 3.7). It runs after the
+ * client's call, so it gets no retry: the evidence module counts the rejection and stores nothing.
  */
 export function flaggedPairs(
   answer: Checked<z.infer<typeof compareExcerptsSchema>>,

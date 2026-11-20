@@ -530,6 +530,16 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       expect(await backed(sara)).toBe(0);
     });
 
+    it('stays open on a re-map whose answer leaves it out: only a person ends it', async () => {
+      comparison = '{"contradictions":[]}';
+      await mapNow(sara);
+      expect(await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, sara, JOB))).toMatchObject([
+        { outcome: 'contradiction', method: 'ai', resolvedAt: null },
+      ]);
+      expect((await linked(sara, LLM)).map((i) => i.provenance)).toEqual(['contradictory', 'contradictory']);
+      contradictionId = (await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, sara, JOB)))[0]?.id ?? '';
+    });
+
     it('Scenario: An AI contradiction is resolved like any other', async () => {
       const events = async () => (await rows(w1, sql`select count(*)::int as n from evidence.outbox`))[0]?.['n'];
       const before = await events();

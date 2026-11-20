@@ -59,6 +59,8 @@ export type MappingStore = {
   ): Promise<void>;
   /** Resolved contradictions of the candidate's earlier runs for the job, by `pairKey` of their two cited excerpts. */
   resolutions(workspaceId: string, candidateId: string, jobId: string): Promise<Map<string, Resolution>>;
+  /** `pairKey`s of every pair the AI comparison flagged in the candidate's earlier runs for the job (AIV-P1-078). */
+  aiFlags(workspaceId: string, candidateId: string, jobId: string): Promise<Set<string>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
 };
 
@@ -114,15 +116,20 @@ type ComparedPair = { a: number; b: number; outcome: ComparisonOutcome; method: 
 /**
  * Pre-checks every pair of links on one competency from different origins (AIV-P1-029); the pairs it leaves
  * `not_settled` go to the model in one call for the candidate and job (AIV-P1-078), and only its flags are kept, as
- * contradictions. A settled pair never reaches the model. A rejected answer stores no AI contradiction.
+ * contradictions. A settled pair never reaches the model. A pair the model flagged in an earlier run (`flagged`, by
+ * `pairKey`) stays a contradiction without a new call, so only a person's resolution ends it, never a later answer that
+ * leaves it out or is rejected. A rejected answer stores no new AI contradiction.
  */
 // shortcut: a pair with no number on either side (`not_compared`) is never sent, so a conflict in words alone ("led the
 // team" against "a junior contributor") is missed; send those too if pilot resolutions show misses.
-// shortcut: every run sends its unsettled pairs again, already-judged ones included; cache verdicts by `pairKey` if pilot
+// shortcut: every run sends its unflagged unsettled pairs again; cache "not contradicting" verdicts by `pairKey` if pilot
 // token use shows it.
+// shortcut: excerpts go to the model as stored, so a name inside one ("Arjun's queue library") is sent, as for
+// evidence.mapToCompetency; strip names before every evidence prompt with the ADR-006 point 7 follow-up.
 export async function comparePairs(
   links: readonly (RuleLink & { excerpt: string })[],
   originGroups: readonly (readonly string[])[],
+  flagged: ReadonlySet<string>,
   kindOf: (sourceId: string) => (typeof AI_KIND)[SourceKind],
   compare: (
     sources: Parameters<MappingPorts['compareExcerpts']>[1],
@@ -133,23 +140,28 @@ export async function comparePairs(
   const settled: ComparedPair[] = pairs.flatMap((p) =>
     p.outcome === 'not_settled' ? [] : [{ ...p, outcome: p.outcome, method: 'numeric_precheck' as const }],
   );
-  const unsettled = pairs.filter((p) => p.outcome === 'not_settled');
-  if (!unsettled.length) return { pairs: settled, compared: { sent: 0, flagged: 0, rejected: 0 } };
+  const linkAt = (i: number) => links[i] as RuleLink & { excerpt: string };
+  const isKnown = (p: { a: number; b: number }) => flagged.has(pairKey(linkAt(p.a), linkAt(p.b)));
+  const known: ComparedPair[] = pairs.flatMap((p) =>
+    p.outcome === 'not_settled' && isKnown(p) ? [{ a: p.a, b: p.b, outcome: 'contradiction', method: 'ai' }] : [],
+  );
+  const unsettled = pairs.filter((p) => p.outcome === 'not_settled' && !isKnown(p));
+  if (!unsettled.length) return { pairs: [...settled, ...known], compared: { sent: 0, flagged: 0, rejected: 0 } };
   const sources = [...new Set(unsettled.flatMap((p) => [p.a, p.b]))].map((i) => {
-    const link = links[i] as RuleLink & { excerpt: string };
+    const link = linkAt(i);
     return { id: String(i), kind: kindOf(link.sourceId), text: link.excerpt };
   });
-  const flagged = await compare(
+  const answer = await compare(
     sources,
     unsettled.map((p) => [String(p.a), String(p.b)]),
   );
-  const ai = (flagged ?? []).flatMap((i) => {
+  const ai = (answer ?? []).flatMap((i) => {
     const pair = unsettled[i];
     return pair ? [{ a: pair.a, b: pair.b, outcome: 'contradiction' as const, method: 'ai' as const }] : [];
   });
   return {
-    pairs: [...settled, ...ai],
-    compared: { sent: unsettled.length, flagged: ai.length, rejected: flagged ? 0 : unsettled.length },
+    pairs: [...settled, ...known, ...ai],
+    compared: { sent: unsettled.length, flagged: ai.length, rejected: answer ? 0 : unsettled.length },
   };
 }
 
@@ -234,10 +246,13 @@ export async function mapEvidence(
   // AIV-P1-029: the only place a link becomes "Independently corroborated"; near-duplicates are one origin.
   const originGroups = groupOrigins(await ports.storeFor(tx).fingerprints(workspaceId, candidateId));
   const resolutions = await ports.mappingStoreFor(tx).resolutions(workspaceId, candidateId, jobId);
+  const aiFlags = await ports.mappingStoreFor(tx).aiFlags(workspaceId, candidateId, jobId);
   const kinds = new Map(mapSources.map((s) => [s.id, AI_KIND[s.kind]]));
   const { pairs: compared, compared: comparedCounts } = await comparePairs(
     guarded.links,
     originGroups,
+    aiFlags,
+    // Never undefined: the guards dropped every link citing a source that is not in `mapSources`.
     (sourceId) => kinds.get(sourceId) ?? 'document',
     (sources, unsettled) => ports.compareExcerpts(workspaceId, sources, unsettled),
   );

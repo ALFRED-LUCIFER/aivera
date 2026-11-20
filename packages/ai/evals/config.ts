@@ -67,10 +67,7 @@ export const taskThresholds: Record<
   },
   'evidence.mapToCompetency': { statements: ['links[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.firstPass': { statements: ['mustHaves[*]'], fieldMatch: 0.9, judge: 1 },
-  // AIV-P1-025: every role, skill and statement must cite the CV and is a claim. Recorded answers are checked ones
-  // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
-  // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
-  // AIV-P1-078: one case per pair the numeric pre-check leaves `not_settled` (modules/evidence numericCheck.golden.test.ts
+  // AIV-P1-078: one case per pair the numeric pre-check leaves `not_settled` (modules/evidence/src/application/mapping.test.ts
   // proves each is). A case passes only with every metric, so a group's pass rate is the recall over contradictions and
   // one minus the false-positive rate over consistent pairs. Those two groups are the gate; the pooled field match sits
   // below them so a failing run is named by the group it fails.
@@ -83,6 +80,9 @@ export const taskThresholds: Record<
       consistent: { label: 'Consistent pairs not flagged (1 - false-positive rate)', min: 5 / 6 },
     },
   },
+  // AIV-P1-025: every role, skill and statement must cite the CV and is a claim. Recorded answers are checked ones
+  // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
+  // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
   'evidence.parseCv': { statements: ['workHistory[*]', 'skills[*]', 'statements[*]'], fieldMatch: 1, judge: 1 },
 };
 

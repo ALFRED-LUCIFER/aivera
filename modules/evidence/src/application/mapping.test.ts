@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
+import { pairKey } from '../domain/corroboration.ts';
 import { comparePairs } from './mapping.ts';
 
 // AIV-P1-078: which pairs reach the AI comparison. Synthetic cast only (docs/00-product/personas.md).
@@ -13,9 +14,12 @@ const link = (sourceId: string, excerpt: string, competencyId = LLM) => ({
   provenance: 'submitted' as const,
   excerpt,
 });
-const compareWith = (answer: number[] | null) => vi.fn<Parameters<typeof comparePairs>[3]>(async () => answer);
-const run = (links: ReturnType<typeof link>[], compare: ReturnType<typeof compareWith>) =>
-  comparePairs(links, [], (sourceId) => (sourceId === 'reference' ? 'reference' : 'document'), compare);
+const compareWith = (answer: number[] | null) => vi.fn<Parameters<typeof comparePairs>[4]>(async () => answer);
+const run = (
+  links: ReturnType<typeof link>[],
+  compare: ReturnType<typeof compareWith>,
+  flagged: ReadonlySet<string> = new Set(),
+) => comparePairs(links, [], flagged, (sourceId) => (sourceId === 'reference' ? 'reference' : 'document'), compare);
 
 describe('comparePairs', () => {
   // SAFETY: mutation check: sent every compared pair (settled ones too) to the model -> this test failed
@@ -84,6 +88,17 @@ describe('comparePairs', () => {
     );
     expect(result.pairs).toEqual([]);
     expect(result.compared).toEqual({ sent: 1, flagged: 0, rejected: 1 });
+  });
+
+  // SAFETY: mutation check: sent earlier-flagged pairs to the model again instead of keeping them -> this test failed
+  it('a pair flagged in an earlier run stays a contradiction without a call, so only a person ends it', async () => {
+    const writeUp = link('write-up', 'about 9,000 merchants use the assistant');
+    const reference = link('reference', 'a few hundred merchants');
+    const compare = compareWith(null);
+    const result = await run([writeUp, reference], compare, new Set([pairKey(reference, writeUp)]));
+    expect(compare).not.toHaveBeenCalled();
+    expect(result.pairs).toEqual([{ a: 0, b: 1, outcome: 'contradiction', method: 'ai' }]);
+    expect(result.compared).toEqual({ sent: 0, flagged: 0, rejected: 0 });
   });
 
   it('every pair in the eval golden set is one the pre-check leaves to the model', async () => {
