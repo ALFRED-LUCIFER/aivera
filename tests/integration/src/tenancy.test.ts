@@ -471,6 +471,13 @@ async function seed(
       label: 'Requirements document',
       synthetic: true,
     });
+    // A link read (evidence.link_read, AIV-P1-077).
+    await evidence.requestLinkRead(ctx, {
+      candidateId: personId,
+      url: 'https://shop.credalent.example/merchant-assistant',
+      label: 'Shipped product: merchant help assistant',
+      synthetic: true,
+    });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),

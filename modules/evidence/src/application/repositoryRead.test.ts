@@ -8,6 +8,7 @@ import {
   type RepositoryReadStore,
 } from './repositoryRead.ts';
 import { queueCvParse, type CvParseStore } from './cvParse.ts';
+import type { LinkRead, LinkReadStore } from './linkRead.ts';
 import type { EvidenceSource } from '../domain/evidence.ts';
 
 // AIV-P1-076: which links an arrival queues, and who the commits are matched to. Synthetic cast only.
@@ -20,6 +21,7 @@ async function queue(
 ) {
   const reads: RepositoryRead[] = [];
   const parses: EvidenceSource[] = [];
+  const links: LinkRead[] = [];
   const published: string[] = [];
   const logs: unknown[][] = [];
   let n = 0;
@@ -39,6 +41,12 @@ async function queue(
           parses.find((p) => p.candidateId === source.candidateId && p.blobFileId === source.blobFileId)?.id ??
           (parses.push(source), null),
       }) as unknown as CvParseStore,
+    linkStoreFor: () =>
+      ({
+        insertOrGet: async (_source: unknown, read: LinkRead) =>
+          links.find((l) => l.url === read.url)?.sourceId ?? (links.push(read), null),
+      }) as unknown as LinkReadStore,
+    publishLinkReadRequested: async (_tx, source) => void published.push(source.id),
     publishReadRequested: async () => undefined,
     publishParseRequested: async (_tx, source) => void published.push(source.id),
     logQueued: (...args) => void logs.push(args),
@@ -46,14 +54,14 @@ async function queue(
     now: () => new Date('2026-11-20T09:00:00Z'),
   };
   await queueArrivalReads(ports, {} as Tx, W, 'arrival');
-  return { reads, parses, published, logs };
+  return { reads, parses, links, published, logs };
 }
 
 const run = async (arrival: Omit<Arrival, 'fileIds'>) => (await queue(arrival)).reads;
 
 describe('queueing the reads an arrival brings', () => {
-  it('queues one read per repository, whatever the spelling, and leaves every other link alone', async () => {
-    const reads = await run({
+  it('queues one read per repository, whatever the spelling, and a link read for every other link', async () => {
+    const { reads, links } = await queue({
       personId: MARIA,
       githubLogin: null,
       links: [
@@ -64,6 +72,11 @@ describe('queueing the reads an arrival brings', () => {
       ],
     });
     expect(reads.map((r) => r.url)).toEqual(['https://github.com/maria-credalent-example/ledger-sync']);
+    // AIV-P1-077: each other link is read once, as supplied, under the plain-link label.
+    expect(links.map((l) => [l.url, l.status])).toEqual([
+      ['https://portfolio.maria.credalent.example', 'pending'],
+      ['https://github.com/maria-credalent-example', 'pending'],
+    ]);
   });
 
   it('with no login supplied, matches by the emails on her record only: never her name, email or the owner', async () => {

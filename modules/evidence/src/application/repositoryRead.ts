@@ -41,8 +41,10 @@ import {
   type SkillSignal,
   targetSkills,
 } from '../domain/skill-signals/classify.ts';
+import { LINK_LABEL } from '../domain/link.ts';
 import { queueCvParse, type CvPorts } from './cvParse.ts';
 import type { Ports } from './evidence.ts';
+import { queueLinkRead, type LinkPorts } from './linkRead.ts';
 
 /** GitHub answered "rate limit reached"; the job is rescheduled for `resetAt` (x-ratelimit-reset). */
 export class GitHubRateLimited extends Error {
@@ -284,27 +286,31 @@ export async function queueRepositoryRead(
 export type Arrival = { personId: string; links: string[]; githubLogin: string | null; fileIds: string[] };
 
 export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRequested' | 'newId' | 'now'> &
-  Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> & {
+  Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> &
+  Pick<LinkPorts, 'linkStoreFor' | 'publishLinkReadRequested'> & {
     readArrival(tx: Tx, workspaceId: string, sourceId: string): Promise<Arrival | null>;
     /** The emails on the candidate record: commits by these count as theirs. */
     readPerson(tx: Tx, workspaceId: string, personId: string): Promise<{ emails: string[]; synthetic: boolean } | null>;
     /** A workspace file's purpose (the files module), or null when there is no such file. */
     readFilePurpose(tx: Tx, workspaceId: string, fileId: string): Promise<string | null>;
     /** Opaque ids only, never the link, login, emails, file name or content type (AGENTS.md 1.2). */
-    logQueued(kind: 'repository' | 'cv', ids: { sourceId: string; candidateId: string; queued: boolean }): void;
+    logQueued(
+      kind: 'repository' | 'cv' | 'link',
+      ids: { sourceId: string; candidateId: string; queued: boolean },
+    ): void;
   };
 
 /**
  * The `ApplicationReceived.v1` handler's work: one read per GitHub repository link on the arrival (AIV-P1-076), by
  * the login the candidate supplied (dropped when it is not a valid login, never guessed) and the emails on their
- * record, and one CV parse per file of purpose `cv` on the arrival, for the arrival's own person (AIV-P1-079). Any
- * other link stays on the application as a plain link; any other file is not a CV.
+ * record, one CV parse per file of purpose `cv` on the arrival, for the arrival's own person (AIV-P1-079), and one
+ * link read per other link (AIV-P1-077), which stays on the application as a plain link too. Any other file is not a CV.
  */
 export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId: string, sourceId: string) {
   const arrival = await ports.readArrival(tx, workspaceId, sourceId);
   if (!arrival) return;
   const links = arrival.links.filter((link) => parseRepositoryUrl(link));
-  if (links.length === 0 && arrival.fileIds.length === 0) return;
+  if (arrival.links.length === 0 && arrival.fileIds.length === 0) return;
   const person = await ports.readPerson(tx, workspaceId, arrival.personId);
   if (!person) return;
   const candidateId = arrival.personId;
@@ -318,6 +324,15 @@ export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId
       synthetic: person.synthetic,
     });
     ports.logQueued('repository', { sourceId: read.sourceId, candidateId, queued: read.queued });
+  }
+  for (const url of new Set(arrival.links.filter((link) => !parseRepositoryUrl(link)))) {
+    const read = await queueLinkRead(ports, tx, workspaceId, {
+      candidateId,
+      url,
+      label: LINK_LABEL,
+      synthetic: person.synthetic,
+    });
+    ports.logQueued('link', { sourceId: read.sourceId, candidateId, queued: read.queued });
   }
   for (const fileId of new Set(arrival.fileIds)) {
     if ((await ports.readFilePurpose(tx, workspaceId, fileId)) !== 'cv') continue;

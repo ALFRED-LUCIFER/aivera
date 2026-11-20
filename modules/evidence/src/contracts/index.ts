@@ -4,6 +4,7 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
 import type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
+import type { LinkReadView, RequestLinkReadInput } from '../application/linkRead.ts';
 import type {
   EvidenceItemView,
   RecordEvidenceInput,
@@ -55,6 +56,9 @@ export { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
 export type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
 export { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
 export type { DocumentReadStatus } from '../domain/document.ts';
+export type { LinkReadView, RequestLinkReadInput } from '../application/linkRead.ts';
+export { LINK_LABEL, LINK_READ_STATUSES } from '../domain/link.ts';
+export type { LinkReadStatus } from '../domain/link.ts';
 export type { CvParseStatus, NoteReason } from '../domain/cv.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
@@ -141,6 +145,16 @@ export const CvParseRequestedV1 = {
  */
 export const DocumentReadRequestedV1 = {
   type: 'DocumentReadRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
+
+/**
+ * Written to `evidence.outbox` with a pending `shipped_product` source and sent to the `evidence` queue, whose worker
+ * job `evidence.link.read` fetches the link behind the SSRF guard (AIV-P1-077). Strict, opaque ids only: the link
+ * stays in `evidence.link_read`.
+ */
+export const LinkReadRequestedV1 = {
+  type: 'LinkReadRequested.v1',
   payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
 } satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
 
@@ -257,6 +271,23 @@ export interface EvidenceContract {
    * no such read. Admins and recruiters.
    */
   getDocumentRead(ctx: WorkspaceContext, sourceId: string): Promise<DocumentReadView | null>;
+  /**
+   * Stores a pending `shipped_product` source (the given label, provenance "Candidate-submitted") for a shipped-product
+   * page, published write-up, case study or design share link, and queues its read (`LinkReadRequested.v1`), once per
+   * candidate and link as supplied: a second request returns the first `sourceId`. The worker fetches it behind the
+   * SSRF guard (https only, no credentials, public addresses only and pinned, at most 3 redirects, 10 s, 2 MB of HTML,
+   * robots.txt respected) and stores the page title and one item with the page text, "Candidate-submitted", at most
+   * Medium, cited by the label, with the limit "<label> supplied, authorship unverified."; its text is fingerprinted
+   * once and indexed for search. A link that cannot be fetched is `not_reachable` and nothing is scored from it.
+   * Admins and recruiters. Throws `EvidenceError('source_label')`.
+   */
+  requestLinkRead(ctx: WorkspaceContext, input: RequestLinkReadInput): Promise<{ sourceId: string }>;
+  /**
+   * The read's status (`pending`, `read`, `not_reachable` "We could not open this link" beside `url`, `failed`), the
+   * label every note is cited by, the page title, and the page's "Unusual content in this source" notes. Null when the
+   * workspace has no such read. Admins and recruiters.
+   */
+  getLinkRead(ctx: WorkspaceContext, sourceId: string): Promise<LinkReadView | null>;
   /**
    * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
    * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.
