@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   crossApplicantMatches,
   FINGERPRINT_MIN_TEXT,
-  fingerprintText,
+  fingerprintText as fingerprintWith,
   groupOrigins,
   NEAR_DUPLICATE_THRESHOLD,
   normalizeText,
@@ -10,6 +11,7 @@ import {
 } from './fingerprint.ts';
 
 // AIV-P1-071. Synthetic text only (AGENTS.md 1.1).
+const fingerprintText = (text: string) => fingerprintWith(text, (input) => createHash('sha1').update(input).digest());
 const PAYMENTS =
   'Senior backend engineer working on distributed payment platforms. You will design and operate high throughput services, own reliability, and mentor other engineers across the payments organisation. Experience with Go, Kubernetes and event driven systems is expected for this role.';
 const TOPICS = [

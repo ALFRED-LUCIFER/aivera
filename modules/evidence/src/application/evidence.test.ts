@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
@@ -49,6 +50,7 @@ function harness() {
     isSyntheticWorkspace: async () => true,
     audit: async () => void calls.push('audit'),
     logFlagged: (fields) => void (calls.push('logFlagged'), logged.push(fields)),
+    sha1: (input) => createHash('sha1').update(input).digest(),
     newId: () => `0190d4a2-0000-7000-8000-${String(++id).padStart(12, '0')}`,
     now: () => new Date('2026-11-18T09:00:00.000Z'),
   });

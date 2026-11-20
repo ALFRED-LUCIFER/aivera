@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray, isNotNull, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
 import { competencyLink, duplicateFlag, item, source } from './schema.ts';
 
@@ -62,7 +62,9 @@ export function evidenceStore(tx: Tx): EvidenceStore {
           .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId })),
       }));
     },
-    fingerprints(workspaceId, candidateId) {
+    async fingerprints(workspaceId, candidateId) {
+      // Serialises comparisons per workspace until commit, so two copies recorded at once still see each other.
+      if (candidateId === undefined) await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}))`);
       return tx
         .select({ id: source.id, candidateId: source.candidateId, textFingerprint: source.textFingerprint })
         .from(source)

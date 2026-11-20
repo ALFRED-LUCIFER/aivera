@@ -18,6 +18,7 @@ import {
   type DuplicateFlag,
   type DuplicateResolution,
   type FingerprintedSource,
+  type Sha1,
 } from '../domain/fingerprint.ts';
 
 /** An item with its source and the links to the asked job's competencies. */
@@ -34,7 +35,10 @@ export type EvidenceStore = {
     filter: { candidateId?: string; itemId?: string },
     jobId: string | null,
   ): Promise<EvidenceItemView[]>;
-  /** One candidate's sources with their fingerprints, or with no candidate every fingerprinted source; oldest first. */
+  /**
+   * One candidate's sources with their fingerprints, or with no candidate every fingerprinted source; oldest first.
+   * With no candidate it first takes the workspace's comparison lock, held until commit.
+   */
   fingerprints(workspaceId: string, candidateId?: string): Promise<FingerprintedSource[]>;
   insertFlags(flags: DuplicateFlag[]): Promise<void>;
   /** Flags on either side of which the candidate stands, oldest first. */
@@ -59,6 +63,7 @@ export type Ports = {
   audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
   /** Logs a raised flag: source ids and the similarity only, never text, names or fingerprints (AGENTS.md 1.2). */
   logFlagged(fields: { flagId: string; sourceId: string; otherSourceId: string; similarity: number }): void;
+  sha1: Sha1;
   newId(): string;
   now(): Date;
 };
@@ -91,6 +96,7 @@ export function evidenceUseCases({
   isSyntheticWorkspace,
   audit,
   logFlagged,
+  sha1,
   newId,
   now,
 }: Ports) {
@@ -120,6 +126,7 @@ export function evidenceUseCases({
     }));
     if (!flags.length) return;
     await store.insertFlags(flags);
+    // Logged before commit: a rolled-back record leaves a line with ids only, never a flag.
     for (const f of flags)
       logFlagged({ flagId: f.id, sourceId: f.sourceId, otherSourceId: f.otherSourceId, similarity: f.similarity });
   }
@@ -142,7 +149,7 @@ export function evidenceUseCases({
         ...base,
         id: newId(),
         label: input.source.label.trim(),
-        textFingerprint: input.text === undefined ? null : fingerprintText(input.text),
+        textFingerprint: input.text === undefined ? null : fingerprintText(input.text, sha1),
       };
       const items = input.items.map(({ competencies = [], ...item }) => ({
         item: { ...item, ...base, id: newId(), sourceId: source.id } satisfies EvidenceItem,

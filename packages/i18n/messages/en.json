@@ -265,7 +265,6 @@
   "evidence": {
     "duplicate": {
       "flag": "Also submitted by another applicant",
-      "otherSource": "Matches source {sourceId}",
       "resolve": "Resolve",
       "resolved": "Resolved: {reason}",
       "resolution": {

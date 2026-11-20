@@ -436,7 +436,7 @@ describe('AIV-P1-071: fingerprints and near-duplicate flags', () => {
   });
 
   describe('Scenario: The flag is never shared across workspaces', () => {
-    // SAFETY: mutation check: ALTER POLICY source_tenant_isolation USING (true) WITH CHECK (true) and the workspace filter dropped from the store's fingerprints -> this test failed (W2's record compared against W1's sources)
+    // SAFETY: mutation check: ALTER POLICY source_tenant_isolation USING (true) WITH CHECK (true), repository filter kept -> this test failed (W2 saw W1's sources); dropping the policy under FORCE hides every row instead, so the loosened policy is the real mutation
     it("an identical write-up in Gulf Talent Partners raises no flag, and W2 cannot see W1's sources even with no WHERE clause", async () => {
       const gulf = await person(w2, 'Arjun Menon');
       const { sourceId } = await as(ALEX, w2, (ctx) => evidence.recordEvidence(ctx, document(gulf, harnessWriteUp())));
@@ -496,6 +496,24 @@ describe('AIV-P1-071: fingerprints and near-duplicate flags', () => {
       ]);
       expect(await count(w1, 'outbox')).toBe(events);
     });
+  });
+
+  // SAFETY: mutation check: removed the pg_advisory_xact_lock from the store's fingerprints -> this test failed (no flag)
+  it('two copies recorded at the same time still flag each other', async () => {
+    const pool = createDb(urlFor('aivera_app'), { max: 2 });
+    try {
+      const audit2 = createAudit(pool);
+      const ws = createWorkspaces(pool, audit2);
+      const ev = createEvidence(ws, audit2, () => NOW);
+      const [a, b] = [await person(w1, 'Huda Rahman'), await person(w1, 'Farid Haddad')];
+      const text = assistantWriteUp('Refunds assistant notes, shared copy').replaceAll('assistant', 'helper');
+      await Promise.all(
+        [a, b].map((c) => ws.withWorkspace({ userId: ALEX }, w1, (ctx) => ev.recordEvidence(ctx, document(c, text)))),
+      );
+      expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, a))).toHaveLength(1);
+    } finally {
+      await pool.$client.end();
+    }
   });
 
   describe('Scenario: Interviewers cannot resolve the flag', () => {

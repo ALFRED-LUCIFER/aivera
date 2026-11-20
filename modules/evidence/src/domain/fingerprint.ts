@@ -4,8 +4,6 @@
 // A text fingerprint tells when two evidence sources are near-copies (AIV-P1-071): a 64-bit SimHash over 3-word
 // shingles of the normalised text, so near-identical texts land within a few bits of each other and only 16 hex
 // characters are stored, never more text. A text with too little signal gets no fingerprint and never matches.
-import { createHash } from 'node:crypto';
-
 /** Normalised texts shorter than this carry too little signal to tell a real copy from shared boilerplate. */
 export const FINGERPRINT_MIN_TEXT = 200;
 
@@ -58,8 +56,11 @@ export function stripBoilerplate(text: string): string {
     .join('\n');
 }
 
+/** A SHA-1 digest, injected so the domain stays pure; composition passes node:crypto's. */
+export type Sha1 = (input: string) => Uint8Array;
+
 /** The 16-hex-character SimHash of a text, or null when it carries too little signal to fingerprint. */
-export function fingerprintText(text: string): string | null {
+export function fingerprintText(text: string, sha1: Sha1): string | null {
   const normalized = normalizeText(stripBoilerplate(text));
   if (normalized.length < FINGERPRINT_MIN_TEXT) return null;
   const tokens = normalized.split(' ');
@@ -68,10 +69,8 @@ export function fingerprintText(text: string): string | null {
   if (tokens.length < 3) return null;
   const weights = Array.from({ length: 64 }, () => 0);
   for (let i = 0; i <= tokens.length - 3; i++) {
-    // The first 8 bytes of the shingle's SHA-1 are its 64-bit hash: deterministic, no I/O.
-    const digest = createHash('sha1')
-      .update(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`)
-      .digest();
+    // The first 8 bytes of the shingle's SHA-1 are its 64-bit hash.
+    const digest = sha1(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`);
     for (let bit = 0; bit < 64; bit++)
       weights[bit] = (weights[bit] ?? 0) + (((digest[bit >> 3] ?? 0) >> (7 - (bit & 7))) & 1 ? 1 : -1);
   }
