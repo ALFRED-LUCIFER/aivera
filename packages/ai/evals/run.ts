@@ -57,7 +57,8 @@ export function liveJudge(ai: AiClient): Judge {
       prompt: JSON.stringify({ rubric, output }),
       schema: verdict,
       sources: golden.sources,
-      // The judge reads the sources as the task's model did.
+      // The judge reads the sources redacted, as the task's model did; the output in its prompt carries the stored
+      // text of each quote (synthetic cases only).
       identifiers: identifiersOf(golden),
     });
 }

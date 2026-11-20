@@ -501,16 +501,13 @@ export function createFileReadHandlers(config: {
         input,
       ),
     documentIntelligence: createDocumentIntelligence(config.documentIntelligence),
-    extract: async (tx, workspaceId, candidateId, sourceId, text) => {
-      const { identifiers, named } = await candidateOf(config.readPerson, tx, workspaceId, candidateId);
-      const extraction = await config.ai.generateStructured({
+    // Every stored CV claim is a slice of the CV text at its citation's offsets, so no placeholder reaches a recruiter.
+    extract: async (tx, workspaceId, candidateId, sourceId, text) =>
+      config.ai.generateStructured({
         ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]),
         workspaceId,
-        identifiers,
-      });
-      // A statement reads "[CANDIDATE] led ..." for the model; the recruiter sees the name.
-      return named(extraction);
-    },
+        identifiers: (await candidateOf(config.readPerson, tx, workspaceId, candidateId)).identifiers,
+      }),
     logFlagged,
     sha1,
     newId: uuidv7,

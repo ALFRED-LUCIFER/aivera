@@ -57,10 +57,24 @@ describe('the replacer', () => {
     ['+971 50 000 0001', '[PHONE_1]'],
   ])('phones: %s', (text, expected) => expect(redact(`call ${text}.`)).toBe(`call ${expected}.`));
 
-  it('numbers the same phone in two formats once, and leaves counts, years and dates alone', () => {
+  it('numbers each written number once, and leaves counts, years, dates, decimals and metric lists alone', () => {
     expect(redact('+44 7700 900123, 0044-7700-900123, 07700 900123')).toBe('[PHONE_1], [PHONE_1], [PHONE_2]');
-    const kept = 'about 9,000 merchants, 460 cases, 2019-2023, 2023-03-14, a 1234567 run';
-    expect(redact(kept)).toBe(kept);
+    expect(redact('call +44 - 7700 - 900123 today')).toBe('call [PHONE_1] today');
+    const numbers = [
+      'about 9,000 merchants, 460 cases, 2019-2023, 2023-03-14, a 1234567 run',
+      'Jun 2020 - Aug 2023, 06.2020-08.2023, 12.03.2024, 2020 2021 2022',
+      'scores 0.82 0.91 0.77, accuracy 98.2 97.4 96.1, p95 120 340 560 ms',
+    ].join('; ');
+    expect(redact(numbers)).toBe(numbers);
+  });
+
+  it('replaces a particle only inside a run of name parts, and splits hyphenated names', () => {
+    const hyphenated = { names: ['Sara Al-Qahtani'], emails: [], phones: [] };
+    const text = 'Al-Qahtani and Qahtani built it in Al Ain; see /usr/bin.';
+    expect(redactSources([source(text)], hyphenated, false).sources[0]?.text).toBe(
+      '[CANDIDATE] and [CANDIDATE] built it in Al Ain; see /usr/bin.',
+    );
+    expect(redact("'Sara' and Sara Al Qahtani")).toBe("'[CANDIDATE]' and [CANDIDATE]");
   });
 
   it('maps offsets back across shorter and longer placeholders', () => {
@@ -81,9 +95,8 @@ describe('the replacer', () => {
 
   it('keeps emails and phones as written only with keepContact, and only evidence.parseCv gets it', () => {
     const header = 'Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer';
-    const { sources, kept } = redactSources([source(header, 'cv')], sara, true);
+    const { sources } = redactSources([source(header, 'cv')], sara, true);
     expect(sources[0]?.text).toBe('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer');
-    expect(kept).toEqual(['sara.al.qahtani@example.com', '+44 7700 900123']);
     expect(CONTACT_EXTRACTION_TASKS).toEqual(['evidence.parseCv']);
   });
 });
@@ -216,7 +229,6 @@ describe('Feature: Candidate names and contact details never reach the model', (
     expect((error as Error).message).not.toMatch(leak);
   });
 
-  // SAFETY: mutation check: removed the kept contact check in checkOutput -> this test failed
   it('Scenario: CV parsing may send the candidate own email and phone, never the name', async () => {
     const cv = source(
       'Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer\nSara Al Qahtani led the Gulf Arabic eval set.',
@@ -237,7 +249,9 @@ describe('Feature: Candidate names and contact details never reach the model', (
     expect(requests[0]).toContain('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123');
     expect(requests[0]).not.toMatch(/sara al qahtani/i);
     expect(out.contact).toEqual(contact);
+    // The statement repeating the email is the evidence module's to drop (cv.ts cvClaims); quotes come back as stored.
     expect(out.statements.map((s) => [s.text, s.claim, s.citations[0]?.quote])).toEqual([
+      ['Reach me at sara.al.qahtani@example.com', true, 'Sara Al Qahtani led the Gulf Arabic eval set'],
       ['[CANDIDATE] led the Gulf Arabic eval set', true, 'Sara Al Qahtani led the Gulf Arabic eval set'],
     ]);
   });

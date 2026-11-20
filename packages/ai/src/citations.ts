@@ -58,11 +58,7 @@ export class UncitedOutput extends Error {
 /** A citation names a source the model was not given, or quotes text that is not in that source. */
 export class InvalidCitation extends Error {
   override name = 'InvalidCitation';
-  constructor(
-    task: string,
-    label: string,
-    reason: 'unknown source' | 'quote not in source' | 'not a requested pair' | 'contact detail in statement',
-  ) {
+  constructor(task: string, label: string, reason: 'unknown source' | 'quote not in source' | 'not a requested pair') {
     // The label comes from the model: named only when it has the shape we gave, so no model text reaches the message.
     super(`AI task ${task} cited ${/^S\d{1,4}$/.test(label) ? label : 'a source'}: ${reason}`);
   }
@@ -111,7 +107,7 @@ export function findQuote(text: string, quote: string): { start: number; end: nu
  * With `onDropped`, a list element whose citation is invalid is left out (and `onDropped` called once per element)
  * instead of rejecting the whole answer: for extraction, where one bad statement must not lose the rest (AIV-P1-025).
  * With `redaction` (identifiers.ts, AIV-P1-080), quotes are checked against the text the model saw and their offsets and
- * quote returned in the original source, and a statement repeating a kept email or phone is an invalid citation.
+ * quote returned in the original source.
  */
 export function checkOutput<S extends z.ZodType>(
   task: string,
@@ -136,7 +132,6 @@ export function checkOutput<S extends z.ZodType>(
   }
 
   const byLabel = new Map(sources.map((source, i) => [sourceLabel(i), i]));
-  const kept = redaction?.kept.map((value) => value.toLowerCase()) ?? [];
   const dropped = Symbol('dropped');
   const keep = (element: unknown) => {
     try {
@@ -153,10 +148,6 @@ export function checkOutput<S extends z.ZodType>(
     const entries = Object.entries(node).filter(([key]) => key !== 'citations');
     const out = Object.fromEntries(entries.map(([key, value]) => [key, check(value)]));
     if (!('citations' in node)) return out;
-    // Contact details go to the candidate record only, never into a statement (ADR-006 point 7).
-    const said = JSON.stringify(out).toLowerCase();
-    if (kept.some((value) => said.includes(value)))
-      throw new InvalidCitation(task, 'a source', 'contact detail in statement');
     const kinds: SourceKind[] = [];
     const citations = (node.citations as z.infer<typeof citation>[]).map(({ sourceId: label, quote }): Citation => {
       const index = byLabel.get(label);
