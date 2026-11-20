@@ -149,6 +149,8 @@ describe('Migrations', () => {
         'outbox',
         'portal_token',
         'repository_read',
+        'repository_skill_grade',
+        'repository_skill_signal',
         'request',
         'request_item',
         'source',

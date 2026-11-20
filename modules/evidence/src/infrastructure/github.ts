@@ -114,13 +114,29 @@ export function createGitHub(config: GitHubConfig): GitHubPort {
     async languages(owner, name) {
       return (await get(`${repo(owner, name)}/languages`, z.record(z.string(), z.number().int().min(0)))) ?? {};
     },
-    async paths(owner, name, ref) {
-      // shortcut: GitHub truncates very large trees; tests and CI detection then sees the listed part only.
+    async tree(owner, name, ref) {
       const tree = await get(
         `${repo(owner, name)}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
-        z.object({ tree: z.array(z.object({ path: z.string(), type: z.string() })) }),
+        z.object({
+          truncated: z.boolean().default(false),
+          tree: z.array(z.object({ path: z.string(), type: z.string(), size: z.number().int().min(0).optional() })),
+        }),
       );
-      return (tree?.tree ?? []).filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+      return {
+        entries: (tree?.tree ?? [])
+          .filter((entry) => entry.type === 'blob')
+          .map((entry) => ({ path: entry.path, size: entry.size })),
+        truncated: tree?.truncated ?? false,
+      };
+    },
+    async fileText(owner, name, path, ref) {
+      const file = await get(
+        `${repo(owner, name)}/contents/${path.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(ref)}`,
+        z.object({ type: z.string(), encoding: z.string().optional(), content: z.string().optional() }),
+      );
+      // A symlink or submodule is not a file to read: null, like a file that is gone.
+      if (file?.type !== 'file' || file.encoding !== 'base64' || file.content === undefined) return null;
+      return Buffer.from(file.content, 'base64').toString('utf8');
     },
     async commits(owner, name, limit) {
       const { items, truncated } = await list(`${repo(owner, name)}/commits?per_page=${PAGE}`, commitSchema, limit);

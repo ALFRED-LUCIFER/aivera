@@ -3,8 +3,8 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
-import type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
+import type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
@@ -21,7 +21,9 @@ export type {
 export type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/fingerprint.ts';
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
-export type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
+export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
+export { COVERAGE_GAPS, GRADE_REASONS, SKILL_GRADES } from '../domain/skill-signals/classify.ts';
+export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/skill-signals/classify.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
@@ -61,6 +63,16 @@ export const RepositoryReadRequestedV1 = {
   type: 'RepositoryReadRequested.v1',
   payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
 } satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
+
+/**
+ * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.repository.refresh-stale`
+ * re-reads the candidate's stale repository sources and grades their skill signals against the job's approved rubric
+ * version (AIV-P1-072). AIV-P2-010 asks for it before it builds a decision pack. Strict, opaque ids only.
+ */
+export const RepositoryRefreshRequestedV1 = {
+  type: 'RepositoryRefreshRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
@@ -139,4 +151,21 @@ export interface EvidenceContract {
   closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void>;
   /** The request with its items, or null when the workspace has none. Admins and recruiters. */
   getRequest(ctx: WorkspaceContext, requestId: string): Promise<EvidenceRequestView | null>;
+  /**
+   * Queues `RepositoryRefreshRequested.v1`: the worker re-reads the candidate's repository sources that are stale (last
+   * checked more than 30 days ago, or pushed to since) and grades every read source's skill signals against the job's
+   * approved rubric version. Admins and recruiters.
+   */
+  requestRepositoryRefresh(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<void>;
+  /**
+   * The candidate's repository skill grades for a rubric version (AIV-P1-072): one per read repository source, target
+   * skill and competency, with up to six file citations and a reason code. The recruiter copy is in
+   * `evidence.skillGrade` (`grade.<grade>`; `reason.<code>` for Strong and Partial, `noEvidence` with `filesInspected`, `unableToVerify` with `unableReason.<code>`). NO_EVIDENCE and
+   * UNABLE_TO_VERIFY are never a negative signal or a reason to reject (AGENTS.md 1.6). Admins and recruiters.
+   */
+  listRepositorySkillGrades(
+    ctx: WorkspaceContext,
+    candidateId: string,
+    rubricVersionId: string,
+  ): Promise<SkillGradeView[]>;
 }

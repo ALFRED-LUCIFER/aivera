@@ -57,7 +57,8 @@ export type EvidenceStore = {
 export type Ports = {
   storeFor(tx: Tx): EvidenceStore;
   /** Writes `EvidenceRecorded.v1` to the outbox in `tx`, so it commits only with the evidence. */
-  publishRecorded(tx: Tx, source: EvidenceSource, itemIds: string[]): Promise<void>;
+  /** `dedupeKey` defaults to the source id; a re-read of the source passes its own. */
+  publishRecorded(tx: Tx, source: EvidenceSource, itemIds: string[], dedupeKey?: string): Promise<void>;
   authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   /** Appends an audit entry in `ctx.tx`; the last statement before commit (AGENTS.md 3.6). */

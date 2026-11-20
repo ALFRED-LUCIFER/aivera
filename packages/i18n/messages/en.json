@@ -290,6 +290,30 @@
     },
     "requests": {
       "sent": "{count, plural, one {# evidence request sent} other {# evidence requests sent}}"
+    },
+    "skillGrade": {
+      "grade": {
+        "STRONG": "Strong",
+        "PARTIAL": "Partial",
+        "NO_EVIDENCE": "No evidence",
+        "UNABLE_TO_VERIFY": "Unable to verify"
+      },
+      "noEvidence": "Not found in the {n} files inspected. This is not evidence the skill is missing.",
+      "unableToVerify": "Could not check: {reason}.",
+      "reason": {
+        "code_corroborated": "Code-level evidence, corroborated by a second kind of signal.",
+        "code_files": "Code-level evidence in two or more files.",
+        "declaration_only": "Only declaration-level evidence was found; declaring or mentioning a tool is not evidence of using it.",
+        "single_code_file": "Only one code-level file was found and nothing corroborates it."
+      },
+      "unableReason": {
+        "not_detectable": "a repository file scan cannot detect this skill",
+        "unreadable": "the repository could not be read",
+        "rate_limited": "GitHub's rate limit was reached",
+        "truncated_listing": "GitHub truncated the repository's file listing",
+        "file_cap": "the file limit was reached",
+        "oversized_file": "a file was too large to read"
+      }
     }
   },
   "money": {

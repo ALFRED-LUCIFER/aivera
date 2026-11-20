@@ -146,3 +146,15 @@ export function mergedPullRequestExcerpt(pr: MergedPullRequest, login: string): 
 
 export const MERGED_PULL_REQUEST_LIMIT =
   'Shows that a pull request was merged; does not show what the change contained or how closely it was reviewed.';
+
+// Adapted from MIT-licensed code, © 2026 Santiago Fernández de Valderrama. Licence text: THIRD_PARTY_NOTICES.md.
+const STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether a repository source must be re-read before a decision pack rests on it (AIV-P1-072): never checked, checked
+ * more than 30 days before `now`, or pushed to since it was checked.
+ */
+export const isStale = (source: { checkedAt: Date | null }, now: Date, latestPushedAt: Date | null) =>
+  source.checkedAt === null ||
+  now.getTime() - source.checkedAt.getTime() > STALE_AFTER_MS ||
+  (latestPushedAt !== null && latestPushedAt > source.checkedAt);

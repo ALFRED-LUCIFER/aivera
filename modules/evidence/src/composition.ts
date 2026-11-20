@@ -2,13 +2,19 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
-import { enqueue, newEnvelope } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
+import { enqueue, newEnvelope, type Envelope, type EventDefinition } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import { log } from '@credalent/observability';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
-import { GitHubRateLimited, readRepository, repositoryReadUseCases } from './application/repositoryRead.ts';
+import {
+  type ApprovedRubricPort,
+  GitHubRateLimited,
+  readRepository,
+  refreshStaleRepositorySources,
+  repositoryReadUseCases,
+} from './application/repositoryRead.ts';
 import {
   recordRequestOutcome,
   requestUseCases,
@@ -22,6 +28,7 @@ import {
   EvidenceRequestQuietV1,
   EvidenceRequestSentV1,
   RepositoryReadRequestedV1,
+  RepositoryRefreshRequestedV1,
   type EvidenceContract,
 } from './contracts/index.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
@@ -30,14 +37,14 @@ import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
 import { requestStore } from './infrastructure/requestStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
-/** The queue RepositoryReadRequested.v1 goes to (infra/modules/messaging.bicep). */
+/** The queue RepositoryReadRequested.v1 and RepositoryRefreshRequested.v1 go to (infra/modules/messaging.bicep). */
 export const EVIDENCE_QUEUE = 'evidence';
 
-const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds) =>
+const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKey = `source:${source.id}`) =>
   enqueue(tx, outbox, EvidenceRecordedV1, {
     workspaceId: source.workspaceId,
     payload: { candidateId: source.candidateId, sourceId: source.id, itemIds },
-    dedupeKey: `source:${source.id}`,
+    dedupeKey,
     occurredAt: source.createdAt,
   });
 
@@ -74,6 +81,14 @@ export function createEvidence(
           payload: { candidateId: source.candidateId, sourceId: source.id },
           dedupeKey: `repository-read:${source.id}`,
           occurredAt: source.createdAt,
+        }),
+      publishRefreshRequested: (tx, { workspaceId, candidateId, jobId, at }) =>
+        enqueue(tx, outbox, RepositoryRefreshRequestedV1, {
+          workspaceId,
+          payload: { candidateId, jobId },
+          // Every request is its own: a refresh is idempotent, and a later one must not be dropped as a duplicate.
+          dedupeKey: `repository-refresh:${uuidv7()}`,
+          occurredAt: at,
         }),
     }),
     ...requestUseCases({
@@ -115,10 +130,25 @@ const REQUEST_EVENTS = {
   quiet: EvidenceRequestQuietV1,
 } as const;
 
+/** The same request again on the evidence queue, for just after GitHub's rate limit resets. */
+async function reschedule<P>(
+  scheduler: Scheduler,
+  event: EventDefinition<P>,
+  envelope: Envelope,
+  payload: P,
+  resetAt: Date,
+  now: () => Date,
+) {
+  const next = newEnvelope(event, { workspaceId: envelope.workspaceId, payload, occurredAt: now() });
+  await scheduler.schedule(EVIDENCE_QUEUE, next, new Date(resetAt.getTime() + 1000));
+  log.info({ 'outbox.event_id': envelope.id }, 'github read rescheduled after its rate limit');
+}
+
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request
- * is scheduled on Service Bus for just after `x-ratelimit-reset` and this delivery completes, so the source simply
- * stays pending (no error reaches the recruiter).
+ * is scheduled on Service Bus for just after `x-ratelimit-reset` and this delivery completes: before anything is
+ * written the source simply stays pending; when only the skill-signal file reads were cut short, the read is stored
+ * with that coverage gap and the retry reads those files again. No error reaches the recruiter.
  */
 export function createRepositoryReadHandler(config: {
   github: GitHubConfig;
@@ -132,22 +162,58 @@ export function createRepositoryReadHandler(config: {
     inbox,
     consumer: 'evidence.repository.read',
     async handle(tx, payload, envelope) {
+      let retryAt: Date | null;
       try {
-        await readRepository(
+        ({ retryAt } = await readRepository(
           { readStoreFor: repositoryReadStore, publishRecorded, newId: uuidv7, now, github },
           tx,
           envelope.workspaceId,
           payload.sourceId,
-        );
+        ));
       } catch (error) {
         if (!(error instanceof GitHubRateLimited)) throw error;
-        const next = newEnvelope(RepositoryReadRequestedV1, {
-          workspaceId: envelope.workspaceId,
-          payload,
-          occurredAt: now(),
-        });
-        await config.scheduler.schedule(EVIDENCE_QUEUE, next, new Date(error.resetAt.getTime() + 1000));
-        log.info({ 'outbox.event_id': envelope.id }, 'github read rescheduled after its rate limit');
+        retryAt = error.resetAt;
+      }
+      if (retryAt) await reschedule(config.scheduler, RepositoryReadRequestedV1, envelope, payload, retryAt, now);
+    },
+  };
+}
+
+/**
+ * The worker job `evidence.repository.refresh-stale` on the evidence queue (AIV-P1-072): re-reads the candidate's stale
+ * repository sources and grades them against the job's approved rubric version, which `approvedRubric` reads (the jobs
+ * module's `createApprovedRubricReads`). A rate limit writes nothing and reschedules the request, as the read does.
+ */
+export function createRepositoryRefreshHandler(config: {
+  github: GitHubConfig;
+  scheduler: Scheduler;
+  approvedRubric: ApprovedRubricPort;
+  now?: () => Date;
+}): Handler<{ candidateId: string; jobId: string }> {
+  const now = config.now ?? (() => new Date());
+  const github = createGitHub({ now, ...config.github });
+  const ports = {
+    readStoreFor: repositoryReadStore,
+    publishRecorded,
+    newId: uuidv7,
+    now,
+    github,
+    approvedRubric: config.approvedRubric,
+  };
+  return {
+    event: RepositoryRefreshRequestedV1,
+    inbox,
+    consumer: 'evidence.repository.refresh-stale',
+    async handle(tx, payload, envelope) {
+      try {
+        // A savepoint, so a rate limit midway rolls back every re-read and grade before the request is rescheduled.
+        await tx.transaction((sp) =>
+          refreshStaleRepositorySources(ports, sp, envelope.workspaceId, payload.candidateId, payload.jobId),
+        );
+        log.info({ 'outbox.event_id': envelope.id }, 'repository sources refreshed');
+      } catch (error) {
+        if (!(error instanceof GitHubRateLimited)) throw error;
+        await reschedule(config.scheduler, RepositoryRefreshRequestedV1, envelope, payload, error.resetAt, now);
       }
     },
   };

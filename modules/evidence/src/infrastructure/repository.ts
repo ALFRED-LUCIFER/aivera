@@ -1,7 +1,17 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
-import { competencyLink, duplicateFlag, item, mergedPullRequest, repositoryRead, request, source } from './schema.ts';
+import {
+  competencyLink,
+  duplicateFlag,
+  item,
+  mergedPullRequest,
+  repositoryRead,
+  repositorySkillGrade,
+  repositorySkillSignal,
+  request,
+  source,
+} from './schema.ts';
 
 /**
  * The evidence store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -115,6 +125,8 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(duplicateFlag).where(eq(duplicateFlag.workspaceId, workspaceId));
       await tx.delete(competencyLink).where(eq(competencyLink.workspaceId, workspaceId));
       await tx.delete(mergedPullRequest).where(eq(mergedPullRequest.workspaceId, workspaceId));
+      await tx.delete(repositorySkillGrade).where(eq(repositorySkillGrade.workspaceId, workspaceId));
+      await tx.delete(repositorySkillSignal).where(eq(repositorySkillSignal.workspaceId, workspaceId));
       await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
