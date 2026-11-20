@@ -30,7 +30,7 @@ export function ApprovalMode(view: ApprovalModeView) {
             label={view.required ? t('on') : t('off')}
           />
         </div>
-        <p className="text-body text-text-2">{view.required ? t('onBody') : t('offBody')}</p>
+        <p className="text-body text-text-2">{view.required ? t('onState') : t('offState')}</p>
       </div>
       <ReasonedChange
         labels={{

@@ -662,7 +662,7 @@
     },
     "workspaces": {
       "title": "Workspaces",
-      "description": "Every workspace on the platform, newest first: its type, size, AI use today and status. Open one to change its budget or status.",
+      "description": "Every workspace on the platform, newest first; open one to change its AI budget or status.",
       "caption": "Workspaces",
       "searchLabel": "Search by workspace name",
       "search": "Search",
@@ -798,7 +798,7 @@
     },
     "catalogue": {
       "title": "Catalogue",
-      "description": "The job types and industry packs that seed every new job's competencies. Recruiters keep, edit or remove each suggestion.",
+      "description": "The job types and industry packs that suggest each new job's competencies.",
       "readOnly": "The catalogue changes only through a reviewed pull request.",
       "jobTypesSource": "Job types file on GitHub",
       "domainPacksSource": "Domain packs file on GitHub",
@@ -824,7 +824,7 @@
     },
     "approvals": {
       "title": "Approvals",
-      "description": "While the pilot runs, new sign-ups wait here until an operator approves or rejects them. Oldest first.",
+      "description": "Workspaces waiting for an operator's decision, oldest first.",
       "caption": "Workspaces waiting for approval",
       "columns": {
         "workspace": "Workspace",
@@ -850,6 +850,8 @@
         "onTitle": "Turn on approval for new workspaces?",
         "offBody": "New sign-ups become active at once. Workspaces already waiting stay waiting until you decide each one.",
         "onBody": "New sign-ups wait for your approval. Existing workspaces are not affected.",
+        "onState": "New sign-ups wait here for an operator's decision.",
+        "offState": "New sign-ups become active at once.",
         "pending": "Saving…",
         "doneOn": "Approval is on.",
         "doneOff": "Approval is off.",

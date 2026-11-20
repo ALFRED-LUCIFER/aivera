@@ -58,6 +58,7 @@ export function WorkspaceDetail({
                     key={`${entry.action} ${entry.occurredAt.toISOString()}`}
                     className="relative border-s border-border-strong ps-4 pb-4 text-body text-text last:border-transparent last:pb-0"
                   >
+                    {/* The dot sits on the rule's centre line: half its size (size-2.25) plus the 1px rule. */}
                     <span
                       aria-hidden="true"
                       className="absolute -start-[5px] top-1.5 size-2.25 rounded-full border-2 border-surface bg-text"

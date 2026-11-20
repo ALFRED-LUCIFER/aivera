@@ -20,8 +20,8 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: ColumnId })[] = [
 ];
 
 /**
- * Workspaces waiting for approval, oldest first (AIV-P2-039): name, type, created date, how long it has waited, the
- * creator's email so the
+ * Workspaces waiting for approval, oldest first (AIV-P2-039): name, type, created date, how long it has waited, and
+ * the creator's email so the
  * operator can contact them, and the Approve and Reject cards (`decide`) for each. `failed` shows the load error.
  */
 export function ApprovalsList({ rows, failed }: { rows: Row[]; failed?: { onRetry: () => void } }) {

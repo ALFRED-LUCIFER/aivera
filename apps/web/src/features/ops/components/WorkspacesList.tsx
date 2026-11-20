@@ -21,7 +21,11 @@ const cells: (Omit<DataTableColumn<WorkspaceRow>, 'header'> & { id: ColumnId })[
   { id: 'plan', cell: () => <NoPlan /> },
 ];
 
-/** Every workspace's platform facts, newest first, 50 per page (AIV-P2-036). Never a member or candidate. */
+/**
+ * Every workspace's platform facts, newest first, 50 per page (AIV-P2-036). Never a member or candidate.
+ * Deviation from the console spec (AIV-P2-041): each row keeps its own "Observed" marker rather than one in the column
+ * header, because DESIGN.md gives every metric its marker and the shared table header takes text only.
+ */
 export function WorkspacesList({ search, table }: WorkspacesListView) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();

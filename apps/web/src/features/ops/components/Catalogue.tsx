@@ -55,6 +55,8 @@ function EntryGroup({ title, entries }: { title: string; entries: readonly Entry
 /**
  * The job types and domain packs, read-only (AIV-P5-015). Editing is a reviewed pull request, so there are no controls
  * here; packs and job types expand with native disclosure, which the keyboard opens with Enter or Space.
+ * Deviation from the console spec (AIV-P2-041): the catalogue editor layout is not used yet; it lands with the editor
+ * (AIV-P2-045), so this page keeps its read-only layout.
  */
 export function Catalogue({ view }: { view: CatalogueView }) {
   const t = useTranslations();
