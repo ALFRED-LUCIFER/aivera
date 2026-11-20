@@ -263,6 +263,17 @@
     }
   },
   "evidence": {
+    "duplicate": {
+      "flag": "Also submitted by another applicant",
+      "otherSource": "Matches source {sourceId}",
+      "resolve": "Resolve",
+      "resolved": "Resolved: {reason}",
+      "resolution": {
+        "shared_group_project": "Shared group project",
+        "same_template": "Same template, different work",
+        "needs_follow_up": "Needs follow-up"
+      }
+    },
     "provenance": {
       "corroborated": "Independently corroborated",
       "submitted": "Candidate-submitted",

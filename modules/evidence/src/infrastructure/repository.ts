@@ -1,7 +1,7 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, or } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
-import { competencyLink, item, source } from './schema.ts';
+import { competencyLink, duplicateFlag, item, source } from './schema.ts';
 
 /**
  * The evidence store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -62,6 +62,41 @@ export function evidenceStore(tx: Tx): EvidenceStore {
           .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId })),
       }));
     },
+    fingerprints(workspaceId, candidateId) {
+      return tx
+        .select({ id: source.id, candidateId: source.candidateId, textFingerprint: source.textFingerprint })
+        .from(source)
+        .where(
+          and(
+            eq(source.workspaceId, workspaceId),
+            candidateId === undefined ? isNotNull(source.textFingerprint) : eq(source.candidateId, candidateId),
+          ),
+        )
+        .orderBy(asc(source.createdAt), asc(source.id));
+    },
+    async insertFlags(flags) {
+      await tx.insert(duplicateFlag).values(flags);
+    },
+    flags(workspaceId, candidateId) {
+      return tx
+        .select()
+        .from(duplicateFlag)
+        .where(
+          and(
+            eq(duplicateFlag.workspaceId, workspaceId),
+            or(eq(duplicateFlag.candidateId, candidateId), eq(duplicateFlag.otherCandidateId, candidateId)),
+          ),
+        )
+        .orderBy(asc(duplicateFlag.createdAt), asc(duplicateFlag.id));
+    },
+    async resolveFlag(workspaceId, flagId, resolution) {
+      const where = and(eq(duplicateFlag.workspaceId, workspaceId), eq(duplicateFlag.id, flagId));
+      // Locked, so two people resolving at once are audited in the order they changed it.
+      const [before] = await tx.select().from(duplicateFlag).where(where).for('update');
+      if (!before) return null;
+      await tx.update(duplicateFlag).set(resolution).where(where);
+      return before;
+    },
     async deleteSynthetic(workspaceId) {
       const [real] = await tx
         .select({ id: source.id })
@@ -69,6 +104,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
         .where(and(eq(source.workspaceId, workspaceId), eq(source.synthetic, false)))
         .limit(1);
       if (real) return false;
+      await tx.delete(duplicateFlag).where(eq(duplicateFlag.workspaceId, workspaceId));
       await tx.delete(competencyLink).where(eq(competencyLink.workspaceId, workspaceId));
       await tx.delete(item).where(eq(item.workspaceId, workspaceId));
       await tx.delete(source).where(eq(source.workspaceId, workspaceId));

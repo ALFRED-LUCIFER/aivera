@@ -45,6 +45,8 @@ export type EvidenceSource = {
   checkMethod: string | null;
   synthetic: boolean;
   createdAt: Date;
+  /** The SimHash of the source's text (domain/fingerprint.ts); null when there was no text or too little signal. */
+  textFingerprint: string | null;
 };
 
 /** A link from an item to a competency of a job's rubric (ids of the jobs module, opaque here). */
@@ -85,6 +87,8 @@ const MESSAGES = {
   claim_strength: 'A claim cannot be stronger than Supporting',
   limit: 'State what this evidence does not show',
   not_found: 'No such evidence item',
+  flag_not_found: 'No such flag',
+  resolution: 'Choose a reason from the list',
   not_synthetic: 'Only a synthetic workspace holding only synthetic evidence can be purged.',
 } as const;
 

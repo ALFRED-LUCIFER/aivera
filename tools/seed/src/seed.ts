@@ -49,7 +49,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   const workspaces = createWorkspaces(db, audit);
   const candidates = createCandidates(workspaces);
   const jobs = createJobs(workspaces, audit);
-  const evidence = createEvidence(workspaces);
+  const evidence = createEvidence(workspaces, audit);
   const userId = async (u: CastUser) =>
     (
       await identity.upsertUserFromIdToken({
