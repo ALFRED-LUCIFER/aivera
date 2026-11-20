@@ -32,11 +32,15 @@ test('Scenario: An operator opens the console', async ({ page, context }) => {
   expect(response?.status()).toBe(200);
   await expectConsole(page);
   await expect(page.getByRole('navigation', { name: 'Operations' })).toContainText('Workspaces');
-  // AIV-P2-052: who is acting, by name (the mock tenant names her "pia.platform"), never by email.
+  // AIV-P2-052: who is acting: her name (the mock tenant names her "pia.platform"), her email and the Operator tag,
+  // above Sign out; never a list of operators (Theo is not shown), and never in the title or the URL.
   const nav = page.getByRole('navigation', { name: 'Operations' });
   await expect(nav).toContainText('pia.platform');
+  await expect(nav).toContainText(PIA);
   await expect(nav).toContainText('Operator');
-  expect(await nav.textContent()).not.toContain('@');
+  await expect(nav).not.toContainText(/theo\.platform/i);
+  await expect(page).not.toHaveTitle(/example\.com/);
+  expect(page.url()).not.toContain('example.com');
   // The server action recorded "ops.console_opened" and marked this session with her opaque user id (no email).
   await expect.poll(async () => (await cookie(context, OPENED_COOKIE))?.value).toMatch(/^[0-9a-f-]{36}$/);
   expect(await cookie(context, OPENED_COOKIE)).toMatchObject({ httpOnly: true, secure: true, path: '/' });

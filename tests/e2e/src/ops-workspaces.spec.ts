@@ -135,8 +135,10 @@ test('Scenario: The console never returns candidate data', async ({ page }) => {
   const response = await page.request.get(page.url());
   const html = await response.text();
   expect(html).toContain('Demo Hiring Co');
-  // No member value: not the seeded members' names or emails (the page holds counts only).
-  expect(html).not.toMatch(/Alex Recruiter|Rami Panel|Head of Engineering|@example\.com/);
+  // No member value: not the seeded members' names or emails (the page holds counts only). The shell shows the
+  // signed-in operator their own email (AIV-P2-052), so that one address is taken out first; any other email fails.
+  // SAFETY: mutation check: WorkspaceDetail rendered "alex@example.com" -> this test failed
+  expect(html.replaceAll(PIA, '')).not.toMatch(/Alex Recruiter|Rami Panel|Head of Engineering|@example\.com/);
 });
 
 // The server action and detail page refuse on their own too (searchWorkspaces.test.ts, [id]/page.test.tsx).

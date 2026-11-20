@@ -6,7 +6,6 @@ import {
   isPlatformOperator,
   listOperatorActions,
   listWorkspaceFacts,
-  operatorName,
   platformOperator,
   setWorkspaceAiBudget,
 } from './operator';
@@ -92,12 +91,12 @@ beforeEach(() => {
 describe('platformOperator', () => {
   it('Scenario: An operator opens the console: lets Pia in with her user id', async () => {
     session.mockResolvedValue(PIA);
-    await expect(platformOperator()).resolves.toEqual({ userId: PIA });
+    await expect(platformOperator()).resolves.toMatchObject({ userId: PIA });
   });
 
   it('Scenario: Email matching ignores case: Theo is listed as "Theo.Platform@example.com"', async () => {
     session.mockResolvedValue(THEO);
-    await expect(platformOperator()).resolves.toEqual({ userId: THEO });
+    await expect(platformOperator()).resolves.toMatchObject({ userId: THEO });
   });
 
   it('Scenario: Not signed in: sends to sign-in and back to /ops', async () => {
@@ -105,7 +104,7 @@ describe('platformOperator', () => {
     await expect(platformOperator()).rejects.toThrow('NEXT_REDIRECT;/sign-in?next=%2Fops');
   });
 
-  // SAFETY: mutation check: removed `if (!(await isPlatformOperator(userId))) forbidden()` -> this test failed (resolved)
+  // SAFETY: mutation check: removed `if (!user) forbidden()` from platformOperator -> this test failed
   it('Scenario Outline: Everyone else is refused on the server: a signed-in non-operator gets 403', async () => {
     session.mockResolvedValue(ALEX);
     await expect(platformOperator()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
@@ -118,7 +117,7 @@ describe('platformOperator', () => {
 
   it('Scenario: Removing an operator takes effect on the next request', async () => {
     session.mockResolvedValue(PIA);
-    await expect(platformOperator()).resolves.toEqual({ userId: PIA });
+    await expect(platformOperator()).resolves.toMatchObject({ userId: PIA });
     config.list = 'theo.platform@example.com';
     await expect(platformOperator()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
   });
@@ -234,20 +233,22 @@ describe('listOperatorActions', () => {
   });
 });
 
-describe('operatorName (AIV-P2-052)', () => {
-  it("is the operator's display name", async () => {
-    expect(await operatorName(THEO)).toBe('Theo Platform');
+describe('the signed-in operator for the shell (AIV-P2-052)', () => {
+  it('returns their own name and email from the same identity read as the check', async () => {
+    config.list = 'theo.platform@example.com';
+    session.mockResolvedValue(THEO);
+    await expect(platformOperator()).resolves.toEqual({
+      userId: THEO,
+      name: 'Theo Platform',
+      email: 'theo.platform@example.com',
+    });
+    expect(getUser).toHaveBeenCalledOnce();
   });
 
-  // SAFETY: mutation check: returned user.email when there is no display name -> 'never the whole email' failed
-  it('without a display name, the part of the email before "@": never the whole email', async () => {
+  it('with no display name, the email is the name', async () => {
+    config.list = 'pia.platform@example.com';
+    session.mockResolvedValue(PIA);
     getUser.mockResolvedValueOnce({ ...(users[PIA] as User), displayName: null });
-    const name = await operatorName(PIA);
-    expect(name).toBe('pia.platform');
-    expect(name).not.toContain('@');
-  });
-
-  it('no user: no name', async () => {
-    expect(await operatorName('0190d4a2-0000-7000-8000-00000000ffff')).toBeNull();
+    await expect(platformOperator()).resolves.toMatchObject({ name: 'pia.platform@example.com' });
   });
 });
