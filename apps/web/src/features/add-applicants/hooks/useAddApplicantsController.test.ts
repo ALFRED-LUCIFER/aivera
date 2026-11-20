@@ -28,7 +28,6 @@ describe('useAddApplicantsController', () => {
     }
     state = { phase: 'done', fileId: F1 };
     rerender();
-    rerender();
     expect(result.current.cvs).toEqual([{ fileId: F1, name: 'cv-sample.pdf' }]);
 
     act(() => result.current.onSourceChange('referral'));

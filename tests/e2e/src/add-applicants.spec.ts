@@ -18,21 +18,41 @@ async function openDialog(page: Page) {
   return dialog;
 }
 
-test('Scenario: Infected or oversized files are refused: a 25 MB CV is refused with "PDF or Word, up to 10 MB."', async ({
+const refused = [
+  ['a 25 MB PDF CV', { name: 'cv-sample.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(25 * 1024 * 1024) }],
+  ['a PNG image', { name: 'cv-sample.png', mimeType: 'image/png', buffer: Buffer.alloc(2048) }],
+] as const;
+
+for (const [file, payload] of refused) {
+  test(`Scenario Outline: Infected or oversized files are refused: ${file} shows "PDF or Word, up to 10 MB."`, async ({
+    page,
+  }) => {
+    await signIn(page, { email: AP });
+    const dialog = await openDialog(page);
+    await expect(dialog.getByRole('radio', { name: 'LinkedIn' })).toBeChecked();
+    await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
+
+    const chooser = page.waitForEvent('filechooser');
+    await dialog.getByRole('button', { name: 'Upload CV' }).click();
+    // The picker's `accept` only filters the browser's dialog; a file chosen anyway is still refused.
+    await (await chooser).setFiles({ ...payload, buffer: Buffer.from(payload.buffer) });
+    await expect(dialog.locator('p').filter({ hasText: 'PDF or Word, up to 10 MB.' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
+  });
+}
+
+test('Scenario: Only recruiters upload: a hiring owner reading the job sees no "Add applicants" button', async ({
   page,
+  context,
 }) => {
   await signIn(page, { email: AP });
-  const dialog = await openDialog(page);
-  await expect(dialog.getByRole('radio', { name: 'LinkedIn' })).toBeChecked();
-  await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
-
-  const chooser = page.waitForEvent('filechooser');
-  await dialog.getByRole('button', { name: 'Upload CV' }).click();
-  await (
-    await chooser
-  ).setFiles({ name: 'cv-sample.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(25 * 1024 * 1024) });
-  await expect(dialog.locator('p').filter({ hasText: 'PDF or Word, up to 10 MB.' })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
+  await openDialog(page);
+  const url = page.url();
+  await context.clearCookies({ name: '__Host-credalent-session' });
+  await signIn(page, { email: 'head.engineering@example.com' });
+  await page.goto(url);
+  await expect(page.getByText('No ranking yet.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add applicants' })).toHaveCount(0);
 });
 
 test('the dialog is keyboard operable: source, upload, then close with Escape back to its button', async ({ page }) => {

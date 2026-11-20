@@ -33,6 +33,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
     onOpenChange(next: boolean) {
       setOpen(next);
       if (!next) {
+        setSource('linkedin');
         setCvs([]);
         setResult(null);
       }
