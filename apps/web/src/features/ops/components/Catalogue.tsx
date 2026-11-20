@@ -2,12 +2,11 @@
 
 import { useTranslations } from '@aivera/i18n/react';
 import { Card, Chip } from '@aivera/ui';
-import { CATALOGUE_SOURCES, type CatalogueView } from '../domain/catalogue.ts';
+import { CATALOGUE_SOURCE, type CatalogueView } from '../domain/catalogue.ts';
 
 type PackJobType = CatalogueView['domainPacks']['packs'][number]['jobTypes'][number];
-type Entry = PackJobType['core'][number] | PackJobType['hints']['uae'][number];
+type Entry = PackJobType['core'][number] | PackJobType['hints'][number]['entries'][number];
 
-const REGIONS = ['uae', 'ksa', 'india'] as const;
 const LEVELS = [1, 3, 5] as const;
 const link = 'underline underline-offset-2 hover:text-text';
 const summary =
@@ -53,7 +52,8 @@ function EntryGroup({ title, entries }: { title: string; entries: readonly Entry
 }
 
 /**
- * The job types and domain packs, read-only (AIV-P5-015). Editing is a reviewed pull request, so there are no controls
+ * The published job types and domain packs, read-only (AIV-P5-015). Until the editor ships (AIV-P2-045) a change is a
+ * reviewed migration, so there are no controls
  * here; packs and job types expand with native disclosure, which the keyboard opens with Enter or Space.
  * Deviation from the console spec (AIV-P2-041): the catalogue editor layout is not used yet; it lands with the editor
  * (AIV-P2-045), so this page keeps its read-only layout.
@@ -64,11 +64,8 @@ export function Catalogue({ view }: { view: CatalogueView }) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-body text-text-2">
         <p>{t('ops.catalogue.readOnly')}</p>
-        <a href={CATALOGUE_SOURCES.jobTypes} className={link}>
-          {t('ops.catalogue.jobTypesSource')}
-        </a>
-        <a href={CATALOGUE_SOURCES.domainPacks} className={link}>
-          {t('ops.catalogue.domainPacksSource')}
+        <a href={CATALOGUE_SOURCE} className={link}>
+          {t('ops.catalogue.source')}
         </a>
       </div>
 
@@ -92,9 +89,9 @@ export function Catalogue({ view }: { view: CatalogueView }) {
               {view.jobTypes.entries.map((entry) => (
                 <tr key={entry.key} className="border-t border-border align-top">
                   <th scope="row" className="py-2 pe-4 text-start font-semibold text-text">
-                    {t(entry.labelKey)}
+                    {entry.label}
                   </th>
-                  <td className="py-2 pe-4 text-text-2">{t(entry.evidenceKey)}</td>
+                  <td className="py-2 pe-4 text-text-2">{entry.evidence}</td>
                   <td className="py-2 text-text">
                     <ul>
                       {entry.starterCompetencies.map((name) => (
@@ -115,7 +112,7 @@ export function Catalogue({ view }: { view: CatalogueView }) {
             <li key={pack.key}>
               <details className="rounded-control border border-border">
                 <summary className={summary}>
-                  {t(pack.labelKey)}
+                  {pack.label}
                   <span className="ms-auto text-meta font-normal text-text-2">
                     {t('ops.catalogue.packSummary', {
                       version: view.domainPacks.version,
@@ -128,7 +125,7 @@ export function Catalogue({ view }: { view: CatalogueView }) {
                     <li key={entry.jobType}>
                       <details>
                         <summary className={summary}>
-                          {t(entry.labelKey)}
+                          {entry.label}
                           <span className="ms-auto text-meta font-normal text-text-2">
                             {t('ops.catalogue.competencies', { count: entry.count })}
                           </span>
@@ -136,11 +133,11 @@ export function Catalogue({ view }: { view: CatalogueView }) {
                         <div className="flex flex-col gap-4 px-2 pt-2 pb-4">
                           <EntryGroup title={t('ops.catalogue.core')} entries={entry.core} />
                           <EntryGroup title={t('ops.catalogue.more')} entries={entry.more} />
-                          {REGIONS.map((region) => (
+                          {entry.hints.map(({ region, label, entries }) => (
                             <EntryGroup
                               key={region}
-                              title={t(`ops.catalogue.hints.${region}`)}
-                              entries={entry.hints[region]}
+                              title={t('ops.catalogue.hintsFor', { region, label })}
+                              entries={entries}
                             />
                           ))}
                         </div>

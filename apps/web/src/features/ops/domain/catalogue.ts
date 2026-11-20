@@ -1,35 +1,51 @@
-// The read-only catalogue view (AIV-P5-015): the job types and domain packs from the jobs contracts. Pure (ADR-003).
-import {
-  DOMAIN_PACK_CATALOGUE_VERSION,
-  JOB_TYPE_CATALOGUE,
-  JOB_TYPE_CATALOGUE_VERSION,
-  JOB_TYPES,
-  getDomainPack,
-  listDomainPacks,
-} from '@aivera/jobs';
+// The read-only catalogue view (AIV-P5-015): the published catalogue's job types and domain packs. Pure (ADR-003).
+import { packForJobType, type CatalogueVersion } from '@aivera/jobs';
 
-/** Where the catalogue is edited: only through a reviewed pull request. */
-export const CATALOGUE_SOURCES = {
-  jobTypes: 'https://github.com/ALFRED-LUCIFER/aivera/blob/main/modules/jobs/src/domain/job-types.ts',
-  domainPacks: 'https://github.com/ALFRED-LUCIFER/aivera/blob/main/modules/jobs/src/domain/domain-packs.ts',
-} as const;
+/** Where the catalogue changes until the editor ships (AIV-P2-045): a reviewed migration. */
+export const CATALOGUE_SOURCE =
+  'https://github.com/ALFRED-LUCIFER/aivera/tree/main/modules/jobs/src/infrastructure/migrations';
 
-/** Every job type, and every pack split by the job types it covers (a job type with no competency and no hint is left out). */
-export function catalogueView() {
+/**
+ * Every job type, and every pack split by the job types it covers (a job type with no competency and no hint is left
+ * out), each pack's hints grouped by region in catalogue order.
+ */
+export function catalogueView(catalogue: CatalogueVersion) {
+  const regions = catalogue.regions.filter((r) => !r.retired);
   return {
-    jobTypes: { version: JOB_TYPE_CATALOGUE_VERSION, entries: JOB_TYPE_CATALOGUE },
+    jobTypes: {
+      version: catalogue.version,
+      entries: catalogue.jobTypes.map((t) => ({
+        key: t.key,
+        label: t.label.en,
+        evidence: t.evidence.en,
+        starterCompetencies: t.starterCompetencies,
+      })),
+    },
     domainPacks: {
-      version: DOMAIN_PACK_CATALOGUE_VERSION,
-      packs: listDomainPacks().map((pack) => ({
+      version: catalogue.version,
+      packs: catalogue.packs.map((pack) => ({
         key: pack.key,
-        labelKey: pack.labelKey,
-        jobTypes: JOB_TYPES.flatMap((jobType) => {
-          const forJobType = getDomainPack(pack.key, jobType);
+        label: pack.label.en,
+        jobTypes: catalogue.jobTypes.flatMap((jobType) => {
+          const forJobType = packForJobType(catalogue, pack.key, jobType.key);
           if (!forJobType) return [];
           const { core, more, hints } = forJobType;
           const count = core.length + more.length;
-          if (!count && !Object.values(hints).some((list) => list.length)) return [];
-          return [{ jobType, labelKey: `jobTypes.${jobType}.label` as const, count, core, more, hints }];
+          if (!count && !hints.length) return [];
+          return [
+            {
+              jobType: jobType.key,
+              label: jobType.label.en,
+              count,
+              core,
+              more,
+              hints: regions.map((r) => ({
+                region: r.key,
+                label: r.label.en,
+                entries: hints.filter((h) => h.region === r.key),
+              })),
+            },
+          ];
         }),
       })),
     },

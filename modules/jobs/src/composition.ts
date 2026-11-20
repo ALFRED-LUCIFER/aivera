@@ -6,7 +6,7 @@ import { enqueue } from '@aivera/db/outbox';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
-import { eq, sql, type SQL } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
@@ -14,13 +14,14 @@ import {
   JobPublishedV1,
   JobUnpublishedV1,
   RubricApprovedV1,
+  type CatalogueReads,
   type CompetencyDrafting,
   type DomainDetecting,
   type JobCounts,
   type JobsContract,
   type PublicJobsContract,
 } from './contracts/index.ts';
-import { readCatalogueVersion } from './infrastructure/catalogue.ts';
+import { readCatalogueVersion, readPublishedCatalogue } from './infrastructure/catalogue.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
 import { catalogueVersion, outbox } from './infrastructure/schema.ts';
@@ -39,6 +40,7 @@ export function createJobs(
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     listClients: (ctx) => workspaces.listClients(ctx),
     setJobOwner: (ctx, input) => workspaces.setJobOwner(ctx, input),
+    publishedCatalogue: (ctx) => readPublishedCatalogue(ctx.tx),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     publishRubricApproved: (ctx, { occurredAt, ...payload }) =>
       enqueue(ctx.tx, outbox, RubricApprovedV1, {
@@ -84,19 +86,16 @@ export function createJobCounts(db: Db): JobCounts {
 
 /**
  * The catalogue in the database (ADR-013 point 15) on the app's pool, with no workspace: the tables are platform tables.
- * Each read is one read-only snapshot. Not wired to callers yet; readers switch in AIV-P2-044.
+ * Each read is one read-only snapshot.
+ * shortcut: every read queries the database; cache a published version by its number (it never changes) if the reads
+ * show in request latency.
  */
-export function createCatalogueReads(db: Db) {
-  const read = (where: SQL) =>
-    db.transaction((tx) => readCatalogueVersion(tx, where), {
-      isolationLevel: 'repeatable read',
-      accessMode: 'read only',
-    });
+export function createCatalogueReads(db: Db): CatalogueReads {
+  const snapshot = <T>(read: (tx: Tx) => Promise<T>) =>
+    db.transaction(read, { isolationLevel: 'repeatable read', accessMode: 'read only' });
   return {
-    /** The latest published version. */
-    getPublishedCatalogue: () => read(eq(catalogueVersion.status, 'published')),
-    /** Version `n`, draft or published. */
-    getCatalogueVersion: (n: number) => read(eq(catalogueVersion.version, n)),
+    getPublishedCatalogue: () => snapshot(readPublishedCatalogue),
+    getCatalogueVersion: (n) => snapshot((tx) => readCatalogueVersion(tx, eq(catalogueVersion.version, n))),
   };
 }
 

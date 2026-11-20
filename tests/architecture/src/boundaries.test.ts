@@ -59,6 +59,16 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ).toEqual(['apps/web/src/features/jobs/services/x.ts', 'modules/jobs/src/application/x.ts']);
   });
 
+  // SAFETY: mutation check: removed the no-code-catalogue check -> this test failed
+  it('AIV-P2-044: a file naming a code catalogue constant (JOB_TYPES, DOMAIN_KEYS, a version constant) is reported', () => {
+    expect(
+      findViolations(fixture('code-catalogue'))
+        .filter((v) => v.rule === 'no-code-catalogue')
+        .map((v) => v.file)
+        .toSorted(),
+    ).toEqual(['apps/web/src/features/jobs/domain/x.ts', 'modules/jobs/src/domain/y.ts']);
+  });
+
   // SAFETY: mutation check: removed the job-owner-from-jobs check -> this test failed
   it('a call to setJobOwner outside the jobs module is reported (AIV-P1-056)', () => {
     expect(

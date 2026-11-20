@@ -11,6 +11,7 @@ import type {
   PublishJobInput,
   SaveRubricInput,
 } from '../application/jobs.ts';
+import type { CatalogueVersion } from '../domain/catalogue.ts';
 import type {
   DeskJob,
   Job,
@@ -23,25 +24,24 @@ import type {
 } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
-export { JOB_TYPE_CATALOGUE, JOB_TYPE_CATALOGUE_VERSION, JOB_TYPES } from '../domain/job-types.ts';
-export type { JobType, JobTypeEntry } from '../domain/job-types.ts';
 export {
-  DOMAIN_KEYS,
-  DOMAIN_PACK_CATALOGUE_VERSION,
-  REGIONS,
-  getDomainPack,
+  CATALOGUE_KEY,
   isRegionalHint,
-  listDomainPacks,
+  jobTypeLabel,
   nameKey,
-} from '../domain/domain-packs.ts';
+  offeredJobTypes,
+  packForJobType,
+} from '../domain/catalogue.ts';
 export type {
-  DomainCompetency,
-  DomainKey,
-  DomainPack,
-  DomainPackForJobType,
-  Region,
-  RegionalHint,
-} from '../domain/domain-packs.ts';
+  CatalogueCompetency,
+  CatalogueHint,
+  CatalogueJobType,
+  CataloguePack,
+  CatalogueRegion,
+  CatalogueVersion,
+  Labels,
+  PackForJobType,
+} from '../domain/catalogue.ts';
 export {
   approvesAs,
   COMPETENCY_ORIGINS,
@@ -240,7 +240,7 @@ export interface CompetencyDrafting {
    * skill was left out. Throws `@aivera/ai`'s `BudgetExceeded`, `AiUnavailable`,
    * or (an answer rejected twice) `SchemaMismatch`, `UncitedOutput` or `InvalidCitation`.
    */
-  draftCompetencies(workspaceId: string, input: DraftInput): Promise<CompetencyDraft>;
+  draftCompetencies(workspaceId: string, input: DraftInput, catalogue: CatalogueVersion): Promise<CompetencyDraft>;
 }
 
 /**
@@ -249,11 +249,24 @@ export interface CompetencyDrafting {
  */
 export interface DomainDetecting {
   /**
-   * The hiring company's likely industry from the domain catalogue, or `none`, and the job's regions, each citing the
-   * description or the location. An answer the citation contract rejects twice (a domain not in the catalogue, a quote
-   * not in the job's text) is `none`. Throws `@aivera/ai`'s `BudgetExceeded` or `AiUnavailable`.
+   * The hiring company's likely industry from `catalogue`'s packs, or `none`, and the job's regions from its regions,
+   * each citing the description or the location; pass the published version. An answer the citation contract rejects
+   * twice (a domain not in the catalogue, a quote not in the job's text) is `none`. Throws `@aivera/ai`'s
+   * `BudgetExceeded` or `AiUnavailable`.
    */
-  detectDomain(workspaceId: string, input: DetectDomainInput): Promise<DomainDetection>;
+  detectDomain(workspaceId: string, input: DetectDomainInput, catalogue: CatalogueVersion): Promise<DomainDetection>;
+}
+
+/**
+ * The catalogue (ADR-013): job types, regions, domain packs and regional hints, one version for all. Platform data with
+ * no workspace and no personal data, so it needs no session. Everything outside `/ops` reads only the latest published
+ * version (point 15); a key is validated against it at every trust boundary (point 7).
+ */
+export interface CatalogueReads {
+  /** The latest published version, retired entries flagged. Throws when the read fails. */
+  getPublishedCatalogue(): Promise<CatalogueVersion>;
+  /** Version `n`, draft or published, or null when there is none: for `/ops` only, behind `platformOperator()`. */
+  getCatalogueVersion(n: number): Promise<CatalogueVersion | null>;
 }
 
 /**

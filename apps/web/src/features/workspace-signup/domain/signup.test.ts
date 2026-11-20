@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 import { parseCreateWorkspaceForm, workspaceName } from './signup';
 
 const form = (fields: Record<string, string>) => {
@@ -9,22 +10,34 @@ const form = (fields: Record<string, string>) => {
 
 describe('parseCreateWorkspaceForm', () => {
   it('keeps a trimmed company and a known hiring focus', () => {
-    expect(parseCreateWorkspaceForm(form({ company: '  Demo Hiring Co ', hiringFocus: 'ai_llm_engineering' }))).toEqual(
-      {
-        company: 'Demo Hiring Co',
-        hiringFocus: 'ai_llm_engineering',
-      },
-    );
+    expect(
+      parseCreateWorkspaceForm(form({ company: '  Demo Hiring Co ', hiringFocus: 'ai_llm_engineering' }), CATALOGUE_V1),
+    ).toEqual({
+      company: 'Demo Hiring Co',
+      hiringFocus: 'ai_llm_engineering',
+    });
   });
 
   it('accepts an empty or missing company (Company is optional)', () => {
-    expect(parseCreateWorkspaceForm(form({ hiringFocus: 'sales' }))).toEqual({ company: '', hiringFocus: 'sales' });
+    expect(parseCreateWorkspaceForm(form({ hiringFocus: 'sales' }), CATALOGUE_V1)).toEqual({
+      company: '',
+      hiringFocus: 'sales',
+    });
+  });
+
+  it('takes the catch-alls, and refuses a job type the published catalogue retired', () => {
+    expect(parseCreateWorkspaceForm(form({ hiringFocus: 'several' }), CATALOGUE_V1)).toEqual({
+      company: '',
+      hiringFocus: 'several',
+    });
+    const retired = { ...CATALOGUE_V1, jobTypes: CATALOGUE_V1.jobTypes.map((t) => ({ ...t, retired: true })) };
+    expect(parseCreateWorkspaceForm(form({ hiringFocus: 'sales' }), retired)).toBeNull();
   });
 
   it.each([{}, { hiringFocus: 'astrology' }, { hiringFocus: 'sales', company: 'x'.repeat(201) }])(
     'refuses %o',
     (fields) => {
-      expect(parseCreateWorkspaceForm(form(fields))).toBeNull();
+      expect(parseCreateWorkspaceForm(form(fields), CATALOGUE_V1)).toBeNull();
     },
   );
 });

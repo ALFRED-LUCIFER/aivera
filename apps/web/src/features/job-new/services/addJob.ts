@@ -3,7 +3,7 @@
 import { log } from '@aivera/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
-import { getJobs } from '@/server/jobs';
+import { getCatalogue, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import { parseRubric } from '../domain/draft.ts';
 import { formValues, parseNewJobForm, type NewJobState } from '../domain/jobNew.ts';
@@ -18,10 +18,18 @@ const offered = (list: { value: string }[], id: string | null) => !id || list.so
  * creator and whether the job is synthetic come from the server, never from the form. Nothing is assessed from a draft.
  */
 export async function addJob(_previous: NewJobState, form: FormData): Promise<NewJobState> {
-  const parsed = parseNewJobForm(form);
+  const failed: NewJobState = { errors: {}, error: 'failed', saved: false, values: formValues(form) };
+  let catalogue;
+  try {
+    // The job type is checked against the published catalogue here and again by the jobs module.
+    catalogue = await getCatalogue().getPublishedCatalogue();
+  } catch (error) {
+    log.error({ area: 'job-new', 'error.type': error instanceof Error ? error.name : 'unknown' }, 'catalogue failed');
+    return failed;
+  }
+  const parsed = parseNewJobForm(form, catalogue);
   if ('state' in parsed) return parsed.state;
   const { input } = parsed;
-  const failed: NewJobState = { errors: {}, error: 'failed', saved: false, values: formValues(form) };
   // The page blocks a save with a field to fix, so a rubric refused here was not sent by it.
   const competencies = parseRubric(form.get('rubric'));
   if (!competencies) return failed;

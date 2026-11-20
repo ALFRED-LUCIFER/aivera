@@ -1,6 +1,5 @@
 import { useTranslations } from '@aivera/i18n/react';
 import { Button, Card, Input, Label, Select } from '@aivera/ui';
-import type { JobType } from '@aivera/jobs';
 import Link from 'next/link';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 import { signUpHref, type SignUpState, type SignUpStep } from '../domain/signup.ts';
@@ -12,7 +11,8 @@ export type CandidateSignUpProps = {
   startAction: (form: FormData) => Promise<void>;
   /** Where sign-up ends (already sanitised): the tenant returns to sign-up with it, and the profile form posts it. */
   next: string;
-  workTypes: readonly JobType[];
+  /** The job types the published catalogue offers, with their stored label. */
+  workTypes: readonly { value: string; label: string }[];
   /** Shows "Create account and start Plus" (feature flag, until AIV-P4-004). */
   plusEnabled: boolean;
   /** The Plus price, already formatted. */
@@ -136,9 +136,9 @@ function Profile({ next, workTypes, plusEnabled, plusPrice, action, state, pendi
             <option value="" disabled>
               {t('candidate.signup.choose')}
             </option>
-            {workTypes.map((key) => (
-              <option key={key} value={key}>
-                {t(`jobTypes.${key}.label`)}
+            {workTypes.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
           </Select>

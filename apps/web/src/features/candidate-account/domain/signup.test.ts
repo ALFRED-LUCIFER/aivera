@@ -1,6 +1,6 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { JOB_TYPES } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
+import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 import { parseSignUpForm, signUpHref, signUpNext, signUpStep } from './signup.ts';
 
 const form = (fields: Record<string, string>) => {
@@ -27,28 +27,31 @@ describe('signUpStep', () => {
 });
 
 describe('parseSignUpForm', () => {
-  it('accepts a full name (trimmed) and one of the ten job types, and reads nothing else', () => {
+  it('accepts a full name (trimmed) and one of the published job types, and reads nothing else', () => {
     expect(
-      parseSignUpForm(form({ fullName: '  Layla Haddad ', workType: 'ai_llm_engineering', userId: 'someone-else' })),
+      parseSignUpForm(
+        form({ fullName: '  Layla Haddad ', workType: 'ai_llm_engineering', userId: 'someone-else' }),
+        CATALOGUE_V1,
+      ),
     ).toEqual({ input: { fullName: 'Layla Haddad', workType: 'ai_llm_engineering' } });
-    for (const workType of JOB_TYPES)
-      expect(parseSignUpForm(form({ fullName: 'Layla Haddad', workType }))).toHaveProperty('input');
+    for (const { key: workType } of CATALOGUE_V1.jobTypes)
+      expect(parseSignUpForm(form({ fullName: 'Layla Haddad', workType }), CATALOGUE_V1)).toHaveProperty('input');
   });
 
   // Scenario: Full name is required.
   it('refuses a blank full name and a missing or unknown work type, keeping what was typed', async () => {
     const t = await getTranslations(defaultLocale, defaultTimeZone);
-    const refused = parseSignUpForm(form({ fullName: '   ', workType: 'astronaut' }));
+    const refused = parseSignUpForm(form({ fullName: '   ', workType: 'astronaut' }), CATALOGUE_V1);
     expect(refused).toEqual({
       errors: { fullName: 'fullNameRequired', workType: 'workTypeRequired' },
       failed: false,
       values: { fullName: '   ', workType: 'astronaut' },
     });
     expect(t('candidate.signup.errors.fullNameRequired')).toBe('Enter your full name.');
-    expect(parseSignUpForm(form({ fullName: 'L'.repeat(201), workType: 'sales' }))).toMatchObject({
+    expect(parseSignUpForm(form({ fullName: 'L'.repeat(201), workType: 'sales' }), CATALOGUE_V1)).toMatchObject({
       errors: { fullName: 'fullNameTooLong' },
     });
-    expect(parseSignUpForm(new FormData())).toMatchObject({
+    expect(parseSignUpForm(new FormData(), CATALOGUE_V1)).toMatchObject({
       errors: { fullName: 'fullNameRequired', workType: 'workTypeRequired' },
     });
   });

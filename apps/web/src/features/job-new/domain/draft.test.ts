@@ -15,6 +15,7 @@ import {
   withPack,
   type DraftRow,
 } from './draft.ts';
+import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 
 const description =
   'You will ship and run LLM assistants that real merchants use. You keep latency, cost per request and incidents in check.';
@@ -127,7 +128,7 @@ describe('Saving the rubric (AIV-P1-010)', () => {
 
 describe('starterCompetencies', () => {
   it("is the job type's four starters, weights totalling 100, and nothing before a job type is chosen", () => {
-    const starters = starterCompetencies('ai_llm_engineering');
+    const starters = starterCompetencies(CATALOGUE_V1, 'ai_llm_engineering');
     expect(starters.map((c) => c.name)).toEqual([
       'LLM systems in production',
       'Retrieval and evaluation',
@@ -135,7 +136,7 @@ describe('starterCompetencies', () => {
       'Cost and reliability',
     ]);
     expect(starters.reduce((sum, c) => sum + c.weightPercent, 0)).toBe(100);
-    expect(starterCompetencies('')).toEqual([]);
+    expect(starterCompetencies(CATALOGUE_V1, '')).toEqual([]);
   });
 });
 
@@ -151,7 +152,7 @@ const byName = (list: readonly DraftRow[], name: string) => {
 };
 
 describe("Scenario: The pack's core competencies are suggested", () => {
-  const pack = packCompetencies('payments_fintech', 'software_engineering', ['uae']);
+  const pack = packCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', ['uae']);
 
   it('suggests the four core competencies, then the UAE hints, each desirable, from the pack at its version', () => {
     expect(names(pack.filter((c) => !c.pack?.region))).toEqual([
@@ -174,7 +175,9 @@ describe("Scenario: The pack's core competencies are suggested", () => {
 
   it('offers the rest of the pack under "More from this pack", minus any already in the rows', () => {
     const more = names(
-      morePackCompetencies('payments_fintech', 'software_engineering', [{ name: '3-d secure and SCA flows' }]),
+      morePackCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', [
+        { name: '3-d secure and SCA flows' },
+      ]),
     );
     expect(more).not.toContain('3-D Secure and SCA flows');
     expect(more).toContain('Fraud and risk signals');
@@ -202,7 +205,7 @@ describe("Scenario: The pack's core competencies are suggested", () => {
 
   it('every pack competency and hint passes the rubric the server reads', () => {
     for (const key of ['payments_fintech', 'healthcare', 'telecom'] as const) {
-      const rows = ids(packCompetencies(key, 'software_engineering', ['uae', 'ksa', 'india']));
+      const rows = ids(packCompetencies(CATALOGUE_V1, key, 'software_engineering', ['uae', 'ksa', 'india']));
       expect(parseRubric(rubricJson(rows))).toHaveLength(rows.length);
     }
   });
@@ -210,7 +213,7 @@ describe("Scenario: The pack's core competencies are suggested", () => {
 
 describe('Scenario: I decide what stays', () => {
   it('posts a kept pack competency with origin domain_pack, its pack and the catalogue version; a removed one not', () => {
-    const pack = ids(packCompetencies('payments_fintech', 'software_engineering', []));
+    const pack = ids(packCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', []));
     const rows = [
       byName(pack, 'Idempotent payment APIs and retries'),
       { ...byName(pack, 'Reconciliation and settlement'), removed: true },
@@ -225,21 +228,23 @@ describe('Scenario: I decide what stays', () => {
     ]);
   });
 
-  it('the server refuses a pack version the catalogue does not have, or an unknown pack', () => {
+  // The jobs module checks the pack and version against the published catalogue (job.test.ts); here only their shape.
+  it('the server refuses a pack key that is not a catalogue key, or a version below 1', () => {
     const competency = { name: 'Ledger', evidenceExpected: '', weightPercent: 10, levelNeeded: 3, type: 'desirable' };
     const post = (extra: object) => parseRubric(JSON.stringify([{ ...competency, origin: 'domain_pack', ...extra }]));
-    expect(post({ packKey: 'payments_fintech', packVersion: 2 })).toBeNull();
-    expect(post({ packKey: 'crypto', packVersion: 1 })).toBeNull();
+    expect(post({ packKey: 'Payments fintech', packVersion: 1 })).toBeNull();
+    expect(post({ packKey: 'payments_fintech', packVersion: 0 })).toBeNull();
+    expect(post({ packKey: 'payments_fintech', packVersion: 1 })).toHaveLength(1);
   });
 });
 
 describe('Scenario: Wrong industry', () => {
   const drafted = row('d', { name: 'Card acquiring platform', origin: 'from_description' });
-  const payments = ids(packCompetencies('payments_fintech', 'software_engineering', ['uae']));
+  const payments = ids(packCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', ['uae']));
 
   it('a new pack replaces every row of the old one, kept or removed; no industry leaves the rest', () => {
     const rows = [drafted, ...payments.map((r, i) => (i === 0 ? { ...r, removed: true } : r))];
-    const ecommerce = ids(packCompetencies('ecommerce_marketplaces', 'software_engineering', ['uae']));
+    const ecommerce = ids(packCompetencies(CATALOGUE_V1, 'ecommerce_marketplaces', 'software_engineering', ['uae']));
     const swapped = withPack(rows, ecommerce);
     expect(swapped[0]).toBe(drafted);
     expect(swapped.slice(1)).toEqual(ecommerce);
@@ -250,7 +255,10 @@ describe('Scenario: Wrong industry', () => {
 describe('Scenario: No duplicates with the description or AIV-P1-009', () => {
   it('a pack competency the description already asks for appears once, as drafted', () => {
     const drafted = row('d', { name: 'PCI DSS scope reduction and tokenisation ', origin: 'from_description' });
-    const rows = withPack([drafted], ids(packCompetencies('payments_fintech', 'software_engineering', [])));
+    const rows = withPack(
+      [drafted],
+      ids(packCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', [])),
+    );
     expect(rows.filter((r) => /PCI DSS/.test(r.name))).toEqual([drafted]);
     expect(rows).toHaveLength(4);
   });
@@ -269,20 +277,22 @@ describe('Scenario: No duplicates with the description or AIV-P1-009', () => {
 });
 
 describe('Scenario: Regional knowledge never becomes mandatory or a location filter', () => {
-  const pack = ids(packCompetencies('payments_fintech', 'software_engineering', ['uae']));
+  const pack = ids(packCompetencies(CATALOGUE_V1, 'payments_fintech', 'software_engineering', ['uae']));
   const hint = byName(pack, 'Aani instant payments');
 
   // SAFETY: mutation check: changeRow allowed type mandatory on a regional hint -> this test failed
   it('refuses Mandatory on a regional hint, even renamed, and on a row named like one', () => {
     expect(hint.pack?.region).toBe('uae');
-    expect(changeRow(hint, { type: 'mandatory' })).toBeNull();
-    expect(changeRow({ ...hint, name: 'Gulf payment rules' }, { type: 'mandatory' })).toBeNull();
-    expect(changeRow(row('r', { type: 'desirable', name: 'Aani instant payments' }), { type: 'mandatory' })).toBeNull();
+    expect(changeRow(CATALOGUE_V1, hint, { type: 'mandatory' })).toBeNull();
+    expect(changeRow(CATALOGUE_V1, { ...hint, name: 'Gulf payment rules' }, { type: 'mandatory' })).toBeNull();
+    expect(
+      changeRow(CATALOGUE_V1, row('r', { type: 'desirable', name: 'Aani instant payments' }), { type: 'mandatory' }),
+    ).toBeNull();
   });
 
   it('allows any other change, and Mandatory on a core pack competency', () => {
-    expect(changeRow(hint, { levelNeeded: 3 })).toMatchObject({ levelNeeded: 3, type: 'desirable' });
+    expect(changeRow(CATALOGUE_V1, hint, { levelNeeded: 3 })).toMatchObject({ levelNeeded: 3, type: 'desirable' });
     const core = byName(pack, 'Reconciliation and settlement');
-    expect(changeRow(core, { type: 'mandatory' })).toMatchObject({ type: 'mandatory' });
+    expect(changeRow(CATALOGUE_V1, core, { type: 'mandatory' })).toMatchObject({ type: 'mandatory' });
   });
 });

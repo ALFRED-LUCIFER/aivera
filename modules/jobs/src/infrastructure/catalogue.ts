@@ -101,3 +101,10 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
     })),
   };
 }
+
+/** The latest published version; throws when there is none, since migration 0012 always seeds version 1. */
+export async function readPublishedCatalogue(tx: Tx): Promise<CatalogueVersion> {
+  const catalogue = await readCatalogueVersion(tx, eq(catalogueVersion.status, 'published'));
+  if (!catalogue) throw new Error('no published catalogue version');
+  return catalogue;
+}

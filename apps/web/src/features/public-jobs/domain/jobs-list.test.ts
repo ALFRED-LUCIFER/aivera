@@ -1,9 +1,9 @@
-import type { JobType, PublicJob } from '@aivera/jobs';
+import type { PublicJob } from '@aivera/jobs';
 import { describe, expect, it } from 'vitest';
 import { jobsHref, jobsListView, parseJobsQuery, postedDaysAgo, PAGE_SIZE } from './jobs-list.ts';
 
 const day = (n: number) => new Date(Date.UTC(2026, 10, 19 - n, 9));
-const job = (title: string, jobType: JobType, location: string, postedDaysBack: number, skills: string[] = []) =>
+const job = (title: string, jobType: string, location: string, postedDaysBack: number, skills: string[] = []) =>
   ({
     slug: title.toLowerCase().replaceAll(/[^a-z]+/g, '-'),
     title,

@@ -3,7 +3,7 @@
 import { AiUnavailable, BudgetExceeded } from '@aivera/ai';
 import { log } from '@aivera/observability';
 import { forbidden, unstable_rethrow } from 'next/navigation';
-import { getCompetencyDrafting, getDomainDetection } from '@/server/jobs';
+import { getCatalogue, getCompetencyDrafting, getDomainDetection } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
 import { toDetectedIndustry, toDraftCompetency, type DraftResult } from '../domain/draft.ts';
 import { parseNewJobForm } from '../domain/jobNew.ts';
@@ -15,11 +15,13 @@ import { parseNewJobForm } from '../domain/jobNew.ts';
  * job's regions (AIV-P1-063, AIV-P1-064). Saves nothing: the recruiter keeps, edits or removes each.
  */
 export async function draftCompetencies(form: FormData): Promise<DraftResult> {
-  const parsed = parseNewJobForm(form);
-  if ('state' in parsed)
-    return parsed.state.error ? { status: 'failed' } : { status: 'invalid', errors: parsed.state.errors };
-  const { jobType, title, description, location } = parsed.input;
   try {
+    // The published version (ADR-013 point 15): it validates the job type and is the detection's pack and region list.
+    const catalogue = await getCatalogue().getPublishedCatalogue();
+    const parsed = parseNewJobForm(form, catalogue);
+    if ('state' in parsed)
+      return parsed.state.error ? { status: 'failed' } : { status: 'invalid', errors: parsed.state.errors };
+    const { jobType, title, description, location } = parsed.input;
     // Authorised in its own short transaction: the model call (up to a minute) must not hold a database connection.
     const allowed = await inActiveWorkspace(async (ctx) => {
       await getWorkspaces().authorize(ctx, 'job.create');
@@ -28,9 +30,9 @@ export async function draftCompetencies(form: FormData): Promise<DraftResult> {
     if (!allowed) forbidden();
     if (!description) return { status: 'empty' };
     const [draft, detection] = await Promise.all([
-      getCompetencyDrafting().draftCompetencies(allowed.value, { jobType, title, description }),
+      getCompetencyDrafting().draftCompetencies(allowed.value, { jobType, title, description }, catalogue),
       getDomainDetection()
-        .detectDomain(allowed.value, { jobType, title, description, location })
+        .detectDomain(allowed.value, { jobType, title, description, location }, catalogue)
         .catch((error: unknown) => {
           if (!(error instanceof AiUnavailable || error instanceof BudgetExceeded)) throw error;
           // An outage or the budget is no industry: the recruiter can still choose one with "Add industry skills".

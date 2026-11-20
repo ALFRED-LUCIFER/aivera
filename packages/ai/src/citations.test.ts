@@ -71,7 +71,7 @@ function answers(...outputs: unknown[]) {
   };
   const budget = memoryTokenBudget();
   const ai = createAiClient({ provider, budget, now: () => Date.parse('2026-11-18T09:00:00Z') });
-  const run = (overrides: { promptVersion?: string } = {}) =>
+  const run = (overrides: { promptVersion?: string; catalogueVersion?: number } = {}) =>
     ai.generateStructured({
       task: 'jobs.draftCompetencies',
       workspaceId,
@@ -112,6 +112,11 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
       'aivera.ai.attempts': 1,
       'aivera.ai.template_version': 'test.strengths@1+citations@1',
     });
+  });
+
+  it('AIV-P2-044: records the catalogue version next to the prompt version', async () => {
+    await answers(statement([harness])).run({ catalogueVersion: 3 });
+    expect(structuredSpan()?.attributes['aivera.ai.template_version']).toBe('test.strengths@1+citations@1+catalogue@3');
   });
 
   it('matches a quote with collapsed whitespace, and never an empty quote', () => {

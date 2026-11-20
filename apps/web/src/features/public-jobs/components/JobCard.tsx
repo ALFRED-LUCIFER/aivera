@@ -16,7 +16,7 @@ export function JobCard({ job }: { job: JobCardData }) {
           : job.descriptor}
       </p>
       <p className="mt-1 flex flex-wrap gap-x-3 text-meta text-text-2">
-        <span>{t(`jobTypes.${job.jobType}.label`)}</span>
+        <span>{job.jobTypeLabel}</span>
         <span>{t('candidate.jobs.posted', { days: job.postedDays })}</span>
       </p>
       {/* The visible words lead the name, so voice users can say what they see (WCAG 2.5.3). */}

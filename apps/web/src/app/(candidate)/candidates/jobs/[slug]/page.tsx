@@ -1,10 +1,11 @@
 import { defaultLocale, defaultTimeZone, formatAmount, formatMoney, getTranslations } from '@aivera/i18n';
-import { SLUG } from '@aivera/jobs';
+import { jobTypeLabel, SLUG } from '@aivera/jobs';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { applyHref, cvCheckHref } from '@/features/candidate-shell/domain/links.ts';
 import { postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';
+import { getCatalogue } from '@/server/jobs';
 import { getPublicJobs } from '@/server/publicJobs';
 import { JobDetailView } from './JobDetailView.tsx';
 
@@ -29,7 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function JobPage({ params }: Props) {
   const job = await openJob((await params).slug);
   if (!job) notFound();
-  const t = await getTranslations(defaultLocale, defaultTimeZone);
+  const [t, catalogue] = await Promise.all([
+    getTranslations(defaultLocale, defaultTimeZone),
+    getCatalogue().getPublishedCatalogue(),
+  ]);
   const pay = job.payBand
     ? t('money.monthlyRange', {
         min: formatMoney({ amountMinor: job.payBand.minMinor, currency: job.payBand.currency }, defaultLocale),
@@ -41,7 +45,7 @@ export default async function JobPage({ params }: Props) {
       title={job.title}
       descriptor={job.descriptor}
       location={job.location}
-      jobType={job.jobType}
+      jobTypeLabel={jobTypeLabel(catalogue, job.jobType)}
       pay={pay}
       // shortcut: the system clock, not the injected Clock port (AGENTS.md 3.9); take it from the port when the web app
       // has one.

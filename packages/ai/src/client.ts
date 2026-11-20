@@ -204,6 +204,8 @@ export function createAiClient(options: {
       workspaceId: string;
       /** The caller's prompt id and version, `jobs.draftCompetencies@1`; it goes on telemetry, so never free text. */
       promptVersion: string;
+      /** The published catalogue version the prompt carries as data (ADR-013 point 12); it goes on telemetry beside promptVersion. */
+      catalogueVersion?: number;
       system: string;
       prompt: string;
       schema: S;
@@ -218,7 +220,7 @@ export function createAiClient(options: {
       return withSpan(`ai structured ${task}`, async () => {
         annotateSpan({
           'aivera.ai.task': task,
-          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}`,
+          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}${input.catalogueVersion ? `+catalogue@${input.catalogueVersion}` : ''}`,
           'workspace.id': input.workspaceId,
         });
         for (let attempts = 1; ; attempts++) {

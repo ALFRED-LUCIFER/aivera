@@ -28,7 +28,7 @@ const props: JobsListProps = {
       title: 'Real Estate Sales Consultant',
       descriptor: 'A property brokerage',
       location: 'Dubai',
-      jobType: 'sales',
+      jobTypeLabel: 'Sales',
       postedDays: 2,
     },
   ],

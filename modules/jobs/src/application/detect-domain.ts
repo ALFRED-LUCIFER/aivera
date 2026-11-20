@@ -7,36 +7,52 @@ import {
   type Citation,
   type Source,
 } from '@aivera/ai';
-import { DOMAIN_KEYS, REGIONS, type DomainKey, type Region } from '../domain/domain-packs.ts';
-import type { JobType } from '../domain/job-types.ts';
+import type { CatalogueVersion } from '../domain/catalogue.ts';
 
 // "Detect the job's industry" (AIV-P1-063, ADR-006): runs beside "Draft competencies" (AIV-P1-008) under the same
 // citation contract. The industry is the hiring company's, read from the job's own text: never about a candidate.
 // Nothing is saved here; AIV-P1-064 shows the result and the recruiter keeps or drops each suggestion.
 
-export type DetectDomainInput = { jobType: JobType; title: string; description: string; location: string | null };
+export type DetectDomainInput = { jobType: string; title: string; description: string; location: string | null };
 
 /** The hiring company's likely industry and the job's regions, each with the job text it rests on. */
 export type DomainDetection = {
-  /** `none` when no industry is clear: the job gets its job type's starters only, and no pack is suggested. */
-  domain: DomainKey | 'none';
+  /**
+   * A pack key of the catalogue the call was given, or `none` when no industry is clear: the job gets its job type's
+   * starters only, and no pack is suggested.
+   */
+  domain: string;
   /** The description spans the domain rests on; empty when `domain` is `none`. */
   citations: Citation[];
   /** Each region cites the location (source id `location`) or the description (source id `description`). */
-  regions: { region: Region; citations: Citation[] }[];
+  regions: { region: string; citations: Citation[] }[];
 };
 
 const NONE: DomainDetection = { domain: 'none', citations: [], regions: [] };
 
+// The schema's enum takes a non-empty list; an empty one (every entry retired) is an enum nothing matches.
+const offered = (entries: readonly { key: string; retired: boolean }[]) =>
+  entries.filter((e) => !e.retired).map((e) => e.key) as unknown as readonly [string, ...string[]];
+
 export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
   return {
-    async detectDomain(workspaceId: string, input: DetectDomainInput): Promise<DomainDetection> {
+    /** Detects against `catalogue`'s packs and regions not retired: the published version (ADR-013 point 15). */
+    async detectDomain(
+      workspaceId: string,
+      input: DetectDomainInput,
+      catalogue: CatalogueVersion,
+    ): Promise<DomainDetection> {
       // The location is its own source, so a region can cite it apart from the description.
       const sources: Source[] = [{ id: 'description', kind: 'job_description', text: input.description }];
       if (input.location?.trim()) sources.push({ id: 'location', kind: 'job_description', text: input.location });
       try {
         const { industry, regions } = await ai.generateStructured({
-          ...detectDomainRequest(input, { domains: DOMAIN_KEYS, regions: REGIONS }, sources),
+          ...detectDomainRequest(
+            input,
+            { domains: offered(catalogue.packs), regions: offered(catalogue.regions) },
+            sources,
+          ),
+          catalogueVersion: catalogue.version,
           workspaceId,
         });
         return {

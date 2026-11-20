@@ -1,9 +1,11 @@
 // The public jobs list (AIV-P3-004): search, filter chips and paging over the open jobs, all from the URL.
-import type { JobType, PublicJob } from '@aivera/jobs';
+import type { PublicJob } from '@aivera/jobs';
 import { z } from 'zod';
 
-/** The chip each job type counts under. */
-export const FAMILY_OF: Record<JobType, 'engineering' | 'product' | 'sales' | 'support'> = {
+/** The chip each job type counts under; a job type not listed counts under "all" only. */
+// shortcut: the chips group catalogue version 1's job types by key; give job types a family in the catalogue when an
+// operator adds one that should have a chip (AIV-P2-045).
+export const FAMILY_OF: Partial<Record<string, 'engineering' | 'product' | 'sales' | 'support'>> = {
   software_engineering: 'engineering',
   qa_test_automation: 'engineering',
   ai_llm_engineering: 'engineering',
@@ -95,6 +97,7 @@ export type JobCardData = {
   title: string;
   descriptor: string;
   location: string | null;
-  jobType: JobType;
+  /** The job type's name from the published catalogue. */
+  jobTypeLabel: string;
   postedDays: number;
 };

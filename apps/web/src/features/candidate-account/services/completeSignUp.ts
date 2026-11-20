@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { CANDIDATE_SIGN_IN } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 import { getCandidateAccounts } from '@/server/candidateAccounts';
 import { getCandidateSessionUserId } from '@/server/candidateAuth';
+import { getCatalogue } from '@/server/jobs';
 import { parseSignUpForm, signUpNext, type SignUpState } from '../domain/signup.ts';
 
 /**
@@ -17,7 +18,15 @@ import { parseSignUpForm, signUpNext, type SignUpState } from '../domain/signup.
 export async function completeSignUp(_previous: SignUpState, form: FormData): Promise<SignUpState> {
   const userId = await getCandidateSessionUserId();
   if (!userId) redirect(CANDIDATE_SIGN_IN);
-  const parsed = parseSignUpForm(form);
+  let catalogue;
+  try {
+    catalogue = await getCatalogue().getPublishedCatalogue();
+  } catch (error) {
+    log.error({ area: 'candidate-signup', 'error.type': error instanceof Error ? error.name : 'unknown' }, 'catalogue');
+    const values = { fullName: String(form.get('fullName') ?? ''), workType: String(form.get('workType') ?? '') };
+    return { errors: {}, failed: true, values };
+  }
+  const parsed = parseSignUpForm(form, catalogue);
   if (!('input' in parsed)) return parsed;
   const accounts = getCandidateAccounts();
   try {

@@ -18,7 +18,7 @@ const three: NonNullable<CandidateHomeProps['newJobs']> = [
     title: 'Senior AI Engineer',
     descriptor: 'A BNPL fintech',
     location: 'DIFC, Dubai',
-    jobType: 'ai_llm_engineering',
+    jobTypeLabel: 'AI and LLM engineering',
     postedDays: 6,
   },
   {
@@ -26,7 +26,7 @@ const three: NonNullable<CandidateHomeProps['newJobs']> = [
     title: 'QA Automation Engineer',
     descriptor: 'A logistics platform',
     location: 'Dubai, hybrid',
-    jobType: 'qa_test_automation',
+    jobTypeLabel: 'QA and test automation',
     postedDays: 9,
   },
   {
@@ -34,7 +34,7 @@ const three: NonNullable<CandidateHomeProps['newJobs']> = [
     title: 'Senior Product Manager, Payments',
     descriptor: 'A payments scale-up',
     location: 'Dubai Internet City',
-    jobType: 'product_management',
+    jobTypeLabel: 'Product management',
     postedDays: 9,
   },
 ];

@@ -16,6 +16,7 @@ import {
   type Competency,
   type Job,
 } from './job.ts';
+import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
 
 const rubric = (weights: number[], level = 3): Competency[] =>
   weights.map((weightPercent, i) => ({
@@ -57,20 +58,24 @@ describe('Scenario: Editing creates a draft version 3 (AIV-P1-013): the change n
 
 describe('Scenario: Weights must total 100', () => {
   it("weights 25, 20, 15, 15, 15 and 10 are valid (the ticket's 25, 20, 15, 15, 10, 10 totals 95)", () => {
-    expect(() => assertValidCompetencies(rubric([25, 20, 15, 15, 15, 10]))).not.toThrow();
+    expect(() => assertValidCompetencies(rubric([25, 20, 15, 15, 15, 10]), CATALOGUE_V1)).not.toThrow();
   });
 
   // SAFETY: mutation check: removed the total check in assertValidCompetencies -> this test failed
   it('a total of 105 fails with "Weights must total 100%."', () => {
-    expect(() => assertValidCompetencies(rubric([30, 20, 15, 15, 10, 15]))).toThrow('Weights must total 100%.');
+    expect(() => assertValidCompetencies(rubric([30, 20, 15, 15, 10, 15]), CATALOGUE_V1)).toThrow(
+      'Weights must total 100%.',
+    );
   });
 
   it.each([[[0, 100]], [[100.5, -0.5]], [[101, -1]]])('weights %j are refused one by one', (weights) => {
-    expect(() => assertValidCompetencies(rubric(weights))).toThrow('Each weight is a whole percentage from 1 to 100.');
+    expect(() => assertValidCompetencies(rubric(weights), CATALOGUE_V1)).toThrow(
+      'Each weight is a whole percentage from 1 to 100.',
+    );
   });
 
   it('a rubric with no competencies is refused', () => {
-    expect(() => assertValidCompetencies([])).toThrow('A rubric needs at least one competency.');
+    expect(() => assertValidCompetencies([], CATALOGUE_V1)).toThrow('A rubric needs at least one competency.');
   });
 });
 
@@ -80,31 +85,44 @@ describe('Domain pack competencies (AIV-P1-064)', () => {
   const pack = { origin: 'domain_pack', packKey: 'payments_fintech', packVersion: 1 } as const;
 
   it('a pack competency names its pack and version, and no other competency does', () => {
-    expect(() => assertValidCompetencies(one(pack))).not.toThrow();
+    expect(() => assertValidCompetencies(one(pack), CATALOGUE_V1)).not.toThrow();
     for (const change of [
       { ...pack, packKey: null },
       { ...pack, packVersion: null },
       { ...pack, packKey: 'crypto' as NonNullable<Competency['packKey']> },
       { origin: 'domain_pack' as const },
     ])
-      expect(() => assertValidCompetencies(one(change))).toThrow('A competency from a domain pack names its pack');
-    expect(() => assertValidCompetencies(one({ packKey: 'payments_fintech', packVersion: 1 }))).toThrow(
+      expect(() => assertValidCompetencies(one(change), CATALOGUE_V1)).toThrow(
+        'A competency from a domain pack names its pack',
+      );
+    expect(() => assertValidCompetencies(one({ packKey: 'payments_fintech', packVersion: 1 }), CATALOGUE_V1)).toThrow(
       'A competency from a domain pack names its pack',
     );
+  });
+
+  it('AIV-P2-044: the pack is checked against the published catalogue: a newer version is refused, a retired pack kept', () => {
+    // SAFETY: mutation check: removed `c.packVersion <= catalogue.version` in assertValidCompetencies -> this test failed
+    expect(() => assertValidCompetencies(one({ ...pack, packVersion: 2 }), CATALOGUE_V1)).toThrow(
+      'A competency from a domain pack names its pack',
+    );
+    const retired = { ...CATALOGUE_V1, packs: CATALOGUE_V1.packs.map((p) => ({ ...p, retired: true })) };
+    expect(() => assertValidCompetencies(one(pack), retired)).not.toThrow();
   });
 
   // SAFETY: mutation check: removed the isRegionalHint check in assertValidCompetencies -> this test failed
   it('a regional hint is never mandatory, whatever its origin', () => {
     const hint = { name: 'Aani instant payments', type: 'mandatory' } as const;
-    expect(() => assertValidCompetencies(one({ ...pack, ...hint }))).toThrow(
+    expect(() => assertValidCompetencies(one({ ...pack, ...hint }), CATALOGUE_V1)).toThrow(
       'Regional knowledge is shown through evidence, so it can only be desirable.',
     );
-    expect(() => assertValidCompetencies(one({ ...hint, name: ' aani  INSTANT payments' }))).toThrow(
+    expect(() => assertValidCompetencies(one({ ...hint, name: ' aani  INSTANT payments' }), CATALOGUE_V1)).toThrow(
       'Regional knowledge is shown through evidence',
     );
-    expect(() => assertValidCompetencies(one({ ...pack, ...hint, type: 'desirable' }))).not.toThrow();
+    expect(() => assertValidCompetencies(one({ ...pack, ...hint, type: 'desirable' }), CATALOGUE_V1)).not.toThrow();
     // A core pack competency may be raised to mandatory; the hiring owner approves the rubric.
-    expect(() => assertValidCompetencies(one({ ...pack, name: 'Reconciliation and settlement' }))).not.toThrow();
+    expect(() =>
+      assertValidCompetencies(one({ ...pack, name: 'Reconciliation and settlement' }), CATALOGUE_V1),
+    ).not.toThrow();
   });
 });
 
@@ -164,10 +182,10 @@ describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)
 
 describe('The level needed is 1 to 5', () => {
   it.each([1, 5])('level %i is valid', (level) => {
-    expect(() => assertValidCompetencies(rubric([100], level))).not.toThrow();
+    expect(() => assertValidCompetencies(rubric([100], level), CATALOGUE_V1)).not.toThrow();
   });
   it.each([0, 6, 2.5])('level %d is refused', (level) => {
-    expect(() => assertValidCompetencies(rubric([100], level))).toThrow(
+    expect(() => assertValidCompetencies(rubric([100], level), CATALOGUE_V1)).toThrow(
       'The level needed is a whole number from 1 to 5.',
     );
   });

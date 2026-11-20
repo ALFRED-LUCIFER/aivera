@@ -1,10 +1,11 @@
-import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { defaultJobType, jobTypeOptions } from '@/features/job-new/domain/jobNew.ts';
 import { newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
+import { getCatalogue } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import { NewJob } from './NewJob.tsx';
 
@@ -20,7 +21,9 @@ export default async function NewJobPage() {
   // No workspace yet: the recruiter layout shows the create-workspace page instead of this one.
   if (!result) return null;
   await requireScreen('jobs');
-  const { hiringOwners, clients, defaultJobType } = result.value;
+  const { hiringOwners, clients, hiringFocus } = result.value;
+  // The published version only (ADR-013 point 15). A failed read throws to ./error.tsx: never a list from code.
+  const catalogue = await getCatalogue().getPublishedCatalogue();
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
@@ -35,8 +38,9 @@ export default async function NewJobPage() {
         title={t('jobNew.title')}
       />
       <NewJob
-        defaultJobType={defaultJobType}
-        jobTypes={JOB_TYPE_CATALOGUE.map((e) => ({ value: e.key, label: t(e.labelKey), evidence: t(e.evidenceKey) }))}
+        catalogue={catalogue}
+        defaultJobType={defaultJobType(hiringFocus, catalogue)}
+        jobTypes={jobTypeOptions(catalogue)}
         hiringOwners={hiringOwners}
         clients={clients}
         membersHref={MEMBERS}

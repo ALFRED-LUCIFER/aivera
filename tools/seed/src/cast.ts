@@ -2,23 +2,14 @@
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
 // Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
 // interviews and packs when they land.
-import {
-  DOMAIN_PACK_CATALOGUE_VERSION,
-  getDomainPack,
-  JOB_TYPE_CATALOGUE,
-  nameKey,
-  type Competency,
-  type DomainKey,
-  type JobType,
-  type Region,
-} from '@aivera/jobs';
+import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@aivera/jobs';
 
 type Synthetic = { synthetic: true };
 export type CastUser = Synthetic & { key: string; displayName: string; email: string };
 export type CastCandidate = Synthetic & { displayName: string; email: string; phone: string; location: string };
 export type CastJob = {
   title: string;
-  jobType: JobType;
+  jobType: string;
   team: string;
   location: string;
   /** `key` of the hiring owner in `HIRING_OWNERS`. */
@@ -54,10 +45,11 @@ const row = (
 /** A demo job in one industry (AIV-P1-065), seeded with a draft rubric v1 from its domain pack. */
 export type CastIndustryJob = {
   title: string;
-  jobType: JobType;
-  pack: DomainKey;
-  /** Whose regional hints the rubric holds. */
-  region: Region;
+  jobType: string;
+  /** A pack key of the published catalogue. */
+  pack: string;
+  /** Whose regional hints the rubric holds: a region key of the published catalogue. */
+  region: string;
   team: string;
   location: string;
   /** `key` of the hiring owner in `HIRING_OWNERS`. */
@@ -301,15 +293,19 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
 
 /**
  * The job's draft rubric, as Add a job would build it with the industry chosen (AIV-P1-064): the job type's starter
- * competencies, then the pack's core competencies and its regional hints, each recording the pack and its version.
+ * competencies, then the pack's core competencies and its regional hints, each recording the pack and the version of
+ * `catalogue` (the published one) that seeded it.
  * Weights need not total 100; the jobs module rebalances them when it saves the draft.
  * shortcut: repeats starterCompetencies and packCompetencies of apps/web job-new/domain/draft.ts (a tool cannot import an
  * app); move one builder into @aivera/jobs when either changes how a pack becomes rubric rows.
  */
-export function industryRubric({ jobType, pack: key, region }: CastIndustryJob): Competency[] {
-  const pack = getDomainPack(key, jobType);
+export function industryRubric(
+  { jobType, pack: key, region }: CastIndustryJob,
+  catalogue: CatalogueVersion,
+): Competency[] {
+  const pack = packForJobType(catalogue, key, jobType);
   if (!pack) throw new Error(`No domain pack ${key}`);
-  const starters: Competency[] = (JOB_TYPE_CATALOGUE.find((e) => e.key === jobType)?.starterCompetencies ?? []).map(
+  const starters: Competency[] = (catalogue.jobTypes.find((e) => e.key === jobType)?.starterCompetencies ?? []).map(
     (name) => ({
       name,
       evidenceExpected: '',
@@ -319,7 +315,7 @@ export function industryRubric({ jobType, pack: key, region }: CastIndustryJob):
       origin: 'added_by_recruiter',
     }),
   );
-  const fromPack: Competency[] = [...pack.core, ...pack.hints[region]].map((c) => ({
+  const fromPack: Competency[] = [...pack.core, ...pack.hints.filter((h) => h.region === region)].map((c) => ({
     name: c.name,
     evidenceExpected: c.evidence,
     weightPercent: 10,
@@ -327,7 +323,7 @@ export function industryRubric({ jobType, pack: key, region }: CastIndustryJob):
     type: c.type,
     origin: 'domain_pack',
     packKey: key,
-    packVersion: DOMAIN_PACK_CATALOGUE_VERSION,
+    packVersion: catalogue.version,
   }));
   return [...starters, ...fromPack.filter((c) => !starters.some((s) => nameKey(s.name) === nameKey(c.name)))];
 }

@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { JOB_TYPE_CATALOGUE } from '@aivera/jobs';
+import { offeredJobTypes } from '@aivera/jobs';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
 import { RoleFamilies } from './RoleFamilies.tsx';
 
 vi.stubGlobal(
@@ -15,8 +15,7 @@ vi.stubGlobal(
 );
 
 describe('Feature: Role families', () => {
-  it('Scenario: The table matches the product catalogue: ten job types, in its order', async () => {
-    const t = await getTranslations(defaultLocale, defaultTimeZone);
+  it('Scenario: The table matches the product catalogue: ten job types, in its order', () => {
     render(
       <RoleFamilies
         title="Not only software engineers"
@@ -24,14 +23,14 @@ describe('Feature: Role families', () => {
         noPublicWork=""
         familyHeader="Role family"
         evidenceHeader="Evidence that counts"
-        rows={JOB_TYPE_CATALOGUE.map((j) => ({ key: j.key, family: t(j.labelKey), evidence: t(j.evidenceKey) }))}
+        rows={offeredJobTypes(CATALOGUE_V1).map((j) => ({ key: j.key, family: j.label.en, evidence: j.evidence.en }))}
         more=""
       />,
     );
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(10);
     expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual(
-      JOB_TYPE_CATALOGUE.map((j) => t(j.labelKey)),
+      CATALOGUE_V1.jobTypes.map((j) => j.label.en),
     );
     const sales = rows.find((r) => within(r).getByRole('rowheader').textContent === 'Sales');
     expect(sales && within(sales).getByRole('cell').textContent).toBe(

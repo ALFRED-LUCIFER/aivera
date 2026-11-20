@@ -73,6 +73,9 @@ const PLATFORM_AUDIT_READ = /\.listPlatformEntries\(/;
 // AIV-P1-056: setJobOwner trusts the job id and the previous owner it is given, so only the jobs module, which passes
 // the job it is saving, calls it.
 const JOB_OWNER_CALL = /\.setJobOwner\(/;
+// AIV-P2-044 (ADR-013 point 15): the catalogue is read from the database; its old code constants must not come back.
+const CODE_CATALOGUE =
+  /\b(?:JOB_TYPES|JOB_TYPE_CATALOGUE|JOB_TYPE_CATALOGUE_VERSION|DOMAIN_KEYS|DOMAIN_PACK_CATALOGUE_VERSION|listDomainPacks|getDomainPack)\b/;
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
   /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
@@ -173,6 +176,13 @@ export function findViolations(root: string): Violation[] {
           rule: 'job-owner-from-jobs',
           file: rel,
           detail: 'setJobOwner is called only by the jobs module, for the job it is saving (AIV-P1-056)',
+        });
+
+      if (CODE_CATALOGUE.test(readFileSync(file, 'utf8')))
+        violations.push({
+          rule: 'no-code-catalogue',
+          file: rel,
+          detail: 'job types and domain packs come from the published catalogue in the database (ADR-013 point 15)',
         });
 
       // AIV-P0-010: module code takes the workspace-scoped `tx` from the request context; only composition holds the pool.

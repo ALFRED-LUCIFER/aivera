@@ -19,8 +19,8 @@ export const DETECT_DOMAIN_SYSTEM = [
 type Keys = readonly [string, ...string[]];
 
 /**
- * The schema for one catalogue: the jobs module's `DOMAIN_KEYS` and `REGIONS`. A key outside them fails the schema, so
- * it is rejected and asked for once more, never patched. Azure strict mode needs every property present, and an object
+ * The schema for one catalogue: the pack and region keys of the published catalogue version (ADR-013). A key outside
+ * them fails the schema, so it is rejected and asked for once more, never patched. Azure strict mode needs every property present, and an object
  * at the root: a union inside it, never `.optional()` (client.ts generateStructured).
  */
 export const detectDomainSchema = <const D extends Keys, const R extends Keys>(catalogue: { domains: D; regions: R }) =>

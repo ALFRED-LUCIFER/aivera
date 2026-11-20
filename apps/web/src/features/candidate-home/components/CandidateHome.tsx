@@ -177,7 +177,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
                   </p>
                 </div>
                 <span className="inline-flex h-6 items-center rounded-tag border border-border bg-surface-subtle px-2 text-meta font-medium whitespace-nowrap text-text-2">
-                  {t(`jobTypes.${job.jobType}.label`)}
+                  {job.jobTypeLabel}
                 </span>
                 <span className="min-w-22.5 text-meta text-text-2 tabular-nums">
                   {t('candidate.jobs.posted', { days: job.postedDays })}

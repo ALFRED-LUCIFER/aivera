@@ -1,6 +1,6 @@
 import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@aivera/audit';
 import { createAudit } from '@aivera/audit/composition';
-import type { JobCounts } from '@aivera/jobs';
+import type { CatalogueVersion, JobCounts } from '@aivera/jobs';
 import { log } from '@aivera/observability';
 import { createJobCounts } from '@aivera/jobs/composition';
 import {
@@ -18,7 +18,7 @@ import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
-import { getJobs } from './jobs';
+import { getCatalogue, getJobs } from './jobs';
 import { getPlatformSettings } from './platformSettings';
 import { getWorkspaces } from './workspace';
 
@@ -188,6 +188,12 @@ export async function listPendingApprovals(): Promise<PendingApprovalFacts[]> {
       creatorEmail: creatorUserId ? ((await getIdentity().getUser(creatorUserId))?.email ?? null) : null,
     })),
   );
+}
+
+/** The latest published catalogue (ADR-013), for the read-only catalogue page. Checks the policy itself too. */
+export async function publishedCatalogue(): Promise<CatalogueVersion> {
+  await platformOperator();
+  return getCatalogue().getPublishedCatalogue();
 }
 
 /** Whether new sign-ups wait for approval, for the approvals page. Checks the policy itself too. */

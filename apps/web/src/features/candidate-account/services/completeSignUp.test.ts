@@ -13,6 +13,11 @@ const accounts = vi.hoisted(() => ({
 const log = vi.hoisted(() => ({ error: vi.fn() }));
 vi.mock('@/server/candidateAuth', () => ({ getCandidateSessionUserId: async () => session.userId }));
 vi.mock('@/server/candidateAccounts', () => ({ getCandidateAccounts: () => accounts }));
+vi.mock('@/server/jobs', () => ({
+  getCatalogue: () => ({
+    getPublishedCatalogue: async () => (await import('@/test/catalogue-v1.ts')).CATALOGUE_V1,
+  }),
+}));
 vi.mock('@aivera/observability', () => ({ log }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {

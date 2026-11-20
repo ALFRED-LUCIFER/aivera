@@ -1,4 +1,4 @@
-import { JOB_TYPE_CATALOGUE, JOB_TYPES, type JobType } from '@aivera/jobs';
+import { offeredJobTypes, type CatalogueVersion } from '@aivera/jobs';
 import { z } from 'zod';
 
 // Add a job, step 1 (AIV-P1-007, RoleNew "1. The job"). Pure: no React, no I/O (ADR-003).
@@ -19,17 +19,29 @@ const optionalId = z.union([z.literal('').transform(() => null), z.uuid()]);
 export const TEXT_MAX = 200;
 export const DESCRIPTION_MAX = 20_000;
 
-const newJobForm = z.object({
-  jobType: z.enum(JOB_TYPES, { error: 'jobType' }),
-  title: z.string().trim().min(1, { error: 'title' }).max(TEXT_MAX),
-  // Any description is accepted, however thin: drafting works from the job type's starters too.
-  description: z.string().trim().max(DESCRIPTION_MAX),
-  team: optional(TEXT_MAX),
-  clientId: optionalId,
-  location: optional(TEXT_MAX),
-  hiringOwnerUserId: optionalId,
-});
-export type NewJobInput = z.infer<typeof newJobForm>;
+/** The form's schema: the job type must be one the published catalogue offers (ADR-013 point 7). */
+const newJobForm = (catalogue: CatalogueVersion) =>
+  z.object({
+    jobType: z.string().refine((key) => offeredJobTypes(catalogue).some((t) => t.key === key), { error: 'jobType' }),
+    title: z.string().trim().min(1, { error: 'title' }).max(TEXT_MAX),
+    // Any description is accepted, however thin: drafting works from the job type's starters too.
+    description: z.string().trim().max(DESCRIPTION_MAX),
+    team: optional(TEXT_MAX),
+    clientId: optionalId,
+    location: optional(TEXT_MAX),
+    hiringOwnerUserId: optionalId,
+  });
+export type NewJobInput = z.infer<ReturnType<typeof newJobForm>>;
+
+/** The job types Add a job offers, in catalogue order, with their label, "Evidence that counts" and starters. */
+export const jobTypeOptions = (catalogue: CatalogueVersion) =>
+  offeredJobTypes(catalogue).map((t) => ({
+    value: t.key,
+    label: t.label.en,
+    evidence: t.evidence.en,
+    starters: t.starterCompetencies,
+  }));
+export type JobTypeOption = ReturnType<typeof jobTypeOptions>[number];
 
 /** The fields as posted, as strings, so a refused submit shows them again. */
 export const formValues = (form: FormData): NewJobValues =>
@@ -52,10 +64,13 @@ export const initialNewJobState = (jobType: string): NewJobState => ({
   values: { ...Object.fromEntries(FIELDS.map((f) => [f, ''])), jobType } as NewJobValues,
 });
 
-/** The validated form, or the state to show again (AGENTS.md 3.7). */
-export function parseNewJobForm(form: FormData): { input: NewJobInput } | { state: NewJobState } {
+/** The validated form, against the published catalogue, or the state to show again (AGENTS.md 3.7). */
+export function parseNewJobForm(
+  form: FormData,
+  catalogue: CatalogueVersion,
+): { input: NewJobInput } | { state: NewJobState } {
   const values = formValues(form);
-  const parsed = newJobForm.safeParse(values);
+  const parsed = newJobForm(catalogue).safeParse(values);
   if (parsed.success) return { input: parsed.data };
   const errors: NewJobState['errors'] = {};
   for (const issue of parsed.error.issues)
@@ -63,12 +78,10 @@ export function parseNewJobForm(form: FormData): { input: NewJobInput } | { stat
   return { state: { errors, error: Object.keys(errors).length ? null : 'failed', saved: false, values } };
 }
 
-/** "What this person must be able to do:" then the job type's four starter competencies as a list. */
-export const descriptionPlaceholder = (intro: string, jobType: string): string =>
-  [intro, ...(JOB_TYPE_CATALOGUE.find((e) => e.key === jobType)?.starterCompetencies ?? []).map((c) => `- ${c}`)].join(
-    '\n',
-  );
+/** "What this person must be able to do:" then the chosen job type's four starter competencies as a list. */
+export const descriptionPlaceholder = (intro: string, starters: readonly string[]): string =>
+  [intro, ...starters.map((c) => `- ${c}`)].join('\n');
 
-/** The workspace's hiring focus preselects the job type when it is one of the ten. */
-export const defaultJobType = (hiringFocus: string): JobType | '' =>
-  (JOB_TYPES as readonly string[]).includes(hiringFocus) ? (hiringFocus as JobType) : '';
+/** The workspace's hiring focus preselects the job type when the catalogue offers it. */
+export const defaultJobType = (hiringFocus: string, catalogue: CatalogueVersion): string =>
+  offeredJobTypes(catalogue).some((t) => t.key === hiringFocus) ? hiringFocus : '';

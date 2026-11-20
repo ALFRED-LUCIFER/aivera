@@ -393,74 +393,6 @@
       "other": "Something else"
     }
   },
-  "jobTypes": {
-    "software_engineering": {
-      "label": "Software engineering",
-      "evidence": "Repositories, shipped products, code reviews"
-    },
-    "qa_test_automation": {
-      "label": "QA and test automation",
-      "evidence": "Test suites, bug reports, CI history, test plans"
-    },
-    "ai_llm_engineering": {
-      "label": "AI and LLM engineering",
-      "evidence": "Eval harnesses, prompt libraries, shipped assistants"
-    },
-    "forward_deployed_engineering": {
-      "label": "Forward deployed engineering",
-      "evidence": "Customer deployments, integration code, solution write-ups, customer references"
-    },
-    "data_ml": {
-      "label": "Data and machine learning",
-      "evidence": "Notebooks, evaluation sets, model cards, results write-ups"
-    },
-    "devops_sre": {
-      "label": "DevOps and SRE",
-      "evidence": "Infrastructure code, incident reviews, runbooks"
-    },
-    "product_management": {
-      "label": "Product management",
-      "evidence": "Requirement documents, discovery write-ups, before-and-after metrics"
-    },
-    "product_design": {
-      "label": "Product design",
-      "evidence": "Case studies, design files, prototypes"
-    },
-    "sales": {
-      "label": "Sales",
-      "evidence": "Closed deals, client references, pipeline records, market write-ups"
-    },
-    "technical_writing_support": {
-      "label": "Technical writing and support",
-      "evidence": "Published documentation, resolved tickets, help articles"
-    }
-  },
-  "domainPacks": {
-    "payments_fintech": {
-      "label": "Payments and fintech"
-    },
-    "banking_islamic_finance": {
-      "label": "Banking and Islamic finance"
-    },
-    "healthcare": {
-      "label": "Healthcare"
-    },
-    "ecommerce_marketplaces": {
-      "label": "E-commerce and marketplaces"
-    },
-    "logistics_mobility": {
-      "label": "Logistics and mobility"
-    },
-    "government_public_sector": {
-      "label": "Government and public sector"
-    },
-    "telecom": {
-      "label": "Telecom"
-    },
-    "energy_utilities": {
-      "label": "Energy and utilities"
-    }
-  },
   "jobNew": {
     "title": "Add a job",
     "breadcrumb": "Breadcrumb",
@@ -509,7 +441,9 @@
     "sent": "Sent to the hiring owner. The job shows in Jobs as \"Draft, needs approval\", and My desk tells you when it is approved. Meanwhile you can line up people who already have evidence.",
     "goToJobs": "Go to Jobs",
     "sendFailed": "We could not send the rubric. Try again, or send it later from the rubric page.",
-    "sentNoOwner": "Sent for approval. This job has no hiring owner yet, so a workspace admin approves it. The job shows in Jobs as \"Draft, needs approval\", and My desk tells you when it is approved."
+    "sentNoOwner": "Sent for approval. This job has no hiring owner yet, so a workspace admin approves it. The job shows in Jobs as \"Draft, needs approval\", and My desk tells you when it is approved.",
+    "catalogueError": "We could not load job types. Try again.",
+    "retry": "Try again"
   },
   "jobDraft": {
     "heading": "Competencies",
@@ -582,16 +516,8 @@
     "more": "More from this pack",
     "addFromPack": "Add {name}",
     "addAction": "Add",
-    "regions": {
-      "uae": "In the UAE",
-      "ksa": "In KSA",
-      "india": "In India"
-    },
-    "regionCaptions": {
-      "uae": "Regional suggestions for the UAE",
-      "ksa": "Regional suggestions for KSA",
-      "india": "Regional suggestions for India"
-    },
+    "regionHeading": "{region, select, uae {In the UAE} ksa {In KSA} india {In India} other {In {label}}}",
+    "regionCaption": "{region, select, uae {Regional suggestions for the UAE} ksa {Regional suggestions for KSA} india {Regional suggestions for India} other {Regional suggestions for {label}}}",
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
@@ -805,8 +731,7 @@
       "title": "Catalogue",
       "description": "The job types and industry packs that suggest each new job's competencies.",
       "readOnly": "The catalogue changes only through a reviewed pull request.",
-      "jobTypesSource": "Job types file on GitHub",
-      "domainPacksSource": "Domain packs file on GitHub",
+      "source": "Catalogue migrations on GitHub",
       "jobTypes": "Job types · version {version, number}",
       "columns": {
         "jobType": "Job type",
@@ -818,11 +743,7 @@
       "competencies": "{count, plural, one {# competency} other {# competencies}}",
       "core": "Default suggestions",
       "more": "More from this pack",
-      "hints": {
-        "uae": "Regional hints for the UAE",
-        "ksa": "Regional hints for KSA",
-        "india": "Regional hints for India"
-      },
+      "hintsFor": "{region, select, uae {Regional hints for the UAE} ksa {Regional hints for KSA} india {Regional hints for India} other {Regional hints for {label}}}",
       "desirable": "Desirable",
       "levelNeeded": "Level {level, number} needed",
       "level": "Level {level, number}"

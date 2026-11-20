@@ -37,7 +37,12 @@ vi.mock('@/server/workspace', () => ({
 vi.mock('@/server/auth', () => ({
   getIdentity: () => ({ getUser: async (id: string) => ({ id, email: 'hassan@example.com', displayName: null }) }),
 }));
-vi.mock('@/server/jobs', () => ({ getJobs: () => ({ createJobWithDraftRubric }) }));
+vi.mock('@/server/jobs', () => ({
+  getJobs: () => ({ createJobWithDraftRubric }),
+  getCatalogue: () => ({
+    getPublishedCatalogue: async () => (await import('@/test/catalogue-v1.ts')).CATALOGUE_V1,
+  }),
+}));
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {

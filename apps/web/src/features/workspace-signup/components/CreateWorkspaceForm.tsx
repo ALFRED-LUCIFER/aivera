@@ -1,5 +1,5 @@
 import { Button, Input, Label, Select } from '@aivera/ui';
-import type { CreateWorkspaceState, HiringFocus } from '../domain/signup.ts';
+import type { CreateWorkspaceState } from '../domain/signup.ts';
 
 export type CreateWorkspaceLabels = {
   title: string;
@@ -17,7 +17,7 @@ type CreateWorkspaceFormProps = {
   state: CreateWorkspaceState;
   pending: boolean;
   /** Each hiring focus with its label, already translated. */
-  focusOptions: readonly { value: HiringFocus; label: string }[];
+  focusOptions: readonly { value: string; label: string }[];
   labels: CreateWorkspaceLabels;
 };
 
