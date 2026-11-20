@@ -8,6 +8,7 @@ import {
   StorageSharedKeyCredential,
 } from '@azure/storage-blob';
 import type { BlobStore } from '../application/files.ts';
+import { UPLOAD_TTL_MS } from '../domain/files.ts';
 
 export type BlobStoreConfig = {
   /** The account's blob endpoint, `https://<account>.blob.core.windows.net`. */
@@ -35,8 +36,9 @@ export function createBlobStore({ url, clientId, sharedKey }: BlobStoreConfig): 
       const values = {
         containerName: target.containerName,
         blobName: target.name,
-        // Create and write that one blob: no read, list, delete or any other blob (the Gherkin's 403s).
-        permissions: BlobSASPermissions.parse('cw'),
+        // Create that one blob, once: no read, list, delete, overwrite or any other blob (the Gherkin's 403s). One Put
+        // Blob of up to 5000 MiB needs nothing more.
+        permissions: BlobSASPermissions.parse('c'),
         expiresOn,
         protocol: url.startsWith('https:') ? SASProtocol.Https : SASProtocol.HttpsAndHttp,
       };
@@ -45,16 +47,17 @@ export function createBlobStore({ url, clientId, sharedKey }: BlobStoreConfig): 
         : generateBlobSASQueryParameters(
             values,
             // shortcut: one delegation key per upload request; cache it for its lifetime if uploads get frequent
-            await service.getUserDelegationKey(new Date(Date.now() - 60_000), expiresOn),
+            // Valid from a minute before the SAS's start (clock skew), derived from its expiry, not a clock read here.
+            await service.getUserDelegationKey(new Date(expiresOn.getTime() - UPLOAD_TTL_MS - 60_000), expiresOn),
             service.accountName,
           );
       return `${target.url}?${sas.toString()}`;
     },
-    async read(path) {
+    async read(path, maxBytes) {
       const target = blob(path);
       if (!(await target.exists())) return null;
-      const [data, properties] = await Promise.all([target.downloadToBuffer(), target.getProperties()]);
-      return { data, contentType: properties.contentType };
+      const { contentLength: size = 0, contentType } = await target.getProperties();
+      return { size, contentType, data: size <= maxBytes ? await target.downloadToBuffer() : null };
     },
     write: async (path, data, contentType) =>
       void (await blob(path).uploadData(data, { blobHTTPHeaders: { blobContentType: contentType } })),

@@ -13,11 +13,12 @@ const ownedBy = (owner: Owner) =>
 export function fileStore(tx: Tx): FileStore {
   return {
     insert: async (record) => void (await tx.insert(file).values(record)),
-    async find(owner, id) {
-      const [found] = await tx
+    async find(owner, id, forUpdate = false) {
+      const query = tx
         .select()
         .from(file)
         .where(and(ownedBy(owner), eq(file.id, id)));
+      const [found] = await (forUpdate ? query.for('update') : query);
       return (found as FileRecord | undefined) ?? null;
     },
     settle: async (id, change) => void (await tx.update(file).set(change).where(eq(file.id, id))),

@@ -41,7 +41,7 @@ const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { createBlobStore, createFiles, SCAN_RESULTS_QUEUE } = await import('@credalent/files/composition');
 const { createDb, isReachable } = await import('@credalent/db');
-const { createConsumer } = await import('@credalent/db/consumer');
+const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
 const { log } = await import('@credalent/observability');
 const { subscribe, toMessage } = await import('./serviceBus.ts');
@@ -113,7 +113,7 @@ const senderFor = (queue: string) => {
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
 // not outbox envelopes, so not through createConsumer. A settled file ignores a redelivery, so no inbox is needed.
-// Invalid bodies are dead-lettered at once; any other failure is abandoned for Service Bus to redeliver (10 times).
+// Invalid bodies are dead-lettered at once; any other failure backs off and is redelivered, up to 10 times.
 const scanResults =
   env.MALWARE_SCANNING === 'on' && env.AZURE_STORAGE_BLOB_URL
     ? (() => {
@@ -133,6 +133,11 @@ const scanResults =
           } catch (error) {
             if (error instanceof z.ZodError) return delivery.deadLetter('invalid payload');
             log.warn({ err: error, area: 'files' }, 'scan result failed');
+            // The consumers' retry table: back off under the lock, then dead-letter after 10 deliveries (AIV-P0-015).
+            const settlement = decide('failed', delivery.deliveryCount);
+            if (settlement.action === 'deadLetter') return delivery.deadLetter(settlement.reason);
+            if (settlement.action === 'abandon')
+              await sleep(settlement.delayMs, undefined, { signal: stop.signal }).catch(() => undefined);
             await delivery.abandon();
           }
         });

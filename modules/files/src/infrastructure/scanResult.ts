@@ -7,9 +7,7 @@ import type { ScanVerdict } from '../application/files.ts';
 const scanResult = z.object({
   eventType: z.literal('Microsoft.Security.MalwareScanningResult'),
   data: z.object({
-    blobUri: z
-      .url({ protocol: /^https?$/ })
-      .transform((url, ctx) => parseQuarantineUrl(url) ?? (ctx.addIssue('not a quarantine blob'), z.NEVER)),
+    blobUri: z.url({ protocol: /^https?$/ }),
     scanResultType: z.string(),
   }),
 });
@@ -25,12 +23,17 @@ const json = (body: unknown): unknown =>
       : body;
 
 /**
- * The file and verdict a scan result names. Throws ZodError on any other body or a blob outside quarantine, and a plain
- * Error on a result that is neither verdict (such as "Error"), so it is retried and then dead-lettered for a person.
+ * The file and verdict a scan result names; null for a blob outside quarantine (Defender also scans the moved copy in
+ * cvs or evidence: nothing to do). Throws ZodError on any other body, and a plain Error on a result that is neither
+ * verdict (such as "Error"), so it is retried and then dead-lettered for a person.
  */
-export function parseScanResult(body: unknown): { target: { owner: Owner; fileId: string }; verdict: ScanVerdict } {
+export function parseScanResult(
+  body: unknown,
+): { target: { owner: Owner; fileId: string }; verdict: ScanVerdict } | null {
   const { data } = scanResult.parse(json(body));
+  const target = parseQuarantineUrl(data.blobUri);
+  if (!target) return null;
   const verdict = VERDICTS[data.scanResultType];
   if (!verdict) throw new Error('scan result is neither clean nor malicious');
-  return { target: data.blobUri, verdict };
+  return { target, verdict };
 }

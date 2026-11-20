@@ -176,13 +176,32 @@ describe('Scenario: An infected file never becomes evidence', () => {
     expect(await as(ALEX, w1, (ctx) => files.openDownload(ctx, fileId))).toBeNull();
   });
 
-  it('a scan result that is neither verdict is retried; one for a blob outside quarantine is refused', async () => {
+  it('a scan result that is neither verdict is retried; one for a blob outside quarantine is ignored', async () => {
     const { fileId, blobUri } = await upload(w1, 'evidence', pdfOf(4096));
     await expect(files.handleScanResult(scanResult(blobUri, 'Error'))).rejects.toThrow('neither clean nor malicious');
-    await expect(
-      files.handleScanResult(scanResult(blobUri.replace('uploads-quarantine', 'evidence'), 'Malicious')),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    // Defender also scans the moved copy: nothing to do, and nothing to dead-letter.
+    await files.handleScanResult(scanResult(blobUri.replace('uploads-quarantine', 'evidence'), 'Malicious'));
+    await expect(files.handleScanResult({ eventType: 'Microsoft.Storage.BlobCreated' })).rejects.toMatchObject({
+      name: 'ZodError',
+    });
     expect((await row(w1, fileId))?.status).toBe('pending');
+  });
+
+  // A transaction holds the row while a clean result arrives, then settles the file infected: the handler must wait for
+  // it and leave the infected file alone, never overwrite it with clean.
+  // SAFETY: mutation check: find without `.for('update')` in the repository -> this test failed (overwrote infected with clean)
+  it('a scan result waits for a settle in progress, so a file is settled once', async () => {
+    const { fileId, blobUri } = await upload(w1, 'evidence', pdfOf(4096));
+    let handled: Promise<void> = Promise.resolve();
+    await withWorkspace(app, w1, async (tx) => {
+      await tx.execute(sql`select id from files.file where id = ${fileId} for update`);
+      handled = files.handleScanResult(scanResult(blobUri, 'No threats found'));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await tx.execute(sql`update files.file set status = 'infected' where id = ${fileId}`);
+    });
+    await handled;
+    expect((await row(w1, fileId))?.status).toBe('infected');
+    expect(await outbox(w1, fileId)).toEqual([]);
   });
 });
 
@@ -206,6 +225,12 @@ describe('Scenario: The SAS cannot be reused for anything else', () => {
     expect((await put(other, pdfOf(4096))).status).toBe(403);
     const sibling = uploadUrl.replace('/uploads-quarantine/', '/evidence/');
     expect((await put(sibling, pdfOf(4096))).status).toBe(403);
+  });
+
+  // SAFETY: mutation check: SAS permissions 'cw' instead of 'c' -> this test failed (the overwrite was accepted, 201)
+  it('the SAS cannot overwrite the blob it created, so the scanned bytes are the bytes settled', async () => {
+    const { uploadUrl } = await upload(w1, 'evidence', pdfOf(4096));
+    expect((await put(uploadUrl, pdfOf(4096))).status).toBe(403);
   });
 
   // Issued with a clock set back, so the 10-minute expiry is tested without waiting (a minute's margin for clock skew).

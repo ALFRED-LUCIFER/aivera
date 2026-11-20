@@ -124,6 +124,9 @@ resource scanTopic 'Microsoft.EventGrid/topics@2024-06-01-preview' = if (malware
   location: location
   tags: tags
   identity: { type: 'SystemAssigned' }
+  // shortcut: the topic keeps its access keys, since Defender's publishing to a key-less topic is not confirmed;
+  // whoever can list them could post a forged "No threats found". Try disableLocalAuth: true at the pilot's first
+  // apply with scanning on, and keep it if Defender still delivers (AIV-P5-E03, #34)
   properties: { inputSchema: 'EventGridSchema' }
 }
 
@@ -148,7 +151,11 @@ resource scanResults 'Microsoft.EventGrid/topics/eventSubscriptions@2024-06-01-p
       identity: { type: 'SystemAssigned' }
       destination: { endpointType: 'ServiceBusQueue', properties: { resourceId: scanQueue.id } }
     }
-    filter: { includedEventTypes: ['Microsoft.Security.MalwareScanningResult'] }
+    // Quarantine only: Defender also scans the worker's copy into cvs or evidence, which needs nothing.
+    filter: {
+      includedEventTypes: ['Microsoft.Security.MalwareScanningResult']
+      advancedFilters: [{ operatorType: 'StringContains', key: 'data.blobUri', values: ['/uploads-quarantine/'] }]
+    }
     eventDeliverySchema: 'EventGridSchema'
     retryPolicy: { maxDeliveryAttempts: 30, eventTimeToLiveInMinutes: 1440 }
   }

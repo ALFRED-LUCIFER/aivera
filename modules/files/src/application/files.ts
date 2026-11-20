@@ -31,7 +31,8 @@ export type FileRecord = {
 /** The store over one owner-scoped transaction. `find` filters by owner (the first layer; RLS is the second). */
 export type FileStore = {
   insert(file: FileRecord): Promise<void>;
-  find(owner: Owner, id: string): Promise<FileRecord | null>;
+  /** `forUpdate` locks the row to the transaction's end, so two scan results for one file settle it once. */
+  find(owner: Owner, id: string, forUpdate?: boolean): Promise<FileRecord | null>;
   settle(
     id: string,
     change: Pick<FileRecord, 'status'> & Partial<Pick<FileRecord, 'sha256' | 'blobPath'>>,
@@ -40,10 +41,19 @@ export type FileStore = {
 
 /** Blob storage. Paths are `<container>/<blob name>`. */
 export type BlobStore = {
-  /** A URL that may create and write the one blob at `path` until `expiresOn`, and nothing else. */
+  /**
+   * A URL that may create the one blob at `path` until `expiresOn`, and nothing else: no read, no other blob, and no
+   * overwrite once it exists, so the bytes Defender scanned are the bytes that are settled.
+   */
   uploadUrl(path: string, expiresOn: Date): Promise<string>;
-  /** The blob's bytes and stored content type; null when there is no such blob. */
-  read(path: string): Promise<{ data: Buffer; contentType: string | undefined } | null>;
+  /**
+   * The blob's size and stored content type, and its bytes when it is no bigger than `maxBytes` (null data otherwise,
+   * so an oversized upload is never loaded into memory); null when there is no such blob.
+   */
+  read(
+    path: string,
+    maxBytes: number,
+  ): Promise<{ size: number; contentType: string | undefined; data: Buffer | null } | null>;
   write(path: string, data: Buffer, contentType: string): Promise<void>;
   /** Deletes the blob if it exists. */
   delete(path: string): Promise<void>;
@@ -89,8 +99,8 @@ export function filesUseCases(p: Ports) {
       file.workspaceId ? p.publishSettled(tx, { ...file, workspaceId: file.workspaceId }, status) : undefined;
     if (verdict === 'clean') {
       // The final copy too: a retry after a failed commit finds quarantine already emptied.
-      const blob = (await p.blobs.read(quarantine)) ?? (await p.blobs.read(final));
-      if (blob && blob.data.length === file.sizeBytes && blob.contentType === file.contentType) {
+      const blob = (await p.blobs.read(quarantine, file.sizeBytes)) ?? (await p.blobs.read(final, file.sizeBytes));
+      if (blob?.data && blob.size === file.sizeBytes && blob.contentType === file.contentType) {
         await p.blobs.write(final, blob.data, file.contentType);
         await store.settle(file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });
         await publish('clean');
@@ -99,6 +109,8 @@ export function filesUseCases(p: Ports) {
       }
     }
     // Deleted before the row changes, so a failed commit is retried with the blob already gone, never left behind.
+    // shortcut: settling is recorded on the files.file row, not in the audit log, which needs a member's context the
+    // worker does not have; audit it when the audit module takes a system actor (AIV-P5-E03, #34)
     await p.blobs.delete(quarantine);
     const status = verdict === 'infected' ? 'infected' : 'rejected';
     await store.settle(file.id, { status });
@@ -142,7 +154,7 @@ export function filesUseCases(p: Ports) {
     async markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus> {
       await p.authorize(ctx, 'file.upload');
       if (p.malwareScanning) throw new FileError('scanning_required');
-      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
+      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId, true);
       if (file?.uploadedBy !== ctx.userId) throw new FileError('not_found');
       return settle(ctx.tx, file, 'clean');
     },
@@ -158,7 +170,7 @@ export function filesUseCases(p: Ports) {
     /** Applies one Defender scan result to the file its blob URL names; a URL naming no file is ignored. */
     async applyScanResult(target: { owner: Owner; fileId: string }, verdict: ScanVerdict): Promise<FileStatus | null> {
       return p.inScope(target.owner, async (tx) => {
-        const file = await p.storeFor(tx).find(target.owner, target.fileId);
+        const file = await p.storeFor(tx).find(target.owner, target.fileId, true);
         return file ? settle(tx, file, verdict) : null;
       });
     },

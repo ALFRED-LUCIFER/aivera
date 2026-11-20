@@ -1319,8 +1319,6 @@
       "evidence": "PDF, image or document, up to 20 MB."
     },
     "uploading": "Uploading, {percent}%",
-    "checking": "Checking the file",
-    "uploaded": "Uploaded.",
     "notAccepted": "This file could not be accepted.",
     "failed": "The upload did not finish. Try again."
   }

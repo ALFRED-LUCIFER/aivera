@@ -23,11 +23,22 @@ const pending = (): FileRecord => ({
   createdAt: new Date('2026-11-20T09:00:00Z'),
 });
 
-function setup(malwareScanning: boolean, uploaded: { data: Buffer; contentType: string } | null) {
+type Stored = { data: Buffer; contentType: string } | null;
+
+function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null) {
   let row = pending();
   const blobs = {
     uploadUrl: vi.fn(),
-    read: vi.fn(async (path: string) => (path.startsWith('uploads-quarantine/') ? uploaded : null)),
+    read: vi.fn(async (path: string, maxBytes: number) => {
+      const blob = path.startsWith('uploads-quarantine/') ? uploaded : moved;
+      return (
+        blob && {
+          size: blob.data.length,
+          contentType: blob.contentType,
+          data: blob.data.length <= maxBytes ? blob.data : null,
+        }
+      );
+    }),
     write: vi.fn(async () => undefined),
     delete: vi.fn(async () => undefined),
     stream: vi.fn(async () => new ReadableStream<Uint8Array>()),
@@ -84,6 +95,13 @@ describe('the server-side re-check of what was uploaded', () => {
     expect(blobs.write).not.toHaveBeenCalled();
     expect(blobs.delete).toHaveBeenCalledWith(`uploads-quarantine/w/${W}/${F}`);
     expect([row().status, published]).toEqual(['rejected', ['rejected']]);
+  });
+
+  // The retry after a commit that failed once quarantine was emptied: the moved copy is settled, never rejected.
+  it('with quarantine already emptied, the copy in the final container is settled clean', async () => {
+    const { useCases, row } = setup(false, null, pdf);
+    expect(await useCases.markCleanWithoutScan(ctx, F)).toBe('clean');
+    expect(row().status).toBe('clean');
   });
 
   it("another member's upload is not found", async () => {

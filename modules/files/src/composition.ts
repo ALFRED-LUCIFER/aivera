@@ -51,8 +51,8 @@ export function createFiles(config: {
   return {
     ...useCases,
     async handleScanResult(body) {
-      const { target, verdict } = parseScanResult(body);
-      await useCases.applyScanResult(target, verdict);
+      const result = parseScanResult(body);
+      if (result) await useCases.applyScanResult(result.target, result.verdict);
     },
   };
 }

@@ -6,15 +6,7 @@ import { z } from 'zod';
 import type { Download, UploadTicket } from '../application/files.ts';
 import type { FileStatus, UploadRequest } from '../domain/files.ts';
 
-export {
-  CONTENT_TYPES,
-  checkUpload,
-  contentTypeFor,
-  FILE_STATUSES,
-  FileError,
-  PURPOSES,
-  UPLOAD_LIMITS,
-} from '../domain/files.ts';
+export { checkUpload, contentTypeFor, FileError, PURPOSES, UPLOAD_LIMITS } from '../domain/files.ts';
 export type { FileErrorCode, FileStatus, LimitMessage, Purpose, UploadRequest } from '../domain/files.ts';
 export type { Download, UploadTicket } from '../application/files.ts';
 
@@ -53,8 +45,8 @@ export interface FilesContract {
   openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null>;
   /**
    * The worker's handler for one Defender for Storage scan result (an Event Grid event): "No threats found" settles the
-   * file clean, "Malicious" infected. Throws `ZodError` on a body that is not a scan result (dead-letter it), and any
-   * other error to be retried.
+   * file clean, "Malicious" infected; a result for a blob outside quarantine is ignored. Throws `ZodError` on a body
+   * that is not a scan result (dead-letter it), and any other error to be retried.
    */
   handleScanResult(body: unknown): Promise<void>;
 }

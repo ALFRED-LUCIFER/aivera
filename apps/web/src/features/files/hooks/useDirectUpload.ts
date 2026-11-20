@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { checkUpload, settledMessage, uploadRequestFor, type DirectUpload, type Purpose } from '../domain/files.ts';
+import {
+  acceptFor,
+  checkUpload,
+  settledMessage,
+  uploadRequestFor,
+  type DirectUpload,
+  type Purpose,
+} from '../domain/files.ts';
 import * as actions from '../services/files.ts';
 import { putBlob } from '../services/putBlob.ts';
 
@@ -9,7 +16,8 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * One file picker's upload (AIV-P0-016): the limits checked in the browser, then on the server; the file PUT straight
  * to Blob storage with progress; then its status polled until the scan settles it (about three minutes at most).
- * `done` carries the file id for the form that uses it.
+ * `done` carries the file id for the form that uses it. Polled by hand rather than with TanStack Query: one bounded
+ * loop per upload, with no cache to share.
  */
 export function useDirectUpload(purpose: Purpose, services: Partial<typeof defaults> = {}) {
   const s = { ...defaults, ...services };
@@ -43,5 +51,6 @@ export function useDirectUpload(purpose: Purpose, services: Partial<typeof defau
     }
   }
 
-  return { state, onSelect };
+  // `accept` filters the picker's dialog to the purpose's extensions; the server checks again.
+  return { state, onSelect, accept: acceptFor(purpose) };
 }
