@@ -143,6 +143,7 @@ describe('Migrations', () => {
       [
         'competency_link',
         'cv_parse',
+        'document_read',
         'duplicate_flag',
         'evidence_gap',
         'inbox',

@@ -3,6 +3,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
+import type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 import type { EvidenceMappingView } from '../application/mapping.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
@@ -31,6 +32,9 @@ export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
 export { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
+export type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
+export { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
+export type { DocumentReadStatus } from '../domain/document.ts';
 export type { CvParseStatus, NoteReason } from '../domain/cv.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
@@ -112,6 +116,15 @@ export const CvParseRequestedV1 = {
 } satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
 
 /**
+ * Written to `evidence.outbox` with a pending `document` source and sent to the `evidence` queue, whose worker job
+ * `evidence.document.read` reads the document once its file is clean (AIV-P1-028). Strict, opaque ids only.
+ */
+export const DocumentReadRequestedV1 = {
+  type: 'DocumentReadRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
+
+/**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
  * so the workspace id never comes from client input (ADR-005). Role checks go through the workspaces `authorize`;
  * refusals throw `ForbiddenError`, rule failures `EvidenceError`.
@@ -184,6 +197,20 @@ export interface EvidenceContract {
    * Candidate screen (AIV-P1-045). Null when the workspace has no such parse. Admins and recruiters.
    */
   getCvParse(ctx: WorkspaceContext, sourceId: string): Promise<CvParseView | null>;
+  /**
+   * Stores a pending `document` source (the given label, provenance "Candidate-submitted") for an uploaded document,
+   * write-up or image and queues its read (`DocumentReadRequested.v1`). The worker reads it only once the files module
+   * has settled the file clean (FileClean.v1; FileRejected.v1 marks it unreadable): one item per page, "Candidate-
+   * submitted", at most Medium, cited "<label>, page N", with the limit "<label> supplied, authorship unverified."; its
+   * text is fingerprinted once and indexed for search. Admins and recruiters. Throws `EvidenceError('source_label')`.
+   */
+  requestDocumentRead(ctx: WorkspaceContext, input: RequestDocumentReadInput): Promise<{ sourceId: string }>;
+  /**
+   * The read's status (`pending`, `read`, `unreadable`, `failed`) and the document's "Unusual content in this source"
+   * notes, each quoting the document with "page N" (`hidden_text` when the file hides it). Null when the workspace has
+   * no such read. Admins and recruiters.
+   */
+  getDocumentRead(ctx: WorkspaceContext, sourceId: string): Promise<DocumentReadView | null>;
   /**
    * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
    * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.
