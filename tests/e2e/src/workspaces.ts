@@ -1,4 +1,9 @@
+import { createAudit } from '@credalent/audit/composition';
+import { createDb } from '@credalent/db/client';
+import { createIdentity } from '@credalent/identity/composition';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { expect, type Browser, type Page } from '@playwright/test';
+import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 
 // Helpers for specs that sign up a fresh workspace through the app (AIV-P1-001) and decide it in the operator console
@@ -25,19 +30,38 @@ export async function signUpWorkspace(browser: Browser, baseURL: string, email: 
 export const approvalRow = (page: Page, name: string) =>
   page.getByRole('table', { name: 'Workspaces waiting for approval' }).getByRole('row').filter({ hasText: name });
 
-/** Pia approves workspace `name` on /ops/approvals, in a browser context of her own. */
-export async function approveAsOperator(browser: Browser, baseURL: string, name: string) {
-  const context = await browser.newContext({ baseURL });
-  const page = await context.newPage();
-  await signIn(page, { email: PIA });
-  await page.goto('/ops/approvals');
-  await approvalRow(page, name)
-    .getByRole('button', { name: `Approve ${name}` })
-    .click();
-  const dialog = page.getByRole('dialog', { name: `Approve ${name}?` });
-  await dialog.getByRole('button', { name: 'Confirm' }).click();
-  // The open dialog hides the page from the accessibility tree, so wait for it to close before counting rows.
-  await expect(dialog).toBeHidden();
-  await expect(approvalRow(page, name)).toHaveCount(0);
-  await context.close();
+/**
+ * Workspace `name`, signed up by `creatorEmail` and approved by Pia, made through the modules' contracts as seed.ts
+ * makes the cast. Through the screens, the sign-up and the approval took half of a 30 s spec on a CI runner;
+ * ops-approvals.spec.ts proves those screens. Returns the opaque id; the creator lands in the workspace on sign-in.
+ */
+export async function approvedWorkspace(creatorEmail: string, name: string): Promise<string> {
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    const identity = createIdentity(db, { trustedIssuer: 'e2e-seed' });
+    const workspaces = createWorkspaces(db, createAudit(db));
+    // Named as the mocked tenant names people (the email's local part), so a later sign-in renames nobody.
+    const person = async (email: string) =>
+      (
+        await identity.upsertUserFromIdToken({
+          issuer: 'e2e-seed',
+          subject: email,
+          email,
+          emailVerified: true,
+          displayName: email.slice(0, email.indexOf('@')),
+        })
+      ).id;
+    const { id } = await workspaces.createWorkspace({
+      name,
+      company: name,
+      hiringFocus: 'AI and LLM engineering',
+      synthetic: true,
+      needsApproval: true,
+      creatorUserId: await person(creatorEmail),
+    });
+    await workspaces.changeStatus({ operatorId: await person(PIA), workspaceId: id, change: 'approve', reason: '' });
+    return id;
+  } finally {
+    await db.$client.end();
+  }
 }

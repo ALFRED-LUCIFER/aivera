@@ -1,10 +1,10 @@
 import { createAudit } from '@credalent/audit/composition';
 import { createDb } from '@credalent/db/client';
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
-import { approveAsOperator, signUpWorkspace } from './workspaces.ts';
+import { approvedWorkspace } from './workspaces.ts';
 
 // AIV-P2-054 (ADR-012 point 8): the platform audit log at /ops/audit. Other specs write to the same log in parallel, so
 // each test makes its own workspace (Pia Platform approves it) and filters by its opaque id: only this test's entries.
@@ -14,11 +14,9 @@ import { approveAsOperator, signUpWorkspace } from './workspaces.ts';
 const THEO = 'theo.platform@example.com';
 
 /** A new workspace that Pia approved, and its opaque id as Theo finds it on /ops/workspaces (no visit recorded). */
-async function approvedWorkspace(browser: Browser, page: Page, baseURL: string, stamp: string) {
+async function auditedWorkspace(page: Page, stamp: string) {
   const name = `Audit Trail ${stamp}`;
-  const creator = await signUpWorkspace(browser, baseURL, `omar.agency+audit-${stamp}@example.com`, name);
-  await creator.context.close();
-  await approveAsOperator(browser, baseURL, name);
+  await approvedWorkspace(`omar.agency+audit-${stamp}@example.com`, name);
   await signIn(page, { email: THEO });
   await page.goto('/ops/workspaces');
   const search = page.getByRole('searchbox', { name: 'Search by workspace name' });
@@ -41,13 +39,12 @@ async function apply(page: Page) {
 
 for (const theme of themes) {
   test(`Feature: Platform audit log viewer: newest first, filters, link to the workspace, by keyboard (${theme})`, async ({
-    browser,
     page,
     context,
     baseURL,
   }) => {
     const base = baseURL ?? '';
-    const workspace = await approvedWorkspace(browser, page, base, `${theme}-${Date.now()}`);
+    const workspace = await auditedWorkspace(page, `${theme}-${Date.now()}`);
     // Read once: a run that crosses UTC midnight still filters the day its entries were written.
     const today = new Date().toISOString().slice(0, 10);
     await context.addCookies([{ name: 'theme', value: theme, url: base }]);
@@ -126,12 +123,8 @@ for (const theme of themes) {
   });
 }
 
-test('Scenario: Pagination: 60 entries show as 50 and "Next page" with the remaining 10', async ({
-  browser,
-  page,
-  baseURL,
-}) => {
-  const workspace = await approvedWorkspace(browser, page, baseURL ?? '', `page-${Date.now()}`);
+test('Scenario: Pagination: 60 entries show as 50 and "Next page" with the remaining 10', async ({ page }) => {
+  const workspace = await auditedWorkspace(page, `page-${Date.now()}`);
   // Pia's approval and 59 more entries by her: 60 for this workspace. Written through the audit module, not 59 page
   // loads: those flooded the one dev server and timed out the other worker's tests. The feature test above proves a
   // page view records its entry.
