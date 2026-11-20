@@ -298,6 +298,12 @@ async function seed(
       values (${workspaceId}, ${LINA}, 'interviewer', 'active')`),
   );
   await createAiTokenBudget(app).add(workspaceId, '2026-11-18', 1_500);
+  // An indexed chunk (search.chunk, AIV-P0-030), written as indexDocument does after embedding.
+  await withWorkspace(app, workspaceId, (tx) =>
+    tx.execute(sql`insert into search.chunk (id, workspace_id, owner_module, owner_id, chunk_index, start_offset,
+      end_offset, text_hash, embedding, created_at) values (gen_random_uuid(), ${workspaceId}, 'evidence',
+      gen_random_uuid(), 0, 0, 42, 'hash', array_fill(0.1, array[3072])::halfvec, now())`),
+  );
   return workspaces.withWorkspace({ userId: creator }, workspaceId, async (ctx) => {
     await workspaces.setWorkspaceType(ctx, 'agency');
     await workspaces.updateSettings(ctx, { clientShareLinkDays: 7 });
