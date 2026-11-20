@@ -25,6 +25,7 @@ import {
   type DeskJob,
   type Job,
   type JobHeader,
+  type JobStage,
   type PublicListing,
   type Rubric,
   type RubricApproval,
@@ -53,6 +54,7 @@ export type JobStore = {
   /** Replaces a not-yet-approved version's statement, note, revision and competencies, and sets it back to draft. */
   replaceDraft(version: RubricVersion, competencies: Competency[]): Promise<void>;
   setHiringOwner(workspaceId: string, jobId: string, hiringOwnerUserId: string | null): Promise<void>;
+  setStage(workspaceId: string, jobId: string, stage: JobStage): Promise<void>;
   /** Sets whether the job is listed on the candidate site, with its descriptor and publish time. */
   setPublication(
     workspaceId: string,
@@ -332,6 +334,22 @@ export function jobsUseCases({
       if (job.hiringOwnerUserId === ownerId) return;
       await storeFor(ctx.tx).setHiringOwner(ctx.workspaceId, job.id, ownerId);
       await setJobOwner(ctx, { jobId: job.id, previousOwnerId: job.hiringOwnerUserId, ownerId });
+    },
+
+    /** Moves the job to `stage` (AIV-P1-067); past "defining rubric" only with an approved rubric. Audited. */
+    async changeStage(ctx: WorkspaceContext, jobId: string, stage: JobStage): Promise<void> {
+      const job = await visibleJob(ctx, jobId, 'job.change_stage', true);
+      if (job.stage === stage) return;
+      const store = storeFor(ctx.tx);
+      if (stage !== 'defining_rubric' && !(await store.approvedVersion(ctx.workspaceId, job.id)))
+        throw new JobError('stage_needs_rubric');
+      await store.setStage(ctx.workspaceId, job.id, stage);
+      await audit(ctx, {
+        action: 'job.stage_changed',
+        subject: { type: 'job', id: job.id },
+        before: { stage: job.stage },
+        after: { stage },
+      });
     },
 
     /** Null when the job does not exist or the context's job scope does not reach it. */

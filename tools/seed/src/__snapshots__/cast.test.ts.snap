@@ -37,6 +37,35 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 2,
     },
     "stage": "round_1",
+    "supersedes": {
+      "approvedOn": "2026-11-05",
+      "competencies": [
+        {
+          "name": "LLM systems in production",
+          "weight": 25,
+        },
+        {
+          "name": "Retrieval and evaluation",
+          "weight": 20,
+        },
+        {
+          "name": "Python service engineering",
+          "weight": 15,
+        },
+        {
+          "name": "Cost and reliability",
+          "weight": 15,
+        },
+        {
+          "name": "Arabic and multilingual NLP",
+          "weight": 15,
+        },
+        {
+          "name": "Delivery with a team",
+          "weight": 10,
+        },
+      ],
+    },
     "team": "Engineering",
     "title": "Senior AI Engineer",
   },

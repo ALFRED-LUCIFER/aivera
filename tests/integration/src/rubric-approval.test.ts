@@ -66,6 +66,8 @@ const sent = async (jobId: string, weights: number[]) => {
   return as(RANA, (ctx) => jobs.submitRubric(ctx, version.id));
 };
 
+const stageOf = async (jobId: string) =>
+  (await admin.execute<{ stage: string }>(sql`select stage from jobs.job where id = ${jobId}`))[0]?.stage;
 const versions = (jobId: string) =>
   as(ALEX, async ({ tx }) => [
     ...(await tx.execute<{ version: number; status: string; return_note: string | null }>(
@@ -244,6 +246,32 @@ describe("My desk: the recruiter's rubric approvals", () => {
     expect(items.map((i) => [i.title, i.version, i.status])).toEqual([
       ['Senior AI Engineer', 3, 'approved'],
       ['Senior AI Engineer', 4, 'awaiting_approval'],
+    ]);
+  });
+});
+
+// AIV-P1-067: the stage change the demo seed moves its jobs with.
+describe('Moving a job between stages', () => {
+  // SAFETY: mutation check: removed the approvedVersion check from changeStage -> this test failed (the job moved)
+  it('a job with no approved rubric stays at "defining rubric"', async () => {
+    await expect(as(RANA, (ctx) => jobs.changeStage(ctx, spd, 'collecting_evidence'))).rejects.toThrow(
+      new JobError('stage_needs_rubric'),
+    );
+    expect(await stageOf(spd)).toBe('defining_rubric');
+  });
+
+  it('a hiring owner may not move a job; a recruiter moves it once, audited with the stage before and after', async () => {
+    await expect(as(HEAD, (ctx) => jobs.changeStage(ctx, sae, 'round_1'))).rejects.toThrow(ForbiddenError);
+    await as(RANA, (ctx) => jobs.changeStage(ctx, sae, 'round_1'));
+    await as(RANA, (ctx) => jobs.changeStage(ctx, sae, 'round_1'));
+    expect(await stageOf(sae)).toBe('round_1');
+    const moves = (await audit.listFor(demo, { type: 'job', id: sae })).filter((e) => e.action === 'job.stage_changed');
+    expect(moves).toEqual([
+      expect.objectContaining({
+        actor: { type: 'user', id: RANA },
+        before: { stage: 'defining_rubric' },
+        after: { stage: 'round_1' },
+      }),
     ]);
   });
 });

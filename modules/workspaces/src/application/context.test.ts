@@ -63,6 +63,7 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'job.assign_owner': ['YYY', 'YYY', '---', '---'],
   'member.invite': ['YYY', '---', '---', '---'],
   'rubric.approve': ['YYY', '---', 'Y--', '---'],
+  'job.change_stage': ['YYY', 'YYY', '---', '---'],
   'candidate.create': ['YYY', 'YYY', '---', '---'],
   'candidate.view': ['YYY', 'YYY', 'Y--', 'Y--'],
   'scorecard.submit': ['YYY', 'YYY', 'Y--', 'Y--'],

@@ -1,6 +1,6 @@
 // The synthetic demo cast (docs/00-product/personas.md, AIV-P0-031). Every person here is invented: emails are on the
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
-// Module tickets seed from this file: candidates and industry jobs now; the design jobs, applications, evidence,
+// Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
 // interviews and packs when they land.
 import {
   DOMAIN_PACK_CATALOGUE_VERSION,
@@ -25,8 +25,11 @@ export type CastJob = {
   hiringOwner: string;
   stage: 'defining_rubric' | 'collecting_evidence' | 'round_1';
   /** Weights total 100. `approvedOn` is a UTC date; null while the hiring owner has not approved this version. */
-  rubric: { version: number; approvedOn: string | null; competencies: { name: string; weight: number }[] };
+  rubric: { version: number; approvedOn: string | null; competencies: CastCompetency[] };
+  /** The approved version the current one replaced, now superseded (version 2 jobs only). */
+  supersedes?: { approvedOn: string; competencies: CastCompetency[] };
 };
+type CastCompetency = { name: string; weight: number };
 
 /** A demo job in one industry (AIV-P1-065), seeded with a draft rubric v1 from its domain pack. */
 export type CastIndustryJob = {
@@ -86,6 +89,18 @@ export const JOBS: CastJob[] = [
         { name: 'Cost and reliability', weight: 15 },
         { name: 'Arabic and multilingual NLP', weight: 10 },
         { name: 'Delivery with a team', weight: 15 },
+      ],
+    },
+    // Version 1: Arabic NLP at 15%, Delivery with a team at 10%.
+    supersedes: {
+      approvedOn: '2026-11-05',
+      competencies: [
+        { name: 'LLM systems in production', weight: 25 },
+        { name: 'Retrieval and evaluation', weight: 20 },
+        { name: 'Python service engineering', weight: 15 },
+        { name: 'Cost and reliability', weight: 15 },
+        { name: 'Arabic and multilingual NLP', weight: 15 },
+        { name: 'Delivery with a team', weight: 10 },
       ],
     },
   },

@@ -141,6 +141,13 @@
       "when": 1795125669349,
       "tag": "0019_rubric_returned_action",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795145596294,
+      "tag": "0020_job_stage_changed_action",
+      "breakpoints": true
     }
   ]
 }

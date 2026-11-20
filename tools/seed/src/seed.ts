@@ -3,15 +3,19 @@ import { createAudit } from '@aivera/audit/composition';
 import { createCandidates } from '@aivera/candidates/composition';
 import type { Db } from '@aivera/db/client';
 import { createIdentity } from '@aivera/identity/composition';
+import type { Competency } from '@aivera/jobs';
 import { createJobs } from '@aivera/jobs/composition';
+import type { WorkspaceContext } from '@aivera/workspaces';
 import { createWorkspaces } from '@aivera/workspaces/composition';
 import {
   CANDIDATES,
   HIRING_OWNERS,
   INDUSTRY_JOBS,
   industryRubric,
+  JOBS,
   RECRUITER,
   WORKSPACE,
+  type CastJob,
   type CastUser,
 } from './cast.ts';
 
@@ -70,7 +74,9 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
 
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
   const ownerOf = (key: string) => owners[HIRING_OWNERS.findIndex((o) => o.key === key)] ?? null;
-  await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
+  const asRecruiter = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
+    workspaces.withWorkspace(session, workspaceId, fn);
+  const seeded = await asRecruiter(async (ctx) => {
     // First, though audited before the jobs (AGENTS.md 3.6 asks audit last): a job's hiring owner must already be an
     // active member, and gets the job's grant, audited, as the job is saved (AIV-P1-056).
     for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
@@ -101,6 +107,63 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         });
         jobIds.set(job.title, created.job.id);
       }
+    return new Set(jobIds.keys());
   });
+
+  // AIV-P1-067: each design job as the design shows it, on the seed clock so a reseed writes the same dates: added
+  // 3 Nov, each rubric version saved and sent by AP and approved by the job's hiring owner, then moved to its stage.
+  // shortcut: one transaction per step (the hiring owner approves in their own), so a seed stopped midway leaves a job
+  // part-seeded, which a rerun skips; run with --reset then. Resume from the job's state if that ever bites.
+  let seedTime = new Date(0);
+  const at = (date: string, hour: number) => (seedTime = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00Z`));
+  const clock = () => seedTime;
+  const designJobs = createJobs(workspaces, createAudit(db, clock), clock);
+  for (const job of JOBS.filter((j) => !seeded.has(j.title))) {
+    const owner = ownerOf(job.hiringOwner);
+    if (!owner) throw new Error(`No hiring owner ${job.hiringOwner}`);
+    const versions = [...(job.supersedes ? [job.supersedes] : []), job.rubric];
+    at('2026-11-03', 8);
+    const { job: created } = await asRecruiter((ctx) =>
+      designJobs.createJobWithDraftRubric(ctx, {
+        title: job.title,
+        jobType: job.jobType,
+        team: job.team,
+        location: job.location,
+        description: `${job.title}, a synthetic demo job.`,
+        hiringOwnerUserId: owner,
+        synthetic: true,
+        competencies: rubricOf(versions[0]?.competencies ?? []),
+      }),
+    );
+    for (const { approvedOn, competencies } of versions) {
+      // Version 1 is the draft above, edited in place; a later one starts the next version.
+      const version = await asRecruiter((ctx) =>
+        designJobs.saveRubric(ctx, created.id, {
+          successStatement: `Within six months, the new ${job.title} has shipped work the team relies on.`,
+          competencies: rubricOf(competencies),
+        }),
+      );
+      if (!approvedOn) break;
+      at(approvedOn, 8);
+      await asRecruiter((ctx) => designJobs.submitRubric(ctx, version.id));
+      at(approvedOn, 10);
+      await workspaces.withWorkspace({ userId: owner }, workspaceId, (ctx) =>
+        designJobs.approveRubric(ctx, version.id),
+      );
+    }
+    await asRecruiter((ctx) => designJobs.changeStage(ctx, created.id, job.stage));
+  }
   return workspaceId;
+}
+
+/** The cast's competencies as rubric rows: mandatory, from the description, level 3. */
+function rubricOf(competencies: CastJob['rubric']['competencies']): Competency[] {
+  return competencies.map((c) => ({
+    name: c.name,
+    evidenceExpected: '',
+    weightPercent: c.weight,
+    levelNeeded: 3,
+    type: 'mandatory',
+    origin: 'from_description',
+  }));
 }

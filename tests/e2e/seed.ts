@@ -219,7 +219,7 @@ export default async function seed() {
   }
 
   // The five demo jobs (personas.md) for the Jobs list (AIV-P1-006). The recruiter, as admin, approves the four approved
-  // rubrics; stages are set directly because moving a job through its stages arrives with later tickets.
+  // rubrics and moves each job to its stage (AIV-P1-067's changeStage).
   async function seedDemoJobs(workspaceId: string, recruiter: string) {
     const jobs = createJobs(workspaces, createAudit(db));
     const owners = new Map<string, string>();
@@ -286,16 +286,16 @@ export default async function seed() {
           description: `${title}, synthetic demo job.`,
           synthetic: true,
         });
+        // Its rubric versions are seeded below, then it moves to Round 1.
         if (title === 'Senior AI Engineer') {
           sae = job.id;
-          await ctx.tx.execute(sql`update jobs.job set stage = ${stage} where id = ${job.id}`);
           return;
         }
         const version = await jobs.saveRubric(ctx, job.id, { successStatement: 'Ships reliable work.', competencies });
         if (stage === 'defining_rubric') return;
         await jobs.submitRubric(ctx, version.id);
         await jobs.approveRubric(ctx, version.id);
-        await ctx.tx.execute(sql`update jobs.job set stage = ${stage} where id = ${job.id}`);
+        await jobs.changeStage(ctx, job.id, stage);
       });
     }
 
@@ -304,6 +304,7 @@ export default async function seed() {
     // AIV-P1-012: the hiring owner signs in to this workspace to read the rubric.
     await workspaces.switchWorkspace({ userId: head }, workspaceId);
     await artboardRubric(workspaceId, recruiter, head, sae);
+    await as((ctx) => jobs.changeStage(ctx, sae, 'round_1'));
   }
 
   /**
