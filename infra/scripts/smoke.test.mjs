@@ -9,8 +9,7 @@ async function serve(handler) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
     base: `http://127.0.0.1:${server.address().port}`,
-    close: () => server.close(),
-    closeAll: () => (server.closeAllConnections(), server.close()),
+    close: () => (server.closeAllConnections(), server.close()),
   };
 }
 
@@ -43,7 +42,7 @@ test('fails when the commit never becomes ready', async () => {
 });
 
 // SAFETY: mutation check: removed the per-request AbortSignal.timeout -> this test failed (hung past the test timeout)
-test('a hanging request times out and the loop retries', async () => {
+test('a hanging request times out and the loop retries', { timeout: 5_000 }, async () => {
   let calls = 0;
   const app = await serve((req, res) => {
     if (req.url === '/api/health') calls += 1;
@@ -62,6 +61,6 @@ test('a hanging request times out and the loop retries', async () => {
     });
     assert.equal(live, true);
   } finally {
-    app.closeAll();
+    app.close();
   }
 });

@@ -9,13 +9,13 @@ export async function smoke({
   commit,
   timeoutMs = 4 * 60_000,
   intervalMs = 10_000,
-  requestMs = 30_000,
+  requestMs = 90_000,
   log = console.error,
 }) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      // A cold start can hold one request until ingress gives up (~4 min); cap each so the loop keeps retrying.
+      // A cold start can hold one request until ingress gives up (~4 min); cap each (above a ~54 s cold start) so the loop keeps retrying.
       const health = await (await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(requestMs) })).json();
       const ready = await fetch(`${base}/api/ready`, { signal: AbortSignal.timeout(requestMs) });
       log(`health commit=${health.commit} ready=${ready.status}`);
