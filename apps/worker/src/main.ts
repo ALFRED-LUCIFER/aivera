@@ -87,7 +87,7 @@ const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
 const { log } = await import('@credalent/observability');
-const { createScheduler, subscribe, toMessage } = await import('./serviceBus.ts');
+const { createScheduler, subscribe, systemConsumer, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
@@ -267,21 +267,27 @@ const scanResults =
           now,
         });
         const receiver = appBus.createReceiver(SCAN_RESULTS_QUEUE);
-        const subscription = subscribe(receiver, async (delivery) => {
-          try {
-            await files.handleScanResult(delivery.body);
-            await delivery.complete();
-          } catch (error) {
-            if (error instanceof z.ZodError) return delivery.deadLetter('invalid payload');
-            log.warn({ err: error, area: 'files' }, 'scan result failed');
-            // The consumers' retry table: back off under the lock, then dead-letter after 10 deliveries (AIV-P0-015).
-            const settlement = decide('failed', delivery.deliveryCount);
-            if (settlement.action === 'deadLetter') return delivery.deadLetter(settlement.reason);
-            if (settlement.action === 'abandon')
-              await sleep(settlement.delayMs, undefined, { signal: stop.signal }).catch(() => undefined);
-            await delivery.abandon();
-          }
-        });
+        const subscription = subscribe(
+          receiver,
+          systemConsumer(
+            'Defender scan results; each settles only the file its blob path names, in that workspace',
+            async (delivery) => {
+              try {
+                await files.handleScanResult(delivery.body);
+                await delivery.complete();
+              } catch (error) {
+                if (error instanceof z.ZodError) return delivery.deadLetter('invalid payload');
+                log.warn({ err: error, area: 'files' }, 'scan result failed');
+                // The consumers' retry table: back off under the lock, then dead-letter after 10 deliveries (AIV-P0-015).
+                const settlement = decide('failed', delivery.deliveryCount);
+                if (settlement.action === 'deadLetter') return delivery.deadLetter(settlement.reason);
+                if (settlement.action === 'abandon')
+                  await sleep(settlement.delayMs, undefined, { signal: stop.signal }).catch(() => undefined);
+                await delivery.abandon();
+              }
+            },
+          ),
+        );
         return { receiver, subscription };
       })()
     : null;

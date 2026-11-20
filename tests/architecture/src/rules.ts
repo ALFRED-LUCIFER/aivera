@@ -39,7 +39,7 @@ const CANDIDATE_DATA_READERS =
   /[/\\]src[/\\](?:app[/\\]\(candidate\)[/\\]|features[/\\]candidate-[^/\\]+[/\\]|server[/\\]candidate[^/\\]*$|app[/\\]api[/\\]candidate-auth[/\\]|proxy\.ts$|instrumentation\.ts$)/;
 // AIV-P3-002: the public API reaches the jobs contract and the public reads, nothing else of the app or the modules.
 const PUBLIC_API = /[/\\]src[/\\]app[/\\]api[/\\]public[/\\]/;
-const PUBLIC_API_ALLOWED = new Set(['@credalent/jobs', '@/server/publicJobs']);
+const PUBLIC_API_ALLOWED = new Set(['@credalent/jobs', '@/server/publicJobs', '@/server/publicEntry']);
 // AIV-P2-035 (ADR-012): the operator console's pages, layouts and route handlers, and its server action files.
 const OPS_AREA = /[/\\]src[/\\](?:app[/\\]\(ops\)|features[/\\]ops(?:-[^/\\]+)?)[/\\]/;
 // template and default render children like a layout; loading, error and not-found render no console data.
@@ -81,7 +81,7 @@ const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fi
 const IMPORT =
   /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
 
-function* walk(dir: string): Generator<string> {
+export function* walk(dir: string): Generator<string> {
   if (!existsSync(dir)) return;
   for (const name of readdirSync(dir)) {
     if (SKIP.has(name) || name.startsWith('.next')) continue; // .next and NEXT_DIST_DIR builds such as .next-e2e-*

@@ -39,6 +39,12 @@ export const toDelivery = (receiver: ServiceBusReceiver, message: ServiceBusRece
     receiver.deadLetterMessage(message, { deadLetterReason: reason, deadLetterErrorDescription: reason }),
 });
 
+/**
+ * Marks a consumer outside `createConsumer` (no outbox envelope, so no envelope workspace transaction) as declared on
+ * purpose (AGENTS.md 1.3); `reason` says how it scopes itself. The entry-point architecture test refuses an empty one.
+ */
+export const systemConsumer = (_reason: string, handle: (delivery: Delivery) => Promise<void>) => handle;
+
 /** Streams `receiver`'s messages to `handle`, settling manually; close the returned subscription to stop receiving. */
 export const subscribe = (receiver: ServiceBusReceiver, handle: (delivery: Delivery) => Promise<void>) =>
   receiver.subscribe(
