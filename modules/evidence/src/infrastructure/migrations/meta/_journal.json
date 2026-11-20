@@ -78,6 +78,13 @@
       "when": 1795173245735,
       "tag": "0010_force_rls_skill_signals",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795174644108,
+      "tag": "0011_normal_klaw",
+      "breakpoints": true
     }
   ]
 }

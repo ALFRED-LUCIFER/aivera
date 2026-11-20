@@ -26,6 +26,8 @@ export const PERMISSIONS = {
   'candidate.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
+  // Adding a work link on a candidate's application; a GitHub repository link is then read (AIV-P1-076).
+  'application.add_link': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   // Uploading a CV or evidence file, and reading one's own upload's status (AIV-P0-016).
   'file.upload': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   // Downloading a clean file. Job-scoped with no job yet, so hiring owners and interviewers are refused until a file is

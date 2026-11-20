@@ -1,0 +1,3 @@
+ALTER TABLE "intake"."application_source" DROP CONSTRAINT "application_source_source_check";--> statement-breakpoint
+ALTER TABLE "intake"."application_source" ADD COLUMN "github_login" text;--> statement-breakpoint
+ALTER TABLE "intake"."application_source" ADD CONSTRAINT "application_source_source_check" CHECK ("intake"."application_source"."source" in ('linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter'));

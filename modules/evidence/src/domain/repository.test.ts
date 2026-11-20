@@ -9,6 +9,7 @@ import {
   isGeneratedOnly,
   parseRepositoryUrl,
   STRENGTH_CAP,
+  strengthCapOf,
   type Authorship,
   type Commit,
 } from './repository.ts';
@@ -42,6 +43,21 @@ describe('authorship matcher', () => {
     ['a Co-authored-by trailer', commit({ message: 'Fix\n\nCo-authored-by: Sara <sara.alqahtani@example.com>' })],
   ])('counts a commit matched by %s', (_, c) => {
     expect(isAuthoredBy(c, sara)).toBe(true);
+  });
+
+  // AIV-P1-076: with no login supplied, only her emails match; the login is never inferred from the repository owner.
+  it('with no login supplied, matches by the supplied emails only', () => {
+    const noLogin = { login: null, emails: sara.emails };
+    expect(isAuthoredBy(commit({ authorEmail: 'sara.alqahtani@example.com' }), noLogin)).toBe(true);
+    expect(isAuthoredBy(commit({ authorLogin: 'sara-credalent-example' }), noLogin)).toBe(false);
+    expect(isAuthoredBy(commit({ authorEmail: 'sara-credalent-example@users.noreply.github.com' }), noLogin)).toBe(
+      false,
+    );
+    expect([strengthCapOf('clear', false), strengthCapOf('shared', false), strengthCapOf('clear', true)]).toEqual([
+      'medium',
+      'medium',
+      'strong',
+    ]);
   });
 
   it.each([
@@ -109,6 +125,10 @@ describe('repository links, tests and CI', () => {
     ['https://github.com/sara-credalent-example/llm-eval-harness', 'llm-eval-harness'],
     ['https://github.com/sara-credalent-example/llm-eval-harness.git', 'llm-eval-harness'],
     ['https://github.com/sara-credalent-example/llm-eval-harness/', 'llm-eval-harness'],
+    // AIV-P1-076: one spelling per repository, so the same repository is read once.
+    ['https://github.com/Sara-Credalent-Example/LLM-Eval-Harness.git', 'llm-eval-harness'],
+    ['https://github.com/sara-credalent-example/llm-eval-harness/?tab=readme', 'llm-eval-harness'],
+    ['https://github.com/sara-credalent-example/llm-eval-harness#readme', 'llm-eval-harness'],
   ])('reads %s', (url, name) => {
     expect(parseRepositoryUrl(url)).toEqual({ owner: 'sara-credalent-example', name });
   });
@@ -116,8 +136,12 @@ describe('repository links, tests and CI', () => {
   it.each([
     'http://github.com/sara-credalent-example/llm-eval-harness',
     'https://code.credalent.example/sara/llm-eval-harness',
+    'https://gitlab.com/omar-credalent-example/payments',
+    'https://portfolio.omar.credalent.example/projects',
     'https://github.com/sara-credalent-example',
+    'https://gist.github.com/sara-credalent-example/0123abcd',
     'https://github.com/sara-credalent-example/llm-eval-harness/tree/main',
+    'https://github.com/sara-credalent-example/llm-eval-harness/blob/main/README.md',
   ])('refuses %s', (url) => {
     expect(parseRepositoryUrl(url)).toBeNull();
   });

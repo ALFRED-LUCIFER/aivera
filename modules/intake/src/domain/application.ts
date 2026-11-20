@@ -1,7 +1,7 @@
 // An application links one person to one job and records every way it arrived (AIV-P1-017).
 
-/** Where an application came from, as the Inbox shows it. */
-export const SOURCES = ['linkedin', 'careers_page', 'referral', 'email', 'whatsapp'] as const;
+/** Where an application came from, as the Inbox shows it; `recruiter` is a link a member added (AIV-P1-076). */
+export const SOURCES = ['linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter'] as const;
 export type Source = (typeof SOURCES)[number];
 
 /**
@@ -31,18 +31,21 @@ export type ApplicationSource = {
   receivedAt: Date;
   /** Blob file ids of the CV and other files (AIV-P0-016); opaque, never the file name. */
   fileIds: string[];
-  /** Portfolio or repository links the candidate sent. */
+  /** Portfolio or repository links the candidate sent, or a member added. */
   links: string[];
+  /** The GitHub login the candidate supplied, never one derived from their name, email or a repository owner. */
+  githubLogin: string | null;
 };
 
 /**
  * Field names in this module's contract that hold candidate personal data (AGENTS.md 1.2), for the telemetry scrubber
  * (AIV-P0-018) to register. Never log them.
  */
-export const PERSONAL_DATA_FIELDS = ['links'] as const;
+export const PERSONAL_DATA_FIELDS = ['links', 'githubLogin'] as const;
 
 const MESSAGES = {
   job_not_found: 'Job not found',
+  application_not_found: 'Application not found',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;

@@ -198,7 +198,10 @@ export const repositoryRead = evidence
       workspaceId: uuid('workspace_id').notNull(),
       sourceId: uuid('source_id').notNull(),
       candidateId: uuid('candidate_id').notNull(),
-      githubLogin: text('github_login').notNull(),
+      // The normalised https://github.com/<owner>/<repo> (domain/repository.ts), so spellings of one repository match.
+      url: text().notNull(),
+      // Null when the candidate supplied no login (AIV-P1-076): commits then match by the emails only.
+      githubLogin: text('github_login'),
       emails: text().array().notNull(),
       status: text({ enum: REPOSITORY_READ_STATUSES }).notNull(),
       totalCommits: integer('total_commits'),
@@ -216,6 +219,8 @@ export const repositoryRead = evidence
     },
     (t) => [
       primaryKey({ name: 'repository_read_pkey', columns: [t.workspaceId, t.sourceId] }),
+      // One read per candidate and repository, whichever path or spelling the link came by (AIV-P1-076).
+      unique('repository_read_candidate_url_key').on(t.workspaceId, t.candidateId, t.url),
       foreignKey({
         name: 'repository_read_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],

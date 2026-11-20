@@ -22,6 +22,7 @@ const config: NextConfig = {
     '@credalent/jobs',
     '@credalent/candidates',
     '@credalent/intake',
+    '@credalent/evidence',
     '@credalent/candidate-accounts',
     '@credalent/workspaces',
     '@credalent/audit',

@@ -14,6 +14,7 @@
   "dependencies": {
     "@credalent/audit": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/intake": "workspace:*",
     "@credalent/observability": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "drizzle-orm": "0.45.4",

@@ -16,9 +16,10 @@ import {
   itemStrength,
   MERGED_PULL_REQUEST_LIMIT,
   mergedPullRequestExcerpt,
+  NO_LOGIN_LIMIT,
   normaliseLogin,
   parseRepositoryUrl,
-  STRENGTH_CAP,
+  strengthCapOf,
   type AuthorshipClass,
   type Commit,
   type MergedPullRequest,
@@ -80,7 +81,10 @@ export type RepositoryRead = {
   workspaceId: string;
   sourceId: string;
   candidateId: string;
-  githubLogin: string;
+  /** `https://github.com/<owner>/<repo>`, lower case: one read per candidate and repository (unique index). */
+  url: string;
+  /** Null when the candidate supplied none: commits then match by their emails only. */
+  githubLogin: string | null;
   emails: string[];
   status: RepositoryReadStatus;
   totalCommits: number | null;
@@ -123,7 +127,11 @@ export type MergedPullRequestRow = MergedPullRequest & {
 
 /** Over one workspace-scoped transaction; every method filters by `workspaceId`. */
 export type RepositoryReadStore = {
-  insert(read: RepositoryRead): Promise<void>;
+  /**
+   * Inserts `source` and its pending `read`, unless the candidate already has a read of `read.url` (a concurrent one
+   * included): then neither is kept and that read's source id is returned.
+   */
+  insertOrGet(source: EvidenceSource, read: RepositoryRead): Promise<string | null>;
   find(workspaceId: string, sourceId: string): Promise<{ read: RepositoryRead; source: EvidenceSource } | null>;
   /** The candidate's repository reads that are no longer pending, with their sources, locked for this transaction. */
   lockForCandidate(
@@ -157,7 +165,7 @@ export type RepositoryReadStore = {
   knownPullRequests(workspaceId: string, candidateId: string): Promise<Set<string>>;
 };
 
-export type RepositoryPorts = Pick<Ports, 'storeFor' | 'publishRecorded' | 'authorize' | 'newId' | 'now'> & {
+export type RepositoryPorts = Pick<Ports, 'publishRecorded' | 'authorize' | 'newId' | 'now'> & {
   readStoreFor(tx: Tx): RepositoryReadStore;
   /** Writes `RepositoryReadRequested.v1` to the outbox in `tx`. */
   publishReadRequested(tx: Tx, source: EvidenceSource): Promise<void>;
@@ -172,13 +180,14 @@ export type RequestRepositoryReadInput = {
   candidateId: string;
   /** https://github.com/<owner>/<repository>; only public repositories are read. */
   url: string;
-  githubLogin: string;
+  /** Only the login the candidate supplied, never one derived from a name, an email or the repository owner. */
+  githubLogin: string | null;
   /** Emails the candidate verified with us, zod-checked by the caller; commits by these count as theirs. */
   emails: string[];
   synthetic: boolean;
 };
 
-export type RepositoryReadView = Omit<RepositoryRead, 'githubLogin' | 'emails'> & {
+export type RepositoryReadView = Omit<RepositoryRead, 'githubLogin' | 'emails' | 'url'> & {
   /** Null unless read: nothing is scored from a fork or an inaccessible repository. */
   share: { numerator: number; denominator: number } | null;
   authorship: AuthorshipClass | null;
@@ -200,8 +209,101 @@ function authorshipOf(read: RepositoryRead) {
   };
 }
 
+/**
+ * Stores a pending repository source and queues its read (`RepositoryReadRequested.v1`), once per candidate and
+ * normalised URL: a second request returns the first read's source id and queues nothing. No authorisation here:
+ * `requestRepositoryRead` authorises a person; the system callers (the `ApplicationReceived.v1` handler, CV parsing
+ * AIV-P1-025) run in the workspace of their envelope.
+ */
+export async function queueRepositoryRead(
+  ports: Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRequested' | 'newId' | 'now'>,
+  tx: Tx,
+  workspaceId: string,
+  input: RequestRepositoryReadInput,
+): Promise<{ sourceId: string; queued: boolean }> {
+  const repo = parseRepositoryUrl(input.url);
+  if (!repo) throw new EvidenceError('repository_url');
+  const githubLogin = input.githubLogin === null ? null : normaliseLogin(input.githubLogin);
+  if (githubLogin !== null && !isGitHubLogin(githubLogin)) throw new EvidenceError('github_login');
+  const at = ports.now();
+  const url = `https://github.com/${repo.owner}/${repo.name}`;
+  const source: EvidenceSource = {
+    id: ports.newId(),
+    workspaceId,
+    candidateId: input.candidateId,
+    kind: 'repository',
+    label: repo.name,
+    url,
+    blobFileId: null,
+    capturedAt: at,
+    checkedAt: null,
+    checkMethod: null,
+    synthetic: input.synthetic,
+    createdAt: at,
+    textFingerprint: null,
+  };
+  const existing = await ports.readStoreFor(tx).insertOrGet(source, {
+    workspaceId,
+    sourceId: source.id,
+    candidateId: input.candidateId,
+    url,
+    githubLogin,
+    emails: [...new Set(input.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))],
+    status: 'pending',
+    totalCommits: null,
+    authoredCommits: null,
+    generatedOnlyCommits: null,
+    generatedChecked: null,
+    commitsTruncated: null,
+    languages: null,
+    pushedAt: null,
+    hasTests: null,
+    hasCi: null,
+    filesInspected: null,
+    coverageGap: null,
+  });
+  if (existing) return { sourceId: existing, queued: false };
+  await ports.publishReadRequested(tx, source);
+  return { sourceId: source.id, queued: true };
+}
+
+/** An application's arrival as the intake module stores it. */
+export type Arrival = { personId: string; links: string[]; githubLogin: string | null };
+
+export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRequested' | 'newId' | 'now'> & {
+  readArrival(tx: Tx, workspaceId: string, sourceId: string): Promise<Arrival | null>;
+  /** The emails on the candidate record: commits by these count as theirs. */
+  readPerson(tx: Tx, workspaceId: string, personId: string): Promise<{ emails: string[]; synthetic: boolean } | null>;
+  /** Opaque ids only, never the link, login or emails (AGENTS.md 1.2). */
+  logQueued(ids: { sourceId: string; candidateId: string; queued: boolean }): void;
+};
+
+/**
+ * The `ApplicationReceived.v1` handler's work (AIV-P1-076): one read per GitHub repository link on the arrival, by
+ * the login the candidate supplied (dropped when it is not a valid login, never guessed) and the emails on their
+ * record. Any other link stays on the application as a plain link.
+ */
+export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId: string, sourceId: string) {
+  const arrival = await ports.readArrival(tx, workspaceId, sourceId);
+  const links = arrival?.links.filter((link) => parseRepositoryUrl(link)) ?? [];
+  if (!arrival || links.length === 0) return;
+  const person = await ports.readPerson(tx, workspaceId, arrival.personId);
+  if (!person) return;
+  const login = arrival.githubLogin && normaliseLogin(arrival.githubLogin);
+  for (const url of links) {
+    const read = await queueRepositoryRead(ports, tx, workspaceId, {
+      candidateId: arrival.personId,
+      url,
+      githubLogin: login && isGitHubLogin(login) ? login : null,
+      emails: person.emails,
+      synthetic: person.synthetic,
+    });
+    ports.logQueued({ sourceId: read.sourceId, candidateId: arrival.personId, queued: read.queued });
+  }
+}
+
 export function repositoryReadUseCases(ports: RepositoryPorts) {
-  const { storeFor, readStoreFor, publishReadRequested, publishRefreshRequested, authorize, newId, now } = ports;
+  const { readStoreFor, publishRefreshRequested, authorize, newId, now } = ports;
   return {
     /** Stores a pending repository source and asks the worker to read it (`evidence.repository.read`). */
     async requestRepositoryRead(
@@ -209,62 +311,22 @@ export function repositoryReadUseCases(ports: RepositoryPorts) {
       input: RequestRepositoryReadInput,
     ): Promise<{ sourceId: string }> {
       await authorize(ctx, 'candidate.create');
-      const repo = parseRepositoryUrl(input.url);
-      if (!repo) throw new EvidenceError('repository_url');
-      const githubLogin = normaliseLogin(input.githubLogin);
-      if (!isGitHubLogin(githubLogin)) throw new EvidenceError('github_login');
-      const at = now();
-      const source: EvidenceSource = {
-        id: newId(),
-        workspaceId: ctx.workspaceId,
-        candidateId: input.candidateId,
-        kind: 'repository',
-        label: repo.name,
-        url: `https://github.com/${repo.owner}/${repo.name}`,
-        blobFileId: null,
-        capturedAt: at,
-        checkedAt: null,
-        checkMethod: null,
-        synthetic: input.synthetic,
-        createdAt: at,
-        textFingerprint: null,
-      };
-      await storeFor(ctx.tx).insert(source, [], []);
-      await readStoreFor(ctx.tx).insert({
-        workspaceId: ctx.workspaceId,
-        sourceId: source.id,
-        candidateId: input.candidateId,
-        githubLogin,
-        emails: [...new Set(input.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))],
-        status: 'pending',
-        totalCommits: null,
-        authoredCommits: null,
-        generatedOnlyCommits: null,
-        generatedChecked: null,
-        commitsTruncated: null,
-        languages: null,
-        pushedAt: null,
-        hasTests: null,
-        hasCi: null,
-        filesInspected: null,
-        coverageGap: null,
-      });
-      await publishReadRequested(ctx.tx, source);
-      return { sourceId: source.id };
+      const { sourceId } = await queueRepositoryRead(ports, ctx.tx, ctx.workspaceId, input);
+      return { sourceId };
     },
 
     async getRepositoryRead(ctx: WorkspaceContext, sourceId: string): Promise<RepositoryReadView | null> {
       await authorize(ctx, 'candidate.view');
       const found = await readStoreFor(ctx.tx).find(ctx.workspaceId, sourceId);
       if (!found) return null;
-      const { githubLogin: _login, emails: _emails, ...read } = found.read;
+      const { githubLogin, emails: _emails, url: _url, ...read } = found.read;
       const authorship = authorshipOf(found.read);
       const cls = authorship && classifyAuthorship(authorship);
       return {
         ...read,
         share: authorship && authorshipShare(authorship),
         authorship: cls,
-        strengthCap: cls && STRENGTH_CAP[cls],
+        strengthCap: cls && strengthCapOf(cls, githubLogin !== null),
       };
     },
 
@@ -374,7 +436,10 @@ async function readSource(
   // A fork or an inaccessible repository is never measured; the candidate's work counts there only through pull
   // requests merged upstream, which are read whatever this repository turns out to be.
   const measured = repo && meta && !meta.private && !meta.fork ? await measure(github, repo, meta, who) : null;
-  const pulls = await mergedElsewhere(github, who.login, await store.knownPullRequests(workspaceId, read.candidateId));
+  // Pull requests are found by their author's login: with none supplied there is nothing to search by.
+  const pulls = who.login
+    ? await mergedElsewhere(github, who.login, await store.knownPullRequests(workspaceId, read.candidateId))
+    : [];
 
   const checkedAt = now();
   const base = { workspaceId, candidateId: read.candidateId, synthetic: source.synthetic, createdAt: checkedAt };
@@ -396,7 +461,7 @@ async function readSource(
       excerptSpan: null,
       provenance: 'submitted',
       strength: itemStrength(measured.authorship),
-      limit: AUTHORSHIP_LIMIT,
+      limit: who.login ? AUTHORSHIP_LIMIT : `${NO_LOGIN_LIMIT} ${AUTHORSHIP_LIMIT}`,
     };
     await store.insertItems(null, [item], []);
     // A re-read is a new event for the same source, so it needs its own key; the earlier item stays as history.
@@ -428,7 +493,7 @@ async function readSource(
         ...base,
         sourceId: prSource.id,
         id,
-        excerpt: mergedPullRequestExcerpt(pr, who.login),
+        excerpt: mergedPullRequestExcerpt(pr, who.login ?? ''),
         excerptSpan: `${pr.repository}#${pr.number}`,
         provenance: 'submitted',
         // Corroboration by another maintainer's merge is decided in AIV-P1-029, not here.
@@ -440,7 +505,7 @@ async function readSource(
         workspaceId,
         itemId: id,
         candidateId: read.candidateId,
-        selfMerged: isSelfMerged(pr, who.login),
+        selfMerged: isSelfMerged(pr, who.login ?? ''),
       });
     }
     await store.insertItems(prSource, items, rows);
@@ -516,7 +581,7 @@ async function measure(
   github: GitHubPort,
   repo: { owner: string; name: string },
   meta: GitHubRepository,
-  who: { login: string; emails: string[] },
+  who: { login: string | null; emails: string[] },
 ) {
   const [languages, tree, { commits, truncated }] = await Promise.all([
     github.languages(repo.owner, repo.name),

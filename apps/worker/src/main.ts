@@ -45,10 +45,17 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
+const { readPersonAsSystem } = await import('@credalent/candidates/composition');
 const { EvidenceRecordedV1, RepositoryReadRequestedV1, RepositoryRefreshRequestedV1 } =
   await import('@credalent/evidence');
-const { createRepositoryReadHandler, createRepositoryRefreshHandler, EVIDENCE_QUEUE } =
-  await import('@credalent/evidence/composition');
+const {
+  createApplicationReceivedHandler,
+  createRepositoryReadHandler,
+  createRepositoryRefreshHandler,
+  EVIDENCE_QUEUE,
+} = await import('@credalent/evidence/composition');
+const { ApplicationReceivedV1 } = await import('@credalent/intake');
+const { readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
 const { createApprovedRubricReads } = await import('@credalent/jobs/composition');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
@@ -64,7 +71,7 @@ const { createScheduler, subscribe, toMessage } = await import('./serviceBus.ts'
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is left out until something consumes them (CV parsing, AIV-P1-025):
 // its events wait unsent in files.outbox rather than retry with no queue; that ticket adds the schema and the mapping.
-const OUTBOXES = ['candidates', 'jobs', 'evidence', 'notifications'];
+const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications'];
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
   // shortcut: nothing consumes `assessment` until AIV-P1-031, so RubricApproved.v1 and EvidenceRecorded.v1 dead-letter
@@ -78,6 +85,7 @@ const QUEUES: Record<string, string> = {
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
   [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
+  [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
   // shortcut: EvidenceRequestSent/Opened/Answered/Quiet.v1 (AIV-P1-037) have no queue until the follow-up consumer
   // (AIV-P1-040) maps them; nothing sends a request before its screen (AIV-P1-039), so none are written meanwhile.
 };
@@ -129,6 +137,7 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
     }),
   ],
 };
+// The evidence handlers share the queue, so all wait for the GitHub App: an unknown event type is dead-lettered.
 if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID) {
   const github = {
     appId: env.GITHUB_APP_ID,
@@ -139,12 +148,17 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
   // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
   const scheduler = createScheduler(senderFor);
   CONSUMERS[EVIDENCE_QUEUE] = [
+    createApplicationReceivedHandler({
+      readArrival: readApplicationSourceAsSystem,
+      readPerson: readPersonAsSystem,
+      now,
+    }),
     createRepositoryReadHandler({ github, scheduler, now }),
     createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
   ];
 }
-// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads wait (and dead-letter after
-// the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-026 PR, owner to-dos).
+// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads and arrivals wait (and
+// dead-letter after the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-074).
 else log.warn('GitHub App not configured: repository reads are not consumed');
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
