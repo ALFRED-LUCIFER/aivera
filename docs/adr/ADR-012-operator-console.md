@@ -2,6 +2,7 @@
 
 - **Status:** Accepted, 19 Nov 2026 (point 10 open for the owner)
 - **Ticket:** AIV-P2-035, for epic AIV-P2-E08 (AIV-P2-035 to 039, AIV-P5-015 to 018)
+- **Amended by:** [ADR-013](ADR-013-catalogue-in-the-database.md) (proposed): operators edit the catalogue through a draft, an eval run and a published version; who is an operator is unchanged
 
 ## Context
 
