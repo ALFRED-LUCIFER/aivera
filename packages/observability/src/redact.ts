@@ -52,6 +52,14 @@ const ALLOWED = [
   'credalent.ai.template_version',
   // How alike two evidence sources' fingerprints are, 0..1, logged with their ids when a flag is raised (AIV-P1-071).
   'credalent.evidence.similarity',
+  // Evidence mapping counts per run (AIV-P1-027): numbers only, so guard failures show in telemetry.
+  'credalent.evidence.links',
+  'credalent.evidence.gaps',
+  'credalent.evidence.uncited_changes',
+  'credalent.evidence.discarded.unknown_competency',
+  'credalent.evidence.discarded.unknown_source',
+  'credalent.evidence.discarded.claim_above_supporting',
+  'credalent.evidence.discarded.no_evidence_grade',
   // The HMAC of an email's recipient (AIV-P0-017): the only form of an address that may be logged.
   'notifications.recipient_hash',
   'gen_ai.usage.input_tokens',

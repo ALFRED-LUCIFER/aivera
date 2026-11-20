@@ -6,8 +6,8 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases } from './application/applications.ts';
-import { ApplicationReceivedV1, type IntakeContract } from './contracts/index.ts';
-import { intakeStore } from './infrastructure/repository.ts';
+import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
+import { candidatesForJob, intakeStore, jobsForCandidate } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
@@ -43,3 +43,6 @@ export function createIntake(
  */
 export const readApplicationSourceAsSystem = (tx: Tx, workspaceId: string, sourceId: string) =>
   intakeStore(tx).findSource(workspaceId, sourceId);
+
+/** The worker's application reads (AIV-P1-027). */
+export const createApplicationReads = (): ApplicationReads => ({ jobsForCandidate, candidatesForJob });

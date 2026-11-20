@@ -1,10 +1,12 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
 import {
   competencyLink,
   duplicateFlag,
+  evidenceGap,
   item,
+  mapping,
   mergedPullRequest,
   repositoryRead,
   repositorySkillGrade,
@@ -43,7 +45,21 @@ export function evidenceStore(tx: Tx): EvidenceStore {
         });
       return true;
     },
-    async list(workspaceId, { candidateId, itemId }, jobId) {
+    async list(workspaceId, { candidateId, itemId, unmapped }, jobId) {
+      // For a job, a mapped item counts only from the candidate's newest mapping run for it (AIV-P1-027).
+      const newestRun = (job: string) =>
+        tx
+          .select({ id: mapping.id })
+          .from(mapping)
+          .where(
+            and(
+              eq(mapping.workspaceId, item.workspaceId),
+              eq(mapping.candidateId, item.candidateId),
+              eq(mapping.jobId, job),
+            ),
+          )
+          .orderBy(desc(mapping.createdAt), desc(mapping.id))
+          .limit(1);
       const rows = await tx
         .select({ item, source })
         .from(item)
@@ -53,6 +69,8 @@ export function evidenceStore(tx: Tx): EvidenceStore {
             eq(item.workspaceId, workspaceId),
             candidateId === undefined ? undefined : eq(item.candidateId, candidateId),
             itemId === undefined ? undefined : eq(item.id, itemId),
+            unmapped ? isNull(item.mappingId) : undefined,
+            jobId === null ? undefined : or(isNull(item.mappingId), sql`${item.mappingId} = (${newestRun(jobId)})`),
           ),
         )
         .orderBy(asc(item.createdAt), asc(item.id));
@@ -70,11 +88,11 @@ export function evidenceStore(tx: Tx): EvidenceStore {
             jobId === null ? undefined : eq(competencyLink.jobId, jobId),
           ),
         );
-      return rows.map((r) => ({
-        ...r.item,
-        source: r.source,
+      return rows.map(({ item: { mappingId: _run, ...own }, source: src }) => ({
+        ...own,
+        source: src,
         competencies: links
-          .filter((l) => l.itemId === r.item.id)
+          .filter((l) => l.itemId === own.id)
           .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId, level: l.level })),
       }));
     },
@@ -131,6 +149,8 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       // Requests first: their items reference evidence items; the cascade takes request items and portal tokens.
       await tx.delete(request).where(eq(request.workspaceId, workspaceId));
       await tx.delete(item).where(eq(item.workspaceId, workspaceId));
+      await tx.delete(evidenceGap).where(eq(evidenceGap.workspaceId, workspaceId));
+      await tx.delete(mapping).where(eq(mapping.workspaceId, workspaceId));
       await tx.delete(source).where(eq(source.workspaceId, workspaceId));
       return true;
     },

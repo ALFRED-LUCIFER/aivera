@@ -168,6 +168,7 @@ module worker 'modules/worker.bicep' = {
     emailSender: communication.outputs.senderAddress
     blobUrl: blobUrl
     malwareScanning: malwareScanning
+    aiResourceName: ai.outputs.resourceName
   }
 }
 

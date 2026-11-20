@@ -60,3 +60,21 @@ export function intakeStore(tx: Tx): IntakeStore {
     },
   };
 }
+
+/** The jobs a person applied to, for the worker (AIV-P1-027); the workspace filter here, row-level security below. */
+export const jobsForCandidate = async (tx: Tx, workspaceId: string, personId: string) =>
+  (
+    await tx
+      .select({ jobId: application.jobId })
+      .from(application)
+      .where(and(eq(application.workspaceId, workspaceId), eq(application.personId, personId)))
+  ).map((r) => r.jobId);
+
+/** The people who applied to a job, for the worker (AIV-P1-027). */
+export const candidatesForJob = async (tx: Tx, workspaceId: string, jobId: string) =>
+  (
+    await tx
+      .select({ personId: application.personId })
+      .from(application)
+      .where(and(eq(application.workspaceId, workspaceId), eq(application.jobId, jobId)))
+  ).map((r) => r.personId);

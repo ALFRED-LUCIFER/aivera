@@ -432,6 +432,17 @@ async function seed(
       (workspace_id, source_id, rubric_version_id, competency_id, skill, grade, reason, citations)
       values (${workspaceId}, ${repositorySourceId}, ${rubric.id}, ${crypto.randomUUID()}, 'Python', 'PARTIAL',
         'single_code_file', '[]'::jsonb)`);
+    // A mapping run, a mapped item and an evidence gap (evidence.mapping, item.mapping_id, evidence_gap, AIV-P1-027).
+    const mappingId = crypto.randomUUID();
+    await ctx.tx.execute(sql`insert into evidence.mapping (id, workspace_id, candidate_id, job_id, rubric_version_id,
+      prompt_version, model, changes, created_at) values (${mappingId}, ${workspaceId}, ${personId}, ${job.id},
+      ${rubric.id}, 'evidence.mapToCompetency@1', 'gpt-4.1-mini', '[]'::jsonb, now())`);
+    await ctx.tx.execute(sql`insert into evidence.evidence_gap (id, workspace_id, mapping_id, competency_id, kind)
+      values (${crypto.randomUUID()}, ${workspaceId}, ${mappingId}, ${crypto.randomUUID()}, 'no_evidence')`);
+    await ctx.tx.execute(sql`insert into evidence.item (id, workspace_id, source_id, candidate_id, excerpt,
+      provenance, strength, limit_statement, synthetic, created_at, mapping_id)
+      select ${crypto.randomUUID()}, workspace_id, source_id, candidate_id, excerpt, provenance, strength,
+        limit_statement, synthetic, created_at, ${mappingId} from evidence.item where id = ${itemIds[0]}`);
     await ctx.tx.execute(sql`insert into evidence.merged_pull_request
       (workspace_id, item_id, candidate_id, repository, number, merged_at, merged_by, self_merged)
       values (${workspaceId}, ${itemIds[0]}, ${personId}, 'saga-maintainer-credalent-example/saga', 41, now(),

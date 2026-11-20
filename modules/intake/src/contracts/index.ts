@@ -1,4 +1,5 @@
 // The only public surface of @credalent/intake (ADR-002).
+import type { Tx } from '@credalent/db';
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
@@ -33,4 +34,13 @@ export interface IntakeContract {
    * a grant on it or its client (`ForbiddenError`, writing nothing). Throws `IntakeError('application_not_found')`.
    */
   addLink(ctx: WorkspaceContext, applicationId: string, url: string): Promise<{ sourceId: string }>;
+}
+
+/**
+ * Who applied to what, for the worker in the consumer's workspace-scoped transaction `tx` (AIV-P1-027: evidence mapping
+ * runs per candidate and job). Server-side only; never called with a workspace id from client input.
+ */
+export interface ApplicationReads {
+  jobsForCandidate(tx: Tx, workspaceId: string, personId: string): Promise<string[]>;
+  candidatesForJob(tx: Tx, workspaceId: string, jobId: string): Promise<string[]>;
 }

@@ -144,6 +144,9 @@ importers:
       '@azure/service-bus':
         specifier: 7.10.0
         version: 7.10.0
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
@@ -168,6 +171,9 @@ importers:
       '@credalent/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@credalent/workspaces':
+        specifier: workspace:*
+        version: link:../../modules/workspaces
       long:
         specifier: 5.3.2
         version: 5.3.2
@@ -311,6 +317,9 @@ importers:
 
   modules/evidence:
     dependencies:
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@credalent/audit':
         specifier: workspace:*
         version: link:../audit
@@ -320,6 +329,9 @@ importers:
       '@credalent/intake':
         specifier: workspace:*
         version: link:../intake
+      '@credalent/jobs':
+        specifier: workspace:*
+        version: link:../jobs
       '@credalent/observability':
         specifier: workspace:*
         version: link:../../packages/observability

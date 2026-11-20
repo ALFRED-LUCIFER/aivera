@@ -300,5 +300,8 @@ export interface ApprovedRubricReads {
     tx: Tx,
     workspaceId: string,
     jobId: string,
-  ): Promise<{ id: string; competencies: { id: string; name: string; evidenceExpected: string }[] } | null>;
+  ): Promise<{
+    id: string;
+    competencies: { id: string; name: string; evidenceExpected: string; weightPercent: number }[];
+  } | null>;
 }

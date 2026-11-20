@@ -197,7 +197,8 @@ export type RepositoryReadView = Omit<RepositoryRead, 'githubLogin' | 'emails' |
 const CHECK_METHOD = 'Commit history';
 const PULL_REQUEST_CHECK_METHOD = 'Merged pull request';
 
-function authorshipOf(read: RepositoryRead) {
+/** The measured authorship of a read repository; null unless read. */
+export function authorshipOf(read: RepositoryRead) {
   const { totalCommits, authoredCommits, generatedOnlyCommits, generatedChecked, commitsTruncated } = read;
   if (read.status !== 'read' || totalCommits === null || authoredCommits === null) return null;
   return {
@@ -357,7 +358,10 @@ export type ApprovedRubricPort = (
   tx: Tx,
   workspaceId: string,
   jobId: string,
-) => Promise<{ id: string; competencies: { id: string; name: string; evidenceExpected: string }[] } | null>;
+) => Promise<{
+  id: string;
+  competencies: { id: string; name: string; evidenceExpected: string; weightPercent: number }[];
+} | null>;
 
 type Found = { read: RepositoryRead; source: EvidenceSource };
 
@@ -410,16 +414,27 @@ export async function refreshStaleRepositorySources(
     if (retryAt) throw new GitHubRateLimited(retryAt);
   }
   const rubric = await approvedRubric(tx, workspaceId, jobId);
-  if (rubric) {
-    const targets = targetSkills(rubric.competencies);
-    for (const { sourceId, coverage, signals } of await store.skillInputs(workspaceId, candidateId))
-      await store.replaceGrades(
-        workspaceId,
-        sourceId,
-        rubric.id,
-        targets.map(({ competencyId, skill }) => ({ competencyId, ...classifySkill(skill, signals, coverage) })),
-      );
-  }
+  if (rubric) await gradeSources(store, workspaceId, candidateId, rubric);
+}
+
+/**
+ * Grades every read repository source of the candidate against the rubric version from its stored skill signals; no
+ * GitHub call (AIV-P1-027 grades before it maps).
+ */
+export async function gradeSources(
+  store: RepositoryReadStore,
+  workspaceId: string,
+  candidateId: string,
+  rubric: { id: string; competencies: { id: string; name: string; evidenceExpected: string }[] },
+): Promise<void> {
+  const targets = targetSkills(rubric.competencies);
+  for (const { sourceId, coverage, signals } of await store.skillInputs(workspaceId, candidateId))
+    await store.replaceGrades(
+      workspaceId,
+      sourceId,
+      rubric.id,
+      targets.map(({ competencyId, skill }) => ({ competencyId, ...classifySkill(skill, signals, coverage) })),
+    );
 }
 
 /** Reads one repository source, pending or (on a refresh) stale; `known` is its metadata when the caller has it. */
@@ -468,8 +483,8 @@ async function readSource(
     };
     await store.insertItems(null, [item], []);
     // A re-read is a new event for the same source, so it needs its own key; the earlier item stays as history.
-    // shortcut: a re-read appends an authorship item and both list under the source; AIV-P1-027 and the evidence-profile
-    // tickets must show only the newest per source.
+    // shortcut: a re-read appends an authorship item and both list under the source, beside the mapped copies of
+    // AIV-P1-027 (which maps only the newest); the evidence-profile ticket must show only the newest per source.
     const key = read.status === 'pending' ? undefined : `source:${sourceId}:${checkedAt.toISOString()}`;
     await publishRecorded(tx, source, [item.id], key);
   }

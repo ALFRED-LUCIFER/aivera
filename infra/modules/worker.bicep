@@ -23,6 +23,8 @@ param emailSender string
 param blobUrl string
 @description('Whether Defender scans uploads; off in dev only (owner, 20 Nov 2026).')
 param malwareScanning bool
+@description('The AI Foundry resource evidence mapping calls with the app identity (modules/ai.bicep, AIV-P1-027).')
+param aiResourceName string
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -73,6 +75,7 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
             // Uploads (AIV-P0-016). With scanning off the web app settles uploads itself after re-checking the blob.
             { name: 'AZURE_STORAGE_BLOB_URL', value: blobUrl }
             { name: 'MALWARE_SCANNING', value: malwareScanning ? 'on' : 'off' }
+            { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
           ]
           resources: { cpu: json('0.25'), memory: '0.5Gi' }
           probes: [

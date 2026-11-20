@@ -3,6 +3,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+import type { EvidenceMappingView } from '../application/mapping.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
 import type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
@@ -28,6 +29,9 @@ export { parseRepositoryUrl } from '../domain/repository.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
+export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
+export { CLAIM_LIMIT } from '../domain/mapping.ts';
+export type { EvidenceGap, GapKind, StoredChange } from '../domain/mapping.ts';
 export type { OpenClaim, RequestStatus } from '../domain/request.ts';
 
 const requestEvent = <T extends string>(type: T) =>
@@ -76,6 +80,25 @@ export const RepositoryRefreshRequestedV1 = {
 } satisfies EventDefinition<{ candidateId: string; jobId: string }>;
 
 /**
+ * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.mapping` maps the
+ * candidate's evidence to the job's approved rubric version (AIV-P1-027). One per candidate and job, fanned out from
+ * `EvidenceRecorded.v1` (each job the candidate applied to) and `RubricApproved.v1` (each applicant). Opaque ids only.
+ */
+export const EvidenceMappingRequestedV1 = {
+  type: 'EvidenceMappingRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string }>;
+
+/**
+ * The ticket's "evidence.mapped": written to `evidence.outbox` with a stored mapping run and sent to the `assessment`
+ * queue, whose consumer scores the candidate again (AIV-P1-031). Opaque ids only.
+ */
+export const EvidenceMappedV1 = {
+  type: 'EvidenceMapped.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid(), rubricVersionId: z.uuid(), mappingId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string; rubricVersionId: string; mappingId: string }>;
+
+/**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
  * so the workspace id never comes from client input (ADR-005). Role checks go through the workspaces `authorize`;
  * refusals throw `ForbiddenError`, rule failures `EvidenceError`.
@@ -90,8 +113,8 @@ export interface EvidenceContract {
   /** Links an item to a competency of a job's rubric; linking twice keeps one link. Admins and recruiters. */
   linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void>;
   /**
-   * The candidate's items, oldest first, each with its source and its links to `jobId`'s competencies; an empty list
-   * when there are none. Admins and recruiters.
+   * The candidate's items, oldest first, each with its source and its links to `jobId`'s competencies; items of an
+   * earlier mapping run for the job are left out (AIV-P1-027). An empty list when there are none. Admins and recruiters.
    */
   listEvidenceForCandidate(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<EvidenceItemView[]>;
   /** The item with its source and every competency link, or null when the workspace has none. Admins and recruiters. */
@@ -171,4 +194,11 @@ export interface EvidenceContract {
     candidateId: string,
     rubricVersionId: string,
   ): Promise<SkillGradeView[]>;
+  /**
+   * The candidate's newest evidence mapping run for the job (AIV-P1-027), or null before one: the rubric version, the
+   * prompt and model its links rest on, its evidence gaps (never negative evidence) and its "What would change this"
+   * list (at most 3, each closing a gap or a capped item by id; `text` null when the model named no check).
+   * The mapped items themselves come from `listEvidenceForCandidate`. Every role with a grant on the job.
+   */
+  getEvidenceMapping(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
 }
