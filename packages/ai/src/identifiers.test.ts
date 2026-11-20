@@ -55,6 +55,8 @@ describe('the replacer', () => {
     ['(+44) 7700-900-123', '[PHONE_1]'],
     ['07700 900123', '[PHONE_1]'],
     ['+971 50 000 0001', '[PHONE_1]'],
+    ['+971.50.123.4567', '[PHONE_1]'],
+    ['050.123.4567', '[PHONE_1]'],
   ])('phones: %s', (text, expected) => expect(redact(`call ${text}.`)).toBe(`call ${expected}.`));
 
   it('numbers each written number once, and leaves counts, years, dates, decimals and metric lists alone', () => {

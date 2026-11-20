@@ -32,13 +32,16 @@ const EMAIL = String.raw`[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
 const END = String.raw`(?![\w]|[.,]\d)`;
-// Up to two of space, dash or bracket between digits; no dot, so decimals and dotted dates stay numbers.
+// Up to two of space, dash or bracket between digits. Dots only in a dialled (+971.50.123.4567) or local
+// (050.123.4567) shape, so decimals and dotted dates stay numbers.
 const PHONE = String.raw`${DIAL}\d(?:[ ()-]{0,2}\d){7,14}${END}`;
+const DOTTED = String.raw`(?<![\w+(.,])(?:(?:\+|00)\d{1,4}(?:\.\d{1,4}){2,5}|0\d{2,3}\.\d{3}\.\d{3,4})${END}`;
 // A phone starts with +, 00, 0 or a bracket, or has a run of four digits: "120 340 560 ms" is a metric list.
 const phoneShaped = (value: string) => /^\(?(?:\+|0)/.test(value) || /\d{4}/.test(value);
 const yearsOrDate = /^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/;
 // shortcut: a bare run of 8 to 15 digits with a four-digit group (an id, a count) is replaced too, while a login handle
-// (sara_alqahtani) and Arabic-Indic digits are not matched; widen from pilot sources if either reaches a prompt.
+// (sara_alqahtani), Arabic-Indic digits and a dial code without + or 0 (971 50 123 456) are not matched; widen from
+// pilot sources if one reaches a prompt.
 // Particles that are a name part only next to another part: "Al Qahtani" is the candidate, "Al Ain" is a place.
 const PARTICLES = new Set(['al', 'el', 'bin', 'bint', 'ibn', 'abu', 'de', 'da', 'di', 'van', 'von', 'le', 'la']);
 
@@ -65,7 +68,7 @@ function patternFor({ names, emails, phones }: Identifiers): RegExp {
   const alternatives = [
     `(?<email>${[...emails.filter(Boolean).map(escape), EMAIL].join('|')})`,
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
-    `(?<phone>${PHONE})`,
+    `(?<phone>${DOTTED}|${PHONE})`,
     ...(run ? [run] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
