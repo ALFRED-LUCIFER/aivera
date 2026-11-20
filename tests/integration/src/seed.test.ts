@@ -46,6 +46,9 @@ const snapshot = async () => {
     'jobs.competency',
     'jobs.public_job',
     'jobs.outbox',
+    'evidence.source',
+    'evidence.item',
+    'evidence.outbox',
     'audit.entry',
   ];
   const rows: Record<string, unknown[]> = {};
@@ -149,6 +152,23 @@ describe('Scenario: Seeding a fresh database', () => {
       where s.issuer = ${SEED_ISSUER}`);
     expect(users).toHaveLength(6);
     expect(users.every((u) => u.email.endsWith('@example.com'))).toBe(true);
+  });
+
+  it("AIV-P1-024: records Sara's, Arjun's and Layla's evidence, every source and item synthetic", async () => {
+    const rows = await admin.execute<{ name: string; items: string; strong: string; synthetic: boolean }>(sql`
+      select p.display_name as name, count(*) as items, count(*) filter (where i.strength = 'strong') as strong,
+        bool_and(i.synthetic and s.synthetic) as synthetic
+      from evidence.item i join evidence.source s on s.id = i.source_id join candidates.person p on p.id = i.candidate_id
+      where i.workspace_id = ${workspaceId} group by p.display_name order by p.display_name`);
+    expect([...rows]).toEqual([
+      { name: 'Arjun Menon', items: '5', strong: '2', synthetic: true },
+      { name: 'Layla Haddad', items: '5', strong: '2', synthetic: true },
+      { name: 'Sara Al Qahtani', items: '6', strong: '2', synthetic: true },
+    ]);
+    const [source] = await admin.execute<{ check_method: string; checked: string }>(sql`select check_method,
+      to_char(checked_at at time zone 'UTC', 'YYYY-MM-DD') as checked from evidence.source
+      where workspace_id = ${workspaceId} and label = 'llm-eval-harness'`);
+    expect(source).toEqual({ check_method: 'Commit history', checked: '2026-11-12' });
   });
 
   it('audits the workspace and every added member', async () => {
@@ -399,10 +419,13 @@ describe('Scenario: Seeding a fresh database', () => {
         'jobs.job',
         'jobs.rubric_version',
         'jobs.competency',
+        'evidence.source',
+        'evidence.item',
       ])
         expect(await left(t)).toBe(0);
       expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${reseeded}`)).toBe(23);
       expect(await count(sql`select count(*) as n from jobs.job where workspace_id = ${reseeded}`)).toBe(10);
+      expect(await count(sql`select count(*) as n from evidence.item where workspace_id = ${reseeded}`)).toBe(16);
       expect([...(await facts(reseeded))]).toEqual(seeded);
       // The append-only log keeps the old workspace's entries and records the purge last.
       const [last] = await admin.execute<{ action: string }>(

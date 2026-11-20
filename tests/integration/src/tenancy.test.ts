@@ -10,6 +10,8 @@ import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
 import type { IntakeContract } from '@credalent/intake';
 import { createIntake } from '@credalent/intake/composition';
+import type { EvidenceContract } from '@credalent/evidence';
+import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
 import { createNotifications } from '@credalent/notifications/composition';
@@ -210,6 +212,7 @@ let app: Db;
 type Modules = {
   workspaces: WorkspacesContract;
   candidates: CandidatesContract;
+  evidence: EvidenceContract;
   jobs: JobsContract;
   intake: IntakeContract;
   audit: AuditContract;
@@ -219,7 +222,14 @@ const modulesOn = (db: Db): Modules => {
   const workspaces = createWorkspaces(db, audit);
   const candidates = createCandidates(workspaces, () => NOW);
   const jobs = createJobs(workspaces, audit, () => NOW);
-  return { audit, workspaces, candidates, jobs, intake: createIntake(workspaces, candidates, jobs, () => NOW) };
+  return {
+    audit,
+    workspaces,
+    candidates,
+    evidence: createEvidence(workspaces, () => NOW),
+    jobs,
+    intake: createIntake(workspaces, candidates, jobs, () => NOW),
+  };
 };
 
 type Seeded = {
@@ -241,7 +251,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, jobs, intake }: Modules,
+  { workspaces, evidence, jobs, intake }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -306,6 +316,30 @@ async function seed(
         synthetic: true,
       },
       source: 'email',
+    });
+    // A source, its item and a competency link (evidence.*, AIV-P1-024).
+    await evidence.recordEvidence(ctx, {
+      candidateId: personId,
+      source: {
+        kind: 'cv',
+        label: 'CV',
+        url: null,
+        blobFileId: null,
+        capturedAt: NOW,
+        checkedAt: null,
+        checkMethod: null,
+      },
+      items: [
+        {
+          excerpt: 'built an evaluation set',
+          excerptSpan: 'page 1',
+          provenance: 'claim',
+          strength: 'supporting',
+          limit: 'A claim until a second source supports it.',
+          competencies: [{ jobId: job.id, competencyId: crypto.randomUUID() }],
+        },
+      ],
+      synthetic: true,
     });
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
