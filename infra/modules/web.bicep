@@ -17,6 +17,10 @@ param commitSha string
 param entraCandidateClientId string = ''
 @description('Google OAuth client id for recruiter "Continue with Google" (AIV-P0-928, docs/runbooks/recruiter-sign-in.md). Empty until the owner creates it and writes google-client-secret to the vault: the Google button stays hidden.')
 param googleClientId string = ''
+@description('The uploads storage account\'s blob endpoint (modules/storage.bicep, AIV-P0-016).')
+param blobUrl string
+@description('Whether Defender scans uploads; off in dev only (owner, 20 Nov 2026).')
+param malwareScanning bool
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -126,6 +130,9 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'NOTIFICATIONS_ENCRYPTION_KEY', secretRef: 'notifications-encryption-key' }
             // The public origin: the container listens on 0.0.0.0:3000, so without this Auth.js redirects to https://0.0.0.0:3000.
             { name: 'AUTH_URL', value: 'https://${appName}.${environment.properties.defaultDomain}' }
+            // Uploads (AIV-P0-016). With scanning off the web app settles uploads itself after re-checking the blob.
+            { name: 'AZURE_STORAGE_BLOB_URL', value: blobUrl }
+            { name: 'MALWARE_SCANNING', value: malwareScanning ? 'on' : 'off' }
           ], candidateEnv, googleEnv)
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [

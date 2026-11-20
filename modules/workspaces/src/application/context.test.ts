@@ -115,7 +115,7 @@ describe("Scenario Outline: Job-scoped roles need a grant on the record's job", 
 
 // AIV-P2-037: a suspended workspace keeps its reads and refuses every other action, for every role allowed it.
 describe('Scenario: Members of a suspended workspace can read but not start work', () => {
-  const reads: Action[] = ['job.list', 'job.view', 'job_access.view', 'candidate.view'];
+  const reads: Action[] = ['job.list', 'job.view', 'job_access.view', 'candidate.view', 'file.download'];
 
   // SAFETY: mutation check: removed the allowedWhile check from authorize -> this test failed (writes allowed)
   it.each(Object.keys(PERMISSIONS) as Action[])('%s as admin while suspended', async (action) => {

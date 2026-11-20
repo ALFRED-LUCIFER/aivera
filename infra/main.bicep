@@ -20,12 +20,17 @@ param imageTag string
 param entraCandidateClientId string = ''
 @description('Google OAuth client id for recruiter "Continue with Google" (AIV-P0-928); empty keeps the Google button hidden.')
 param googleClientId string = ''
+@description('Defender for Storage malware scanning on uploads (AIV-P0-016). Off in dev because of its cost (owner, 20 Nov 2026); the pilot and production set it true.')
+param malwareScanning bool = false
 
 var location = resourceGroup().location
 var tags = { product: 'aivera', env: 'dev', data: 'synthetic' }
 var images = 'ghcr.io/${toLower(githubRepo)}'
 // Credalent's own group in UAE North for the AI resource (ADR-011): Medvya's group allows Indian regions only.
 var aiResourceGroup = 'rg-aivera-ai-dev'
+// Uploads (AIV-P0-016): named here so the web app gets the endpoint and the account gets the web app's origin.
+var storageName = 'stcredalentdev${take(uniqueString(resourceGroup().id), 6)}'
+var blobUrl = 'https://${storageName}.blob.${az.environment().suffixes.storage}'
 
 // Shared Medvya dev resources, referenced with `existing` and never changed.
 var shared = {
@@ -97,6 +102,8 @@ module web 'modules/web.bicep' = {
     commitSha: imageTag
     entraCandidateClientId: entraCandidateClientId
     googleClientId: googleClientId
+    blobUrl: blobUrl
+    malwareScanning: malwareScanning
   }
 }
 
@@ -126,6 +133,20 @@ module communication 'modules/communication.bicep' = {
   }
 }
 
+// Blob storage for uploads, and malware scanning when on (AIV-P0-016).
+module storage 'modules/storage.bicep' = {
+  name: 'credalent-storage'
+  params: {
+    location: location
+    tags: tags
+    storageName: storageName
+    webFqdn: web.outputs.webFqdn
+    appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
+    malwareScanning: malwareScanning
+    serviceBusNamespaceName: split(messaging.outputs.serviceBusNamespace, '.')[0]
+  }
+}
+
 // The worker host: outbox relay and queue consumers (AIV-P0-015).
 module worker 'modules/worker.bicep' = {
   name: 'aivera-worker'
@@ -145,6 +166,8 @@ module worker 'modules/worker.bicep' = {
     keyVaultUri: foundation.outputs.keyVaultUri
     acsEndpoint: communication.outputs.endpoint
     emailSender: communication.outputs.senderAddress
+    blobUrl: blobUrl
+    malwareScanning: malwareScanning
   }
 }
 
@@ -175,3 +198,4 @@ output aiResourceName string = ai.outputs.resourceName
 output relayIdentityClientId string = messaging.outputs.relayIdentityClientId
 output serviceBusNamespace string = messaging.outputs.serviceBusNamespace
 output aiEvalIdentityClientId string = foundation.outputs.aiEvalIdentityClientId
+output storageAccountName string = storage.outputs.accountName
