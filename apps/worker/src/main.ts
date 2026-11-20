@@ -81,7 +81,7 @@ const { createApprovedRubricReads } = await import('@credalent/jobs/composition'
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { FileCleanV1, FileRejectedV1 } = await import('@credalent/files');
-const { createBlobStore, createCleanFileReader, createFiles, SCAN_RESULTS_QUEUE } =
+const { createBlobStore, createCleanFileReader, createFiles, readFilePurposeAsSystem, SCAN_RESULTS_QUEUE } =
   await import('@credalent/files/composition');
 const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
@@ -117,12 +117,13 @@ const QUEUES: Record<string, string> = {
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
-  // Arrivals queue repository reads, so they wait for the GitHub App with them (AIV-P1-076).
   ...(githubApp && {
     [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
     [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
-    [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
   }),
+  // Arrivals queue repository reads (AIV-P1-076) and CV parses (AIV-P1-079), so they are consumed once either is; the
+  // other kind's requests wait in evidence.outbox until its integration is configured.
+  ...((githubApp || fileReading) && { [ApplicationReceivedV1.type]: EVIDENCE_QUEUE }),
   // CV parsing and document reads (AIV-P1-025, AIV-P1-028): each waits for its file's scan; a clean file runs it, a
   // rejected one ends it.
   ...(fileReading && {
@@ -194,6 +195,15 @@ if (mapping)
     }),
   );
 else log.warn('Evidence mapping off: it needs an AI model and the GitHub App; evidence is recorded but not mapped');
+if (githubApp || fileReading)
+  evidenceHandlers.push(
+    createApplicationReceivedHandler({
+      readArrival: readApplicationSourceAsSystem,
+      readPerson: readPersonAsSystem,
+      readFilePurpose: readFilePurposeAsSystem,
+      now,
+    }),
+  );
 if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID) {
   const github = {
     appId: env.GITHUB_APP_ID,
@@ -204,17 +214,12 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
   // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
   const scheduler = createScheduler(senderFor);
   evidenceHandlers.push(
-    createApplicationReceivedHandler({
-      readArrival: readApplicationSourceAsSystem,
-      readPerson: readPersonAsSystem,
-      now,
-    }),
     createRepositoryReadHandler({ github, scheduler, now }),
     createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
   );
 }
-// shortcut: without the GitHub App, repository reads and arrivals wait unsent in their outboxes until the owner
-// provisions the app and its Key Vault secrets (AIV-P1-074).
+// shortcut: without the GitHub App, repository reads (and, without CV parsing too, arrivals) wait unsent in their
+// outboxes until the owner provisions the app and its Key Vault secrets (AIV-P1-074).
 else log.warn('GitHub App not configured: repository reads are not consumed');
 if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL) {
   const ai = createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) });

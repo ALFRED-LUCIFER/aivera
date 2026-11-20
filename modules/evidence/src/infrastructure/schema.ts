@@ -71,6 +71,10 @@ export const source = evidence
       check('source_text_fingerprint_check', sql`${t.textFingerprint} ~ '^[0-9a-f]{16}$'`),
       // FileClean.v1 finds the CV sources waiting for a file (AIV-P1-025).
       index('source_blob_file_idx').on(t.workspaceId, t.blobFileId),
+      // One CV source per candidate and file, so a redelivered or repeated arrival parses it once (AIV-P1-079).
+      uniqueIndex('source_cv_file_key')
+        .on(t.workspaceId, t.candidateId, t.blobFileId)
+        .where(sql`${t.kind} = 'cv'`),
       tenantPolicy('source_tenant_isolation', t.workspaceId),
     ],
   )

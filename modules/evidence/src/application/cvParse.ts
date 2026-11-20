@@ -51,7 +51,11 @@ export type CvParse = { workspaceId: string; sourceId: string; candidateId: stri
 
 /** Over one workspace-scoped transaction; every method filters by `workspaceId`. */
 export type CvParseStore = {
-  insert(parse: CvParse): Promise<void>;
+  /**
+   * Inserts the `cv` source and its pending parse, unless the candidate already has a `cv` source for the file (a
+   * concurrent one included): then neither is kept and that source's id is returned.
+   */
+  insertOrGet(source: EvidenceSource): Promise<string | null>;
   find(workspaceId: string, sourceId: string): Promise<{ parse: CvParse; source: EvidenceSource } | null>;
   /** The parses of a CV file still to run (pending, or failed and waiting for a redelivery), by source id. */
   pendingForFile(workspaceId: string, fileId: string): Promise<string[]>;
@@ -61,7 +65,7 @@ export type CvParseStore = {
   notes(workspaceId: string, sourceId: string): Promise<SourceNote[]>;
 };
 
-export type CvPorts = Pick<Ports, 'storeFor' | 'authorize' | 'newId' | 'now'> & {
+export type CvPorts = Pick<Ports, 'authorize' | 'newId' | 'now'> & {
   cvStoreFor(tx: Tx): CvParseStore;
   /** Writes `CvParseRequested.v1` to the outbox in `tx`. */
   publishParseRequested(tx: Tx, source: EvidenceSource): Promise<void>;
@@ -80,38 +84,51 @@ export type CvParseView = {
   notes: Pick<SourceNote, 'reason' | 'excerpt' | 'excerptSpan'>[];
 };
 
-export function cvParseUseCases({ storeFor, cvStoreFor, publishParseRequested, authorize, newId, now }: CvPorts) {
+/**
+ * Stores a pending `cv` source for the file and queues its parse (`CvParseRequested.v1`), once per candidate and file:
+ * a second request returns the first source's id and queues nothing. No authorisation here: `requestCvParse` authorises
+ * a person; the `ApplicationReceived.v1` handler runs as the system in its envelope's workspace and passes only the
+ * arrival's own CV files for the arrival's own person (AIV-P1-079).
+ */
+export async function queueCvParse(
+  ports: Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested' | 'newId' | 'now'>,
+  tx: Tx,
+  workspaceId: string,
+  input: RequestCvParseInput,
+): Promise<{ sourceId: string; queued: boolean }> {
+  const at = ports.now();
+  const source: EvidenceSource = {
+    id: ports.newId(),
+    workspaceId,
+    candidateId: input.candidateId,
+    kind: 'cv',
+    label: CV_LABEL,
+    url: null,
+    blobFileId: input.fileId,
+    capturedAt: at,
+    checkedAt: null,
+    checkMethod: null,
+    synthetic: input.synthetic,
+    createdAt: at,
+    textFingerprint: null,
+  };
+  const existing = await ports.cvStoreFor(tx).insertOrGet(source);
+  if (existing) return { sourceId: existing, queued: false };
+  await ports.publishParseRequested(tx, source);
+  return { sourceId: source.id, queued: true };
+}
+
+export function cvParseUseCases(ports: CvPorts) {
+  const { cvStoreFor, authorize } = ports;
   return {
     /** Stores a pending `cv` source for the file and asks the worker to parse it (`evidence.cv.parse`). */
-    // shortcut: the file is not checked to belong to the candidate (files carry no owner link); the caller (the intake
-    // channel, AIV-P1-019) must pass only the candidate's own application's CV file ids.
+    // shortcut: a member's call is not checked to pass the candidate's own file (files carry no owner link); the
+    // arrival handler scopes its files itself (AIV-P1-079), and a screen that calls this must pass only the candidate's
+    // own CV file ids.
     async requestCvParse(ctx: WorkspaceContext, input: RequestCvParseInput): Promise<{ sourceId: string }> {
       await authorize(ctx, 'candidate.create');
-      const at = now();
-      const source: EvidenceSource = {
-        id: newId(),
-        workspaceId: ctx.workspaceId,
-        candidateId: input.candidateId,
-        kind: 'cv',
-        label: CV_LABEL,
-        url: null,
-        blobFileId: input.fileId,
-        capturedAt: at,
-        checkedAt: null,
-        checkMethod: null,
-        synthetic: input.synthetic,
-        createdAt: at,
-        textFingerprint: null,
-      };
-      await storeFor(ctx.tx).insert(source, [], []);
-      await cvStoreFor(ctx.tx).insert({
-        workspaceId: ctx.workspaceId,
-        sourceId: source.id,
-        candidateId: input.candidateId,
-        status: 'pending',
-      });
-      await publishParseRequested(ctx.tx, source);
-      return { sourceId: source.id };
+      const { sourceId } = await queueCvParse(ports, ctx.tx, ctx.workspaceId, input);
+      return { sourceId };
     },
 
     async getCvParse(ctx: WorkspaceContext, sourceId: string): Promise<CvParseView | null> {
