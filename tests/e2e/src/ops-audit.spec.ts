@@ -1,4 +1,7 @@
+import { createAudit } from '@credalent/audit/composition';
+import { createDb } from '@credalent/db/client';
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
 import { approveAsOperator, signUpWorkspace } from './workspaces.ts';
@@ -128,15 +131,24 @@ test('Scenario: Pagination: 60 entries show as 50 and "Next page" with the remai
   page,
   baseURL,
 }) => {
-  test.slow();
   const workspace = await approvedWorkspace(browser, page, baseURL ?? '', `page-${Date.now()}`);
-  // Pia's approval and 59 recorded views by Theo: 60 entries for this workspace.
-  for (let batch = 0; batch < 59; batch += 10)
-    await Promise.all(
-      Array.from({ length: Math.min(10, 59 - batch) }, async () =>
-        expect((await page.request.get(`/ops/workspaces/${workspace.id}`)).status()).toBe(200),
-      ),
-    );
+  // Pia's approval and 59 more entries by her: 60 for this workspace. Written through the audit module, not 59 page
+  // loads: those flooded the one dev server and timed out the other worker's tests. The feature test above proves a
+  // page view records its entry.
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    const audit = createAudit(db);
+    const [approval] = (await audit.listPlatformEntries({ targetId: workspace.id })).entries;
+    expect(approval?.action).toBe('workspace.approved');
+    for (let i = 0; i < 59; i++)
+      await audit.recordPlatform({
+        actorId: approval?.actorId ?? '',
+        action: 'ops.workspace_viewed',
+        subject: { type: 'workspace', id: workspace.id },
+      });
+  } finally {
+    await db.$client.end();
+  }
   await page.goto(`/ops/audit?target=${workspace.id}`);
   await expect(rows(page)).toHaveCount(50);
   const next = page.getByRole('link', { name: 'Next page' });
