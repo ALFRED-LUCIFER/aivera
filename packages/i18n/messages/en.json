@@ -919,6 +919,16 @@
           "reactivated": "Reactivated",
           "approved": "Approved",
           "rejected": "Rejected"
+        },
+        "catalogue": {
+          "draft_opened": "Catalogue draft opened",
+          "entry_added": "Catalogue entry added",
+          "entry_edited": "Catalogue entry edited",
+          "entry_retired": "Catalogue entry retired",
+          "entry_removed": "Catalogue entry removed from draft",
+          "draft_discarded": "Catalogue draft discarded",
+          "eval_requested": "Catalogue eval requested",
+          "published": "Catalogue published"
         }
       }
     }

@@ -1,4 +1,4 @@
-// The ten job types and the evidence that counts for each (AIV-P1-004). Code, reviewed in PRs: no table.
+// The ten job types and the evidence that counts for each (AIV-P1-004). Code, reviewed in PRs; seeds catalogue version 1.
 
 /** Bump when an entry changes meaning, so drafts can say which catalogue seeded them. */
 export const JOB_TYPE_CATALOGUE_VERSION = 1;

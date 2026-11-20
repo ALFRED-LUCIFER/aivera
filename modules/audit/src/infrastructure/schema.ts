@@ -67,7 +67,7 @@ export const platformEntry = audit.table(
     // Must list exactly PLATFORM_ACTIONS (domain/entry.ts); changing it needs a new migration.
     check(
       'platform_entry_action_check',
-      sql`${t.action} in ('ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'ops.approval_mode_changed')`,
+      sql`${t.action} in ('ops.console_opened', 'ops.workspace_viewed', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'ops.approval_mode_changed', 'catalogue.draft_opened', 'catalogue.entry_added', 'catalogue.entry_edited', 'catalogue.entry_retired', 'catalogue.entry_removed', 'catalogue.draft_discarded', 'catalogue.eval_requested', 'catalogue.published')`,
     ),
     check('platform_entry_note_check', sql`${t.action} <> 'ai_budget.changed' or coalesce(btrim(${t.note}), '') <> ''`),
     check('platform_entry_subject_check', sql`(${t.subjectType} is null) = (${t.subjectId} is null)`),

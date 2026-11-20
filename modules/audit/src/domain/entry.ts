@@ -51,6 +51,15 @@ export const PLATFORM_ACTIONS = [
   'workspace.approved',
   'workspace.rejected',
   'ops.approval_mode_changed',
+  // The catalogue editor (ADR-013 point 14), by the version id.
+  'catalogue.draft_opened',
+  'catalogue.entry_added',
+  'catalogue.entry_edited',
+  'catalogue.entry_retired',
+  'catalogue.entry_removed',
+  'catalogue.draft_discarded',
+  'catalogue.eval_requested',
+  'catalogue.published',
 ] as const;
 export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
 

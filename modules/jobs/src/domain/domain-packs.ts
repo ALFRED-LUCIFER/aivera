@@ -1,12 +1,12 @@
-// Domain packs: the niche competencies of one industry, per job type (AIV-P1-061). Code, reviewed in PRs: no table.
+// Domain packs: the niche competencies of one industry, per job type (AIV-P1-061). Code, reviewed in PRs; seeds catalogue version 1.
 import type { JobType } from './job-types.ts';
 
 /** Bump when a pack entry changes meaning; kept pack competencies record the version that seeded them. */
 export const DOMAIN_PACK_CATALOGUE_VERSION = 1;
 
 /**
- * Keys are stored with kept competencies (AIV-P1-064), so never rename one. Must list exactly the
- * `competency_pack_key_check` values (infrastructure/schema.ts); a new pack needs a migration.
+ * Keys are stored with kept competencies (AIV-P1-064), so never rename one. The database checks their format only
+ * (`competency_pack_format_check`); a change here must match catalogue version 1 (catalogue.test.ts) until AIV-P2-044.
  */
 export const DOMAIN_KEYS = [
   'payments_fintech',

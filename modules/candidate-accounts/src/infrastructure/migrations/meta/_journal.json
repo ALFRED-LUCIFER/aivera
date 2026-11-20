@@ -15,6 +15,13 @@
       "when": 1795055990193,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795144452216,
+      "tag": "0002_work_type_key_check",
+      "breakpoints": true
     }
   ]
 }

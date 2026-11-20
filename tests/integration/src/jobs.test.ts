@@ -178,11 +178,12 @@ afterAll(async () => {
 });
 
 describe('Migrations', () => {
+  // The catalogue_* platform tables have no workspace rows and no RLS (ADR-013 point 2; tenancy.test.ts lists them).
   it('jobs tables are owned by aivera_migrator with row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
-      where t.schemaname = 'jobs' order by name`);
+      where t.schemaname = 'jobs' and t.tablename not like 'catalogue\_%' order by name`);
     expect([...tables]).toEqual(
       ['competency', 'job', 'outbox', 'public_job', 'rubric_version'].map((name) => ({
         name,
@@ -915,8 +916,9 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     expect(list.filter((c) => c.pack_key !== null)).toHaveLength(1);
   });
 
-  // SAFETY: mutation check: dropped competency_domain_pack_check, then competency_pack_key_check, from migration 0007 -> this test failed each time (row stored)
-  it('the database refuses a domain_pack competency without its pack, a pack on any other origin, or an unknown pack', async () => {
+  // SAFETY: mutation check: dropped competency_domain_pack_check from migration 0007 -> this test failed (row stored)
+  // SAFETY: mutation check: competency_pack_format_check without the regex in 0010 -> this test failed (Crypto stored)
+  it('the database refuses a domain_pack competency without its pack, a pack on any other origin, or a malformed pack', async () => {
     // Its own draft version, so it does not hang on the test above.
     packVersionId = (
       await as(RANA, w, (ctx) =>
@@ -932,13 +934,14 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
         code: '23514',
         constraint: 'competency_domain_pack_check',
       });
+    // By format since AIV-P2-043 (ADR-013 point 7): a well-formed key the catalogue lacks is the application's to refuse.
     for (const [key, v] of [
-      ['crypto', 1],
+      ['Crypto', 1],
       ['payments_fintech', 0],
     ] as const)
       expect(await pgError(insert('domain_pack', key, v))).toEqual({
         code: '23514',
-        constraint: 'competency_pack_key_check',
+        constraint: 'competency_pack_format_check',
       });
   });
 

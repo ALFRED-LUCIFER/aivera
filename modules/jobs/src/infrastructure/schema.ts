@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   unique,
+  primaryKey,
   uniqueIndex,
   uuid,
   type AnyPgColumn,
@@ -24,6 +25,7 @@ import {
   RUBRIC_STATUSES,
   type PublicListing,
 } from '../domain/job.ts';
+import { CATALOGUE_STATUSES, type Labels } from '../domain/catalogue.ts';
 import { DOMAIN_KEYS } from '../domain/domain-packs.ts';
 import { JOB_TYPES } from '../domain/job-types.ts';
 
@@ -36,6 +38,13 @@ export const jobs = pgSchema('jobs');
  */
 export const jobInScope = (id: AnyPgColumn, clientId: AnyPgColumn): SQL =>
   sql`(nullif(current_setting('app.job_scope', true), '') = 'all' or ${id} = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or ${clientId} = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))`;
+
+/**
+ * A catalogue key (ADR-013 point 5): lower snake case, never one of the reserved answers. Validated by format, not by a
+ * list, so a published job type or pack needs no migration; the application checks it against the catalogue.
+ */
+const isKey = (column: AnyPgColumn): SQL =>
+  sql`${column} ~ '^[a-z][a-z0-9_]{2,47}$' and ${column} not in ('none', 'several', 'other')`;
 
 /** A restrictive policy, so it narrows the tenant policy instead of widening it. */
 const restrictive = (name: string, matches: SQL) =>
@@ -74,11 +83,8 @@ export const job = jobs
       unique('job_workspace_id_key').on(t.workspaceId, t.id),
       index('job_workspace_created_idx').on(t.workspaceId, t.createdAt, t.id),
       check('job_title_check', sql`btrim(${t.title}) <> ''`),
-      // The check constraints must list exactly JOB_TYPES and the domain's enums; changing one needs a new migration.
-      check(
-        'job_type_check',
-        sql`${t.jobType} in ('software_engineering', 'qa_test_automation', 'ai_llm_engineering', 'forward_deployed_engineering', 'data_ml', 'devops_sre', 'product_management', 'product_design', 'sales', 'technical_writing_support')`,
-      ),
+      check('job_type_key_check', isKey(t.jobType)),
+      // The stage check must list exactly JOB_STAGES; changing it needs a new migration.
       check(
         'job_stage_check',
         sql`${t.stage} in ('defining_rubric', 'collecting_evidence', 'round_1', 'decision', 'closed')`,
@@ -189,10 +195,7 @@ export const competency = jobs
         'competency_domain_pack_check',
         sql`(${t.origin} = 'domain_pack') = (${t.packKey} is not null and ${t.packVersion} is not null)`,
       ),
-      check(
-        'competency_pack_key_check',
-        sql`${t.packKey} in ('payments_fintech', 'banking_islamic_finance', 'healthcare', 'ecommerce_marketplaces', 'logistics_mobility', 'government_public_sector', 'telecom', 'energy_utilities') and ${t.packVersion} >= 1`,
-      ),
+      check('competency_pack_format_check', sql`${isKey(t.packKey)} and ${t.packVersion} >= 1`),
       tenantPolicy('competency_tenant_isolation', t.workspaceId),
       restrictive(
         'competency_job_scope',
@@ -250,3 +253,163 @@ export const publicJob = jobs
 
 // Events written in the same transaction as the change; the relay sends them to Service Bus (AIV-P0-014).
 export const outbox = outboxTable(jobs);
+
+/*
+ * The catalogue (ADR-013): platform tables with no workspace_id and no tenant policy, since they hold no workspace,
+ * candidate or personal data (tenancy.test.ts lists each). A published version never changes: the triggers of
+ * migration 0016 refuse UPDATE, DELETE and TRUNCATE of its rows for every role. References between catalogue tables
+ * are foreign keys, since this module owns them all.
+ */
+
+/** An operator's opaque identity user id, or the system actor that seeded version 1. Never a name or an email. */
+const isActor = (column: AnyPgColumn): SQL =>
+  sql`(${column} = 'system:seed' or ${column} ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')`;
+const hasEnglish = (column: AnyPgColumn): SQL =>
+  // coalesce: a missing `en` makes the test NULL, which a check constraint would pass.
+  sql`coalesce(jsonb_typeof(${column}->'en') = 'string' and btrim(${column}->>'en') <> '', false)`;
+const filled = (column: AnyPgColumn): SQL => sql`btrim(${column}) <> ''`;
+
+export const catalogueVersion = jobs.table(
+  'catalogue_version',
+  {
+    version: integer().primaryKey(),
+    status: text({ enum: CATALOGUE_STATUSES }).notNull(),
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    publishedBy: text('published_by'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    reason: text(),
+  },
+  (t) => [
+    uniqueIndex('catalogue_version_one_draft_idx')
+      .on(t.status)
+      .where(sql`${t.status} = 'draft'`),
+    check('catalogue_version_version_check', sql`${t.version} >= 1`),
+    check('catalogue_version_status_check', sql`${t.status} in ('draft', 'published')`),
+    check(
+      'catalogue_version_published_check',
+      sql`(${t.status} = 'published') = (${t.publishedBy} is not null and ${t.publishedAt} is not null and ${t.reason} is not null)`,
+    ),
+    check('catalogue_version_reason_check', sql`char_length(btrim(${t.reason})) >= 10`),
+    check(
+      'catalogue_version_actor_check',
+      sql`${isActor(t.createdBy)} and (${t.publishedBy} is null or ${isActor(t.publishedBy)})`,
+    ),
+  ],
+);
+
+const version = () =>
+  integer()
+    .notNull()
+    .references(() => catalogueVersion.version);
+
+export const catalogueJobType = jobs.table(
+  'catalogue_job_type',
+  {
+    version: version(),
+    key: text().notNull(),
+    position: integer().notNull(),
+    label: jsonb().$type<Labels>().notNull(),
+    evidence: jsonb().$type<Labels>().notNull(),
+    starterCompetencies: text('starter_competencies').array().notNull(),
+    retired: boolean().notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ name: 'catalogue_job_type_pkey', columns: [t.version, t.key] }),
+    check('catalogue_job_type_key_check', isKey(t.key)),
+    check('catalogue_job_type_label_check', sql`${hasEnglish(t.label)} and ${hasEnglish(t.evidence)}`),
+    check('catalogue_job_type_starters_check', sql`cardinality(${t.starterCompetencies}) = 4`),
+  ],
+);
+
+export const catalogueRegion = jobs.table(
+  'catalogue_region',
+  {
+    version: version(),
+    key: text().notNull(),
+    position: integer().notNull(),
+    label: jsonb().$type<Labels>().notNull(),
+    retired: boolean().notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ name: 'catalogue_region_pkey', columns: [t.version, t.key] }),
+    check('catalogue_region_key_check', isKey(t.key)),
+    check('catalogue_region_label_check', hasEnglish(t.label)),
+  ],
+);
+
+export const cataloguePack = jobs.table(
+  'catalogue_pack',
+  {
+    version: version(),
+    key: text().notNull(),
+    position: integer().notNull(),
+    label: jsonb().$type<Labels>().notNull(),
+    retired: boolean().notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ name: 'catalogue_pack_pkey', columns: [t.version, t.key] }),
+    check('catalogue_pack_key_check', isKey(t.key)),
+    check('catalogue_pack_label_check', hasEnglish(t.label)),
+  ],
+);
+
+/** What a pack competency and a regional hint share: a skill shown with evidence, never mandatory (ADR-013 point 11). */
+const skill = () => ({
+  version: version(),
+  packKey: text('pack_key').notNull(),
+  position: integer().notNull(),
+  name: text().notNull(),
+  meaning: text().notNull(),
+  evidence: text().notNull(),
+  level1: text('level_1').notNull(),
+  level3: text('level_3').notNull(),
+  level5: text('level_5').notNull(),
+  // Job type keys: no foreign key reaches array elements, so the editor validates them (AIV-P2-045).
+  appliesTo: text('applies_to').array().notNull(),
+  levelNeeded: integer('level_needed').notNull(),
+  type: text({ enum: ['desirable'] }).notNull(),
+  retired: boolean().notNull().default(false),
+});
+
+type SkillColumns = Record<'name' | 'meaning' | 'evidence' | 'levelNeeded' | 'type', AnyPgColumn>;
+const skillChecks = (table: string, t: SkillColumns) => [
+  check(`${table}_text_check`, sql`${filled(t.name)} and ${filled(t.meaning)} and ${filled(t.evidence)}`),
+  check(`${table}_level_check`, sql`${t.levelNeeded} in (2, 3)`),
+  check(`${table}_type_check`, sql`${t.type} = 'desirable'`),
+];
+
+// At most 4 core competencies per job type per pack spans rows: the editor checks it (AIV-P2-045), a test checks v1.
+export const cataloguePackCompetency = jobs.table(
+  'catalogue_pack_competency',
+  { ...skill(), core: text().array().notNull() },
+  (t) => [
+    primaryKey({ name: 'catalogue_pack_competency_pkey', columns: [t.version, t.packKey, t.position] }),
+    foreignKey({
+      name: 'catalogue_pack_competency_pack_fk',
+      columns: [t.version, t.packKey],
+      foreignColumns: [cataloguePack.version, cataloguePack.key],
+    }),
+    ...skillChecks('catalogue_pack_competency', t),
+    check('catalogue_pack_competency_core_check', sql`${t.core} <@ ${t.appliesTo}`),
+  ],
+);
+
+export const catalogueRegionalHint = jobs.table(
+  'catalogue_regional_hint',
+  { ...skill(), region: text().notNull() },
+  (t) => [
+    primaryKey({ name: 'catalogue_regional_hint_pkey', columns: [t.version, t.packKey, t.region, t.position] }),
+    foreignKey({
+      name: 'catalogue_regional_hint_pack_fk',
+      columns: [t.version, t.packKey],
+      foreignColumns: [cataloguePack.version, cataloguePack.key],
+    }),
+    foreignKey({
+      name: 'catalogue_regional_hint_region_fk',
+      columns: [t.version, t.region],
+      foreignColumns: [catalogueRegion.version, catalogueRegion.key],
+    }),
+    ...skillChecks('catalogue_regional_hint', t),
+  ],
+);

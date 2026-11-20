@@ -6,7 +6,7 @@ import { enqueue } from '@aivera/db/outbox';
 import { uuidv7 } from '@aivera/db/uuidv7';
 import { withWorkspace } from '@aivera/db/with-workspace';
 import type { WorkspacesContract } from '@aivera/workspaces';
-import { sql } from 'drizzle-orm';
+import { eq, sql, type SQL } from 'drizzle-orm';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
@@ -20,9 +20,10 @@ import {
   type JobsContract,
   type PublicJobsContract,
 } from './contracts/index.ts';
+import { readCatalogueVersion } from './infrastructure/catalogue.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { countJobs, jobStore } from './infrastructure/repository.ts';
-import { outbox } from './infrastructure/schema.ts';
+import { catalogueVersion, outbox } from './infrastructure/schema.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -79,6 +80,24 @@ export function createPublicJobs(db: Db): PublicJobsContract {
 /** The operator console's job count (ADR-012 point 6), each call in the workspace's own scoped transaction. */
 export function createJobCounts(db: Db): JobCounts {
   return { countJobs: (workspaceId) => withWorkspace(db, workspaceId, (tx) => countJobs(tx, workspaceId)) };
+}
+
+/**
+ * The catalogue in the database (ADR-013 point 15) on the app's pool, with no workspace: the tables are platform tables.
+ * Each read is one read-only snapshot. Not wired to callers yet; readers switch in AIV-P2-044.
+ */
+export function createCatalogueReads(db: Db) {
+  const read = (where: SQL) =>
+    db.transaction((tx) => readCatalogueVersion(tx, where), {
+      isolationLevel: 'repeatable read',
+      accessMode: 'read only',
+    });
+  return {
+    /** The latest published version. */
+    getPublishedCatalogue: () => read(eq(catalogueVersion.status, 'published')),
+    /** Version `n`, draft or published. */
+    getCatalogueVersion: (n: number) => read(eq(catalogueVersion.version, n)),
+  };
 }
 
 /** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */
