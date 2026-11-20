@@ -263,12 +263,27 @@
     }
   },
   "evidence": {
+    "duplicate": {
+      "flag": "Also submitted by another applicant",
+      "resolve": "Resolve",
+      "resolved": "Resolved: {reason}",
+      "resolution": {
+        "shared_group_project": "Shared group project",
+        "same_template": "Same template, different work",
+        "needs_follow_up": "Needs follow-up"
+      }
+    },
     "provenance": {
       "corroborated": "Independently corroborated",
       "submitted": "Candidate-submitted",
       "claim": "Claim awaiting validation",
       "contradictory": "Contradictory",
       "awaiting-defence": "Awaiting live defence"
+    },
+    "repositoryStatus": {
+      "pending": "Reading the commit history",
+      "not_accessible": "This repository is private or no longer exists",
+      "fork": "This repository is a fork. Forked code is not counted as the candidate's work."
     },
     "request": {
       "send": "Send request"

@@ -1,0 +1,1068 @@
+{
+  "id": "c600157b-6a24-4266-92d6-f00b95917399",
+  "prevId": "08ffe215-2fdd-415b-bb3e-066b240c027c",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "evidence.competency_link": {
+      "name": "competency_link",
+      "schema": "evidence",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competency_id": {
+          "name": "competency_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "competency_link_job_idx": {
+          "name": "competency_link_job_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "competency_link_item_fk": {
+          "name": "competency_link_item_fk",
+          "tableFrom": "competency_link",
+          "tableTo": "item",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "item_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "competency_link_pkey": {
+          "name": "competency_link_pkey",
+          "columns": [
+            "workspace_id",
+            "item_id",
+            "competency_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "competency_link_tenant_isolation": {
+          "name": "competency_link_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"competency_link\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"competency_link\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "competency_link_level_check": {
+          "name": "competency_link_level_check",
+          "value": "\"evidence\".\"competency_link\".\"level\" between 0 and 5"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "evidence.duplicate_flag": {
+      "name": "duplicate_flag",
+      "schema": "evidence",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_source_id": {
+          "name": "other_source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_candidate_id": {
+          "name": "other_candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "similarity": {
+          "name": "similarity",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by": {
+          "name": "resolved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "duplicate_flag_candidate_idx": {
+          "name": "duplicate_flag_candidate_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "duplicate_flag_other_candidate_idx": {
+          "name": "duplicate_flag_other_candidate_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "other_candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "duplicate_flag_source_fk": {
+          "name": "duplicate_flag_source_fk",
+          "tableFrom": "duplicate_flag",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "source_id",
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "duplicate_flag_other_source_fk": {
+          "name": "duplicate_flag_other_source_fk",
+          "tableFrom": "duplicate_flag",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "other_source_id",
+            "other_candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "duplicate_flag_pair_key": {
+          "name": "duplicate_flag_pair_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "source_id",
+            "other_source_id"
+          ]
+        }
+      },
+      "policies": {
+        "duplicate_flag_tenant_isolation": {
+          "name": "duplicate_flag_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"duplicate_flag\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"duplicate_flag\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "duplicate_flag_candidates_check": {
+          "name": "duplicate_flag_candidates_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"candidate_id\" <> \"evidence\".\"duplicate_flag\".\"other_candidate_id\""
+        },
+        "duplicate_flag_similarity_check": {
+          "name": "duplicate_flag_similarity_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"similarity\" between 0 and 1"
+        },
+        "duplicate_flag_resolution_check": {
+          "name": "duplicate_flag_resolution_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"resolution\" in ('shared_group_project', 'same_template', 'needs_follow_up')"
+        },
+        "duplicate_flag_resolved_check": {
+          "name": "duplicate_flag_resolved_check",
+          "value": "(\"evidence\".\"duplicate_flag\".\"resolution\" is null) = (\"evidence\".\"duplicate_flag\".\"resolved_by\" is null) and (\"evidence\".\"duplicate_flag\".\"resolution\" is null) = (\"evidence\".\"duplicate_flag\".\"resolved_at\" is null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "evidence.inbox": {
+      "name": "inbox",
+      "schema": "evidence",
+      "columns": {
+        "consumer": {
+          "name": "consumer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "handled_at": {
+          "name": "handled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inbox_consumer_message_id_pk": {
+          "name": "inbox_consumer_message_id_pk",
+          "columns": [
+            "consumer",
+            "message_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "inbox_tenant_isolation": {
+          "name": "inbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "evidence.item": {
+      "name": "item",
+      "schema": "evidence",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "excerpt": {
+          "name": "excerpt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "excerpt_span": {
+          "name": "excerpt_span",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strength": {
+          "name": "strength",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "limit_statement": {
+          "name": "limit_statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "synthetic": {
+          "name": "synthetic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "item_candidate_idx": {
+          "name": "item_candidate_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "item_source_fk": {
+          "name": "item_source_fk",
+          "tableFrom": "item",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "source_id",
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "item_workspace_id_key": {
+          "name": "item_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {
+        "item_tenant_isolation": {
+          "name": "item_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"item\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"item\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "item_provenance_check": {
+          "name": "item_provenance_check",
+          "value": "\"evidence\".\"item\".\"provenance\" in ('corroborated', 'submitted', 'claim', 'contradictory', 'awaiting-defence')"
+        },
+        "item_strength_check": {
+          "name": "item_strength_check",
+          "value": "\"evidence\".\"item\".\"strength\" in ('strong', 'medium', 'supporting', 'claim')"
+        },
+        "item_claim_strength_check": {
+          "name": "item_claim_strength_check",
+          "value": "\"evidence\".\"item\".\"provenance\" not in ('claim', 'awaiting-defence') or \"evidence\".\"item\".\"strength\" in ('supporting', 'claim')"
+        },
+        "item_limit_check": {
+          "name": "item_limit_check",
+          "value": "btrim(\"evidence\".\"item\".\"limit_statement\") <> ''"
+        },
+        "item_excerpt_check": {
+          "name": "item_excerpt_check",
+          "value": "btrim(\"evidence\".\"item\".\"excerpt\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "evidence.merged_pull_request": {
+      "name": "merged_pull_request",
+      "schema": "evidence",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "repository": {
+          "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merged_at": {
+          "name": "merged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merged_by": {
+          "name": "merged_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "self_merged": {
+          "name": "self_merged",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "merged_pull_request_item_fk": {
+          "name": "merged_pull_request_item_fk",
+          "tableFrom": "merged_pull_request",
+          "tableTo": "item",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "item_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "merged_pull_request_pkey": {
+          "name": "merged_pull_request_pkey",
+          "columns": [
+            "workspace_id",
+            "item_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "merged_pull_request_candidate_key": {
+          "name": "merged_pull_request_candidate_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "candidate_id",
+            "repository",
+            "number"
+          ]
+        }
+      },
+      "policies": {
+        "merged_pull_request_tenant_isolation": {
+          "name": "merged_pull_request_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"merged_pull_request\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"merged_pull_request\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "evidence.outbox": {
+      "name": "outbox",
+      "schema": "evidence",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correlation_id": {
+          "name": "correlation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "outbox_unsent_idx": {
+          "name": "outbox_unsent_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"evidence\".\"outbox\".\"sent_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "outbox_workspace_dedupe_key": {
+          "name": "outbox_workspace_dedupe_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ]
+        }
+      },
+      "policies": {
+        "outbox_tenant_isolation": {
+          "name": "outbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "outbox_relay_read": {
+          "name": "outbox_relay_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true"
+        },
+        "outbox_relay_mark": {
+          "name": "outbox_relay_mark",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "evidence.repository_read": {
+      "name": "repository_read",
+      "schema": "evidence",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "github_login": {
+          "name": "github_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emails": {
+          "name": "emails",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_commits": {
+          "name": "total_commits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authored_commits": {
+          "name": "authored_commits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "generated_only_commits": {
+          "name": "generated_only_commits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "generated_checked": {
+          "name": "generated_checked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "commits_truncated": {
+          "name": "commits_truncated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "languages": {
+          "name": "languages",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pushed_at": {
+          "name": "pushed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_tests": {
+          "name": "has_tests",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_ci": {
+          "name": "has_ci",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "repository_read_source_fk": {
+          "name": "repository_read_source_fk",
+          "tableFrom": "repository_read",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "source_id",
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "repository_read_pkey": {
+          "name": "repository_read_pkey",
+          "columns": [
+            "workspace_id",
+            "source_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "repository_read_tenant_isolation": {
+          "name": "repository_read_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"repository_read\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"repository_read\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "repository_read_status_check": {
+          "name": "repository_read_status_check",
+          "value": "\"evidence\".\"repository_read\".\"status\" in ('pending', 'read', 'not_accessible', 'fork')"
+        },
+        "repository_read_counts_check": {
+          "name": "repository_read_counts_check",
+          "value": "\"evidence\".\"repository_read\".\"status\" <> 'read' or (\"evidence\".\"repository_read\".\"authored_commits\" between 0 and \"evidence\".\"repository_read\".\"total_commits\"\n          and \"evidence\".\"repository_read\".\"generated_checked\" between 0 and \"evidence\".\"repository_read\".\"authored_commits\"\n          and \"evidence\".\"repository_read\".\"generated_only_commits\" between 0 and \"evidence\".\"repository_read\".\"generated_checked\")"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "evidence.source": {
+      "name": "source",
+      "schema": "evidence",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_file_id": {
+          "name": "blob_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "captured_at": {
+          "name": "captured_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "check_method": {
+          "name": "check_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synthetic": {
+          "name": "synthetic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text_fingerprint": {
+          "name": "text_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_workspace_candidate_key": {
+          "name": "source_workspace_candidate_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ]
+        }
+      },
+      "policies": {
+        "source_tenant_isolation": {
+          "name": "source_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"source\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"source\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "source_kind_check": {
+          "name": "source_kind_check",
+          "value": "\"evidence\".\"source\".\"kind\" in ('cv', 'repository', 'document', 'shipped_product', 'reference_call', 'portal_submission', 'interview_note')"
+        },
+        "source_url_check": {
+          "name": "source_url_check",
+          "value": "\"evidence\".\"source\".\"url\" is null or \"evidence\".\"source\".\"url\" like 'https://%'"
+        },
+        "source_text_fingerprint_check": {
+          "name": "source_text_fingerprint_check",
+          "value": "\"evidence\".\"source\".\"text_fingerprint\" ~ '^[0-9a-f]{16}$'"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "evidence": "evidence"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

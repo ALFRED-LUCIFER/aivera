@@ -45,6 +45,8 @@ export type EvidenceSource = {
   checkMethod: string | null;
   synthetic: boolean;
   createdAt: Date;
+  /** The SimHash of the source's text (domain/fingerprint.ts); null when there was no text or too little signal. */
+  textFingerprint: string | null;
 };
 
 /**
@@ -75,12 +77,25 @@ export type EvidenceItem = {
  * (AIV-P0-018) to register once apps/web first builds this module (as instrumentation.ts does for candidates).
  * Never log them.
  */
-export const PERSONAL_DATA_FIELDS = ['label', 'url', 'checkMethod', 'excerpt', 'excerptSpan', 'limit'] as const;
+export const PERSONAL_DATA_FIELDS = [
+  'label',
+  'url',
+  'checkMethod',
+  'excerpt',
+  'excerptSpan',
+  'limit',
+  'githubLogin',
+  'emails',
+  'repository',
+  'mergedBy',
+] as const;
 
 const MESSAGES = {
   source_kind: 'The source kind is not one of the listed kinds',
   source_label: 'Name the source',
   source_url: 'A source link must be an https address',
+  repository_url: 'A repository link must be https://github.com/ followed by the owner and the repository',
+  github_login: 'The GitHub login is not valid',
   excerpt: 'Quote the excerpt the evidence rests on',
   no_items: 'Record at least one item the source backs',
   provenance: 'The provenance is not one of the listed values',
@@ -89,6 +104,8 @@ const MESSAGES = {
   limit: 'State what this evidence does not show',
   level: 'A level is a whole number from 0 to 5',
   not_found: 'No such evidence item',
+  flag_not_found: 'No such flag',
+  resolution: 'Choose a reason from the list',
   not_synthetic: 'Only a synthetic workspace holding only synthetic evidence can be purged.',
 } as const;
 

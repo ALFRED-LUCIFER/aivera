@@ -35,6 +35,7 @@ export const ACTIONS = [
   'invitation.accepted',
   'member.removed',
   'job.stage_changed',
+  'evidence.flag_resolved',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

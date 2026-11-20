@@ -42,6 +42,7 @@ const cvItem = (
     capturedAt: day,
     checkedAt: null,
     checkMethod: null,
+    textFingerprint: null,
     synthetic: true,
     createdAt: day,
   },

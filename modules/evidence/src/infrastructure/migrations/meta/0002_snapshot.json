@@ -1,5 +1,5 @@
 {
-  "id": "be4017c7-1995-4ca5-b97a-f6ec8d329d03",
+  "id": "6dd5c433-94f7-4c71-a318-f07d6c59926c",
   "prevId": "e2b08870-9eb5-4dd1-a3d4-e305e59514dd",
   "version": "7",
   "dialect": "postgresql",
@@ -31,13 +31,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
-        },
-        "level": {
-          "name": "level",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         }
       },
       "indexes": {
@@ -104,10 +97,202 @@
           "withCheck": "\"evidence\".\"competency_link\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
       },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "evidence.duplicate_flag": {
+      "name": "duplicate_flag",
+      "schema": "evidence",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_source_id": {
+          "name": "other_source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_candidate_id": {
+          "name": "other_candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "similarity": {
+          "name": "similarity",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by": {
+          "name": "resolved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "duplicate_flag_candidate_idx": {
+          "name": "duplicate_flag_candidate_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "duplicate_flag_other_candidate_idx": {
+          "name": "duplicate_flag_other_candidate_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "other_candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "duplicate_flag_source_fk": {
+          "name": "duplicate_flag_source_fk",
+          "tableFrom": "duplicate_flag",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "source_id",
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "duplicate_flag_other_source_fk": {
+          "name": "duplicate_flag_other_source_fk",
+          "tableFrom": "duplicate_flag",
+          "tableTo": "source",
+          "schemaTo": "evidence",
+          "columnsFrom": [
+            "workspace_id",
+            "other_source_id",
+            "other_candidate_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "candidate_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "duplicate_flag_pair_key": {
+          "name": "duplicate_flag_pair_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "source_id",
+            "other_source_id"
+          ]
+        }
+      },
+      "policies": {
+        "duplicate_flag_tenant_isolation": {
+          "name": "duplicate_flag_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"evidence\".\"duplicate_flag\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"evidence\".\"duplicate_flag\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
       "checkConstraints": {
-        "competency_link_level_check": {
-          "name": "competency_link_level_check",
-          "value": "\"evidence\".\"competency_link\".\"level\" between 0 and 5"
+        "duplicate_flag_candidates_check": {
+          "name": "duplicate_flag_candidates_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"candidate_id\" <> \"evidence\".\"duplicate_flag\".\"other_candidate_id\""
+        },
+        "duplicate_flag_similarity_check": {
+          "name": "duplicate_flag_similarity_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"similarity\" between 0 and 1"
+        },
+        "duplicate_flag_resolution_check": {
+          "name": "duplicate_flag_resolution_check",
+          "value": "\"evidence\".\"duplicate_flag\".\"resolution\" in ('shared_group_project', 'same_template', 'needs_follow_up')"
+        },
+        "duplicate_flag_resolved_check": {
+          "name": "duplicate_flag_resolved_check",
+          "value": "(\"evidence\".\"duplicate_flag\".\"resolution\" is null) = (\"evidence\".\"duplicate_flag\".\"resolved_by\" is null) and (\"evidence\".\"duplicate_flag\".\"resolution\" is null) = (\"evidence\".\"duplicate_flag\".\"resolved_at\" is null)"
         }
       },
       "isRLSEnabled": true
@@ -490,6 +675,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "text_fingerprint": {
+          "name": "text_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -526,6 +717,10 @@
         "source_url_check": {
           "name": "source_url_check",
           "value": "\"evidence\".\"source\".\"url\" is null or \"evidence\".\"source\".\"url\" like 'https://%'"
+        },
+        "source_text_fingerprint_check": {
+          "name": "source_text_fingerprint_check",
+          "value": "\"evidence\".\"source\".\"text_fingerprint\" ~ '^[0-9a-f]{16}$'"
         }
       },
       "isRLSEnabled": true

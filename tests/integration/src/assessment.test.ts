@@ -147,7 +147,7 @@ beforeAll(async () => {
   app = createDb(urlFor('aivera_app'), { max: 1 });
   audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
-  evidence = createEvidence(workspaces, () => NOW);
+  evidence = createEvidence(workspaces, audit, () => NOW);
   assessment = createAssessment(workspaces, audit, () => NOW);
   w1 = await newWorkspace('Demo hiring team');
   w2 = await newWorkspace('Gulf Talent Partners');

@@ -3,16 +3,23 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
-import { EvidenceRecordedV1, PROVENANCES, type EvidenceContract, type RecordEvidenceInput } from '@credalent/evidence';
+import {
+  EvidenceRecordedV1,
+  NEAR_DUPLICATE_THRESHOLD,
+  PROVENANCES,
+  type EvidenceContract,
+  type RecordEvidenceInput,
+} from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-024 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
 // Synthetic cast only (docs/00-product/personas.md).
@@ -33,6 +40,7 @@ let app: Db;
 let workspaces: WorkspacesContract;
 let candidates: CandidatesContract;
 let evidence: EvidenceContract;
+let audit: AuditContract;
 let w1: string;
 let w2: string;
 let sara: string;
@@ -105,9 +113,10 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
-  workspaces = createWorkspaces(app, createAudit(app));
+  audit = createAudit(app);
+  workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
-  evidence = createEvidence(workspaces, () => NOW);
+  evidence = createEvidence(workspaces, audit, () => NOW);
   w1 = await newWorkspace('Demo hiring team');
   w2 = await newWorkspace('Gulf Talent Partners');
   sara = await person(w1, 'Sara Al Qahtani');
@@ -131,7 +140,16 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'evidence' order by name`);
     expect([...tables]).toEqual(
-      ['competency_link', 'item', 'outbox', 'source'].map((name) => ({
+      [
+        'competency_link',
+        'duplicate_flag',
+        'inbox',
+        'item',
+        'merged_pull_request',
+        'outbox',
+        'repository_read',
+        'source',
+      ].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
@@ -275,7 +293,7 @@ describe('Scenario: Evidence never crosses workspaces', () => {
   it("a W2 user listing Sara's candidate id gets no rows, even with no WHERE clause", async () => {
     await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, repository(sara)));
     expect(await as(ALEX, w2, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, JOB))).toEqual([]);
-    for (const table of ['source', 'item', 'competency_link', 'outbox'])
+    for (const table of ['source', 'item', 'competency_link', 'duplicate_flag', 'outbox'])
       expect([
         ...(await withWorkspace(app, w2, (tx) =>
           tx.execute(sql`select * from ${sql.identifier('evidence')}.${sql.identifier(table)}`),
@@ -318,5 +336,221 @@ describe('Authorisation (ADR-005 point 6)', () => {
       as(LINA, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 })),
     ).rejects.toThrow(ForbiddenError);
     await expect(as(LINA, w1, (ctx) => evidence.purgeSyntheticEvidence(ctx))).rejects.toThrow(ForbiddenError);
+  });
+});
+
+// AIV-P1-071: text fingerprints and the "Also submitted by another applicant" flag. Synthetic write-ups only.
+const METRICS = [
+  'recall',
+  'precision',
+  'latency',
+  'cost',
+  'drift',
+  'coverage',
+  'labels',
+  'queries',
+  'passages',
+  'reranking',
+];
+/** A synthetic write-up of about 900 words. */
+const harnessWriteUp = (title = 'Retrieval evaluation harness') =>
+  `${title}\n${Array.from(
+    { length: 64 },
+    (_, i) =>
+      `In week ${i + 1} the harness measured ${METRICS[i % 10]} against ${METRICS[(i * 3 + 1) % 10]} over ${((i * 7) % 50) + 3} merchant questions.`,
+  ).join(' ')}`;
+const assistantWriteUp = (title = 'Merchant help assistant write-up') =>
+  `${title}\n${Array.from(
+    { length: 40 },
+    (_, i) =>
+      `Release ${i + 1} of the assistant answered ${i * 11 + 40} merchants about refunds, cutting the handover rate by ${(i % 9) + 2} points.`,
+  ).join(' ')}`;
+
+const document = (
+  candidateId: string,
+  text: string,
+  kind: RecordEvidenceInput['source']['kind'] = 'document',
+): RecordEvidenceInput => ({
+  ...repository(candidateId, { provenance: 'submitted', strength: 'medium', competencies: [] }),
+  source: {
+    kind,
+    label: text.split('\n')[0] ?? 'Write-up',
+    url: null,
+    blobFileId: null,
+    capturedAt: NOW,
+    checkedAt: null,
+    checkMethod: null,
+  },
+  text,
+});
+
+describe('AIV-P1-071: fingerprints and near-duplicate flags', () => {
+  let maria: string;
+  let omar: string;
+  let mariaSource: string;
+  let omarSource: string;
+  let logged = '';
+
+  beforeAll(async () => {
+    maria = await person(w1, 'Maria Santos');
+    omar = await person(w1, 'Omar Al Suwaidi');
+    ({ sourceId: mariaSource } = await as(ALEX, w1, (ctx) =>
+      evidence.recordEvidence(ctx, document(maria, harnessWriteUp())),
+    ));
+    const written: string[] = [];
+    const spy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => (written.push(String(chunk)), true));
+    try {
+      const edited = harnessWriteUp('How we evaluate retrieval')
+        .replace('In week 3 the harness measured', 'During the third week we checked')
+        .replace('over 38 merchant questions', 'across 38 support questions');
+      ({ sourceId: omarSource } = await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, document(omar, edited))));
+    } finally {
+      spy.mockRestore();
+    }
+    logged = written.join('');
+  });
+
+  it('the migration adds text_fingerprint with a 16-hex-character check constraint', async () => {
+    await expect(
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`update evidence.source set text_fingerprint = 'not-a-fingerprint' where id = ${mariaSource}`),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'source_text_fingerprint_check' });
+  });
+
+  describe('Scenario: Near-identical submissions from two applicants are flagged on both profiles', () => {
+    it('both candidates see one flag citing the other source by its opaque id, at least 0.92 alike', async () => {
+      for (const candidate of [maria, omar]) {
+        const flags = await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, candidate));
+        expect(flags).toEqual([
+          expect.objectContaining({
+            sourceId: omarSource,
+            candidateId: omar,
+            otherSourceId: mariaSource,
+            otherCandidateId: maria,
+            resolution: null,
+          }),
+        ]);
+        expect(flags[0]?.similarity).toBeGreaterThanOrEqual(NEAR_DUPLICATE_THRESHOLD);
+      }
+    });
+
+    it("neither candidate's evidence changes: the items keep their provenance and strength", async () => {
+      for (const candidate of [maria, omar])
+        expect(
+          (await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, candidate, JOB))).map((i) => [
+            i.provenance,
+            i.strength,
+          ]),
+        ).toEqual([['submitted', 'medium']]);
+    });
+  });
+
+  describe('Scenario: The flag is never shared across workspaces', () => {
+    // SAFETY: mutation check: ALTER POLICY source_tenant_isolation USING (true) WITH CHECK (true), repository filter kept -> this test failed (W2 saw W1's sources); dropping the policy under FORCE hides every row instead, so the loosened policy is the real mutation
+    it("an identical write-up in Gulf Talent Partners raises no flag, and W2 cannot see W1's sources even with no WHERE clause", async () => {
+      const gulf = await person(w2, 'Arjun Menon');
+      const { sourceId } = await as(ALEX, w2, (ctx) => evidence.recordEvidence(ctx, document(gulf, harnessWriteUp())));
+      expect(await as(ALEX, w2, (ctx) => evidence.listDuplicateFlags(ctx, gulf))).toEqual([]);
+      expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, maria))).toHaveLength(1);
+      const seen = await withWorkspace(app, w2, (tx) =>
+        tx.execute<{ id: string }>(sql`select id from evidence.source where text_fingerprint is not null`),
+      );
+      expect([...seen].map((r) => r.id)).toEqual([sourceId]);
+    });
+  });
+
+  describe('Scenario Outline: Text without enough signal is not fingerprinted', () => {
+    it.each(['Python, SQL, Docker', 'Sara Al Qahtani · sara@example.com · Dubai', 'Experience Education Skills'])(
+      '"%s" gets no fingerprint and never matches',
+      async (text) => {
+        const paolo = await person(w1, `Paolo Garcia ${text.length}`);
+        await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, document(paolo, text)));
+        await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, document(omar, text)));
+        const [listed] = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, paolo, JOB));
+        expect(listed?.source.textFingerprint).toBeNull();
+        expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, paolo))).toEqual([]);
+      },
+    );
+  });
+
+  describe('Scenario: The same document uploaded twice by one candidate is one origin', () => {
+    it("Sara's document and her portal re-upload under a new title form one origin, with no flag", async () => {
+      const first = await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, document(sara, assistantWriteUp())));
+      const again = await as(ALEX, w1, (ctx) =>
+        evidence.recordEvidence(
+          ctx,
+          document(sara, assistantWriteUp('Refunds assistant, final version'), 'portal_submission'),
+        ),
+      );
+      const origins = await as(ALEX, w1, (ctx) => evidence.listOriginGroups(ctx, sara));
+      expect(origins.find((g) => g.includes(first.sourceId))).toEqual([first.sourceId, again.sourceId]);
+      expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, sara))).toEqual([]);
+    });
+  });
+
+  describe("Scenario: Resolving the flag is a person's decision and is audited", () => {
+    it('"Shared group project" shows on both candidates, the audit log records who, when and why, and nothing is sent', async () => {
+      const [flag] = await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, maria));
+      const events = await count(w1, 'outbox');
+      await as(ALEX, w1, (ctx) => evidence.resolveDuplicateFlag(ctx, flag?.id ?? '', 'shared_group_project'));
+      for (const candidate of [maria, omar])
+        expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, candidate))).toMatchObject([
+          { resolution: 'shared_group_project', resolvedBy: ALEX, resolvedAt: NOW },
+        ]);
+      expect(await audit.listFor(w1, { type: 'duplicate_flag', id: flag?.id ?? '' })).toMatchObject([
+        {
+          action: 'evidence.flag_resolved',
+          actor: { type: 'user', id: ALEX },
+          after: { resolution: 'shared_group_project', sourceId: omarSource, otherSourceId: mariaSource },
+        },
+      ]);
+      expect(await count(w1, 'outbox')).toBe(events);
+    });
+  });
+
+  // SAFETY: mutation check: removed the pg_advisory_xact_lock from the store's fingerprints -> this test failed (no flag)
+  it('two copies recorded at the same time still flag each other', async () => {
+    const pool = createDb(urlFor('aivera_app'), { max: 2 });
+    try {
+      const audit2 = createAudit(pool);
+      const ws = createWorkspaces(pool, audit2);
+      const ev = createEvidence(ws, audit2, () => NOW);
+      const [a, b] = [await person(w1, 'Huda Rahman'), await person(w1, 'Farid Haddad')];
+      const text = assistantWriteUp('Refunds assistant notes, shared copy').replaceAll('assistant', 'helper');
+      await Promise.all(
+        [a, b].map((c) => ws.withWorkspace({ userId: ALEX }, w1, (ctx) => ev.recordEvidence(ctx, document(c, text)))),
+      );
+      expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, a))).toHaveLength(1);
+    } finally {
+      await pool.$client.end();
+    }
+  });
+
+  describe('Scenario: Interviewers cannot resolve the flag', () => {
+    // SAFETY: mutation check: removed authorize(ctx, 'candidate.create') from resolveDuplicateFlag -> this test failed (no ForbiddenError)
+    it('Lina, an interviewer, gets 403 and the flag is unchanged', async () => {
+      const [before] = await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, maria));
+      await expect(
+        as(LINA, w1, (ctx) => evidence.resolveDuplicateFlag(ctx, before?.id ?? '', 'needs_follow_up')),
+      ).rejects.toThrow(ForbiddenError);
+      await expect(as(LINA, w1, (ctx) => evidence.listDuplicateFlags(ctx, maria))).rejects.toThrow(ForbiddenError);
+      expect(await as(ALEX, w1, (ctx) => evidence.listDuplicateFlags(ctx, maria))).toEqual([before]);
+    });
+  });
+
+  describe('Scenario: No excerpt or name reaches logs', () => {
+    // SAFETY: mutation check: logFlagged also passed the source label and redact() was removed from the logger -> this test failed (the redactor alone already hides an unlisted key)
+    it('the flag is logged with source ids and the similarity only', () => {
+      const lines = logged
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l) as Record<string, unknown>);
+      const line = lines.find((l) => l.msg === 'evidence near-duplicate flagged');
+      expect(line).toMatchObject({ sourceId: omarSource, otherSourceId: mariaSource });
+      expect(line?.['credalent.evidence.similarity']).toBeGreaterThanOrEqual(NEAR_DUPLICATE_THRESHOLD);
+      for (const leak of ['Maria', 'Omar', 'Suwaidi', 'example.com', 'harness', 'retrieval', 'https://'])
+        expect(logged.toLowerCase()).not.toContain(leak.toLowerCase());
+    });
   });
 });
