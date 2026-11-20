@@ -318,7 +318,7 @@ async function seed(
       source: 'email',
     });
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
-    await evidence.recordEvidence(ctx, {
+    const { itemIds } = await evidence.recordEvidence(ctx, {
       candidateId: personId,
       source: {
         kind: 'cv',
@@ -366,6 +366,21 @@ async function seed(
         synthetic: true,
         text: 'We built an evaluation set of four hundred support questions for the merchant help assistant, scored the top five passages for relevance every week, and compared recall with the previous release before shipping.',
       });
+    // A repository read, a merged pull request on the item and a handled message (evidence.*, AIV-P1-026).
+    const login = `${person.split(' ')[0]?.toLowerCase()}-credalent-example`;
+    await evidence.requestRepositoryRead(ctx, {
+      candidateId: personId,
+      url: `https://github.com/${login}/eval-harness`,
+      githubLogin: login,
+      emails: [],
+      synthetic: true,
+    });
+    await ctx.tx.execute(sql`insert into evidence.merged_pull_request
+      (workspace_id, item_id, candidate_id, repository, number, merged_at, merged_by, self_merged)
+      values (${workspaceId}, ${itemIds[0]}, ${personId}, 'saga-maintainer-credalent-example/saga', 41, now(),
+        'saga-maintainer-credalent-example', false)`);
+    await ctx.tx.execute(sql`insert into evidence.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('evidence.repository.read', ${crypto.randomUUID()}, ${workspaceId}, now())`);
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),
