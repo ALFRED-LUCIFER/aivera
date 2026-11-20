@@ -81,6 +81,8 @@ for (const theme of themes) {
     await signIn(page, { email: AP });
     await openJob(page, 'Senior AI Engineer');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // The title streams in after the heading; axe reads it (document-title), as in add-applicants.spec.ts.
+    await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
     await expectAccessible(page);
   });
 }
