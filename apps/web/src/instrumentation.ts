@@ -7,6 +7,7 @@ export async function register(): Promise<void> {
   // The modules' personal-data field names are redacted in logs and telemetry even where the allowlist would keep them.
   const { registerPersonalDataKeys } = await import('@credalent/observability');
   registerPersonalDataKeys((await import('@credalent/candidates')).PERSONAL_DATA_FIELDS);
+  registerPersonalDataKeys((await import('@credalent/intake')).PERSONAL_DATA_FIELDS);
   registerPersonalDataKeys((await import('@credalent/candidate-accounts')).PERSONAL_DATA_FIELDS);
   (await import('@credalent/observability/init')).initTelemetry('web', config.APPLICATIONINSIGHTS_CONNECTION_STRING);
 }

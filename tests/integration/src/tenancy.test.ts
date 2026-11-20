@@ -8,6 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates } from '@credalent/candidates/composition';
+import type { IntakeContract } from '@credalent/intake';
+import { createIntake } from '@credalent/intake/composition';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
@@ -212,17 +214,21 @@ type Modules = {
   candidates: CandidatesContract;
   evidence: EvidenceContract;
   jobs: JobsContract;
+  intake: IntakeContract;
   audit: AuditContract;
 };
 const modulesOn = (db: Db): Modules => {
   const audit = createAudit(db);
   const workspaces = createWorkspaces(db, audit);
+  const candidates = createCandidates(workspaces, () => NOW);
+  const jobs = createJobs(workspaces, audit, () => NOW);
   return {
     audit,
     workspaces,
-    candidates: createCandidates(workspaces, () => NOW),
+    candidates,
     evidence: createEvidence(workspaces, audit, () => NOW),
-    jobs: createJobs(workspaces, audit, () => NOW),
+    jobs,
+    intake: createIntake(workspaces, candidates, jobs, () => NOW),
   };
 };
 
@@ -245,7 +251,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, evidence, jobs }: Modules,
+  { workspaces, evidence, jobs, intake }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -301,10 +307,15 @@ async function seed(
       jobIds: [job.id],
       clientIds: [],
     });
-    const { personId } = await candidates.findOrCreatePerson(ctx, {
-      displayName: person,
-      identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
-      synthetic: true,
+    // An application (intake.application and .application_source, AIV-P1-017); it finds or creates the person.
+    const { personId } = await intake.receiveApplication(ctx, {
+      jobId: job.id,
+      person: {
+        displayName: person,
+        identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
+        synthetic: true,
+      },
+      source: 'email',
     });
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
     const { itemIds } = await evidence.recordEvidence(ctx, {
