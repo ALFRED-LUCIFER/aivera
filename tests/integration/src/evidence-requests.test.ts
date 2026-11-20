@@ -211,12 +211,13 @@ describe('Invariants the database enforces', () => {
     const [row] = await withWorkspace(app, w1, (tx) =>
       tx.execute<{ id: string; status: string }>(sql`select id, status from evidence.request limit 1`),
     );
+    expect(row?.id).toBeDefined();
     for (const change of [sql`status = 'draft', sent_at = now()`, sql`status = 'sent', sent_at = null`])
       await expect(
         withWorkspace(app, w1, (tx) =>
           tx.execute(sql`update evidence.request set ${change} where id = ${row?.id ?? ''}`),
         ),
-      ).rejects.toThrow();
+      ).rejects.toThrow('request_sent_check');
   });
 });
 
