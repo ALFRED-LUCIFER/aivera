@@ -25,6 +25,7 @@ export async function smoke({
       const health = await (await fetch(`${base}/api/health`, { signal: signal() })).json();
       const ready = await fetch(`${base}/api/ready`, { signal: signal() });
       // The logo as pages load it, through the image optimizer: proves public/ is in the image and sharp works.
+      // SAFETY: mutation check: removed the apps/web/public COPY from the Dockerfile -> this URL returned 404 (local build)
       const logo = await fetch(`${base}${LOGO}`, { signal: signal() });
       const logoType = logo.headers.get('content-type') ?? '';
       await logo.arrayBuffer();
