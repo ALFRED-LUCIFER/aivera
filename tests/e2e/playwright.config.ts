@@ -38,17 +38,16 @@ export default defineConfig({
   expect: { toHaveScreenshot: { animations: 'disabled', stylePath: './hide-dev-overlay.css' } },
   // The HTML report carries both, and CI uploads it when a test fails (AIV-P0-032).
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
-  // shortcut: not sharded; "publish" depends on "gallery", so Playwright keeps them in one shard and a second shard would
-  // hold only the unconfigured project. Shard when the e2e job nears its 20-minute timeout, by making the candidate-site
-  // specs independent of publish-job.spec.ts first.
+  // CI shards by project (AIV-P0-929, pr.yml "e2e-shard"): "gallery" in three, then "publish" and "unconfigured" with
+  // --no-deps against their own database, since plain --shard keeps "publish" and "gallery" in one shard.
   projects: [
     {
       name: 'gallery',
       testIgnore: [/\.unconfigured\.spec\.ts$/, /publish-job\.spec\.ts$/],
       use: { ...devices['Desktop Chrome'] },
     },
-    // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so it runs after them.
-    // It is skipped, not passed, when any gallery test fails: a skipped "publish" project is not green.
+    // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so locally it runs after
+    // them and is skipped, not passed, when any gallery test fails. CI runs it with --no-deps on its own database.
     {
       name: 'publish',
       testMatch: /publish-job\.spec\.ts$/,

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Regenerates the Linux visual baselines inside the official Playwright image, the same image the CI "e2e" job runs in,
-# so local and CI screenshots match pixel for pixel. Never commit baselines made on macOS.
+# Regenerates the Linux visual baselines inside the official Playwright image, the same image the CI "e2e-shard" jobs run
+# in, so local and CI screenshots match pixel for pixel. Never commit baselines made on macOS.
 # Usage: pnpm e2e:update (every baseline, orphans removed) or pnpm e2e:update -g "<title>" (only the matching tests).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
