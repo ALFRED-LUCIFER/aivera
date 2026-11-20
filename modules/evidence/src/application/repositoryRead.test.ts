@@ -7,7 +7,7 @@ import {
   type RepositoryRead,
   type RepositoryReadStore,
 } from './repositoryRead.ts';
-import type { CvParseStore } from './cvParse.ts';
+import { queueCvParse, type CvParseStore } from './cvParse.ts';
 import type { EvidenceSource } from '../domain/evidence.ts';
 
 // AIV-P1-076: which links an arrival queues, and who the commits are matched to. Synthetic cast only.
@@ -99,5 +99,26 @@ describe('queueing the CV parses an arrival brings', () => {
     expect(published).toEqual([parses[0]?.id]);
     // Opaque ids only: never a file name, content type or contact detail.
     expect(logs).toEqual([['cv', { sourceId: parses[0]?.id, candidateId: MARIA, queued: true }]]);
+  });
+
+  it('queueCvParse returns the existing source on conflict and publishes nothing', async () => {
+    let existing: string | null = null;
+    const published: string[] = [];
+    let n = 0;
+    const ports = {
+      cvStoreFor: () =>
+        ({
+          insertOrGet: async (source: EvidenceSource) => existing ?? ((existing = source.id), null),
+        }) as unknown as CvParseStore,
+      publishParseRequested: async (_tx: Tx, source: EvidenceSource) => void published.push(source.id),
+      newId: () => `0190d4a2-0000-7000-8000-${String(++n).padStart(12, '0')}`,
+      now: () => new Date('2026-11-20T09:00:00Z'),
+    };
+    const input = { candidateId: MARIA, fileId: CV, synthetic: true };
+    const first = await queueCvParse(ports, {} as Tx, W, input);
+    const second = await queueCvParse(ports, {} as Tx, W, input);
+    expect(first.queued).toBe(true);
+    expect(second).toEqual({ sourceId: first.sourceId, queued: false });
+    expect(published).toEqual([first.sourceId]);
   });
 });

@@ -119,7 +119,8 @@ async function upload({ purpose = 'cv', settle = 'clean' }: Upload = {}): Promis
   const ticket = await as(w1, (ctx) =>
     files.requestUpload(ctx, { purpose, fileName: 'cv.pdf', contentType: 'application/pdf', size: data.length }),
   );
-  // An oversized blob: more bytes than the 10 MB-checked size it declared, so settling rejects it.
+  // Over the limit: requestUpload refuses a declared size over 10 MB, so an oversized file is a blob larger than the
+  // size it declared, which the scan's settle rejects on the size mismatch.
   const blob = settle === 'oversized' ? Buffer.concat([data, Buffer.alloc(1024)]) : data;
   stored.set(`uploads-quarantine/w/${w1}/${ticket.fileId}`, { data: blob, contentType: 'application/pdf' });
   if (settle === 'clean') expect(await as(w1, (ctx) => files.markCleanWithoutScan(ctx, ticket.fileId))).toBe('clean');
@@ -302,6 +303,7 @@ afterAll(async () => {
   context.disable();
 });
 
+// Set by the first scenario; the later ones build on her parsed CV, so they run with it, not alone.
 let maria: { personId: string; fileId: string; sourceId: string };
 
 describe('Scenario: An uploaded CV is parsed and its statements appear as claims', () => {
@@ -439,7 +441,9 @@ describe('Scenario: No CV text or file names reach logs or telemetry', () => {
       const queued = lines
         .map((l) => JSON.parse(l) as Record<string, unknown>)
         .find((l) => l['msg'] === 'cv parse queued');
-      expect(queued).toMatchObject({ sourceId: source?.id, candidateId: sara.personId });
+      const standard = new Set(['level', 'time', 'pid', 'hostname', 'trace_id', 'span_id', 'msg']);
+      const fields = Object.fromEntries(Object.entries(queued ?? {}).filter(([key]) => !standard.has(key)));
+      expect(fields).toEqual({ sourceId: source?.id, candidateId: sara.personId });
     } finally {
       write.mockRestore();
     }

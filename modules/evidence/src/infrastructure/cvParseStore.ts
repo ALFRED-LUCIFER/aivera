@@ -7,6 +7,9 @@ import { cvParse, item, source, sourceNote } from './schema.ts';
 export function cvParseStore(tx: Tx): CvParseStore {
   return {
     async insertOrGet(src) {
+      const fileId = src.blobFileId;
+      // A null file id never conflicts (nulls are distinct), so it would bypass the one-source-per-file guard.
+      if (!fileId) throw new Error('a cv source needs its file id');
       // ON CONFLICT waits for a concurrent insert of the same candidate and file, so two deliveries at once keep one.
       const [inserted] = await tx
         .insert(source)
@@ -29,7 +32,7 @@ export function cvParseStore(tx: Tx): CvParseStore {
             eq(source.workspaceId, src.workspaceId),
             eq(source.candidateId, src.candidateId),
             eq(source.kind, 'cv'),
-            eq(source.blobFileId, src.blobFileId ?? ''),
+            eq(source.blobFileId, fileId),
           ),
         );
       if (!existing) throw new Error('cv source conflict but no cv source for this candidate and file');
