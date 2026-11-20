@@ -22,6 +22,10 @@ describe('every server entry point declares its policy or is explicitly public (
     [`${web}/features/jobs/services/reexport.ts`, 'makeJob'],
     // SAFETY: mutation check: put getSessionUserId back in GUARDS -> this case failed
     [`${web}/features/signup/services/session.ts`, 'readsSession'],
+    // SAFETY: mutation check: declared every export of a file holding a wrapped binding, called or not -> these two cases failed
+    // SAFETY: mutation check: counted every call-initialised binding as a guard, wrapper or not -> addViaUnreasoned failed
+    [`${web}/features/applicants/services/addApplicants.ts`, 'addApplicantsDirect'],
+    [`${web}/features/applicants/services/addApplicants.ts`, 'addViaUnreasoned'],
     // SAFETY: mutation check: dropped the handler's session-read requirement for sessionEntry -> this case failed
     [`${web}/features/signup/services/label.ts`, 'listAll'],
     // SAFETY: mutation check: removed the inline 'use server' branch -> these two cases failed
@@ -45,7 +49,7 @@ describe('every server entry point declares its policy or is explicitly public (
   });
 
   it('declared entry points pass: workspaceAction, publicEntry or sessionEntry with a reason, a policy guard, the consumer wrapper', () => {
-    expect(reported.filter((r) => / createWorkspace:/.test(r))).toEqual([]);
+    expect(reported.filter((r) => / (?:createWorkspace|addApplicants):/.test(r))).toEqual([]);
     expect(reported.filter((r) => /declared\.ts|clients\.ts|api\/health\//.test(r))).toEqual([
       // the only one in those files: systemConsumer('') below
       expect.stringContaining('apps/worker/src/consumers/declared.ts systemConsumer('),

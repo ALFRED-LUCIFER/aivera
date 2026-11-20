@@ -8,7 +8,8 @@ import { walk, type Violation } from './rules.ts';
 // - the export is the call result of a wrapper: `workspaceAction(...)`, `publicEntry('<reason>', handler)` or, for an
 //   action that needs only the signed-in session because there is no workspace yet, `sessionEntry('<reason>', handler)`;
 // - the exported function calls a policy guard itself, directly or through a function of the same file: the workspace
-//   context (`inActiveWorkspace`) or the operator policy (`platformOperator`).
+//   context (`inActiveWorkspace`), the operator policy (`platformOperator`), or a same-file binding that holds one of
+//   the wrappers above (`const add = workspaceAction(...)`).
 // A worker consumer is the `.handle` of a `createConsumer(...)` (each handler runs in its envelope's workspace
 // transaction) or `systemConsumer('<reason>', handler)`.
 // shortcut: by name, without the type checker, and a guard call anywhere in the body counts (not proven to run on every
@@ -62,16 +63,27 @@ function calls(node: ts.Node, names: Set<string>): boolean {
   );
 }
 
-/** The policy guards plus this file's top-level functions that call one, until no more are found. */
+/**
+ * The policy guards, this file's top-level bindings that hold a declared wrapper (`const add = workspaceAction(...)`),
+ * and its top-level functions that call either, until no more are found.
+ */
 function guardsOf(file: ts.SourceFile): Set<string> {
   const local = new Map<string, Fn>();
+  const guards = new Set(GUARDS);
   for (const statement of file.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name) local.set(statement.name.text, statement);
     if (ts.isVariableStatement(statement))
-      for (const d of statement.declarationList.declarations)
-        if (ts.isIdentifier(d.name) && isFn(d.initializer)) local.set(d.name.text, d.initializer);
+      for (const d of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(d.name)) continue;
+        if (isFn(d.initializer)) local.set(d.name.text, d.initializer);
+        else if (
+          d.initializer &&
+          ts.isCallExpression(d.initializer) &&
+          !problem(d.initializer, new Set(), REASONED.web)
+        )
+          guards.add(d.name.text);
+      }
   }
-  const guards = new Set(GUARDS);
   for (let grew = true; grew;) {
     grew = false;
     for (const [name, fn] of local) if (!guards.has(name) && calls(fn, guards)) grew = !!guards.add(name);
