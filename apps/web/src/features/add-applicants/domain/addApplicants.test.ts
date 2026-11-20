@@ -1,0 +1,34 @@
+import { intlConfig } from '@credalent/i18n';
+import { SOURCES } from '@credalent/intake';
+import { describe, expect, it } from 'vitest';
+import { addApplicantsSchema, SOURCE_OPTIONS } from './addApplicants.ts';
+
+const JOB = '0190d4a2-0000-7000-9000-000000001031';
+const F1 = '0190d4a2-0000-7000-8000-0000000000f1';
+const F2 = '0190d4a2-0000-7000-8000-0000000000f2';
+
+describe('SOURCE_OPTIONS', () => {
+  it('offers every intake source exactly once, each with its label', async () => {
+    expect(SOURCE_OPTIONS.toSorted()).toEqual(SOURCES.toSorted());
+    const labels = (await intlConfig('en', 'UTC')).messages.addApplicants.sources;
+    expect(SOURCE_OPTIONS.map((s) => labels[s])).toEqual(['LinkedIn', 'Referral', 'Email', 'WhatsApp', 'Careers page']);
+  });
+});
+
+describe('addApplicantsSchema', () => {
+  it('takes a job, a source and one or more file ids', () => {
+    const input = { jobId: JOB, source: 'linkedin', fileIds: [F1, F2] };
+    expect(addApplicantsSchema.parse(input)).toEqual(input);
+  });
+
+  it.each([
+    ['no CV', { jobId: JOB, source: 'linkedin', fileIds: [] }],
+    ['the same file twice', { jobId: JOB, source: 'linkedin', fileIds: [F1, F1] }],
+    ['an unknown source', { jobId: JOB, source: 'fax', fileIds: [F1] }],
+    ['a job that is not an id', { jobId: 'senior-ai-engineer', source: 'email', fileIds: [F1] }],
+    ['a file that is not an id', { jobId: JOB, source: 'email', fileIds: ['cv.pdf'] }],
+    ['a workspace from the client', { jobId: JOB, source: 'email', fileIds: [F1], workspaceId: JOB }],
+  ])('refuses %s', (_, input) => {
+    expect(addApplicantsSchema.safeParse(input).success).toBe(false);
+  });
+});
