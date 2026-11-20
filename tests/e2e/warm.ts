@@ -13,7 +13,7 @@ const appDir = join(import.meta.dirname, '..', '..', 'apps', 'web', 'src', 'app'
 const anyId = '00000000-0000-7000-8000-000000000000';
 
 /** Every page route of apps/web as a URL path: route groups dropped, dynamic segments filled. */
-export const pagePaths = (): string[] =>
+const pagePaths = (): string[] =>
   readdirSync(appDir, { recursive: true, encoding: 'utf8' })
     .filter((file) => /(^|\/)page(\.dev)?\.tsx$/.test(file))
     .map(
@@ -30,7 +30,7 @@ export const pagePaths = (): string[] =>
 async function open(context: BrowserContext, paths: string[]) {
   const queue = [...paths];
   await Promise.all(
-    Array.from({ length: 4 }, async () => {
+    Array.from({ length: Math.min(4, paths.length) }, async () => {
       const page = await context.newPage();
       for (let path = queue.shift(); path; path = queue.shift()) await page.goto(path, { timeout: 120_000 });
       await page.close();
@@ -48,7 +48,8 @@ async function signedIn(context: BrowserContext, baseURL: string, from: string, 
 }
 
 export default async function warm(config: FullConfig) {
-  const baseURL = config.projects.find((project) => project.name === 'gallery')?.use.baseURL ?? '';
+  const baseURL = config.projects.find((project) => project.name === 'gallery')?.use.baseURL;
+  if (!baseURL) throw new Error('warm.ts: the gallery project has no baseURL');
   const browser = await chromium.launch();
   try {
     const paths = pagePaths();

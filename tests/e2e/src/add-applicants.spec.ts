@@ -9,8 +9,8 @@ const AP = 'ap@example.com';
 
 async function openDialog(page: Page) {
   await page.goto('/app/jobs');
-  // An approved job opens on its Candidates tab. The title streams in after the page commits; wait for it, so axe never
-  // reads a page mid-navigation (clicking the current stage's link again re-navigated while the dialog opened).
+  // An approved job opens on its Candidates tab. The title streams in after the page commits: waiting for it means axe
+  // never reads a page mid-navigation.
   await page.getByRole('link', { name: 'Senior AI Engineer' }).click();
   await expect(page).toHaveURL(/\/candidates$/);
   await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
