@@ -101,6 +101,20 @@ const authErrorCode = (error: Error): string => {
   return typeof type === 'string' && AUTH_ERROR_TYPES.has(type) ? type : 'UnknownAuthError';
 };
 
+// Auth.js keeps the original error in `cause.err`. Only its class name and a code-shaped `code` are logged, so a
+// failed sign-in can be told apart (PKCE, token endpoint, identity refusal) without its message or details.
+const CAUSE_NAME = /^(?:[A-Z][A-Za-z]{0,60})?Error$/;
+const CAUSE_CODE = /^(?=[A-Za-z0-9_]*[_\d]|[A-Z0-9_]+$)[A-Za-z0-9_]{3,64}$/;
+const authErrorCause = (error: Error): Record<string, string> => {
+  const err: unknown = (error.cause as { err?: unknown } | undefined)?.err;
+  if (!(err instanceof Error)) return {};
+  const code: unknown = (err as { code?: unknown }).code;
+  return {
+    ...(CAUSE_NAME.test(err.name) && { 'credalent.auth.cause': err.name }),
+    ...(typeof code === 'string' && CAUSE_CODE.test(code) && { 'credalent.auth.cause_code': code }),
+  };
+};
+
 /**
  * One side of the sign-in: recruiters, or candidates (candidateAuth.ts, AIV-P0-011). Each side has its own session
  * cookie, its own Auth.js endpoints and its own sign-in page; Auth.js also salts the session encryption with the cookie
@@ -163,7 +177,7 @@ export function authConfig(
     ],
     // Auth.js's default logger prints causes and details, which can carry an email (AGENTS.md 1.2): codes only.
     logger: {
-      error: (error) => log.error({ area: 'auth', code: authErrorCode(error) }, 'auth error'),
+      error: (error) => log.error({ area: 'auth', code: authErrorCode(error), ...authErrorCause(error) }, 'auth error'),
       warn: (code) => log.warn({ area: 'auth', code }, 'auth warning'),
     },
     pages: { signIn: side.signInPage, error: side.signInPage },
