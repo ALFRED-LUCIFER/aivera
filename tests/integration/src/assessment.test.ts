@@ -120,6 +120,13 @@ const summary = (
   [`proven:${ARABIC}`]: 0,
 });
 
+// An audit value without its stored result id, to compare the summaries.
+const withoutId = (v: Record<string, unknown> | null) => {
+  if (!v) return v;
+  const { resultId: _id, ...rest } = v;
+  return rest;
+};
+
 const assessSara = (workspaceId: string) =>
   as(ALEX, workspaceId, async (ctx) =>
     assessment.assessCandidate(ctx, {
@@ -203,7 +210,9 @@ describe('Scenario: Claims count zero in the backed score, stored and audited', 
 
     const entries = await audit.listFor(w1, { type: 'candidate', id: SARA });
     // SAFETY: mutation check: audited only when the backed score or upper bound changed -> this test failed (2 entries)
-    expect(entries.map((e) => [e.action, e.before, e.after])).toEqual([
+    expect(entries.map((e) => e.after?.['resultId'])).toEqual([first.id, second.id, third.id]);
+    expect(entries.map((e) => e.before?.['resultId'] ?? null)).toEqual([null, first.id, second.id]);
+    expect(entries.map((e) => [e.action, withoutId(e.before), withoutId(e.after)])).toEqual([
       ['score.changed', null, summary(0, 32, 0, 'Low', 0)],
       ['score.changed', summary(0, 32, 0, 'Low', 0), summary(60, 92, 1, 'High', 5)],
       ['score.changed', summary(60, 92, 1, 'High', 5), summary(60, 92, 1, 'High', 5)],

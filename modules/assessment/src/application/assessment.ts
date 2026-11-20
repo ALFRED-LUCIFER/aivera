@@ -96,8 +96,8 @@ const pickAssessment = (s: StoredAssessment): Assessment => ({
 export function assessmentUseCases({ storeFor, authorize, auditScoreChange, newId, now }: Ports) {
   return {
     /**
-     * Assesses the candidate and stores the result when it differs from the latest one; a changed backed score or
-     * upper bound is audited. Nothing is rejected, advanced or sent: the result only orders attention (AGENTS.md 1.5).
+     * Assesses the candidate and stores the result when it differs from the latest one; every stored result is
+     * audited. Nothing is rejected, advanced or sent: the result only orders attention (AGENTS.md 1.5).
      */
     async assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment> {
       // No job passed on purpose: only admins and recruiters assess; job-scoped roles read scores through their job later.
@@ -120,8 +120,9 @@ export function assessmentUseCases({ storeFor, authorize, auditScoreChange, newI
       // Every stored result is a score change (a level, a citation, the rubric version), so every one is audited.
       await auditScoreChange(ctx, {
         candidateId: input.candidateId,
-        before: previous && summarise(pickAssessment(previous)),
-        after: summarise(next),
+        // The stored result ids tell entries apart when only the citations changed.
+        before: previous && { resultId: previous.id, ...summarise(pickAssessment(previous)) },
+        after: { resultId: row.id, ...summarise(next) },
       });
       return row;
     },

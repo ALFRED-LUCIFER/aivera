@@ -1,5 +1,5 @@
-// The only public surface of @credalent/assessment (ADR-002). It imports nothing from billing, candidate-accounts or
-// portfolio: paying never changes ranking (AGENTS.md 1.8, architecture rule `paying-never-changes-ranking`).
+// The only public surface of @credalent/assessment (ADR-002). It imports nothing from billing or portfolio (AGENTS.md 1.8,
+// rule `paying-never-changes-ranking`) nor from candidate-accounts (rule `recruiter-side-no-candidate-accounts`).
 import type { WorkspaceContext } from '@credalent/workspaces';
 import type { AssessCandidateInput, StoredAssessment } from '../application/assessment.ts';
 
@@ -23,7 +23,7 @@ export interface AssessmentContract {
   /**
    * Scores the candidate for the job from the approved rubric version and their evidence: the backed score (claims
    * count zero), "up to N if claims hold", a level per competency with its cited items, and confidence. Stores the
-   * result when it differs from the latest and audits a changed score (`score.changed`). Rejects, advances and sends
+   * result when it differs from the latest and audits every stored result (`score.changed`). Rejects, advances and sends
    * nothing (AGENTS.md 1.5). Admins and recruiters. Throws `RangeError` for a link level outside 0–5.
    */
   assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment>;
