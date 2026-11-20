@@ -1,7 +1,7 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
-import { competencyLink, duplicateFlag, item, source } from './schema.ts';
+import { competencyLink, duplicateFlag, item, mergedPullRequest, repositoryRead, source } from './schema.ts';
 
 /**
  * The evidence store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -108,6 +108,8 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       if (real) return false;
       await tx.delete(duplicateFlag).where(eq(duplicateFlag.workspaceId, workspaceId));
       await tx.delete(competencyLink).where(eq(competencyLink.workspaceId, workspaceId));
+      await tx.delete(mergedPullRequest).where(eq(mergedPullRequest.workspaceId, workspaceId));
+      await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
       await tx.delete(item).where(eq(item.workspaceId, workspaceId));
       await tx.delete(source).where(eq(source.workspaceId, workspaceId));
       return true;

@@ -3,6 +3,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+import type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
@@ -19,6 +20,8 @@ export type {
 export type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/fingerprint.ts';
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
+export type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
+export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 
 /**
  * The ticket's "evidence.recorded": written to `evidence.outbox` in the transaction that records a source and its
@@ -29,6 +32,16 @@ export const EvidenceRecordedV1 = {
   type: 'EvidenceRecorded.v1',
   payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid(), itemIds: z.array(z.uuid()) }),
 } satisfies EventDefinition<{ candidateId: string; sourceId: string; itemIds: string[] }>;
+
+/**
+ * Written to `evidence.outbox` with a pending repository source and sent to the `evidence` queue, whose worker job
+ * `evidence.repository.read` reads the repository (AIV-P1-026). Strict, opaque ids only: the link, login and emails
+ * stay in `evidence.repository_read`.
+ */
+export const RepositoryReadRequestedV1 = {
+  type: 'RepositoryReadRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
@@ -75,4 +88,17 @@ export interface EvidenceContract {
    * `EvidenceError('not_synthetic')`, deleting nothing, unless the workspace and all its evidence is synthetic.
    */
   purgeSyntheticEvidence(ctx: WorkspaceContext): Promise<void>;
+  /**
+   * Stores a pending `repository` source for a public https://github.com/<owner>/<repository> link and queues its read
+   * (`RepositoryReadRequested.v1`). Commits count as the candidate's only when they match `githubLogin`, one of
+   * `emails` or a Co-authored-by trailer naming them. Admins and recruiters. Throws `EvidenceError` (`repository_url`,
+   * `github_login`) and writes nothing.
+   */
+  requestRepositoryRead(ctx: WorkspaceContext, input: RequestRepositoryReadInput): Promise<{ sourceId: string }>;
+  /**
+   * The read's status and measured numbers, with the authorship share evidence mapping caps strength by (generated-only
+   * commits left out); `share` and `strengthCap` are null unless read. Null when the workspace has no such read.
+   * Admins and recruiters.
+   */
+  getRepositoryRead(ctx: WorkspaceContext, sourceId: string): Promise<RepositoryReadView | null>;
 }

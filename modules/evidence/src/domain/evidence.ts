@@ -74,12 +74,25 @@ export type EvidenceItem = {
  * (AIV-P0-018) to register once apps/web first builds this module (as instrumentation.ts does for candidates).
  * Never log them.
  */
-export const PERSONAL_DATA_FIELDS = ['label', 'url', 'checkMethod', 'excerpt', 'excerptSpan', 'limit'] as const;
+export const PERSONAL_DATA_FIELDS = [
+  'label',
+  'url',
+  'checkMethod',
+  'excerpt',
+  'excerptSpan',
+  'limit',
+  'githubLogin',
+  'emails',
+  'repository',
+  'mergedBy',
+] as const;
 
 const MESSAGES = {
   source_kind: 'The source kind is not one of the listed kinds',
   source_label: 'Name the source',
   source_url: 'A source link must be an https address',
+  repository_url: 'A repository link must be https://github.com/ followed by the owner and the repository',
+  github_login: 'The GitHub login is not valid',
   excerpt: 'Quote the excerpt the evidence rests on',
   no_items: 'Record at least one item the source backs',
   provenance: 'The provenance is not one of the listed values',
