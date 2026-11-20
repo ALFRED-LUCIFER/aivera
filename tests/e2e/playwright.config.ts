@@ -26,7 +26,7 @@ const recruiterAuth = {
 export default defineConfig({
   testDir: 'src',
   // The synthetic cast's workspaces (AIV-P0-010).
-  globalSetup: './seed.ts',
+  globalSetup: ['./seed.ts', './warm.ts'],
   forbidOnly: ci,
   retries: ci ? 1 : 0,
   reporter: ci ? [['github'], ['html', { open: 'never' }]] : [['list']],
