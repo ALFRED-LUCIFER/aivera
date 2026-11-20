@@ -1,0 +1,20 @@
+# Arjun Menon: the two excerpts agree in different words; the pre-check cannot settle it, and the model must not flag
+# it.
+id: arjun-queue-dozens
+group: consistent
+people: [Arjun Menon]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: repo
+    text: 'Maintains the queue library with 40 contributors.'
+  - id: S2
+    kind: reference
+    text: "Arjun's queue library has dozens of contributors."
+expected:
+  match:
+    contradictions: []
+recorded:
+  output:
+    contradictions: []

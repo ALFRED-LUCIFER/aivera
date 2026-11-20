@@ -4,6 +4,11 @@ import {
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
   BudgetExceeded,
+  compareExcerptsRequest,
+  flaggedPairs,
+  InvalidCitation,
+  SchemaMismatch,
+  UncitedOutput,
   modelOf,
   parseCvRequest,
   type AiClient,
@@ -349,6 +354,17 @@ export function createEvidenceMappingHandlers(config: {
       });
       return { links, changes };
     },
+    compareExcerpts: async (workspaceId, sources, pairs) => {
+      try {
+        const answer = await config.ai.generateStructured({ ...compareExcerptsRequest(sources, pairs), workspaceId });
+        return flaggedPairs(answer, pairs);
+      } catch (error) {
+        // A rejected answer stores no contradiction and is counted (logMapped); an outage still throws and retries.
+        if (error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput)
+          return null;
+        throw error;
+      }
+    },
     promptVersion: MAP_TO_COMPETENCY_VERSION,
     model: modelOf('evidence.mapToCompetency'),
     publishMapped: (tx, run) =>
@@ -363,7 +379,7 @@ export function createEvidenceMappingHandlers(config: {
         dedupeKey: `mapped:${run.id}`,
         occurredAt: run.createdAt,
       }),
-    logMapped: ({ discarded, ...counts }) =>
+    logMapped: ({ discarded, compared, ...counts }) =>
       log.info(
         {
           'credalent.evidence.mapping_id': counts.mappingId,
@@ -371,6 +387,9 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.gaps': counts.gaps,
           'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          'credalent.evidence.compared.sent': compared.sent,
+          'credalent.evidence.compared.flagged': compared.flagged,
+          'credalent.evidence.compared.rejected': compared.rejected,
           ...Object.fromEntries(Object.entries(discarded).map(([k, v]) => [`credalent.evidence.discarded.${k}`, v])),
         },
         'evidence mapped',

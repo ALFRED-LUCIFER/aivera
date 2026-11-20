@@ -12,6 +12,7 @@ import { parseCvSchema } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainSchema } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
+import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
@@ -53,6 +54,16 @@ const sources: GoldenCase['sources'] = [
   { id: 'S2', kind: 'cv', text: 'Cut cost per request by 40% with response caching.' },
 ];
 const cite = (sourceId: string, quote: string) => ({ sourceId, quote });
+/** An evidence.compareExcerpts answer flagging one pair with these citations (AIV-P1-078). */
+const flag = (...quotes: [string, string][]) => ({
+  contradictions: [{ citations: quotes.map(([sourceId, quote]) => cite(sourceId, quote)) }],
+});
+/** A checked citation, as the citation contract returns it. */
+const at = (sourceId: string) => ({ sourceId, quote: 'q', start: 0, end: 1 });
+/** A checked evidence.compareExcerpts answer flagging each pair of source ids. */
+const answer = (ids: string[][]) => ({
+  contradictions: ids.map((pair) => ({ citations: pair.map(at), claim: false })),
+});
 
 describe('scorers', () => {
   it('accepts a quote that occurs in its source, whitespace-normalised', () => {
@@ -245,6 +256,88 @@ describe('the golden set', () => {
       );
       expect(report.passed, c.id).toBe(true);
     }
+  });
+
+  describe('AIV-P1-078: AI contradiction comparison', () => {
+    const task = 'evidence.compareExcerpts';
+    const cases = golden.get(task) ?? [];
+    const consistent = 'Consistent pairs not flagged (1 - false-positive rate)';
+    const runner = runners[task];
+    if (!runner) throw new Error(`no runner for ${task}`);
+    const viaRunner = (c: GoldenCase, output: unknown) => {
+      const ai = createAiClient({
+        provider: fakeProvider({ completion: JSON.stringify(output) }),
+        budget: memoryTokenBudget(),
+      });
+      return run(task, [c], (_task, goldenCase) => runner(ai, goldenCase, 'eval-workspace'));
+    };
+    const missing = (ids: string[]) =>
+      cases.map((c) => (ids.includes(c.id) ? withOutput(c, { contradictions: [] }) : c));
+    const flagged = (ids: string[]) =>
+      cases.map((c) =>
+        ids.includes(c.id)
+          ? withOutput(c, flag(['S1', c.sources[0]?.text ?? ''], ['S2', c.sources[1]?.text ?? '']))
+          : c,
+      );
+
+    it('10 contradiction pairs and 6 consistent ones, each recorded answer valid, and the runner passes the gates', async () => {
+      expect(cases.filter((c) => c.group === 'contradiction')).toHaveLength(10);
+      expect(cases.filter((c) => c.group === 'consistent')).toHaveLength(6);
+      for (const c of cases) {
+        expect(compareExcerptsSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
+        expect((await viaRunner(c, c.recorded.output)).passed, c.id).toBe(true);
+      }
+      const report = await run(task, cases);
+      expect(groupOf(report, 'Recall')).toMatchObject({ n: 10, total: 10 });
+      expect(groupOf(report, consistent)).toMatchObject({ n: 6, total: 6 });
+    });
+
+    // SAFETY: mutation check: Recall min set to 0 in config.ts -> this test failed
+    // SAFETY: mutation check: consistent-pairs min set to 0 in config.ts -> this test failed
+    it('recall: one missed contradiction of ten passes, two fail; false positives: one flag of six passes, two fail', async () => {
+      expect((await run(task, missing(['sara-merchant-scale']))).passed).toBe(true);
+      const two = await run(task, missing(['sara-merchant-scale', 'rana-team-size']));
+      expect(groupOf(two, 'Recall')).toMatchObject({
+        n: 8,
+        total: 10,
+        failures: ['rana-team-size', 'sara-merchant-scale'],
+      });
+      expect(two.passed).toBe(false);
+      expect((await run(task, flagged(['sara-merchant-thousands']))).passed).toBe(true);
+      const falsePositives = await run(task, flagged(['sara-merchant-thousands', 'tarek-saga-dozen']));
+      expect(groupOf(falsePositives, consistent)).toMatchObject({ n: 4, total: 6 });
+      expect(falsePositives.passed).toBe(false);
+    });
+
+    // SAFETY: mutation check: removed the requested-pair check from flaggedPairs -> this test failed
+    it('Scenario: An answer citing an excerpt that does not exist is rejected', async () => {
+      const sara = caseOf(task, 'sara-merchant-scale');
+      const unknown = await viaRunner(sara, flag(['S1', 'About 9,000 merchants'], ['S3', 'A few hundred merchants']));
+      expect(unknown.cases[0]?.error).toBe('InvalidCitation');
+      const invented = await viaRunner(sara, flag(['S1', 'About 90 merchants'], ['S2', 'A few hundred merchants']));
+      expect(invented.cases[0]?.error).toBe('InvalidCitation');
+      // Both quotes from one excerpt: not the pair's two excerpts.
+      const onlyOne = await viaRunner(sara, flag(['S1', 'About 9,000 merchants'], ['S1', 'every week']));
+      expect(onlyOne.cases[0]?.error).toBe('InvalidCitation');
+    });
+
+    it('maps each flag of a batched answer to its requested pair', () => {
+      const pairs = [
+        ['a', 'b'],
+        ['b', 'c'],
+      ] as const;
+      expect(flaggedPairs(answer([['c', 'b']]), pairs)).toEqual([1]);
+      expect(
+        flaggedPairs(
+          answer([
+            ['b', 'a'],
+            ['a', 'b'],
+          ]),
+          pairs,
+        ),
+      ).toEqual([0]);
+      expect(() => flaggedPairs(answer([['a', 'c']]), pairs)).toThrow('not a requested pair');
+    });
   });
 
   it('AIV-P1-063: every recorded detection is valid against the product schema', () => {

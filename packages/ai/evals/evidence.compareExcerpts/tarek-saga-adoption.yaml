@@ -1,0 +1,25 @@
+# Tarek Mansour: Twelve services against a single service. The pre-check cannot settle it (worded or unmatched numbers),
+# so the model must flag it.
+id: tarek-saga-adoption
+group: contradiction
+people: [Tarek Mansour]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Migrated 12 services to the saga library.'
+  - id: S2
+    kind: reference
+    text: "Tarek's saga library ran in a single service."
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'Migrated 12 services'
+          - sourceId: S2
+            quote: 'ran in a single service'

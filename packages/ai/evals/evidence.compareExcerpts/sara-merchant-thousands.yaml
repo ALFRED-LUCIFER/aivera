@@ -1,0 +1,20 @@
+# Sara Al Qahtani: the two excerpts agree in different words; the pre-check cannot settle it, and the model must not
+# flag it.
+id: sara-merchant-thousands
+group: consistent
+people: [Sara Al Qahtani]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'About 9,000 merchants use the assistant every week.'
+  - id: S2
+    kind: reference
+    text: 'Thousands of merchants rely on the assistant.'
+expected:
+  match:
+    contradictions: []
+recorded:
+  output:
+    contradictions: []

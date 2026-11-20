@@ -1,0 +1,25 @@
+# Daniel Novak: A raise in accuracy against no change. The pre-check cannot settle it (worded or unmatched numbers), so
+# the model must flag it.
+id: daniel-accuracy-change
+group: contradiction
+people: [Daniel Novak]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Raised answer accuracy to 88% on the support assistant.'
+  - id: S2
+    kind: reference
+    text: 'Answer accuracy did not change while he was on the team.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'Raised answer accuracy to 88%'
+          - sourceId: S2
+            quote: 'Answer accuracy did not change'

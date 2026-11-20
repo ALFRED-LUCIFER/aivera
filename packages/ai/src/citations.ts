@@ -57,7 +57,7 @@ export class UncitedOutput extends Error {
 /** A citation names a source the model was not given, or quotes text that is not in that source. */
 export class InvalidCitation extends Error {
   override name = 'InvalidCitation';
-  constructor(task: string, label: string, reason: 'unknown source' | 'quote not in source') {
+  constructor(task: string, label: string, reason: 'unknown source' | 'quote not in source' | 'not a requested pair') {
     // The label comes from the model: named only when it has the shape we gave, so no model text reaches the message.
     super(`AI task ${task} cited ${/^S\d{1,4}$/.test(label) ? label : 'a source'}: ${reason}`);
   }

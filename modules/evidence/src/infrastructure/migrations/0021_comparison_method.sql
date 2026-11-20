@@ -1,0 +1,2 @@
+ALTER TABLE "evidence"."comparison" ADD COLUMN "method" text DEFAULT 'numeric_precheck' NOT NULL;--> statement-breakpoint
+ALTER TABLE "evidence"."comparison" ADD CONSTRAINT "comparison_method_check" CHECK ("evidence"."comparison"."method" in ('numeric_precheck', 'ai') and ("evidence"."comparison"."method" = 'numeric_precheck' or "evidence"."comparison"."outcome" = 'contradiction'));

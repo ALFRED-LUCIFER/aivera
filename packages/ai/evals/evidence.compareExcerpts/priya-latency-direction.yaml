@@ -1,0 +1,25 @@
+# Priya Nair: Latency cut against latency worse. The pre-check cannot settle it (worded or unmatched numbers), so the
+# model must flag it.
+id: priya-latency-direction
+group: contradiction
+people: [Priya Nair]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: document
+    text: 'Cut checkout latency by 60% with the new cache.'
+  - id: S2
+    kind: reference
+    text: 'Checkout latency got worse after her migration.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'Cut checkout latency by 60%'
+          - sourceId: S2
+            quote: 'Checkout latency got worse'

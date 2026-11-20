@@ -39,3 +39,9 @@ export {
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
 } from './prompts/evidence.mapToCompetency.ts';
+export {
+  COMPARE_EXCERPTS_SYSTEM,
+  COMPARE_EXCERPTS_VERSION,
+  compareExcerptsRequest,
+  flaggedPairs,
+} from './prompts/evidence.compareExcerpts.ts';

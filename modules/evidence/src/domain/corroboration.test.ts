@@ -3,7 +3,7 @@ import {
   corroboratedCompetencies,
   isIndependent,
   pairKey,
-  settledPairs,
+  comparablePairs,
   shownAs,
   type Comparison,
   type OriginSource,
@@ -68,6 +68,7 @@ const contradiction = (over: Partial<Comparison>): Comparison => ({
   itemId: 'i1',
   otherItemId: 'i2',
   outcome: 'contradiction',
+  method: 'numeric_precheck',
   resolvedBy: null,
   resolvedAt: null,
   resolutionNote: null,
@@ -179,18 +180,20 @@ describe('corroboratedCompetencies', () => {
   });
 });
 
-describe('settledPairs', () => {
-  it('flags a scoped number that differs between two origins, records a match as agreement, leaves the rest', () => {
+describe('comparablePairs', () => {
+  it('flags a scoped number that differs, records a match as agreement, leaves worded numbers to the AI comparison', () => {
     const links = [
       excerptLink('write-up', 'led a team of 12 engineers'),
       excerptLink('reference', 'managed 5 engineers'),
       excerptLink('scorecard', 'ran a 12-person team'),
       excerptLink('blog', 'about 9,000 merchants use the assistant'),
+      excerptLink('call', 'a few hundred merchants'),
     ];
-    expect(settledPairs(links, [])).toEqual([
+    expect(comparablePairs(links, [])).toEqual([
       { a: 0, b: 1, outcome: 'contradiction' },
       { a: 0, b: 2, outcome: 'agreement' },
       { a: 1, b: 2, outcome: 'contradiction' },
+      { a: 3, b: 4, outcome: 'not_settled' },
     ]);
   });
 
@@ -200,7 +203,7 @@ describe('settledPairs', () => {
       excerptLink('portal', 'led a team of 5 engineers'),
       excerptLink('reference', 'managed 5 engineers', 'other'),
     ];
-    expect(settledPairs(links, [['doc', 'portal']])).toEqual([]);
+    expect(comparablePairs(links, [['doc', 'portal']])).toEqual([]);
   });
 });
 

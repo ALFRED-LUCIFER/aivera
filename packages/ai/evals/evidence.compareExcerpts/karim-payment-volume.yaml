@@ -1,0 +1,25 @@
+# Karim Nasser: Monthly volume differs by two orders of magnitude. The pre-check cannot settle it (worded or unmatched
+# numbers), so the model must flag it.
+id: karim-payment-volume
+group: contradiction
+people: [Karim Nasser]
+input:
+  pairs: [[S1, S2]]
+sources:
+  - id: S1
+    kind: cv
+    text: 'Grew payments volume to AED 40 million a month.'
+  - id: S2
+    kind: reference
+    text: 'Payment volume stayed small, a few hundred thousand dirhams a month.'
+expected:
+  match:
+    contradictions[*].citations[*].sourceId: [S1, S2]
+recorded:
+  output:
+    contradictions:
+      - citations:
+          - sourceId: S1
+            quote: 'AED 40 million a month'
+          - sourceId: S2
+            quote: 'a few hundred thousand dirhams a month'

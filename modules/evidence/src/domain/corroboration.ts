@@ -80,22 +80,26 @@ export function corroboratedCompetencies(input: {
 export const COMPARISON_OUTCOMES = ['agreement', 'contradiction'] as const;
 export type ComparisonOutcome = (typeof COMPARISON_OUTCOMES)[number];
 
+/** How a comparison was decided: the numeric pre-check (AIV-P1-029) or the AI comparison (AIV-P1-078). */
+export const COMPARISON_METHODS = ['numeric_precheck', 'ai'] as const;
+export type ComparisonMethod = (typeof COMPARISON_METHODS)[number];
+
 /**
- * Pairs of links on the same competency, from different origins, whose excerpts the numeric pre-check settles, by
- * index into `links`. Pairs it cannot settle (`not_settled`) are for the AI comparison (AIV-P1-078).
+ * Pairs of links on the same competency, from different origins, whose excerpts the numeric pre-check compared, by
+ * index into `links`. A `not_settled` pair is for the AI comparison (AIV-P1-078); a settled one never reaches it.
  */
-export function settledPairs(
+export function comparablePairs(
   links: readonly (RuleLink & { excerpt: string })[],
   originGroups: readonly (readonly string[])[],
-): { a: number; b: number; outcome: ComparisonOutcome }[] {
+): { a: number; b: number; outcome: ComparisonOutcome | 'not_settled' }[] {
   const origin = originOf(originGroups);
-  const pairs: { a: number; b: number; outcome: ComparisonOutcome }[] = [];
+  const pairs: { a: number; b: number; outcome: ComparisonOutcome | 'not_settled' }[] = [];
   links.forEach((first, a) =>
     links.forEach((second, b) => {
       if (b <= a || first.competencyId !== second.competencyId) return;
       if (origin(first.sourceId) === origin(second.sourceId)) return;
       const outcome = precheckNumbers(first.excerpt, second.excerpt);
-      if (outcome === 'contradiction' || outcome === 'agreement') pairs.push({ a, b, outcome });
+      if (outcome !== 'not_compared') pairs.push({ a, b, outcome });
     }),
   );
   return pairs;
@@ -116,6 +120,7 @@ export type Comparison = {
   itemId: string;
   otherItemId: string;
   outcome: ComparisonOutcome;
+  method: ComparisonMethod;
   resolvedBy: string | null;
   resolvedAt: Date | null;
   resolutionNote: string | null;
