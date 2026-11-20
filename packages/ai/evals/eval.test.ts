@@ -8,6 +8,7 @@ import { parse } from 'yaml';
 import { z } from 'zod';
 import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
+import { parseCvSchema } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainSchema } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
@@ -226,6 +227,24 @@ describe('the golden set', () => {
     const report = await run('evidence.mapToCompetency', [withOutput(maria, output)]);
     expect(report.cases[0]?.scores.claimLabelling?.failures).toContain('$.links[0]: CV only but rated strong');
     expect(report.passed).toBe(false);
+  });
+
+  it('AIV-P1-025: ten CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
+    const cases = golden.get('evidence.parseCv') ?? [];
+    expect(cases).toHaveLength(10);
+    for (const c of cases) expect(parseCvSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
+    const runner = runners['evidence.parseCv'];
+    if (!runner) throw new Error('no runner for evidence.parseCv');
+    for (const c of cases) {
+      const ai = createAiClient({
+        provider: fakeProvider({ completion: JSON.stringify(c.recorded.output) }),
+        budget: memoryTokenBudget(),
+      });
+      const report = await run('evidence.parseCv', [c], (_task, goldenCase) =>
+        runner(ai, goldenCase, 'eval-workspace'),
+      );
+      expect(report.passed, c.id).toBe(true);
+    }
   });
 
   it('AIV-P1-063: every recorded detection is valid against the product schema', () => {

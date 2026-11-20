@@ -101,8 +101,8 @@ export function filesUseCases(p: Ports) {
       // The final copy too: a retry after a failed commit finds quarantine already emptied.
       const blob = (await p.blobs.read(quarantine, file.sizeBytes)) ?? (await p.blobs.read(final, file.sizeBytes));
       // shortcut: the content type checked is the one the browser stored with the blob, not a sniff of its bytes (an .exe sent as
-      // application/pdf passes); download headers (attachment, nosniff, sandbox) limit the harm until parsing checks magic
-      // bytes (AIV-P1-025).
+      // application/pdf passes); download headers (attachment, nosniff, sandbox) limit the harm. CV parsing checks a CV's
+      // magic bytes (AIV-P1-025); sniff here too when other purposes are read by the server.
       if (blob?.data && blob.size === file.sizeBytes && blob.contentType === file.contentType) {
         await p.blobs.write(final, blob.data, file.contentType);
         await store.settle(file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });
@@ -186,4 +186,24 @@ export function filesUseCases(p: Ports) {
       });
     },
   };
+}
+
+/**
+ * A clean workspace file's purpose, content type and bytes, read as the system in a workspace-scoped transaction (CV
+ * parsing, AIV-P1-025). `pending` while it waits for its scan; `rejected` when it will never be clean (infected,
+ * rejected, missing, or its blob gone), so a reader can stop waiting.
+ */
+export async function readCleanFile(
+  p: Pick<Ports, 'storeFor'> & { blobs: Pick<BlobStore, 'read'> },
+  tx: Tx,
+  workspaceId: string,
+  fileId: string,
+): Promise<{ purpose: Purpose; contentType: string; data: Buffer } | 'pending' | 'rejected'> {
+  const file = await p.storeFor(tx).find({ workspaceId }, fileId);
+  if (file?.status === 'pending') return 'pending';
+  // SAFETY: only a clean file is read; a file in quarantine is never parsed.
+  if (file?.status !== 'clean') return 'rejected';
+  const blob = await p.blobs.read(file.blobPath, file.sizeBytes);
+  if (!blob?.data) return 'rejected';
+  return { purpose: file.purpose, contentType: file.contentType, data: blob.data };
 }

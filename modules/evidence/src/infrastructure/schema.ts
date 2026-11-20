@@ -18,6 +18,9 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
+import { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
+import { COMPARISON_OUTCOMES } from '../domain/corroboration.ts';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
@@ -67,6 +70,12 @@ export const source = evidence
       ),
       check('source_url_check', sql`${t.url} is null or ${t.url} like 'https://%'`),
       check('source_text_fingerprint_check', sql`${t.textFingerprint} ~ '^[0-9a-f]{16}$'`),
+      // FileClean.v1 finds the CV sources waiting for a file (AIV-P1-025).
+      index('source_blob_file_idx').on(t.workspaceId, t.blobFileId),
+      // One CV source per candidate and file, so a redelivered or repeated arrival parses it once (AIV-P1-079).
+      uniqueIndex('source_cv_file_key')
+        .on(t.workspaceId, t.candidateId, t.blobFileId)
+        .where(sql`${t.kind} = 'cv'`),
       tenantPolicy('source_tenant_isolation', t.workspaceId),
     ],
   )
@@ -504,6 +513,143 @@ export const evidenceGap = evidence
           and (${t.filesInspected} is null) = (${t.coverageReason} is null) and ${t.filesInspected} >= 0`,
       ),
       tenantPolicy('evidence_gap_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A CV parse (AIV-P1-025): pending until the worker has read the clean file; then parsed, unreadable or failed.
+export const cvParse = evidence
+  .table(
+    'cv_parse',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      status: text({ enum: CV_PARSE_STATUSES }).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'cv_parse_pkey', columns: [t.workspaceId, t.sourceId] }),
+      foreignKey({
+        name: 'cv_parse_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      // Must list exactly CV_PARSE_STATUSES (domain/cv.ts); changing it needs a new migration.
+      check('cv_parse_status_check', sql`${t.status} in ('pending', 'parsed', 'unreadable', 'failed')`),
+      tenantPolicy('cv_parse_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A document's read (AIV-P1-028): pending until the worker has read the clean file; then read, unreadable or failed.
+// Its text is held by the source's items (one per page), never here.
+export const documentRead = evidence
+  .table(
+    'document_read',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      status: text({ enum: DOCUMENT_READ_STATUSES }).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'document_read_pkey', columns: [t.workspaceId, t.sourceId] }),
+      foreignKey({
+        name: 'document_read_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      // Must list exactly DOCUMENT_READ_STATUSES (domain/document.ts); changing it needs a new migration.
+      check('document_read_status_check', sql`${t.status} in ('pending', 'read', 'unreadable', 'failed')`),
+      tenantPolicy('document_read_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// "Unusual content in this source" (AIV-P1-025, AIV-P1-070): text in a source aimed at an AI or hidden in the file. The
+// excerpt quotes the candidate's source: personal data, never logged. A note changes no score, strength or stage.
+export const sourceNote = evidence
+  .table(
+    'source_note',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      reason: text({ enum: NOTE_REASONS }).notNull(),
+      excerpt: text().notNull(),
+      excerptSpan: text('excerpt_span'),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      foreignKey({
+        name: 'source_note_source_fk',
+        columns: [t.workspaceId, t.sourceId, t.candidateId],
+        foreignColumns: [source.workspaceId, source.id, source.candidateId],
+      }),
+      index('source_note_source_idx').on(t.workspaceId, t.sourceId),
+      // Must list exactly NOTE_REASONS (domain/cv.ts); changing it needs a new migration.
+      check('source_note_reason_check', sql`${t.reason} in ('instruction', 'role_marker', 'tool_call', 'hidden_text')`),
+      check('source_note_excerpt_check', sql`btrim(${t.excerpt}) <> ''`),
+      tenantPolicy('source_note_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// Two cited items of one mapping run compared (AIV-P1-029): an agreement fact, or a contradiction that shows both items
+// as "Contradictory" and keeps them out of the backed score until a person resolves it with a note and a limit. The
+// note and limit are candidate data (never logged).
+export const comparison = evidence
+  .table(
+    'comparison',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      // The jobs module's job and competency ids: opaque, no foreign key across modules.
+      jobId: uuid('job_id').notNull(),
+      mappingId: uuid('mapping_id').notNull(),
+      competencyId: uuid('competency_id').notNull(),
+      itemId: uuid('item_id').notNull(),
+      otherItemId: uuid('other_item_id').notNull(),
+      outcome: text({ enum: COMPARISON_OUTCOMES }).notNull(),
+      // The identity user who resolved it.
+      resolvedBy: uuid('resolved_by'),
+      resolvedAt: timestamp('resolved_at', tz),
+      resolutionNote: text('resolution_note'),
+      resolutionLimit: text('resolution_limit'),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      foreignKey({
+        name: 'comparison_mapping_fk',
+        columns: [t.workspaceId, t.mappingId],
+        foreignColumns: [mapping.workspaceId, mapping.id],
+      }),
+      foreignKey({
+        name: 'comparison_item_fk',
+        columns: [t.workspaceId, t.itemId],
+        foreignColumns: [item.workspaceId, item.id],
+      }),
+      foreignKey({
+        name: 'comparison_other_item_fk',
+        columns: [t.workspaceId, t.otherItemId],
+        foreignColumns: [item.workspaceId, item.id],
+      }),
+      index('comparison_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId),
+      index('comparison_mapping_idx').on(t.workspaceId, t.mappingId),
+      // Must list exactly COMPARISON_OUTCOMES (domain/corroboration.ts); changing it needs a new migration.
+      check('comparison_outcome_check', sql`${t.outcome} in ('agreement', 'contradiction')`),
+      check('comparison_items_check', sql`${t.itemId} <> ${t.otherItemId}`),
+      // Resolved all at once, with a note and a limit, and only a contradiction.
+      check(
+        'comparison_resolution_check',
+        sql`(${t.resolvedAt} is null) = (${t.resolvedBy} is null)
+          and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionNote}), '') = '')
+          and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionLimit}), '') = '')
+          and (${t.resolvedAt} is null or ${t.outcome} = 'contradiction')`,
+      ),
+      tenantPolicy('comparison_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

@@ -8,7 +8,8 @@
  * text, from which the evidence module cites the location ("CV, page 1").
  */
 export type UnusualContent = {
-  reason: 'instruction' | 'role_marker' | 'tool_call';
+  /** `hidden_text` is never found here: the evidence module finds it in a file's layout (AIV-P1-025). */
+  reason: 'instruction' | 'role_marker' | 'tool_call' | 'hidden_text';
   excerpt: string;
   start: number;
   end: number;

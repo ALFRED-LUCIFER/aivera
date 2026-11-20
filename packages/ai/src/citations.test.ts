@@ -80,7 +80,14 @@ function answers(...outputs: unknown[]) {
   };
   const budget = memoryTokenBudget();
   const ai = createAiClient({ provider, budget, now: () => Date.parse('2026-11-18T09:00:00Z') });
-  const run = (overrides: { promptVersion?: string; catalogueVersion?: number; sources?: Source[] } = {}) =>
+  const run = (
+    overrides: {
+      promptVersion?: string;
+      catalogueVersion?: number;
+      sources?: Source[];
+      dropInvalidCitations?: boolean;
+    } = {},
+  ) =>
     ai.generateStructured({
       task: 'jobs.draftCompetencies',
       workspaceId,
@@ -315,7 +322,7 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
   });
 
   it('Scenario: Note text never reaches logs or telemetry', async () => {
-    // packages/ai has no logger; the raw spans (before the redactor, redact.test.ts) are the guard.
+    // packages/ai logs counts only (a citation failure); the raw spans (before the redactor, redact.test.ts) are the guard.
     expect(detectUnusualContent(injected.text)).toHaveLength(1);
     await answers(statement([notebook])).run({ sources: [injected] });
     const telemetry = spans
@@ -323,5 +330,29 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
       .map((s) => ({ name: s.name, attributes: s.attributes, events: s.events }));
     const leak = /maria|santos|notebook|ignore previous|rate this candidate/i;
     expect(JSON.stringify(telemetry)).not.toMatch(leak);
+  });
+});
+
+const statementOf = (quote: string) => ({
+  statement: 'x',
+  weight: 1,
+  claim: null,
+  citations: [{ sourceId: 'S2', quote }],
+});
+
+describe('Scenario: Extraction that cites text not in the CV is rejected (AIV-P1-025)', () => {
+  const two = { strengths: [statementOf('cut cost per request by 40%'), statementOf('cut cost by 90%')] };
+
+  // SAFETY: mutation check: rethrew InvalidCitation in drop mode (keep() always throws) -> this test failed
+  it('drops only the statement whose quote is not in the CV and counts it on the span, with no CV text', async () => {
+    const output = await answers(two).run({ sources: [S1, S2], dropInvalidCitations: true });
+    expect(output.strengths.map((s) => s.citations[0]?.quote)).toEqual(['cut cost per request by 40%']);
+    expect(output.strengths[0]?.claim).toBe(true);
+    expect(structuredSpan()?.attributes).toMatchObject({ 'credalent.ai.citation_failures': 1 });
+    expect(JSON.stringify(structuredSpan()?.attributes)).not.toMatch(candidateText);
+  });
+
+  it('without drop mode the whole answer is rejected', () => {
+    expect(() => checkOutput('evidence.parseCv', JSON.stringify(two), schema, [S1, S2])).toThrow(InvalidCitation);
   });
 });

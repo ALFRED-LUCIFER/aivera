@@ -13,7 +13,7 @@ export type IntakeStore = {
   findSource(
     workspaceId: string,
     sourceId: string,
-  ): Promise<{ personId: string; links: string[]; githubLogin: string | null } | null>;
+  ): Promise<{ personId: string; links: string[]; githubLogin: string | null; fileIds: string[] } | null>;
 };
 
 export type Ports = {

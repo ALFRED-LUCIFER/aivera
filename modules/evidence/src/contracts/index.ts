@@ -2,24 +2,46 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+import type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
+import type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
+import type {
+  EvidenceItemView,
+  RecordEvidenceInput,
+  RecordEvidenceResult,
+  RecordReferenceCallInput,
+} from '../application/evidence.ts';
+import type { Comparison } from '../domain/corroboration.ts';
 import type { EvidenceMappingView } from '../application/mapping.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
 import type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
-export { EvidenceError, PERSONAL_DATA_FIELDS, PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
+export {
+  EvidenceError,
+  PERSONAL_DATA_FIELDS,
+  PROVENANCES,
+  REFERENCE_ROLES,
+  SOURCE_KINDS,
+  STRENGTHS,
+} from '../domain/evidence.ts';
 export type {
   CompetencyLink,
   EvidenceErrorCode,
   EvidenceItem,
   EvidenceSource,
   Provenance,
+  ReferenceRole,
   SourceKind,
   Strength,
 } from '../domain/evidence.ts';
-export type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
+export type {
+  EvidenceItemView,
+  RecordEvidenceInput,
+  RecordEvidenceResult,
+  RecordReferenceCallInput,
+} from '../application/evidence.ts';
+export type { Comparison, ComparisonOutcome } from '../domain/corroboration.ts';
 export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/fingerprint.ts';
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
@@ -28,6 +50,12 @@ export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/s
 export { parseRepositoryUrl } from '../domain/repository.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
+export type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
+export { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
+export type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
+export { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
+export type { DocumentReadStatus } from '../domain/document.ts';
+export type { CvParseStatus, NoteReason } from '../domain/cv.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
 export { CLAIM_LIMIT } from '../domain/mapping.ts';
@@ -99,6 +127,24 @@ export const EvidenceMappedV1 = {
 } satisfies EventDefinition<{ candidateId: string; jobId: string; rubricVersionId: string; mappingId: string }>;
 
 /**
+ * Written to `evidence.outbox` with a pending `cv` source and sent to the `evidence` queue, whose worker job
+ * `evidence.cv.parse` parses the CV once its file is clean (AIV-P1-025). Strict, opaque ids only.
+ */
+export const CvParseRequestedV1 = {
+  type: 'CvParseRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
+
+/**
+ * Written to `evidence.outbox` with a pending `document` source and sent to the `evidence` queue, whose worker job
+ * `evidence.document.read` reads the document once its file is clean (AIV-P1-028). Strict, opaque ids only.
+ */
+export const DocumentReadRequestedV1 = {
+  type: 'DocumentReadRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), sourceId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
+
+/**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
  * so the workspace id never comes from client input (ADR-005). Role checks go through the workspaces `authorize`;
  * refusals throw `ForbiddenError`, rule failures `EvidenceError`.
@@ -110,6 +156,32 @@ export interface EvidenceContract {
    * Supporting", `limit` "State what this evidence does not show", `provenance`, `strength`, …) and writes nothing.
    */
   recordEvidence(ctx: WorkspaceContext, input: RecordEvidenceInput): Promise<RecordEvidenceResult>;
+  /**
+   * Stores a recruiter's reference call notes as a `reference_call` source ("Reference call, 11 Nov") with one
+   * Supporting, Candidate-submitted item; who was called is kept by role only (`REFERENCE_ROLES`), never a name. The
+   * notes are fingerprinted, so notes copied from the candidate's write-up are one origin with it. Admins and recruiters;
+   * anyone else gets `ForbiddenError` and nothing is stored. Throws `EvidenceError` (`reference_role`, `called_on`,
+   * `excerpt`) and writes nothing.
+   */
+  recordReferenceCall(ctx: WorkspaceContext, input: RecordReferenceCallInput): Promise<RecordEvidenceResult>;
+  /**
+   * The comparisons of the candidate's newest mapping run for the job (AIV-P1-029), oldest first: contradictions (open
+   * while `resolvedAt` is null) and agreement facts, each citing both items by id. An open contradiction shows both
+   * items as "Contradictory" in `listEvidenceForCandidate`, so the score leaves them out. Every role with a grant on
+   * the job.
+   */
+  listComparisons(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<Comparison[]>;
+  /**
+   * A person resolves a contradiction with a note and the limit both items then state; the items show their own
+   * provenance again. A re-map keeps the resolution while the same two excerpts contradict. Audited
+   * (`evidence.contradiction_resolved`: actor, time, note) as the last statement; changes no stage, rank or contact.
+   * Admins and recruiters. Throws `EvidenceError` (`resolution_note`, `limit`, `comparison_not_found`).
+   */
+  resolveContradiction(
+    ctx: WorkspaceContext,
+    comparisonId: string,
+    input: { note: string; limit: string },
+  ): Promise<void>;
   /** Links an item to a competency of a job's rubric; linking twice keeps one link. Admins and recruiters. */
   linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void>;
   /**
@@ -158,6 +230,33 @@ export interface EvidenceContract {
    * Admins and recruiters.
    */
   getRepositoryRead(ctx: WorkspaceContext, sourceId: string): Promise<RepositoryReadView | null>;
+  /**
+   * Stores a pending `cv` source (label "CV") for an uploaded CV file and queues its parse (`CvParseRequested.v1`). The
+   * worker parses it only once the files module has settled the file clean (FileClean.v1); every statement becomes a
+   * claim ("Claim awaiting validation", Claim only) citing "CV, page N", and the CV's emails and phones go to the
+   * candidate record only. Admins and recruiters.
+   */
+  requestCvParse(ctx: WorkspaceContext, input: RequestCvParseInput): Promise<{ sourceId: string }>;
+  /**
+   * The parse's status (`pending` "Reading the CV", `unreadable` "We could not read this CV", `failed` "Parsing failed,
+   * retry", `parsed`) and the CV's "Unusual content in this source" notes, each quoting the CV with "page N", for the
+   * Candidate screen (AIV-P1-045). Null when the workspace has no such parse. Admins and recruiters.
+   */
+  getCvParse(ctx: WorkspaceContext, sourceId: string): Promise<CvParseView | null>;
+  /**
+   * Stores a pending `document` source (the given label, provenance "Candidate-submitted") for an uploaded document,
+   * write-up or image and queues its read (`DocumentReadRequested.v1`). The worker reads it only once the files module
+   * has settled the file clean (FileClean.v1; FileRejected.v1 marks it unreadable): one item per page, "Candidate-
+   * submitted", at most Medium, cited "<label>, page N", with the limit "<label> supplied, authorship unverified."; its
+   * text is fingerprinted once and indexed for search. Admins and recruiters. Throws `EvidenceError('source_label')`.
+   */
+  requestDocumentRead(ctx: WorkspaceContext, input: RequestDocumentReadInput): Promise<{ sourceId: string }>;
+  /**
+   * The read's status (`pending`, `read`, `unreadable`, `failed`) and the document's "Unusual content in this source"
+   * notes, each quoting the document with "page N" (`hidden_text` when the file hides it). Null when the workspace has
+   * no such read. Admins and recruiters.
+   */
+  getDocumentRead(ctx: WorkspaceContext, sourceId: string): Promise<DocumentReadView | null>;
   /**
    * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
    * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.

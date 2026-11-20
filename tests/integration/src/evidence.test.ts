@@ -141,7 +141,10 @@ describe('Migrations', () => {
       where t.schemaname = 'evidence' order by name`);
     expect([...tables]).toEqual(
       [
+        'comparison',
         'competency_link',
+        'cv_parse',
+        'document_read',
         'duplicate_flag',
         'evidence_gap',
         'inbox',
@@ -156,6 +159,7 @@ describe('Migrations', () => {
         'request',
         'request_item',
         'source',
+        'source_note',
       ].map((name) => ({
         name,
         owner: 'aivera_migrator',
