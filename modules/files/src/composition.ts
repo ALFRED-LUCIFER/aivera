@@ -57,6 +57,13 @@ export function createFiles(config: {
   };
 }
 
+/**
+ * A workspace file's purpose (`cv`, `evidence`, `portal`), or null when the workspace has no such file, read as the
+ * system in a worker job's workspace-scoped transaction (the evidence module's arrival handler, AIV-P1-079).
+ */
+export const readFilePurposeAsSystem = async (tx: Tx, workspaceId: string, fileId: string) =>
+  (await fileStore(tx).find({ workspaceId }, fileId))?.purpose ?? null;
+
 /** `readCleanFile` over the worker's transaction (CV parsing, AIV-P1-025). */
 export function createCleanFileReader(blobs: Pick<BlobStore, 'read'>) {
   return (tx: Tx, workspaceId: string, fileId: string) =>

@@ -1,13 +1,39 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { CvParseStore } from '../application/cvParse.ts';
 import { cvParse, item, source, sourceNote } from './schema.ts';
 
 /** CV parses over a workspace-scoped transaction: the workspace filter here, row-level security below it. */
 export function cvParseStore(tx: Tx): CvParseStore {
   return {
-    async insert(parse) {
-      await tx.insert(cvParse).values(parse);
+    async insertOrGet(src) {
+      // ON CONFLICT waits for a concurrent insert of the same candidate and file, so two deliveries at once keep one.
+      const [inserted] = await tx
+        .insert(source)
+        .values(src)
+        .onConflictDoNothing({
+          target: [source.workspaceId, source.candidateId, source.blobFileId],
+          where: sql`${source.kind} = 'cv'`,
+        })
+        .returning({ id: source.id });
+      if (inserted) {
+        const { workspaceId, id: sourceId, candidateId } = src;
+        await tx.insert(cvParse).values({ workspaceId, sourceId, candidateId, status: 'pending' });
+        return null;
+      }
+      const [existing] = await tx
+        .select({ id: source.id })
+        .from(source)
+        .where(
+          and(
+            eq(source.workspaceId, src.workspaceId),
+            eq(source.candidateId, src.candidateId),
+            eq(source.kind, 'cv'),
+            eq(source.blobFileId, src.blobFileId ?? ''),
+          ),
+        );
+      if (!existing) throw new Error('cv source conflict but no cv source for this candidate and file');
+      return existing.id;
     },
     async find(workspaceId, sourceId) {
       const [row] = await tx

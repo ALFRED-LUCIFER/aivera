@@ -39,6 +39,7 @@ export function intakeStore(tx: Tx): IntakeStore {
           personId: application.personId,
           links: applicationSource.links,
           githubLogin: applicationSource.githubLogin,
+          fileIds: applicationSource.fileIds,
         })
         .from(applicationSource)
         .innerJoin(

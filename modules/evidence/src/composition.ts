@@ -18,7 +18,7 @@ import { RubricApprovedV1 } from '@credalent/jobs';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { FileCleanV1, FileRejectedV1 } from '@credalent/files';
 import { annotateSpan, log, withSpan } from '@credalent/observability';
-import { cvParseUseCases, isTransient, parseCv, type ParsePorts } from './application/cvParse.ts';
+import { cvParseUseCases, isTransient, parseCv, type CvPorts, type ParsePorts } from './application/cvParse.ts';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
@@ -75,6 +75,14 @@ const publishReadRequested: RepositoryPorts['publishReadRequested'] = (tx, sourc
     occurredAt: source.createdAt,
   });
 
+const publishParseRequested: CvPorts['publishParseRequested'] = (tx, source) =>
+  enqueue(tx, outbox, CvParseRequestedV1, {
+    workspaceId: source.workspaceId,
+    payload: { candidateId: source.candidateId, sourceId: source.id },
+    dedupeKey: `cv-parse:${source.id}`,
+    occurredAt: source.createdAt,
+  });
+
 const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKey = `source:${source.id}`) =>
   enqueue(tx, outbox, EvidenceRecordedV1, {
     workspaceId: source.workspaceId,
@@ -127,13 +135,7 @@ export function createEvidence(
     ...cvParseUseCases({
       ...ports,
       cvStoreFor: cvParseStore,
-      publishParseRequested: (tx, source) =>
-        enqueue(tx, outbox, CvParseRequestedV1, {
-          workspaceId: source.workspaceId,
-          payload: { candidateId: source.candidateId, sourceId: source.id },
-          dedupeKey: `cv-parse:${source.id}`,
-          occurredAt: source.createdAt,
-        }),
+      publishParseRequested,
     }),
     ...documentReadUseCases({
       ...ports,
@@ -275,22 +277,29 @@ export function createRepositoryRefreshHandler(config: {
   };
 }
 
+const QUEUED_MESSAGES = {
+  repository: ['repository read queued', 'repository read already queued'],
+  cv: ['cv parse queued', 'cv parse already queued'],
+} as const;
+
 /**
- * The worker job `evidence.application.received` on the evidence queue (AIV-P1-076): queues one read per GitHub
- * repository link an arrival or a member's link brings, as the system in the envelope's workspace. The intake and
- * candidates reads come from the worker's composition root, so this module imports neither's internals.
+ * The worker job `evidence.application.received` on the evidence queue: queues one read per GitHub repository link an
+ * arrival or a member's link brings (AIV-P1-076) and one parse per CV file it carries (AIV-P1-079), as the system in
+ * the envelope's workspace. The intake, candidates and files reads come from the worker's composition root, so this
+ * module imports none of their internals.
  */
 export function createApplicationReceivedHandler(
-  config: Pick<ArrivalPorts, 'readArrival' | 'readPerson'> & { now?: () => Date },
+  config: Pick<ArrivalPorts, 'readArrival' | 'readPerson' | 'readFilePurpose'> & { now?: () => Date },
 ): Handler<{ applicationId: string; sourceId: string }> {
   const ports: ArrivalPorts = {
     ...config,
     readStoreFor: repositoryReadStore,
     publishReadRequested,
+    cvStoreFor: cvParseStore,
+    publishParseRequested,
     newId: uuidv7,
     now: config.now ?? (() => new Date()),
-    logQueued: ({ queued, ...ids }) =>
-      log.info(ids, queued ? 'repository read queued' : 'repository read already queued'),
+    logQueued: (kind, { queued, ...ids }) => log.info(ids, QUEUED_MESSAGES[kind][queued ? 0 : 1]),
   };
   return {
     event: ApplicationReceivedV1,

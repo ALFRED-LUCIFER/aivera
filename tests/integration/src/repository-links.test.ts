@@ -11,6 +11,7 @@ import { createRelay } from '@credalent/db/relay';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createApplicationReceivedHandler, createEvidence, EVIDENCE_QUEUE } from '@credalent/evidence/composition';
 import { ApplicationReceivedV1, type IntakeContract, type ReceiveApplicationInput } from '@credalent/intake';
+import { readFilePurposeAsSystem } from '@credalent/files/composition';
 import { createIntake, readApplicationSourceAsSystem } from '@credalent/intake/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
@@ -167,6 +168,7 @@ beforeAll(async () => {
       return readApplicationSourceAsSystem(...args);
     },
     readPerson: readPersonAsSystem,
+    readFilePurpose: readFilePurposeAsSystem,
     now: () => NOW,
   }) as Handler<unknown>;
   const create = async (name: string) =>
