@@ -1171,7 +1171,7 @@
         "hiring_owner": "see other jobs or their candidates. Hiring owners see only the jobs they are given.",
         "interviewer": "see rankings, other interviewers’ scores, or other jobs. Interviewers see only the jobs they are given."
       },
-      "expires": "This invitation expires on {expiresAt, date, short}.",
+      "expires": "<hl>Accept the invitation before it expires on {expiresAt, date, short}.</hl>",
       "button": "Accept invitation",
       "allOfClient": "all of {client} jobs"
     },
@@ -1179,7 +1179,7 @@
       "subject": "Rubric waiting for your approval: {jobTitle}",
       "preheader": "{changed, select, yes {Version {version}, with what changed.} other {Version {version}.}} Nothing is assessed until you approve.",
       "heading": "{jobTitle}: version {version} of the rubric is waiting for your approval",
-      "intro": "{sender} at {workspace} sent you version {version} of the rubric. Review the competencies below, then approve it or return it with a note.",
+      "intro": "{sender} at {workspace} sent you version {version} of the rubric. <hl>Approve or return version {version}</hl> once you have reviewed the competencies below; if you return it, add a note.",
       "competency": "Competency",
       "weight": "Weight",
       "level": "Level needed",
