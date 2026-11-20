@@ -258,7 +258,7 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
 // shortcut: without Document Intelligence, CV parses, document reads and link reads stay pending and their events wait unsent in
 // evidence.outbox and files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025
 // PR, owner to-dos).
-else log.warn('Document Intelligence not configured: CV parses and document reads are not consumed');
+else log.warn('Document Intelligence not configured: CV parses, document reads and link reads are not consumed');
 if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,

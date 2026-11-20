@@ -2,9 +2,9 @@ import { detectUnusualContent } from '@credalent/ai';
 import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import type { SourceNote } from '../domain/cv.ts';
-import { checkSource, type EvidenceItem, type EvidenceSource } from '../domain/evidence.ts';
+import { checkSource, EvidenceError, type EvidenceItem, type EvidenceSource } from '../domain/evidence.ts';
 import { fingerprintText } from '../domain/fingerprint.ts';
-import { extractPage, linkItem, type LinkReadStatus } from '../domain/link.ts';
+import { extractPage, linkItem, MAX_LINK_LENGTH, type LinkReadStatus } from '../domain/link.ts';
 import type { CvParseStore, ParsePorts } from './cvParse.ts';
 import { flagCrossApplicantCopies, type Ports } from './evidence.ts';
 
@@ -71,7 +71,10 @@ export type LinkPorts = Pick<Ports, 'newId' | 'now'> & {
   publishLinkReadRequested(tx: Tx, source: EvidenceSource): Promise<void>;
 };
 
-/** Stores a pending `shipped_product` source for the link and queues its read, once per candidate and URL. */
+/**
+ * Stores a pending `shipped_product` source for the link and queues its read, once per candidate and URL. Throws
+ * `EvidenceError('source_url')` for an empty link or one longer than MAX_LINK_LENGTH.
+ */
 export async function queueLinkRead(
   ports: LinkPorts,
   tx: Tx,
@@ -80,6 +83,7 @@ export async function queueLinkRead(
 ): Promise<{ sourceId: string; queued: boolean }> {
   const at = ports.now();
   const url = input.url.trim();
+  if (!url || url.length > MAX_LINK_LENGTH) throw new EvidenceError('source_url');
   const source: EvidenceSource = {
     id: ports.newId(),
     workspaceId,

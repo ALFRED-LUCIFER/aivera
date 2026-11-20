@@ -33,7 +33,8 @@ export function createLinkFetcher({
     const host = target.hostname.replace(/^\[(.*)\]$/, '$1');
     const addresses = isIP(host) ? [{ address: host, family: isIP(host) }] : await resolve(host);
     // SAFETY: every resolved address is checked, so a host that also answers with a private address is refused.
-    const address = addresses[0]?.address;
+    // IPv4 first: a worker without IPv6 egress would otherwise miss a dual-stack site.
+    const address = (addresses.find((a) => a.family === 4) ?? addresses[0])?.address;
     if (address === undefined || addresses.some((a) => isRefusedAddress(a.address)))
       throw new Refused('refused_address');
     return new Promise((done, fail) => {

@@ -69,6 +69,7 @@ describe('queueing the reads an arrival brings', () => {
         'https://github.com/Maria-Credalent-Example/ledger-sync.git',
         'https://portfolio.maria.credalent.example',
         'https://github.com/maria-credalent-example',
+        `https://portfolio.maria.credalent.example/${'a'.repeat(2048)}`,
       ],
     });
     expect(reads.map((r) => r.url)).toEqual(['https://github.com/maria-credalent-example/ledger-sync']);

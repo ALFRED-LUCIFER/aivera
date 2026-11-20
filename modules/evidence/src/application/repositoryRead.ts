@@ -41,7 +41,7 @@ import {
   type SkillSignal,
   targetSkills,
 } from '../domain/skill-signals/classify.ts';
-import { LINK_LABEL } from '../domain/link.ts';
+import { LINK_LABEL, MAX_LINK_LENGTH } from '../domain/link.ts';
 import { queueCvParse, type CvPorts } from './cvParse.ts';
 import type { Ports } from './evidence.ts';
 import { queueLinkRead, type LinkPorts } from './linkRead.ts';
@@ -325,7 +325,11 @@ export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId
     });
     ports.logQueued('repository', { sourceId: read.sourceId, candidateId, queued: read.queued });
   }
-  for (const url of new Set(arrival.links.filter((link) => !parseRepositoryUrl(link)))) {
+  // A link too long to keep is left on the application only, so it cannot fail the arrival's other reads.
+  const plain = arrival.links.filter(
+    (link) => !parseRepositoryUrl(link) && link.trim() !== '' && link.trim().length <= MAX_LINK_LENGTH,
+  );
+  for (const url of new Set(plain)) {
     const read = await queueLinkRead(ports, tx, workspaceId, {
       candidateId,
       url,

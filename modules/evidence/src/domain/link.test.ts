@@ -29,6 +29,9 @@ describe('isRefusedAddress', () => {
     ['::ffff:169.254.169.254', 'IPv4-mapped metadata'],
     ['::ffff:a9fe:a9fe', 'IPv4-mapped metadata, hex'],
     ['64:ff9b::a00:1', 'NAT64 of a private address'],
+    ['::ffff:0:a00:1', 'SIIT form of a private address'],
+    ['2001::1', 'Teredo'],
+    ['168.63.129.16', 'Azure platform endpoint'],
     ['not-an-address', 'not an IP address'],
   ])('refuses %s (%s)', (address) => {
     expect(isRefusedAddress(address)).toBe(true);
@@ -88,9 +91,25 @@ describe('robotsAllows', () => {
     expect(robotsAllows('User-agent: credalentbot\nDisallow: /', '/work')).toBe(false);
   });
 
+  it('merges every group naming the agent', () => {
+    const txt = 'User-agent: CredalentBot\nDisallow: /a\n\nUser-agent: CredalentBot\nDisallow: /b';
+    expect([robotsAllows(txt, '/a'), robotsAllows(txt, '/b'), robotsAllows(txt, '/c')]).toEqual([false, false, true]);
+  });
+
+  // SAFETY: mutation check: matched with the earlier '.*' regular expression -> this test failed (timed out)
+  it('a pattern built to backtrack is matched in linear time', () => {
+    const started = performance.now();
+    expect(robotsAllows(`User-agent: *\nDisallow: /${'*a'.repeat(30)}b`, `/${'a'.repeat(5000)}`)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(100);
+  }, 2_000);
+
   it('reads wildcards, end anchors, comments and an empty Disallow', () => {
     expect(robotsAllows('User-agent: *\nDisallow: /*.pdf$', '/files/report.pdf')).toBe(false);
     expect(robotsAllows('User-agent: *\nDisallow: /*.pdf$', '/files/report.pdf?x=1')).toBe(true);
+    expect(robotsAllows('User-agent: *\nDisallow: /work$', '/work')).toBe(false);
+    expect(robotsAllows('User-agent: *\nDisallow: /work$', '/works')).toBe(true);
+    expect(robotsAllows('User-agent: *\nDisallow: /a*b*c', '/a-c-b')).toBe(true);
+    expect(robotsAllows('User-agent: *\nDisallow: /a*b*c', '/a-b-c/x')).toBe(false);
     expect(robotsAllows('User-agent: * # all\nDisallow: /drafts # not yet', '/drafts/1')).toBe(false);
     expect(robotsAllows('User-agent: *\nDisallow:', '/anything')).toBe(true);
     expect(robotsAllows('', '/anything')).toBe(true);
@@ -116,6 +135,23 @@ describe('extractPage', () => {
         'Under 2 s per answer',
       ].join('\n'),
     });
+  });
+
+  // SAFETY: mutation check: restored the lazy back-referencing regular expression -> this test failed (timed out)
+  it.each(['<nav ', '<!--', '<title>', '<main>', '<'])(
+    'stays linear on 2 MB of unclosed "%s"',
+    (opener) => {
+      const started = performance.now();
+      extractPage(opener.repeat(Math.floor((2 * 1024 * 1024) / opener.length)));
+      expect(performance.now() - started).toBeLessThan(1_000);
+    },
+    5_000,
+  );
+
+  it('keeps the text after an unclosed dropped element, and drops the closed ones', () => {
+    expect(extractPage('<p>Kept</p><nav>Menu</nav><p>Also kept</p><aside>never closed<p>Tail</p>').text).toBe(
+      'Kept\nAlso kept\nnever closed\nTail',
+    );
   });
 
   it('takes the body when there is no article or main, and no title when none is given', () => {

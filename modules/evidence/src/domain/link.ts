@@ -11,6 +11,9 @@ export type LinkReadStatus = (typeof LINK_READ_STATUSES)[number];
 /** The label of a link that reached an application with no name of its own (AIV-P1-076's plain links). */
 export const LINK_LABEL = 'Linked work';
 
+/** The longest link kept: the web form's bound, and well under the unique index's key size. */
+export const MAX_LINK_LENGTH = 2048;
+
 export const LINK_LIMITS = { timeoutMs: 10_000, maxBytes: 2 * 1024 * 1024, maxRedirects: 3 } as const;
 /** The robots.txt user agent token the fetch answers to, and sends. */
 export const ROBOTS_AGENT = 'CredalentBot';
@@ -32,7 +35,11 @@ for (const [net, prefix] of [
   ['127.0.0.0', 8], // loopback
   ['169.254.0.0', 16], // link-local, incl. the cloud metadata address 169.254.169.254
   ['172.16.0.0', 12], // private
+  ['168.63.129.16', 32], // Azure platform endpoint (wire server, DNS): public, but internal to the platform
   ['192.0.0.0', 24], // IETF protocol assignments
+  ['192.0.2.0', 24], // documentation
+  ['198.51.100.0', 24], // documentation
+  ['203.0.113.0', 24], // documentation
   ['192.168.0.0', 16], // private
   ['198.18.0.0', 15], // benchmarking
   ['224.0.0.0', 4], // multicast
@@ -41,7 +48,12 @@ for (const [net, prefix] of [
   refused.addSubnet(net, prefix, 'ipv4');
 for (const [net, prefix] of [
   ['::', 96], // unspecified, loopback (::1) and IPv4-compatible forms
+  ['::ffff:0:0:0', 96], // SIIT IPv4-translated: embeds an IPv4 address of any kind
   ['64:ff9b::', 96], // NAT64: would reach an IPv4 address of any kind
+  ['64:ff9b:1::', 48], // local-use NAT64
+  ['100::', 64], // discard-only
+  ['2001::', 32], // Teredo: embeds an IPv4 address
+  ['2001:db8::', 32], // documentation
   ['2002::', 16], // 6to4: embeds an IPv4 address of any kind
   ['fc00::', 7], // unique local (private)
   ['fe80::', 10], // link-local
@@ -57,8 +69,8 @@ export function isRefusedAddress(address: string): boolean {
 }
 
 /**
- * Whether robots.txt lets ROBOTS_AGENT fetch `path` (path and query): the group naming the agent, else `*`; the
- * longest matching rule wins, Allow on a tie (RFC 9309), with `*` and `$` wildcards. No group means allowed.
+ * Whether robots.txt lets ROBOTS_AGENT fetch `path` (path and query): the groups naming the agent, else `*`; the
+ * longest matching rule wins, Allow on a tie (RFC 9309), with `*` and a trailing `$`. No group means allowed.
  */
 export function robotsAllows(robotsTxt: string, path: string): boolean {
   type Group = { agents: string[]; rules: { allow: boolean; pattern: string }[] };
@@ -80,24 +92,38 @@ export function robotsAllows(robotsTxt: string, path: string): boolean {
     }
   }
   const agent = ROBOTS_AGENT.toLowerCase();
-  const group = groups.find((g) => g.agents.includes(agent)) ?? groups.find((g) => g.agents.includes('*'));
+  const named = groups.filter((g) => g.agents.includes(agent));
+  const rules = (named.length ? named : groups.filter((g) => g.agents.includes('*'))).flatMap((g) => g.rules);
   let best: { allow: boolean; length: number } | null = null;
-  for (const rule of group?.rules ?? []) {
-    if (!robotsPattern(rule.pattern).test(path)) continue;
+  for (const rule of rules) {
+    if (!robotsMatch(rule.pattern, path)) continue;
     const length = rule.pattern.length;
     if (!best || length > best.length || (length === best.length && rule.allow)) best = { allow: rule.allow, length };
   }
   return best?.allow ?? true;
 }
 
-const robotsPattern = (pattern: string) =>
-  new RegExp(
-    '^' +
-      pattern
-        .replace(/[.+?^{}()|[\]\\]/g, '\\$&')
-        .replaceAll('*', '.*')
-        .replace(/\\?\$$/, '$'),
-  );
+/**
+ * A robots.txt pattern against a path, in linear time: no regular expression, since the site (the candidate) writes the
+ * pattern and a backtracking `.*` chain would freeze the worker past any timeout. Leftmost matching of each `*`-separated
+ * part is enough for globs with only `*`.
+ */
+function robotsMatch(pattern: string, path: string): boolean {
+  const anchored = pattern.endsWith('$');
+  const parts = (anchored ? pattern.slice(0, -1) : pattern).split('*');
+  const first = parts[0] ?? '';
+  if (!path.startsWith(first)) return false;
+  let at = first.length;
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i] ?? '';
+    const last = i === parts.length - 1;
+    // The last part of an anchored pattern must end the path.
+    const found = anchored && last ? path.length - part.length : path.indexOf(part, at);
+    if (found < at || (anchored && last && !path.endsWith(part))) return false;
+    at = found + part.length;
+  }
+  return !anchored || at === path.length;
+}
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const decode = (text: string) =>
@@ -113,27 +139,57 @@ const squash = (text: string) => text.replace(/[ \t\f\v ]+/g, ' ').trim();
  * The page's title and main text, readability-style: scripts, styles, navigation, headers, footers, asides and forms
  * are dropped; the first `<article>` or `<main>` is the text when there is one, else the body. One line per block.
  */
-// shortcut: regular expressions over the markup, not a DOM (no HTML parser is installed): nested elements of a dropped
-// kind and malformed markup can leave stray text. Add a parser if pilot pages show it.
+// shortcut: a linear scan of the markup, not a DOM (no HTML parser is installed): nested elements of a dropped kind and
+// malformed markup can leave stray text. Add a parser if pilot pages show it.
 export function extractPage(html: string): { title: string | null; text: string } {
-  const title = squash(decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')) || null;
-  let body = html
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(
-      /<(head|script|style|noscript|template|svg|nav|header|footer|aside|form|iframe|select)\b[\s\S]*?<\/\1\s*>/gi,
-      ' ',
-    );
-  body = /<(article|main)\b[^>]*>([\s\S]*?)<\/\1\s*>/i.exec(body)?.[2] ?? body;
+  const lower = html.toLowerCase();
+  const titleAt = /<title\b[^<>]*>/i.exec(html);
+  const titleEnd = titleAt ? lower.indexOf('</title', titleAt.index) : -1;
+  const title =
+    titleAt && titleEnd >= 0 ? squash(decode(html.slice(titleAt.index + titleAt[0].length, titleEnd))) || null : null;
+  let body = dropElements(html);
+  const mainAt = /<(article|main)\b[^<>]*>/i.exec(body);
+  const mainEnd = mainAt ? body.toLowerCase().indexOf(`</${mainAt[1]?.toLowerCase()}`, mainAt.index) : -1;
+  if (mainAt && mainEnd >= 0) body = body.slice(mainAt.index + mainAt[0].length, mainEnd);
   const text = decode(
     body
-      .replace(/<(br|\/?(p|div|section|li|ul|ol|h[1-6]|tr|table|blockquote|pre|dd|dt|figcaption))\b[^>]*>/gi, '\n')
-      .replace(/<[^>]*>/g, ' '),
+      // [^<>] so an unclosed `<` stops at the next one: linear on a page of stray openers.
+      .replace(/<(br|\/?(p|div|section|li|ul|ol|h[1-6]|tr|table|blockquote|pre|dd|dt|figcaption))\b[^<>]*>/gi, '\n')
+      .replace(/<[^<>]*>/g, ' '),
   )
     .split('\n')
     .map(squash)
     .filter(Boolean)
     .join('\n');
   return { title, text };
+}
+
+const DROPPED = /<!--|<(head|script|style|noscript|template|svg|nav|header|footer|aside|form|iframe|select)\b/gi;
+
+/**
+ * The markup without comments and dropped elements, in one forward pass with `indexOf` for each closer (lazy regular
+ * expressions rescan to the end from every unclosed opener: quadratic on 2 MB). A kind with no closer left is kept.
+ */
+function dropElements(html: string): string {
+  const lower = html.toLowerCase();
+  const unclosed = new Set<string>();
+  let out = '';
+  let at = 0;
+  DROPPED.lastIndex = 0;
+  for (let m = DROPPED.exec(html); m; m = DROPPED.exec(html)) {
+    const close = m[1] ? `</${m[1].toLowerCase()}` : '-->';
+    if (unclosed.has(close)) continue;
+    const end = lower.indexOf(close, DROPPED.lastIndex);
+    if (end < 0) {
+      unclosed.add(close);
+      continue;
+    }
+    const gt = m[1] ? lower.indexOf('>', end) : end + 2;
+    out += html.slice(at, m.index) + ' ';
+    at = gt < 0 ? html.length : gt + 1;
+    DROPPED.lastIndex = at;
+  }
+  return out + html.slice(at);
 }
 
 /**
