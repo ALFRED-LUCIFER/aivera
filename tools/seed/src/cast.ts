@@ -92,8 +92,9 @@ export const HIRING_OWNERS: CastUser[] = [
 ];
 
 // Evidence expected, levels and types from docs/01-design/artboards: Rubric.dc.html (Senior AI Engineer) and
-// RoleNew.dc.html (the other four). Weights are the design's (personas.md). The four success statements other than the
-// Senior AI Engineer's are synthetic: no artboard shows them.
+// RoleNew.dc.html (the other four). Weights are personas.md's, not RoleNew's draft weights. The four success statements
+// other than the Senior AI Engineer's are synthetic: no artboard shows them.
+// shortcut: tests/e2e/seed.ts artboardRubric repeats these rows; keep both in step.
 const SAE_V2: CastCompetency[] = [
   row('LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4),
   row('Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4),

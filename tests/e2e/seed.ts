@@ -317,6 +317,8 @@ export default async function seed() {
     const as = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
       workspaces.withWorkspace({ userId: recruiter }, workspaceId, fn);
     await as((ctx) => workspaces.grantJobAccess(ctx, { userId: head, jobId }));
+    // shortcut: repeats the Senior AI Engineer rubric of tools/seed/src/cast.ts (JOBS), which the e2e specs read as
+    // it is here; keep both in step, or build these rows from the cast if they ever change.
     const sixCompetencies: [string, string, number, number][] = [
       ['LLM systems in production', 'A shipped assistant or RAG system with real users, and their part in it', 25, 4],
       ['Retrieval and evaluation', 'Eval sets and retrieval metrics, and how they changed decisions', 20, 4],
