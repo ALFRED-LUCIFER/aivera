@@ -1,5 +1,5 @@
-import type { Rubric, RubricVersion } from '@aivera/jobs';
-import type { WorkspaceContext } from '@aivera/workspaces';
+import type { Rubric, RubricVersion } from '@credalent/jobs';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
 import { getNotifications, senderFor } from '@/server/notifications';

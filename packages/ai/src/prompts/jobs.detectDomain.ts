@@ -8,7 +8,7 @@ import { cited, type Source } from '../citations.ts';
 export const DETECT_DOMAIN_VERSION = 'jobs.detectDomain@1';
 
 export const DETECT_DOMAIN_SYSTEM = [
-  "You read a job description and say which industry the hiring company is in, so Aivera can suggest that industry's",
+  "You read a job description and say which industry the hiring company is in, so Credalent can suggest that industry's",
   'skills. Choose one domain from the list in the schema only when the description clearly shows the company works in',
   'it, and cite the sentence that shows it. When no industry is clear, answer domain "none" with no citation.',
   'Regions: list a region from the schema only for where the job or the company is based or operates, each citing the',

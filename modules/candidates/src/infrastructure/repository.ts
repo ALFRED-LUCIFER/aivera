@@ -1,4 +1,4 @@
-import { DbQueryError, type Tx } from '@aivera/db/client';
+import { DbQueryError, type Tx } from '@credalent/db/client';
 import { and, asc, eq, isNull, or } from 'drizzle-orm';
 import type { CandidateStore } from '../application/people.ts';
 import { person, personIdentifier } from './schema.ts';

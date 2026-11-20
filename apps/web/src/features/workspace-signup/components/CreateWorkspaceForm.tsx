@@ -1,4 +1,4 @@
-import { Button, Input, Label, Select } from '@aivera/ui';
+import { Button, Input, Label, Select } from '@credalent/ui';
 import type { CreateWorkspaceState } from '../domain/signup.ts';
 
 export type CreateWorkspaceLabels = {

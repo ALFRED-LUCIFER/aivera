@@ -1,4 +1,4 @@
-import { STATUS_CHANGES, type StatusChange } from '@aivera/workspaces';
+import { STATUS_CHANGES, type StatusChange } from '@credalent/workspaces';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { canConfirmChange, type StatusChangeView } from '../domain/workspaces.ts';

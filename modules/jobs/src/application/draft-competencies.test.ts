@@ -5,7 +5,7 @@ import {
   fakeProvider,
   UncitedOutput,
   type AiProvider,
-} from '@aivera/ai';
+} from '@credalent/ai';
 import { describe, expect, it } from 'vitest';
 import { JobError } from '../domain/job.ts';
 import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
@@ -196,7 +196,7 @@ describe('Fairness: a line asking for something that is not a skill', () => {
 });
 
 describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
-  it('returns the suggestions with why, evidence expected, weight, level and type, marked Suggested by Aivera', async () => {
+  it('returns the suggestions with why, evidence expected, weight, level and type, marked Suggested by Credalent', async () => {
     const { suggestions } = await setup(answer).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(suggestions.map((s) => [s.name, s.why, s.evidenceExpected, s.weightPercent, s.levelNeeded, s.type])).toEqual(
       [

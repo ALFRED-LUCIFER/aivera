@@ -8,8 +8,8 @@ import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { MeterProvider, MetricReader, type ResourceMetrics } from '@opentelemetry/sdk-metrics';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, inboxTable, newEnvelope, uuidv7, type Db, type Envelope, type EventDefinition } from '@aivera/db';
-import type { Delivery, Handler } from '@aivera/db/consumer';
+import { createDb, inboxTable, newEnvelope, uuidv7, type Db, type Envelope, type EventDefinition } from '@credalent/db';
+import type { Delivery, Handler } from '@credalent/db/consumer';
 import { sql } from 'drizzle-orm';
 import { pgSchema } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -20,7 +20,7 @@ import { z } from 'zod';
 // shortcut: no Service Bus emulator (it needs a SQL Server container); settlement and scheduling are faked at the SDK
 // boundary here and in apps/worker/src/serviceBus.test.ts. Add the emulator when a consumer depends on broker behaviour.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const W1 = '0190d4a2-0000-7000-8000-000000000001';
@@ -45,7 +45,7 @@ const spans = new InMemorySpanExporter();
 let container: StartedPostgreSqlContainer;
 let admin: Db;
 let app: Db;
-let createConsumer: typeof import('@aivera/db/consumer').createConsumer;
+let createConsumer: typeof import('@credalent/db/consumer').createConsumer;
 let runs: string[];
 let failuresLeft: number;
 
@@ -88,7 +88,7 @@ const deadLetterCount = async (queue: string) => {
   const { resourceMetrics } = (await reader.collect()) as { resourceMetrics: ResourceMetrics };
   const metric = resourceMetrics.scopeMetrics
     .flatMap((s) => s.metrics)
-    .find((m) => m.descriptor.name === 'aivera.worker.dead_lettered');
+    .find((m) => m.descriptor.name === 'credalent.worker.dead_lettered');
   return (
     metric?.dataPoints.filter((p) => p.attributes['queue'] === queue).reduce((n, p) => n + Number(p.value), 0) ?? 0
   );
@@ -100,7 +100,7 @@ beforeAll(async () => {
   trace.setGlobalTracerProvider(new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(spans)] }));
   // The counter is created when the module loads, so the meter provider comes first (as initTelemetry in the worker).
   metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));
-  ({ createConsumer } = await import('@aivera/db/consumer'));
+  ({ createConsumer } = await import('@credalent/db/consumer'));
 
   container = await new PostgreSqlContainer('pgvector/pgvector:pg17').withDatabase('aivera').start();
   admin = createDb(container.getConnectionUri(), { max: 1 });

@@ -47,7 +47,7 @@ export function AuthPage({ wordmark, headline, points, title, lead, children }: 
           className="flex items-center gap-2.5 self-start font-display text-[20px] font-bold tracking-[-0.01em] text-text no-underline"
         >
           <Image
-            src="/brand/aivera-mark.png"
+            src="/brand/credalent-mark.png"
             alt=""
             width={34}
             height={34}

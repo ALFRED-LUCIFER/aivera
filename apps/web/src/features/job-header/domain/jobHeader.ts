@@ -1,4 +1,4 @@
-import type { JobHeader, RubricState } from '@aivera/jobs';
+import type { JobHeader, RubricState } from '@credalent/jobs';
 
 /** The five stages of a job, in order; each is a page under /app/jobs/[jobId] (AIV-P1-011). */
 export const JOB_PAGES = ['description', 'rubric', 'candidates', 'interviews', 'pack'] as const;

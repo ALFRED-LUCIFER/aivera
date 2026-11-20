@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, migrateModules, withWorkspace, type Db, type MigratableModule } from '@aivera/db';
+import { createDb, migrateModules, withWorkspace, type Db, type MigratableModule } from '@credalent/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { notes } from '../fixtures/modules/fixture_notes/src/infrastructure/schema.ts';
@@ -14,7 +14,7 @@ const fixtureModule: MigratableModule = {
   name: 'fixture_notes',
   dir: join(import.meta.dirname, '..', 'fixtures', 'modules', 'fixture_notes'),
 };
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;

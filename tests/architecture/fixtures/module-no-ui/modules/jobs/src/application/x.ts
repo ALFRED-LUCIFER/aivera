@@ -1,1 +1,1 @@
-import { Button } from '@aivera/ui';
+import { Button } from '@credalent/ui';

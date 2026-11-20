@@ -1,4 +1,4 @@
-import { log } from '@aivera/observability';
+import { log } from '@credalent/observability';
 import { z } from 'zod';
 
 // Runtime configuration (AIV-P0-007). In Azure, Container Apps fills these from plain settings and Key Vault
@@ -19,7 +19,7 @@ const AUTH_KEYS = [
 const CANDIDATE_KEYS = ['AUTH_ENTRA_CANDIDATE_CLIENT_ID', 'AUTH_ENTRA_CANDIDATE_CLIENT_SECRET'] as const;
 const GOOGLE_KEYS = ['AUTH_GOOGLE_CLIENT_ID', 'AUTH_GOOGLE_CLIENT_SECRET'] as const;
 
-// Aivera operators (AIV-P2-035, ADR-012): comma-separated emails, compared lower-case with the identity user's email.
+// Credalent operators (AIV-P2-035, ADR-012): comma-separated emails, compared lower-case with the identity user's email.
 const operatorList = z
   .string()
   .transform((value) => value.split(',').map((email) => email.trim().toLowerCase()))

@@ -35,7 +35,7 @@ export class IdentityError extends Error {
 }
 
 /**
- * Verified when the token says `email_verified: true`, or when it comes from Aivera's own External ID tenant and says
+ * Verified when the token says `email_verified: true`, or when it comes from Credalent's own External ID tenant and says
  * nothing: that tenant verifies every email before it creates an account and sends no `email_verified` claim
  * (ADR-009 point 4). An explicit `false` is never trusted, and no other issuer is trusted without the claim.
  */

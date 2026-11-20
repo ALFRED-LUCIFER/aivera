@@ -3,20 +3,20 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, migrateModules, MODULES, migrationsFolder, withWorkspace, type Db } from '@aivera/db';
-import type { JobCounts } from '@aivera/jobs';
-import { createJobCounts, createJobs } from '@aivera/jobs/composition';
-import type { MemberStatus, Role, WorkspaceDirectory, WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaceDirectory, createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, migrateModules, MODULES, migrationsFolder, withWorkspace, type Db } from '@credalent/db';
+import type { JobCounts } from '@credalent/jobs';
+import { createJobCounts, createJobs } from '@credalent/jobs/composition';
+import type { MemberStatus, Role, WorkspaceDirectory, WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaceDirectory, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P2-036 (ADR-012 point 6): the operator console's metadata read path against real PostgreSQL, as the non-owner
 // aivera_app role under the unchanged tenant policies. The Background's workspaces; synthetic cast only (personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const user = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const ALEX = user(1);
 const OMAR = user(2);
@@ -41,7 +41,7 @@ const urlFor = (role: string) =>
 function workspacesUpTo(last: string) {
   const [module] = MODULES.filter((m) => m.name === 'workspaces');
   if (!module) throw new Error('workspaces module missing from MODULES');
-  const dir = mkdtempSync(join(tmpdir(), 'aivera-workspaces-'));
+  const dir = mkdtempSync(join(tmpdir(), 'credalent-workspaces-'));
   const folder = migrationsFolder({ name: 'workspaces', dir });
   cpSync(migrationsFolder(module), folder, { recursive: true });
   const journalPath = join(folder, 'meta', '_journal.json');

@@ -1,6 +1,6 @@
 # Operator console
 
-The console at `/ops` is for the people who run Aivera. It is not for workspace admins. Who may open it, what it reads and how it is audited: [ADR-012](../adr/ADR-012-operator-console.md). Operators are the emails in `PLATFORM_OPERATOR_EMAILS`. If the setting is unset, empty or invalid, nobody gets in (fails closed).
+The console at `/ops` is for the people who run Credalent. It is not for workspace admins. Who may open it, what it reads and how it is audited: [ADR-012](../adr/ADR-012-operator-console.md). Operators are the emails in `PLATFORM_OPERATOR_EMAILS`. If the setting is unset, empty or invalid, nobody gets in (fails closed).
 
 **The emails go only into the Key Vault secret or your `.env.local`.** They never go in the repository, an issue, a PR, a log or CI output (AGENTS.md 1.1, 1.11). Tests use the synthetic Pia Platform and Theo Platform ([personas](../00-product/personas.md)).
 
@@ -8,7 +8,7 @@ The console at `/ops` is for the people who run Aivera. It is not for workspace 
 
 1. Sign in on the normal sign-in page (`/sign-in`) with your own account on the same External ID tenant ([recruiter sign-in](recruiter-sign-in.md)).
 2. Open `/ops`. If you were not signed in, `/ops` sends you to sign in and brings you back.
-3. You see "Aivera operations" and "Signed in as an Aivera operator." Anyone else gets the 403 page.
+3. You see "Credalent operations" and "Signed in as an Credalent operator." Anyone else gets the 403 page.
 
 Your email must be the one the identity module stored for you: your verified sign-in email, lower-case. The list is compared case-insensitively.
 
@@ -72,7 +72,7 @@ While "New workspaces need approval" is on (the default for dev and the pilot), 
 
 - **Approve** opens the preview; Confirm makes the workspace active, and its creator can add jobs at once.
 - **Reject** needs a reason of at least 10 characters. The creator sees "Your workspace was not approved. Reason: …". The workspace stays, with no new work, for audit.
-- **Email the creator yourself** for now: the approval emails ("Your Aivera workspace is approved" / "… was not approved") arrive with AIV-P0-017, which is not built. The waiting page already promises an email, so do not leave a decision unsent.
+- **Email the creator yourself** for now: the approval emails ("Your Credalent workspace is approved" / "… was not approved") arrive with AIV-P0-017, which is not built. The waiting page already promises an email, so do not leave a decision unsent.
 - **The switch** ("Turn off" / "Turn on", with a reason) changes only what happens to the next sign-ups. Turning it off approves nothing: workspaces already waiting stay waiting until you decide each one. Existing and seeded workspaces, and people invited into an existing workspace, are never affected.
 
 ## Audit

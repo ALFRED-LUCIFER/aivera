@@ -1,4 +1,4 @@
-import type { Rubric } from '@aivera/jobs';
+import type { Rubric } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
 import { approverView, canSave, newCompetency, reviewLink, reviewPath, rubricView, weightsTotal } from './rubric.ts';
 
@@ -104,7 +104,7 @@ describe('Rubric page view (AIV-P1-012)', () => {
     const versionId = '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
     const path = reviewPath('job', { versionId, revision: 3 });
     expect(path).toBe(`/app/jobs/job/rubric?version=${versionId}&revision=3`);
-    expect(reviewLink(Object.fromEntries(new URL(path, 'https://aivera.example').searchParams))).toEqual({
+    expect(reviewLink(Object.fromEntries(new URL(path, 'https://credalent.example').searchParams))).toEqual({
       versionId,
       revision: 3,
     });

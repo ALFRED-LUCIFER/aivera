@@ -1,4 +1,4 @@
-import { Button } from '@aivera/ui';
+import { Button } from '@credalent/ui';
 
 // Test files may render literal text (an allowlisted exemption).
 export const InTest = () => <Button>Send request</Button>;

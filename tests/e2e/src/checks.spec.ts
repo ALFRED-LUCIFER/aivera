@@ -47,12 +47,12 @@ for (const theme of themes) {
   test(`the assistant drawer at 390 px is modal while it covers the page (${theme})`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openGallery(page, theme);
-    await page.getByRole('button', { name: 'Ask Aivera' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Aivera assistant' });
+    await page.getByRole('button', { name: 'Ask Credalent' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
     await expect(drawer).toBeVisible();
     await expectNoAxeViolations(page);
     // Hidden from assistive tech: the page behind is aria-hidden, so its buttons leave the accessibility tree.
-    await expect(page.getByRole('button', { name: 'Ask Aivera' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
     for (const key of ['Tab', 'Shift+Tab']) {
       for (let i = 0; i < 8; i++) {
         await page.keyboard.press(key);
@@ -62,7 +62,7 @@ for (const theme of themes) {
     }
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Ask Aivera' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Ask Credalent' })).toBeFocused();
   });
 }
 
@@ -70,9 +70,9 @@ for (const theme of themes) {
 test('reduced motion turns off the drawer and dialog transitions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openGallery(page, 'light');
-  await page.getByRole('button', { name: 'Ask Aivera' }).click();
+  await page.getByRole('button', { name: 'Ask Credalent' }).click();
   await expect
-    .poll(() => css(page.getByRole('dialog', { name: 'Aivera assistant' }), 'transition-property'))
+    .poll(() => css(page.getByRole('dialog', { name: 'Credalent assistant' }), 'transition-property'))
     .toBe('none');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Open dialog' }).click();

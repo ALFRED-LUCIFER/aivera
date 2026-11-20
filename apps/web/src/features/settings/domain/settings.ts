@@ -6,7 +6,7 @@ import {
   settingsSchema,
   type NumberSetting,
   type WorkspaceSettings,
-} from '@aivera/workspaces';
+} from '@credalent/workspaces';
 
 export { DEFAULT_SETTINGS, SETTING_BOUNDS };
 export type { NumberSetting, WorkspaceSettings };

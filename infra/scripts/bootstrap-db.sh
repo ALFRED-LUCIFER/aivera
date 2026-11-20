@@ -1,7 +1,7 @@
 #!/bin/sh
-# One-off, owner only (AIV-P0-004): creates Aivera's database roles on the shared Medvya dev server from inside the
+# One-off, owner only (AIV-P0-004): creates Credalent's database roles on the shared Medvya dev server from inside the
 # VNet. It borrows one execution of job-aivera-migrate-dev with a psql container and the owner's own Entra token
-# (the owner is a server Entra admin), so no Aivera identity ever becomes a server admin. Run after
+# (the owner is a server Entra admin), so no Credalent identity ever becomes a server admin. Run after
 # `az deployment group create` (infra/README.md).
 # The token never appears in the execution template: it is a job secret (write-only in ARM, referenced by secretRef)
 # that the trap removes as soon as the execution ends, success or not.

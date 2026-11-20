@@ -1,6 +1,6 @@
 # Security policy
 
-Aivera holds candidates' CVs, work evidence, contact details and assessments. The rules that protect them are in [AGENTS.md §1](AGENTS.md#1--non-negotiable-safety-rules).
+Credalent holds candidates' CVs, work evidence, contact details and assessments. The rules that protect them are in [AGENTS.md §1](AGENTS.md#1--non-negotiable-safety-rules).
 
 ## Reporting a vulnerability
 

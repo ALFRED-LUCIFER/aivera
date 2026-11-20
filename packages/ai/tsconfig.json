@@ -1,4 +1,4 @@
 {
-  "extends": "@aivera/config/tsconfig/base.json",
+  "extends": "@credalent/config/tsconfig/base.json",
   "include": ["src", "evals"]
 }

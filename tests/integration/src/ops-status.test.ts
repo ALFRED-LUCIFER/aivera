@@ -3,21 +3,21 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import type { CandidatesContract } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, type Db } from '@aivera/db';
-import type { Competency, JobsContract, PublicJobsContract } from '@aivera/jobs';
-import { createJobs, createPublicJobs } from '@aivera/jobs/composition';
+import type { AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import type { CandidatesContract } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, type Db } from '@credalent/db';
+import type { Competency, JobsContract, PublicJobsContract } from '@credalent/jobs';
+import { createJobs, createPublicJobs } from '@credalent/jobs/composition';
 import {
   WorkspaceError,
   WorkspacePausedError,
   type StatusChange,
   type WorkspaceContext,
   type WorkspacesContract,
-} from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -25,7 +25,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // AIV-P2-037 (ADR-012 points 6 to 8): an operator suspends and reactivates a workspace, against real PostgreSQL as the
 // non-owner aivera_app role under the unchanged tenant policies. Synthetic cast only (personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 const OMAR = '0190d4a2-0000-7000-8000-00000000a0a1'; // admin of Gulf Talent Partners
 const PIA = '0190d4a2-0000-7000-8000-00000000a0f1'; // operator

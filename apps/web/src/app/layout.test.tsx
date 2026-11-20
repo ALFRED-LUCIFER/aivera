@@ -1,4 +1,4 @@
-import tokens from '@aivera/tokens/tokens.json' with { type: 'json' };
+import tokens from '@credalent/tokens/tokens.json' with { type: 'json' };
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import RootLayout from './layout.tsx';

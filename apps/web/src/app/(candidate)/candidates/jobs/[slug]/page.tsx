@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, formatAmount, formatMoney, getTranslations } from '@aivera/i18n';
-import { jobTypeLabel, SLUG } from '@aivera/jobs';
+import { defaultLocale, defaultTimeZone, formatAmount, formatMoney, getTranslations } from '@credalent/i18n';
+import { jobTypeLabel, SLUG } from '@credalent/jobs';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';

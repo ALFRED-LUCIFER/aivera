@@ -1,6 +1,6 @@
-# Instructions for GitHub Copilot code review on Aivera
+# Instructions for GitHub Copilot code review on Credalent
 
-Aivera ranks job candidates on evidence of their work and holds their CVs and assessments (UAE and KSA). The full rulebook is [`AGENTS.md`](../AGENTS.md); review every pull request against it and against the Gherkin acceptance criteria of the ticket named in the PR body.
+Credalent ranks job candidates on evidence of their work and holds their CVs and assessments (UAE and KSA). The full rulebook is [`AGENTS.md`](../AGENTS.md); review every pull request against it and against the Gherkin acceptance criteria of the ticket named in the PR body.
 
 ## Review for these first (any miss is a blocker)
 
@@ -26,10 +26,10 @@ Every PR must be the smallest change that fully solves its ticket. Flag:
 
 ## Architecture and front end
 
-- Modules are imported only as `@aivera/<m>` (contracts); `/composition` only from apps (ADR-002).
+- Modules are imported only as `@credalent/<m>` (contracts); `/composition` only from apps (ADR-002).
 - Front-end features keep the layers `domain/ services/ hooks/ components/` (ADR-003); components are presentational `.tsx`; no cross-feature imports of hooks, services or components.
 - A screen is built from its artboard file in `docs/01-design/artboards/` (map: `docs/01-design/screens.md`). Flag any section, element, panel, logo, copy, type size or control height the artboard draws that the change leaves out without a listed reason.
-- UI uses `@aivera/ui` and Case file tokens only: no hex colours, no arbitrary Tailwind values where a token exists, no hard-coded user-facing strings; WCAG 2.2 AA; one primary button per view; the highlighter only on cited evidence, except the website, candidate home and sign-in page places DESIGN.md names, and emails, where it marks what the recipient must do (DESIGN.md).
+- UI uses `@credalent/ui` and Case file tokens only: no hex colours, no arbitrary Tailwind values where a token exists, no hard-coded user-facing strings; WCAG 2.2 AA; one primary button per view; the highlighter only on cited evidence, except the website, candidate home and sign-in page places DESIGN.md names, and emails, where it marks what the recipient must do (DESIGN.md).
 
 ## How to comment
 

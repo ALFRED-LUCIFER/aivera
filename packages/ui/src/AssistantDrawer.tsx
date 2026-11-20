@@ -7,7 +7,7 @@ import { CloseIcon } from './CloseIcon.tsx';
 import { Input, Label } from './Field.tsx';
 
 export type AssistantDrawerProps = {
-  /** "Aivera assistant". */
+  /** "Credalent assistant". */
   title: ReactNode;
   /** "Context: Senior AI Engineer, 64 candidates". */
   context: ReactNode;
@@ -21,7 +21,7 @@ export type AssistantDrawerProps = {
   closeLabel: string;
   /** Called with the trimmed question; empty questions are ignored. */
   onAsk: (question: string) => void;
-  /** The opener ("Ask Aivera"); focus returns to it on close. */
+  /** The opener ("Ask Credalent"); focus returns to it on close. */
   trigger?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -41,7 +41,7 @@ const subscribe = (onChange: () => void) => {
 
 // From lg up it is non-modal on purpose: the assistant talks about the page beside it, so the recruiter must keep
 // reading, scrolling and selecting that page while it is open. Radix still closes it on Escape, returns focus to the
-// trigger and names it by its title. Keyboard path: Tab off either end of the drawer goes to the opener ("Ask Aivera"),
+// trigger and names it by its title. Keyboard path: Tab off either end of the drawer goes to the opener ("Ask Credalent"),
 // from where Tab carries on through the page, and pressing the opener again comes back to the question field.
 export function AssistantDrawer({
   title,

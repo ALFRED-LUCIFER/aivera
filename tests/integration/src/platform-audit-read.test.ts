@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract, NewPlatformEntry, PlatformEntry } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, migrateModules, MODULES, type Db } from '@aivera/db';
+import type { AuditContract, NewPlatformEntry, PlatformEntry } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, migrateModules, MODULES, type Db } from '@credalent/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
@@ -12,7 +12,7 @@ import { ZodError } from 'zod';
 // non-owner aivera_app. Pia Platform and Theo Platform are synthetic operators and Gulf Talent Partners a synthetic
 // workspace (personas.md); only their opaque ids are stored.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 
 const id = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PIA = id(601);

@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Checkbox } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Checkbox } from '@credalent/ui';
 import { possessive, type Option } from '../domain/members.ts';
 
 type JobPickerProps = {

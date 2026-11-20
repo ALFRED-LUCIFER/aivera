@@ -6,7 +6,7 @@ import {
   type StatusChange,
   type WorkspaceStatus,
   type WorkspaceSummary,
-} from '@aivera/workspaces';
+} from '@credalent/workspaces';
 import { z } from 'zod';
 
 const PAGE_SIZE = 50;

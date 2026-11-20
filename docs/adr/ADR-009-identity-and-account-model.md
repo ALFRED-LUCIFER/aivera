@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR-001 planned two identity systems: a multi-tenant Microsoft Entra ID app for recruiters (company SSO) and Entra External ID for candidates. That shuts out the people Aivera now wants to serve first:
+ADR-001 planned two identity systems: a multi-tenant Microsoft Entra ID app for recruiters (company SSO) and Entra External ID for candidates. That shuts out the people Credalent now wants to serve first:
 
 - **Individual recruiters** often have no company tenant, or use a personal email.
 - **Freelancers** work for several agencies at once.
@@ -45,12 +45,12 @@ Two identity systems would also mean two sets of user flows, secrets and sign-in
 - **One account per verified email.** The `identity` module keeps one user per verified email. Each sign-in method (issuer and subject) maps to that user. An unverified email never joins an existing user.
 - **What counts as verified** (amended 18 Nov 2026, owner decision on AIV-P0-009, PR #241).
   - An email is verified when the ID token says `email_verified: true`.
-  - An email is also verified when the token comes from Aivera's own External ID tenant (issuer `https://<tenant-id>.ciamlogin.com/<tenant-id>/v2.0`) and carries no `email_verified` claim.
+  - An email is also verified when the token comes from Credalent's own External ID tenant (issuer `https://<tenant-id>.ciamlogin.com/<tenant-id>/v2.0`) and carries no `email_verified` claim.
   - Reason: the tenant sends no `email_verified` claim (its metadata does not list one), yet it checks every email before it creates an account. Local accounts prove their email with a one-time code at sign-up, and Google-federated users arrive through the same issuer.
   - An explicit `email_verified: false` is always refused.
   - Any other issuer without `email_verified: true` is refused.
   - An unverified email never creates or joins a user.
-- **Separate sessions.** The recruiter app and the candidate site have separate session cookies (`__Host-aivera-session`, `__Host-aivera-candidate`). Each middleware reads only its own cookie.
+- **Separate sessions.** The recruiter app and the candidate site have separate session cookies (`__Host-credalent-session`, `__Host-credalent-candidate`). Each middleware reads only its own cookie.
 - **Separate data.** Recruiter-side data hangs off workspace memberships (`workspaces`). The candidate's own data hangs off the candidate account (`candidate-accounts`). Both point at the identity user id, and neither reads the other.
 - **Nothing on the recruiter side reveals that a recruiter is also a candidate.** No recruiter-side module imports `candidate-accounts`, and `identity` offers recruiter code no "is a candidate" lookup.
 - **A candidate's profile reaches a workspace only with consent**, when the candidate applies to that workspace's job or answers its evidence request. At that point `candidate-accounts` records a link (account → workspace, workspace candidate id, reason, consent). The workspace receives only what the candidate submitted. It never receives the account id or the rest of the profile.
@@ -88,7 +88,7 @@ flowchart LR
 - **Microsoft accounts.** AIV-P0-009 confirmed they are not built-in providers in External ID, and a user flow cannot offer them directly. Personal accounts become a custom OIDC provider (AIV-P1-058). Work accounts from any company cannot be one provider, because a custom provider needs one fixed issuer; they come as per-workspace company SSO (AIV-P1-057).
 - **Cross-workspace reads.** Listing a person's workspaces for the switcher needs a named cross-workspace read keyed on the user (ADR-005, point 4).
 - **Recruiter-side code never sees candidate accounts.** The architecture test gains a rule: no recruiter-side module imports `candidate-accounts` (AIV-P3-006).
-- **A second isolation key.** Candidate-owned tables use row-level security on `app.candidate_account_id`, set by `withCandidateAccount` in `@aivera/db`, beside the workspace key `app.workspace_id` (AIV-P3-006).
+- **A second isolation key.** Candidate-owned tables use row-level security on `app.candidate_account_id`, set by `withCandidateAccount` in `@credalent/db`, beside the workspace key `app.workspace_id` (AIV-P3-006).
 - **Billing.** The free External ID tier removes identity cost for the pilot. Monthly active users are watched against the 50,000 limit before launch.
 - **Google directly in the app (AIV-P0-928, 19 Nov 2026).** The dev tenant cannot create Google-federated users (AADSTS50132 after Google sign-in, reproduced from clean sessions, with and without `prompt=login`, on a fresh user flow and without the Display Name attribute), and it refuses `domain_hint` for one click. Recruiter "Continue with Google" therefore uses Auth.js's Google provider straight to Google; email with password stays on the tenant. Identity is unchanged: Google sends `email_verified=true`, so the user is still found by verified email and a recruiter who uses both methods is one user. The candidate side keeps the tenant until it needs Google.
 - **Company SSO.** A workspace that federates its company SSO keeps its members' accounts: the user is still found by verified email.

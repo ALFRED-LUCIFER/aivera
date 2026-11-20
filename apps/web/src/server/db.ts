@@ -1,4 +1,4 @@
-import { createDb, type Db } from '@aivera/db/client';
+import { createDb, type Db } from '@credalent/db/client';
 import { env } from './env';
 
 let db: Db | undefined;

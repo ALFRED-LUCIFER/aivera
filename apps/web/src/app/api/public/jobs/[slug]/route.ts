@@ -1,4 +1,4 @@
-import { SLUG, toPublicJobJson } from '@aivera/jobs';
+import { SLUG, toPublicJobJson } from '@credalent/jobs';
 import { getPublicJobs } from '@/server/publicJobs';
 
 // Public: one published job for the candidate site (AIV-P3-002), read as the aivera_public role. Only the strict public

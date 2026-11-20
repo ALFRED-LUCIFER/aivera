@@ -1,4 +1,4 @@
-import { invitationState, type WorkspaceContext } from '@aivera/workspaces';
+import { invitationState, type WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
 import { getWorkspaces } from '@/server/workspace';

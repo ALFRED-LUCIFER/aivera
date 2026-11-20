@@ -14,7 +14,7 @@ function settingPolicy(name: string, column: AnyPgColumn, setting: 'app.workspac
  * The row-level security policy every workspace-owned table carries (ADR-005): rows are visible and writable only
  * when `column` equals the transaction's `app.workspace_id`.
  * Use it in a table's extra config with `.enableRLS()`, plus a custom migration for FORCE ROW LEVEL SECURITY.
- * Imported as `@aivera/db/tenant-policy` because Drizzle Kit loads schemas as CommonJS (no import.meta).
+ * Imported as `@credalent/db/tenant-policy` because Drizzle Kit loads schemas as CommonJS (no import.meta).
  */
 export function tenantPolicy(name: string, column: AnyPgColumn) {
   return settingPolicy(name, column, 'app.workspace_id');

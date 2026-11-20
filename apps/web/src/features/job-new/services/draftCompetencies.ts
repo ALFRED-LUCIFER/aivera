@@ -1,7 +1,7 @@
 'use server';
 
-import { AiUnavailable, BudgetExceeded } from '@aivera/ai';
-import { log } from '@aivera/observability';
+import { AiUnavailable, BudgetExceeded } from '@credalent/ai';
+import { log } from '@credalent/observability';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { getCatalogue, getCompetencyDrafting, getDomainDetection } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';

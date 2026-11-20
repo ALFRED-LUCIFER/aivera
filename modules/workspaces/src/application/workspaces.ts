@@ -1,4 +1,4 @@
-import type { NewEntry, PlatformAction } from '@aivera/audit';
+import type { NewEntry, PlatformAction } from '@credalent/audit';
 import type { Invitation } from '../domain/invitation.ts';
 import { JOB_SCOPED_ROLES } from '../domain/permissions.ts';
 import {

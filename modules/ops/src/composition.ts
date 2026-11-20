@@ -1,6 +1,6 @@
 // Builds the ops module for an app (ADR-002: only apps import this).
-import type { AuditContract } from '@aivera/audit';
-import type { Db } from '@aivera/db/client';
+import type { AuditContract } from '@credalent/audit';
+import type { Db } from '@credalent/db/client';
 import { settingsUseCases } from './application/settings.ts';
 import type { OpsSettingsContract } from './contracts/index.ts';
 import { settingsStore } from './infrastructure/repository.ts';

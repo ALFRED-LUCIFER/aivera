@@ -156,7 +156,7 @@ describe('the golden set', () => {
           expect(personas, `${task}/${c.id}: ${person}`).toMatch(new RegExp(`\\b${person}\\b`));
         const text = JSON.stringify(c);
         for (const email of text.match(/[\w.+-]+@[\w.-]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
-        for (const host of text.match(/https?:\/\/[^/\s"]+/g) ?? []) expect(host).toMatch(/\.aivera\.example$/);
+        for (const host of text.match(/https?:\/\/[^/\s"]+/g) ?? []) expect(host).toMatch(/\.credalent\.example$/);
         // Employers are described generically or come from the cast (personas.md), never a registered company name.
         expect(text, `${task}/${c.id}`).not.toMatch(/\b(?:LLC|Ltd|Inc|PJSC|FZE|FZCO|Pvt|PLC|GmbH)\b/);
       }

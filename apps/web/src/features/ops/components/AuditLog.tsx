@@ -1,9 +1,9 @@
 'use client';
 
-import { PLATFORM_ACTIONS, type PlatformAction } from '@aivera/audit';
-import type { Messages } from '@aivera/i18n';
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, buttonClassName, DataTable, Input, Label, Select, type DataTableColumn } from '@aivera/ui';
+import { PLATFORM_ACTIONS, type PlatformAction } from '@credalent/audit';
+import type { Messages } from '@credalent/i18n';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, buttonClassName, DataTable, Input, Label, Select, type DataTableColumn } from '@credalent/ui';
 import type { Route } from 'next';
 import Form from 'next/form';
 import Link from 'next/link';

@@ -1,4 +1,4 @@
-import type { Role } from '@aivera/workspaces';
+import type { Role } from '@credalent/workspaces';
 import { useActionState, useState } from 'react';
 import { initialInviteState, JOB_SCOPED } from '../domain/members.ts';
 import { inviteMember } from '../services/memberActions.ts';

@@ -1,4 +1,4 @@
-import type { DeskJob, RubricState } from '@aivera/jobs';
+import type { DeskJob, RubricState } from '@credalent/jobs';
 
 /** A Jobs list row as the page hands it to the browser: plain data, only what the table shows. */
 export type JobRow = Pick<

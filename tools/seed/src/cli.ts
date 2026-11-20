@@ -1,6 +1,6 @@
 // pnpm db:seed [--reset]. Connects as DATABASE_URL (the app role, under row-level security) from the environment or
 // .env.local; refused unless APP_ENV is local or dev.
-import { createDb } from '@aivera/db/client';
+import { createDb } from '@credalent/db/client';
 import { SeedRefused, seedDemo } from './seed.ts';
 
 const url = process.env['DATABASE_URL'];

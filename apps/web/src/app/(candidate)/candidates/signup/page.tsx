@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@aivera/i18n';
-import { offeredJobTypes } from '@aivera/jobs';
+import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@credalent/i18n';
+import { offeredJobTypes } from '@credalent/jobs';
 import type { Metadata, Route } from 'next';
 import { redirect } from 'next/navigation';
 import { PLUS_SIGN_UP_FLAG, signUpNext, signUpStep } from '@/features/candidate-account/domain/signup.ts';

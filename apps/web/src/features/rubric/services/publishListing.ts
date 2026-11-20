@@ -1,7 +1,7 @@
 'use server';
 
-import { JobError, PUBLIC_DESCRIPTOR_MAX } from '@aivera/jobs';
-import { log } from '@aivera/observability';
+import { JobError, PUBLIC_DESCRIPTOR_MAX } from '@credalent/jobs';
+import { log } from '@credalent/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';

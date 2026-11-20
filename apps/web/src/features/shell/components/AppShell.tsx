@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { AssistantDrawer, Button, Input, Label } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { AssistantDrawer, Button, Input, Label } from '@credalent/ui';
 import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { NavigationEntry, ScreenId } from '../domain/navigation.ts';

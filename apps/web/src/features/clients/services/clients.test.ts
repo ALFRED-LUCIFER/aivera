@@ -1,4 +1,4 @@
-import { ForbiddenError, WorkspaceError, type Role } from '@aivera/workspaces';
+import { ForbiddenError, WorkspaceError, type Role } from '@credalent/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addClient, archiveClient, renameClient } from './clients.ts';
 

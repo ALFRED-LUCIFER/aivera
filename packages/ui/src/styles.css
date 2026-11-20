@@ -1,6 +1,6 @@
-/* @aivera/ui theme (DESIGN.md). The app imports Tailwind first, then this file. Utilities read the Case file tokens,
+/* @credalent/ui theme (DESIGN.md). The app imports Tailwind first, then this file. Utilities read the Case file tokens,
    so a theme switch (data-theme) changes every component without new classes. */
-@import '@aivera/tokens/tokens.css';
+@import '@credalent/tokens/tokens.css';
 
 @source './';
 

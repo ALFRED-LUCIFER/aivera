@@ -1,6 +1,6 @@
 'use server';
 
-import { log } from '@aivera/observability';
+import { log } from '@credalent/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, redirect } from 'next/navigation';
 import { getIdentity, getSessionUserId } from '@/server/auth';

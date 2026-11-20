@@ -116,7 +116,7 @@ test('Scenario: Before drafting', async ({ page }) => {
   await fill(page, 'Senior AI Engineer', DESCRIPTION);
   await expect(
     page.getByText(
-      'Choose Draft competencies. Aivera reads the description for a Senior AI Engineer, drafts the competencies it ' +
+      'Choose Draft competencies. Credalent reads the description for a Senior AI Engineer, drafts the competencies it ' +
         'states, and suggests the ones it leaves out, such as knowledge of your industry or market.',
     ),
   ).toBeVisible();
@@ -131,8 +131,8 @@ test('Scenario: Drafting in progress, then the AI service fails', async ({ page 
   // The fake fails every attempt, and the client retries with back-off: well over a second.
   const busy = page.getByRole('button', { name: 'Drafting competencies…' });
   await expect(busy).toBeDisabled();
-  await expect(page.getByRole('alert').filter({ hasText: 'Aivera could not draft' })).toHaveText(
-    'Aivera could not draft competencies. You can try again or add them yourself.',
+  await expect(page.getByRole('alert').filter({ hasText: 'Credalent could not draft' })).toHaveText(
+    'Credalent could not draft competencies. You can try again or add them yourself.',
     { timeout: 20_000 },
   );
   await expect(draftButton(page)).toBeEnabled();

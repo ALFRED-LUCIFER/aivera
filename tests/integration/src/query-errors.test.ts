@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { inspect } from 'node:util';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, DbQueryError, migrateModules, MODULES, withWorkspace, type Db } from '@aivera/db';
+import { createDb, DbQueryError, migrateModules, MODULES, withWorkspace, type Db } from '@credalent/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P0-902 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 
 const id = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const W1 = id(1);

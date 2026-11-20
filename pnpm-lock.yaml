@@ -26,43 +26,43 @@ importers:
 
   apps/web:
     dependencies:
-      '@aivera/ai':
+      '@credalent/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
-      '@aivera/candidate-accounts':
+      '@credalent/candidate-accounts':
         specifier: workspace:*
         version: link:../../modules/candidate-accounts
-      '@aivera/candidates':
+      '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/i18n':
+      '@credalent/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@aivera/identity':
+      '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
-      '@aivera/jobs':
+      '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
-      '@aivera/notifications':
+      '@credalent/notifications':
         specifier: workspace:*
         version: link:../../modules/notifications
-      '@aivera/observability':
+      '@credalent/observability':
         specifier: workspace:*
         version: link:../../packages/observability
-      '@aivera/ops':
+      '@credalent/ops':
         specifier: workspace:*
         version: link:../../modules/ops
-      '@aivera/ui':
+      '@credalent/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
       motion:
@@ -84,10 +84,10 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@aivera/tokens':
+      '@credalent/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
       '@tailwindcss/postcss':
@@ -129,19 +129,19 @@ importers:
 
   apps/worker:
     dependencies:
-      '@aivera/candidates':
+      '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/jobs':
+      '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
-      '@aivera/notifications':
+      '@credalent/notifications':
         specifier: workspace:*
         version: link:../../modules/notifications
-      '@aivera/observability':
+      '@credalent/observability':
         specifier: workspace:*
         version: link:../../packages/observability
       '@azure/identity':
@@ -157,7 +157,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -175,7 +175,7 @@ importers:
 
   modules/audit:
     dependencies:
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
@@ -185,7 +185,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -203,14 +203,14 @@ importers:
 
   modules/candidate-accounts:
     dependencies:
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -228,10 +228,10 @@ importers:
 
   modules/candidates:
     dependencies:
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces
       drizzle-orm:
@@ -241,7 +241,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -259,14 +259,14 @@ importers:
 
   modules/identity:
     dependencies:
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -284,16 +284,16 @@ importers:
 
   modules/jobs:
     dependencies:
-      '@aivera/ai':
+      '@credalent/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../audit
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces
       drizzle-orm:
@@ -303,10 +303,10 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@aivera/i18n':
+      '@credalent/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
       '@types/node':
@@ -324,13 +324,13 @@ importers:
 
   modules/notifications:
     dependencies:
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/i18n':
+      '@credalent/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@aivera/observability':
+      '@credalent/observability':
         specifier: workspace:*
         version: link:../../packages/observability
       '@react-email/render':
@@ -349,7 +349,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -373,17 +373,17 @@ importers:
 
   modules/ops:
     dependencies:
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../audit
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.15.6)(postgres@4.1.1)
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -401,10 +401,10 @@ importers:
 
   modules/workspaces:
     dependencies:
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../audit
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
@@ -414,7 +414,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -435,7 +435,7 @@ importers:
       '@ai-sdk/azure':
         specifier: 4.0.116
         version: 4.0.116(zod@4.6.7)
-      '@aivera/observability':
+      '@credalent/observability':
         specifier: workspace:*
         version: link:../observability
       '@azure/identity':
@@ -451,7 +451,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@opentelemetry/api':
@@ -496,7 +496,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@aivera/observability':
+      '@credalent/observability':
         specifier: workspace:*
         version: link:../observability
       '@opentelemetry/api':
@@ -512,7 +512,7 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -537,7 +537,7 @@ importers:
         specifier: 4.14.9
         version: 4.14.9(@types/react@19.3.0)(react@19.3.1)
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -586,7 +586,7 @@ importers:
         specifier: 10.3.1
         version: 10.3.1
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@opentelemetry/context-async-hooks':
@@ -607,7 +607,7 @@ importers:
 
   packages/tokens:
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -625,7 +625,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@aivera/tokens':
+      '@credalent/tokens':
         specifier: workspace:*
         version: link:../tokens
       '@radix-ui/react-dialog':
@@ -638,7 +638,7 @@ importers:
         specifier: 1.4.1
         version: 1.4.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../config
       '@testing-library/dom':
@@ -680,7 +680,7 @@ importers:
 
   tests/architecture:
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -698,25 +698,25 @@ importers:
 
   tests/e2e:
     devDependencies:
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
-      '@aivera/candidate-accounts':
+      '@credalent/candidate-accounts':
         specifier: workspace:*
         version: link:../../modules/candidate-accounts
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/identity':
+      '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
-      '@aivera/jobs':
+      '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
       '@auth/core':
@@ -743,40 +743,40 @@ importers:
 
   tests/integration:
     devDependencies:
-      '@aivera/ai':
+      '@credalent/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
-      '@aivera/candidate-accounts':
+      '@credalent/candidate-accounts':
         specifier: workspace:*
         version: link:../../modules/candidate-accounts
-      '@aivera/candidates':
+      '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/identity':
+      '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
-      '@aivera/jobs':
+      '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
-      '@aivera/notifications':
+      '@credalent/notifications':
         specifier: workspace:*
         version: link:../../modules/notifications
-      '@aivera/ops':
+      '@credalent/ops':
         specifier: workspace:*
         version: link:../../modules/ops
-      '@aivera/seed':
+      '@credalent/seed':
         specifier: workspace:*
         version: link:../../tools/seed
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
       '@opentelemetry/api':
@@ -824,26 +824,26 @@ importers:
 
   tools/seed:
     dependencies:
-      '@aivera/audit':
+      '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
-      '@aivera/candidates':
+      '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
-      '@aivera/db':
+      '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@aivera/identity':
+      '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
-      '@aivera/jobs':
+      '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
-      '@aivera/workspaces':
+      '@credalent/workspaces':
         specifier: workspace:*
         version: link:../../modules/workspaces
     devDependencies:
-      '@aivera/config':
+      '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':

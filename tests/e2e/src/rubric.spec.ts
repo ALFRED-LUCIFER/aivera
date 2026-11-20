@@ -30,8 +30,8 @@ test('Scenario: Approved rubric version 2', async ({ page }) => {
   ).toHaveText(['25%', '20%', '15%', '15%', '10%', '15%']);
   await expect(page.getByText('Weights total 100%')).toBeVisible();
   for (const name of ['Arabic and bilingual NLP', 'Product judgement'])
-    await expect(rows.filter({ hasText: name })).toContainText('Suggested by Aivera, accepted');
-  await expect(rows.filter({ hasText: 'LLM systems in production' })).not.toContainText('Suggested by Aivera');
+    await expect(rows.filter({ hasText: name })).toContainText('Suggested by Credalent, accepted');
+  await expect(rows.filter({ hasText: 'LLM systems in production' })).not.toContainText('Suggested by Credalent');
   await expect(rows.filter({ hasText: 'Cost and reliability' })).toContainText('2 of 5Desirable');
 });
 
@@ -62,11 +62,11 @@ test('Scenario: Approval history and what success means', async ({ page }) => {
 test('Scenario: Hiring owner can read; an interviewer not on this job gets 403', async ({ page, context }) => {
   await signIn(page, { email: AP });
   const url = await openRubric(page);
-  await context.clearCookies({ name: '__Host-aivera-session' });
+  await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: 'head.engineering@example.com' });
   await page.goto(url);
   await expect(page.getByText('Weights total 100%')).toBeVisible();
-  await context.clearCookies({ name: '__Host-aivera-session' });
+  await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: 'rami@example.com' });
   expect((await page.goto(url))?.status()).toBe(403);
 });

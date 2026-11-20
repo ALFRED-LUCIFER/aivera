@@ -1,6 +1,6 @@
-import { createAudit } from '@aivera/audit/composition';
-import type { OpsSettingsContract } from '@aivera/ops';
-import { createOpsSettings } from '@aivera/ops/composition';
+import { createAudit } from '@credalent/audit/composition';
+import type { OpsSettingsContract } from '@credalent/ops';
+import { createOpsSettings } from '@credalent/ops/composition';
 import { getDb } from './db';
 
 let settings: OpsSettingsContract | undefined;

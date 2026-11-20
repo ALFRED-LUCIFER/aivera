@@ -1,4 +1,4 @@
-import type { Db } from '@aivera/db/client';
-import { createWorkspaceDirectory } from '@aivera/workspaces/composition';
+import type { Db } from '@credalent/db/client';
+import { createWorkspaceDirectory } from '@credalent/workspaces/composition';
 
 export const reads = (db: Db) => createWorkspaceDirectory(db);

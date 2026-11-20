@@ -1,1 +1,1 @@
-import { account } from '@aivera/candidate-accounts';
+import { account } from '@credalent/candidate-accounts';

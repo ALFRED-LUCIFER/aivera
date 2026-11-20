@@ -1,4 +1,4 @@
-import type { NewEntry, PlatformAction } from '@aivera/audit';
+import type { NewEntry, PlatformAction } from '@credalent/audit';
 import { MIN_REASON_LENGTH, STATUS_CHANGES, WorkspaceError, type StatusChange } from '../domain/workspace.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 

@@ -3,19 +3,19 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
-import { JobError, type Competency, type CreateJobInput, type JobsContract } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
+import type { AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, withWorkspace, type Db } from '@credalent/db';
+import { JobError, type Competency, type CreateJobInput, type JobsContract } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
 import {
   ForbiddenError,
   WorkspaceError,
   type Role,
   type WorkspaceContext,
   type WorkspacesContract,
-} from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -23,7 +23,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // Synthetic cast only (docs/00-product/personas.md). The five demo jobs live here until the demo seed (AIV-P0-031).
 // The scenarios build on each other in file order (Senior AI Engineer v1, then v2, then v3), as Vitest runs them.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1'; // admin of every workspace here

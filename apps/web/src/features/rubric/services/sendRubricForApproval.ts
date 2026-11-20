@@ -1,6 +1,6 @@
 'use server';
 
-import { log } from '@aivera/observability';
+import { log } from '@credalent/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';

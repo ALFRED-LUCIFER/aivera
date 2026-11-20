@@ -3,23 +3,23 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { CandidateError } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, type Db } from '@aivera/db';
-import { JobError } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
-import { seedDemo, SEED_ISSUER } from '@aivera/seed';
-import { CANDIDATES, INDUSTRY_JOBS } from '@aivera/seed/cast';
-import { WorkspaceError } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { CandidateError } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, type Db } from '@credalent/db';
+import { JobError } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
+import { seedDemo, SEED_ISSUER } from '@credalent/seed';
+import { CANDIDATES, INDUSTRY_JOBS } from '@credalent/seed/cast';
+import { WorkspaceError } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql, type SQL } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P0-031 acceptance scenarios against real PostgreSQL. The seed connects as the non-owner aivera_app role, as
 // `pnpm db:seed` does; `admin` (the container's superuser) reads every row past row-level security to check.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
 
@@ -305,7 +305,7 @@ describe('Scenario: Seeding a fresh database', () => {
       where j.workspace_id = ${workspaceId} and j.title not in ${industryTitles}
       and (btrim(c.evidence_expected) = '' or btrim(v.success_statement) = '')`);
     expect([...empty]).toEqual([]);
-    // The Rubric artboard: version 2 with its change note, two rows suggested by Aivera, Arabic NLP desirable.
+    // The Rubric artboard: version 2 with its change note, two rows suggested by Credalent, Arabic NLP desirable.
     const [v2] = await admin.execute<{ change_note: string; success_statement: string }>(sql`select v.change_note,
       v.success_statement from jobs.rubric_version v join jobs.job j on j.id = v.job_id
       where j.workspace_id = ${workspaceId} and j.title = 'Senior AI Engineer' and v.version = 2`);

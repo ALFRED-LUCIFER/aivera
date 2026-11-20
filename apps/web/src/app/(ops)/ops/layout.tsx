@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { OPS_SECTION_PAGES, OPS_SECTIONS } from '@/features/ops/domain/ops.ts';

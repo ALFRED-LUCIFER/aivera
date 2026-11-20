@@ -8,13 +8,13 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { PersonCreatedV1, type CandidatesContract, type FindOrCreatePersonInput } from '@aivera/candidates';
-import { createCandidates } from '@aivera/candidates/composition';
-import { createDb, enqueue, outboxTable, uuidv7, withWorkspace, type Db, type Envelope } from '@aivera/db';
-import { createRelay, type RelayPorts } from '@aivera/db/relay';
-import type { WorkspaceContext, WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { PersonCreatedV1, type CandidatesContract, type FindOrCreatePersonInput } from '@credalent/candidates';
+import { createCandidates } from '@credalent/candidates/composition';
+import { createDb, enqueue, outboxTable, uuidv7, withWorkspace, type Db, type Envelope } from '@credalent/db';
+import { createRelay, type RelayPorts } from '@credalent/db/relay';
+import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { pgSchema } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -22,7 +22,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // AIV-P0-014 acceptance scenarios against real PostgreSQL: the app writes as aivera_app (row-level security applies),
 // the relay reads as aivera_relay. Service Bus is a fake sender that records what it accepted. Synthetic cast only.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';

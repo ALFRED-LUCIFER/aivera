@@ -1,5 +1,5 @@
-import { outboxTable } from '@aivera/db/outbox';
-import { tenantPolicy } from '@aivera/db/tenant-policy';
+import { outboxTable } from '@credalent/db/outbox';
+import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql, type SQL } from 'drizzle-orm';
 import {
   boolean,

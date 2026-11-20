@@ -13,7 +13,7 @@ import {
   SuccessBanner,
   type DataTableColumn,
   type DataTableSort,
-} from '@aivera/ui';
+} from '@credalent/ui';
 import { sample, type SampleRow } from '../domain/sample.ts';
 import { useScoreLabels } from './EvidenceSections.tsx';
 import { Section, State } from './Section.tsx';

@@ -1,4 +1,4 @@
-import { IdentityError } from '@aivera/identity';
+import { IdentityError } from '@credalent/identity';
 import { decode } from 'next-auth/jwt';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authConfig, tokenMaxAge } from './auth';
@@ -6,22 +6,22 @@ import { authConfig, tokenMaxAge } from './auth';
 // Scenario: A refused sign-in adds nothing (AIV-P0-009): the log line holds no email, name or token (AGENTS.md 1.2).
 
 const upsert = vi.fn();
-vi.mock('@aivera/identity/composition', () => ({ createIdentity: () => ({ upsertUserFromIdToken: upsert }) }));
+vi.mock('@credalent/identity/composition', () => ({ createIdentity: () => ({ upsertUserFromIdToken: upsert }) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
-vi.mock('./env', () => ({ env: () => ({ auth: { issuer: 'https://tenant.aivera.example/v2.0' } }) }));
+vi.mock('./env', () => ({ env: () => ({ auth: { issuer: 'https://tenant.credalent.example/v2.0' } }) }));
 
 const settings = {
   secret: 'x'.repeat(32),
   clientId: 'client',
   clientSecret: 'secret',
-  issuer: 'https://tenant.aivera.example/v2.0',
-  discovery: 'https://tenant.aivera.example/v2.0/.well-known/openid-configuration',
+  issuer: 'https://tenant.credalent.example/v2.0',
+  discovery: 'https://tenant.credalent.example/v2.0/.well-known/openid-configuration',
   google: null,
 };
 const config = authConfig(settings);
 const PERSONAL = /nadia|@example\.com|Haddad|eyJ/i;
 const profile = {
-  iss: 'https://tenant.aivera.example/v2.0',
+  iss: 'https://tenant.credalent.example/v2.0',
   sub: 'nadia-google',
   email: 'nadia@example.com',
   email_verified: false,
@@ -129,7 +129,7 @@ describe('ID token claims', () => {
     'passes email_verified %j on as false and refuses as unverified_email',
     async (claim) => {
       upsert.mockRejectedValueOnce(new IdentityError('unverified_email'));
-      const foreign = { ...profile, iss: 'https://login.other.aivera.example/v2.0', email_verified: claim };
+      const foreign = { ...profile, iss: 'https://login.other.credalent.example/v2.0', email_verified: claim };
       const result = await config.callbacks?.signIn?.({ user: {}, profile: foreign, account: null } as never);
       expect(result).toBe('/sign-in?error=unverified_email');
       expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({ emailVerified: false }));
@@ -195,7 +195,7 @@ describe('Continue with Google (AIV-P0-928)', () => {
 // Scenario Outline: Session length follows "Keep me signed in". The real Auth.js JWT encode and decode (jose), with the
 // token the sign-in callback writes and the one each later request re-issues.
 describe('session length follows "Keep me signed in"', () => {
-  const salt = '__Host-aivera-session';
+  const salt = '__Host-credalent-session';
   const issue = async (remember: boolean, token: object | null = null) => {
     const { callbacks, jwt } = authConfig(settings, remember);
     const claims = token

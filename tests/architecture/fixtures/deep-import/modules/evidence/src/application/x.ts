@@ -1,1 +1,1 @@
-import type { Job } from '@aivera/jobs/src/domain/job';
+import type { Job } from '@credalent/jobs/src/domain/job';

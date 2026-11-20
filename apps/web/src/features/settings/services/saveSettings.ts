@@ -1,6 +1,6 @@
 'use server';
 
-import { settingsSchema, type WorkspaceSettings } from '@aivera/workspaces';
+import { settingsSchema, type WorkspaceSettings } from '@credalent/workspaces';
 import { revalidatePath } from 'next/cache';
 import { forbidden } from 'next/navigation';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';

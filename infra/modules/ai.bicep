@@ -1,4 +1,4 @@
-// AIV-P0-034: the dev AI resource that @aivera/ai calls (ADR-006, ADR-011). Deployed into Aivera's own resource group
+// AIV-P0-034: the dev AI resource that @credalent/ai calls (ADR-006, ADR-011). Deployed into Credalent's own resource group
 // in UAE North (rg-aivera-ai-dev): Central India offers these models only as provisioned throughput, and Medvya's group
 // allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity.
 param tags object

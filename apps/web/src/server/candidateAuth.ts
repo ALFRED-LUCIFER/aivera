@@ -11,7 +11,7 @@ import { env } from './env';
 // shortcut: Auth.js's flow cookies (state, PKCE, nonce, callback URL) keep their default names on both sides, so two
 // sign-ins started at once in one browser (one per side) make the first fail; prefix them per side if that is reported.
 const CANDIDATE: SignInSide = {
-  cookie: '__Host-aivera-candidate',
+  cookie: '__Host-credalent-candidate',
   basePath: '/api/candidate-auth',
   signInPage: CANDIDATE_SIGN_IN,
 };

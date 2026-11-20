@@ -1,6 +1,6 @@
-import type { NotificationsContract, Sender } from '@aivera/notifications';
-import { createNotifications } from '@aivera/notifications/composition';
-import type { WorkspaceContext } from '@aivera/workspaces';
+import type { NotificationsContract, Sender } from '@credalent/notifications';
+import { createNotifications } from '@credalent/notifications/composition';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from './auth';
 import { env } from './env';
 import { getWorkspaces } from './workspace';

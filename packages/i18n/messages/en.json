@@ -1,18 +1,18 @@
 {
   "app": {
-    "title": "Aivera",
+    "title": "Credalent",
     "description": "Hire on evidence, not claims."
   },
   "home": {
     "headline": "Hire on <mark>evidence</mark>, not claims.",
-    "lead": "Aivera reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.",
+    "lead": "Credalent reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.",
     "createWorkspace": "Create your workspace",
     "seeProduct": "See the product",
     "reassurance": "No tests to sit. No automatic rejections. A person makes every hiring decision.",
     "signIn": "Sign in",
     "nav": {
       "label": "Site",
-      "home": "Aivera home",
+      "home": "Credalent home",
       "howItWorks": "How it works",
       "roles": "Roles we cover",
       "trust": "Why trust it",
@@ -35,7 +35,7 @@
       "cited": "wrote 148 of 171 test cases",
       "markLabel": "cited evidence",
       "sources": "Sources",
-      "sourceRepo": "hessa.aivera.example/checkout-e2e",
+      "sourceRepo": "hessa.credalent.example/checkout-e2e",
       "sourceCi": "CI history, checked 12 Nov",
       "synthetic": "Illustrative candidate, synthetic data."
     },
@@ -49,11 +49,11 @@
       "steps": {
         "agree": {
           "title": "Agree what matters",
-          "body": "Paste the job description. Aivera drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves."
+          "body": "Paste the job description. Credalent drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves."
         },
         "collect": {
           "title": "Collect the work",
-          "body": "Repositories, test suites, design files, documents, shipped products. Where a candidate has nothing to show, Aivera asks for a short work sample and labels it as one."
+          "body": "Repositories, test suites, design files, documents, shipped products. Where a candidate has nothing to show, Credalent asks for a short work sample and labels it as one."
         },
         "rank": {
           "title": "See why each person ranks where they do",
@@ -65,14 +65,14 @@
         },
         "decide": {
           "title": "Decide with the pack in front of you",
-          "body": "Strengths, risks and open questions for each shortlisted candidate, on one page. Aivera recommends. You decide."
+          "body": "Strengths, risks and open questions for each shortlisted candidate, on one page. Credalent recommends. You decide."
         }
       }
     },
     "roleFamilies": {
       "title": "Not only software engineers",
-      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Aivera knows which to look for.",
-      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Aivera requests a short work sample scoped to the role instead.",
+      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Credalent knows which to look for.",
+      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Credalent requests a short work sample scoped to the role instead.",
       "family": "Role family",
       "evidence": "Evidence that counts",
       "more": "<strong>This list is a start.</strong> We are piecing together more role families, and the one you hire for can be next."
@@ -100,20 +100,20 @@
     },
     "pilot": {
       "title": "One number to judge us on: interviews per completed hire",
-      "body": "Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Aivera shows the working."
+      "body": "Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Credalent shows the working."
     },
     "footer": {
       "label": "Footer",
-      "copyright": "© {year} Aivera"
+      "copyright": "© {year} Credalent"
     }
   },
   "candidate": {
     "shell": {
-      "titleTemplate": "%s · Aivera for candidates",
+      "titleTemplate": "%s · Credalent for candidates",
       "skipToContent": "Skip to content",
-      "wordmark": "Aivera",
+      "wordmark": "Credalent",
       "audience": "for candidates",
-      "siteTitle": "Aivera for candidates",
+      "siteTitle": "Credalent for candidates",
       "nav": {
         "label": "Candidate site",
         "menu": "Menu",
@@ -126,7 +126,7 @@
       "myApplications": "My applications",
       "footer": {
         "label": "Site links",
-        "rule": "© 2026 Aivera. Paying never changes how recruiters rank you.",
+        "rule": "© 2026 Credalent. Paying never changes how recruiters rank you.",
         "jobs": "Jobs",
         "plans": "Plans",
         "forRecruiters": "For recruiters"
@@ -194,7 +194,7 @@
     },
     "home": {
       "title": "Get hired for <mark>what you have done</mark>.",
-      "lead": "On Aivera, every job shows what it needs before you apply, and recruiters judge your work, not your keywords. No tests to sit.",
+      "lead": "On Credalent, every job shows what it needs before you apply, and recruiters judge your work, not your keywords. No tests to sit.",
       "findJobs": "Find jobs",
       "checkCv": "Check my CV, free",
       "free": "Free to browse and apply. Always.",
@@ -207,7 +207,7 @@
         "python": "Python service engineering",
         "product": "Product judgement"
       },
-      "principlesTitle": "How Aivera works for you",
+      "principlesTitle": "How Credalent works for you",
       "principles": {
         "needs": {
           "title": "Know what the job needs",
@@ -226,7 +226,7 @@
       "noNew": "No new jobs this week. Check back soon.",
       "allJobs": "All jobs",
       "plusTitle": "Want an edge that is still honest?",
-      "plusBody": "Aivera Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}.",
+      "plusBody": "Credalent Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}.",
       "plusLink": "See what Plus adds"
     },
     "signup": {
@@ -258,7 +258,7 @@
       }
     },
     "signIn": {
-      "noAccount": "New to Aivera?",
+      "noAccount": "New to Credalent?",
       "createAccount": "Create free account"
     }
   },
@@ -297,9 +297,9 @@
     "sources": "{count, plural, one {# source} other {# sources}}"
   },
   "shell": {
-    "titleTemplate": "%s · Aivera",
+    "titleTemplate": "%s · Credalent",
     "skipToContent": "Skip to content",
-    "wordmark": "Aivera",
+    "wordmark": "Credalent",
     "nav": {
       "label": "Primary",
       "open": "Open navigation",
@@ -313,7 +313,7 @@
       "packs": "Decision packs",
       "value": "Value dashboard",
       "settings": "Settings",
-      "website": "Aivera website"
+      "website": "Credalent website"
     },
     "search": "Search roles, candidates and evidence",
     "synthetic": "Synthetic demo data",
@@ -324,8 +324,8 @@
     "account": "Signed in as {name}",
     "signOut": "Sign out",
     "assistant": {
-      "open": "Ask Aivera",
-      "title": "Aivera assistant",
+      "open": "Ask Credalent",
+      "title": "Credalent assistant",
       "context": "Context: {screen}",
       "input": "Ask about what is on this page",
       "ask": "Ask",
@@ -333,7 +333,7 @@
       "footer": "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
     },
     "placeholder": "This screen arrives with its own ticket.",
-    "paused": "This workspace is paused by Aivera. You can read everything; new work is paused."
+    "paused": "This workspace is paused by Credalent. You can read everything; new work is paused."
   },
   "signIn": {
     "title": "Sign in",
@@ -345,13 +345,13 @@
     },
     "lead": "Welcome back. Pick up where your roles left off.",
     "email": "Work email",
-    "passwordNote": "You enter your password on the next page, hosted by Aivera's sign-in service.",
+    "passwordNote": "You enter your password on the next page, hosted by Credalent's sign-in service.",
     "remember": "Keep me signed in",
     "signIn": "Sign in",
     "forgotPassword": "Forgot password?",
     "or": "or",
     "google": "Continue with Google",
-    "newHere": "New to Aivera?",
+    "newHere": "New to Credalent?",
     "createWorkspace": "Create a workspace",
     "errors": {
       "unverifiedEmail": "Verify your email to continue.",
@@ -365,7 +365,7 @@
     "noWorkspaceTitle": "You are not in a workspace yet",
     "noWorkspace": "Ask your workspace admin to add you to their workspace.",
     "pausedTitle": "This workspace is paused.",
-    "paused": "You can read everything; new work is paused until Aivera reactivates the workspace.",
+    "paused": "You can read everything; new work is paused until Credalent reactivates the workspace.",
     "waitingTitle": "Waiting for approval",
     "waiting": "Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.",
     "rejectedTitle": "Your workspace was not approved",
@@ -447,8 +447,8 @@
   },
   "jobDraft": {
     "heading": "Competencies",
-    "before": "Choose Draft competencies. Aivera reads the description for a {title}, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
-    "beforeUntitled": "Choose Draft competencies. Aivera reads the description for this job, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
+    "before": "Choose Draft competencies. Credalent reads the description for a {title}, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
+    "beforeUntitled": "Choose Draft competencies. Credalent reads the description for this job, drafts the competencies it states, and suggests the ones it leaves out, such as knowledge of your industry or market.",
     "fromDescription": "From your job description · {count, plural, one {# competency} other {# competencies}}",
     "caption": "Drafted competencies",
     "columns": {
@@ -482,13 +482,13 @@
     "done": "Done",
     "add": "Add competency",
     "useStarters": "Use the starter competencies",
-    "none": "Aivera found no competencies stated in the description. Add them yourself or use the starter competencies.",
-    "leftOut": "Aivera left out a line of your description that asks for something other than a skill, such as a nationality or an age. Candidates are judged on evidence of their work.",
+    "none": "Credalent found no competencies stated in the description. Add them yourself or use the starter competencies.",
+    "leftOut": "Credalent left out a line of your description that asks for something other than a skill, such as a nationality or an age. Candidates are judged on evidence of their work.",
     "noRows": "No competencies yet.",
     "suggestions": "Missing from your description · {count, plural, one {# suggestion} other {# suggestions}}",
     "suggestionsCaption": "Suggested competencies",
     "noSuggestions": "Nothing obvious is missing from your description.",
-    "suggestedBy": "Suggested by Aivera",
+    "suggestedBy": "Suggested by Credalent",
     "why": "Why: {why}",
     "evidenceExpected": "Evidence expected: {evidence}",
     "removed": "{name} removed from this rubric.",
@@ -496,14 +496,14 @@
     "restoreAction": "Restore",
     "weightsTotal": "Weights total {total}%",
     "rebalance": "Weights rebalance when you save",
-    "failed": "Aivera could not draft competencies. You can try again or add them yourself.",
+    "failed": "Credalent could not draft competencies. You can try again or add them yourself.",
     "budget": "This workspace has used today's AI allowance. You can add competencies yourself, or draft them tomorrow.",
     "empty": "Add a job description to draft competencies from it, or add them yourself.",
     "notSaved": "Drafted competencies are suggestions: keep, edit or remove each. Nothing is saved until you choose Save job and rubric.",
     "nameRequired": "Every competency needs a name.",
     "weightRange": "Each weight is a whole percentage from 1 to 100.",
     "emptyRubric": "Keep at least one competency to save the job and rubric.",
-    "industryDetected": "Aivera read this as {key, select, ecommerce_marketplaces {an} energy_utilities {an} other {a}} <strong>{industry}</strong> job",
+    "industryDetected": "Credalent read this as {key, select, ecommerce_marketplaces {an} energy_utilities {an} other {a}} <strong>{industry}</strong> job",
     "industryChosen": "You chose {industry} for this job.",
     "notThisIndustry": "Not this industry",
     "addIndustry": "Add industry skills",
@@ -574,8 +574,8 @@
     "ourTeam": "Our team"
   },
   "ops": {
-    "title": "Aivera operations",
-    "signedIn": "Signed in as an Aivera operator.",
+    "title": "Credalent operations",
+    "signedIn": "Signed in as an Credalent operator.",
     "operator": "Operator",
     "metadataOnly": "Platform metadata only. Candidate data never appears here.",
     "nav": {
@@ -855,7 +855,7 @@
     }
   },
   "settings": {
-    "intro": "Timings and limits Aivera uses in this workspace.",
+    "intro": "Timings and limits Credalent uses in this workspace.",
     "readOnly": "Only an admin can change these settings",
     "loading": "Loading settings",
     "save": "Save settings",
@@ -924,7 +924,7 @@
       },
       "candidateFeedbackEnabled": {
         "label": "Tell candidates which competencies fell short when they are not taken forward",
-        "help": "Applies to Aivera Plus members. A person still makes every decision."
+        "help": "Applies to Credalent Plus members. A person still makes every decision."
       }
     },
     "clientsLink": "Clients",
@@ -1015,7 +1015,7 @@
       "mandatory": "Mandatory",
       "desirable": "Desirable"
     },
-    "suggestedAccepted": "Suggested by Aivera, accepted",
+    "suggestedAccepted": "Suggested by Credalent, accepted",
     "weightsTotal": "Weights total {total}%",
     "noRubric": "No rubric yet.",
     "success": "What success means",
@@ -1092,7 +1092,7 @@
       "newerBody": "The link you opened was for an earlier copy of this rubric. Review version {version} below instead. Nothing from the earlier copy was approved."
     },
     "publish": {
-      "title": "Publish on Aivera jobs",
+      "title": "Publish on Credalent jobs",
       "notPublished": "Not published. Only candidates you add can apply. Publishing lists this job on the candidate site so anyone can apply directly.",
       "publish": "Publish this job",
       "needsApproval": "Publish after the rubric is approved.",
@@ -1118,9 +1118,9 @@
   },
   "emails": {
     "layout": {
-      "brand": "Aivera",
-      "logoAlt": "Aivera",
-      "sentBy": "Sent by {sender} at {workspace} through Aivera",
+      "brand": "Credalent",
+      "logoAlt": "Credalent",
+      "sentBy": "Sent by {sender} at {workspace} through Credalent",
       "devBand": "Synthetic data — development environment",
       "reasonCandidate": "You are receiving this because you applied for a job through this workspace.",
       "repliesGoTo": "Replies go to {name}.",
@@ -1144,7 +1144,7 @@
       "questions": "Questions? Reply to this email and it goes to {name}."
     },
     "memberInvitation": {
-      "subject": "You are invited to {workspace} on Aivera",
+      "subject": "You are invited to {workspace} on Credalent",
       "preheader": "Accept to see what this role covers. The invitation expires on {expiresAt, date, short}.",
       "heading": "{inviter} invited you to {workspace}",
       "intro": "{inviter} invited you to {workspace} as <b>{role}</b>{scoped, select, yes { for {scope}} other {}}. Accept the invitation to get started.",
@@ -1280,7 +1280,7 @@
     },
     "accept": {
       "title": "Join a workspace",
-      "body": "{workspace} invited you to Aivera as {role}.",
+      "body": "{workspace} invited you to Credalent as {role}.",
       "signIn": "Sign in or create an account",
       "join": "Join {workspace}",
       "otherEmail": "This invitation was sent to another email address. Sign out, then open the link again and sign in with the address it was sent to.",

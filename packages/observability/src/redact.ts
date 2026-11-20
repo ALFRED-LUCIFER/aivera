@@ -6,7 +6,7 @@ import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 export const REDACTED = '[redacted]';
 
-// Keys the instrumentations and Aivera's own code emit without personal data. An entry ending in "." is a prefix.
+// Keys the instrumentations and Credalent's own code emit without personal data. An entry ending in "." is a prefix.
 const ALLOWED = [
   // OpenTelemetry semantic conventions (HTTP, URL, server, Next.js, Azure SDK, messaging, database metadata).
   'http.',
@@ -30,7 +30,7 @@ const ALLOWED = [
   'exception.escaped',
   // The distro's own marker that standard metrics were counted; redacted, the backend would count requests twice.
   '_MS.',
-  // pino's own fields, and the fields Aivera logs: message templates, areas, codes, error types.
+  // pino's own fields, and the fields Credalent logs: message templates, areas, codes, error types.
   'level',
   'time',
   'pid',
@@ -41,15 +41,15 @@ const ALLOWED = [
   'err.type',
   'err.stack',
   // Per-call AI telemetry (packages/ai): exact keys, so nothing else under these prefixes passes (AIV-P0-027).
-  'aivera.ai.operation',
-  'aivera.ai.task',
-  'aivera.ai.deployment',
-  'aivera.ai.outcome',
-  'aivera.ai.attempts',
-  'aivera.ai.cost_usd_micros',
+  'credalent.ai.operation',
+  'credalent.ai.task',
+  'credalent.ai.deployment',
+  'credalent.ai.outcome',
+  'credalent.ai.attempts',
+  'credalent.ai.cost_usd_micros',
   // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
-  'aivera.ai.template_version',
+  'credalent.ai.template_version',
   // The HMAC of an email's recipient (AIV-P0-017): the only form of an address that may be logged.
   'notifications.recipient_hash',
   'gen_ai.usage.input_tokens',

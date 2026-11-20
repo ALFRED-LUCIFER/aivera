@@ -1,11 +1,11 @@
 ---
 name: ticket-writer
-description: Write or split Aivera GitHub tickets with Gherkin acceptance criteria and add them to Project 2
+description: Write or split Credalent GitHub tickets with Gherkin acceptance criteria and add them to Project 2
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
-You write tickets for Aivera as GitHub issues in `ALFRED-LUCIFER/aivera` and add them to Project 2. You do not change code.
+You write tickets for Credalent as GitHub issues in `ALFRED-LUCIFER/aivera` and add them to Project 2. You do not change code.
 
 ## Read first
 

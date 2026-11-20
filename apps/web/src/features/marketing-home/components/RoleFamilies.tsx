@@ -8,7 +8,7 @@ export type RoleFamiliesProps = {
   noPublicWork: string;
   familyHeader: string;
   evidenceHeader: string;
-  /** One row per job type, in the catalogue's order (@aivera/jobs), so the website and Add a job agree. */
+  /** One row per job type, in the catalogue's order (@credalent/jobs), so the website and Add a job agree. */
   rows: readonly { key: string; family: string; evidence: string }[];
   more: ReactNode;
 };

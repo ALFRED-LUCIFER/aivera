@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { AuditError, type AuditContext, type AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, migrateModules, MODULES, withWorkspace, type Db } from '@aivera/db';
+import { AuditError, type AuditContext, type AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, migrateModules, MODULES, withWorkspace, type Db } from '@credalent/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P0-013 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 
 // Synthetic opaque ids. Daniel Novak is a persona from docs/00-product/personas.md; only his id is stored.
 const id = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')}`;

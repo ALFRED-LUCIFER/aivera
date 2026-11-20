@@ -19,7 +19,7 @@ export const e2eAuthSecret = 'e2e-only-not-a-secret-e2e-only-not-a-secret';
 const recruiterAuth = {
   AUTH_SECRET: e2eAuthSecret,
   AUTH_ENTRA_ISSUER: oidc,
-  AUTH_ENTRA_CLIENT_ID: 'aivera-e2e',
+  AUTH_ENTRA_CLIENT_ID: 'credalent-e2e',
   AUTH_ENTRA_CLIENT_SECRET: 'e2e-only',
 };
 
@@ -83,12 +83,12 @@ export default defineConfig({
         DATABASE_URL: databaseUrl,
         ...recruiterAuth,
         // The candidate app registration on the same mocked tenant (AIV-P0-011).
-        AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'aivera-e2e-candidate',
+        AUTH_ENTRA_CANDIDATE_CLIENT_ID: 'credalent-e2e-candidate',
         AUTH_ENTRA_CANDIDATE_CLIENT_SECRET: 'e2e-only',
         // "Continue with Google" straight to Google (AIV-P0-928), played by the second mocked provider; the unconfigured
         // app below has no Google settings, so it shows no Google button.
         AUTH_GOOGLE_ISSUER: google,
-        AUTH_GOOGLE_CLIENT_ID: 'aivera-e2e-google',
+        AUTH_GOOGLE_CLIENT_ID: 'credalent-e2e-google',
         AUTH_GOOGLE_CLIENT_SECRET: 'e2e-only',
         // The synthetic operators (AIV-P2-035, personas.md), one in mixed case; the unconfigured app below has none.
         PLATFORM_OPERATOR_EMAILS: 'pia.platform@example.com,Theo.Platform@example.com',

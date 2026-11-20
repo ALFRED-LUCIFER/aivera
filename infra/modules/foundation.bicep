@@ -1,11 +1,11 @@
-// AIV-P0-003: Aivera's own identities, Key Vault and Application Insights inside the shared Medvya dev resource group
+// AIV-P0-003: Credalent's own identities, Key Vault and Application Insights inside the shared Medvya dev resource group
 // (ADR-008). Log Analytics is Medvya's workspace, referenced, not created.
 param location string
 param tags object
 param logAnalyticsName string
 param githubOidcRepo string
 
-// Web and worker. Reads Aivera's Key Vault; signs in to PostgreSQL as aivera_app (no DDL, row-level security applies).
+// Web and worker. Reads Credalent's Key Vault; signs in to PostgreSQL as aivera_app (no DDL, row-level security applies).
 resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: 'id-aivera-dev'
   location: location
@@ -69,7 +69,7 @@ var keyVaultSecretsUser = subscriptionResourceId(
   '4633458b-17de-408a-b874-0445c86b69e6'
 )
 
-// Vault scope is Aivera-only: this vault holds nothing of Medvya's.
+// Vault scope is Credalent-only: this vault holds nothing of Medvya's.
 resource appReadsSecrets 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(keyVault.id, appIdentity.id, keyVaultSecretsUser)
   scope: keyVault

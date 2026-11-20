@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata, Route } from 'next';
 import { redirect } from 'next/navigation';
 import { AuditLog } from '@/features/ops/components/AuditLog.tsx';

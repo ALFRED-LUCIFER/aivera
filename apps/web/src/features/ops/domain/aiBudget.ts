@@ -1,9 +1,9 @@
 // A workspace's daily AI token budget in the operator console (AIV-P2-038, ADR-012). Pure: no React, no I/O (ADR-003).
-import { AI_DAILY_TOKEN_BUDGET } from '@aivera/workspaces';
+import { AI_DAILY_TOKEN_BUDGET } from '@credalent/workspaces';
 import { z } from 'zod';
 
 /** The platform default and the bounds of an override, for the form's hint and messages. */
-export { AI_DAILY_TOKEN_BUDGET } from '@aivera/workspaces';
+export { AI_DAILY_TOKEN_BUDGET } from '@credalent/workspaces';
 
 /**
  * A budget change, checked in the form and again in the server action: a whole number of tokens within the bounds, or

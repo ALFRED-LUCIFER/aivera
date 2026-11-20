@@ -1,3 +1,3 @@
-import { isSignedUp } from '@aivera/candidate-accounts';
+import { isSignedUp } from '@credalent/candidate-accounts';
 
 export const ok = isSignedUp;

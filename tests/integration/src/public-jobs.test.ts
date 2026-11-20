@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, type Db } from '@aivera/db';
-import { toPublicJobJson, type Competency, type JobsContract, type PublicJobsContract } from '@aivera/jobs';
-import { createJobs, createPublicJobs } from '@aivera/jobs/composition';
-import type { WorkspaceContext, WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, type Db } from '@credalent/db';
+import { toPublicJobJson, type Competency, type JobsContract, type PublicJobsContract } from '@credalent/jobs';
+import { createJobs, createPublicJobs } from '@credalent/jobs/composition';
+import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // transaction (as aivera_app) and read with no workspace as aivera_public. Synthetic cast (docs/00-product/personas.md).
 // The scenarios build on each other in file order.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1'; // admin of the demo workspace
 const NOW = new Date('2026-11-12T09:00:00.000Z');

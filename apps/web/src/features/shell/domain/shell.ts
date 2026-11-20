@@ -1,4 +1,4 @@
-import type { Role, WorkspaceStatus } from '@aivera/workspaces';
+import type { Role, WorkspaceStatus } from '@credalent/workspaces';
 import type { Capability, ScreenId } from './navigation.ts';
 
 export type Member = {

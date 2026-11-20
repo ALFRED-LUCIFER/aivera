@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { AiUnavailable, BudgetExceeded, createAiClient, fakeProvider, type AiProvider } from '@aivera/ai';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, migrateModules, MODULES, withWorkspace, type Db } from '@aivera/db';
-import { WorkspaceError } from '@aivera/workspaces';
-import { createAiBudgetConsole, createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
+import { AiUnavailable, BudgetExceeded, createAiClient, fakeProvider, type AiProvider } from '@credalent/ai';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, migrateModules, MODULES, withWorkspace, type Db } from '@credalent/db';
+import { WorkspaceError } from '@credalent/workspaces';
+import { createAiBudgetConsole, createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { MockLanguageModelV4 } from 'ai/test';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,7 +14,7 @@ import { z } from 'zod';
 // AIV-P0-033: one persisted daily AI token budget per workspace, against real PostgreSQL as the non-owner aivera_app
 // role. Each "process" is its own connection pool and AI client. Synthetic data only.
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
 const PIA = '0190d4a2-0000-7000-8000-00000000a001'; // Pia Platform, an operator (personas.md)
 const NINE_AM = Date.parse('2026-11-18T09:00:00Z');

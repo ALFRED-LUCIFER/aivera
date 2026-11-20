@@ -1,6 +1,6 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { ROLES, type Role } from '@aivera/workspaces';
-import { Button, Input, Label, Select } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { ROLES, type Role } from '@credalent/workspaces';
+import { Button, Input, Label, Select } from '@credalent/ui';
 import type { InviteState, Option } from '../domain/members.ts';
 import { JobPicker } from './JobPicker.tsx';
 

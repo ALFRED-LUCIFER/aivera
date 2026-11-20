@@ -2,7 +2,7 @@
 // with health and readiness on an internal port.
 import { createServer } from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { initTelemetry } from '@aivera/observability/init';
+import { initTelemetry } from '@credalent/observability/init';
 import { z } from 'zod';
 
 const env = z
@@ -29,14 +29,14 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
-const { PersonCreatedV1 } = await import('@aivera/candidates');
-const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@aivera/jobs');
-const { EmailQueuedV1 } = await import('@aivera/notifications');
-const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@aivera/notifications/composition');
-const { createDb, isReachable } = await import('@aivera/db');
-const { createConsumer } = await import('@aivera/db/consumer');
-const { createRelay } = await import('@aivera/db/relay');
-const { log } = await import('@aivera/observability');
+const { PersonCreatedV1 } = await import('@credalent/candidates');
+const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
+const { EmailQueuedV1 } = await import('@credalent/notifications');
+const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
+const { createDb, isReachable } = await import('@credalent/db');
+const { createConsumer } = await import('@credalent/db/consumer');
+const { createRelay } = await import('@credalent/db/relay');
+const { log } = await import('@credalent/observability');
 const { subscribe, toMessage } = await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's

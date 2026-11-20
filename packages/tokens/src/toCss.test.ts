@@ -4,7 +4,7 @@ import tokens from './tokens.json' with { type: 'json' };
 import { toCss } from './toCss.ts';
 
 describe('Case file tokens', () => {
-  it('the committed tokens.css matches tokens.json (run pnpm --filter @aivera/tokens build)', () => {
+  it('the committed tokens.css matches tokens.json (run pnpm --filter @credalent/tokens build)', () => {
     expect(readFileSync(new URL('../tokens.css', import.meta.url), 'utf8')).toBe(toCss());
   });
 

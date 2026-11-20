@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const handleEventGrid = vi.fn();
 class ReportTooEarly extends Error {}
 let key: string | undefined;
-vi.mock('@aivera/notifications/composition', () => ({ handleEventGrid, ReportTooEarly }));
+vi.mock('@credalent/notifications/composition', () => ({ handleEventGrid, ReportTooEarly }));
 vi.mock('@/server/db', () => ({ getDb: () => ({}) }));
 vi.mock('@/server/env', () => ({ env: () => ({ ACS_WEBHOOK_KEY: key }) }));
 
@@ -12,7 +12,7 @@ const KEY = 'k'.repeat(40);
 const post = async (query: string, body: unknown) => {
   const { POST } = await import('./route');
   return POST(
-    new Request(`https://aivera.example/api/webhooks/acs-email${query}`, {
+    new Request(`https://credalent.example/api/webhooks/acs-email${query}`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

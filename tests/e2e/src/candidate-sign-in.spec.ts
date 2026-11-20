@@ -6,8 +6,8 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 // for the candidate app registration and user flow. The unconfigured environment is candidate-sign-in.unconfigured.spec.ts.
 // Sara has a candidate account (seed.ts), so her sign-in lands on My applications; sign-up is candidate-signup.spec.ts.
 
-const RECRUITER_COOKIE = '__Host-aivera-session';
-const CANDIDATE_COOKIE = '__Host-aivera-candidate';
+const RECRUITER_COOKIE = '__Host-credalent-session';
+const CANDIDATE_COOKIE = '__Host-credalent-candidate';
 const cookie = async (context: BrowserContext, name: string) => (await context.cookies()).find((c) => c.name === name);
 
 /** Signs in through /candidates/sign-in and the mocked tenant. Synthetic people only. */
@@ -47,7 +47,7 @@ test('Scenario: Only the two chosen ways in are offered, without the email in th
   const toTenant = page.waitForRequest((request) => request.url().startsWith('http://localhost:3299/authorize'));
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   const authorize = new URL((await toTenant).url());
-  expect(authorize.searchParams.get('client_id')).toBe('aivera-e2e-candidate');
+  expect(authorize.searchParams.get('client_id')).toBe('credalent-e2e-candidate');
   expect(authorize.searchParams.has('login_hint')).toBe(false);
   expect(authorize.href).not.toMatch(/@|%40/);
 });
@@ -65,7 +65,7 @@ test('Scenario: The same person is one account on both sides', async ({ page, co
   expect((await cookie(context, RECRUITER_COOKIE))?.value).toBe(recruiter?.value);
 });
 
-// SAFETY: mutation check: share the cookie name (candidate cookie '__Host-aivera-session') -> this test failed
+// SAFETY: mutation check: share the cookie name (candidate cookie '__Host-credalent-session') -> this test failed
 test('Scenario: Candidate and recruiter sessions are separate', async ({ page, context }) => {
   await candidateSignIn(page, 'sara@example.com');
   await expect(page).toHaveURL(/\/candidates\/me$/);
@@ -74,7 +74,7 @@ test('Scenario: Candidate and recruiter sessions are separate', async ({ page, c
   expect(await cookie(context, RECRUITER_COOKIE)).toBeUndefined();
 });
 
-// SAFETY: mutation check: share the cookie name (candidate cookie '__Host-aivera-session') -> this test failed
+// SAFETY: mutation check: share the cookie name (candidate cookie '__Host-credalent-session') -> this test failed
 test('Scenario: A recruiter session does not open candidate pages', async ({ page, context }) => {
   await signIn(page);
   await expect(page).toHaveURL(/\/app$/);

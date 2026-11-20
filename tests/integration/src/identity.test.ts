@@ -3,19 +3,19 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createDb, type Db } from '@aivera/db';
-import { IdentityError, type IdentityContract, type IdTokenIdentity } from '@aivera/identity';
-import { createIdentity } from '@aivera/identity/composition';
+import { createDb, type Db } from '@credalent/db';
+import { IdentityError, type IdentityContract, type IdTokenIdentity } from '@credalent/identity';
+import { createIdentity } from '@credalent/identity/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P0-009: upsertUserFromIdToken against real PostgreSQL, as the non-owner aivera_app role (ADR-004, ADR-009).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 // The app's own External ID tenant (trusted without email_verified) and some other issuer (ADR-009 point 4).
-const ISSUER = 'https://tenant.ciamlogin.aivera.example/v2.0';
-const OTHER_ISSUER = 'https://other-idp.aivera.example';
+const ISSUER = 'https://tenant.ciamlogin.credalent.example/v2.0';
+const OTHER_ISSUER = 'https://other-idp.credalent.example';
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;

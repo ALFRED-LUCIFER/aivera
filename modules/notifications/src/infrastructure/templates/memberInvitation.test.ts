@@ -15,12 +15,12 @@ const data: MemberInvitationData = {
   scope: 'Senior AI Engineer',
   // 27 Nov 2026 in Dubai.
   expiresAt: new Date('2026-11-27T08:00:00Z'),
-  link: 'https://aivera.example/l/9fK2xQ7mT4vB',
+  link: 'https://credalent.example/l/9fK2xQ7mT4vB',
 };
 const ctx = {
   locale: 'en' as const,
   timeZone: 'Asia/Dubai',
-  origin: 'https://aivera.example',
+  origin: 'https://credalent.example',
   synthetic: false,
   sender,
 };
@@ -28,10 +28,10 @@ const ctx = {
 describe('member-invitation template', () => {
   it('renders the EInvite plain-text version, with no delete-data link (a member, not a candidate)', async () => {
     const { subject, text } = await renderEmail('member-invitation', data, ctx);
-    expect(subject).toBe('You are invited to Demo Hiring Co on Aivera');
+    expect(subject).toBe('You are invited to Demo Hiring Co on Credalent');
     expect(text).toBe(
       [
-        'Sent by Layla Haddad at Demo Hiring Co through Aivera',
+        'Sent by Layla Haddad at Demo Hiring Co through Credalent',
         '',
         'LAYLA HADDAD INVITED YOU TO DEMO HIRING CO',
         '',
@@ -44,13 +44,13 @@ describe('member-invitation template', () => {
         'Note: *Accept the invitation before it expires on 27 Nov 2026.*',
         '',
         'Accept invitation:',
-        'https://aivera.example/l/9fK2xQ7mT4vB',
+        'https://credalent.example/l/9fK2xQ7mT4vB',
         '',
         '--',
         'Demo Hiring Co',
         'You are receiving this because a member of this workspace invited you.',
         'Replies go to Layla Haddad.',
-        'Privacy: https://aivera.example/privacy',
+        'Privacy: https://credalent.example/privacy',
       ].join('\n'),
     );
   });
@@ -61,7 +61,7 @@ describe('member-invitation template', () => {
     expect(html).toContain('as <strong>Hiring owner</strong> for Senior AI Engineer.');
     expect(html).toContain('<strong>You can:</strong>');
     expect(html.match(/class="e-button"/g)).toHaveLength(1);
-    expect(html.match(/href="https:\/\/aivera.example\/l\/9fK2xQ7mT4vB"/g)).toHaveLength(1);
+    expect(html.match(/href="https:\/\/credalent.example\/l\/9fK2xQ7mT4vB"/g)).toHaveLength(1);
     expect(html).not.toContain('Ask us to delete your data');
   });
 
@@ -72,7 +72,7 @@ describe('member-invitation template', () => {
   ] as const)('the %s variant (ERoles)', async (role, intro, scopeLine) => {
     const scope = role === 'interviewer' ? 'Senior AI Engineer' : null;
     const { subject, text } = await renderEmail('member-invitation', { ...data, role, scope }, ctx);
-    expect(subject).toBe('You are invited to Demo Hiring Co on Aivera');
+    expect(subject).toBe('You are invited to Demo Hiring Co on Credalent');
     expect(text).toContain(intro);
     expect(text).toContain(scopeLine);
   });

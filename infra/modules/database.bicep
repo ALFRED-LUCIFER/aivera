@@ -1,4 +1,4 @@
-// AIV-P0-004: Aivera's database on Medvya's shared dev PostgreSQL server, and the migration job in Aivera's VNet-joined
+// AIV-P0-004: Credalent's database on Medvya's shared dev PostgreSQL server, and the migration job in Credalent's VNet-joined
 // environment (ADR-008).
 // The server, its network and its parameters are Medvya's: referenced, never changed. Roles: infra/sql/bootstrap-roles.sql.
 param location string

@@ -108,15 +108,17 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     expect(prompts[0]).toContain('<source id=\\"S1\\" kind=\\"repo\\">');
     expect(prompts[0]).not.toContain(S1.id);
     expect(structuredSpan()?.attributes).toMatchObject({
-      'aivera.ai.outcome': 'ok',
-      'aivera.ai.attempts': 1,
-      'aivera.ai.template_version': 'test.strengths@1+citations@1',
+      'credalent.ai.outcome': 'ok',
+      'credalent.ai.attempts': 1,
+      'credalent.ai.template_version': 'test.strengths@1+citations@1',
     });
   });
 
   it('AIV-P2-044: records the catalogue version next to the prompt version', async () => {
     await answers(statement([harness])).run({ catalogueVersion: 3 });
-    expect(structuredSpan()?.attributes['aivera.ai.template_version']).toBe('test.strengths@1+citations@1+catalogue@3');
+    expect(structuredSpan()?.attributes['credalent.ai.template_version']).toBe(
+      'test.strengths@1+citations@1+catalogue@3',
+    );
   });
 
   it('matches a quote with collapsed whitespace, and never an empty quote', () => {
@@ -135,8 +137,8 @@ describe('Scenario: An uncited statement is rejected', () => {
     expect(prompts).toHaveLength(2);
     expect(await budget.spentToday(workspaceId, '2026-11-18')).toEqual({ spent: 240, limit: 2_000_000 });
     expect(structuredSpan()?.attributes).toMatchObject({
-      'aivera.ai.outcome': 'rejected',
-      'aivera.ai.attempts': 2,
+      'credalent.ai.outcome': 'rejected',
+      'credalent.ai.attempts': 2,
       'error.type': 'UncitedOutput',
     });
   });
@@ -204,7 +206,7 @@ describe("Scenario: Statements resting only on the candidate's word are claims",
 describe('Scenario: Schema mismatch', () => {
   const twenty = statement([harness], { weight: 'twenty' });
   // SAFETY: mutation check: put `text` into either SchemaMismatch message in checkOutput -> the matching case failed
-  // SAFETY: mutation check: annotateSpan({ "aivera.ai.output": text }) before checkOutput -> both cases failed
+  // SAFETY: mutation check: annotateSpan({ "credalent.ai.output": text }) before checkOutput -> both cases failed
   it.each([
     ['a weight of "twenty"', twenty],
     ['output that is not JSON', 'weight: twenty'],

@@ -50,7 +50,7 @@ const tokens = (text: string) => Math.ceil(text.length / 4);
 const fakeError = (statusCode: number) =>
   new APICallError({
     message: `fake ${statusCode}`,
-    url: 'https://fake.aivera.example',
+    url: 'https://fake.credalent.example',
     requestBodyValues: {},
     statusCode,
   });

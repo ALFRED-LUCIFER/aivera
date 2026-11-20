@@ -1,4 +1,4 @@
-import { candidateAccountPolicy } from '@aivera/db/tenant-policy';
+import { candidateAccountPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { check, foreignKey, index, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { CONSENT_PURPOSES, LINK_REASONS } from '../domain/account.ts';
@@ -10,7 +10,7 @@ export const account = candidateAccounts
   .table(
     'account',
     {
-      // The identity user's id (opaque, from @aivera/identity): one account per identity user.
+      // The identity user's id (opaque, from @credalent/identity): one account per identity user.
       identityUserId: uuid('identity_user_id').primaryKey(),
       fullName: text('full_name'),
       workType: text('work_type'),

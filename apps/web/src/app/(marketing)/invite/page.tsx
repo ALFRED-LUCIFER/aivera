@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { buttonClassName } from '@aivera/ui';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { buttonClassName } from '@credalent/ui';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
 import { AcceptInvitation } from '@/features/members/components/AcceptInvitation.tsx';

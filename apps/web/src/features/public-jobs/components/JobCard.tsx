@@ -1,5 +1,5 @@
-import { useTranslations } from '@aivera/i18n/react';
-import { Card } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Card } from '@credalent/ui';
 import Link from 'next/link';
 import type { JobCardData } from '../domain/jobs-list.ts';
 

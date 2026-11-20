@@ -1,5 +1,5 @@
-// The only public surface of @aivera/audit (ADR-002).
-import type { Tx } from '@aivera/db';
+// The only public surface of @credalent/audit (ADR-002).
+import type { Tx } from '@credalent/db';
 import type { AuditContext } from '../application/audit.ts';
 import type {
   AuditEntry,

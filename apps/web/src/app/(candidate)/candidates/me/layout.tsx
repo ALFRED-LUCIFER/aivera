@@ -1,4 +1,4 @@
-import { isSignedUp } from '@aivera/candidate-accounts';
+import { isSignedUp } from '@credalent/candidate-accounts';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { CANDIDATE_SIGN_UP } from '@/features/candidate-account/domain/signup.ts';

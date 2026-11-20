@@ -1,7 +1,7 @@
 'use server';
 
-import { log } from '@aivera/observability';
-import { WorkspaceError, type WorkspaceContext } from '@aivera/workspaces';
+import { log } from '@credalent/observability';
+import { WorkspaceError, type WorkspaceContext } from '@credalent/workspaces';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';

@@ -1,4 +1,4 @@
-import type { NewPlatformEntry } from '@aivera/audit';
+import type { NewPlatformEntry } from '@credalent/audit';
 import { DEFAULT_APPROVAL_REQUIRED, MIN_REASON_LENGTH, OpsError } from '../domain/settings.ts';
 
 /** The settings row, locked for the change, and the platform audit write, all in one transaction. */

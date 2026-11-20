@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useTranslations } from '@aivera/i18n/react';
+import { useTranslations } from '@credalent/i18n/react';
 import {
   Button,
   buttonClassName,
@@ -10,7 +10,7 @@ import {
   Select,
   Textarea,
   type DataTableColumn,
-} from '@aivera/ui';
+} from '@credalent/ui';
 import {
   RUBRIC_MAX,
   weightsTotal,
@@ -36,7 +36,7 @@ type CompetencyDraftProps = RowHandlers & {
   /** The row the recruiter last removed, announced until it is restored. */
   removedId: string | null;
   drafting: boolean;
-  /** The title as typed, for "Aivera reads the description for a Senior AI Engineer". */
+  /** The title as typed, for "Credalent reads the description for a Senior AI Engineer". */
   title: string;
   /** The chosen job type's "Evidence that counts" line, translated; null before a job type is chosen. */
   evidence: string | null;

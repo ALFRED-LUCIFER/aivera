@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { handleEventGrid, ReportTooEarly } from '@aivera/notifications/composition';
-import { log } from '@aivera/observability';
+import { handleEventGrid, ReportTooEarly } from '@credalent/notifications/composition';
+import { log } from '@credalent/observability';
 import { z } from 'zod';
 import { getDb } from '@/server/db';
 import { env } from '@/server/env';

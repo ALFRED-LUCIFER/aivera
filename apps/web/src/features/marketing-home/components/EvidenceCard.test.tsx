@@ -17,7 +17,7 @@ const labels = {
   provenance: 'Independently corroborated',
   markLabel: 'cited evidence',
   sources: 'Sources',
-  sourceRepo: 'hessa.aivera.example/checkout-e2e',
+  sourceRepo: 'hessa.credalent.example/checkout-e2e',
   sourceCi: 'CI history, checked 12 Nov',
   synthetic: 'Illustrative candidate, synthetic data.',
 };

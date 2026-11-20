@@ -3,7 +3,7 @@ import { logs, type LogAttributes } from '@opentelemetry/api-logs';
 import pino from 'pino';
 import { redact } from './redact.ts';
 
-// Logging and tracing for web and worker (AIV-P0-018). `initTelemetry` (`@aivera/observability/init`) turns export to
+// Logging and tracing for web and worker (AIV-P0-018). `initTelemetry` (`@credalent/observability/init`) turns export to
 // Application Insights on; without it these are local-only (stdout) and the spans are no-ops.
 //
 // Outbox and worker trace continuation (AIV-P0-014, AIV-P0-015): the outbox row stores the W3C `traceparent` of the
@@ -42,7 +42,7 @@ export const log = pino(
       process.stdout.write(`${JSON.stringify(record)}\n`);
       // The OpenTelemetry record carries the trace context itself.
       const { level, msg, time: _time, trace_id: _trace, span_id: _span, ...attributes } = record;
-      logs.getLogger('aivera').emit({
+      logs.getLogger('credalent').emit({
         // pino 10/20/30/40/50/60 -> OpenTelemetry TRACE 1, DEBUG 5, INFO 9, WARN 13, ERROR 17, FATAL 21.
         severityNumber: ((level as number) / 10) * 4 - 3,
         severityText: pino.levels.labels[level as number] ?? String(level),
@@ -58,7 +58,7 @@ export const log = pino(
  * `redirect()` and `forbidden()` (thrown by design) are not counted as failures here.
  */
 export function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  return trace.getTracer('aivera').startActiveSpan(name, async (span) => {
+  return trace.getTracer('credalent').startActiveSpan(name, async (span) => {
     try {
       return await fn();
     } finally {
@@ -68,7 +68,7 @@ export function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /** Metrics instruments (a no-op until `initTelemetry`). Attributes are opaque ids, never personal data. */
-export const meter = metrics.getMeter('aivera');
+export const meter = metrics.getMeter('credalent');
 
 /** Adds opaque ids (`workspace.id`, never an email) to the active span. */
 export const annotateSpan = (attributes: Attributes): void => void trace.getActiveSpan()?.setAttributes(attributes);

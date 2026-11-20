@@ -7,14 +7,14 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 // Synthetic people only (docs/00-product/personas.md).
 
 const PIA = 'pia.platform@example.com';
-const OPENED_COOKIE = '__Host-aivera-ops-opened';
+const OPENED_COOKIE = '__Host-credalent-ops-opened';
 const noAccess = 'You do not have access to this. Ask your workspace admin.';
 const cookie = async (context: BrowserContext, name: string) => (await context.cookies()).find((c) => c.name === name);
 
 async function expectConsole(page: Page) {
-  await expect(page.getByRole('heading', { level: 1, name: 'Aivera operations' })).toBeVisible();
-  await expect(page.getByText('Signed in as an Aivera operator.')).toBeVisible();
-  await expect(page).toHaveTitle('Aivera operations');
+  await expect(page.getByRole('heading', { level: 1, name: 'Credalent operations' })).toBeVisible();
+  await expect(page.getByText('Signed in as an Credalent operator.')).toBeVisible();
+  await expect(page).toHaveTitle('Credalent operations');
 }
 
 async function expectRefused(page: Page) {
@@ -23,7 +23,7 @@ async function expectRefused(page: Page) {
   await expect(page.getByText(noAccess)).toBeVisible();
   // No console data in the response: not the heading, the sections, the title or the operator line.
   const html = (await response?.text()) ?? '';
-  expect(html).not.toMatch(/Aivera operations|Signed in as an Aivera operator|Coming soon/);
+  expect(html).not.toMatch(/Credalent operations|Signed in as an Credalent operator|Coming soon/);
 }
 
 test('Scenario: An operator opens the console', async ({ page, context }) => {
@@ -72,7 +72,7 @@ test('Scenario Outline: Everyone else is refused: a candidate session alone neve
   await expect(page).toHaveURL(/\/candidates\/me$/);
   await page.goto('/ops');
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fops$/);
-  await expect(page.getByText('Aivera operations')).toHaveCount(0);
+  await expect(page.getByText('Credalent operations')).toHaveCount(0);
 });
 
 test('Scenario: Not signed in', async ({ page }) => {
@@ -159,7 +159,7 @@ for (const theme of themes) {
     await expectConsole(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectNoAxeViolations(page);
-    await context.clearCookies({ name: '__Host-aivera-session' });
+    await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'alex@example.com' });
     await expectRefused(page);
     await expectNoAxeViolations(page);

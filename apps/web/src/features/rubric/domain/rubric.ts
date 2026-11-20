@@ -1,4 +1,4 @@
-import type { Competency, Rubric, RubricStatus } from '@aivera/jobs';
+import type { Competency, Rubric, RubricStatus } from '@credalent/jobs';
 import { z } from 'zod';
 
 /** One line of the approval history: who approved and when, or the change that made the next version. */

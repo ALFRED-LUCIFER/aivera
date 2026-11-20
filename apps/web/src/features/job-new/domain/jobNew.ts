@@ -1,4 +1,4 @@
-import { offeredJobTypes, type CatalogueContent } from '@aivera/jobs';
+import { offeredJobTypes, type CatalogueContent } from '@credalent/jobs';
 import { z } from 'zod';
 
 // Add a job, step 1 (AIV-P1-007, RoleNew "1. The job"). Pure: no React, no I/O (ADR-003).

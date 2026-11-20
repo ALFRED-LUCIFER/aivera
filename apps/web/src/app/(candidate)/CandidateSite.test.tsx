@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { intlConfig } from '@aivera/i18n';
+import { intlConfig } from '@credalent/i18n';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -29,7 +29,7 @@ const header = () => within(screen.getByRole('banner'));
 describe('CandidateSite', () => {
   it('shows the candidate navigation and Create account when signed out', () => {
     renderSite(false);
-    expect(header().getByRole('link', { name: /^Aivera for candidates/ })).toHaveProperty('pathname', '/candidates');
+    expect(header().getByRole('link', { name: /^Credalent for candidates/ })).toHaveProperty('pathname', '/candidates');
     const nav = within(screen.getByRole('navigation', { name: 'Candidate site' }));
     for (const name of ['Jobs', 'Free CV check', 'Plans', 'Portfolio'])
       expect(nav.getByRole('link', { name })).toBeDefined();
@@ -53,7 +53,7 @@ describe('CandidateSite', () => {
   it('states the ranking rule and links Jobs, Plans and For recruiters in the footer', () => {
     renderSite(false);
     const footer = within(screen.getByRole('contentinfo'));
-    expect(footer.getByText('© 2026 Aivera. Paying never changes how recruiters rank you.')).toBeDefined();
+    expect(footer.getByText('© 2026 Credalent. Paying never changes how recruiters rank you.')).toBeDefined();
     expect(footer.getAllByRole('link').map((link) => link.textContent)).toEqual(['Jobs', 'Plans', 'For recruiters']);
   });
 
@@ -67,7 +67,7 @@ describe('CandidateSite', () => {
 
   it('carries none of the recruiter chrome', () => {
     renderSite(false);
-    expect(screen.queryByRole('button', { name: 'Ask Aivera' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask Credalent' })).toBeNull();
     expect(screen.queryByRole('navigation', { name: 'Primary' })).toBeNull();
     expect(screen.queryByText('Synthetic demo data')).toBeNull();
   });

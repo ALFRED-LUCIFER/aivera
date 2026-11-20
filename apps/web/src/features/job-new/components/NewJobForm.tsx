@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@aivera/ui';
+import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@credalent/ui';
 import {
   DESCRIPTION_MAX,
   descriptionPlaceholder,

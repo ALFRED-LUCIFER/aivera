@@ -1,3 +1,3 @@
-import { moduleDrizzleConfig } from '@aivera/db/drizzle-config';
+import { moduleDrizzleConfig } from '@credalent/db/drizzle-config';
 
 export default moduleDrizzleConfig('candidates');

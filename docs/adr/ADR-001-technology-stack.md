@@ -5,7 +5,7 @@
 
 ## Context
 
-Aivera needs a recruiter web app, public pages, a candidate site, background work (evidence ingestion, scoring, scheduled follow-ups) and AI that is explainable. Customers are in the UAE and KSA, so data residency matters. The owner's earlier product (Medvya) used .NET 10 + React; its architecture patterns are reused here (ADR-002), but a single language removes a whole class of contract drift for a small team.
+Credalent needs a recruiter web app, public pages, a candidate site, background work (evidence ingestion, scoring, scheduled follow-ups) and AI that is explainable. Customers are in the UAE and KSA, so data residency matters. The owner's earlier product (Medvya) used .NET 10 + React; its architecture patterns are reused here (ADR-002), but a single language removes a whole class of contract drift for a small team.
 
 ## Decision
 

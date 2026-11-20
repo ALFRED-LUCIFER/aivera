@@ -1,4 +1,4 @@
-import { Button } from '@aivera/ui';
+import { Button } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -96,7 +96,7 @@ const icons: Record<OpsSection | 'home', ReactNode> = {
 const SectionIcon = ({ id }: { id: OpsSection | 'home' }) => <svg {...svg}>{icons[id]}</svg>;
 
 /**
- * The operator console frame (AIV-P2-035, restyled in the console design pass): the Aivera mark with an "Operator" tag
+ * The operator console frame (AIV-P2-035, restyled in the console design pass): the Credalent mark with an "Operator" tag
  * so the console never reads as the recruiter app, the sections with icons and the current one in ink, the sections not
  * built yet under "Coming later", a standing reminder that the console holds platform metadata only (ADR-012 point 7),
  * and the signed-in operator with the theme switch and sign out. Under 1024px the sidebar sits above the page.

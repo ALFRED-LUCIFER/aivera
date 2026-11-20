@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button } from '@credalent/ui';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 
 // Add a job could not load, most often the catalogue read (AIV-P2-044): no job type list from code is shown instead.

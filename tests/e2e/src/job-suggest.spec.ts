@@ -35,7 +35,7 @@ for (const theme of themes) {
     await expect(page.getByRole('heading', { name: 'Missing from your description · 2 suggestions' })).toBeVisible();
     const arabic = rowOf(page, 'Arabic and bilingual NLP');
     const cells = arabic.getByRole('cell');
-    await expect(cells.nth(0)).toContainText('Suggested by Aivera');
+    await expect(cells.nth(0)).toContainText('Suggested by Credalent');
     await expect(cells.nth(0)).toContainText(
       'Why: The assistant must answer in Arabic, but the description lists no language requirement.',
     );

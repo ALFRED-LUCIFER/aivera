@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { enabledFlags } from '@/server/flags';
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { currentMembership, rejectionReason } from '@/server/workspace';
 import { canOpen, navigation, type ScreenId } from '../domain/navigation.ts';
 import { parseTheme, shellMember, themeCookie, type Member, type ShellCounts } from '../domain/shell.ts';

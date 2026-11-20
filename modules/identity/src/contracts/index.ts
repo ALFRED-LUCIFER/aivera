@@ -1,4 +1,4 @@
-// The only public surface of @aivera/identity (ADR-002).
+// The only public surface of @credalent/identity (ADR-002).
 import type { IdTokenIdentity, User } from '../domain/user.ts';
 
 export { IdentityError } from '../domain/user.ts';

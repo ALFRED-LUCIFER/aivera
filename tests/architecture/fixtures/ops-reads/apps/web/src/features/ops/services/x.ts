@@ -1,7 +1,7 @@
 'use server';
 
-import type { JobCounts } from '@aivera/jobs';
-import type { CandidatesContract } from '@aivera/candidates';
+import type { JobCounts } from '@credalent/jobs';
+import type { CandidatesContract } from '@credalent/candidates';
 import { getDb } from '@/server/db';
 import { listWorkspaceFacts } from '@/server/operator';
 import { getWorkspaces } from '@/server/workspace';

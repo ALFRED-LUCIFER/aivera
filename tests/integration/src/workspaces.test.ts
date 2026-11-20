@@ -5,8 +5,8 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
+import type { AuditContract } from '@credalent/audit';
+import { createDb, withWorkspace, type Db } from '@credalent/db';
 import {
   DEFAULT_SETTINGS,
   ForbiddenError,
@@ -18,17 +18,17 @@ import {
   type Role,
   type WorkspaceContext,
   type WorkspacesContract,
-} from '@aivera/workspaces';
-import { createAudit } from '@aivera/audit/composition';
-import { createNotifications } from '@aivera/notifications/composition';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { createAudit } from '@credalent/audit/composition';
+import { createNotifications } from '@credalent/notifications/composition';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P0-008 and AIV-P0-010 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role
 // (ADR-004, ADR-005).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 // Synthetic user ids (opaque ids from the identity module).
@@ -870,7 +870,7 @@ describe('AIV-P1-003: invitations to the workspace and to its jobs', () => {
     it('queues its invitation email in the same transaction; a failed queue stores no invitation', async () => {
       const notifications = createNotifications({
         encryptionKey: randomBytes(32).toString('base64'),
-        origin: 'https://aivera.example',
+        origin: 'https://credalent.example',
         synthetic: true,
       });
       const sender = { name: 'Omar Agency', shortName: 'Omar', email: 'omar.agency@example.com', workspace: 'Gulf' };
@@ -892,7 +892,7 @@ describe('AIV-P1-003: invitations to the workspace and to its jobs', () => {
               role: sent.role,
               scope: "all of Dune Logistics' jobs",
               expiresAt: sent.expiresAt,
-              link: `https://aivera.example/invite?token=${encodeURIComponent(token)}`,
+              link: `https://credalent.example/invite?token=${encodeURIComponent(token)}`,
             },
           });
         }),

@@ -10,7 +10,7 @@ test('Scenario Outline: The console fails closed without a valid operator list (
   const response = await page.goto('/ops');
   expect(response?.status()).toBe(403);
   await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
-  await expect(page.getByText('Aivera operations')).toHaveCount(0);
+  await expect(page.getByText('Credalent operations')).toHaveCount(0);
 });
 
 test('Scenario Outline: The console fails closed: the recruiter app still works for Alex Recruiter', async ({

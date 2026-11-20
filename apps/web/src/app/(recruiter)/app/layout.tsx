@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@aivera/i18n';
-import { Button } from '@aivera/ui';
+import { defaultLocale, defaultTimeZone, getTranslations, intlConfig } from '@credalent/i18n';
+import { Button } from '@credalent/ui';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -8,7 +8,7 @@ import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, loadShellCounts, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
 import { AuthPage, inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
-import { offeredJobTypes } from '@aivera/jobs';
+import { offeredJobTypes } from '@credalent/jobs';
 import { CATCH_ALL_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
 import { getCatalogue } from '@/server/jobs';
@@ -16,7 +16,7 @@ import { enabledFlags } from '@/server/flags';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
 import { RecruiterShell } from './RecruiterShell.tsx';
 
-// Each section page sets its own title ("Inbox · Aivera", WCAG 2.4.2).
+// Each section page sets its own title ("Inbox · Credalent", WCAG 2.4.2).
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return { title: { template: t('shell.titleTemplate'), default: t('app.title') } };

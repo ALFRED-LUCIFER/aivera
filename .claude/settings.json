@@ -28,7 +28,7 @@
   "autoMode": {
     "environment": [
       "**Repository**: github.com/ALFRED-LUCIFER/aivera. The working directory, its worktrees and that remote are the trusted repo. Work is tracked on GitHub Project 2 (owner ALFRED-LUCIFER).",
-      "**Product**: Aivera, evidence-based hiring for the UAE and KSA. It holds candidate CVs, work evidence, contact details and assessments. Rules: AGENTS.md and CLAUDE.md.",
+      "**Product**: Credalent, evidence-based hiring for the UAE and KSA. It holds candidate CVs, work evidence, contact details and assessments. Rules: AGENTS.md and CLAUDE.md.",
       "**Cloud**: Azure UAE North, dev environment, synthetic data only. Deploys go through GitHub Actions, never from a laptop.",
       "**Owner-only actions**: Key Vault writes, infrastructure applies, Entra tenant settings, merging PRs, and anything whose name carries prod or production as a word or name segment.",
       "**Sensitive data**: candidate personal data never leaves the database and Blob: not in logs, telemetry, URLs, issues, screenshots or external services. All data in the repo and on dev is synthetic (docs/00-product/personas.md).",

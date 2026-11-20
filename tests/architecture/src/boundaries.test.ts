@@ -107,9 +107,9 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
       'apps/web/src/app/(ops)/ops/workspaces/page.tsx ../../../../server/db',
       'apps/web/src/features/ops/services/x.ts @/server/db',
       'apps/web/src/features/ops/services/x.ts @/server/workspace',
-      'apps/web/src/features/ops/services/x.ts @aivera/candidates',
-      'apps/web/src/server/opsReads.ts @aivera/db/client',
-      'apps/web/src/server/opsReads.ts @aivera/workspaces/composition',
+      'apps/web/src/features/ops/services/x.ts @credalent/candidates',
+      'apps/web/src/server/opsReads.ts @credalent/db/client',
+      'apps/web/src/server/opsReads.ts @credalent/workspaces/composition',
     ]);
   });
 

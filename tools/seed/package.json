@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/seed",
+  "name": "@credalent/seed",
   "private": true,
   "type": "module",
   "exports": {
@@ -13,15 +13,15 @@
     "catalogue:v1": "node src/catalogue-v1.ts"
   },
   "dependencies": {
-    "@aivera/audit": "workspace:*",
-    "@aivera/candidates": "workspace:*",
-    "@aivera/db": "workspace:*",
-    "@aivera/identity": "workspace:*",
-    "@aivera/jobs": "workspace:*",
-    "@aivera/workspaces": "workspace:*"
+    "@credalent/audit": "workspace:*",
+    "@credalent/candidates": "workspace:*",
+    "@credalent/db": "workspace:*",
+    "@credalent/identity": "workspace:*",
+    "@credalent/jobs": "workspace:*",
+    "@credalent/workspaces": "workspace:*"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@types/node": "24.19.2",
     "oxlint": "1.94.0",
     "typescript": "6.0.3",

@@ -1,5 +1,5 @@
 // AIV-P0-006: what GitHub Actions (id-aivera-cicd-dev, OIDC) may do, and nothing more. Every assignment is scoped to
-// one Aivera resource (the web and worker apps, the job, Aivera's own environment, Aivera's identities): never the resource group,
+// one Credalent resource (the web and worker apps, the job, Credalent's own environment, Credalent's identities): never the resource group,
 // never a Medvya resource.
 param cicdPrincipalId string
 param containerAppsEnvName string
@@ -32,8 +32,8 @@ var contributor = subscriptionResourceId('Microsoft.Authorization/roleDefinition
 resource deployerRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   name: guid(resourceGroup().id, 'aivera-dev-deployer')
   properties: {
-    roleName: 'Aivera dev deployer'
-    description: 'Join the Aivera dev Container Apps environment and assign Aivera identities when deploying Aivera dev.'
+    roleName: 'Credalent dev deployer'
+    description: 'Join the Credalent dev Container Apps environment and assign Credalent identities when deploying Credalent dev.'
     type: 'CustomRole'
     assignableScopes: [resourceGroup().id]
     permissions: [

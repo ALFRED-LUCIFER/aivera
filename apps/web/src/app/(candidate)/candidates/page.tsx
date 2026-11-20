@@ -1,6 +1,6 @@
-import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@aivera/i18n';
-import { jobTypeLabel } from '@aivera/jobs';
-import { log } from '@aivera/observability';
+import { defaultLocale, defaultTimeZone, formatMoney, getTranslations } from '@credalent/i18n';
+import { jobTypeLabel } from '@credalent/jobs';
+import { log } from '@credalent/observability';
 import { newJobs } from '@/features/candidate-home/domain/new-jobs.ts';
 import { PLUS_MONTHLY_PRICE } from '@/features/candidate-shell/domain/plus.ts';
 import { postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';

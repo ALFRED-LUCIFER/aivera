@@ -1,4 +1,4 @@
-import type { Rubric } from '@aivera/jobs';
+import type { Rubric } from '@credalent/jobs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { queueApprovalRequest, queueDecisionEmail } from './rubricEmails.ts';
 
@@ -39,7 +39,7 @@ vi.mock('@/server/auth', () => ({
   }),
 }));
 vi.mock('@/server/notifications', () => ({
-  getNotifications: () => ({ notifications: { queueEmail }, origin: 'https://aivera.example' }),
+  getNotifications: () => ({ notifications: { queueEmail }, origin: 'https://credalent.example' }),
   senderFor: async ({ userId }: { userId: string }) => ({
     name: userId === RANA ? 'Tariq Recruiter' : 'Design Director',
     shortName: 'x',
@@ -69,7 +69,7 @@ describe('Scenario: Send version 1 for approval from Add a job', () => {
         data: expect.objectContaining({
           version: 1,
           changes: null,
-          link: 'https://aivera.example/app/jobs/spd/rubric?version=v1&revision=0',
+          link: 'https://credalent.example/app/jobs/spd/rubric?version=v1&revision=0',
         }),
       }),
     );

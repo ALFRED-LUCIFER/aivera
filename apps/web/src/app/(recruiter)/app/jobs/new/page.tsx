@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { defaultJobType, jobTypeOptions } from '@/features/job-new/domain/jobNew.ts';

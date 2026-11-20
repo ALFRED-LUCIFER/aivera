@@ -1,5 +1,5 @@
 {
-  "extends": "@aivera/config/tsconfig/base.json",
+  "extends": "@credalent/config/tsconfig/base.json",
   "compilerOptions": { "lib": ["es2024", "dom"] },
   "include": ["src", "playwright.config.ts", "mock-oidc.ts", "seed.ts"]
 }

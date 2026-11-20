@@ -1,5 +1,5 @@
-import { createAiClient, providerFromEnv, type AiClient } from '@aivera/ai';
-import { createAiTokenBudget } from '@aivera/workspaces/composition';
+import { createAiClient, providerFromEnv, type AiClient } from '@credalent/ai';
+import { createAiTokenBudget } from '@credalent/workspaces/composition';
 import { getDb } from './db';
 
 let ai: AiClient | undefined;

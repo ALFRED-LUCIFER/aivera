@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Input, Label, PreviewConfirmCard, SuccessBanner, Textarea } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Input, Label, PreviewConfirmCard, SuccessBanner, Textarea } from '@credalent/ui';
 import { AI_DAILY_TOKEN_BUDGET, type AiBudgetView } from '../domain/aiBudget.ts';
 
 const BUDGET_INPUT = 'ops-ai-budget';

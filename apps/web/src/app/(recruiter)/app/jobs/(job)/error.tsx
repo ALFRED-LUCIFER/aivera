@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { Button } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button } from '@credalent/ui';
 
 // A job read that failed (the layout's or a page's). The error itself is not shown or logged here: its message may
 // carry data; the server log has it by digest.

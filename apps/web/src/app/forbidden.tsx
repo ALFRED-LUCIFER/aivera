@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { workspaceGate } from '@/features/shell/services/request.ts';
 

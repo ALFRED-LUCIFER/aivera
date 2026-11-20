@@ -11,7 +11,7 @@ async function openRubric(page: Page, title: string) {
   await page.goto('/app/jobs');
   await page.getByRole('link', { name: title, exact: true }).click();
   await page.getByRole('link', { name: /^Competencies and rubric/ }).click();
-  await expect(page).toHaveTitle(`${title}: Competencies and rubric · Aivera`);
+  await expect(page).toHaveTitle(`${title}: Competencies and rubric · Credalent`);
 }
 
 const publishThis = (page: Page) => page.getByRole('button', { name: 'Publish this job' });

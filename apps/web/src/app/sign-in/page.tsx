@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { SignInForm } from '@/features/sign-in/components/SignInForm.tsx';

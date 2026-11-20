@@ -3,13 +3,13 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { AuditContract } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import { createDb, withWorkspace, type Db } from '@aivera/db';
-import { JobError, type Competency, type JobsContract } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
-import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@aivera/workspaces';
-import { createWorkspaces } from '@aivera/workspaces/composition';
+import type { AuditContract } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import { createDb, withWorkspace, type Db } from '@credalent/db';
+import { JobError, type Competency, type JobsContract } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
+import { ForbiddenError, type Role, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // hiring owner approves or returns a rubric version; approval writes RubricApproved.v1 to the jobs outbox in the same
 // transaction. Synthetic cast only (docs/00-product/personas.md).
 
-const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@aivera/db/sql/roles.sql'), 'utf8');
+const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1'; // admin

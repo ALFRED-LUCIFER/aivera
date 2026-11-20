@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { DeskApprovals } from '@/features/desk/components/DeskApprovals.tsx';
 import { loadDesk } from '@/features/desk/services/loadDesk.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';

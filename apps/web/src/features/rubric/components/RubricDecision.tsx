@@ -1,8 +1,8 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
-import { RETURN_NOTE_MAX } from '@aivera/jobs';
-import { Button, Card, Label, SuccessBanner, Textarea } from '@aivera/ui';
+import { useTranslations } from '@credalent/i18n/react';
+import { RETURN_NOTE_MAX } from '@credalent/jobs';
+import { Button, Card, Label, SuccessBanner, Textarea } from '@credalent/ui';
 import { useId } from 'react';
 import type { ReviewView, RubricDecisionView } from '../domain/rubric.ts';
 

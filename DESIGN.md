@@ -1,8 +1,8 @@
-# Aivera design system: the case file
+# Credalent design system: the case file
 
-Source of truth: the "Design system foundations" artboard in the claude.ai Design canvas "Aivera — Evidence Intelligence" (v0.1, 18 Nov 2026), copied with every screen artboard into [`docs/01-design/artboards/`](docs/01-design/artboards/). Every screen artboard is the spec for its screen; build from the file, not from this summary (AGENTS.md section 4). [`docs/01-design/screens.md`](docs/01-design/screens.md) maps them.
+Source of truth: the "Design system foundations" artboard in the claude.ai Design canvas "Credalent — Evidence Intelligence" (v0.1, 18 Nov 2026), copied with every screen artboard into [`docs/01-design/artboards/`](docs/01-design/artboards/). Every screen artboard is the spec for its screen; build from the file, not from this summary (AGENTS.md section 4). [`docs/01-design/screens.md`](docs/01-design/screens.md) maps them.
 
-**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** The website alone, as the Landing artboard draws it, also lays it on "evidence" in the headline and on "what they have done" in the claims-tests-work line: both name what Aivera counts as evidence. The candidate home hero (CHome artboard) lays it the same way on "what you have done", for the same reason, and on its one Plus call to action, a highlighter button on the ink panel. The sign-in and create-workspace pages (SignIn and SignUp artboards) repeat the website headline on their ink panel, "evidence" under the highlighter, with highlighter check marks on its three promises. **Emails** are the other exception: there the highlighter marks what the recipient must do or provide, chosen by their role (the evidence a candidate is asked for; the action a recruiter or hiring owner must take), one highlight group per email, always with an ink underline and `*asterisks*` in the plain-text version, never on a candidate's own claim quoted back to them, and none when nothing is required. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
+**Ink does the work:** text, actions, scores and selection, in the black and white of the logo. **The highlighter marks cited evidence and nothing else.** The website alone, as the Landing artboard draws it, also lays it on "evidence" in the headline and on "what they have done" in the claims-tests-work line: both name what Credalent counts as evidence. The candidate home hero (CHome artboard) lays it the same way on "what you have done", for the same reason, and on its one Plus call to action, a highlighter button on the ink panel. The sign-in and create-workspace pages (SignIn and SignUp artboards) repeat the website headline on their ink panel, "evidence" under the highlighter, with highlighter check marks on its three promises. **Emails** are the other exception: there the highlighter marks what the recipient must do or provide, chosen by their role (the evidence a candidate is asked for; the action a recruiter or hiring owner must take), one highlight group per email, always with an ink underline and `*asterisks*` in the plain-text version, never on a candidate's own claim quoted back to them, and none when nothing is required. Status colour always travels with an icon and a word, and every number says whether it was observed, borrowed as a baseline, or projected.
 
 ## Typography
 
@@ -61,7 +61,7 @@ Form fields use `--field-border` (≥3:1, WCAG 1.4.11); every other border keeps
 
 Text selection uses the highlighter. The marketing site's, the candidate home's and the sign-in pages' dark "ink" panels are drawn `#1B1720` in the artboards and built with the dark theme's tokens (`data-theme="dark"`, `--surface` `#1D1922`, `--text` `#F4F1F6`), so they stay dark in either theme.
 
-## Domain components (all in `@aivera/ui`)
+## Domain components (all in `@credalent/ui`)
 
 | Component                | Rule                                                                                                                                                                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -78,7 +78,7 @@ Text selection uses the highlighter. The marketing site's, the candidate home's 
 
 ## Screen layout
 
-- Recruiter app: left sidebar (My desk, Inbox, Jobs, Candidates, Talent pool, Interviews, Decision packs, Value dashboard; counts as badges), top bar with search, "Synthetic demo data" label, "Ask Aivera" and the account menu; the assistant opens as a side drawer.
+- Recruiter app: left sidebar (My desk, Inbox, Jobs, Candidates, Talent pool, Interviews, Decision packs, Value dashboard; counts as badges), top bar with search, "Synthetic demo data" label, "Ask Credalent" and the account menu; the assistant opens as a side drawer.
 - Job pages share a stage strip: Job description → Competencies and rubric → Evidence and ranking → Interviews → Decision.
 - Pages are fluid: max-width container, menus stack and wide tables scroll inside their box at phone width.
 

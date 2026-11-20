@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
+import { useTranslations } from '@credalent/i18n/react';
 import type { StatusChangeView } from '../domain/workspaces.ts';
 import { ReasonedChange } from './ReasonedChange.tsx';
 

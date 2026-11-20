@@ -1,4 +1,4 @@
-import { ROLES, type Role } from '@aivera/workspaces';
+import { ROLES, type Role } from '@credalent/workspaces';
 import { z } from 'zod';
 
 // Workspace members and invitations (AIV-P1-003). Pure: no React, no I/O (ADR-003).

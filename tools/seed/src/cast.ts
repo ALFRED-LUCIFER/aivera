@@ -2,7 +2,7 @@
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
 // Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
 // interviews and packs when they land.
-import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@aivera/jobs';
+import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@credalent/jobs';
 
 type Synthetic = { synthetic: true };
 export type CastUser = Synthetic & { key: string; displayName: string; email: string };
@@ -25,7 +25,7 @@ export type CastJob = {
   /** The approved version the current one replaced, now superseded (version 2 jobs only). */
   supersedes?: { approvedOn: string; competencies: CastCompetency[] };
 };
-/** A rubric row as the Rubric and Add a job artboards show it; `suggested` marks "Suggested by Aivera, accepted". */
+/** A rubric row as the Rubric and Add a job artboards show it; `suggested` marks "Suggested by Credalent, accepted". */
 export type CastCompetency = {
   name: string;
   evidence: string;
@@ -297,7 +297,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
  * `catalogue` (the published one) that seeded it.
  * Weights need not total 100; the jobs module rebalances them when it saves the draft.
  * shortcut: repeats starterCompetencies and packCompetencies of apps/web job-new/domain/draft.ts (a tool cannot import an
- * app); move one builder into @aivera/jobs when either changes how a pack becomes rubric rows.
+ * app); move one builder into @credalent/jobs when either changes how a pack becomes rubric rows.
  */
 export function industryRubric(
   { jobType, pack: key, region }: CastIndustryJob,

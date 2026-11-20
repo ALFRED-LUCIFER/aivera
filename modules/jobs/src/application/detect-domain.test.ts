@@ -6,7 +6,7 @@ import {
   fakeProvider,
   type AiClient,
   type AiProvider,
-} from '@aivera/ai';
+} from '@credalent/ai';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';

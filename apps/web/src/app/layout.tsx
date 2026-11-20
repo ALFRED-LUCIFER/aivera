@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, dir, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, dir, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';

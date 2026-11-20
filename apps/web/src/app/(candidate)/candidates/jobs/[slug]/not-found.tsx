@@ -1,5 +1,5 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
-import { buttonClassName } from '@aivera/ui';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { buttonClassName } from '@credalent/ui';
 import Link from 'next/link';
 
 // A job that was taken down, or a link no job ever had: the same 404 for both, so a slug says nothing about history.

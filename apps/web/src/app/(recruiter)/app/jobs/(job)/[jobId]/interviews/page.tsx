@@ -1,4 +1,4 @@
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { EmptyStage } from '@/features/job-header/components/EmptyStage.tsx';
 import { jobPageMetadata } from '../metadata.ts';
 

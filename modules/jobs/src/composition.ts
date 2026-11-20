@@ -1,11 +1,11 @@
 // Builds the jobs module for an app (ADR-002: only apps import this).
-import type { AiClient } from '@aivera/ai';
-import type { AuditContract } from '@aivera/audit';
-import type { Db, Tx } from '@aivera/db/client';
-import { enqueue } from '@aivera/db/outbox';
-import { uuidv7 } from '@aivera/db/uuidv7';
-import { withWorkspace } from '@aivera/db/with-workspace';
-import type { WorkspacesContract } from '@aivera/workspaces';
+import type { AiClient } from '@credalent/ai';
+import type { AuditContract } from '@credalent/audit';
+import type { Db, Tx } from '@credalent/db/client';
+import { enqueue } from '@credalent/db/outbox';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import { withWorkspace } from '@credalent/db/with-workspace';
+import type { WorkspacesContract } from '@credalent/workspaces';
 import { sql } from 'drizzle-orm';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';

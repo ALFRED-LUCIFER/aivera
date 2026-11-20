@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { intlConfig } from '@aivera/i18n';
-import { IntlProvider } from '@aivera/i18n/react';
+import { intlConfig } from '@credalent/i18n';
+import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';

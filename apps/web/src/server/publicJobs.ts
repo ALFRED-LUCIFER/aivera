@@ -1,5 +1,5 @@
-import type { PublicJobsContract } from '@aivera/jobs';
-import { createPublicJobs } from '@aivera/jobs/composition';
+import type { PublicJobsContract } from '@credalent/jobs';
+import { createPublicJobs } from '@credalent/jobs/composition';
 import { getDb } from './db';
 
 let publicJobs: PublicJobsContract | undefined;

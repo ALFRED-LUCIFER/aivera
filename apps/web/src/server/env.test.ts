@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseWebEnv } from './env';
 
 const warn = vi.hoisted(() => vi.fn());
-vi.mock('@aivera/observability', () => ({ log: { warn } }));
+vi.mock('@credalent/observability', () => ({ log: { warn } }));
 
 const valid = { APP_ENV: 'dev', DATABASE_URL: 'postgres://aivera_app@db.example:5432/aivera', COMMIT_SHA: 'abc1234' };
 const missing = () => parseWebEnv({ ...valid, DATABASE_URL: undefined, COMMIT_SHA: 'secret-looking-value' });

@@ -1,13 +1,13 @@
-import { createAudit } from '@aivera/audit/composition';
-import { CandidateAccountError } from '@aivera/candidate-accounts';
-import { createCandidateAccounts } from '@aivera/candidate-accounts/composition';
-import { createDb } from '@aivera/db/client';
-import { withWorkspace } from '@aivera/db/with-workspace';
-import { createIdentity } from '@aivera/identity/composition';
-import type { Competency } from '@aivera/jobs';
-import { createJobs } from '@aivera/jobs/composition';
-import type { WorkspaceContext } from '@aivera/workspaces';
-import { createAiTokenBudget, createWorkspaces } from '@aivera/workspaces/composition';
+import { createAudit } from '@credalent/audit/composition';
+import { CandidateAccountError } from '@credalent/candidate-accounts';
+import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
+import { createDb } from '@credalent/db/client';
+import { withWorkspace } from '@credalent/db/with-workspace';
+import { createIdentity } from '@credalent/identity/composition';
+import type { Competency } from '@credalent/jobs';
+import { createJobs } from '@credalent/jobs/composition';
+import type { WorkspaceContext } from '@credalent/workspaces';
+import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 
 // Playwright global setup (AIV-P0-010): the synthetic cast (docs/00-product/personas.md) gets its workspaces before the

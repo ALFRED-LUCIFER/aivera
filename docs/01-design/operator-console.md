@@ -1,6 +1,6 @@
 # Operator console: design spec
 
-The operator console (`/ops/**`, [ADR-012](../adr/ADR-012-operator-console.md)) has no artboard in the claude.ai canvas. This file is its spec until one is drawn; when the canvas gains an operator artboard, it replaces this file in the same PR (AGENTS.md section 4). It applies the Case file ([DESIGN.md](../../DESIGN.md)) to an Operate surface: the people who run Aivera scan, compare and act, so the console borrows the recruiter app's vocabulary and adds nothing decorative. Ticket: AIV-P2-040.
+The operator console (`/ops/**`, [ADR-012](../adr/ADR-012-operator-console.md)) has no artboard in the claude.ai canvas. This file is its spec until one is drawn; when the canvas gains an operator artboard, it replaces this file in the same PR (AGENTS.md section 4). It applies the Case file ([DESIGN.md](../../DESIGN.md)) to an Operate surface: the people who run Credalent scan, compare and act, so the console borrows the recruiter app's vocabulary and adds nothing decorative. Ticket: AIV-P2-040.
 
 Every colour, size and radius below is a Case file token (`--text`, `text-meta`, `rounded-card`), never a raw value.
 
@@ -17,7 +17,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 
 - **Grid:** `lg:grid-cols-[16rem_minmax(0,1fr)]` (sidebar and main column from the `lg` breakpoint), `bg-bg` behind; below `lg` the sidebar stacks above the page.
 - **Sidebar** (`bg-surface`, `border-e border-border`, sticky, full height):
-  - Wordmark "Aivera operations" in `font-display text-section`, and under it the **"Operator" tag**: ink (`bg-action text-on-action`, `rounded-tag`), a shield icon and the word, so no page reads as the recruiter app.
+  - Wordmark "Credalent operations" in `font-display text-section`, and under it the **"Operator" tag**: ink (`bg-action text-on-action`, `rounded-tag`), a shield icon and the word, so no page reads as the recruiter app.
   - Section list, one icon per section (the recruiter shell's icon grid and stroke, `size-4.5`, `currentColor`): Overview, Workspaces, Approvals, Catalogue, Audit log (AIV-P2-054), then later sections (Requests…) as they ship. The current section is `aria-current="page"`: `bg-action text-on-action font-semibold`, as in the recruiter shell. Targets `h-10`, `pointer-coarse:min-h-11`.
   - **Coming later:** sections without a page sit under a `text-meta` heading "Coming later" in `text-text-3`, not links, each with "Coming soon" for screen readers.
   - **Foot:** the line "Platform metadata only. Candidate data never appears here." with a lock icon; the **identity slot** on `bg-surface-subtle` (initials disc in `bg-action`, the signed-in operator's own name and email; never a list of operators, ADR-012 point 1); then "Sign out" and the icon-only theme switch (`Button variant="ghost" size="iconOnly"`) ("Switch to dark theme" / "Switch to light theme" as its accessible name).
@@ -30,7 +30,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 - **Description:** one line under the title in `text-body text-text-2`, `max-w-prose`: what the page is for (lists) or the record's tags (detail: status, type, Synthetic).
 - **Actions** on the right, wrapping under the title on narrow screens. At most one primary button per view (DESIGN.md); operator status changes are secondary buttons that open the preview-confirm card.
 
-## Stat tile (`StatTile`, `@aivera/ui`)
+## Stat tile (`StatTile`, `@credalent/ui`)
 
 - `rounded-card border bg-surface p-4 shadow-1`.
 - Label `text-meta font-semibold text-text-2`; figure `font-display text-section tabular-nums`; the `ValueBasis` marker beside it.
@@ -38,7 +38,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 - No figure: "Not yet available" in words with its marker, never 0. Never coloured by good or bad.
 - Tiles sit in a responsive grid (`sm:grid-cols-2 xl:grid-cols-4`). They are not the page's structure: a dashboard leads with what needs an operator's decision (see Home), as the recruiter Value dashboard leads with "Needs a human decision".
 
-## Tables (`DataTable`, `@aivera/ui`)
+## Tables (`DataTable`, `@credalent/ui`)
 
 - Caption (screen-reader name), column headers, the first cell links to the record (no prefetch where opening is audited).
 - Numbers right-aligned with tabular figures; dates show their time zone in the header ("Created (Asia/Dubai)").
@@ -61,7 +61,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 
 ## Home (AIV-P2-051)
 
-- Header "Aivera operations" with a one-line summary.
+- Header "Credalent operations" with a one-line summary.
 - First, **Needs an operator**: rows with an icon, what is waiting and a link (workspaces waiting for approval, oldest first; workspaces near their AI budget; a catalogue draft waiting to publish).
 - Then a row of stat tiles: workspaces by status, AI tokens today against budgets, approval mode on or off. Each tile links to the filtered list.
 

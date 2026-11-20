@@ -86,7 +86,7 @@ for (const theme of themes) {
     await expect(page.getByRole('radio', { name: 'All 5' })).toBeVisible();
     await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`jobs-list-${theme}.png`, { fullPage: true });
-    await context.clearCookies({ name: '__Host-aivera-session' });
+    await context.clearCookies({ name: '__Host-credalent-session' });
     await signIn(page, { email: 'nadia@example.com' });
     await page.goto('/app/jobs');
     await expect(page.getByText('No jobs yet. Add a job to define what it needs.')).toBeVisible();

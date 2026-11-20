@@ -1,4 +1,4 @@
-import { annotateSpan, withSpan } from '@aivera/observability';
+import { annotateSpan, withSpan } from '@credalent/observability';
 import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
 import type { z } from 'zod';
 import { checkOutput, formatSources, type Checked, type Source } from './citations.ts';
@@ -25,7 +25,7 @@ export class UnknownAiTask extends Error {
   }
 }
 
-/** The model could not answer. Callers show "Aivera could not draft this right now." */
+/** The model could not answer. Callers show "Credalent could not draft this right now." */
 export class AiUnavailable extends Error {
   override name = 'AiUnavailable';
   constructor(task: string, reason: string) {
@@ -48,7 +48,7 @@ function settingsOf<T>(tasks: Record<string, T>, task: string): T {
 }
 
 const outcome = (value: string, extra: Record<string, string | number> = {}) =>
-  annotateSpan({ 'aivera.ai.outcome': value, ...extra });
+  annotateSpan({ 'credalent.ai.outcome': value, ...extra });
 
 // Appended to every structured task's system prompt; bump the version with any change (it is on telemetry).
 const CITATION_RULES_VERSION = 'citations@1';
@@ -63,7 +63,7 @@ type Usage = { inputTokens: number; outputTokens: number };
 
 /**
  * Tokens spent per workspace and UTC day (`YYYY-MM-DD`), and the workspace's daily budget. Apps pass the PostgreSQL
- * store (`createAiTokenBudget` from `@aivera/workspaces/composition`, AIV-P0-033), so every process shares one count
+ * store (`createAiTokenBudget` from `@credalent/workspaces/composition`, AIV-P0-033), so every process shares one count
  * and reads an operator's per-workspace budget (AIV-P2-038); tests pass `memoryTokenBudget()`.
  */
 export interface TokenBudgetStore {
@@ -75,7 +75,7 @@ export interface TokenBudgetStore {
 
 /**
  * A store in this process's memory, for unit tests and the fake provider; never for an app. `limit` defaults to the
- * platform default, `AI_DAILY_TOKEN_BUDGET.default` in `@aivera/workspaces` (not imported: no module dependency here).
+ * platform default, `AI_DAILY_TOKEN_BUDGET.default` in `@credalent/workspaces` (not imported: no module dependency here).
  */
 export function memoryTokenBudget(limit = 2_000_000): TokenBudgetStore {
   const spent = new Map<string, number>();
@@ -116,9 +116,9 @@ export function createAiClient(options: {
     return withSpan(`ai ${operation} ${task}`, async () => {
       // Allowlisted keys only (packages/observability redact.ts); never a prompt or completion.
       annotateSpan({
-        'aivera.ai.operation': operation,
-        'aivera.ai.task': task,
-        'aivera.ai.deployment': deployment,
+        'credalent.ai.operation': operation,
+        'credalent.ai.task': task,
+        'credalent.ai.deployment': deployment,
         'workspace.id': workspaceId,
       });
 
@@ -126,7 +126,7 @@ export function createAiClient(options: {
       // error (which may quote SQL parameters) is dropped like a provider's.
       const day = today();
       const unbudgeted = (attempts: number): never => {
-        outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': 'budget_store' });
+        outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': 'budget_store' });
         throw new AiUnavailable(task, 'budget store');
       };
       const { spent, limit } = await budget.spentToday(workspaceId, day).catch(() => unbudgeted(0));
@@ -142,7 +142,7 @@ export function createAiClient(options: {
         let breaker = breakers.get(deployment);
         if (!breaker) breakers.set(deployment, (breaker = { failures: 0, openUntil: 0 }));
         if (breaker.openUntil > now()) {
-          outcome('circuit_open', { 'aivera.ai.attempts': attempts - 1 });
+          outcome('circuit_open', { 'credalent.ai.attempts': attempts - 1 });
           throw new AiUnavailable(task, 'circuit open');
         }
         let result: { value: T; usage: Usage };
@@ -158,7 +158,7 @@ export function createAiClient(options: {
           if (!transient) Object.assign(breaker, { failures: 0, openUntil: 0 });
           else if (++breaker.failures >= circuitBreaker.failures) breaker.openUntil = now() + circuitBreaker.openMs;
           if (!transient || attempts >= maxAttempts || breaker.openUntil > now()) {
-            outcome('unavailable', { 'aivera.ai.attempts': attempts, 'error.type': reason });
+            outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': reason });
             throw new AiUnavailable(task, reason);
           }
           // Azure sends retry-after-ms (and retry-after, seconds) on 429; otherwise back off 1 s, 2 s. Capped at 10 s.
@@ -173,11 +173,11 @@ export function createAiClient(options: {
         await budget.add(workspaceId, day, usage.inputTokens + usage.outputTokens).catch(() => unbudgeted(attempts));
         const price = deployments[deployment];
         outcome('ok', {
-          'aivera.ai.attempts': attempts,
+          'credalent.ai.attempts': attempts,
           'gen_ai.usage.input_tokens': usage.inputTokens,
           'gen_ai.usage.output_tokens': usage.outputTokens,
           // Micro-dollars, not cents: one call costs a fraction of a cent. An estimate for dashboards, never billing.
-          'aivera.ai.cost_usd_micros': Math.round(
+          'credalent.ai.cost_usd_micros': Math.round(
             (usage.inputTokens * price.inputPerMillion + usage.outputTokens * price.outputPerMillion) / 1_000_000,
           ),
         });
@@ -219,8 +219,8 @@ export function createAiClient(options: {
       const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
       return withSpan(`ai structured ${task}`, async () => {
         annotateSpan({
-          'aivera.ai.task': task,
-          'aivera.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`,
+          'credalent.ai.task': task,
+          'credalent.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`,
           'workspace.id': input.workspaceId,
         });
         for (let attempts = 1; ; attempts++) {
@@ -240,11 +240,11 @@ export function createAiClient(options: {
           });
           try {
             const value = checkOutput(task, text, schema, sources);
-            outcome('ok', { 'aivera.ai.attempts': attempts });
+            outcome('ok', { 'credalent.ai.attempts': attempts });
             return value;
           } catch (error) {
             // checkOutput throws only the contract's three errors, whose messages hold no output.
-            outcome('rejected', { 'aivera.ai.attempts': attempts, 'error.type': (error as Error).name });
+            outcome('rejected', { 'credalent.ai.attempts': attempts, 'error.type': (error as Error).name });
             if (attempts >= 2) throw error;
           }
         }

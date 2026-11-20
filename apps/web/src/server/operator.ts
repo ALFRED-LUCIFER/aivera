@@ -1,8 +1,8 @@
-import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@aivera/audit';
-import { createAudit } from '@aivera/audit/composition';
-import type { CatalogueVersion, JobCounts } from '@aivera/jobs';
-import { log } from '@aivera/observability';
-import { createJobCounts } from '@aivera/jobs/composition';
+import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@credalent/audit';
+import { createAudit } from '@credalent/audit/composition';
+import type { CatalogueVersion, JobCounts } from '@credalent/jobs';
+import { log } from '@credalent/observability';
+import { createJobCounts } from '@credalent/jobs/composition';
 import {
   STATUS_CHANGES,
   type AiBudgetConsole,
@@ -11,8 +11,8 @@ import {
   type StatusChange,
   type WorkspaceDirectory,
   type WorkspaceSummary,
-} from '@aivera/workspaces';
-import { createAiBudgetConsole, createWorkspaceDirectory } from '@aivera/workspaces/composition';
+} from '@credalent/workspaces';
+import { createAiBudgetConsole, createWorkspaceDirectory } from '@credalent/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
@@ -22,7 +22,7 @@ import { getCatalogue, getJobs } from './jobs';
 import { getPlatformSettings } from './platformSettings';
 import { getWorkspaces } from './workspace';
 
-// The platformOperator policy (AIV-P2-035, ADR-012): the operator console at /ops is for the people who run Aivera,
+// The platformOperator policy (AIV-P2-035, ADR-012): the operator console at /ops is for the people who run Credalent,
 // named in PLATFORM_OPERATOR_EMAILS. It is not a workspace role and grants nothing inside any workspace.
 
 /**
@@ -157,7 +157,7 @@ export async function listOperatorActions(workspaceId: string): Promise<Operator
  */
 export async function applyStatusChange(workspaceId: string, change: StatusChange, reason: string) {
   const { userId } = await platformOperator();
-  // shortcut: no "approved" / "not approved" email to the creator (AIV-P2-039) until @aivera/notifications exists
+  // shortcut: no "approved" / "not approved" email to the creator (AIV-P2-039) until @credalent/notifications exists
   // (AIV-P0-017); operators email the creator by hand (docs/runbooks/operator-console.md). Send it here then.
   // Approve and reject touch no listing: a workspace waiting for approval could never publish one.
   const pause = change === 'suspend' ? true : change === 'reactivate' ? false : null;

@@ -4,7 +4,7 @@ export const CANDIDATE_SIGN_IN = '/candidates/sign-in';
 /** Where a signed-in candidate lands: My applications. */
 export const CANDIDATE_HOME = '/candidates/me';
 
-const PROBE = 'http://aivera.invalid';
+const PROBE = 'http://credalent.invalid';
 
 /**
  * Same-origin candidate pages only: anything else (another origin, `//host`, a scheme, the recruiter app, a non-string)

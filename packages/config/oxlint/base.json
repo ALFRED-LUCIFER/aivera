@@ -17,12 +17,12 @@
         "patterns": [
           {
             "group": [
-              "@aivera/*/src/**",
-              "@aivera/*/infrastructure/**",
-              "@aivera/*/domain/**",
-              "@aivera/*/application/**"
+              "@credalent/*/src/**",
+              "@credalent/*/infrastructure/**",
+              "@credalent/*/domain/**",
+              "@credalent/*/application/**"
             ],
-            "message": "Import a module only through its contracts entry @aivera/<m> (ADR-002)."
+            "message": "Import a module only through its contracts entry @credalent/<m> (ADR-002)."
           }
         ]
       }

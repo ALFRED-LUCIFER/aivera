@@ -11,23 +11,23 @@ test.use({ reducedMotion: 'reduce' });
 test('a signed-out visitor sees the candidate navigation and footer, and no recruiter chrome', async ({ page }) => {
   await page.goto(home);
   const header = page.getByRole('banner');
-  await expect(header.getByRole('link', { name: /^Aivera for candidates/ })).toBeVisible();
+  await expect(header.getByRole('link', { name: /^Credalent for candidates/ })).toBeVisible();
   for (const name of ['Jobs', 'Free CV check', 'Plans', 'Portfolio', 'Create account'])
     await expect(siteNav(page).getByRole('link', { name })).toBeVisible();
   await expect(page.getByRole('link', { name: 'My applications' })).toHaveCount(0);
 
   const footer = page.getByRole('contentinfo');
-  await expect(footer).toContainText('© 2026 Aivera. Paying never changes how recruiters rank you.');
+  await expect(footer).toContainText('© 2026 Credalent. Paying never changes how recruiters rank you.');
   await expect(footer.getByRole('link')).toHaveText(['Jobs', 'Plans', 'For recruiters']);
 
-  await expect(page.getByRole('button', { name: 'Ask Aivera' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0);
 });
 
 // Each page has its own title (WCAG 2.4.2); unknown candidate paths are not served.
 test('placeholder pages carry their own title, and unknown paths 404', async ({ page }) => {
   await page.goto('/candidates/plans');
-  await expect(page).toHaveTitle('Plans · Aivera for candidates');
+  await expect(page).toHaveTitle('Plans · Credalent for candidates');
   await expect(page.getByRole('heading', { level: 1, name: 'Plans' })).toBeVisible();
   expect((await page.goto('/candidates/nowhere'))?.status()).toBe(404);
 });

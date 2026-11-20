@@ -1,8 +1,17 @@
 'use client';
 
-import type { Messages } from '@aivera/i18n';
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, DataTable, Dialog, DialogClose, Input, Label, SuccessBanner, type DataTableColumn } from '@aivera/ui';
+import type { Messages } from '@credalent/i18n';
+import { useTranslations } from '@credalent/i18n/react';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  DialogClose,
+  Input,
+  Label,
+  SuccessBanner,
+  type DataTableColumn,
+} from '@credalent/ui';
 import { useRef, type MouseEvent, type ReactNode } from 'react';
 import { CLIENT_NAME_MAX, type ClientRow, type ClientsView } from '../domain/clients.ts';
 

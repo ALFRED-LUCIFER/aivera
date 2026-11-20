@@ -5,7 +5,7 @@
 
 ## Context
 
-The Medvya front end (a React SPA) used four lint-enforced layers per feature (domain, services, hooks, components) with controller hooks. Aivera uses the Next.js App Router, where pages can be Server Components that load data on the server. The layering must survive that without mixing data access into presentational code.
+The Medvya front end (a React SPA) used four lint-enforced layers per feature (domain, services, hooks, components) with controller hooks. Credalent uses the Next.js App Router, where pages can be Server Components that load data on the server. The layering must survive that without mixing data access into presentational code.
 
 ## Decision
 
@@ -24,17 +24,17 @@ src/features/<feature>/index.ts  the feature's public API for other features
 
 ### What each layer may import (oxlint, per glob, from the shared base config)
 
-| Layer          | May                                                        | Must not                                                                       |
-| -------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `domain/`      | types, pure functions, zod                                 | React, Next, `@aivera/ui`, services, hooks, components, fetch, window, storage |
-| `services/`    | server-only module contracts, fetch, storage, browser APIs | React, `@aivera/ui`, hooks, components                                         |
-| `hooks/`       | React, TanStack Query, RHF, services, domain               | components, `@aivera/ui`, raw fetch or storage                                 |
-| `components/`  | `@aivera/ui`, rendering, i18n, local UI state              | services, hooks, `@tanstack/*`, fetch, any storage API; non-`.tsx` files       |
-| other features | `../<other>/index.ts` or `../<other>/domain/*`             | another feature's hooks, services or components                                |
-| `app/`         | wiring, providers, composition root                        | business rules                                                                 |
+| Layer          | May                                                        | Must not                                                                          |
+| -------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `domain/`      | types, pure functions, zod                                 | React, Next, `@credalent/ui`, services, hooks, components, fetch, window, storage |
+| `services/`    | server-only module contracts, fetch, storage, browser APIs | React, `@credalent/ui`, hooks, components                                         |
+| `hooks/`       | React, TanStack Query, RHF, services, domain               | components, `@credalent/ui`, raw fetch or storage                                 |
+| `components/`  | `@credalent/ui`, rendering, i18n, local UI state           | services, hooks, `@tanstack/*`, fetch, any storage API; non-`.tsx` files          |
+| other features | `../<other>/index.ts` or `../<other>/domain/*`             | another feature's hooks, services or components                                   |
+| `app/`         | wiring, providers, composition root                        | business rules                                                                    |
 
 4. Server state: TanStack Query only; the cache is cleared on workspace switch and sign-out. Forms: React Hook Form + Zod. No other state library without an ADR.
-5. All user-facing text comes from `@aivera/i18n`; `react/jsx-no-literals` is on across `apps/web` and `packages/ui` outside test files, for JSX text and for `aria-label`, `title` and `placeholder`.
+5. All user-facing text comes from `@credalent/i18n`; `react/jsx-no-literals` is on across `apps/web` and `packages/ui` outside test files, for JSX text and for `aria-label`, `title` and `placeholder`.
 
 ## Consequences
 

@@ -1,1 +1,1 @@
-import { jobsModule } from '@aivera/jobs/composition';
+import { jobsModule } from '@credalent/jobs/composition';

@@ -12,7 +12,7 @@ const themeVars = (theme: Theme) => ({ ...tokens.color[theme], ...tokens.shadow[
 /** The CSS custom properties for both themes. Light is the default; dark applies under data-theme="dark". */
 export function toCss(): string {
   return [
-    '/* Generated from tokens.json by pnpm --filter @aivera/tokens build. Do not edit. */',
+    '/* Generated from tokens.json by pnpm --filter @credalent/tokens build. Do not edit. */',
     ':root,',
     '[data-theme="light"] {',
     '  color-scheme: light;',

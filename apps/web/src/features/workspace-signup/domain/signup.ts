@@ -1,4 +1,4 @@
-import { offeredJobTypes, type CatalogueVersion } from '@aivera/jobs';
+import { offeredJobTypes, type CatalogueVersion } from '@credalent/jobs';
 import { z } from 'zod';
 
 // Creating a workspace after sign-in (AIV-P1-001). Pure: no React, no I/O (ADR-003). Name, email and password come

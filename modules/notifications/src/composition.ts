@@ -1,10 +1,10 @@
 // Builds the notifications module for an app (ADR-002: only apps and tests import this).
-import type { Db } from '@aivera/db';
-import type { Handler } from '@aivera/db/consumer';
-import { enqueue } from '@aivera/db/outbox';
-import { uuidv7 } from '@aivera/db/uuidv7';
-import { defaultLocale, defaultTimeZone } from '@aivera/i18n';
-import { log } from '@aivera/observability';
+import type { Db } from '@credalent/db';
+import type { Handler } from '@credalent/db/consumer';
+import { enqueue } from '@credalent/db/outbox';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import { defaultLocale, defaultTimeZone } from '@credalent/i18n';
+import { log } from '@credalent/observability';
 import { eq } from 'drizzle-orm';
 import { queueEmail, sendQueued, type MessageRow, type SealedEmail } from './application/emails.ts';
 import { EmailQueuedV1, type NotificationsContract } from './contracts/index.ts';

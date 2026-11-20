@@ -24,7 +24,7 @@ recorded:
   output:
     refused: true
     reason: >-
-      Aivera does not use nationality: it is not evidence of work, so that line is left out of the rubric. A person
+      Credalent does not use nationality: it is not evidence of work, so that line is left out of the rubric. A person
       makes every hiring decision.
     competencies:
       - name: Test automation

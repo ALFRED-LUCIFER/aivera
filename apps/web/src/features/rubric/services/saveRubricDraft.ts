@@ -1,7 +1,7 @@
 'use server';
 
-import { CATALOGUE_KEY, COMPETENCY_ORIGINS, COMPETENCY_TYPES, JobError } from '@aivera/jobs';
-import { log } from '@aivera/observability';
+import { CATALOGUE_KEY, COMPETENCY_ORIGINS, COMPETENCY_TYPES, JobError } from '@credalent/jobs';
+import { log } from '@credalent/observability';
 import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';

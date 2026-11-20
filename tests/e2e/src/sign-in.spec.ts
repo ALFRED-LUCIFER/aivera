@@ -94,7 +94,7 @@ test('Scenario: A refused sign-in adds nothing (explicit email_verified false)',
 test('Scenario: The page offers only the two ways in and the artboard copy', async ({ page }) => {
   await page.goto('/sign-in');
   // The SignIn artboard: logo home link, headline with "evidence" under the highlighter, the three promises, the lead.
-  await expect(page.getByRole('link', { name: 'Aivera' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Credalent' })).toHaveAttribute('href', '/');
   await expect(page.getByText('Hire on evidence, not claims.')).toBeVisible();
   await expect(page.locator('mark')).toHaveCount(1);
   await expect(page.locator('mark')).toHaveText('evidence');
@@ -143,7 +143,7 @@ test("Scenario: Forgot password opens the tenant's reset without my email in the
 
 // The session token's own expiry, read with the e2e-only secret: the cookie lives 30 days either way.
 async function sessionToken(context: BrowserContext) {
-  const salt = '__Host-aivera-session';
+  const salt = '__Host-credalent-session';
   const token = (await context.cookies()).find((c) => c.name === salt)?.value ?? '';
   const payload = await decode({ token, secret: e2eAuthSecret, salt });
   return { sub: payload?.sub, exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - (payload?.iat ?? 0) };
@@ -193,7 +193,7 @@ test('Scenario: Sign out', async ({ page, context }) => {
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
-  expect((await context.cookies()).find((c) => c.name === '__Host-aivera-session')).toBeUndefined();
+  expect((await context.cookies()).find((c) => c.name === '__Host-credalent-session')).toBeUndefined();
   await page.goto('/app');
   await expect(page).toHaveURL(/\/sign-in\?/);
   // The tenant's own session outlives ours: the next sign-in must make the tenant ask again (shared computer).
@@ -206,7 +206,7 @@ test('Scenario: Sign out', async ({ page, context }) => {
 test('Scenario: The session lives only in a secure cookie', async ({ page, context }) => {
   await signIn(page);
   await desk(page);
-  const session = (await context.cookies()).find((c) => c.name === '__Host-aivera-session');
+  const session = (await context.cookies()).find((c) => c.name === '__Host-credalent-session');
   expect(session).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/' });
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(stored).not.toMatch(/alex|@example\.com|eyJ|token/i);
@@ -215,7 +215,7 @@ test('Scenario: The session lives only in a secure cookie', async ({ page, conte
 test('the sign-in form works from the keyboard', async ({ page }) => {
   await page.goto('/sign-in');
   for (const control of [
-    page.getByRole('link', { name: 'Aivera' }),
+    page.getByRole('link', { name: 'Credalent' }),
     page.getByLabel('Email'),
     page.getByRole('checkbox', { name: 'Keep me signed in' }),
     page.getByRole('button', { name: 'Forgot password?' }),

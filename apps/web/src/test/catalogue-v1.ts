@@ -3,7 +3,7 @@
 // data file, not imported: no code crosses from the jobs module into the app (ADR-002).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CatalogueVersion } from '@aivera/jobs';
+import type { CatalogueVersion } from '@credalent/jobs';
 
 const SNAPSHOT = join(import.meta.dirname, '../../../../modules/jobs/src/infrastructure/catalogue-v1.json');
 

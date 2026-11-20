@@ -1,4 +1,4 @@
-import { ForbiddenError, type Role } from '@aivera/workspaces';
+import { ForbiddenError, type Role } from '@credalent/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { initialNewJobState } from '../domain/jobNew.ts';
 import { addJob } from './addJob.ts';

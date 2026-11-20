@@ -1,5 +1,5 @@
-import type { AuditContract } from '@aivera/audit';
-import type { Tx } from '@aivera/db/client';
+import type { AuditContract } from '@credalent/audit';
+import type { Tx } from '@credalent/db/client';
 import { sql } from 'drizzle-orm';
 import type { SettingsStore } from '../application/settings.ts';
 import { platformSetting } from './schema.ts';

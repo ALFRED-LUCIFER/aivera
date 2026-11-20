@@ -1,7 +1,7 @@
 // Builds the candidates module for an app (ADR-002: only apps import this).
-import { enqueue } from '@aivera/db/outbox';
-import { uuidv7 } from '@aivera/db/uuidv7';
-import type { WorkspacesContract } from '@aivera/workspaces';
+import { enqueue } from '@credalent/db/outbox';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import type { WorkspacesContract } from '@credalent/workspaces';
 import { peopleUseCases } from './application/people.ts';
 import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
 import { candidateStore } from './infrastructure/repository.ts';

@@ -1,6 +1,6 @@
 'use client';
 
-import type { StatusChange as Change } from '@aivera/workspaces';
+import type { StatusChange as Change } from '@credalent/workspaces';
 import { StatusChange } from '@/features/ops/components/StatusChange.tsx';
 import { useStatusChangeController } from '@/features/ops/hooks/useStatusChangeController.ts';
 

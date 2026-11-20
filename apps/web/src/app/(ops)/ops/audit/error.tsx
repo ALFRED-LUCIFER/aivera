@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@aivera/i18n/react';
+import { useTranslations } from '@credalent/i18n/react';
 import { AuditLog } from '@/features/ops/components/AuditLog.tsx';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 

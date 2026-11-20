@@ -1,1 +1,1 @@
-export { default } from '@aivera/config/vitest';
+export { default } from '@credalent/config/vitest';

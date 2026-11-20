@@ -1,4 +1,4 @@
-import type { PublicJob } from '@aivera/jobs';
+import type { PublicJob } from '@credalent/jobs';
 
 /** "New this week" on the candidate home page (AIV-P3-003): the three most recently posted open jobs. */
 const NEW_JOBS = 3;

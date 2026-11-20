@@ -1,5 +1,5 @@
-import { isSignedUp, type Account } from '@aivera/candidate-accounts';
-import { offeredJobTypes, type CatalogueVersion } from '@aivera/jobs';
+import { isSignedUp, type Account } from '@credalent/candidate-accounts';
+import { offeredJobTypes, type CatalogueVersion } from '@credalent/jobs';
 import { z } from 'zod';
 import { CANDIDATE_HOME, candidateSafeNext } from '@/features/candidate-sign-in/domain/candidateSignIn.ts';
 

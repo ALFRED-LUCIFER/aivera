@@ -1,6 +1,6 @@
-import type { Competency } from '@aivera/jobs';
-import { useTranslations } from '@aivera/i18n/react';
-import { Button, Chip, Input, Select, type DataTableColumn } from '@aivera/ui';
+import type { Competency } from '@credalent/jobs';
+import { useTranslations } from '@credalent/i18n/react';
+import { Button, Chip, Input, Select, type DataTableColumn } from '@credalent/ui';
 import type { RubricEditorView } from '../domain/rubric.ts';
 
 /** A competency row; `editor` is set while the rubric is in edit mode (AIV-P1-013). */

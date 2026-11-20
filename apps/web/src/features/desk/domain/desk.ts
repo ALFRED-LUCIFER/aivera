@@ -1,4 +1,4 @@
-import type { RubricApproval } from '@aivera/jobs';
+import type { RubricApproval } from '@credalent/jobs';
 
 /** A rubric approval on My desk (AIV-P1-014): waiting with the hiring owner, or done once approved. */
 export type ApprovalItem = {

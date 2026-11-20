@@ -1,5 +1,5 @@
 {
-  "name": "@aivera/db",
+  "name": "@credalent/db",
   "private": true,
   "type": "module",
   "exports": {
@@ -20,14 +20,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aivera/observability": "workspace:*",
+    "@credalent/observability": "workspace:*",
     "@opentelemetry/api": "1.10.0",
     "drizzle-orm": "0.45.4",
     "postgres": "4.1.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@aivera/config": "workspace:*",
+    "@credalent/config": "workspace:*",
     "@types/node": "24.19.2",
     "drizzle-kit": "0.31.11",
     "oxlint": "1.94.0",

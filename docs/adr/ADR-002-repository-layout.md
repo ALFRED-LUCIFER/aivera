@@ -14,7 +14,7 @@ apps/web/                 Next.js app: marketing, recruiter app, candidate site,
   src/app/                routing and composition only
   src/features/<f>/{domain,services,hooks,components}
 apps/worker/              queue consumers and scheduled jobs; composition only
-modules/<m>/              one bounded context, package @aivera/<m>, one PostgreSQL schema
+modules/<m>/              one bounded context, package @credalent/<m>, one PostgreSQL schema
   src/domain/             entities, value objects, invariants; pure
   src/application/        use cases over narrow ports
   src/contracts/          the ONLY public surface: interfaces, zod DTOs, versioned events

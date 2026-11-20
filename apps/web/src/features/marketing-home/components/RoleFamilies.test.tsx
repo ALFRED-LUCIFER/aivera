@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { offeredJobTypes } from '@aivera/jobs';
+import { offeredJobTypes } from '@credalent/jobs';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';

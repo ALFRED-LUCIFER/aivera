@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { defaultLocale, defaultTimeZone, getTranslations } from '@aivera/i18n';
+import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { howSteps } from '../domain/sections.ts';
@@ -37,7 +37,7 @@ describe('Feature: How it works', () => {
     expect(steps[2]?.textContent).toContain(
       'Claims are marked as claims, and count for nothing until something supports them.',
     );
-    expect(steps[4]?.textContent).toContain('Aivera recommends. You decide.');
+    expect(steps[4]?.textContent).toContain('Credalent recommends. You decide.');
     expect(screen.getByText('A CV tells you what someone claims.')).toBeTruthy();
   });
 });

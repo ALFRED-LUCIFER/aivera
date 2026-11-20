@@ -6,8 +6,8 @@ import { expectNoAxeViolations, themes } from './gallery.ts';
 // which plays the tenant's hosted sign-up page. Synthetic people only; each sign-up uses a new address, so a reused
 // local database starts every run with no candidate account for it.
 
-const RECRUITER_COOKIE = '__Host-aivera-session';
-const CANDIDATE_COOKIE = '__Host-aivera-candidate';
+const RECRUITER_COOKIE = '__Host-credalent-session';
+const CANDIDATE_COOKIE = '__Host-credalent-candidate';
 const SHARING =
   'Your CV and work are shared with a recruiter only when you apply to their job or answer their request.';
 const cookie = async (context: BrowserContext, name: string) => (await context.cookies()).find((c) => c.name === name);

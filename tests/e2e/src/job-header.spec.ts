@@ -62,7 +62,7 @@ test('Scenario: The current stage is marked, and the stages are keyboard reachab
 test('Scenario: Unknown or other-workspace job', async ({ page, context }) => {
   await signIn(page, { email: AP });
   const id = await openJob(page, 'Senior AI Engineer');
-  await context.clearCookies({ name: '__Host-aivera-session' });
+  await context.clearCookies({ name: '__Host-credalent-session' });
   // Alex runs "Demo Hiring Co", another workspace.
   await signIn(page, { email: 'alex@example.com' });
   const response = await page.goto(`/app/jobs/${id}/rubric`);
@@ -70,7 +70,7 @@ test('Scenario: Unknown or other-workspace job', async ({ page, context }) => {
   await expect(page.getByText('This job does not exist or you do not have access.')).toBeVisible();
   expect((await page.goto('/app/jobs/not-a-job/rubric'))?.status()).toBe(404);
   // An interviewer, who sees only granted jobs, is refused instead.
-  await context.clearCookies({ name: '__Host-aivera-session' });
+  await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: 'rami@example.com' });
   expect((await page.goto(`/app/jobs/${id}/rubric`))?.status()).toBe(403);
 });

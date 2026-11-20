@@ -1,8 +1,8 @@
 'use client';
 
-import type { Messages } from '@aivera/i18n';
-import { useTranslations } from '@aivera/i18n/react';
-import { DataTable, FilterTabs, Label, Select, StatusBadge, ValueBasis, type DataTableColumn } from '@aivera/ui';
+import type { Messages } from '@credalent/i18n';
+import { useTranslations } from '@credalent/i18n/react';
+import { DataTable, FilterTabs, Label, Select, StatusBadge, ValueBasis, type DataTableColumn } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { JOB_FILTERS, jobHref, parseFilter, rubricLabel, type JobFilter, type JobRow } from '../domain/jobsList.ts';

@@ -1,6 +1,6 @@
 'use client';
 
-import type { approvesAs } from '@aivera/jobs';
+import type { approvesAs } from '@credalent/jobs';
 import { Rubric } from '@/features/rubric/components/Rubric.tsx';
 import { RubricDecision } from '@/features/rubric/components/RubricDecision.tsx';
 import { RubricPublish } from '@/features/rubric/components/RubricPublish.tsx';

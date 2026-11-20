@@ -1,4 +1,4 @@
-import { tenantPolicy } from '@aivera/db/tenant-policy';
+import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import {
   bigint,
@@ -192,7 +192,7 @@ export const invitation = workspaces
   )
   .enableRLS();
 
-// Input plus output AI tokens a workspace spent on one UTC day (AIV-P0-033): the store behind @aivera/ai's daily
+// Input plus output AI tokens a workspace spent on one UTC day (AIV-P0-033): the store behind @credalent/ai's daily
 // budget, shared by every web replica and the worker. Read and written only through AiTokenBudget (ADR-006 point 2).
 export const aiTokenUsage = workspaces
   .table(

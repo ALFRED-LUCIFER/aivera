@@ -1,5 +1,5 @@
-import { AiUnavailable, BudgetExceeded, UncitedOutput } from '@aivera/ai';
-import { ForbiddenError, type Role } from '@aivera/workspaces';
+import { AiUnavailable, BudgetExceeded, UncitedOutput } from '@credalent/ai';
+import { ForbiddenError, type Role } from '@credalent/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { draftCompetencies } from './draftCompetencies.ts';
 

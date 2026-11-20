@@ -1,7 +1,7 @@
 'use client';
 
-import { useTimeZone, useTranslations } from '@aivera/i18n/react';
-import { Card } from '@aivera/ui';
+import { useTimeZone, useTranslations } from '@credalent/i18n/react';
+import { Card } from '@credalent/ui';
 import type { ReactNode } from 'react';
 import type { OperatorActionRow, WorkspaceRow } from '../domain/workspaces.ts';
 import { WorkspaceStatus } from './WorkspaceBadges.tsx';

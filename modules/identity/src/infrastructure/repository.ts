@@ -1,4 +1,4 @@
-import type { Tx } from '@aivera/db';
+import type { Tx } from '@credalent/db';
 import { and, eq } from 'drizzle-orm';
 import type { IdentityStore } from '../application/identity.ts';
 import { signInMethod, user } from './schema.ts';

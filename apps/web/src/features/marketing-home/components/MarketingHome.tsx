@@ -1,4 +1,4 @@
-import { buttonClassName } from '@aivera/ui';
+import { buttonClassName } from '@credalent/ui';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { column } from '../domain/layout.ts';

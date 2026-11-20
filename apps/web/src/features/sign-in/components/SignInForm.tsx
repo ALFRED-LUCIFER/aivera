@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input, Label } from '@aivera/ui';
+import { Button, Checkbox, Input, Label } from '@credalent/ui';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AuthPage } from './AuthPage.tsx';
