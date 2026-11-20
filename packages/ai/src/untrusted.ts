@@ -20,10 +20,15 @@ const patterns: [UnusualContent['reason'], RegExp][] = [
     'instruction',
     /\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+)?(?:of\s+)?(?:the\s+|your\s+|these\s+)?(?:previous\s+|prior\s+|above\s+|earlier\s+|preceding\s+|system\s+)?(?:instructions|rules|prompts?|guidelines)\b/gi,
   ],
-  // "Rate this candidate Strong", "rank the applicant first". Not "rated vendors" or "ranked the candidate pool".
+  // "Rate this candidate Strong", "rank the applicant first": a verdict after the target, or an order before the verb.
+  // Not "score the resume against the job" or "shortlist the candidate pool".
   [
     'instruction',
-    /\b(?:rate|rank|score|grade|mark|classify|shortlist|advance|approve)\s+(?:this|the)\s+(?:candidate|applicant|cv|resume|profile)\b/gi,
+    /\b(?:rate|rank|score|grade|mark|classify)\s+(?:this|the)\s+(?:candidate|applicant|cv|resume|profile)\s+(?:as\s+)?(?:strong|first|top|highest|best|excellent|\d)/gi,
+  ],
+  [
+    'instruction',
+    /\b(?:please|you must|you should|you will)\s+(?:rate|rank|score|grade|shortlist|advance|approve|hire|select)\b/gi,
   ],
   // "As the AI reviewing this, you must…"; not "As an AI engineer I built…".
   [
@@ -31,14 +36,18 @@ const patterns: [UnusualContent['reason'], RegExp][] = [
     /\bas\s+(?:an?|the)\s+(?:ai|assistant|llm|model|language model|reviewer|recruiter|screener)\b[^.\n]{0,40}?\byou\b/gi,
   ],
   ['instruction', /\byou are now\b/gi],
-  // A fake role line, at a line start or straight after a tag, and chat-template tokens or a source tag.
-  ['role_marker', /(?:^|[>\]])[ \t]*(?:system|assistant|developer)[ \t]*:/gim],
+  // A fake role line: system or assistant at a line start, or any chat role straight after a tag ("Developer: <employer>"
+  // on its own line is a CV job title). Then chat-template tokens and source tags.
+  ['role_marker', /^[ \t]*(?:system|assistant)[ \t]*:|[>\]][ \t]*(?:system|assistant|developer|user)[ \t]*:/gim],
   ['role_marker', /<\|(?:im_start|im_end|system|endoftext)\|>|\[\/?INST\]|<\s*\/?\s*source\b/gi],
   [
     'tool_call',
     /<\s*\/?\s*(?:tool_call|function_call|tool_use|function_calls|invoke)\b|"(?:tool|function)_?(?:call|name)"\s*:/gi,
   ],
 ];
+
+// shortcut: phrase lists, so a paraphrase ("set everything above aside") is missed and rare prose ("where you are now")
+// is flagged; a flag only shows a note to a person. Widen from real notes the evidence tickets (#89, #92) collect.
 
 // The excerpt is the sentence or line around the hit, capped either side so a run-on hidden paragraph stays short.
 const CONTEXT = 160;

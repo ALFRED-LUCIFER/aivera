@@ -67,14 +67,17 @@ export const sourceLabel = (index: number) => `S${index + 1}`;
 
 /**
  * The sources as the model sees them, numbered in order, each in a block marked untrusted (AIV-P1-070). A closing tag
- * inside the text is neutralised, so a CV cannot end its own block and write outside it. The model is told the block is
+ * or a fake opening tag inside the text is neutralised, so a CV cannot end its own block or forge another one. The model is told the block is
  * data (client.ts UNTRUSTED_CONTENT_RULES); labels resolve only to the real sources and code sets `claim`, so even an
  * obeyed instruction cannot forge backing.
  */
 export const formatSources = (sources: readonly Source[]) =>
   sources
     .map((source, i) => {
-      const text = source.text.replace(/<(\s*\/\s*source)/gi, '&lt;$1');
+      // Every `<` (and its full-width forms), not only `</source`: zero-width characters, backslashes or look-alike
+      // letters inside a tag would slip past a narrower match. shortcut: a quote spanning a `<` no longer matches what
+      // the model saw and is rejected (fails closed); map `&lt;` back in findQuote if the eval set shows such misses.
+      const text = source.text.replace(/[<\uFF1C\uFE64]/g, '&lt;');
       return `<source id="${sourceLabel(i)}" kind="${source.kind}" trust="untrusted">\n${text}\n</source>`;
     })
     .join('\n');

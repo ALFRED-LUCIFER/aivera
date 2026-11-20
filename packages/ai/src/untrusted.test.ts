@@ -57,6 +57,9 @@ describe('detectUnusualContent', () => {
       'Systems: Linux, PostgreSQL.',
       'Wrote the instructions for the onboarding guide and followed the previous rules of the release process.',
       'Advanced to staff engineer in 2024.',
+      'Built a service to score the resume against the job.',
+      'Helped shortlist the candidate pool and approve the profile changes.',
+      'Developer: an e-commerce marketplace, 2019 to 2021.',
     ])
       expect(detectUnusualContent(cv(line)), line).toEqual([]);
   });

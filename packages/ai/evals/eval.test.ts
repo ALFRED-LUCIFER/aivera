@@ -9,8 +9,8 @@ import { z } from 'zod';
 import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
 import { detectDomainSchema } from '../src/prompts/jobs.detectDomain.ts';
-import { DETECT_DOMAIN_SYSTEM } from '../src/prompts/jobs.detectDomain.ts';
-import { DRAFT_COMPETENCIES_SYSTEM, draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
+import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
+import * as aiPackage from '../src/index.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
@@ -556,6 +556,8 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
     describe(task, () => {
       const clean = caseOf(task, 'maria-santos-clean');
 
+      // shortcut: the recorded answers of the injected copies are the clean case's, so identity here checks the golden
+      // set, not a model; the live evidence.* run proves it once its runners exist (#91, #84).
       it.each(variants)('Scenario: An instruction inside a CV does not change the mapping (%s)', async (id) => {
         const c = caseOf(task, id);
         const text = c.sources[0]?.text ?? '';
@@ -573,8 +575,9 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
         expect(report.cases.map((r) => r.scores.claimLabelling?.failures)).toEqual([[], []]);
       });
 
+      // The injection case's prompt shape, through the client (no live model in CI).
       // SAFETY: mutation check: removed the untrusted-block wrapper and UNTRUSTED_CONTENT_RULES -> this test failed
-      it('the injected line reaches the model only inside its untrusted block, under the shared rule', async () => {
+      it('the injection case reaches the model only inside its untrusted block, under the shared rule', async () => {
         const c = caseOf(task, 'maria-santos-injection');
         const model = fakeProvider({ completion: JSON.stringify(c.recorded.output) }).languageModel('gpt-main');
         const ai = createAiClient({
@@ -606,7 +609,9 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
     });
 
   it('no product prompt repeats or overrides the shared rule', () => {
-    for (const system of [DRAFT_COMPETENCIES_SYSTEM, DETECT_DOMAIN_SYSTEM])
-      expect(system).not.toMatch(/never instructions|untrusted|source block/i);
+    const systems = Object.entries(aiPackage).filter(([name]) => name.endsWith('_SYSTEM'));
+    expect(systems.length).toBeGreaterThanOrEqual(2);
+    for (const [name, system] of systems)
+      expect(system, name).not.toMatch(/never instructions|untrusted|source block/i);
   });
 });

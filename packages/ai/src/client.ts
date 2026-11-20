@@ -51,7 +51,7 @@ const outcome = (value: string, extra: Record<string, string | number> = {}) =>
   annotateSpan({ 'credalent.ai.outcome': value, ...extra });
 
 // Appended to every structured task's system prompt; bump the version with any change (it is on telemetry).
-const CITATION_RULES_VERSION = 'citations@1';
+const CITATION_RULES_VERSION = 'citations@2';
 const CITATION_RULES = [
   'Answer only from the sources in the prompt, each marked <source id="S1" kind="..." trust="untrusted">.',
   'Every item that has a citations field must cite at least one source: its id (such as S1) and a quote copied',
@@ -220,6 +220,7 @@ export function createAiClient(options: {
       system: string;
       prompt: string;
       schema: S;
+      /** Candidate and job text goes here, never in `prompt`: only sources are wrapped as untrusted (AIV-P1-070). */
       sources: readonly Source[];
     }): Promise<Checked<z.infer<S>>> {
       const { task, schema, sources } = input;
