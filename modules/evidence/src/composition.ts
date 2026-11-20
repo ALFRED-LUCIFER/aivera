@@ -1,17 +1,33 @@
 // Builds the evidence module for an app (ADR-002: only apps import this).
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { AuditContract } from '@credalent/audit';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
 import { enqueue, newEnvelope } from '@credalent/db/outbox';
+import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import { log } from '@credalent/observability';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { GitHubRateLimited, readRepository, repositoryReadUseCases } from './application/repositoryRead.ts';
-import { EvidenceRecordedV1, RepositoryReadRequestedV1, type EvidenceContract } from './contracts/index.ts';
+import {
+  recordRequestOutcome,
+  requestUseCases,
+  type OutcomePorts,
+  type RequestOutcome,
+} from './application/requests.ts';
+import {
+  EvidenceRecordedV1,
+  EvidenceRequestAnsweredV1,
+  EvidenceRequestOpenedV1,
+  EvidenceRequestQuietV1,
+  EvidenceRequestSentV1,
+  RepositoryReadRequestedV1,
+  type EvidenceContract,
+} from './contracts/index.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
+import { requestStore } from './infrastructure/requestStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
 /** The queue RepositoryReadRequested.v1 goes to (infra/modules/messaging.bicep). */
@@ -60,8 +76,44 @@ export function createEvidence(
           occurredAt: source.createdAt,
         }),
     }),
+    ...requestUseCases({
+      ...ports,
+      ...outcomePorts(now),
+      newToken: () => {
+        const token = randomBytes(32).toString('base64url');
+        return { token, hash: createHash('sha256').update(token).digest('hex') };
+      },
+    }),
   };
 }
+
+const outcomePorts = (now: () => Date): OutcomePorts => ({
+  requestStoreFor: requestStore,
+  publishRequestEvent: (tx, request, status) =>
+    enqueue(tx, outbox, REQUEST_EVENTS[status], {
+      workspaceId: request.workspaceId,
+      payload: { requestId: request.id, candidateId: request.candidateId, jobId: request.jobId },
+      dedupeKey: `request:${request.id}:${status}`,
+      occurredAt: now(),
+    }),
+});
+
+/**
+ * Records a request's outcome as the system, in a workspace-scoped transaction with no member: for the follow-up
+ * worker (AIV-P1-040) and the portal (AIV-P1-041). It can never send.
+ */
+export function createRequestOutcomeRecorder(now: () => Date = () => new Date()) {
+  const ports = outcomePorts(now);
+  return (tx: Tx, workspaceId: string, requestId: string, outcome: RequestOutcome) =>
+    recordRequestOutcome(ports, tx, workspaceId, requestId, outcome);
+}
+
+const REQUEST_EVENTS = {
+  sent: EvidenceRequestSentV1,
+  opened: EvidenceRequestOpenedV1,
+  answered: EvidenceRequestAnsweredV1,
+  quiet: EvidenceRequestQuietV1,
+} as const;
 
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request

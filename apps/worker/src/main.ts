@@ -74,6 +74,8 @@ const QUEUES: Record<string, string> = {
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
+  // shortcut: EvidenceRequestSent/Opened/Answered/Quiet.v1 (AIV-P1-037) have no queue until the follow-up consumer
+  // (AIV-P1-040) maps them; nothing sends a request before its screen (AIV-P1-039), so none are written meanwhile.
 };
 
 const stop = new AbortController();

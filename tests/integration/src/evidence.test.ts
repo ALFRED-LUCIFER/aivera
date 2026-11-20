@@ -147,7 +147,10 @@ describe('Migrations', () => {
         'item',
         'merged_pull_request',
         'outbox',
+        'portal_token',
         'repository_read',
+        'request',
+        'request_item',
         'source',
       ].map((name) => ({
         name,

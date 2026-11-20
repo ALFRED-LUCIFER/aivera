@@ -107,6 +107,10 @@ const MESSAGES = {
   flag_not_found: 'No such flag',
   resolution: 'Choose a reason from the list',
   not_synthetic: 'Only a synthetic workspace holding only synthetic evidence can be purged.',
+  nothing_to_request: 'Nothing rests on a claim for this job',
+  request_not_found: 'No such evidence request',
+  request_status: 'This request cannot move to that status',
+  open_request: 'This candidate already has an open request for this job',
 } as const;
 
 export type EvidenceErrorCode = keyof typeof MESSAGES;
