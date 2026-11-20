@@ -35,6 +35,7 @@ describe('GET /api/files/[id]', () => {
       'content-disposition': 'attachment',
       'x-content-type-options': 'nosniff',
       'cache-control': 'private, no-store',
+      'content-security-policy': 'sandbox',
     });
     expect(await response.text()).toBe('%PDF');
   });

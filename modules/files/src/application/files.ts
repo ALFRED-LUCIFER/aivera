@@ -86,7 +86,7 @@ const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex')
 
 export function filesUseCases(p: Ports) {
   /**
-   * Moves a pending file out of quarantine. Clean, and the blob's real size and type match the request: copied to its
+   * Moves a pending file out of quarantine. Clean, and the blob's size and stored content type match the request: copied to its
    * final container, hashed, `clean`. Infected, or not what was asked for: deleted, `infected` or `rejected`. Settling
    * an already settled file changes nothing, so a redelivered scan result is harmless.
    */
@@ -100,6 +100,9 @@ export function filesUseCases(p: Ports) {
     if (verdict === 'clean') {
       // The final copy too: a retry after a failed commit finds quarantine already emptied.
       const blob = (await p.blobs.read(quarantine, file.sizeBytes)) ?? (await p.blobs.read(final, file.sizeBytes));
+      // shortcut: the content type checked is the one the browser stored with the blob, not a sniff of its bytes (an .exe sent as
+      // application/pdf passes); download headers (attachment, nosniff, sandbox) limit the harm until parsing checks magic
+      // bytes (AIV-P1-025).
       if (blob?.data && blob.size === file.sizeBytes && blob.contentType === file.contentType) {
         await p.blobs.write(final, blob.data, file.contentType);
         await store.settle(file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });

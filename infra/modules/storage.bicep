@@ -151,7 +151,9 @@ resource scanResults 'Microsoft.EventGrid/topics/eventSubscriptions@2024-06-01-p
       identity: { type: 'SystemAssigned' }
       destination: { endpointType: 'ServiceBusQueue', properties: { resourceId: scanQueue.id } }
     }
-    // Quarantine only: Defender also scans the worker's copy into cvs or evidence, which needs nothing.
+    // Quarantine only. shortcut: Defender also scans the worker's copy into cvs or evidence (a second per-GB charge), and a
+    // Malicious verdict on that copy is dropped; act on it (mark the file infected) or exclude those containers from scanning
+    // before the pilot turns scanning on.
     filter: {
       includedEventTypes: ['Microsoft.Security.MalwareScanningResult']
       advancedFilters: [{ operatorType: 'StringContains', key: 'data.blobUri', values: ['/uploads-quarantine/'] }]
@@ -168,7 +170,9 @@ resource defender 'Microsoft.Security/defenderForStorageSettings@2022-12-01-prev
   properties: {
     isEnabled: true
     overrideSubscriptionLevelSettings: true
-    // A monthly cap bounds the per-GB scanning charge.
+    // A monthly cap bounds the per-GB scanning charge. shortcut: the SAS cannot cap an upload's size (up to about 5000 MiB per
+    // request), so a recruiter could use up the cap and every workspace's uploads would then stay pending; add a cap-usage
+    // alert or a per-workspace upload rate limit before the pilot.
     malwareScanning: { onUpload: { isEnabled: true, capGBPerMonth: 50 }, scanResultsEventGridTopicResourceId: scanTopic.id }
     sensitiveDataDiscovery: { isEnabled: false }
   }

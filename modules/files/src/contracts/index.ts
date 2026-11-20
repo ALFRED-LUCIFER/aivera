@@ -31,13 +31,13 @@ export const FileRejectedV1 = {
 export interface FilesContract {
   /**
    * Checks the purpose's limits (`FileError('limits.cv' | 'limits.evidence')`, the uploader's message), records a
-   * pending file and returns a SAS URL that may create and write that one blob in uploads-quarantine for 10 minutes.
+   * pending file and returns a SAS URL that may create that one blob in uploads-quarantine, once and never overwrite it, for 10 minutes.
    */
   requestUpload(ctx: WorkspaceContext, input: UploadRequest): Promise<UploadTicket>;
   /** The caller's own upload's status; null when it is not theirs or not in the workspace. */
   getStatus(ctx: WorkspaceContext, fileId: string): Promise<FileStatus | null>;
   /**
-   * Dev only: once the browser reports the upload done, re-checks the blob's real size and type and settles it clean
+   * Dev only: once the browser reports the upload done, re-checks the blob's size and stored content type and settles it clean
    * (or rejected) without a scan. Throws `FileError('scanning_required')` wherever malware scanning is on.
    */
   markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus>;

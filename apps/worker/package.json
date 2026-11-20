@@ -12,14 +12,14 @@
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",
+    "@credalent/files": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/observability": "workspace:*",
     "@azure/identity": "4.14.1",
     "@azure/service-bus": "7.10.0",
     "long": "5.3.2",
-    "zod": "4.6.7",
-    "@credalent/files": "workspace:*"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@credalent/config": "workspace:*",
