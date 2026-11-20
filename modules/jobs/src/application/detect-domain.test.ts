@@ -154,8 +154,8 @@ describe('Scenario: No candidate data reaches the prompt', () => {
         .join(''),
     ).toBe(
       'Job type: software_engineering\nTitle: Senior Backend Engineer, Payments\n\nSources:\n' +
-        `<source id="S1" kind="job_description">\n${description}\n</source>\n` +
-        '<source id="S2" kind="job_description">\nDIFC, Dubai\n</source>',
+        `<source id="S1" kind="job_description" trust="untrusted">\n${description}\n</source>\n` +
+        '<source id="S2" kind="job_description" trust="untrusted">\nDIFC, Dubai\n</source>',
     );
   });
 

@@ -47,7 +47,7 @@ const ALLOWED = [
   'credalent.ai.outcome',
   'credalent.ai.attempts',
   'credalent.ai.cost_usd_micros',
-  // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@1`); not
+  // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@2+untrusted@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
   'credalent.ai.template_version',
   // The HMAC of an email's recipient (AIV-P0-017): the only form of an address that may be logged.
