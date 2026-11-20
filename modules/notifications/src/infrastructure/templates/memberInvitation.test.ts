@@ -41,7 +41,7 @@ describe('member-invitation template', () => {
         '',
         'You cannot: see other jobs or their candidates. Hiring owners see only the jobs they are given.',
         '',
-        'Note: This invitation expires on 27 Nov 2026.',
+        'Note: *Accept the invitation before it expires on 27 Nov 2026.*',
         '',
         'Accept invitation:',
         'https://aivera.example/l/9fK2xQ7mT4vB',
@@ -63,8 +63,6 @@ describe('member-invitation template', () => {
     expect(html.match(/class="e-button"/g)).toHaveLength(1);
     expect(html.match(/href="https:\/\/aivera.example\/l\/9fK2xQ7mT4vB"/g)).toHaveLength(1);
     expect(html).not.toContain('Ask us to delete your data');
-    // The highlighter marks cited evidence only; an invitation cites none.
-    expect(html).not.toContain('class="e-hl"');
   });
 
   it.each([

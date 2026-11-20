@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { RubricApprovalData, RubricApprovedData, RubricReturnedData } from '../../domain/email.ts';
 import {
   Button,
@@ -8,6 +9,8 @@ import {
   EmailLayout,
   Heading,
   QuotedNote,
+  Required,
+  requiredText,
   StatusLine,
   Text,
   type LayoutCopy,
@@ -18,7 +21,8 @@ import type { TemplateContext } from './render.ts';
 // "Rubric returned with a note" (docs/01-design/artboards/ERubric, EApproved, EReturned). Deviations: EApproved's
 // "Assessment has started" reads "Assessment can now start", and "Candidates in the inbox … are now being assessed" is
 // left out, until assessment runs on RubricApproved.v1 (AIV-P1-031); ERubric shows the change note as one row, as the rubric page does, not split per change. ENewer is the
-// rubric page's own "A newer version is waiting for you" notice: opening a link sends no email.
+// rubric page's own "A newer version is waiting for you" notice: opening a link sends no email. The highlighter marks
+// what the recipient must act on (DESIGN.md): the owner's decision, the recruiter's change; an approval needs nothing.
 
 const text = (layout: TemplateContext['layout'], lines: string[]) => [
   ...(layout.devBand ? [layout.devBand, ''] : []),
@@ -37,7 +41,7 @@ export function rubricApproval(data: RubricApprovalData, { t, layout, sender }: 
     preheader: t(`${k}.preheader`, { version: data.version, changed: data.changes ? 'yes' : 'no' }),
   };
   const heading = t(`${k}.heading`, { jobTitle: data.jobTitle, version: data.version });
-  const intro = t(`${k}.intro`, { sender: sender.name, workspace: sender.workspace, version: data.version });
+  const introValues = { sender: sender.name, workspace: sender.workspace, version: data.version };
   const headers: [string, string, string] = [t(`${k}.competency`), t(`${k}.weight`), t(`${k}.level`)];
   const rows = data.competencies.map((c): [string, string, string] => [
     c.name,
@@ -52,7 +56,9 @@ export function rubricApproval(data: RubricApprovalData, { t, layout, sender }: 
   const element = (
     <EmailLayout copy={copy}>
       <Heading dir={dir}>{heading}</Heading>
-      <Text dir={dir}>{intro}</Text>
+      <Text dir={dir}>
+        {t.rich(`${k}.intro`, { ...introValues, hl: (chunks: ReactNode) => <Required>{chunks}</Required> })}
+      </Text>
       <CompetencyTable dir={dir} headers={headers} rows={rows} />
       {data.changes && changedSince && (
         <>
@@ -73,7 +79,7 @@ export function rubricApproval(data: RubricApprovalData, { t, layout, sender }: 
   const lines = text(layout, [
     heading.toUpperCase(),
     '',
-    intro,
+    t.markup(`${k}.intro`, { ...introValues, hl: requiredText }),
     '',
     headers.join(' | '),
     ...rows.map((r) => r.join(' | ')),
@@ -155,7 +161,7 @@ export function rubricReturned(data: RubricReturnedData, { t, layout, sender }: 
       <StatusLine dir={dir} status="returned" label={status} detail={version} />
       <Heading dir={dir}>{heading}</Heading>
       <Text dir={dir}>{intro}</Text>
-      <QuotedNote dir={dir} label={noteFrom} note={note} />
+      <QuotedNote dir={dir} label={noteFrom} note={<Required>{note}</Required>} />
       <Callout dir={dir}>{callout}</Callout>
       <Button dir={dir} href={data.link}>
         {button}
@@ -172,7 +178,7 @@ export function rubricReturned(data: RubricReturnedData, { t, layout, sender }: 
     intro,
     '',
     noteFrom,
-    note,
+    requiredText(note),
     '',
     `${layout.noteLabel} ${callout}`,
     '',

@@ -120,17 +120,27 @@ export function Heading({ dir, children }: { dir: Direction; children: ReactNode
 
 export const Text = Block;
 
-/** The only place the highlighter appears: the exact evidence a statement rests on. */
-export function Evidence({ children }: { children: ReactNode }) {
+/**
+ * The only place the highlighter appears in an email: what the recipient must do or provide (DESIGN.md). The ink
+ * underline carries it without colour (WCAG 1.4.1); `requiredText` marks the same run in the plain-text version.
+ */
+export function Required({ children }: { children: ReactNode }) {
   return (
     <span
       className="e-hl"
-      style={{ backgroundColor: c.highlight, color: c.onHighlight, padding: '1px 3px', borderRadius: '3px' }}
+      style={{
+        backgroundColor: c.highlight,
+        color: c.onHighlight,
+        textDecoration: 'underline',
+        padding: '1px 3px',
+        borderRadius: '3px',
+      }}
     >
       {children}
     </span>
   );
 }
+export const requiredText = (run: string) => `*${run}*`;
 
 /** One fact the reader must not miss; the info icon is decorative (aria-hidden), the words carry the meaning. */
 export function Callout({ dir, children }: { dir: Direction; children: ReactNode }) {
@@ -393,7 +403,7 @@ export function ChangeList({ dir, label, items }: { dir: Direction; label: strin
 }
 
 /** A person's own words, quoted under who wrote them (EReturned artboard). */
-export function QuotedNote({ dir, label, note }: { dir: Direction; label: string; note: string }) {
+export function QuotedNote({ dir, label, note }: { dir: Direction; label: string; note: ReactNode }) {
   return (
     <tr>
       <td className="e-pad" style={{ padding: '0 32px 16px' }}>
