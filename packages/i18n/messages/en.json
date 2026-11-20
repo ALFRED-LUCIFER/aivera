@@ -662,6 +662,7 @@
     },
     "workspaces": {
       "title": "Workspaces",
+      "description": "Every workspace on the platform, newest first: its type, size, AI use today and status. Open one to change its budget or status.",
       "caption": "Workspaces",
       "searchLabel": "Search by workspace name",
       "search": "Search",
@@ -797,6 +798,7 @@
     },
     "catalogue": {
       "title": "Catalogue",
+      "description": "The job types and industry packs that seed every new job's competencies. Recruiters keep, edit or remove each suggestion.",
       "readOnly": "The catalogue changes only through a reviewed pull request.",
       "jobTypesSource": "Job types file on GitHub",
       "domainPacksSource": "Domain packs file on GitHub",
@@ -822,15 +824,18 @@
     },
     "approvals": {
       "title": "Approvals",
+      "description": "While the pilot runs, new sign-ups wait here until an operator approves or rejects them. Oldest first.",
       "caption": "Workspaces waiting for approval",
       "columns": {
         "workspace": "Workspace",
         "type": "Type",
         "created": "Created ({timeZone})",
+        "waiting": "Waiting",
         "creator": "Creator",
         "decision": "Decision"
       },
       "noCreator": "Not known",
+      "waitingDays": "{count, plural, =0 {Less than a day} one {# day} other {# days}}",
       "empty": "No workspaces are waiting for approval.",
       "loading": "Loading approvals…",
       "error": "We could not load approvals. Try again.",

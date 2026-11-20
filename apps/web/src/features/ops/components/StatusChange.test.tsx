@@ -96,7 +96,6 @@ describe('Scenario: A suspension is applied and audited', () => {
               reason: 'Pilot ended on 30 Nov 2026',
             },
           ]}
-          statusChange={null}
         />
       </IntlProvider>,
     );

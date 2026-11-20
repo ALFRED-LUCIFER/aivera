@@ -22,3 +22,15 @@ export function SyntheticBadge({ className }: { className?: string }) {
   const t = useTranslations('ops.workspaces');
   return <Chip className={className}>{t('synthetic')}</Chip>;
 }
+
+/** The page header's tags for one workspace: its status, its type and, for demo data, "Synthetic". */
+export function WorkspaceTags({ workspace }: { workspace: Pick<WorkspaceRow, 'status' | 'type' | 'synthetic'> }) {
+  const t = useTranslations('ops.workspaces');
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <WorkspaceStatus status={workspace.status} />
+      <span>{t(`type.${workspace.type}`)}</span>
+      {workspace.synthetic && <SyntheticBadge />}
+    </span>
+  );
+}

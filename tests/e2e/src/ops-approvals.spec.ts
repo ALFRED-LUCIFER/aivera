@@ -50,6 +50,7 @@ for (const theme of themes) {
       name,
       'In-house team',
       /^\d{1,2} [A-Z][a-z]{2} \d{4}$/,
+      'Less than a day',
       email,
       /Approve/,
     ]);

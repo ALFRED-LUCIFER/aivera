@@ -24,6 +24,7 @@ const nadia = {
   type: 'in_house' as const,
   createdAt: new Date('2026-11-18T23:30:00Z'),
   creatorEmail: 'nadia@example.com',
+  waitingDays: 1,
   decide: <button type="button">Approve</button>,
 };
 
@@ -35,12 +36,12 @@ describe('Scenario: The operator approves (the list)', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Workspace', 'Type', 'Created (Asia/Dubai)', 'Creator', 'Decision']);
+    ).toEqual(['Workspace', 'Type', 'Created (Asia/Dubai)', 'Waiting', 'Creator', 'Decision']);
     expect(
       within(table)
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['Nadia Freelance', 'In-house team', '19 Nov 2026', 'nadia@example.com', 'Approve']);
+    ).toEqual(['Nadia Freelance', 'In-house team', '19 Nov 2026', '1 day', 'nadia@example.com', 'Approve']);
   });
 });
 

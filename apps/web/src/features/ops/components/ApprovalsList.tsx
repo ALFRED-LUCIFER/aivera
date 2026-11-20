@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from '@aivera/ui';
 import type { ReactNode } from 'react';
 import type { PendingRow } from '../domain/workspaces.ts';
 
-type Row = PendingRow & { decide: ReactNode };
+type Row = PendingRow & { waitingDays: number; decide: ReactNode };
 type ColumnId = keyof Messages['ops']['approvals']['columns'];
 
 // Module-level cell renderers (stable across renders); the component adds the translated headers.
@@ -14,12 +14,14 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: ColumnId })[] = [
   { id: 'workspace', cell: (row) => row.name },
   { id: 'type', cell: (row) => <TypeCell row={row} /> },
   { id: 'created', cell: (row) => <CreatedCell row={row} /> },
+  { id: 'waiting', numeric: true, cell: (row) => <WaitingCell row={row} /> },
   { id: 'creator', cell: (row) => <CreatorCell row={row} /> },
   { id: 'decision', cell: (row) => <div className="flex flex-wrap gap-2">{row.decide}</div> },
 ];
 
 /**
- * Workspaces waiting for approval, oldest first (AIV-P2-039): name, type, created date, the creator's email so the
+ * Workspaces waiting for approval, oldest first (AIV-P2-039): name, type, created date, how long it has waited, the
+ * creator's email so the
  * operator can contact them, and the Approve and Reject cards (`decide`) for each. `failed` shows the load error.
  */
 export function ApprovalsList({ rows, failed }: { rows: Row[]; failed?: { onRetry: () => void } }) {
@@ -51,4 +53,9 @@ function CreatedCell({ row }: { row: Row }) {
 function CreatorCell({ row }: { row: Row }) {
   const t = useTranslations('ops.approvals');
   return row.creatorEmail ?? t('noCreator');
+}
+
+function WaitingCell({ row }: { row: Row }) {
+  const t = useTranslations('ops.approvals');
+  return <span className="tabular-nums">{t('waitingDays', { count: row.waitingDays })}</span>;
 }

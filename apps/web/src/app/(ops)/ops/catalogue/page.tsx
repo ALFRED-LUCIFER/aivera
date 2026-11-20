@@ -17,7 +17,7 @@ export default async function CataloguePage() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
-      <PageHeader title={t('ops.catalogue.title')} />
+      <PageHeader title={t('ops.catalogue.title')} description={t('ops.catalogue.description')} />
       <Catalogue view={catalogueView()} />
     </>
   );

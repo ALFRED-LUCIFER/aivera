@@ -132,7 +132,6 @@ describe('Scenario: Opening a workspace', () => {
       <WorkspaceDetail
         workspace={row('Gulf Talent Partners', { type: 'agency', activeMembers: 4, jobs: 2 })}
         history={[]}
-        statusChange={null}
       />,
     );
     const facts = Object.fromEntries(

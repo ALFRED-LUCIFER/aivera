@@ -100,25 +100,26 @@ test('Scenario: Opening a workspace, by keyboard', async ({ page }) => {
   await expect(page).toHaveURL(ID);
   await expect(page.getByRole('heading', { level: 1, name: 'Gulf Talent Partners' })).toBeVisible();
   const facts = page.getByRole('definition');
+  // The AI token use card is the main column; the platform facts sit beside it.
   await expect(page.getByRole('term')).toHaveText([
+    'AI tokens today',
+    'Daily AI budget',
     'Type',
     'Created (Asia/Dubai)',
     'Members',
     'Jobs',
     'Status',
     'Plan',
-    'AI tokens today',
-    'Daily AI budget',
   ]);
   await expect(facts).toHaveText([
+    '0 of 2,000,000Observed',
+    '2,000,000 (platform default)',
     'Agency',
     /\d{4}$/,
     '4',
     '2',
     'Active',
     'No plan yet',
-    '0 of 2,000,000Observed',
-    '2,000,000 (platform default)',
   ]);
   await expect(page.getByText('No operator actions yet.')).toBeVisible();
   // The "ops.workspace_viewed" entry is written by the page on the server ([id]/page.test.tsx) into the insert-only

@@ -107,12 +107,12 @@ function NameCell({ row }: { row: WorkspaceRow }) {
 
 function TypeCell({ row }: { row: WorkspaceRow }) {
   const t = useTranslations('ops.workspaces.type');
-  return <>{t(row.type)}</>;
+  return <span className="whitespace-nowrap">{t(row.type)}</span>;
 }
 
 function CreatedCell({ row }: { row: WorkspaceRow }) {
   const t = useTranslations('ops.workspaces');
-  return <>{t('createdOn', { value: row.createdAt })}</>;
+  return <span className="whitespace-nowrap">{t('createdOn', { value: row.createdAt })}</span>;
 }
 
 function Count({ value }: { value: number }) {
@@ -135,5 +135,5 @@ function AiTodayCell({ row }: { row: WorkspaceRow }) {
 
 function NoPlan() {
   const t = useTranslations('ops.workspaces');
-  return <span className="text-text-2">{t('noPlan')}</span>;
+  return <span className="whitespace-nowrap text-text-2">{t('noPlan')}</span>;
 }
