@@ -11,7 +11,11 @@ export function intakeStore(tx: Tx): IntakeStore {
   return {
     async insertOrGetApplication(values) {
       // ON CONFLICT waits for a concurrent insert of the same person and job, so two arrivals at once share one row.
-      const [inserted] = await tx.insert(application).values(values).onConflictDoNothing().returning();
+      const [inserted] = await tx
+        .insert(application)
+        .values(values)
+        .onConflictDoNothing({ target: [application.workspaceId, application.personId, application.jobId] })
+        .returning();
       if (inserted) return inserted;
       const [existing] = await tx
         .select()

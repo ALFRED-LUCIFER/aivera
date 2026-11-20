@@ -63,6 +63,8 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   // shortcut: the demo is AP's active workspace, so two seeds started at once can create two; find it by the synthetic
   // flag under a lock if concurrent seeding ever matters.
   let workspaceId = await workspaces.activeWorkspace(recruiter);
+  // shortcut: the reset purges people and jobs but not intake.* (the demo seeds no applications yet); the first seed
+  // that adds applications must purge them here first, as there are no foreign keys across modules to stop orphans.
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
       await candidates.purgeSyntheticPeople(ctx);

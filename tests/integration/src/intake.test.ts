@@ -197,14 +197,22 @@ describe('Scenario: Intake triggers ingestion through the outbox', () => {
 
   it('a rolled-back arrival writes neither the application nor the event', async () => {
     const jobId = await newJob(w1, 'Platform Engineer');
-    const before = [await count('intake.application'), await count('intake.outbox')];
+    const before = [
+      await count('intake.application'),
+      await count('intake.application_source'),
+      await count('intake.outbox'),
+    ];
     await expect(
       as(ALEX, w1, async (ctx) => {
         await intake.receiveApplication(ctx, arrival(jobId, 'Mark Reyes', 4, 'whatsapp'));
         throw new Error('rolled back');
       }),
     ).rejects.toThrow('rolled back');
-    expect([await count('intake.application'), await count('intake.outbox')]).toEqual(before);
+    expect([
+      await count('intake.application'),
+      await count('intake.application_source'),
+      await count('intake.outbox'),
+    ]).toEqual(before);
   });
 });
 
@@ -212,7 +220,13 @@ describe('Scenario: Applications to an unknown or other-workspace job are refuse
   // SAFETY: mutation check: removed the jobExists check from receiveApplication -> this test failed (no IntakeError, rows written)
   it('a job from W2 named inside W1 fails with "Job not found" and nothing is written', async () => {
     const w2Job = await newJob(w2, 'Gulf job');
-    const before = [await count('candidates.person'), await count('intake.application'), await count('intake.outbox')];
+    const before = [
+      await count('candidates.person'),
+      await count('candidates.outbox'),
+      await count('intake.application'),
+      await count('intake.application_source'),
+      await count('intake.outbox'),
+    ];
     const refused = as(ALEX, w1, (ctx) =>
       intake.receiveApplication(ctx, arrival(w2Job, 'Fatima Al Hammadi', 5, 'email')),
     );
@@ -223,9 +237,13 @@ describe('Scenario: Applications to an unknown or other-workspace job are refuse
         intake.receiveApplication(ctx, arrival(crypto.randomUUID(), 'Fatima Al Hammadi', 5, 'email')),
       ),
     ).rejects.toThrow('Job not found');
-    expect([await count('candidates.person'), await count('intake.application'), await count('intake.outbox')]).toEqual(
-      before,
-    );
+    expect([
+      await count('candidates.person'),
+      await count('candidates.outbox'),
+      await count('intake.application'),
+      await count('intake.application_source'),
+      await count('intake.outbox'),
+    ]).toEqual(before);
   });
 });
 

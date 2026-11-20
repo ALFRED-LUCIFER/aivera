@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { ReceiveApplicationInput, ReceiveApplicationResult } from '../application/applications.ts';
 
 export { IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
-export type { Application, ApplicationSource, IntakeErrorCode, Source, Stage } from '../domain/application.ts';
+export type { Source, Stage } from '../domain/application.ts';
 export type { ReceiveApplicationInput, ReceiveApplicationResult } from '../application/applications.ts';
 
 /**

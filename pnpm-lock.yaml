@@ -47,6 +47,9 @@ importers:
       '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@credalent/intake':
+        specifier: workspace:*
+        version: link:../../modules/intake
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
