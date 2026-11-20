@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
+import { WorkspaceTags } from '@/features/ops/components/WorkspaceBadges.tsx';
 import { WorkspaceDetail } from '@/features/ops/components/WorkspaceDetail.tsx';
 import { nextChange } from '@/features/ops/domain/workspaces.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
@@ -44,14 +45,12 @@ export default async function WorkspacePage({ params }: PageProps<'/ops/workspac
           </nav>
         }
         title={workspace.name}
-      />
-      <WorkspaceDetail
-        workspace={workspace}
-        history={history}
-        statusChange={
+        description={<WorkspaceTags workspace={workspace} />}
+        actions={
           change && <StatusChangeClient workspace={{ id: workspace.id, name: workspace.name }} change={change} />
         }
-      >
+      />
+      <WorkspaceDetail workspace={workspace} history={history}>
         <AiBudgetClient workspaceId={workspace.id} ai={workspace.ai} />
       </WorkspaceDetail>
     </>

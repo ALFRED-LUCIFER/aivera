@@ -4,31 +4,25 @@ import { useTimeZone, useTranslations } from '@aivera/i18n/react';
 import { Card } from '@aivera/ui';
 import type { ReactNode } from 'react';
 import type { OperatorActionRow, WorkspaceRow } from '../domain/workspaces.ts';
-import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
+import { WorkspaceStatus } from './WorkspaceBadges.tsx';
 
 /**
- * One workspace's platform facts, the operator actions taken on it with their reasons, and the status change
- * (`statusChange`, AIV-P2-037). Never a member or candidate. `children` goes between the facts and the actions: the AI
- * token use card (AIV-P2-038).
+ * One workspace's page body (AIV-P2-036, laid out in the console design pass): the AI token use card (`children`,
+ * AIV-P2-038) as the main column, and beside it the platform facts and the operator actions taken on it with their
+ * reasons, newest first, as a timeline. The status change (`statusChange`, AIV-P2-037) sits in the page header. Never a
+ * member or candidate.
  */
 export function WorkspaceDetail({
   workspace,
   history,
-  statusChange,
   children,
 }: {
   workspace: WorkspaceRow;
   history: OperatorActionRow[];
-  statusChange: ReactNode;
   children?: ReactNode;
 }) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();
-  const when = (entry: OperatorActionRow) => ({
-    action: t(`detail.actionNames.${entry.action}`),
-    date: entry.occurredAt,
-    timeZone,
-  });
   const facts: [string, ReactNode][] = [
     [t('columns.type'), t(`type.${workspace.type}`)],
     [t('columns.created', { timeZone }), t('createdOn', { value: workspace.createdAt })],
@@ -39,41 +33,46 @@ export function WorkspaceDetail({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      {workspace.synthetic && (
-        <div>
-          <SyntheticBadge />
-        </div>
-      )}
-      <Card title={t('detail.facts')} level={2}>
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[max-content_1fr]">
-          {facts.map(([term, value]) => (
-            <div key={term} className="contents">
-              <dt className="text-meta font-semibold text-text-2">{term}</dt>
-              <dd className="text-body text-text">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-      {children}
-      <Card title={t('detail.actions')} level={2}>
-        <div className="flex flex-col gap-4">
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="flex min-w-0 flex-col gap-4">{children}</div>
+      <aside className="flex flex-col gap-4">
+        <Card title={t('detail.facts')} level={2}>
+          <dl className="flex flex-col divide-y divide-border">
+            {facts.map(([term, value]) => (
+              <div key={term} className="flex min-h-10 items-center justify-between gap-4 py-2">
+                <dt className="text-meta text-text-2">{term}</dt>
+                <dd className="text-end text-body font-medium text-text tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+        <Card title={t('detail.actions')} level={2}>
           {history.length === 0 ? (
             <p className="text-body text-text-2">{t('detail.noActions')}</p>
           ) : (
-            <ol className="flex flex-col gap-2 text-body text-text">
-              {history.map((entry) => (
-                <li key={`${entry.action} ${entry.occurredAt.toISOString()}`}>
-                  {entry.reason
-                    ? t('detail.history', { ...when(entry), reason: entry.reason })
-                    : t('detail.historyNoReason', when(entry))}
-                </li>
-              ))}
+            <ol className="flex flex-col">
+              {history.map((entry) => {
+                const when = { action: t(`detail.actionNames.${entry.action}`), date: entry.occurredAt, timeZone };
+                return (
+                  <li
+                    key={`${entry.action} ${entry.occurredAt.toISOString()}`}
+                    className="relative border-s border-border-strong ps-4 pb-4 text-body text-text last:border-transparent last:pb-0"
+                  >
+                    {/* The dot sits on the rule's centre line: half its size (size-2.25) plus the 1px rule. */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -start-[5px] top-1.5 size-2.25 rounded-full border-2 border-surface bg-text"
+                    />
+                    {entry.reason
+                      ? t('detail.history', { ...when, reason: entry.reason })
+                      : t('detail.historyNoReason', when)}
+                  </li>
+                );
+              })}
             </ol>
           )}
-          {statusChange}
-        </div>
-      </Card>
+        </Card>
+      </aside>
     </div>
   );
 }

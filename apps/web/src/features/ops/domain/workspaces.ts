@@ -84,6 +84,10 @@ export const canConfirmChange = (change: StatusChange, reason: string) =>
 /** A workspace waiting for approval, as the approvals page lists it (AIV-P2-039): the creator's email, never a member. */
 export type PendingRow = Pick<WorkspaceSummary, 'id' | 'name' | 'type' | 'createdAt'> & { creatorEmail: string | null };
 
+/** Whole days a workspace has waited for a decision, from its creation to `now` (never negative). */
+export const daysWaiting = (createdAt: Date, now: Date) =>
+  Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / 86_400_000));
+
 /** Turning the approval switch on or off, with the operator's reason (AIV-P2-039). */
 export const approvalModeSchema = z.object({
   required: z.boolean(),

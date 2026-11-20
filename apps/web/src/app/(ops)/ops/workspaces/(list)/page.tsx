@@ -18,7 +18,7 @@ export default async function WorkspacesPage() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
-      <PageHeader title={t('ops.workspaces.title')} />
+      <PageHeader title={t('ops.workspaces.title')} description={t('ops.workspaces.description')} />
       <WorkspacesClient initial={await searchWorkspaces({ query: '', page: 1 })} />
     </>
   );

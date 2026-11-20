@@ -21,7 +21,11 @@ const cells: (Omit<DataTableColumn<WorkspaceRow>, 'header'> & { id: ColumnId })[
   { id: 'plan', cell: () => <NoPlan /> },
 ];
 
-/** Every workspace's platform facts, newest first, 50 per page (AIV-P2-036). Never a member or candidate. */
+/**
+ * Every workspace's platform facts, newest first, 50 per page (AIV-P2-036). Never a member or candidate.
+ * Deviation from the console spec (AIV-P2-041): each row keeps its own "Observed" marker rather than one in the column
+ * header, because DESIGN.md gives every metric its marker and the shared table header takes text only.
+ */
 export function WorkspacesList({ search, table }: WorkspacesListView) {
   const t = useTranslations('ops.workspaces');
   const timeZone = useTimeZone();
@@ -107,12 +111,12 @@ function NameCell({ row }: { row: WorkspaceRow }) {
 
 function TypeCell({ row }: { row: WorkspaceRow }) {
   const t = useTranslations('ops.workspaces.type');
-  return <>{t(row.type)}</>;
+  return <span className="whitespace-nowrap">{t(row.type)}</span>;
 }
 
 function CreatedCell({ row }: { row: WorkspaceRow }) {
   const t = useTranslations('ops.workspaces');
-  return <>{t('createdOn', { value: row.createdAt })}</>;
+  return <span className="whitespace-nowrap">{t('createdOn', { value: row.createdAt })}</span>;
 }
 
 function Count({ value }: { value: number }) {
@@ -135,5 +139,5 @@ function AiTodayCell({ row }: { row: WorkspaceRow }) {
 
 function NoPlan() {
   const t = useTranslations('ops.workspaces');
-  return <span className="text-text-2">{t('noPlan')}</span>;
+  return <span className="whitespace-nowrap text-text-2">{t('noPlan')}</span>;
 }

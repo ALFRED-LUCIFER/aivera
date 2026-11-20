@@ -14,8 +14,7 @@ export default async function OpsHomePage() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
-      <PageHeader title={t('ops.title')} />
-      <p className="text-body text-text-2">{t('ops.signedIn')}</p>
+      <PageHeader title={t('ops.title')} description={t('ops.signedIn')} />
     </>
   );
 }

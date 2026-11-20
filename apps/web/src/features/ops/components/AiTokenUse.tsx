@@ -26,11 +26,12 @@ export function AiTokenUse({ ai, children }: { ai: WorkspaceRow['ai']; children?
       <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[max-content_1fr]">
         <div className="contents">
           <dt className="text-meta font-semibold text-text-2">{t('today')}</dt>
-          <dd className="flex flex-wrap items-center gap-2 text-body text-text">
+          <dd className="flex flex-wrap items-center gap-2 text-body text-text tabular-nums">
             {ai ? (
               <>
                 {t('todayValue', { used: ai.days[0]?.tokens ?? 0, budget: ai.dailyBudget })}
                 {observed}
+                <UsageBar used={ai.days[0]?.tokens ?? 0} budget={ai.dailyBudget} />
               </>
             ) : (
               <>
@@ -61,5 +62,21 @@ export function AiTokenUse({ ai, children }: { ai: WorkspaceRow['ai']; children?
       )}
       {children}
     </Card>
+  );
+}
+
+/**
+ * Today's share of the daily budget as a neutral ink bar (the text beside it carries the value, so it is hidden from
+ * assistive tech). Ink, not a status colour: being near the budget is a fact, not a fault.
+ */
+function UsageBar({ used, budget }: { used: number; budget: number }) {
+  const share = budget > 0 ? Math.min(1, used / budget) : 0;
+  return (
+    <span aria-hidden="true" className="block h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-surface-subtle">
+      <span
+        className="block h-full rounded-full bg-text"
+        style={{ width: `${Math.max(share * 100, used > 0 ? 1 : 0)}%` }}
+      />
+    </span>
   );
 }

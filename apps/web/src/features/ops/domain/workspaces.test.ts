@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageCount, toDirectorySearch, workspaceSearchSchema } from './workspaces.ts';
+import { daysWaiting, pageCount, toDirectorySearch, workspaceSearchSchema } from './workspaces.ts';
 
 // AIV-P2-036: the list request's schema and paging.
 describe('workspaceSearchSchema', () => {
@@ -32,4 +32,14 @@ describe('paging: 50 per page', () => {
   ])('%i workspaces make %i pages', (total, pages) => {
     expect(pageCount(total)).toBe(pages);
   });
+});
+
+describe('daysWaiting', () => {
+  const created = new Date('2026-11-18T10:00:00Z');
+  it.each([
+    ['2026-11-18T09:00:00Z', 0], // clock behind creation: never negative
+    ['2026-11-19T09:59:59Z', 0],
+    ['2026-11-19T10:00:00Z', 1],
+    ['2026-11-25T11:00:00Z', 7],
+  ])('%s -> %i', (now, days) => expect(daysWaiting(created, new Date(now))).toBe(days));
 });
