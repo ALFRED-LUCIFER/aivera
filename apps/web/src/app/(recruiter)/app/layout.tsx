@@ -11,6 +11,7 @@ import { signOut } from '@/features/sign-in/services/signOut.ts';
 import { offeredJobTypes } from '@credalent/jobs';
 import { CATCH_ALL_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
 import { getSessionUserId } from '@/server/auth';
+import { isPlatformOperator } from '@/server/operator';
 import { getCatalogue } from '@/server/jobs';
 import { enabledFlags } from '@/server/flags';
 import { CreateWorkspace } from './CreateWorkspace.tsx';
@@ -24,10 +25,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RecruiterLayout({ children }: { children: ReactNode }) {
   // The server-side session check behind the proxy's redirect (AIV-P0-009), then the workspace context (AIV-P0-010):
-  // a removed member gets the 403 page, a signed-in user with no workspace yet gets the message below.
-  if (!(await getSessionUserId())) redirect('/sign-in');
+  // a removed member gets the 403 page, a signed-in user with no workspace yet gets the message below (a platform
+  // operator goes to the console instead, AIV-P2-058).
+  const userId = await getSessionUserId();
+  if (!userId) redirect('/sign-in');
   const member = await currentMember();
   if (!member) {
+    // A platform operator who belongs to no workspace runs Credalent, not a team: the console, not "create one".
+    if (await isPlatformOperator(userId)) redirect('/ops');
     const [t, catalogue] = await Promise.all([
       getTranslations(defaultLocale, defaultTimeZone),
       getCatalogue().getPublishedCatalogue(),
