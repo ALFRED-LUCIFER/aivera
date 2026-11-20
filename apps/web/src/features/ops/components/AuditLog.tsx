@@ -30,8 +30,8 @@ const field = 'flex min-w-44 flex-col gap-1.5';
  * The platform audit log (AIV-P2-054, ADR-012 point 8): who did what, to which record and why, newest first, 50 a page.
  * Filters are a GET form, so the URL holds only an action key, opaque ids and UTC days (AGENTS.md 1.2). Operators show by
  * display name; never an email and never candidate data.
- * Deviation from the console spec: no previous-page button, because the log pages by the last entry (keyset); the
- * browser's back button returns to the previous page.
+ * Deviations from the console spec: no previous-page button and no "Page 1 of 3", because the log pages by the last
+ * entry (keyset) and has no page count; the browser's back button returns to the previous page.
  */
 export function AuditLog({ filters, table }: AuditLogView) {
   const t = useTranslations('ops.audit');
@@ -79,8 +79,15 @@ export function AuditLog({ filters, table }: AuditLogView) {
                 maxLength={36}
                 spellCheck={false}
                 autoComplete="off"
+                // The browser submits an opaque id only, so typed text never reaches the URL.
+                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                title={t('targetHint')}
+                aria-describedby="ops-audit-target-hint"
                 defaultValue={filters.params.target ?? ''}
               />
+              <p id="ops-audit-target-hint" className="text-meta text-text-2">
+                {t('targetHint')}
+              </p>
             </div>
             <div className={field}>
               <Label htmlFor="ops-audit-from">{t('from')}</Label>

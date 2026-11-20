@@ -34,6 +34,8 @@ export default async function AuditPage({ searchParams }: PageProps<'/ops/audit'
           status: 'ready',
           rows,
           filtered: Object.values(params).some(Boolean),
+          // shortcut: a log of exactly 50, 100… entries offers "Next page" to an empty last page (keyset paging has no
+          // count); add a look-ahead row to the read when operators find it confusing.
           nextHref: nextCursor && auditHref({ ...params, cursor: nextCursor }),
         }}
       />

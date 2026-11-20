@@ -72,7 +72,7 @@ describe('Scenario: The log lists entries newest first', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Time', 'Operator', 'Action', 'Target', 'Reason', 'Before → after']);
+    ).toEqual(['Time (UTC)', 'Operator', 'Action', 'Target', 'Reason', 'Before → after']);
     expect(cellsOf(1)).toEqual([
       '2026-11-19 08:05 (UTC)',
       'Name not set',
@@ -124,6 +124,10 @@ describe('Scenario Outline: Filters narrow the list', () => {
       'from',
       'to',
     ]);
+    // Only an opaque id is submitted from "Target id": the browser refuses typed names or emails.
+    const target = new RegExp(`^(?:${screen.getByLabelText('Target id').getAttribute('pattern')})$`, 'v');
+    expect(target.test(GULF)).toBe(true);
+    expect(target.test('pia.platform@example.com')).toBe(false);
     expect(screen.getByLabelText('From (UTC)').getAttribute('type')).toBe('date');
     expect(screen.getByRole('link', { name: 'Clear filters' }).getAttribute('href')).toBe('/ops/audit');
   });

@@ -9,7 +9,6 @@ import { approveAsOperator, signUpWorkspace } from './workspaces.ts';
 // "Catalogue published" is not a platform action yet (the catalogue publish ticket adds it with its name and version).
 
 const THEO = 'theo.platform@example.com';
-const today = () => new Date().toISOString().slice(0, 10);
 
 /** A new workspace that Pia approved, and its opaque id as Theo finds it on /ops/workspaces (no visit recorded). */
 async function approvedWorkspace(browser: Browser, page: Page, baseURL: string, stamp: string) {
@@ -46,6 +45,8 @@ for (const theme of themes) {
   }) => {
     const base = baseURL ?? '';
     const workspace = await approvedWorkspace(browser, page, base, `${theme}-${Date.now()}`);
+    // Read once: a run that crosses UTC midnight still filters the day its entries were written.
+    const today = new Date().toISOString().slice(0, 10);
     await context.addCookies([{ name: 'theme', value: theme, url: base }]);
     const urls: string[] = [];
     page.on('request', (request) => urls.push(decodeURIComponent(request.url())));
@@ -98,10 +99,10 @@ for (const theme of themes) {
 
     // From and to as UTC days.
     await page.getByLabel('Operator').selectOption({ label: 'Any operator' });
-    await page.getByLabel('From (UTC)').fill(today());
-    await page.getByLabel('To (UTC)').fill(today());
+    await page.getByLabel('From (UTC)').fill(today);
+    await page.getByLabel('To (UTC)').fill(today);
     await apply(page);
-    await expect(page).toHaveURL(`/ops/audit?target=${workspace.id}&from=${today()}&to=${today()}`);
+    await expect(page).toHaveURL(`/ops/audit?target=${workspace.id}&from=${today}&to=${today}`);
     await expect(rows(page)).toHaveCount(2);
 
     // An action alone: the URL carries only its key.
