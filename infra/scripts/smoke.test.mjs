@@ -7,7 +7,10 @@ import { smoke } from './smoke.mjs';
 async function serve(handler) {
   const server = createServer(handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  return { base: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  return {
+    base: `http://127.0.0.1:${server.address().port}`,
+    close: () => (server.closeAllConnections(), server.close()),
+  };
 }
 
 test('retries until the new commit is live and ready', async () => {
@@ -33,6 +36,30 @@ test('fails when the commit never becomes ready', async () => {
   });
   try {
     assert.equal(await smoke({ base: app.base, commit: 'new', timeoutMs: 50, intervalMs: 5, log: () => {} }), false);
+  } finally {
+    app.close();
+  }
+});
+
+// SAFETY: mutation check: removed the per-request AbortSignal.timeout -> this test failed (hung past the test timeout)
+test('a hanging request times out and the loop retries', { timeout: 5_000 }, async () => {
+  let calls = 0;
+  const app = await serve((req, res) => {
+    if (req.url === '/api/health') calls += 1;
+    if (calls === 1) return; // the first health request never answers, as on a cold start
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ commit: 'new' }));
+  });
+  try {
+    const live = await smoke({
+      base: app.base,
+      commit: 'new',
+      timeoutMs: 2_000,
+      intervalMs: 5,
+      requestMs: 100,
+      log: () => {},
+    });
+    assert.equal(live, true);
   } finally {
     app.close();
   }

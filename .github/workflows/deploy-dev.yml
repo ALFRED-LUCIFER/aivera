@@ -1,12 +1,11 @@
 name: deploy-dev
-# AIV-P0-006: every push to main (and a manual run from main) builds the images to ghcr.io, migrates, deploys the web
-# app to Azure dev and smoke-tests its public URL; a failed or cancelled smoke test rolls the web app back. OIDC only:
+# AIV-P0-006: a manual run from main (Actions > deploy-dev > Run workflow, or `gh workflow run deploy-dev --ref main`)
+# builds the images to ghcr.io, migrates, deploys the web app to Azure dev and smoke-tests its public URL; a failed or cancelled smoke test rolls the web app back. OIDC only:
 # no Azure secret in GitHub. Every action is pinned to a commit SHA because this workflow can mint Azure tokens.
 # The deploy job waits for the owner to set repository variables AZURE_CLIENT_ID (id-aivera-cicd-dev), AZURE_TENANT_ID
 # and AZURE_SUBSCRIPTION_ID after the first Bicep apply (infra/README.md); until then only the images are built.
+# Manual only (owner, 20 Nov 2026): main merges many small PRs a day, so dev is deployed when the owner chooses.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

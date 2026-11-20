@@ -4,12 +4,20 @@
 import { pathToFileURL } from 'node:url';
 
 /** Polls until the commit is live and ready, or the time runs out. */
-export async function smoke({ base, commit, timeoutMs = 4 * 60_000, intervalMs = 10_000, log = console.error }) {
+export async function smoke({
+  base,
+  commit,
+  timeoutMs = 4 * 60_000,
+  intervalMs = 10_000,
+  requestMs = 90_000,
+  log = console.error,
+}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const health = await (await fetch(`${base}/api/health`)).json();
-      const ready = await fetch(`${base}/api/ready`);
+      // A cold start can hold one request until ingress gives up (~4 min); cap each (above a ~54 s cold start) so the loop keeps retrying.
+      const health = await (await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(requestMs) })).json();
+      const ready = await fetch(`${base}/api/ready`, { signal: AbortSignal.timeout(requestMs) });
       log(`health commit=${health.commit} ready=${ready.status}`);
       if (health.commit === commit && ready.status === 200) return true;
     } catch (error) {
