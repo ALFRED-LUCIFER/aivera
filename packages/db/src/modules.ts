@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 export type MigratableModule = {
-  /** The module's PostgreSQL schema; its folder under modules/ is the same name with `-` for `_`. */
+  /** The PostgreSQL schema; a module's folder under modules/ is the same name with `-` for `_` (search: packages/ai). */
   name: string;
   /** Absolute path of the module root (holds drizzle.config.ts). */
   dir: string;

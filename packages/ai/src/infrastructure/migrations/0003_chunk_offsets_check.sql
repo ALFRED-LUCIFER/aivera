@@ -1,0 +1,1 @@
+ALTER TABLE "search"."chunk" ADD CONSTRAINT "chunk_offsets_check" CHECK ("search"."chunk"."chunk_index" >= 0 and "search"."chunk"."start_offset" >= 0 and "search"."chunk"."end_offset" > "search"."chunk"."start_offset");

@@ -1,5 +1,6 @@
 import { tenantPolicy } from '@credalent/db/tenant-policy';
-import { halfvec, index, integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { check, halfvec, index, integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
 export const search = pgSchema('search');
 
@@ -25,6 +26,10 @@ export const chunk = search
     },
     (t) => [
       unique('chunk_owner_index').on(t.workspaceId, t.ownerModule, t.ownerId, t.chunkIndex),
+      check(
+        'chunk_offsets_check',
+        sql`${t.chunkIndex} >= 0 and ${t.startOffset} >= 0 and ${t.endOffset} > ${t.startOffset}`,
+      ),
       index('chunk_embedding_idx').using('hnsw', t.embedding.op('halfvec_cosine_ops')),
       tenantPolicy('chunk_tenant_isolation', t.workspaceId),
     ],

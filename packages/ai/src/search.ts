@@ -75,6 +75,8 @@ export function createSearchIndex({ db, ai, now }: { db: Db; ai: AiClient; now: 
           createdAt: now(),
         });
       }
+      // Two concurrent indexings of one owner: the later insert hits chunk_owner_index and throws, so its caller
+      // (a queue handler) retries it after the first commits.
       await withWorkspace(db, workspaceId, async (tx) => {
         await tx.delete(chunk).where(ofOwner(workspaceId, ownerModule, ownerId));
         if (rows.length) await tx.insert(chunk).values(rows);
@@ -90,8 +92,10 @@ export function createSearchIndex({ db, ai, now }: { db: Db; ai: AiClient; now: 
       const embedding = await embed(workspaceId, query);
       return withWorkspace(db, workspaceId, async (tx) => {
         // The HNSW scan finds neighbours across every workspace before RLS filters them; iterating keeps it going
-        // until `limit` rows of this workspace are found (pgvector 0.8).
-        await tx.execute(sql`select set_config('hnsw.iterative_scan', 'relaxed_order', true)`);
+        // until `limit` rows of this workspace are found, still nearest first (pgvector 0.8).
+        // shortcut: no test reaches the HNSW path (a few rows plan a sequential scan); add one with enable_seqscan off
+        // when search ranks real volumes (AIV-P1-049).
+        await tx.execute(sql`select set_config('hnsw.iterative_scan', 'strict_order', true)`);
         return tx
           .select({
             ownerModule: chunk.ownerModule,

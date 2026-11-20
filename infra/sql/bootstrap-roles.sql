@@ -1,5 +1,5 @@
 -- One-off, owner only (AIV-P0-004, ADR-008): Credalent's database roles on the shared Medvya dev server.
--- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database, from inside
+-- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database (then to "aivera" for pgvector, at the end), from inside
 -- the VNet, with psql variables app_oid, cicd_oid and relay_oid. The Azure counterpart of packages/db/sql/roles.sql: the roles
 -- map to managed identities (password sign-in is off on this server), so no password exists. Safe to rerun.
 -- aivera_migrator (id-aivera-cicd-dev) owns Credalent's schemas and runs migrations.

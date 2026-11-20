@@ -86,6 +86,12 @@ beforeAll(async () => {
     workspaces.createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId });
   w1 = (await create('Demo hiring team', ALEX)).id;
   w2 = (await create('Gulf Talent Partners', OMAR)).id;
+  // W1's evidence, which every scenario starts from.
+  const search = indexWith(conceptProvider().provider);
+  await search.indexDocument(w1, 'evidence', LAYLA_OCR, LAYLA_TEXT);
+  await search.indexDocument(w1, 'evidence', SARA_HARNESS, 'Eval harness, 412 of 460 commits');
+  await search.indexDocument(w1, 'evidence', ARJUN_K8S, 'Kubernetes cluster upgrades');
+  await search.indexDocument(w1, 'evidence', MAYA_LEDGER, 'Payments ledger reconciliation');
 }, 120_000);
 
 afterAll(async () => {
@@ -97,11 +103,6 @@ afterAll(async () => {
 describe('Scenario: Indexed evidence can be found by meaning', () => {
   it('finds Layla Haddad\'s Arabic OCR write-up in the top 3 for "Arabic evaluation work", with its offsets', async () => {
     const search = indexWith(conceptProvider().provider);
-    await search.indexDocument(w1, 'evidence', LAYLA_OCR, LAYLA_TEXT);
-    await search.indexDocument(w1, 'evidence', SARA_HARNESS, 'Eval harness, 412 of 460 commits');
-    await search.indexDocument(w1, 'evidence', ARJUN_K8S, 'Kubernetes cluster upgrades');
-    await search.indexDocument(w1, 'evidence', MAYA_LEDGER, 'Payments ledger reconciliation');
-
     const hits = await search.searchSimilar(w1, 'Arabic evaluation work', { limit: 3 });
     expect(hits).toHaveLength(3);
     expect(hits).toContainEqual({
@@ -162,13 +163,16 @@ describe('Scenario: Unchanged text is not re-embedded', () => {
 
 describe('Scenario: Deleting an owner removes its vectors', () => {
   it("removeOwner leaves no chunk for Sara Al Qahtani's evidence item and keeps the others", async () => {
-    const search = indexWith(conceptProvider().provider);
-    await search.removeOwner(w1, 'evidence', SARA_HARNESS);
-    const owners = await withWorkspace(app, w1, (tx) =>
-      tx.execute<{ owner: string }>(sql`select distinct owner_id::text as owner from search.chunk`),
-    );
-    expect([...owners].map((r) => r.owner)).not.toContain(SARA_HARNESS);
-    expect([...owners].map((r) => r.owner)).toContain(LAYLA_OCR);
+    const owners = async () =>
+      (
+        await withWorkspace(app, w1, (tx) =>
+          tx.execute<{ owner: string }>(sql`select distinct owner_id::text as owner from search.chunk`),
+        )
+      ).map((r) => r.owner);
+    expect(await owners()).toContain(SARA_HARNESS);
+    await indexWith(conceptProvider().provider).removeOwner(w1, 'evidence', SARA_HARNESS);
+    expect(await owners()).not.toContain(SARA_HARNESS);
+    expect(await owners()).toContain(LAYLA_OCR);
   });
 });
 

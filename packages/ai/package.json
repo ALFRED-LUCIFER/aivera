@@ -13,9 +13,9 @@
     "eval": "tsx evals/cli.ts"
   },
   "dependencies": {
+    "@ai-sdk/azure": "4.0.116",
     "@credalent/db": "workspace:*",
     "@credalent/observability": "workspace:*",
-    "@ai-sdk/azure": "4.0.116",
     "@azure/identity": "4.14.1",
     "ai": "7.0.162",
     "drizzle-orm": "0.45.4",
