@@ -72,9 +72,18 @@ const webEnvSchema = z
     // queued, so nothing that sends one (an invitation) can be done.
     NOTIFICATIONS_ENCRYPTION_KEY: z.string().min(1).optional(),
     AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
+    // Uploads (AIV-P0-016): the storage account's blob endpoint (infra/modules/storage.bicep); unset, no upload or
+    // download is offered. MALWARE_SCANNING defaults on and the pilot and production refuse to start without it.
+    // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
+    AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
+    MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
   })
   // Deployed environments must say which commit runs (health and the deploy smoke test rely on it).
   .refine((e) => e.APP_ENV === 'local' || e.COMMIT_SHA, { path: ['COMMIT_SHA'] })
+  // SAFETY: an upload is never marked clean without Defender's scan where real candidate files live.
+  .refine((e) => e.MALWARE_SCANNING === 'on' || e.APP_ENV === 'local' || e.APP_ENV === 'dev', {
+    path: ['MALWARE_SCANNING'],
+  })
   // Sign-in is all or nothing, and pilot and prod cannot run without it. Local and dev may run without it until the
   // tenant exists: then no session can be made, so every recruiter page redirects to /sign-in (fails closed).
   .superRefine((e, ctx) => {

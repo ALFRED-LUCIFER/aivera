@@ -14,8 +14,9 @@ import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
+import { createFiles, type BlobStore } from '@credalent/files/composition';
 import { createNotifications } from '@credalent/notifications/composition';
-import { createDb, DbQueryError, withWorkspace, type Db, type Tx } from '@credalent/db';
+import { createDb, DbQueryError, withCandidateAccount, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -78,6 +79,13 @@ const isDeliveryReportPolicy = (p: {
     (p.name === 'message_delivery_report_mark' && p.cmd === 'UPDATE')) &&
   p.roles.join() === 'aivera_app' &&
   p.qual === PROVIDER_ID_EXPR;
+
+/**
+ * Tables a candidate account may own instead of a workspace (ADR-009): a row's workspace_id is null exactly when its
+ * account column is set (a check constraint, tests/integration/src/files.test.ts). Their one extra permissive policy
+ * must be the account policy on that column, exactly as `candidateAccountPolicy` generates it.
+ */
+const ACCOUNT_OWNED: Record<string, string> = { 'files.file': 'candidate_account_id' };
 
 /** Tables whose tenant key is not `workspace_id`. */
 const TENANT_KEY: Record<string, string> = { 'workspaces.workspace': 'id' };
@@ -187,10 +195,17 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
       violations.push(`${t.name}: no policy comparing ${key} with current_setting('${setting}')`);
     // Permissive policies are OR-ed, so any looser one opens the table to other workspaces. Restrictive ones (the jobs
     // job_scope policies) are AND-ed and only narrow access, so they are allowed.
+    const accountOwner = ACCOUNT_OWNED[t.name];
+    const isAccountOwner = (p: Policy) =>
+      accountOwner !== undefined &&
+      p.qual === tenantExpr(accountOwner, 'app.candidate_account_id') &&
+      p.check === p.qual &&
+      p.cmd === 'ALL' &&
+      p.roles.join() === 'public';
     const isPublicRead = (p: Policy) =>
       PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
     for (const loose of permissive.filter(
-      (p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p) && !isDeliveryReportPolicy(p),
+      (p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p) && !isDeliveryReportPolicy(p) && !isAccountOwner(p),
     ))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with ${setting}`);
   }
@@ -204,6 +219,15 @@ const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
 const OMAR = '0190d4a2-0000-7000-8000-00000000a1e2'; // Omar Agency, W2's admin only
 const LINA = '0190d4a2-0000-7000-8000-0000000011aa';
 const NOW = new Date('2026-11-18T09:00:00.000Z');
+const ACCOUNT = '0190d4a2-0000-7000-8000-0000000ca0a1';
+const unused = () => Promise.reject(new Error('not used by the tenancy suite'));
+const stubBlobs: BlobStore = {
+  uploadUrl: async (path) => `https://storage.credalent.example/${path}?sig=test`,
+  read: unused,
+  write: unused,
+  delete: unused,
+  stream: unused,
+};
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;
@@ -400,6 +424,22 @@ async function seed(
     });
     await ctx.tx.execute(sql`insert into notifications.inbox (consumer, message_id, workspace_id, handled_at)
       values ('notifications.send', ${messageId}, ${workspaceId}, now())`);
+    // A pending upload (files.file, AIV-P0-016; the blob store is not reached past the SAS) and its settled event
+    // (files.outbox, written by the scan handler in production).
+    const { fileId } = await createFiles({
+      db: app,
+      workspaces,
+      blobs: stubBlobs,
+      malwareScanning: true,
+    }).requestUpload(ctx, {
+      purpose: 'evidence',
+      fileName: 'eval-set-sample.pdf',
+      contentType: 'application/pdf',
+      size: 2048,
+    });
+    await ctx.tx.execute(sql`insert into files.outbox (id, workspace_id, type, payload, dedupe_key, occurred_at,
+      next_attempt_at) values (gen_random_uuid(), ${workspaceId}, 'FileClean.v1', ${JSON.stringify({ fileId })}::jsonb,
+      ${`file:${fileId}`}, now(), now())`);
     return { workspaceId, personId, clientId: client.id, grantId: grant?.id ?? '', jobId: job.id, rubricId: rubric.id };
   });
 }
@@ -415,6 +455,12 @@ beforeAll(async () => {
   const modules = modulesOn(app);
   w1 = await seed(modules, 'Demo Hiring Co', ALEX, 'Sara Al Qahtani');
   w2 = await seed(modules, 'Gulf Talent Partners', OMAR, 'Arjun Menon');
+  // A candidate-site upload (no workspace): the leak check below fails if any workspace's scope can see it.
+  await withCandidateAccount(app, ACCOUNT, (tx) =>
+    tx.execute(sql`insert into files.file (id, candidate_account_id, purpose, content_type, size_bytes, status,
+      blob_path, uploaded_by, created_at) values (gen_random_uuid(), ${ACCOUNT}, 'cv', 'application/pdf', 10,
+      'pending', 'uploads-quarantine/c/x', ${ACCOUNT}, now())`),
+  );
 });
 
 afterAll(async () => {
@@ -430,6 +476,7 @@ describe('Scenario: Every tenant table has forced row-level security', () => {
   // SAFETY: mutation check: public_job_public_read loosened to USING (true) in jobs 0003 -> this test failed (named the policy)
   // SAFETY: mutation check: consent_owner_isolation replaced by USING (true) in candidate_accounts 0000 -> this test failed (named it)
   // SAFETY: mutation check: GRANT aivera_migrator TO aivera_app -> this test failed (owned by a role aivera_app belongs to)
+  // SAFETY: mutation check: dropped `&& !isAccountOwner(p)` from the loose-policy filter -> this test failed (named file_owner_isolation)
   it('every table with a workspace_id column has RLS enabled, forced, and the app.workspace_id policy', async () => {
     const tables = await listTables(admin);
     // The discovery really reaches the module schemas, so an empty catalogue cannot pass.
@@ -486,6 +533,20 @@ describe('Scenario: A new table without RLS fails the build', () => {
       await tx.execute(sql`create policy outbox_relay_read on candidates.outbox for select to public using (true)`);
       expect((await isolationViolations(tx)).filter((v) => v.startsWith('candidates.outbox:'))).toEqual([
         'candidates.outbox: permissive policy outbox_relay_read does not compare with app.workspace_id',
+      ]);
+      throw new Rollback();
+    });
+    await expect(probe).rejects.toBeInstanceOf(Rollback);
+  });
+
+  // SAFETY: mutation check: isAccountOwner without its expression check (any policy on an ACCOUNT_OWNED table) -> this test failed
+  it('the account-owner exception holds only for the exact account policy on files.file', async () => {
+    const probe = admin.transaction(async (tx) => {
+      await tx.execute(sql`drop policy file_owner_isolation on files.file`);
+      await tx.execute(sql`create policy file_owner_isolation on files.file
+        using (candidate_account_id is not null) with check (candidate_account_id is not null)`);
+      expect((await isolationViolations(tx)).filter((v) => v.startsWith('files.file:'))).toEqual([
+        'files.file: permissive policy file_owner_isolation does not compare with app.workspace_id',
       ]);
       throw new Rollback();
     });

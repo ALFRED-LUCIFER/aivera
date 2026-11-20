@@ -10,7 +10,13 @@ const malformed = () => parseWebEnv({ ...valid, DATABASE_URL: 'https://user:hunt
 
 describe('parseWebEnv', () => {
   it('returns typed configuration when every variable is valid', () => {
-    expect(parseWebEnv(valid)).toEqual({ ...valid, auth: null, candidateAuth: null, platformOperators: new Set() });
+    expect(parseWebEnv(valid)).toEqual({
+      ...valid,
+      MALWARE_SCANNING: 'on',
+      auth: null,
+      candidateAuth: null,
+      platformOperators: new Set(),
+    });
   });
 
   // SAFETY: mutation check: appended JSON.stringify(source) to the error -> both "without echoing" tests failed
@@ -27,6 +33,20 @@ describe('parseWebEnv', () => {
   it('requires COMMIT_SHA outside local and defaults it locally', () => {
     expect(() => parseWebEnv({ ...valid, COMMIT_SHA: undefined })).toThrow('missing or invalid: COMMIT_SHA');
     expect(parseWebEnv({ ...valid, APP_ENV: 'local', COMMIT_SHA: undefined }).COMMIT_SHA).toBe('local');
+  });
+});
+
+describe('parseWebEnv malware scanning (AIV-P0-016)', () => {
+  // SAFETY: mutation check: removed the MALWARE_SCANNING refine -> this test failed (pilot and prod started with it off)
+  it.each(['pilot', 'prod'])('%s refuses to start with MALWARE_SCANNING=off', (APP_ENV) => {
+    expect(() => parseWebEnv({ ...valid, APP_ENV, MALWARE_SCANNING: 'off' })).toThrow(
+      'missing or invalid: MALWARE_SCANNING',
+    );
+  });
+
+  it.each(['local', 'dev'])('%s may turn it off; unset, it is on', (APP_ENV) => {
+    expect(parseWebEnv({ ...valid, APP_ENV, MALWARE_SCANNING: 'off' }).MALWARE_SCANNING).toBe('off');
+    expect(parseWebEnv({ ...valid, APP_ENV }).MALWARE_SCANNING).toBe('on');
   });
 });
 
