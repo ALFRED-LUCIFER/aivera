@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-052 J1: the workspace settings screen. seed.ts: Alex is the admin of Demo Hiring Co (all defaults); Zaid is a
 // recruiter in Oasis Talent.
@@ -36,7 +36,7 @@ for (const theme of themes)
     await expect(shortlist(page)).toHaveValue('14');
     await expect(shortlist(page)).toHaveAccessibleDescription(/1 to 30 days/);
     await expect(page.getByRole('button', { name: /^Save settings$/ })).toHaveCount(1);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Keyboard: from the first field, Tab reaches the next field and, at the end, the one primary button.
     await shortlist(page).focus();
@@ -66,7 +66,7 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
   await page.reload();
   await expect(shortlist(page)).toHaveValue('7');
   await expect(page.getByText('Default: 14')).toBeVisible();
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
 
   // Restore a default.
   await page.getByRole('button', { name: 'Use default for Client shortlist link lasts' }).click();
@@ -83,5 +83,5 @@ test('Scenario: Other roles can read but not change', async ({ page }) => {
   await expect(shortlist(page)).toHaveValue('14');
   await expect(shortlist(page)).toHaveAttribute('readonly', '');
   await expect(save(page)).toHaveCount(0);
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
 });

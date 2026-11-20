@@ -10,6 +10,7 @@ import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from '../s
 import { fakeProvider } from '../src/providers.ts';
 import { detectDomainSchema } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
+import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import * as aiPackage from '../src/index.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
@@ -184,6 +185,47 @@ describe('the golden set', () => {
       runner(ai, goldenCase, 'eval-workspace'),
     );
     expect(report.passed).toBe(true);
+  });
+
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 20 source/competency pairs', () => {
+    const cases = golden.get('evidence.mapToCompetency') ?? [];
+    for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
+    const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
+    expect(pairs).toHaveLength(20);
+  });
+
+  it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {
+    const runner = runners['evidence.mapToCompetency'];
+    if (!runner) throw new Error('no runner for evidence.mapToCompetency');
+    for (const c of golden.get('evidence.mapToCompetency') ?? []) {
+      const ai = createAiClient({
+        provider: fakeProvider({ completion: JSON.stringify(c.recorded.output) }),
+        budget: memoryTokenBudget(),
+      });
+      const report = await run('evidence.mapToCompetency', [c], (_task, goldenCase) =>
+        runner(ai, goldenCase, 'eval-workspace'),
+      );
+      expect(report.passed, c.id).toBe(true);
+    }
+  });
+
+  it('AIV-P1-027: an excerpt not in the source fails citation validity and the contract (failing fixture)', async () => {
+    const [invented] = loadGolden(join(import.meta.dirname, 'fixtures/failing')).get('evidence.mapToCompetency') ?? [];
+    if (!invented) throw new Error('no invented-excerpt fixture');
+    const report = await run('evidence.mapToCompetency', [invented]);
+    expect(report.cases[0]?.scores.citationValidity?.failures).toEqual(['$.links[0].citations[0]: quote not in S1']);
+    expect(report.cases[0]?.scores.contract?.failures).toEqual(['contract: InvalidCitation']);
+    expect(report.passed).toBe(false);
+  });
+
+  // SAFETY: mutation check: dropped the CV strength rule from claimLabelling -> this test failed
+  it('AIV-P1-027: a CV item rated above Supporting fails claim labelling (a guard failure in the eval metrics)', async () => {
+    const maria = caseOf('evidence.mapToCompetency', 'maria-santos-injection');
+    const output = structuredClone(maria.recorded.output) as { links: { strength: string }[] };
+    for (const link of output.links) link.strength = 'strong';
+    const report = await run('evidence.mapToCompetency', [withOutput(maria, output)]);
+    expect(report.cases[0]?.scores.claimLabelling?.failures).toContain('$.links[0]: CV only but rated strong');
+    expect(report.passed).toBe(false);
   });
 
   it('AIV-P1-063: every recorded detection is valid against the product schema', () => {

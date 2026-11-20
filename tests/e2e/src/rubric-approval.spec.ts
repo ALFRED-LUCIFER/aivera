@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-014 J1 step: Tariq (admin of "Approvals Co", seed.ts) adds a job owned by the Head of Engineering and sends
 // its rubric for approval; the Head of Engineering approves it; Tariq sees it approved, and done on My desk. Drafting
@@ -36,7 +36,7 @@ async function addJobAndSend(page: Page, title: string) {
     'Sent to the hiring owner. The job shows in Jobs as "Draft, needs approval", and My desk tells you when it is ' +
       'approved. Meanwhile you can line up people who already have evidence.',
   );
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
   await page.getByRole('link', { name: 'Go to Jobs' }).click();
   await expect(jobsRow(page, title)).toContainText('Draft, needs approval');
   await expect(jobsRow(page, title)).toContainText('Rubric approval pending');
@@ -73,13 +73,13 @@ for (const theme of themes) {
       .filter({ has: owner.getByRole('heading', { name: /is waiting for your approval/ }) });
     await expect(owner.getByRole('heading', { name: 'Version 1 is waiting for your approval' })).toBeVisible();
     await expect(owner.getByRole('button', { name: 'Edit rubric' })).toHaveCount(0);
-    await expectNoAxeViolations(owner);
+    await expectAccessible(owner);
 
     // Return with a note opens a note field; Cancel leaves the version as it was.
     await owner.getByRole('button', { name: 'Return with a note' }).click();
     await expect(owner.getByRole('button', { name: 'Return version 1' })).toBeDisabled();
     // Before typing: a focused field's border animates, which axe can catch half-way.
-    await expectNoAxeViolations(owner);
+    await expectAccessible(owner);
     await owner.getByRole('textbox', { name: 'Note for the recruiter' }).fill('Arabic NLP should be desirable');
     await owner.getByRole('button', { name: 'Cancel' }).click();
 
@@ -101,7 +101,7 @@ for (const theme of themes) {
     await page.goto('/app');
     await expect(deskItem(page, title)).toContainText(`Rubric approved${title}, version 1.`);
     await expect(deskItem(page, title)).toContainText('Done');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }
 

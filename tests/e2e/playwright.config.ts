@@ -26,7 +26,7 @@ const recruiterAuth = {
 export default defineConfig({
   testDir: 'src',
   // The synthetic cast's workspaces (AIV-P0-010).
-  globalSetup: './seed.ts',
+  globalSetup: ['./seed.ts', './warm.ts'],
   forbidOnly: ci,
   retries: ci ? 1 : 0,
   reporter: ci ? [['github'], ['html', { open: 'never' }]] : [['list']],
@@ -34,7 +34,11 @@ export default defineConfig({
   // text differently, so elsewhere screenshot assertions are skipped and every other check still runs.
   ignoreSnapshots: process.platform !== 'linux',
   expect: { toHaveScreenshot: { animations: 'disabled', stylePath: './hide-dev-overlay.css' } },
-  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
+  // The HTML report carries both, and CI uploads it when a test fails (AIV-P0-032).
+  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  // shortcut: not sharded; "publish" depends on "gallery", so Playwright keeps them in one shard and a second shard would
+  // hold only the unconfigured project. Shard when the e2e job nears its 20-minute timeout, by making the candidate-site
+  // specs independent of publish-job.spec.ts first.
   projects: [
     {
       name: 'gallery',

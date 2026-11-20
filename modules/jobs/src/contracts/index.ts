@@ -289,3 +289,19 @@ export interface JobCounts {
   /** Every job of the workspace, any stage; 0 for an unknown workspace. */
   countJobs(workspaceId: string): Promise<number>;
 }
+
+/**
+ * A job's approved rubric version for the worker (AIV-P1-072), in the consumer's workspace-scoped transaction `tx`:
+ * the version id and its competencies in order, or null when none is approved. Server-side only; never called with a
+ * workspace id from client input.
+ */
+export interface ApprovedRubricReads {
+  approvedRubric(
+    tx: Tx,
+    workspaceId: string,
+    jobId: string,
+  ): Promise<{
+    id: string;
+    competencies: { id: string; name: string; evidenceExpected: string; weightPercent: number }[];
+  } | null>;
+}

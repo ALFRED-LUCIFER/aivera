@@ -68,6 +68,7 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'candidate.view': ['YYY', 'YYY', 'Y--', 'Y--'],
   'scorecard.submit': ['YYY', 'YYY', 'Y--', 'Y--'],
   'decision.record': ['YYY', 'YYY', 'Y--', '---'],
+  'application.add_link': ['YYY', 'YYY', 'Y--', 'Y--'],
   'file.upload': ['YYY', 'YYY', '---', '---'],
   'file.download': ['YYY', 'YYY', 'Y--', 'Y--'],
 };

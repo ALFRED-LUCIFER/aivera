@@ -4,7 +4,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { Download, UploadTicket } from '../application/files.ts';
-import type { FileStatus, UploadRequest } from '../domain/files.ts';
+import type { FileStatus, Purpose, UploadRequest } from '../domain/files.ts';
 
 export { checkUpload, contentTypeFor, FileError, PURPOSES, UPLOAD_LIMITS } from '../domain/files.ts';
 export type { FileErrorCode, FileStatus, LimitMessage, Purpose, UploadRequest } from '../domain/files.ts';
@@ -36,6 +36,11 @@ export interface FilesContract {
   requestUpload(ctx: WorkspaceContext, input: UploadRequest): Promise<UploadTicket>;
   /** The caller's own upload's status; null when it is not theirs or not in the workspace. */
   getStatus(ctx: WorkspaceContext, fileId: string): Promise<FileStatus | null>;
+  /**
+   * The caller's own upload's purpose and hash once it is clean, for the caller to link it to a record (AIV-P1-019);
+   * null when it is pending, infected, rejected, not theirs or not in the workspace. `file.upload`.
+   */
+  findCleanUpload(ctx: WorkspaceContext, fileId: string): Promise<{ purpose: Purpose; sha256: string } | null>;
   /**
    * Dev only: once the browser reports the upload done, re-checks the blob's size and stored content type and settles it clean
    * (or rejected) without a scan. Throws `FileError('scanning_required')` wherever malware scanning is on.

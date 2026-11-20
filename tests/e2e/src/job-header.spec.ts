@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-011: AP's workspace "Demo" (seed.ts). Senior AI Engineer was added 3 Nov and has version 2 approved; Senior
 // Product Designer has a draft. Assessment, interviews and packs are not built yet, so those stages are not started.
@@ -81,6 +81,6 @@ for (const theme of themes) {
     await signIn(page, { email: AP });
     await openJob(page, 'Senior AI Engineer');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
   });
 }

@@ -12,8 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@credalent/ai": "workspace:*",
     "@credalent/audit": "workspace:*",
     "@credalent/db": "workspace:*",
+    "@credalent/intake": "workspace:*",
+    "@credalent/jobs": "workspace:*",
     "@credalent/observability": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "drizzle-orm": "0.45.4",

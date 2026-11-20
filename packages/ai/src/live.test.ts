@@ -28,7 +28,7 @@ describe.skipIf(!process.env['AI_LIVE_SMOKE'] || !resourceName)('live Azure Open
     });
     expect(needs.length).toBeGreaterThan(0);
     expect(needs[0]?.citations[0]?.sourceId).toBe('jd');
-    const { embedding } = await ai.embed({ task: 'evidence.embed', workspaceId, value: 'synthetic smoke test' });
+    const { embedding } = await ai.embed({ task: 'search.embed', workspaceId, value: 'synthetic smoke test' });
     expect(embedding).toHaveLength(3072);
   }, 60_000);
 });

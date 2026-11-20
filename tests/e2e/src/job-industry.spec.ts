@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-064 J1, Add a job step 2: the detected industry's pack suggestions, kept, edited or removed by the recruiter.
 // The fake model answers from tests/e2e/ai-fixtures.json: detection by the job's location, drafting by its description.
@@ -62,7 +62,7 @@ for (const theme of themes) {
     await expect(uae).toContainText('Aani instant payments');
     // Scenario: No duplicates with AIV-P1-009: the generic industry suggestion gives way to the pack.
     await expect(page.getByText('Banking and payments domain')).toHaveCount(0);
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario: I decide what stays.
     await page.getByRole('button', { name: 'Remove Reconciliation and settlement' }).focus();
@@ -85,7 +85,7 @@ for (const theme of themes) {
       'Regional knowledge is shown through evidence, so it can only be desirable.',
     );
     await expect(type).toHaveValue('desirable');
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
     await page.getByRole('button', { name: 'Done' }).click();
     await expect(rowOf(page, 'Aani instant payments').getByRole('cell').nth(3)).toHaveText('Desirable');
 
@@ -147,7 +147,7 @@ test('Scenario: No clear domain, and nothing changes until I save', async ({ pag
     'Energy and utilities',
     'No industry',
   ]);
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
   await packs.filter({ hasText: 'Healthcare' }).click();
   await expect(page.getByRole('heading', { name: /^For a Healthcare job · \d suggestions?$/ })).toBeVisible();
 

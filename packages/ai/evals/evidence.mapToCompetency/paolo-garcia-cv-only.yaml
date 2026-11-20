@@ -1,0 +1,48 @@
+# Paolo Garcia has only a CV: every link is a claim at Supporting or below.
+id: paolo-garcia-cv-only
+people: [Paolo Garcia]
+input:
+  competencies:
+    - id: c-python
+      name: Python service engineering
+      evidenceExpected: Python services the candidate wrote and maintains, with tests.
+    - id: c-cost
+      name: Cost and reliability
+      evidenceExpected: Cost or latency reductions with the measurement behind them.
+sources:
+  - id: S1
+    kind: cv
+    text: >-
+      Paolo Garcia, Backend Engineer. Wrote the Python ingestion services and their tests. Kept p95 latency under 300 ms
+      for the search API.
+expected:
+  match:
+    links[*].competencyId: [c-python, c-cost]
+    links[*].label: [claim]
+    links[*].strength: [supporting]
+  safety:
+    forbidden: [strong]
+recorded:
+  output:
+    links:
+      - competencyId: c-python
+        strength: supporting
+        label: claim
+        level: 2
+        limit: A CV line; no code has been submitted.
+        citations:
+          - sourceId: S1
+            quote: Wrote the Python ingestion services and their tests
+      - competencyId: c-cost
+        strength: supporting
+        label: claim
+        level: 2
+        limit: A CV line; no latency measurement has been shared.
+        citations:
+          - sourceId: S1
+            quote: Kept p95 latency under 300 ms for the search API
+    changes:
+      - competencyId: c-python
+        text: Ask for the ingestion services' repository.
+      - competencyId: c-cost
+        text: Ask for the latency dashboard behind the p95 figure.

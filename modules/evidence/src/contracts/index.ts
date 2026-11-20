@@ -3,8 +3,9 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
-import type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
+import type { EvidenceMappingView } from '../application/mapping.ts';
 import type { EvidenceRequestView } from '../application/requests.ts';
+import type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
 import type { CompetencyLink } from '../domain/evidence.ts';
 import type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
 
@@ -21,10 +22,16 @@ export type {
 export type { EvidenceItemView, RecordEvidenceInput, RecordEvidenceResult } from '../application/evidence.ts';
 export { DUPLICATE_RESOLUTIONS, NEAR_DUPLICATE_THRESHOLD } from '../domain/fingerprint.ts';
 export type { DuplicateFlag, DuplicateResolution } from '../domain/fingerprint.ts';
-export type { RepositoryReadView, RequestRepositoryReadInput } from '../application/repositoryRead.ts';
+export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } from '../application/repositoryRead.ts';
+export { COVERAGE_GAPS, GRADE_REASONS, SKILL_GRADES } from '../domain/skill-signals/classify.ts';
+export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/skill-signals/classify.ts';
+export { parseRepositoryUrl } from '../domain/repository.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
+export type { EvidenceGapRow, EvidenceMappingView, MappingRun } from '../application/mapping.ts';
+export { CLAIM_LIMIT } from '../domain/mapping.ts';
+export type { EvidenceGap, GapKind, StoredChange } from '../domain/mapping.ts';
 export type { OpenClaim, RequestStatus } from '../domain/request.ts';
 
 const requestEvent = <T extends string>(type: T) =>
@@ -63,6 +70,35 @@ export const RepositoryReadRequestedV1 = {
 } satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
 
 /**
+ * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.repository.refresh-stale`
+ * re-reads the candidate's stale repository sources and grades their skill signals against the job's approved rubric
+ * version (AIV-P1-072). AIV-P2-010 asks for it before it builds a decision pack. Strict, opaque ids only.
+ */
+export const RepositoryRefreshRequestedV1 = {
+  type: 'RepositoryRefreshRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string }>;
+
+/**
+ * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.mapping` maps the
+ * candidate's evidence to the job's approved rubric version (AIV-P1-027). One per candidate and job, fanned out from
+ * `EvidenceRecorded.v1` (each job the candidate applied to) and `RubricApproved.v1` (each applicant). Opaque ids only.
+ */
+export const EvidenceMappingRequestedV1 = {
+  type: 'EvidenceMappingRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string }>;
+
+/**
+ * The ticket's "evidence.mapped": written to `evidence.outbox` with a stored mapping run and sent to the `assessment`
+ * queue, whose consumer scores the candidate again (AIV-P1-031). Opaque ids only.
+ */
+export const EvidenceMappedV1 = {
+  type: 'EvidenceMapped.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), jobId: z.uuid(), rubricVersionId: z.uuid(), mappingId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string; rubricVersionId: string; mappingId: string }>;
+
+/**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
  * so the workspace id never comes from client input (ADR-005). Role checks go through the workspaces `authorize`;
  * refusals throw `ForbiddenError`, rule failures `EvidenceError`.
@@ -77,8 +113,8 @@ export interface EvidenceContract {
   /** Links an item to a competency of a job's rubric; linking twice keeps one link. Admins and recruiters. */
   linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void>;
   /**
-   * The candidate's items, oldest first, each with its source and its links to `jobId`'s competencies; an empty list
-   * when there are none. Admins and recruiters.
+   * The candidate's items, oldest first, each with its source and its links to `jobId`'s competencies; items of an
+   * earlier mapping run for the job are left out (AIV-P1-027). An empty list when there are none. Admins and recruiters.
    */
   listEvidenceForCandidate(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<EvidenceItemView[]>;
   /** The item with its source and every competency link, or null when the workspace has none. Admins and recruiters. */
@@ -109,9 +145,11 @@ export interface EvidenceContract {
   purgeSyntheticEvidence(ctx: WorkspaceContext): Promise<void>;
   /**
    * Stores a pending `repository` source for a public https://github.com/<owner>/<repository> link and queues its read
-   * (`RepositoryReadRequested.v1`). Commits count as the candidate's only when they match `githubLogin`, one of
-   * `emails` or a Co-authored-by trailer naming them. Admins and recruiters. Throws `EvidenceError` (`repository_url`,
-   * `github_login`) and writes nothing.
+   * (`RepositoryReadRequested.v1`), once per candidate and normalised URL (lower case, no `.git`, trailing slash, query
+   * or fragment): a second request returns the first read's `sourceId` and queues nothing. Commits count as the
+   * candidate's only when they match `githubLogin` (null when they supplied none: emails only, strength cap Medium),
+   * one of `emails` or a Co-authored-by trailer naming them. Admins and recruiters. Throws `EvidenceError`
+   * (`repository_url`, `github_login`) and writes nothing.
    */
   requestRepositoryRead(ctx: WorkspaceContext, input: RequestRepositoryReadInput): Promise<{ sourceId: string }>;
   /**
@@ -139,4 +177,28 @@ export interface EvidenceContract {
   closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void>;
   /** The request with its items, or null when the workspace has none. Admins and recruiters. */
   getRequest(ctx: WorkspaceContext, requestId: string): Promise<EvidenceRequestView | null>;
+  /**
+   * Queues `RepositoryRefreshRequested.v1`: the worker re-reads the candidate's repository sources that are stale (last
+   * checked more than 30 days ago, or pushed to since) and grades every read source's skill signals against the job's
+   * approved rubric version. Admins and recruiters.
+   */
+  requestRepositoryRefresh(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<void>;
+  /**
+   * The candidate's repository skill grades for a rubric version (AIV-P1-072): one per read repository source, target
+   * skill and competency, with up to six file citations and a reason code. The recruiter copy is in
+   * `evidence.skillGrade` (`grade.<grade>`; `reason.<code>` for Strong and Partial, `noEvidence` with `filesInspected`, `unableToVerify` with `unableReason.<code>`). NO_EVIDENCE and
+   * UNABLE_TO_VERIFY are never a negative signal or a reason to reject (AGENTS.md 1.6). Admins and recruiters.
+   */
+  listRepositorySkillGrades(
+    ctx: WorkspaceContext,
+    candidateId: string,
+    rubricVersionId: string,
+  ): Promise<SkillGradeView[]>;
+  /**
+   * The candidate's newest evidence mapping run for the job (AIV-P1-027), or null before one: the rubric version, the
+   * prompt and model its links rest on, its evidence gaps (never negative evidence) and its "What would change this"
+   * list (at most 3, each closing a gap or a capped item by id; `text` null when the model named no check).
+   * The mapped items themselves come from `listEvidenceForCandidate`. Every role with a grant on the job.
+   */
+  getEvidenceMapping(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
 }

@@ -3,9 +3,13 @@ import type { AiClient } from '../src/client.ts';
 import { z } from 'zod';
 import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
+import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
 import type { GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
+const rubricInput = z.object({
+  competencies: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), evidenceExpected: z.string() })),
+});
 
 /** The catalogue version 1 snapshot committed with AIV-P2-043, which the jobs migration 0012 seeds (ADR-013 point 9). */
 export const CATALOGUE_SNAPSHOT = new URL(
@@ -58,7 +62,7 @@ export const taskThresholds: Record<
       fairness: { label: 'Fairness', min: 1 },
     },
   },
-  'evidence.mapToCompetency': { statements: ['statements[*]'], fieldMatch: 0.9, judge: 1 },
+  'evidence.mapToCompetency': { statements: ['links[*]'], fieldMatch: 0.9, judge: 1 },
   'evidence.firstPass': { statements: ['mustHaves[*]'], fieldMatch: 0.9, judge: 1 },
 };
 
@@ -69,7 +73,7 @@ export const taskThresholds: Record<
  */
 export type Runner = (ai: AiClient, golden: GoldenCase, workspaceId: string) => Promise<unknown>;
 
-// shortcut: only the jobs tasks have a prompt; AIV-P1-027 and AIV-P1-020 add the evidence tasks' runners.
+// shortcut: evidence.firstPass has no prompt yet; AIV-P1-020 adds its runner.
 export const runners: Record<string, Runner> = {
   // The product's own prompt and schema (AIV-P1-008), as the jobs module calls them.
   'jobs.draftCompetencies': (ai, golden, workspaceId) =>
@@ -78,6 +82,12 @@ export const runners: Record<string, Runner> = {
   'jobs.detectDomain': (ai, golden, workspaceId) =>
     ai.generateStructured({
       ...detectDomainRequest(jobInput.parse(golden.input), domainCatalogue, golden.sources),
+      workspaceId,
+    }),
+  // AIV-P1-027: the approved rubric's competencies in the prompt, one source per evidence source, as the evidence module sends.
+  'evidence.mapToCompetency': (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...mapToCompetencyRequest(rubricInput.parse(golden.input).competencies, golden.sources),
       workspaceId,
     }),
 };

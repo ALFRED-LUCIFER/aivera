@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectNoAxeViolations, themes } from './gallery.ts';
+import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-010 J1 step 5, Add a job step 3: save the job with rubric version 1 as a draft. The fake model answers from
 // tests/e2e/ai-fixtures.json (the eval set's senior-ai-engineer case: 6 competencies totalling 100%). What is stored
@@ -45,7 +45,7 @@ for (const theme of themes) {
     await page.getByLabel('Level the job needs, Cost and reliability').selectOption({ label: '3 of 5' });
     await page.getByLabel('Type, Cost and reliability').selectOption({ label: 'Mandatory' });
     await page.getByRole('button', { name: 'Done' }).click();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     await save(page).focus();
     await page.keyboard.press('Enter');
@@ -53,7 +53,7 @@ for (const theme of themes) {
     await expect(
       page.getByText('Next: the hiring owner approves the rubric. Candidates are assessed only after that.'),
     ).toBeVisible();
-    await expectNoAxeViolations(page);
+    await expectAccessible(page);
 
     // Scenario: Nothing is assessed from a draft.
     await page.getByRole('link', { name: 'Back to Jobs' }).click();
@@ -81,7 +81,7 @@ test('Scenario: Validation: a competency with no name blocks saving and nothing 
   await expect(name).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByText('Every competency needs a name.')).toBeVisible();
   await expect(page.getByText(SAVED)).toHaveCount(0);
-  await expectNoAxeViolations(page);
+  await expectAccessible(page);
 
   await page.goto('/app/jobs');
   await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();

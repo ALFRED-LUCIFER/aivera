@@ -12,6 +12,10 @@ Credalent includes material adapted from the third-party works listed below, und
 - Used in: `modules/evidence/src/domain/fingerprint.ts` (normalisation, 64-bit SimHash over word 3-shingles, similarity; AIV-P1-071).
 - Modified: ported to TypeScript.
 
+- Source: `skill-proof-core.mjs` and `skill-extract.mjs` of career-ops, and the rule of its evidence-freshness check.
+- Used in: `modules/evidence/src/domain/skill-signals/classify.ts`, `modules/evidence/src/domain/skill-signals/vocabulary.ts` and `isStale` in `modules/evidence/src/domain/repository.ts` (AIV-P1-072).
+- Modified: ported to TypeScript and changed: grades for one repository source with reason codes instead of report text, compose files read line by line only (no YAML parser), manifests also declare their project's language, certification, marketing and analytics vocabulary left out, report rendering and GitHub transport not ported.
+
 ```text
 MIT License
 

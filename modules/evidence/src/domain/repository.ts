@@ -6,8 +6,11 @@ import type { Strength } from './evidence.ts';
 export const REPOSITORY_READ_STATUSES = ['pending', 'read', 'not_accessible', 'fork'] as const;
 export type RepositoryReadStatus = (typeof REPOSITORY_READ_STATUSES)[number];
 
-/** Who the commits are matched to: the login and the emails the candidate supplied, lower case. */
-export type CommitIdentity = { login: string; emails: readonly string[] };
+/**
+ * Who the commits are matched to: the login and the emails the candidate supplied, lower case. Never derived from a
+ * name, an email or the repository owner (AIV-P1-076): with no login supplied, only the emails match.
+ */
+export type CommitIdentity = { login: string | null; emails: readonly string[] };
 
 /** One commit on the default branch as the reader sees it. The message is read for trailers only, never stored. */
 export type Commit = { sha: string; authorLogin: string | null; authorEmail: string | null; message: string };
@@ -17,13 +20,19 @@ const GITHUB_LOGIN = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 export const normaliseLogin = (login: string) => login.trim().replace(/^@/, '').toLowerCase();
 export const isGitHubLogin = (login: string) => GITHUB_LOGIN.test(login);
 
-/** `https://github.com/<owner>/<repo>` (optionally `.git` or a trailing slash), or null for anything else. */
+/**
+ * `https://github.com/<owner>/<repo>` (optionally `.git`, a trailing slash, a query or a fragment), lower-cased as
+ * GitHub treats both case-insensitively, or null for anything else (a profile, a gist, a file, another host).
+ */
 export function parseRepositoryUrl(url: string): { owner: string; name: string } | null {
   const parsed = URL.parse(url);
-  if (parsed?.protocol !== 'https:' || parsed.hostname !== 'github.com' || parsed.search || parsed.hash) return null;
+  if (parsed?.protocol !== 'https:' || parsed.hostname !== 'github.com') return null;
   const match = /^\/([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100}?)(?:\.git)?\/?$/.exec(parsed.pathname);
-  return match?.[1] && match[2] ? { owner: match[1], name: match[2] } : null;
+  return match?.[1] && match[2] ? { owner: match[1].toLowerCase(), name: match[2].toLowerCase() } : null;
 }
+
+/** Shown on a read made with no GitHub login: only the candidate's emails matched commits, so Strong is out of reach. */
+export const NO_LOGIN_LIMIT = 'Authorship unclear: no GitHub login supplied.';
 
 // `12345+login@users.noreply.github.com` and `login@users.noreply.github.com` are GitHub's private addresses for a login.
 const NOREPLY = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/;
@@ -31,12 +40,12 @@ const CO_AUTHOR = /^co-authored-by:[^<\n]*<([^>\n]+)>\s*$/gim;
 
 function isCandidateEmail(email: string, who: CommitIdentity): boolean {
   const value = email.trim().toLowerCase();
-  return who.emails.includes(value) || NOREPLY.exec(value)?.[1] === who.login;
+  return who.emails.includes(value) || (who.login !== null && NOREPLY.exec(value)?.[1] === who.login);
 }
 
 /** Matched by the commit's GitHub login, its author email, or a Co-authored-by trailer; nothing else counts. */
 export function isAuthoredBy(commit: Commit, who: CommitIdentity): boolean {
-  if (commit.authorLogin?.toLowerCase() === who.login) return true;
+  if (who.login !== null && commit.authorLogin?.toLowerCase() === who.login) return true;
   if (commit.authorEmail && isCandidateEmail(commit.authorEmail, who)) return true;
   return [...commit.message.matchAll(CO_AUTHOR)].some(
     ([, email]) => email !== undefined && isCandidateEmail(email, who),
@@ -98,6 +107,10 @@ export const STRENGTH_CAP: Record<AuthorshipClass, Strength> = {
   minor: 'supporting',
 };
 
+/** The read's cap: with no GitHub login supplied, authorship is unclear, so never above Medium (AIV-P1-076). */
+export const strengthCapOf = (cls: AuthorshipClass, hasLogin: boolean): Strength =>
+  hasLogin || cls !== 'clear' ? STRENGTH_CAP[cls] : 'medium';
+
 /**
  * The repository item's own strength: never Strong, which also needs a second source (AIV-P1-029 corroborates);
  * Supporting when the candidate wrote little of it.
@@ -146,3 +159,15 @@ export function mergedPullRequestExcerpt(pr: MergedPullRequest, login: string): 
 
 export const MERGED_PULL_REQUEST_LIMIT =
   'Shows that a pull request was merged; does not show what the change contained or how closely it was reviewed.';
+
+// Adapted from MIT-licensed code, © 2026 Santiago Fernández de Valderrama. Licence text: THIRD_PARTY_NOTICES.md.
+const STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether a repository source must be re-read before a decision pack rests on it (AIV-P1-072): never checked, checked
+ * more than 30 days before `now`, or pushed to since it was checked.
+ */
+export const isStale = (source: { checkedAt: Date | null }, now: Date, latestPushedAt: Date | null) =>
+  source.checkedAt === null ||
+  now.getTime() - source.checkedAt.getTime() > STALE_AFTER_MS ||
+  (latestPushedAt !== null && latestPushedAt > source.checkedAt);

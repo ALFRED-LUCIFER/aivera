@@ -57,8 +57,9 @@ export function citationValidity(output: unknown, sources: Sources, statementPat
 
 /**
  * A statement resting only on the candidate's own CV (with at most the job description beside it) is a claim, whatever
- * else the model calls it (AGENTS.md 1.6). The same rule as the citation contract (citations.ts), checked here on its
- * own so a change to either is caught. A checked answer carries `claim: true` from code; a raw one, `label: 'claim'`.
+ * else the model calls it, and never rated above Supporting (AGENTS.md 1.6). The same rule as the citation contract
+ * (citations.ts), checked here on its own so a change to either is caught. A checked answer carries `claim: true` from
+ * code; a raw one, `label: 'claim'`.
  * Statements citing an unknown source are left to citation validity.
  */
 const backsNothing: ReadonlySet<SourceKind | undefined> = new Set(['cv', 'job_description']);
@@ -69,12 +70,14 @@ export function claimLabelling(output: unknown, sources: Sources, statementPaths
     const cited = citationsOf(statement).map((c) => (isRecord(c) ? kinds.get(String(c['sourceId'])) : undefined));
     return cited.includes('cv') && cited.every((kind) => backsNothing.has(kind));
   });
-  const failures = cvOnly
-    .filter(
-      ({ statement }) =>
-        statement['label'] !== 'claim' && !(statement['label'] === undefined && statement['claim'] === true),
-    )
-    .map(({ path, statement }) => `${path}: CV only but labelled ${String(statement['label'])}`);
+  const failures = cvOnly.flatMap(({ path, statement }) => {
+    const label = statement['label'];
+    if (label !== 'claim' && !(label === undefined && statement['claim'] === true))
+      return [`${path}: CV only but labelled ${String(label)}`];
+    // A claim is never above Supporting (AIV-P1-027): the evidence module rejects such a link, and the eval counts it.
+    const strength = statement['strength'];
+    return strength === 'strong' || strength === 'medium' ? [`${path}: CV only but rated ${strength}`] : [];
+  });
   return { n: cvOnly.length - failures.length, total: cvOnly.length, failures };
 }
 

@@ -15,6 +15,8 @@ pnpm dev                     # http://localhost:3000
 
 A database volume created before AIV-P3-002 lacks the `aivera_public` role the candidate site's job pages read as. Add it once, then migrate so it gets its grants: `docker compose exec postgres psql -U aivera -d aivera -c "CREATE ROLE aivera_public NOLOGIN; GRANT aivera_public TO aivera_app;"` and `pnpm db:migrate`.
 
+A database volume created before AIV-P0-030 lacks the `vector` extension the `search` migrations need (only a superuser may create it). Add it once: `docker compose exec postgres psql -U aivera -d aivera -c "CREATE EXTENSION IF NOT EXISTS vector"`, then `pnpm db:migrate`.
+
 Local values for `.env.local` (local-only passwords from `packages/db/sql/roles.sql`). The web app reads the same repo-root file and refuses to start if a required variable is missing, naming it (`apps/web/src/server/env.ts`):
 
 ```sh
@@ -46,7 +48,7 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 
 ## End-to-end tests and the component gallery (Playwright)
 
-`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@credalent/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`; its global setup (`tests/e2e/seed.ts`) gives the synthetic cast their workspaces in the e2e database before the browser signs in.
+`pnpm test` is Vitest only; Playwright runs separately. The gallery at `http://localhost:3000/dev/gallery` (under `pnpm dev`) shows every `@credalent/ui` component in each state, with a light/dark toggle. It is a `page.dev.tsx` route: `next.config.ts` adds that extension only for `next dev`, so no build contains the gallery or its demo text. `tests/e2e` also covers the recruiter shell at `/app`; its global setup (`tests/e2e/seed.ts`) gives the synthetic cast their workspaces in the e2e database before the browser signs in. A second global setup (`tests/e2e/warm.ts`) then opens every page once, so `next dev` compiles each route before a test's timeouts start.
 
 | Command                                                               | What it does                                                                                                       |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |

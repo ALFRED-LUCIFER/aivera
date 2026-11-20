@@ -30,6 +30,10 @@ const env = z
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
     MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
+    // Evidence mapping (AIV-P1-027): the AI Foundry resource, called with the app identity; or AI_PROVIDER=fake in
+    // local and dev (packages/ai providerFromEnv). Without either, evidence is recorded but not mapped.
+    AZURE_OPENAI_RESOURCE_NAME: z.string().min(1).optional(),
+    AI_PROVIDER: z.enum(['fake']).optional(),
   })
   .refine(
     (e) =>
@@ -45,9 +49,27 @@ initTelemetry('worker', env.APPLICATIONINSIGHTS_CONNECTION_STRING);
 const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
-const { EvidenceRecordedV1, RepositoryReadRequestedV1 } = await import('@credalent/evidence');
-const { createRepositoryReadHandler, EVIDENCE_QUEUE } = await import('@credalent/evidence/composition');
+const { createAiClient, providerFromEnv } = await import('@credalent/ai');
+const { readPersonAsSystem } = await import('@credalent/candidates/composition');
+const {
+  EvidenceMappedV1,
+  EvidenceMappingRequestedV1,
+  EvidenceRecordedV1,
+  RepositoryReadRequestedV1,
+  RepositoryRefreshRequestedV1,
+} = await import('@credalent/evidence');
+const {
+  createApplicationReceivedHandler,
+  createEvidenceMappingHandlers,
+  createRepositoryReadHandler,
+  createRepositoryRefreshHandler,
+  EVIDENCE_QUEUE,
+} = await import('@credalent/evidence/composition');
+const { ApplicationReceivedV1 } = await import('@credalent/intake');
+const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
+const { createAiTokenBudget } = await import('@credalent/workspaces/composition');
 const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
+const { createApprovedRubricReads } = await import('@credalent/jobs/composition');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { createBlobStore, createFiles, SCAN_RESULTS_QUEUE } = await import('@credalent/files/composition');
@@ -61,19 +83,29 @@ const { createScheduler, subscribe, systemConsumer, toMessage } = await import('
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is left out until something consumes them (CV parsing, AIV-P1-025):
 // its events wait unsent in files.outbox rather than retry with no queue; that ticket adds the schema and the mapping.
-const OUTBOXES = ['candidates', 'jobs', 'evidence', 'notifications'];
+const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications'];
+const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID;
+// Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
+// has its consumer (the GitHub App, below); otherwise they go to `assessment` as before, so the evidence queue never
+// receives an event nothing handles.
+const mapping = !!githubApp && (env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake');
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
-  // shortcut: nothing consumes `assessment` until AIV-P1-031, so RubricApproved.v1 and EvidenceRecorded.v1 dead-letter
-  // after their 14-day TTL like PersonCreated.v1 above; the assessment consumer replaces this note.
-  [RubricApprovedV1.type]: 'assessment',
-  [EvidenceRecordedV1.type]: 'assessment',
+  // shortcut: nothing consumes `assessment` until AIV-P1-031, so EvidenceMapped.v1 (and, without a model,
+  // RubricApproved.v1 and EvidenceRecorded.v1) dead-letter after their 14-day TTL like PersonCreated.v1 above; the
+  // assessment consumer replaces this note.
+  [RubricApprovedV1.type]: mapping ? EVIDENCE_QUEUE : 'assessment',
+  [EvidenceRecordedV1.type]: mapping ? EVIDENCE_QUEUE : 'assessment',
+  [EvidenceMappingRequestedV1.type]: EVIDENCE_QUEUE,
+  [EvidenceMappedV1.type]: 'assessment',
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
+  [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
+  [ApplicationReceivedV1.type]: EVIDENCE_QUEUE,
   // shortcut: EvidenceRequestSent/Opened/Answered/Quiet.v1 (AIV-P1-037) have no queue until the follow-up consumer
   // (AIV-P1-040) maps them; nothing sends a request before its screen (AIV-P1-039), so none are written meanwhile.
 };
@@ -125,23 +157,41 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
     }),
   ],
 };
-if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID)
-  CONSUMERS[EVIDENCE_QUEUE] = [
-    createRepositoryReadHandler({
-      github: {
-        appId: env.GITHUB_APP_ID,
-        privateKey: env.GITHUB_APP_PRIVATE_KEY,
-        installationId: env.GITHUB_APP_INSTALLATION_ID,
-      },
-      // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
-      // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
-      scheduler: createScheduler(senderFor),
+// The evidence handlers share the queue, so all wait for the GitHub App: an unknown event type is dead-lettered.
+const evidenceHandlers: NonNullable<(typeof CONSUMERS)[string]> = [];
+if (mapping)
+  evidenceHandlers.push(
+    ...createEvidenceMappingHandlers({
+      ai: createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) }),
+      ...createApprovedRubricReads(),
+      applications: createApplicationReads(),
       now,
     }),
-  ];
-// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads wait (and dead-letter after
-// the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-026 PR, owner to-dos).
+  );
+else log.warn('Evidence mapping off: it needs an AI model and the GitHub App; evidence is recorded but not mapped');
+if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATION_ID) {
+  const github = {
+    appId: env.GITHUB_APP_ID,
+    privateKey: env.GITHUB_APP_PRIVATE_KEY,
+    installationId: env.GITHUB_APP_INSTALLATION_ID,
+  };
+  // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
+  // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
+  const scheduler = createScheduler(senderFor);
+  evidenceHandlers.push(
+    createApplicationReceivedHandler({
+      readArrival: readApplicationSourceAsSystem,
+      readPerson: readPersonAsSystem,
+      now,
+    }),
+    createRepositoryReadHandler({ github, scheduler, now }),
+    createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
+  );
+}
+// shortcut: without the GitHub App the evidence queue has no consumer, so repository reads and arrivals wait (and
+// dead-letter after the 14-day TTL) until the owner provisions the app and its Key Vault secrets (AIV-P1-074).
 else log.warn('GitHub App not configured: repository reads are not consumed');
+if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 
 // Defender's scan results, which Event Grid puts on their own queue (infra/modules/storage.bicep): Event Grid events,
 // not outbox envelopes, so not through createConsumer. A settled file ignores a redelivery, so no inbox is needed.

@@ -1,5 +1,6 @@
 // Builds the candidates module for an app (ADR-002: only apps import this).
 import { enqueue } from '@credalent/db/outbox';
+import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { peopleUseCases } from './application/people.ts';
@@ -30,3 +31,10 @@ export function createCandidates(
     now,
   });
 }
+
+/**
+ * Reads a person as the system, in a worker job's workspace-scoped transaction with no member (the evidence module's
+ * `ApplicationReceived.v1` handler, AIV-P1-076): the workspace filter here, row-level security below it.
+ */
+export const readPersonAsSystem = (tx: Tx, workspaceId: string, personId: string) =>
+  candidateStore(tx).getPerson(workspaceId, personId);

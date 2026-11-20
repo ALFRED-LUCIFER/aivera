@@ -298,6 +298,12 @@ async function seed(
       values (${workspaceId}, ${LINA}, 'interviewer', 'active')`),
   );
   await createAiTokenBudget(app).add(workspaceId, '2026-11-18', 1_500);
+  // An indexed chunk (search.chunk, AIV-P0-030), written as indexDocument does after embedding.
+  await withWorkspace(app, workspaceId, (tx) =>
+    tx.execute(sql`insert into search.chunk (id, workspace_id, owner_module, owner_id, chunk_index, start_offset,
+      end_offset, text_hash, embedding, created_at) values (gen_random_uuid(), ${workspaceId}, 'evidence',
+      gen_random_uuid(), 0, 0, 42, 'hash', array_fill(0.1, array[3072])::halfvec, now())`),
+  );
   return workspaces.withWorkspace({ userId: creator }, workspaceId, async (ctx) => {
     await workspaces.setWorkspaceType(ctx, 'agency');
     await workspaces.updateSettings(ctx, { clientShareLinkDays: 7 });
@@ -411,13 +417,32 @@ async function seed(
       });
     // A repository read, a merged pull request on the item and a handled message (evidence.*, AIV-P1-026).
     const login = `${person.split(' ')[0]?.toLowerCase()}-credalent-example`;
-    await evidence.requestRepositoryRead(ctx, {
+    const { sourceId: repositorySourceId } = await evidence.requestRepositoryRead(ctx, {
       candidateId: personId,
       url: `https://github.com/${login}/eval-harness`,
       githubLogin: login,
       emails: [],
       synthetic: true,
     });
+    // A skill signal and a grade on the read (evidence.repository_skill_signal and _grade, AIV-P1-072).
+    await ctx.tx.execute(sql`insert into evidence.repository_skill_signal
+      (workspace_id, source_id, position, skill, path, kind, weight, detail)
+      values (${workspaceId}, ${repositorySourceId}, 0, 'Python', 'src/run.py', 'path', 'code', '1 .py file')`);
+    await ctx.tx.execute(sql`insert into evidence.repository_skill_grade
+      (workspace_id, source_id, rubric_version_id, competency_id, skill, grade, reason, citations)
+      values (${workspaceId}, ${repositorySourceId}, ${rubric.id}, ${crypto.randomUUID()}, 'Python', 'PARTIAL',
+        'single_code_file', '[]'::jsonb)`);
+    // A mapping run, a mapped item and an evidence gap (evidence.mapping, item.mapping_id, evidence_gap, AIV-P1-027).
+    const mappingId = crypto.randomUUID();
+    await ctx.tx.execute(sql`insert into evidence.mapping (id, workspace_id, candidate_id, job_id, rubric_version_id,
+      prompt_version, model, changes, created_at) values (${mappingId}, ${workspaceId}, ${personId}, ${job.id},
+      ${rubric.id}, 'evidence.mapToCompetency@1', 'gpt-4.1-mini', '[]'::jsonb, now())`);
+    await ctx.tx.execute(sql`insert into evidence.evidence_gap (id, workspace_id, mapping_id, competency_id, kind)
+      values (${crypto.randomUUID()}, ${workspaceId}, ${mappingId}, ${crypto.randomUUID()}, 'no_evidence')`);
+    await ctx.tx.execute(sql`insert into evidence.item (id, workspace_id, source_id, candidate_id, excerpt,
+      provenance, strength, limit_statement, synthetic, created_at, mapping_id)
+      select ${crypto.randomUUID()}, workspace_id, source_id, candidate_id, excerpt, provenance, strength,
+        limit_statement, synthetic, created_at, ${mappingId} from evidence.item where id = ${itemIds[0]}`);
     await ctx.tx.execute(sql`insert into evidence.merged_pull_request
       (workspace_id, item_id, candidate_id, repository, number, merged_at, merged_by, self_merged)
       values (${workspaceId}, ${itemIds[0]}, ${personId}, 'saga-maintainer-credalent-example/saga', 41, now(),

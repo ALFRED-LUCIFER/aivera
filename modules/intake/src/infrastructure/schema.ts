@@ -35,7 +35,7 @@ export const application = intake
   )
   .enableRLS();
 
-// links is candidate personal data (PERSONAL_DATA_FIELDS): never log a row.
+// links and github_login are candidate personal data (PERSONAL_DATA_FIELDS): never log a row.
 export const applicationSource = intake
   .table(
     'application_source',
@@ -47,6 +47,7 @@ export const applicationSource = intake
       receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
       fileIds: uuid('file_ids').array().notNull(),
       links: text().array().notNull(),
+      githubLogin: text('github_login'),
     },
     (t) => [
       // Includes the workspace, so a source cannot point at another workspace's application (FK checks skip RLS).
@@ -59,7 +60,7 @@ export const applicationSource = intake
       // Must list exactly SOURCES (domain/application.ts); changing it needs a new migration.
       check(
         'application_source_source_check',
-        sql`${t.source} in ('linkedin', 'careers_page', 'referral', 'email', 'whatsapp')`,
+        sql`${t.source} in ('linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter')`,
       ),
       tenantPolicy('application_source_tenant_isolation', t.workspaceId),
     ],

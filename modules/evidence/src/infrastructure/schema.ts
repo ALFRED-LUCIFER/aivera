@@ -20,8 +20,17 @@ import {
 } from 'drizzle-orm/pg-core';
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
+import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
 import { REPOSITORY_READ_STATUSES } from '../domain/repository.ts';
 import { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
+import {
+  type Citation,
+  COVERAGE_GAPS,
+  GRADE_REASONS,
+  SIGNAL_KINDS,
+  SIGNAL_WEIGHTS,
+  SKILL_GRADES,
+} from '../domain/skill-signals/classify.ts';
 
 export const evidence = pgSchema('evidence');
 
@@ -63,6 +72,34 @@ export const source = evidence
   )
   .enableRLS();
 
+// One run of evidence mapping (AIV-P1-027) for a candidate, a job and its approved rubric version, with the prompt and
+// model it ran on and its "What would change this" list. Runs are never deleted when a new version is mapped: earlier
+// runs and their items stay for audit, and reads take the newest run per candidate and job.
+export const mapping = evidence
+  .table(
+    'mapping',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      // The jobs module's job and rubric version ids: opaque, no foreign key across modules.
+      jobId: uuid('job_id').notNull(),
+      rubricVersionId: uuid('rubric_version_id').notNull(),
+      promptVersion: text('prompt_version').notNull(),
+      model: text().notNull(),
+      // Up to three checks, each closing a gap or a capped item of this run; the text is candidate data (never logged).
+      changes: jsonb().$type<StoredChange[]>().notNull(),
+      createdAt: timestamp('created_at', tz).notNull(),
+    },
+    (t) => [
+      unique('mapping_workspace_id_key').on(t.workspaceId, t.id),
+      index('mapping_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.createdAt),
+      check('mapping_changes_check', sql`jsonb_array_length(${t.changes}) <= 3`),
+      tenantPolicy('mapping_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
 export const item = evidence
   .table(
     'item',
@@ -78,8 +115,15 @@ export const item = evidence
       limit: text('limit_statement').notNull(),
       synthetic: boolean().notNull(),
       createdAt: timestamp('created_at', tz).notNull(),
+      // The mapping run that cited this excerpt (AIV-P1-027); null for an item recorded from its source.
+      mappingId: uuid('mapping_id'),
     },
     (t) => [
+      foreignKey({
+        name: 'item_mapping_fk',
+        columns: [t.workspaceId, t.mappingId],
+        foreignColumns: [mapping.workspaceId, mapping.id],
+      }),
       // Includes the workspace and candidate, so an item cannot cite another workspace's or candidate's source.
       foreignKey({
         name: 'item_source_fk',
@@ -190,7 +234,10 @@ export const repositoryRead = evidence
       workspaceId: uuid('workspace_id').notNull(),
       sourceId: uuid('source_id').notNull(),
       candidateId: uuid('candidate_id').notNull(),
-      githubLogin: text('github_login').notNull(),
+      // The normalised https://github.com/<owner>/<repo> (domain/repository.ts), so spellings of one repository match.
+      url: text().notNull(),
+      // Null when the candidate supplied no login (AIV-P1-076): commits then match by the emails only.
+      githubLogin: text('github_login'),
       emails: text().array().notNull(),
       status: text({ enum: REPOSITORY_READ_STATUSES }).notNull(),
       totalCommits: integer('total_commits'),
@@ -202,9 +249,14 @@ export const repositoryRead = evidence
       pushedAt: timestamp('pushed_at', tz),
       hasTests: boolean('has_tests'),
       hasCi: boolean('has_ci'),
+      // The skill-signal scan's coverage (AIV-P1-072): files counted outside ignored paths, and the first gap, if any.
+      filesInspected: integer('files_inspected'),
+      coverageGap: text('coverage_gap', { enum: COVERAGE_GAPS }),
     },
     (t) => [
       primaryKey({ name: 'repository_read_pkey', columns: [t.workspaceId, t.sourceId] }),
+      // One read per candidate and repository, whichever path or spelling the link came by (AIV-P1-076).
+      unique('repository_read_candidate_url_key').on(t.workspaceId, t.candidateId, t.url),
       foreignKey({
         name: 'repository_read_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
@@ -219,6 +271,12 @@ export const repositoryRead = evidence
           and ${t.generatedChecked} between 0 and ${t.authoredCommits}
           and ${t.generatedOnlyCommits} between 0 and ${t.generatedChecked})`,
       ),
+      // Must list exactly COVERAGE_GAPS (domain/skill-signals/classify.ts); changing it needs a new migration.
+      check(
+        'repository_read_coverage_gap_check',
+        sql`${t.coverageGap} in ('unreadable', 'rate_limited', 'truncated_listing', 'file_cap', 'oversized_file')`,
+      ),
+      check('repository_read_files_inspected_check', sql`${t.filesInspected} >= 0`),
       tenantPolicy('repository_read_tenant_isolation', t.workspaceId),
     ],
   )
@@ -337,6 +395,115 @@ export const portalToken = evidence
       }).onDelete('cascade'),
       check('portal_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
       tenantPolicy('portal_token_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// What one file of a read repository showed about a skill (AIV-P1-072): the path and a sanitised detail, never the
+// file's contents, which are read in memory and dropped. Replaced on every read of the source.
+export const repositorySkillSignal = evidence
+  .table(
+    'repository_skill_signal',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      position: integer().notNull(),
+      skill: text().notNull(),
+      path: text().notNull(),
+      kind: text({ enum: SIGNAL_KINDS }).notNull(),
+      weight: text({ enum: SIGNAL_WEIGHTS }).notNull(),
+      detail: text().notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'repository_skill_signal_pkey', columns: [t.workspaceId, t.sourceId, t.position] }),
+      foreignKey({
+        name: 'repository_skill_signal_read_fk',
+        columns: [t.workspaceId, t.sourceId],
+        foreignColumns: [repositoryRead.workspaceId, repositoryRead.sourceId],
+      }),
+      // Must list exactly SIGNAL_KINDS and SIGNAL_WEIGHTS (domain/skill-signals/classify.ts).
+      check('repository_skill_signal_kind_check', sql`${t.kind} in ('manifest', 'config', 'path', 'readme')`),
+      check('repository_skill_signal_weight_check', sql`${t.weight} in ('code', 'declaration')`),
+      check('repository_skill_signal_detail_check', sql`char_length(${t.detail}) <= 160`),
+      tenantPolicy('repository_skill_signal_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A read repository's grade for one target skill of one rubric version's competency (AIV-P1-072), with up to six
+// citations. NO_EVIDENCE and UNABLE_TO_VERIFY are never a negative signal (AGENTS.md 1.6).
+export const repositorySkillGrade = evidence
+  .table(
+    'repository_skill_grade',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      sourceId: uuid('source_id').notNull(),
+      // The jobs module's rubric version and competency ids: opaque, no foreign key across modules.
+      rubricVersionId: uuid('rubric_version_id').notNull(),
+      competencyId: uuid('competency_id').notNull(),
+      skill: text().notNull(),
+      grade: text({ enum: SKILL_GRADES }).notNull(),
+      reason: text({ enum: GRADE_REASONS }).notNull(),
+      citations: jsonb().$type<Citation[]>().notNull(),
+    },
+    (t) => [
+      primaryKey({
+        name: 'repository_skill_grade_pkey',
+        columns: [t.workspaceId, t.sourceId, t.rubricVersionId, t.competencyId, t.skill],
+      }),
+      foreignKey({
+        name: 'repository_skill_grade_read_fk',
+        columns: [t.workspaceId, t.sourceId],
+        foreignColumns: [repositoryRead.workspaceId, repositoryRead.sourceId],
+      }),
+      index('repository_skill_grade_rubric_idx').on(t.workspaceId, t.rubricVersionId),
+      // Must list exactly SKILL_GRADES and GRADE_REASONS (domain/skill-signals/classify.ts).
+      check(
+        'repository_skill_grade_grade_check',
+        sql`${t.grade} in ('STRONG', 'PARTIAL', 'NO_EVIDENCE', 'UNABLE_TO_VERIFY')`,
+      ),
+      check(
+        'repository_skill_grade_reason_check',
+        sql`${t.reason} in ('code_corroborated', 'code_files', 'declaration_only', 'single_code_file', 'not_found',
+          'not_detectable', 'unreadable', 'rate_limited', 'truncated_listing', 'file_cap', 'oversized_file')`,
+      ),
+      check('repository_skill_grade_citations_check', sql`jsonb_array_length(${t.citations}) <= 6`),
+      tenantPolicy('repository_skill_grade_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A rubric competency nothing backs after a mapping run (AIV-P1-027): evidence to request (AIV-P1-037), never negative
+// evidence and never a reason to reject (AGENTS.md 1.6).
+export const evidenceGap = evidence
+  .table(
+    'evidence_gap',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      mappingId: uuid('mapping_id').notNull(),
+      competencyId: uuid('competency_id').notNull(),
+      kind: text({ enum: GAP_KINDS }).notNull(),
+      // The repository scan's coverage behind `not_found` or `unable_to_verify`; null for `no_evidence`.
+      filesInspected: integer('files_inspected'),
+      coverageReason: text('coverage_reason', { enum: GRADE_REASONS }),
+    },
+    (t) => [
+      foreignKey({
+        name: 'evidence_gap_mapping_fk',
+        columns: [t.workspaceId, t.mappingId],
+        foreignColumns: [mapping.workspaceId, mapping.id],
+      }),
+      unique('evidence_gap_workspace_id_key').on(t.workspaceId, t.id),
+      unique('evidence_gap_competency_key').on(t.workspaceId, t.mappingId, t.competencyId),
+      // Must list exactly GAP_KINDS (domain/mapping.ts); changing it needs a new migration.
+      check('evidence_gap_kind_check', sql`${t.kind} in ('not_found', 'unable_to_verify', 'no_evidence')`),
+      check(
+        'evidence_gap_coverage_check',
+        sql`(${t.kind} = 'no_evidence') = (${t.filesInspected} is null)
+          and (${t.filesInspected} is null) = (${t.coverageReason} is null) and ${t.filesInspected} >= 0`,
+      ),
+      tenantPolicy('evidence_gap_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
