@@ -343,7 +343,15 @@ async function seed(
           checkedAt: null,
           checkMethod: null,
         },
-        items: [],
+        items: [
+          {
+            excerpt: 'scored the top five passages every week',
+            excerptSpan: null,
+            provenance: 'submitted',
+            strength: 'medium',
+            limit: 'Shows the method, not who wrote it.',
+          },
+        ],
         synthetic: true,
         text: 'We built an evaluation set of four hundred support questions for the merchant help assistant, scored the top five passages for relevance every week, and compared recall with the previous release before shipping.',
       });
