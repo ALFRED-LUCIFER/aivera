@@ -7,7 +7,8 @@ import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 
 // Helpers for specs that sign up a fresh workspace through the app (AIV-P1-001) and decide it in the operator console
-// (AIV-P2-039). While "New workspaces need approval" is on (the default, migration ops 0001), a sign-up waits.
+// (AIV-P2-039), or make one approved through the contracts. While "New workspaces need approval" is on (the default,
+// migration ops 0001), a sign-up waits.
 
 export const PIA = 'pia.platform@example.com';
 export const WAITING =
@@ -33,9 +34,9 @@ export const approvalRow = (page: Page, name: string) =>
 /**
  * Workspace `name`, signed up by `creatorEmail` and approved by Pia, made through the modules' contracts as seed.ts
  * makes the cast. Through the screens, the sign-up and the approval took half of a 30 s spec on a CI runner;
- * ops-approvals.spec.ts proves those screens. Returns the opaque id; the creator lands in the workspace on sign-in.
+ * ops-approvals.spec.ts proves those screens. The creator lands in it on sign-in.
  */
-export async function approvedWorkspace(creatorEmail: string, name: string): Promise<string> {
+export async function approvedWorkspace(creatorEmail: string, name: string): Promise<void> {
   const db = createDb(databaseUrl, { max: 1 });
   try {
     const identity = createIdentity(db, { trustedIssuer: 'e2e-seed' });
@@ -60,7 +61,6 @@ export async function approvedWorkspace(creatorEmail: string, name: string): Pro
       creatorUserId: await person(creatorEmail),
     });
     await workspaces.changeStatus({ operatorId: await person(PIA), workspaceId: id, change: 'approve', reason: '' });
-    return id;
   } finally {
     await db.$client.end();
   }
