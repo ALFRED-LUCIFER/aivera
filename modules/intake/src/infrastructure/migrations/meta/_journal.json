@@ -15,6 +15,13 @@
       "when": 1795158933256,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795173845668,
+      "tag": "0002_cool_eternity",
+      "breakpoints": true
     }
   ]
 }

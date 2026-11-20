@@ -1,4 +1,4 @@
-import { SOURCES, type Source } from '@credalent/intake';
+import type { Source } from '@credalent/intake';
 import { z } from 'zod';
 
 // Adding applicants by hand (AIV-P1-019): one or more clean CVs and the channel they came through.
@@ -11,11 +11,12 @@ export const SOURCE_OPTIONS = [
   'whatsapp',
   'careers_page',
 ] as const satisfies readonly Source[];
+export type UploadSource = (typeof SOURCE_OPTIONS)[number];
 
 /** The server action's input, validated again on the server (AGENTS.md 3.7). Never the workspace: that is the session's. */
 export const addApplicantsSchema = z.strictObject({
   jobId: z.uuid(),
-  source: z.enum(SOURCES),
+  source: z.enum(SOURCE_OPTIONS),
   // One upload per CV; the same file twice would only add an empty second source.
   fileIds: z
     .array(z.uuid())

@@ -8,14 +8,18 @@ const F1 = '0190d4a2-0000-7000-8000-0000000000f1';
 const F2 = '0190d4a2-0000-7000-8000-0000000000f2';
 
 describe('SOURCE_OPTIONS', () => {
-  it('offers every intake source exactly once, each with its label', async () => {
-    expect(SOURCE_OPTIONS.toSorted()).toEqual(SOURCES.toSorted());
+  it("offers every intake source but a member's link (recruiter, AIV-P1-076) exactly once, each with its label", async () => {
+    expect(SOURCE_OPTIONS.toSorted()).toEqual(SOURCES.filter((s) => s !== 'recruiter').toSorted());
     const labels = (await intlConfig('en', 'UTC')).messages.addApplicants.sources;
     expect(SOURCE_OPTIONS.map((s) => labels[s])).toEqual(['LinkedIn', 'Referral', 'Email', 'WhatsApp', 'Careers page']);
   });
 });
 
 describe('addApplicantsSchema', () => {
+  it("refuses the recruiter source, which is a member's link, not an upload", () => {
+    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'recruiter', fileIds: [F1] }).success).toBe(false);
+  });
+
   it('takes a job, a source and one or more file ids', () => {
     const input = { jobId: JOB, source: 'linkedin', fileIds: [F1, F2] };
     expect(addApplicantsSchema.parse(input)).toEqual(input);

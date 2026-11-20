@@ -1,7 +1,6 @@
-import type { Source } from '@credalent/intake';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useDirectUpload } from '@/features/files';
-import type { AddApplicantsResult } from '../domain/addApplicants.ts';
+import type { AddApplicantsResult, UploadSource } from '../domain/addApplicants.ts';
 import { addApplicants } from '../services/addApplicants.ts';
 
 export type UploadedCv = { fileId: string; name: string };
@@ -14,7 +13,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
   const upload = useDirectUpload('cv');
   const selected = useRef('');
   const [open, setOpen] = useState(false);
-  const [source, setSource] = useState<Source>('linkedin');
+  const [source, setSource] = useState<UploadSource>('linkedin');
   const [cvs, setCvs] = useState<UploadedCv[]>([]);
   const [result, setResult] = useState<AddApplicantsResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -39,7 +38,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       }
     },
     source,
-    onSourceChange: (value: string) => setSource(value as Source),
+    onSourceChange: (value: string) => setSource(value as UploadSource),
     upload: upload.state,
     accept: upload.accept,
     onSelectCv(file: File) {
