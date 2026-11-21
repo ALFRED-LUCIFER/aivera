@@ -324,7 +324,7 @@ export type NextAction =
 /** Progress other modules report; null means not yet available, never a guessed "nothing to do" (AGENTS.md 1.7). */
 export type JobProgress = { packReady: boolean | null; openEvidenceRequests: number | null };
 
-/** The rubric comes first: nothing is assessed before the hiring owner approves it. Null when nothing is known to do. */
+/** The rubric comes first: nothing is assessed before it is approved (ADR-014). Null when nothing is known to do. */
 export function nextAction(rubric: RubricState, progress: JobProgress): NextAction | null {
   if (rubric.latest === null || rubric.latest === 'draft' || rubric.latest === 'returned')
     return { kind: 'send_rubric' };

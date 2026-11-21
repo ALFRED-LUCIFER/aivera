@@ -11,15 +11,21 @@ type Props = {
   decision: RubricDecisionView;
   /** The approval email pointed to an older copy than the one awaiting approval now. */
   outdatedLink: boolean;
-  /** Only a version sent for approval can be returned; a draft the recruiter approves has no one to return it to. */
+  /** Only the job's hiring owner returns a version sent to them; a draft has no one to return it to. */
   canReturn: boolean;
+  /** A draft of a job with a hiring owner: "Send to the hiring owner" is offered beside "Approve version N". */
+  canSend: boolean;
+  /** A version the viewer sent: it is with the hiring owner, and they may still approve it themselves. */
+  withOwner: boolean;
 };
 
 /**
  * The approval panel on the rubric page (AIV-P1-014, ADR-014): what changed, "Approve version N" and, for a version sent
  * for approval, "Return with a note". No artboard draws it; it follows the Rubric artboard's publish panel and the ERubric and ENewer emails' words.
  */
-export function RubricDecision({ review, decision, outdatedLink, canReturn }: Props) {
+export function RubricDecision({ review, decision, outdatedLink, canReturn, canSend, withOwner }: Props) {
+  const title = withOwner ? 'titleSent' : canReturn ? 'title' : 'titleDraft';
+  const intro = withOwner ? 'introSent' : canReturn ? 'intro' : 'introDraft';
   const t = useTranslations('rubric.decide');
   const noteId = useId();
   const { status } = decision;
@@ -27,16 +33,14 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn }: Pr
   const problem = status === 'stale' || status === 'failed' ? status : null;
 
   return (
-    <Card
-      title={review ? t(canReturn ? 'title' : 'titleDraft', { version: review.version }) : t('doneTitle')}
-      level={2}
-    >
+    <Card title={review ? t(title, { version: review.version }) : t('doneTitle')} level={2}>
       <div className="flex flex-col gap-3">
         {/* Mounted empty with the panel, so the message after a decision is announced (SuccessBanner). */}
         <SuccessBanner>
           {done &&
             decision.decided !== null &&
             t(done, { version: decision.decided.version, inForce: decision.decided.inForce ? 'yes' : 'no' })}
+          {status === 'sent' && t('sent')}
         </SuccessBanner>
         {review && (
           <>
@@ -46,7 +50,7 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn }: Pr
                 <p className="text-meta text-text-2">{t('newerBody', { version: review.version })}</p>
               </div>
             )}
-            <p className="text-text-2">{t(canReturn ? 'intro' : 'introDraft')}</p>
+            <p className="text-text-2">{t(intro)}</p>
             {review.changeNote && (
               <div className="flex flex-col gap-1">
                 <h3 className="text-card">
@@ -89,6 +93,11 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn }: Pr
                 {canReturn && (
                   <Button disabled={decision.pending} onClick={decision.onStartReturn}>
                     {t('return')}
+                  </Button>
+                )}
+                {canSend && (
+                  <Button disabled={decision.pending} onClick={decision.onSend}>
+                    {t('send')}
                   </Button>
                 )}
               </div>

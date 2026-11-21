@@ -68,7 +68,7 @@ export type RubricDecisionView = {
   returning: boolean;
   note: string;
   pending: boolean;
-  status: 'idle' | 'approved' | 'returned' | 'stale' | 'failed';
+  status: 'idle' | 'approved' | 'returned' | 'sent' | 'stale' | 'failed';
   /** The version the last decision was about, and whether an approved one stays in force, for its message after the
    * page reloads without it. */
   decided: { version: number; inForce: boolean } | null;
@@ -77,6 +77,8 @@ export type RubricDecisionView = {
   onCancelReturn: () => void;
   onNote: (value: string) => void;
   onReturn: () => void;
+  /** "Send to the hiring owner" on a draft (ADR-014): the recruiter's choice, the only path that emails the owner. */
+  onSend: () => void;
 };
 
 /** What a decision returns to the page. */
@@ -148,6 +150,31 @@ export type PublishResult = { ok: true } | { error: 'descriptor' | 'failed' };
 
 /** The candidate site's page for a published job. */
 export const publicListingPath = (slug: string) => `/candidates/jobs/${slug}`;
+
+/**
+ * What the approval panel offers (AIV-P1-083, ADR-014), matching the jobs module's rule: an editor (admin or
+ * recruiter) approves the version sent for approval or, failing that, the open draft or returned version; only the
+ * job's hiring owner returns a sent version; "Send to the hiring owner" is offered on a draft when the job has one.
+ * `withOwner`: the viewer sent it and the hiring owner has it.
+ */
+export function decisionPanel(
+  rubric: Pick<RubricView, 'review' | 'approvable'>,
+  approver: 'owner' | 'recruiter' | null,
+  canEdit: boolean,
+  hasHiringOwner: boolean,
+): { review: ReviewView | null; canReturn: boolean; canSend: boolean; withOwner: boolean } {
+  if (!approver) return { review: null, canReturn: false, canSend: false, withOwner: false };
+  const review = rubric.review ?? (canEdit ? rubric.approvable : null);
+  const draft = review !== null && review === rubric.approvable;
+  const sent = review !== null && !draft;
+  return {
+    review,
+    canReturn: sent && approver === 'owner',
+    canSend: draft && hasHiringOwner,
+    // A version the recruiter sent: it is with the hiring owner, though they may still approve it themselves.
+    withOwner: sent && approver !== 'owner',
+  };
+}
 
 /** What saving a draft returns to the page: the saved version as the next base, or why it was not saved. */
 export type SaveResult = { base: RubricBase } | { error: 'stale' | 'failed' };

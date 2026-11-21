@@ -13,11 +13,13 @@ const DESCRIPTION =
   'tests, and deploy them yourself. You keep latency, cost per request and incidents in check. ' +
   'The assistant answers merchants in Arabic and English.';
 
-async function addJob(page: Page, title: string) {
+async function addJob(page: Page, title: string, withOwner = false) {
   await page.goto('/app/jobs/new');
   await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
   await page.getByLabel('Job title').fill(title);
   await page.getByLabel('Job description').fill(DESCRIPTION);
+  // The workspace's only hiring owner, when it has one.
+  if (withOwner) await page.getByLabel('Hiring owner').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Draft competencies' }).click();
   await expect(page.getByText('Weights total 100%')).toBeVisible();
   await page.getByRole('button', { name: 'Save job and rubric' }).click();
@@ -58,3 +60,24 @@ for (const theme of themes) {
     await expect(page.getByRole('button', { name: 'Approve version 1' })).toHaveCount(0);
   });
 }
+
+// Scenario: the hiring owner is contacted only when the recruiter chooses. Tariq (admin of "Approvals Co", whose hiring
+// owner is the Head of Engineering) sends a draft from its rubric page; the email itself is rubricEmails.test.ts.
+test('Scenario: The recruiter chooses to send a draft to the hiring owner', async ({ page }) => {
+  await signIn(page, { email: 'tariq@example.com' });
+  await page.waitForURL(/\/app/);
+  await page.goto(await addJob(page, `Owner-checked AI Engineer ${Date.now()}`, true));
+  await expect(page.getByRole('heading', { name: 'Version 1 is ready for you to approve' })).toBeVisible();
+  await page.getByRole('button', { name: 'Send to the hiring owner' }).click();
+  await expect(
+    page.getByRole('status').filter({
+      hasText:
+        'Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.',
+    }),
+  ).toBeVisible();
+  // Sent, it waits for the hiring owner; the recruiter may still approve it but never returns it to themselves.
+  await expect(page.getByRole('heading', { name: 'Version 1 is with the hiring owner' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Approve version 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Return with a note' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Send to the hiring owner' })).toHaveCount(0);
+});

@@ -18,10 +18,10 @@ That model assumes a second person. The owner tested it with a one-person worksp
 
 ## Decision
 
-1. `rubric.approve` allows admins, recruiters and granted hiring owners. `approvesAs` returns `owner` for the job's named hiring owner and `recruiter` for any other admin or recruiter; there is no "on behalf of the owner" any more.
-2. A draft or returned version may be approved directly by an admin or recruiter: the status machine allows `draft → approved` and `returned → approved`. "Return with a note" stays only for a version sent for approval.
-3. A hiring owner decides only what was sent to them: a draft or returned version is refused to a hiring owner (403), checked in the jobs module, not only in the page.
-4. "Send to the hiring owner" (save and send for approval) stays as the recruiter's choice, and is the only path that emails the hiring owner. The hiring owner approves or returns what was sent, as before.
+1. `rubric.approve` allows admins, recruiters and granted hiring owners. `approvesAs` returns `owner` for the job's named hiring owner (a hiring owner or admin member; only hiring-owner members can be named) and `recruiter` for any other admin or recruiter; there is no "on behalf of the owner" any more.
+2. A draft or returned version may be approved directly by an admin or recruiter: the status machine allows `draft → approved` and `returned → approved`. "Return with a note" stays only for a version sent for approval, and only the job's hiring owner returns it; a recruiter edits their own version instead.
+3. A hiring owner decides only what was sent to them: approving or returning a draft or returned version, or returning without being the job's hiring owner, is refused with 403, checked in the jobs module before any other check, not only in the page.
+4. "Send to the hiring owner" stays as the recruiter's choice, beside "Approve version N" on a draft of a job that has a hiring owner, and is the only path that emails the hiring owner. The hiring owner approves or returns what was sent, as before. Approving a draft directly emails no one: the outcome email goes only to whoever sent a version.
 5. Every approval is audited (`rubric.approved` with actor, time, version and `actingAs: recruiter | owner`). Entries written before this ADR may say `admin_as_owner`. An edit to an approved rubric opens a new version, which is approved again; the approved one stays in force until then.
 
 ## Consequences

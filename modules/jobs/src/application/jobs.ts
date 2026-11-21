@@ -226,9 +226,12 @@ export function jobsUseCases({
     if (!actingAs) throw new ForbiddenError();
     const version = await store.getVersion(ctx.workspaceId, versionId);
     if (!version) throw new JobError('not_found');
+    // Authorised first, so a refused caller always gets 403: a hiring owner decides only a version sent to them, and
+    // only the job's hiring owner returns one (a recruiter would edit it instead).
+    if (version.status !== 'awaiting_approval' && ctx.role === 'hiring_owner') throw new ForbiddenError();
+    if (to === 'returned' && actingAs !== 'owner') throw new ForbiddenError();
     if (revision !== undefined && version.revision !== revision) throw new JobError('stale');
     assertTransition(version.status, to);
-    if (version.status !== 'awaiting_approval' && ctx.role === 'hiring_owner') throw new ForbiddenError();
     return { job, version, actingAs };
   }
 
@@ -571,8 +574,8 @@ export function jobsUseCases({
     },
 
     /**
-     * The job's hiring owner, or an admin acting as owner, returns the version awaiting approval with a note
-     * (AIV-P1-014). The approved version stays in force. `revision` as `approveRubric`. Audited with the note.
+     * The job's hiring owner returns the version sent to them with a note (AIV-P1-014, ADR-014); a recruiter edits
+     * their own version instead. The approved version stays in force. `revision` as `approveRubric`. Audited with the note.
      */
     async returnRubric(
       ctx: WorkspaceContext,

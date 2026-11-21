@@ -24,7 +24,7 @@ async function versionOf(ctx: WorkspaceContext, jobId: string, versionId: string
 
 /**
  * "Rubric waiting for your approval" (ERubric) to the job's hiring owner, from the recruiter who sent it, linking to
- * the version and revision sent. Nothing is queued for a job with no hiring owner: only an admin can approve it then.
+ * the version and revision sent. Nothing is queued for a job with no hiring owner: its recruiters approve it themselves (ADR-014).
  * Returns whether an email was queued.
  */
 export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVersion): Promise<boolean> {
@@ -59,13 +59,15 @@ export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVe
 }
 
 /**
- * "Rubric approved" (EApproved) or "Rubric returned with a note" (EReturned) to the recruiter who sent the version,
- * from the hiring owner who decided. Nothing is queued when they decided on a version they sent themselves.
+ * "Rubric approved" (EApproved) or "Rubric returned with a note" (EReturned) to whoever sent the version, from the
+ * person who decided. Nothing is queued for a version never sent (a draft a recruiter approved directly, ADR-014) or one
+ * the decider sent themselves.
  */
 export async function queueDecisionEmail(ctx: WorkspaceContext, jobId: string, versionId: string): Promise<void> {
   const { versions, version } = await versionOf(ctx, jobId, versionId);
-  const recipientId = version.submittedBy ?? version.createdBy;
-  if (recipientId === ctx.userId) return;
+  // Only someone who sent the version is told the outcome: a draft approved directly emails no one (ADR-014).
+  const recipientId = version.submittedBy;
+  if (!recipientId || recipientId === ctx.userId) return;
   const email = configured();
   const recipient = await getIdentity().getUser(recipientId);
   if (!recipient) throw new Error('recipient not found');

@@ -294,7 +294,8 @@ describe('Scenario: A recruiter approves a draft rubric directly', () => {
     await as(ALEX, (ctx) => workspaces.grantJobAccess(ctx, { userId: RAMI, jobId: solo }));
   });
 
-  // SAFETY: mutation check: made an interviewer a 'recruiter' approver in approvesAs -> this test failed (approved)
+  // SAFETY: mutation check: added 'interviewer' to rubric.approve's roles and to approvesAs's approvers -> this test
+  // failed (approved); either layer alone still refuses
   it('an interviewer on the job cannot approve its draft', async () => {
     const draft = await as(RANA, (ctx) =>
       jobs.saveRubric(ctx, solo, { successStatement: 'Tests.', competencies: competencies([100]) }),
@@ -314,12 +315,35 @@ describe('Scenario: A recruiter approves a draft rubric directly', () => {
     expect(entries.at(-1)).toMatchObject({ actor: { id: RANA }, after: { actingAs: 'recruiter', status: 'approved' } });
   });
 
-  it('a draft cannot be returned: only a version sent for approval is', async () => {
+  // SAFETY: mutation check: removed the `to === 'returned' && actingAs !== 'owner'` guard -> this test failed
+  it("returning is the hiring owner's: a recruiter cannot return a draft or a version they sent", async () => {
     const v2 = await as(RANA, (ctx) =>
       jobs.saveRubric(ctx, solo, { successStatement: 'Tests more.', competencies: competencies([50, 50]) }),
     );
-    await expect(as(RANA, (ctx) => jobs.returnRubric(ctx, v2.id, 'No'))).rejects.toThrow(
-      new JobError('version_status'),
+    await expect(as(RANA, (ctx) => jobs.returnRubric(ctx, v2.id, 'No'))).rejects.toThrow(ForbiddenError);
+    await as(RANA, (ctx) => jobs.submitRubric(ctx, v2.id));
+    await expect(as(ALEX, (ctx) => jobs.returnRubric(ctx, v2.id, 'No'))).rejects.toThrow(ForbiddenError);
+    expect((await versions(solo)).at(-1)).toMatchObject({ version: 2, status: 'awaiting_approval' });
+  });
+
+  it('an admin approves version 2, which a colleague wrote and sent: version 1 is superseded and the event names it', async () => {
+    const [v2, v1] = (await as(ALEX, (ctx) => jobs.listRubricVersions(ctx, solo))) ?? [];
+    await as(ALEX, (ctx) => jobs.approveRubric(ctx, v2?.id ?? '', v2?.revision));
+    expect(await versions(solo)).toEqual([
+      expect.objectContaining({ version: 1, status: 'superseded' }),
+      expect.objectContaining({ version: 2, status: 'approved' }),
+    ]);
+    const events = await approvedEvents(solo);
+    expect(events.at(-1)?.payload).toMatchObject({ rubricVersionId: v2?.id, supersededVersionId: v1?.id });
+    const entries = await audit.listFor(demo, { type: 'rubric_version', id: v2?.id ?? '' });
+    expect(entries.at(-1)).toMatchObject({ actor: { id: ALEX }, after: { actingAs: 'recruiter' } });
+  });
+
+  it('an admin approves a draft a recruiter wrote and never sent', async () => {
+    const v3 = await as(RANA, (ctx) =>
+      jobs.saveRubric(ctx, solo, { successStatement: 'Tests most.', competencies: competencies([40, 60]) }),
     );
+    await as(ALEX, (ctx) => jobs.approveRubric(ctx, v3.id, v3.revision));
+    expect((await versions(solo)).at(-1)).toMatchObject({ version: 3, status: 'approved' });
   });
 });

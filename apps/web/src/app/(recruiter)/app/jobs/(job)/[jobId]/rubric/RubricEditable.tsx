@@ -4,7 +4,7 @@ import type { approvesAs } from '@credalent/jobs';
 import { Rubric } from '@/features/rubric/components/Rubric.tsx';
 import { RubricDecision } from '@/features/rubric/components/RubricDecision.tsx';
 import { RubricPublish } from '@/features/rubric/components/RubricPublish.tsx';
-import { approverView, type PublicationView, type RubricView } from '@/features/rubric/domain/rubric.ts';
+import { approverView, decisionPanel, type PublicationView, type RubricView } from '@/features/rubric/domain/rubric.ts';
 import { useRubricDecisionController } from '@/features/rubric/hooks/useRubricDecisionController.ts';
 import { useRubricEditController } from '@/features/rubric/hooks/useRubricEditController.ts';
 import { useRubricPublishController } from '@/features/rubric/hooks/useRubricPublishController.ts';
@@ -26,8 +26,7 @@ type Props = {
  */
 export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, link, publication }: Props) {
   const editor = useRubricEditController(jobId, rubric.edit);
-  // A recruiter approves the version sent for approval, or else the open draft; only a sent version can be returned.
-  const review = rubric.review ?? (approver === 'recruiter' ? rubric.approvable : null);
+  const { review, canReturn, canSend, withOwner } = decisionPanel(rubric, approver, canEdit, hiringOwner !== null);
   const decision = useRubricDecisionController(jobId, review);
   const publish = useRubricPublishController(jobId, publication.descriptor);
   const view = approverView(rubric, link);
@@ -45,7 +44,9 @@ export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, 
               review={review}
               decision={decision}
               outdatedLink={view.outdatedLink}
-              canReturn={review !== null && review === rubric.review}
+              canReturn={canReturn}
+              canSend={canSend}
+              withOwner={withOwner}
             />
           )}
           {/* job.publish allows the same roles as rubric.edit; the jobs module checks it again. It steps aside while
