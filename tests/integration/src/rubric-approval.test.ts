@@ -347,3 +347,37 @@ describe('Scenario: A recruiter approves a draft rubric directly', () => {
     expect((await versions(solo)).at(-1)).toMatchObject({ version: 3, status: 'approved' });
   });
 });
+
+// AIV-P2-060: removing a hiring owner takes him off his jobs in the removal's transaction, as the members page does
+// (apps/web memberActions.ts removeMember, whose order its unit test pins): his job then has no owner to email.
+describe('Scenario: A removed hiring owner is not emailed', () => {
+  const QUALITY = '0190d4a2-0000-7000-8000-0000000052cc'; // Head of Quality, hiring owner
+
+  it('the job shows no hiring owner, his grant is gone and the removal is the last audit entry', async () => {
+    await addMember(QUALITY, 'hiring_owner');
+    const job = await as(RANA, (ctx) =>
+      jobs.createJob(ctx, {
+        title: 'QA Lead',
+        jobType: 'ai_llm_engineering',
+        description: 'QA Lead, synthetic demo job.',
+        hiringOwnerUserId: QUALITY,
+        synthetic: true,
+      }),
+    );
+
+    await as(ALEX, async (ctx) => {
+      await jobs.changeHiringOwner(ctx, job.id, null);
+      await workspaces.removeMember(ctx, QUALITY);
+    });
+
+    expect((await as(ALEX, (ctx) => jobs.getJob(ctx, job.id)))?.hiringOwnerUserId).toBeNull();
+    expect(await workspaces.getMembership(QUALITY, demo)).toBeNull();
+    expect((await as(ALEX, (ctx) => workspaces.listJobGrants(ctx))).some((g) => g.userId === QUALITY)).toBe(false);
+    const entries = await audit.listFor(demo, { type: 'member', id: QUALITY });
+    expect(entries.map((e) => e.action).slice(-2)).toEqual(['job_access.revoked', 'member.removed']);
+    // Its rubric now goes to the job's recruiters and admins (ADR-014): an admin approves what the recruiter sent.
+    const v1 = await sent(job.id, [100]);
+    await as(ALEX, (ctx) => jobs.approveRubric(ctx, v1.id, v1.revision));
+    expect((await versions(job.id)).at(-1)).toMatchObject({ version: 1, status: 'approved' });
+  });
+});

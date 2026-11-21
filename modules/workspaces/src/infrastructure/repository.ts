@@ -84,6 +84,11 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       return row ?? null;
     },
     setActiveWorkspace: (userId, workspaceId) => activeWorkspaceStore(tx).set(userId, workspaceId),
+    async clearActiveWorkspace(userId, workspaceId) {
+      await tx
+        .delete(activeWorkspace)
+        .where(and(eq(activeWorkspace.userId, userId), eq(activeWorkspace.workspaceId, workspaceId)));
+    },
     async insertMember(values) {
       return (
         (
@@ -332,6 +337,17 @@ export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
         .insert(activeWorkspace)
         .values({ userId, workspaceId })
         .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
+    },
+    // The named cross-workspace read (ADR-005 point 4): member_own_read shows the user's own rows in every workspace.
+    // Call it in its own transaction only: the setting would widen every later member read in that transaction.
+    async memberOf(userId) {
+      await tx.execute(sql`select set_config('app.user_id', ${userId}, true)`);
+      const rows = await tx
+        .select({ workspaceId: member.workspaceId })
+        .from(member)
+        .where(and(eq(member.userId, userId), eq(member.status, 'active')))
+        .orderBy(asc(member.createdAt), asc(member.workspaceId));
+      return rows.map((r) => r.workspaceId);
     },
   };
 }

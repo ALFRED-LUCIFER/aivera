@@ -28,6 +28,8 @@ export type WorkspaceStore = {
   shareWorkspace(workspaceId: string): Promise<Workspace | null>;
   /** Points the user's active workspace here (not workspace-owned; see the schema). */
   setActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
+  /** Clears the user's active-workspace pointer when it names this workspace (their membership here ended). */
+  clearActiveWorkspace(userId: string, workspaceId: string): Promise<void>;
   findMember(workspaceId: string, userId: string): Promise<Member | null>;
   listMembers(workspaceId: string): Promise<Member[]>;
   /** Every member, locked until commit, so two concurrent role changes cannot both remove an admin. */

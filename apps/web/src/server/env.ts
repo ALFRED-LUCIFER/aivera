@@ -84,6 +84,8 @@ const webEnvSchema = z
   .refine((e) => e.MALWARE_SCANNING === 'on' || e.APP_ENV === 'local' || e.APP_ENV === 'dev', {
     path: ['MALWARE_SCANNING'],
   })
+  // Auth.js trusts the request host (trustHost); where real people sign in, the public origin is pinned instead.
+  .refine((e) => e.AUTH_URL || (e.APP_ENV !== 'pilot' && e.APP_ENV !== 'prod'), { path: ['AUTH_URL'] })
   // Sign-in is all or nothing, and pilot and prod cannot run without it. Local and dev may run without it until the
   // tenant exists: then no session can be made, so every recruiter page redirects to /sign-in (fails closed).
   .superRefine((e, ctx) => {

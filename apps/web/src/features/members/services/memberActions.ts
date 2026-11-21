@@ -64,6 +64,17 @@ async function queueInvitationEmail(ctx: WorkspaceContext, invitation: Invitatio
   );
 }
 
+/**
+ * Removes the member in one transaction (AIV-P2-060): the jobs they own first lose their hiring owner ("Hiring owner:
+ * not assigned", their recruiters and admins approve its rubric, ADR-014), so no rubric email goes to them; the
+ * removal's audit entry is the last write.
+ */
+async function removeMember(ctx: WorkspaceContext, userId: string): Promise<void> {
+  for (const job of await getJobs().listJobs(ctx))
+    if (job.hiringOwnerUserId === userId) await getJobs().changeHiringOwner(ctx, job.id, null);
+  await getWorkspaces().removeMember(ctx, userId);
+}
+
 const logFailure = (area: string, error: unknown) =>
   // The name only: an error's detail can repeat the email typed (AGENTS.md 1.2).
   log.error({ area, 'error.type': error instanceof Error ? error.name : 'unknown' }, 'members change failed');
@@ -120,7 +131,7 @@ export async function manageMember(previous: ManageState, form: FormData): Promi
       if (input.intent === 'jobs') {
         await assertOwnJobs(ctx, input.jobIds);
         await workspaces.changeJobAccess(ctx, input.userId, input);
-      } else if (input.intent === 'remove') await workspaces.removeMember(ctx, input.userId);
+      } else if (input.intent === 'remove') await removeMember(ctx, input.userId);
       else await workspaces.revokeInvitation(ctx, input.invitationId);
       return null;
     });
