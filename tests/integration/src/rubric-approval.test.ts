@@ -239,12 +239,12 @@ describe('Scenario: Nothing is assessed before approval', () => {
 });
 
 describe("My desk: the recruiter's rubric approvals", () => {
-  it('lists the version awaiting approval and the one approved this week as done', async () => {
+  // AIV-P1-084: version 3 was sent, then approved by Alex as recruiter, not by the hiring owner (ADR-014), so it never
+  // waited on them and is not listed as done.
+  // SAFETY: mutation check: listed every approved version again (dropped the approvedBy check) -> this test failed
+  it('lists the version awaiting approval; one a recruiter approved is not done "with the hiring owner"', async () => {
     const items = await as(RANA, (ctx) => jobs.listRubricApprovals(ctx));
-    expect(items.map((i) => [i.title, i.version, i.status])).toEqual([
-      ['Senior AI Engineer', 3, 'approved'],
-      ['Senior AI Engineer', 4, 'awaiting_approval'],
-    ]);
+    expect(items.map((i) => [i.title, i.version, i.status])).toEqual([['Senior AI Engineer', 4, 'awaiting_approval']]);
   });
 });
 

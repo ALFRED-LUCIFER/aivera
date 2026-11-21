@@ -39,7 +39,7 @@ const rows = [
     stage: 'defining_rubric',
     rubric: { approved: false, latest: 'draft' },
     assessed: 0,
-    nextAction: { kind: 'send_rubric' },
+    nextAction: { kind: 'approve_rubric' },
   }),
 ];
 

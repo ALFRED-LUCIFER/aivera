@@ -323,9 +323,9 @@ describe('Next action on the Jobs list (AIV-P1-006)', () => {
   const approved = { approved: true, latest: 'approved' } as const;
 
   it.each([
-    [null, 'send_rubric'],
-    ['draft', 'send_rubric'],
-    ['returned', 'send_rubric'],
+    [null, 'approve_rubric'],
+    ['draft', 'approve_rubric'],
+    ['returned', 'approve_rubric'],
     ['awaiting_approval', 'rubric_approval_pending'],
   ] as const)('a latest rubric version %s gives %s', (latest, kind) => {
     expect(nextAction({ approved: false, latest }, unknown)).toEqual({ kind });
@@ -333,7 +333,7 @@ describe('Next action on the Jobs list (AIV-P1-006)', () => {
 
   it('a new draft is sent for approval first, even while an older version is in force', () => {
     expect(nextAction({ approved: true, latest: 'draft' }, { packReady: true, openEvidenceRequests: 3 })).toEqual({
-      kind: 'send_rubric',
+      kind: 'approve_rubric',
     });
   });
 

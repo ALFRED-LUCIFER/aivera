@@ -28,6 +28,7 @@ import type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricVersion,
 } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
@@ -101,6 +102,7 @@ export type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricState,
   RubricStatus,
   RubricVersion,
@@ -239,6 +241,11 @@ export interface JobsContract {
    * week, oldest job first. Every role; job-scoped roles get their granted jobs only.
    */
   listRubricApprovals(ctx: WorkspaceContext): Promise<RubricApproval[]>;
+  /**
+   * My desk's "Rubrics to approve" (AIV-P1-084, ADR-014): per job, its open draft or returned version, which an admin
+   * or recruiter approves directly, oldest job first. Empty for every other role.
+   */
+  listRubricsToApprove(ctx: WorkspaceContext): Promise<RubricToApprove[]>;
   /**
    * Admins and recruiters: what the candidate site would show (the allow-listed listing, from the approved rubric),
    * for the publish preview. Null when no rubric version is approved.

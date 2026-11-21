@@ -39,11 +39,25 @@ export type Checked<T> = T extends { citations: unknown[] }
       ? { [K in keyof T]: Checked<T[K]> }
       : T;
 
+// One failed rule as `path:code`: schema keys and list positions, then zod's issue code. Prompt schemas declare their
+// keys (no z.record, enforced by prompts.test.ts), so a path never holds output text; anything else is dropped rather
+// than logged (AGENTS.md 1.2).
+const RULE = /^(?:[a-z][A-Za-z]{0,40}|\d{1,3})(?:\.(?:[a-z][A-Za-z]{0,40}|\d{1,3})){0,8}:[a-z_]{1,40}$|^:[a-z_]{1,40}$/;
+
+/** Which schema rules an answer broke, as `suggestions.0.weight:too_big` or `:custom` (a whole-answer rule), at most 5. */
+export const schemaRules = (issues: readonly { path: readonly PropertyKey[]; code: string }[]): string[] =>
+  [...new Set(issues.map((issue) => `${issue.path.map(String).join('.')}:${issue.code}`))]
+    .filter((rule) => RULE.test(rule))
+    .slice(0, 5);
+
 /** The output did not parse or did not match the task's schema. Neither the output nor the schema error is kept. */
 export class SchemaMismatch extends Error {
   override name = 'SchemaMismatch';
-  constructor(task: string) {
+  /** Which rules failed (`schemaRules`), or `json:invalid` for text that is not JSON; never the output (AIV-P1-082). */
+  readonly rules: readonly string[];
+  constructor(task: string, rules: readonly string[]) {
     super(`AI task ${task} returned output that does not match its schema`);
+    this.rules = rules;
   }
 }
 
@@ -121,14 +135,14 @@ export function checkOutput<S extends z.ZodType>(
   try {
     json = JSON.parse(text);
   } catch {
-    throw new SchemaMismatch(task);
+    throw new SchemaMismatch(task, ['json:invalid']);
   }
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
     const uncited = parsed.error.issues.every(
       (issue) => issue.path.at(-1) === 'citations' && (issue.code === 'too_small' || issue.code === 'invalid_type'),
     );
-    throw uncited ? new UncitedOutput(task) : new SchemaMismatch(task);
+    throw uncited ? new UncitedOutput(task) : new SchemaMismatch(task, schemaRules(parsed.error.issues));
   }
 
   const byLabel = new Map(sources.map((source, i) => [sourceLabel(i), i]));
