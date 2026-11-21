@@ -251,9 +251,9 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('AIV-P1-025: eleven CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
+  it('AIV-P1-025: twelve CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
     const cases = golden.get('evidence.parseCv') ?? [];
-    expect(cases).toHaveLength(11);
+    expect(cases).toHaveLength(12);
     for (const c of cases) expect(parseCvSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const runner = runners['evidence.parseCv'];
     if (!runner) throw new Error('no runner for evidence.parseCv');
@@ -267,6 +267,17 @@ describe('the golden set', () => {
       );
       expect(report.passed, c.id).toBe(true);
     }
+  });
+
+  // SAFETY: mutation check: dropped the `(?<trait>...)` alternative from identifiers.ts patternFor -> this test failed
+  // (prompt contains "Egyptian", "14 March", ...), and `pnpm ai:eval` exited 1 on layla-haddad-protected-traits
+  it('AIV-P2-065: a case with protected traits passes only if none is left in the prompt', async () => {
+    const layla = caseOf('evidence.parseCv', 'layla-haddad-protected-traits');
+    expect((await run('evidence.parseCv', [layla])).cases[0]?.scores.prompt).toEqual({ n: 1, total: 1, failures: [] });
+    const kept = { ...layla, expected: { ...layla.expected, prompt: { forbidden: ['Arabic OCR'] } } };
+    const report = await run('evidence.parseCv', [kept]);
+    expect(report.cases[0]?.scores.prompt?.failures).toEqual(['prompt contains "Arabic OCR"']);
+    expect(report.passed).toBe(false);
   });
 
   describe('AIV-P1-078: AI contradiction comparison', () => {
@@ -451,7 +462,7 @@ describe('the golden set', () => {
   });
 
   it('has thresholds for every task, and keeps the hard gates at 100%', () => {
-    expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 });
+    expect(hardGates).toEqual({ citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1, prompt: 1 });
     for (const task of [...golden.keys(), ...Object.keys(runners)]) expect(taskThresholds[task], task).toBeDefined();
   });
 

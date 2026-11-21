@@ -1,7 +1,7 @@
 import type { AiClient } from '../src/client.ts';
 import { hardGates, taskThresholds } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
-import { citationValidity, claimLabelling, contract, fieldMatch, safety, type Ratio } from './scorers.ts';
+import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
 
 // Runs golden cases, scores them and applies the thresholds (AIV-P0-029).
 
@@ -10,7 +10,7 @@ export type Answer = (task: string, golden: GoldenCase) => Promise<unknown>;
 /** Judges an output against a rubric where exact match is not possible. */
 export type Judge = (rubric: string, golden: GoldenCase, output: unknown) => Promise<Verdict>;
 
-const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge'] as const;
+const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge', 'prompt'] as const;
 type Metric = (typeof metrics)[number];
 
 type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
@@ -75,6 +75,7 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
     };
     if (expected.match) scores.fieldMatch = fieldMatch(output, expected.match);
     if (expected.safety) scores.safety = safety(output, expected.safety);
+    if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);
     if (expected.judge) {
       const { pass, reason } = await judge(expected.judge, golden, output);
       scores.judge = { n: pass ? 1 : 0, total: 1, failures: pass ? [] : [`judge: ${reason}`] };
@@ -135,6 +136,7 @@ const labels: Record<Metric, string> = {
   fieldMatch: 'Field match',
   safety: 'Safety',
   judge: 'Judge',
+  prompt: 'Prompt safety',
 };
 
 const percent = (rate: number) => `${Math.floor(rate * 1000) / 10}%`;

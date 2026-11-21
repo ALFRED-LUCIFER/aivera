@@ -37,9 +37,9 @@ export const domainCatalogue = {
 
 /**
  * Every task, always: an invalid citation, an answer the citation contract rejects, a CV-only statement not labelled
- * claim or a failed safety case fails.
+ * claim, a failed safety case or a protected trait left in the prompt (AIV-P2-065) fails.
  */
-export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1 } as const;
+export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, safety: 1, prompt: 1 } as const;
 
 /**
  * Per task: where its statements are (each must cite and is scored even when the model drops its `citations`), and the
