@@ -2,13 +2,17 @@ import type { NewPlatformEntry } from '@credalent/audit';
 import {
   assertCompetencyFits,
   assertFairCompetency,
+  assertFairStarters,
   CatalogueError,
   draftCompetencySchema,
+  draftJobTypeSchema,
   draftPackSchema,
   isNewInDraft,
+  placeJobType,
   retireEntrySchema,
   type CatalogueEditorView,
   type DraftCompetencyInput,
+  type DraftJobTypeInput,
   type DraftPackInput,
   type RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -27,6 +31,14 @@ export type DraftStore = {
   putPack(version: number, previousKey: string | null, pack: { key: string; label: string }): Promise<void>;
   /** Inserts the competency at the pack's end (`position` null) or updates it; returns its position. */
   putCompetency(version: number, input: Omit<DraftCompetencyInput, 'revision' | 'version'>): Promise<number>;
+  /** Whether any catalogue version, the draft included, holds this job type key. */
+  jobTypeKeyUsed(key: string): Promise<boolean>;
+  /** Inserts (`adding`) or updates the job type's English texts and starters, then orders the job types as `order`. */
+  putJobType(
+    version: number,
+    input: Pick<DraftJobTypeInput, 'adding' | 'key' | 'label' | 'evidence' | 'starters'>,
+    order: readonly string[],
+  ): Promise<void>;
   /** Marks the entry retired. */
   retire(version: number, entry: DraftEntry): Promise<void>;
   /** Deletes the entry; a pack with its competencies and hints. */
@@ -36,7 +48,9 @@ export type DraftStore = {
 
 /** A retire or remove target without the save's version and revision. */
 export type DraftEntry =
-  { entry: 'pack'; packKey: string } | { entry: 'competency'; packKey: string; position: number };
+  | { entry: 'pack'; packKey: string }
+  | { entry: 'competency'; packKey: string; position: number }
+  | { entry: 'jobType'; jobTypeKey: string };
 
 export type CatalogueEditorPorts = {
   inTransaction<T>(work: (store: DraftStore) => Promise<T>): Promise<T>;
@@ -144,21 +158,63 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
     },
 
     /**
-     * Retires a pack or competency a published version holds, or removes one new in this draft (ADR-013 point 6).
-     * Returns which it did.
+     * Adds a job type, or edits its English label, evidence and starters, and places it in the Add a job list. Its key
+     * is never reused (ADR-013 point 5); its starters pass the fairness check. A new job type is in no pack until the
+     * competency form adds it, so the core limit holds.
+     */
+    saveDraftJobType: async (operatorId: string, raw: DraftJobTypeInput): Promise<void> => {
+      const input = draftJobTypeSchema.parse(raw);
+      assertFairStarters(input.starters);
+      return inTransaction(async (store) => {
+        const { draft, version, next } = await begin(store, input);
+        const before = draft.jobTypes.find((t) => t.key === input.key);
+        if (input.adding) {
+          // Every version, not only the draft: a key once used is never reused, even if a draft lost its row.
+          if (await store.jobTypeKeyUsed(input.key)) throw new CatalogueError('key_taken', { field: 'key' });
+        } else if (!before) throw new CatalogueError('not_found');
+        else if (before.retired) throw new CatalogueError('entry_retired');
+        await store.touch(version, operatorId);
+        await store.putJobType(version, input, placeJobType(draft.jobTypes, input.key, input.position));
+        await store.recordPlatform(
+          audit(operatorId, input.adding ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
+            catalogueVersion: version,
+            revision: next,
+            entry: 'jobType',
+            jobTypeKey: input.key,
+          }),
+        );
+      });
+    },
+
+    /**
+     * Retires a pack, competency or job type a published version holds, or removes one new in this draft (ADR-013
+     * point 6). Returns which it did.
      */
     retireDraftEntry: async (operatorId: string, raw: RetireEntryInput): Promise<'retired' | 'removed'> => {
       const parsed = retireEntrySchema.parse(raw);
       const { revision: _revision, version: _version, ...entry } = parsed;
-      const position = entry.entry === 'competency' ? entry.position : undefined;
       return inTransaction(async (store) => {
         const { draft, published, version, next } = await begin(store, parsed);
-        const pack = draft.packs.find((p) => p.key === entry.packKey);
-        const target = position === undefined ? pack : pack?.competencies.find((c) => c.position === position);
-        if (!target) throw new CatalogueError('not_found');
-        if (target.retired) throw new CatalogueError('entry_retired');
-        if (position !== undefined && pack?.retired) throw new CatalogueError('pack_retired');
-        const removed = isNewInDraft(published, entry.packKey, position);
+        let removed: boolean;
+        if (entry.entry === 'jobType') {
+          const target = draft.jobTypes.find((t) => t.key === entry.jobTypeKey);
+          if (!target) throw new CatalogueError('not_found');
+          if (target.retired) throw new CatalogueError('entry_retired');
+          removed = !published.jobTypes.some((t) => t.key === entry.jobTypeKey);
+          // A removed key must leave no pack entry pointing at it; a retired one stays readable, so it may.
+          const used = draft.packs.some((p) =>
+            [...p.competencies, ...p.hints].some((c) => c.appliesTo.includes(entry.jobTypeKey)),
+          );
+          if (removed && used) throw new CatalogueError('job_type_in_use');
+        } else {
+          const position = entry.entry === 'competency' ? entry.position : undefined;
+          const pack = draft.packs.find((p) => p.key === entry.packKey);
+          const target = position === undefined ? pack : pack?.competencies.find((c) => c.position === position);
+          if (!target) throw new CatalogueError('not_found');
+          if (target.retired) throw new CatalogueError('entry_retired');
+          if (position !== undefined && pack?.retired) throw new CatalogueError('pack_retired');
+          removed = isNewInDraft(published, entry.packKey, position);
+        }
         await store.touch(version, operatorId);
         await (removed ? store.remove(version, entry) : store.retire(version, entry));
         await store.recordPlatform(

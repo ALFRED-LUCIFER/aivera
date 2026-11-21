@@ -15,6 +15,7 @@ import type { CatalogueVersion } from '../domain/catalogue.ts';
 import type {
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftJobTypeInput,
   DraftPackInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -53,8 +54,10 @@ export {
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
+  draftJobTypeSchema,
   draftPackSchema,
   isNewInDraft,
+  jobTypeStatus,
   packStatus,
   retireEntrySchema,
 } from '../domain/catalogue-draft.ts';
@@ -63,6 +66,7 @@ export type {
   CatalogueErrorCode,
   CatalogueField,
   DraftCompetencyInput,
+  DraftJobTypeInput,
   DraftPackInput,
   EditorCompetency,
   EditorVersion,
@@ -320,8 +324,16 @@ export interface CatalogueEditor {
    */
   saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
   /**
-   * Retires a pack or competency a published version holds (`catalogue.entry_retired`), or removes one new in this
-   * draft (`catalogue.entry_removed`). Returns which.
+   * Adds (`adding`) or edits a job type: English label, evidence text, exactly four starters, and its place in the Add a
+   * job list. Refused: a key any version holds (`key_taken`, retired keys included), a starter naming an employer or
+   * where someone is from (`fairness_employer`, `fairness_origin`), a retired job type (`entry_retired`).
+   * `catalogue.entry_added` / `catalogue.entry_edited` (AIV-P2-047).
+   */
+  saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
+  /**
+   * Retires a pack, competency or job type a published version holds (`catalogue.entry_retired`), or removes one new in
+   * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
+   * Returns which.
    */
   retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
 }

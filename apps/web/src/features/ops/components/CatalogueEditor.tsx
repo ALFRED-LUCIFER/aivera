@@ -2,14 +2,21 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Card, Chip, StatusBadge, type StatusBadgeStatus } from '@credalent/ui';
-import type { CompetencyRow, EditorViewModel, EntryStatus, PackRow, Refusal } from '../domain/catalogueEditor.ts';
-import { CompetencyFormDialog, PackFormDialog, RefusalText } from './CatalogueForms.tsx';
+import type {
+  CompetencyRow,
+  EditorViewModel,
+  EntryStatus,
+  JobTypeRow,
+  PackRow,
+  Refusal,
+} from '../domain/catalogueEditor.ts';
+import { CompetencyFormDialog, JobTypeFormDialog, PackFormDialog, RefusalText } from './CatalogueForms.tsx';
 
 /*
  * The catalogue editor (AIV-P2-045), from the console spec's catalogue editor layout (operator-console.md); there is no
  * artboard for it. Deviations, each for a later ticket: the banner has no Discard or "Review and publish" yet
- * (AIV-P2-049), so the page has no primary button outside a form; entries are grouped by pack only, since job types and
- * regional hints are edited in AIV-P2-047 and AIV-P2-046; the entry form opens in a dialog rather than in the main
+ * (AIV-P2-049), so the page has no primary button outside a form; job types are one list and entries are grouped by pack,
+ * since regional hints are edited in AIV-P2-046; the entry form opens in a dialog rather than in the main
  * column, so the long pack list keeps its place.
  */
 
@@ -124,10 +131,38 @@ function Competency({ row, pack, view }: { row: CompetencyRow; pack: PackRow; vi
   );
 }
 
+/** A job type in the draft (AIV-P2-047): a retired one keeps its row with no controls. */
+function JobType({ row, view }: { row: JobTypeRow; view: EditorViewModel }) {
+  const t = useTranslations('ops.catalogue');
+  return (
+    <li className="flex flex-col gap-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-body font-semibold text-text">{row.label}</h3>
+        <span className="font-mono text-meta text-text-2">{row.key}</span>
+        <EntryStatusBadge status={row.status} />
+      </div>
+      <p className="text-meta text-text-2">{t('editor.evidenceIs', { evidence: row.evidence })}</p>
+      <p className="text-meta text-text-2">{t('editor.startersAre', { starters: row.starters.join(', ') })}</p>
+      {row.status !== 'retired' && (
+        <div className="flex flex-wrap gap-2">
+          <Button aria-label={t('editor.editNamed', { name: row.label })} onClick={() => view.onEditJobType(row)}>
+            {t('editor.edit')}
+          </Button>
+          <RetireButton
+            name={row.label}
+            removable={row.status === 'new'}
+            onRetire={() => void view.onRetireJobType(row.key)}
+          />
+        </div>
+      )}
+    </li>
+  );
+}
+
 /** The open draft: its banner, every pack with its status and competencies, and the entry forms. */
 export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: number; view: EditorViewModel }) {
   const t = useTranslations('ops.catalogue');
-  const formOpen = view.packForm !== null || view.competencyForm !== null;
+  const formOpen = view.packForm !== null || view.competencyForm !== null || view.jobTypeForm !== null;
   return (
     <div className="flex flex-col gap-6">
       <p className="rounded-card border border-border-strong bg-surface-subtle p-4 text-body font-semibold text-text">
@@ -139,6 +174,16 @@ export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: 
           {view.error.error === 'stale' && <Button onClick={view.onReload}>{t('editor.reload')}</Button>}
         </div>
       )}
+      <Card title={t('editor.jobTypes')} level={2}>
+        <div className="mb-3">
+          <Button onClick={view.onAddJobType}>{t('editor.addJobType')}</Button>
+        </div>
+        <ol aria-label={t('editor.jobTypes')} className="flex flex-col gap-3">
+          {view.draft.jobTypeEntries.map((row) => (
+            <JobType key={row.key} row={row} view={view} />
+          ))}
+        </ol>
+      </Card>
       <Card title={t('editor.packs')} level={2}>
         <div className="mb-3">
           <Button onClick={view.onAddPack}>{t('editor.addPack')}</Button>
@@ -192,6 +237,7 @@ export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: 
           ))}
         </ul>
       </Card>
+      <JobTypeFormDialog view={view} />
       <PackFormDialog view={view} />
       <CompetencyFormDialog view={view} />
     </div>
