@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   retireDraftEntryAction,
   saveDraftCompetencyAction,
+  saveDraftJobTypeAction,
   saveDraftPackAction,
   startCatalogueDraft,
 } from './editCatalogue.ts';
@@ -13,6 +14,7 @@ const THEO = '0190d4a2-0000-7000-8000-00000000a002';
 const operator = vi.fn<() => Promise<{ userId: string }>>();
 const saveCatalogueCompetency = vi.fn(async (..._args: unknown[]) => {});
 const saveCataloguePack = vi.fn(async (..._args: unknown[]) => {});
+const saveCatalogueJobType = vi.fn(async (..._args: unknown[]) => {});
 const revalidatePath = vi.fn();
 
 vi.mock('next/cache', () => ({ revalidatePath: (path: string) => revalidatePath(path) }));
@@ -21,6 +23,7 @@ vi.mock('@/server/operator', () => ({
   openCatalogueDraft: async () => {},
   saveCataloguePack: (...args: unknown[]) => saveCataloguePack(...args),
   saveCatalogueCompetency: (...args: unknown[]) => saveCatalogueCompetency(...args),
+  saveCatalogueJobType: (...args: unknown[]) => saveCatalogueJobType(...args),
   retireCatalogueEntry: async () => 'retired',
   operatorName: async (id: string) => (id === THEO ? 'Theo Platform' : null),
 }));
@@ -93,9 +96,58 @@ describe('the catalogue draft server actions', () => {
       () => saveDraftPackAction({ version: 2, revision: 0, previousKey: null, key: 'insurance', label: 'Insurance' }),
       () => retireDraftEntryAction({ version: 2, revision: 0, entry: 'pack', packKey: 'insurance' }),
       () => startCatalogueDraft(),
+      () => saveDraftJobTypeAction(security),
+      () => retireDraftEntryAction({ version: 2, revision: 0, entry: 'jobType', jobTypeKey: 'sales' }),
     ])
       await expect(action()).rejects.toThrow('403');
     expect(saveCatalogueCompetency).not.toHaveBeenCalled();
     expect(saveCataloguePack).not.toHaveBeenCalled();
+    expect(saveCatalogueJobType).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-047: the job type save.
+const security = {
+  version: 2,
+  revision: 4,
+  adding: true,
+  key: 'security_engineering',
+  label: 'Security engineering',
+  evidence: 'Threat models, security reviews, fixed vulnerabilities',
+  starters: ['Threat modelling', 'Secure code review', 'Incident response', 'Identity and access'],
+  position: 2,
+};
+
+describe('the job type save action', () => {
+  it('a save goes to the module and the page is reloaded', async () => {
+    expect(await saveDraftJobTypeAction(security)).toEqual({ ok: true });
+    expect(saveCatalogueJobType).toHaveBeenCalledWith(security);
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/catalogue');
+  });
+
+  it('Scenario Outline: Keys are checked; three starters are refused under the starters', async () => {
+    expect(await saveDraftJobTypeAction({ ...security, key: 'Security Engineering' })).toEqual({
+      ok: false,
+      error: 'invalid',
+      field: 'key',
+    });
+    expect(await saveDraftJobTypeAction({ ...security, starters: security.starters.slice(0, 3) })).toEqual({
+      ok: false,
+      error: 'invalid',
+      field: 'starters',
+    });
+    expect(saveCatalogueJobType).not.toHaveBeenCalled();
+    saveCatalogueJobType.mockRejectedValueOnce(new CatalogueError('key_taken', { field: 'key' }));
+    expect(await saveDraftJobTypeAction({ ...security, key: 'software_engineering' })).toEqual({
+      ok: false,
+      error: 'key_taken',
+      field: 'key',
+    });
+  });
+
+  it('Scenario: Error: a failed save says nothing changed, without the refused text', async () => {
+    saveCatalogueJobType.mockRejectedValueOnce(new Error('insert failed: Security engineering'));
+    expect(await saveDraftJobTypeAction(security)).toEqual({ ok: false, error: 'failed' });
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

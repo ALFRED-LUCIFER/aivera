@@ -244,3 +244,108 @@ test.describe('the draft', () => {
     });
   }
 });
+
+// AIV-P2-047: job types in the draft. Runs after "the draft" above, on the draft it opened.
+const rows = (page: Page) => page.getByRole('list', { name: 'Job types in the draft' }).getByRole('listitem');
+const row = (page: Page, name: string) =>
+  rows(page).filter({ has: page.getByRole('heading', { level: 3, name, exact: true }) });
+
+async function addJobType(page: Page, fields: { key: string; starters: string[] }) {
+  await page.getByRole('button', { name: 'Add a job type' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add a job type' });
+  await dialog.getByLabel('Key').fill(fields.key);
+  await dialog.getByLabel('English label').fill('Cloud security');
+  await dialog.getByLabel('Evidence that counts').fill('Cloud security reviews and fixed misconfigurations');
+  for (const [i, starter] of fields.starters.entries())
+    await dialog.getByLabel(`Starter competency ${i + 1}`).fill(starter);
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  return dialog;
+}
+
+test.describe('job types in the draft', () => {
+  test('Scenario: Adding a job type, by keyboard, at the position chosen', async ({ page }) => {
+    await openCatalogue(page);
+    await page.getByRole('button', { name: 'Add a job type' }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Add a job type' });
+    await expect(dialog.getByLabel('Key')).toBeFocused();
+    await page.keyboard.type('security_engineering');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('Security engineering');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('Threat models, security reviews, fixed vulnerabilities');
+    for (const starter of ['Threat modelling', 'Secure code review', 'Incident response', 'Identity and access']) {
+      await page.keyboard.press('Tab');
+      await page.keyboard.type(starter);
+    }
+    await page.keyboard.press('Tab');
+    await expect(dialog.getByLabel('Position in Add a job')).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('3');
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    await expect(rows(page).nth(2)).toContainText('Security engineering');
+    await expect(rows(page).nth(2)).toContainText('New in draft');
+
+    // Recruiters read the published version: still the ten job types (Alex, the e2e seed's recruiter, for Riya).
+    await signIn(page, { email: 'alex@example.com' });
+    await page.goto('/app/jobs/new');
+    const jobType = page.getByLabel('Job type');
+    await expect(jobType.locator('option:not([value=""])')).toHaveCount(10);
+    await expect(jobType.locator('option', { hasText: 'Security engineering' })).toHaveCount(0);
+  });
+
+  test('Scenario: A job type needs exactly four starters', async ({ page }) => {
+    await openCatalogue(page);
+    const dialog = await addJobType(page, {
+      key: 'cloud_security',
+      starters: ['Cloud IAM', 'Network policy', 'Audit'],
+    });
+    await expect(dialog.getByRole('alert')).toHaveText('Add exactly four starter competencies.');
+  });
+
+  test('Scenario Outline: Keys are checked', async ({ page }) => {
+    await openCatalogue(page);
+    const starters = ['Cloud IAM', 'Network policy', 'Audit logging', 'Secrets handling'];
+    for (const [key, message] of [
+      ['software_engineering', 'This key is already used.'],
+      ['Security Engineering', 'Use lower-case letters, digits and underscores.'],
+    ] as const) {
+      const dialog = await addJobType(page, { key, starters });
+      await expect(dialog.getByRole('alert')).toHaveText(message);
+      await expect(dialog.getByLabel('Key')).toHaveAttribute('aria-invalid', 'true');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+    }
+  });
+
+  test('Scenario: Starter competencies follow the fairness rule', async ({ page }) => {
+    await openCatalogue(page);
+    const dialog = await addJobType(page, {
+      key: 'cloud_security',
+      starters: ['Cloud IAM', 'Network policy', 'Audit logging', 'Ex-Big Four experience'],
+    });
+    await expect(dialog.getByRole('alert')).toHaveText('A competency is a skill with evidence, never an employer.');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(row(page, 'Cloud security')).toHaveCount(0);
+  });
+
+  test('Scenario: A published job type is retired, never deleted', async ({ page }) => {
+    await openCatalogue(page);
+    await expect(page.getByRole('button', { name: 'Remove Technical writing and support' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Retire Technical writing and support' }).click();
+    await expect(row(page, 'Technical writing and support')).toContainText('Retired');
+    await expect(row(page, 'Technical writing and support').getByRole('button')).toHaveCount(0);
+  });
+
+  for (const theme of themes) {
+    test(`axe passes on the job types and the job type form (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+      await openCatalogue(page);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expectAccessible(page);
+      await page.getByRole('button', { name: 'Edit Security engineering' }).click();
+      await expect(page.getByRole('dialog', { name: 'Edit job type' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+});
