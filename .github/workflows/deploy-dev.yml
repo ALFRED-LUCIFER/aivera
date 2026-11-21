@@ -38,7 +38,7 @@ jobs:
           green=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr --commit "$GITHUB_SHA" --event push \
             --json conclusion --jq 'map(select(.conclusion == "success")) | length')
           if [ "$green" -lt 1 ]; then
-            echo "pr run not green: not deployed ($GITHUB_SHA)" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "pr run not green: not deployed ($GITHUB_SHA; failed, cancelled or still running)" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -117,12 +117,12 @@ jobs:
           PREVIOUS: ${{ steps.web.outputs.previous }}
           PREVIOUS_WORKER: ${{ steps.worker.outputs.previous }}
         run: |
-          az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none
-          echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$PREVIOUS_WORKER" ]; then
             az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none
             echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
           fi
+          az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none
+          echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: summary
         run: |
