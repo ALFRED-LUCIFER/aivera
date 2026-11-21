@@ -3,8 +3,10 @@
 import {
   competencyStatus,
   draftCompetencySchema,
+  draftJobTypeSchema,
   draftPackSchema,
   isNewInDraft,
+  jobTypeStatus,
   packStatus,
   retireEntrySchema,
   type CatalogueEditorView,
@@ -16,7 +18,7 @@ import {
 } from '@credalent/jobs';
 import type { ZodError } from 'zod';
 
-export { draftCompetencySchema, draftPackSchema, retireEntrySchema };
+export { draftCompetencySchema, draftJobTypeSchema, draftPackSchema, retireEntrySchema };
 export type { EntryStatus } from '@credalent/jobs';
 
 export type CompetencyRow = Pick<
@@ -30,11 +32,23 @@ export type PackRow = {
   removable: boolean;
   competencies: CompetencyRow[];
 };
+/** A job type in the draft, retired ones too (they stay listed, never deleted). */
+export type JobTypeRow = {
+  key: string;
+  label: string;
+  evidence: string;
+  starters: string[];
+  status: EntryStatus;
+};
+
 /** The draft's version and revision name it in every save, so a save on another draft or an older copy is stale. */
 export type DraftModel = {
   version: number;
   revision: number;
+  /** The job types a competency may apply to: the draft's, not retired. */
   jobTypes: { key: string; label: string }[];
+  /** Every job type of the draft in Add a job order, for the job type list (AIV-P2-047). */
+  jobTypeEntries: JobTypeRow[];
   packs: PackRow[];
 };
 
@@ -49,6 +63,13 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
     version: draft.version,
     revision: draft.revision,
     jobTypes: draft.jobTypes.filter((t) => !t.retired).map((t) => ({ key: t.key, label: t.label.en })),
+    jobTypeEntries: draft.jobTypes.map((t) => ({
+      key: t.key,
+      label: t.label.en,
+      evidence: t.evidence.en,
+      starters: [...t.starterCompetencies],
+      status: jobTypeStatus(published, t),
+    })),
     packs: draft.packs.map((pack) => ({
       key: pack.key,
       label: pack.label.en,
@@ -78,6 +99,43 @@ export const packFormFor = (pack: PackRow): PackForm => ({
   key: pack.key,
   label: pack.label,
   keyEditable: pack.removable,
+});
+
+/**
+ * The job type form: `adding` adds one; its key is fixed once saved. `position` counts from 1 in the Add a job list,
+ * which leaves out retired job types; the save sends it from 0.
+ */
+export type JobTypeForm = {
+  adding: boolean;
+  key: string;
+  label: string;
+  evidence: string;
+  starters: string[];
+  position: number;
+};
+export const newJobTypeForm = (draft: DraftModel): JobTypeForm => ({
+  adding: true,
+  key: '',
+  label: '',
+  evidence: '',
+  starters: ['', '', '', ''],
+  position: draft.jobTypes.length + 1,
+});
+export const jobTypeFormFor = (draft: DraftModel, row: JobTypeRow): JobTypeForm => ({
+  adding: false,
+  key: row.key,
+  label: row.label,
+  evidence: row.evidence,
+  starters: [...row.starters],
+  position: draft.jobTypes.findIndex((t) => t.key === row.key) + 1,
+});
+/** The job type form as the save action takes it; empty starters are sent, so the schema names the starters field. */
+export const jobTypeInput = ({ version, revision }: DraftModel, form: JobTypeForm) => ({
+  version,
+  revision,
+  ...form,
+  key: form.key.trim(),
+  position: form.position - 1,
 });
 
 /** The competency form: `position` null adds one to `packKey`. Type is always Desirable, so it is not a field. */
@@ -121,14 +179,25 @@ export function toggleJobType(form: CompetencyForm, list: 'appliesTo' | 'core', 
 }
 
 /** A form field the error goes under: the refused rule's field, or the first field the schema refused. */
-export type EditorField = CatalogueField | 'label' | 'levels';
+export type EditorField = CatalogueField | 'label' | 'levels' | 'position';
 
 /** What a save answers. `invalid` names the field the schema refused; `stale` names who saved last (null: unknown). */
 export type CatalogueSaveResult =
   | { ok: true }
   | { ok: false; error: CatalogueErrorCode | 'invalid' | 'failed'; field?: EditorField; by?: string | null };
 
-const FIELDS: readonly string[] = ['key', 'label', 'name', 'meaning', 'evidence', 'levels', 'appliesTo', 'core'];
+const FIELDS: readonly string[] = [
+  'key',
+  'label',
+  'name',
+  'meaning',
+  'evidence',
+  'levels',
+  'appliesTo',
+  'core',
+  'starters',
+  'position',
+];
 
 /** The schema's refusal as a save result, naming the first field it refused. */
 export function invalidResult(error: ZodError): CatalogueSaveResult {
@@ -143,6 +212,7 @@ export type EditorViewModel = {
   draft: DraftModel;
   packForm: PackForm | null;
   competencyForm: CompetencyForm | null;
+  jobTypeForm: JobTypeForm | null;
   /** The open form's refusal, or a retire's when no form is open. */
   error: Refusal | null;
   pending: boolean;
@@ -153,6 +223,10 @@ export type EditorViewModel = {
   onEditCompetency: (packKey: string, row: CompetencyRow) => void;
   onCompetencyChange: (patch: Partial<CompetencyForm>) => void;
   onToggleJobType: (list: 'appliesTo' | 'core', key: string) => void;
+  onAddJobType: () => void;
+  onEditJobType: (row: JobTypeRow) => void;
+  onJobTypeChange: (patch: Partial<Omit<JobTypeForm, 'adding'>>) => void;
+  onRetireJobType: (key: string) => Promise<void>;
   onSave: () => Promise<void>;
   onClose: () => void;
   /** After a stale save: closes the form and loads the latest draft. */

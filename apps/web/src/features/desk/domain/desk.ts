@@ -1,4 +1,4 @@
-import type { RubricApproval } from '@credalent/jobs';
+import type { RubricApproval, RubricToApprove } from '@credalent/jobs';
 
 /** A rubric approval on My desk (AIV-P1-014): waiting with the hiring owner, or done once approved. */
 export type ApprovalItem = {
@@ -21,3 +21,13 @@ export const approvalItems = (rows: RubricApproval[], owners: ReadonlyMap<string
       done: r.status === 'approved',
     }))
     .toSorted((a, b) => Number(a.done) - Number(b.done));
+
+/** A rubric waiting for the recruiter's own approval on My desk (AIV-P1-084, ADR-014). */
+export type ToApproveItem = { jobId: string; job: string; version: number; returned: boolean };
+
+/** What My desk shows: rubrics waiting for you (null when you are not one who approves drafts), then on others. */
+export type Desk = { toApprove: ToApproveItem[] | null; approvals: ApprovalItem[] };
+
+/** In the jobs' order, as `listRubricsToApprove` returns them. */
+export const toApproveItems = (rows: RubricToApprove[]): ToApproveItem[] =>
+  rows.map((r) => ({ jobId: r.jobId, job: r.title, version: r.version, returned: r.status === 'returned' }));

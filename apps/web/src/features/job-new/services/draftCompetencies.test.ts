@@ -1,4 +1,4 @@
-import { AiUnavailable, BudgetExceeded, UncitedOutput } from '@credalent/ai';
+import { AiUnavailable, BudgetExceeded, SchemaMismatch, UncitedOutput } from '@credalent/ai';
 import { ForbiddenError, type Role } from '@credalent/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { draftCompetencies } from './draftCompetencies.ts';
@@ -176,6 +176,19 @@ describe('draftCompetencies (server action)', () => {
     draft.mockRejectedValueOnce(error);
     await expect(submit(job)).resolves.toEqual({ status });
     expect(log.mock.calls.join('')).not.toContain('eval sets');
+    log.mockRestore();
+  });
+
+  // AIV-P1-082 scenario 3: the failure log names the rule, never content.
+  // SAFETY: mutation check: dropped the credalent.ai.schema_rules field from the "draft failed" line -> this test failed
+  it('a rejected answer logs which schema rule it broke on "draft failed", and never the description', async () => {
+    const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    draft.mockRejectedValueOnce(new SchemaMismatch('jobs.draftCompetencies', [':custom']));
+    await expect(submit(job)).resolves.toEqual({ status: 'failed' });
+    const written = log.mock.calls.join('');
+    expect(written).toContain('"credalent.ai.schema_rules":":custom"');
+    expect(written).toContain('draft failed');
+    expect(written).not.toContain('eval sets');
     log.mockRestore();
   });
 });

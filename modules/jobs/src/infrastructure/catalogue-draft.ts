@@ -1,6 +1,7 @@
 import type { AuditContract } from '@credalent/audit';
 import type { Tx } from '@credalent/db/client';
 import { and, eq, getTableColumns, getTableName, sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { DraftStore } from '../application/catalogue-editor.ts';
 import { readCatalogueVersion } from './catalogue.ts';
 import {
@@ -19,7 +20,7 @@ const COPIED = [catalogueJobType, catalogueRegion, cataloguePack, cataloguePackC
 // A pack's children: its competencies and regional hints.
 const children = [cataloguePackCompetency, catalogueRegionalHint] as const;
 const isDraft = eq(catalogueVersion.status, 'draft');
-const setEnglish = (label: string) => sql`jsonb_set(${cataloguePack.label}, '{en}', to_jsonb(${label}::text))`;
+const setEnglish = (column: AnyPgColumn, text: string) => sql`jsonb_set(${column}, '{en}', to_jsonb(${text}::text))`;
 
 const competency = (version: number, packKey: string, position: number) =>
   and(
@@ -28,6 +29,8 @@ const competency = (version: number, packKey: string, position: number) =>
     eq(cataloguePackCompetency.position, position),
   );
 const pack = (version: number, key: string) => and(eq(cataloguePack.version, version), eq(cataloguePack.key, key));
+const jobType = (version: number, key: string) =>
+  and(eq(catalogueJobType.version, version), eq(catalogueJobType.key, key));
 
 /** The draft store over one transaction on the app's pool; the platform audit write joins it. */
 export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>): DraftStore {
@@ -87,7 +90,7 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       if (previousKey === key) {
         await tx
           .update(cataloguePack)
-          .set({ label: setEnglish(label) })
+          .set({ label: setEnglish(cataloguePack.label, label) })
           .where(pack(version, key));
         return;
       }
@@ -127,7 +130,50 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       return row.position;
     },
 
+    async jobTypeKeyUsed(key) {
+      const [row] = await tx
+        .select({ key: catalogueJobType.key })
+        .from(catalogueJobType)
+        .where(eq(catalogueJobType.key, key))
+        .limit(1);
+      return row !== undefined;
+    },
+
+    async putJobType(version, { adding, key, label, evidence, starters }, order) {
+      if (adding)
+        await tx.insert(catalogueJobType).values({
+          version,
+          key,
+          // Set by the reorder below.
+          position: 0,
+          label: { en: label },
+          evidence: { en: evidence },
+          starterCompetencies: [...starters],
+        });
+      else
+        await tx
+          .update(catalogueJobType)
+          .set({
+            label: setEnglish(catalogueJobType.label, label),
+            evidence: setEnglish(catalogueJobType.evidence, evidence),
+            starterCompetencies: [...starters],
+          })
+          .where(jobType(version, key));
+      const keys = sql.join(
+        order.map((k) => sql`${k}`),
+        sql`, `,
+      );
+      await tx
+        .update(catalogueJobType)
+        .set({ position: sql`array_position(array[${keys}]::text[], ${catalogueJobType.key}) - 1` })
+        .where(eq(catalogueJobType.version, version));
+    },
+
     async retire(version, entry) {
+      if (entry.entry === 'jobType') {
+        await tx.update(catalogueJobType).set({ retired: true }).where(jobType(version, entry.jobTypeKey));
+        return;
+      }
       await (entry.entry === 'pack'
         ? tx.update(cataloguePack).set({ retired: true }).where(pack(version, entry.packKey))
         : tx
@@ -137,6 +183,10 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
     },
 
     async remove(version, entry) {
+      if (entry.entry === 'jobType') {
+        await tx.delete(catalogueJobType).where(jobType(version, entry.jobTypeKey));
+        return;
+      }
       const { packKey } = entry;
       if (entry.entry === 'competency') {
         await tx.delete(cataloguePackCompetency).where(competency(version, packKey, entry.position));

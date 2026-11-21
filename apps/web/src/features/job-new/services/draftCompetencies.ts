@@ -1,6 +1,6 @@
 'use server';
 
-import { AiUnavailable, BudgetExceeded } from '@credalent/ai';
+import { AiUnavailable, BudgetExceeded, SchemaMismatch } from '@credalent/ai';
 import { log } from '@credalent/observability';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { getCatalogue, getCompetencyDrafting, getDomainDetection } from '@/server/jobs';
@@ -50,7 +50,15 @@ export async function draftCompetencies(form: FormData): Promise<DraftResult> {
   } catch (error) {
     unstable_rethrow(error);
     // The name only: the AI errors carry no prompt or output, but any error's detail could repeat the description.
-    log.warn({ area: 'job-new', 'error.type': error instanceof Error ? error.name : 'unknown' }, 'draft failed');
+    log.warn(
+      {
+        area: 'job-new',
+        'error.type': error instanceof Error ? error.name : 'unknown',
+        // Which schema rules the answer broke (AIV-P1-082): pattern-checked paths and codes, never output.
+        ...(error instanceof SchemaMismatch && { 'credalent.ai.schema_rules': error.rules.join(' ') || '(dropped)' }),
+      },
+      'draft failed',
+    );
     return { status: error instanceof BudgetExceeded ? 'budget' : 'failed' };
   }
 }

@@ -16,6 +16,7 @@ import type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 import type {
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftJobTypeInput,
   DraftPackInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -27,6 +28,7 @@ import type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricVersion,
 } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
@@ -54,8 +56,10 @@ export {
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
+  draftJobTypeSchema,
   draftPackSchema,
   isNewInDraft,
+  jobTypeStatus,
   packStatus,
   retireEntrySchema,
 } from '../domain/catalogue-draft.ts';
@@ -64,6 +68,7 @@ export type {
   CatalogueErrorCode,
   CatalogueField,
   DraftCompetencyInput,
+  DraftJobTypeInput,
   DraftPackInput,
   EditorCompetency,
   EditorVersion,
@@ -92,6 +97,7 @@ export type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricState,
   RubricStatus,
   RubricVersion,
@@ -243,6 +249,11 @@ export interface JobsContract {
    */
   listRubricApprovals(ctx: WorkspaceContext): Promise<RubricApproval[]>;
   /**
+   * My desk's "Rubrics to approve" (AIV-P1-084, ADR-014): per job, its open draft or returned version, which an admin
+   * or recruiter approves directly, oldest job first. Empty for every other role.
+   */
+  listRubricsToApprove(ctx: WorkspaceContext): Promise<RubricToApprove[]>;
+  /**
    * Admins and recruiters: what the candidate site would show (the allow-listed listing, from the approved rubric),
    * for the publish preview. Null when no rubric version is approved.
    */
@@ -334,8 +345,16 @@ export interface CatalogueEditor {
    */
   saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
   /**
-   * Retires a pack or competency a published version holds (`catalogue.entry_retired`), or removes one new in this
-   * draft (`catalogue.entry_removed`). Returns which.
+   * Adds (`adding`) or edits a job type: English label, evidence text, exactly four starters, and its place in the Add a
+   * job list. Refused: a key any version holds (`key_taken`, retired keys included), a starter naming an employer or
+   * where someone is from (`fairness_employer`, `fairness_origin`), a retired job type (`entry_retired`).
+   * `catalogue.entry_added` / `catalogue.entry_edited` (AIV-P2-047).
+   */
+  saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
+  /**
+   * Retires a pack, competency or job type a published version holds (`catalogue.entry_retired`), or removes one new in
+   * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
+   * Returns which.
    */
   retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
   /**

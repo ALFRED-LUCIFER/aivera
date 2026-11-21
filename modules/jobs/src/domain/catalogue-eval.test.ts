@@ -46,7 +46,7 @@ describe('the content hash', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('changes on any field: a label, a retired flag, a competency word, the order of packs', () => {
+  it('changes on any field: a label, a retired flag, a competency word, the order of packs, a job type', () => {
     const [first, ...rest] = draft.packs;
     if (!first) throw new Error('no pack');
     const variants = [
@@ -60,6 +60,14 @@ describe('the content hash', () => {
         ],
       },
       { ...draft, packs: [...rest, first] },
+      // Job types as AIV-P2-047 edits them: a starter, and the order Add a job lists them in.
+      {
+        ...draft,
+        jobTypes: draft.jobTypes.map((t, i) =>
+          i === 0 ? { ...t, starterCompetencies: t.starterCompetencies.toReversed() } : t,
+        ),
+      },
+      { ...draft, jobTypes: draft.jobTypes.toReversed() },
     ];
     for (const variant of variants) expect(contentHash(variant)).not.toBe(hash);
   });

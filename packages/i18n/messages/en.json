@@ -580,7 +580,7 @@
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
-    "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",
+    "intro": "Every job runs on an approved rubric. Candidates are assessed only after its recruiter approves it.",
     "add": "Add a job",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
@@ -612,7 +612,7 @@
       "returned": "Returned, needs changes"
     },
     "nextAction": {
-      "send_rubric": "Send rubric for approval",
+      "approve_rubric": "Approve the rubric",
       "rubric_approval_pending": "Rubric approval pending",
       "decide_shortlist": "Decide on the Round 2 shortlist",
       "chase_evidence": "Chase {count, plural, one {# evidence request} other {# evidence requests}}"
@@ -812,9 +812,12 @@
         "start": "Start a draft",
         "starting": "Starting…",
         "banner": "Draft — not live. Recruiters see version {version, number}.",
+        "jobTypes": "Job types in the draft",
         "packs": "Domain packs in the draft",
         "addPack": "Add a pack",
         "editPack": "Edit pack",
+        "addJobType": "Add a job type",
+        "editJobType": "Edit job type",
         "addCompetency": "Add a competency",
         "editCompetency": "Edit competency",
         "edit": "Edit",
@@ -833,12 +836,16 @@
         },
         "fields": {
           "key": "Key",
-          "keyHint": "Lower-case letters, digits and underscores, starting with a letter. It cannot change once published.",
+          "keyHint": "3 to 48 lower-case letters, digits and underscores, starting with a letter. It cannot change once published.",
           "keyFixed": "Published keys never change.",
           "label": "English label",
           "name": "Name",
           "meaning": "What it means",
           "evidence": "Evidence that counts",
+          "starters": "Starter competencies",
+          "starter": "Starter competency {n, number}",
+          "position": "Position in Add a job",
+          "positionHint": "1 is first. Add a job offers {count, plural, one {# job type} other {# job types}} now.",
           "level": "Level {level, number}",
           "appliesTo": "Applies to job types",
           "core": "Default suggestion for",
@@ -850,6 +857,8 @@
         },
         "appliesTo": "Applies to {jobTypes}",
         "coreFor": "Default suggestion for {jobTypes}",
+        "evidenceIs": "Evidence that counts: {evidence}",
+        "startersAre": "Starter competencies: {starters}",
         "save": "Save",
         "saving": "Saving…",
         "cancel": "Cancel",
@@ -861,7 +870,7 @@
           "no_draft": "There is no open draft. Reload to see the latest.",
           "draft_open": "A draft is already open. Reload to see it.",
           "not_found": "This entry is no longer in the draft. Reload to see the latest.",
-          "key_taken": "Another pack already has this key.",
+          "key_taken": "This key is already used.",
           "key_fixed": "Published keys never change.",
           "pack_retired": "This pack is retired. Add competencies to a live pack.",
           "job_type": "Choose job types the catalogue offers.",
@@ -871,11 +880,13 @@
           "fairness_employer": "A competency is a skill with evidence, never an employer.",
           "fairness_origin": "A competency is a skill with evidence, never a nationality or where someone is from.",
           "invalid": {
-            "key": "Use 3 to 48 lower-case letters, digits or underscores, starting with a letter.",
-            "other": "Fill in this field."
+            "key": "Use lower-case letters, digits and underscores.",
+            "other": "Fill in this field.",
+            "starters": "Add exactly four starter competencies."
           },
-          "failed": "We could not save this change. Try again.",
+          "failed": "That did not go through. Nothing was changed.",
           "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest.",
+          "job_type_in_use": "A pack competency or regional hint applies to this job type. Take it off there first.",
           "eval_running": "An eval run is already in progress."
         },
         "eval": {
@@ -1462,6 +1473,9 @@
     }
   },
   "desk": {
+    "toApprove": "Rubrics to approve",
+    "nothingToApprove": "No rubrics are waiting for you",
+    "returned": "Returned with a note",
     "waitingOnOthers": "Waiting on others",
     "nothingWaiting": "Nothing is waiting on others.",
     "rubricApproval": "Rubric approval",

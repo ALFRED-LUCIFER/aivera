@@ -67,7 +67,7 @@ const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
 // workspace, a platform setting or the catalogue draft for an operator take no member context and check no role, so only
 // server/operator.ts, behind platformOperator(), may call them.
 const OPERATOR_ONLY_CALL =
-  /\.(?:changeStatus|pausePublicListings|setApprovalRequired|openDraft|saveDraftPack|saveDraftCompetency|retireDraftEntry|requestEval)\(/;
+  /\.(?:changeStatus|pausePublicListings|setApprovalRequired|openDraft|saveDraftPack|saveDraftCompetency|saveDraftJobType|retireDraftEntry|requestEval)\(/;
 const OPERATOR_SERVER = /[/\\]src[/\\]server[/\\]operator\.ts$/;
 // AIV-P2-053 (ADR-012 point 8): the platform audit log is read only by console code (and server/operator.ts, which
 // wires the console's reads).

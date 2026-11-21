@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
+import { approvedWorkspace } from './workspaces.ts';
 
-// AIV-P1-083 (ADR-014): the recruiter on a job approves its rubric. Nadia Freelance runs a one-person workspace with no
-// hiring owner (seed.ts, personas.md): she adds a job and approves its draft rubric herself, from the keyboard, with no
+// AIV-P1-083 (ADR-014): the recruiter on a job approves its rubric. A recruiter alone in a fresh workspace with no
+// hiring owner adds a job and approves its draft rubric themselves, from the keyboard, with no
 // "Return with a note" and no one contacted. Drafting answers from tests/e2e/ai-fixtures.json (senior-ai-engineer).
 // What approval writes (RubricApproved.v1, the audit as `recruiter`) is in tests/integration rubric-approval.test.ts.
 
@@ -39,7 +40,10 @@ for (const theme of themes) {
     baseURL,
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
-    await signIn(page, { email: 'nadia@example.com' });
+    // A solo workspace of its own: Nadia's must stay empty for jobs-list.spec.ts "Empty workspace".
+    const solo = `solo.rubric.${theme}.${Date.now()}@example.com`;
+    await approvedWorkspace(solo, `Solo ${theme} ${Date.now()}`);
+    await signIn(page, { email: solo });
     await page.waitForURL(/\/app/);
     const title = `Solo AI Engineer ${theme} ${Date.now()}`;
     await page.goto(await addJob(page, title));
