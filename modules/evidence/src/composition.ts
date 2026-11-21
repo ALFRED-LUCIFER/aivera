@@ -226,6 +226,14 @@ const outcomePorts = (now: () => Date): OutcomePorts => ({
 });
 
 /**
+ * The candidate's evidence for one job as the system reads it, in a worker job's workspace-scoped transaction with no
+ * member: what the assessment worker scores (AIV-P1-031). As `listEvidenceForCandidate`: only the job's links, from
+ * the candidate's newest mapping run for it.
+ */
+export const readEvidenceForJobAsSystem = (tx: Tx, workspaceId: string, candidateId: string, jobId: string) =>
+  evidenceStore(tx).list(workspaceId, { candidateId }, jobId);
+
+/**
  * Records a request's outcome as the system, in a workspace-scoped transaction with no member: for the follow-up
  * worker (AIV-P1-040) and the portal (AIV-P1-041). It can never send.
  */

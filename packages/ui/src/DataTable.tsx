@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { Button } from './Button.tsx';
 import { Skeleton } from './Card.tsx';
 import { Checkbox } from './Checkbox.tsx';
@@ -77,6 +77,30 @@ export function DataTable<Row>({
   footer,
   className,
 }: DataTableProps<Row>) {
+  // WCAG 2.1.1: a table wider or taller than its box scrolls inside it. With nothing focusable inside to scroll it by
+  // keyboard, the box then takes focus and is named, as a region (axe scrollable-region-focusable); otherwise no tab stop.
+  const focusWhenScrolling = useCallback(
+    (box: HTMLDivElement | null) => {
+      if (!box || typeof ResizeObserver === 'undefined') return;
+      const update = () => {
+        const scrolls =
+          (box.scrollWidth > box.clientWidth || box.scrollHeight > box.clientHeight) &&
+          !box.querySelector('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        for (const [name, value] of [
+          ['tabindex', '0'],
+          ['role', 'region'],
+          ['aria-label', caption],
+        ] as const)
+          if (scrolls) box.setAttribute(name, value);
+          else box.removeAttribute(name);
+      };
+      const observer = new ResizeObserver(update);
+      observer.observe(box);
+      if (box.firstElementChild) observer.observe(box.firstElementChild);
+      return () => observer.disconnect();
+    },
+    [caption],
+  );
   const ids = rows.map(getRowId);
   const selected = new Set(selection?.selectedIds);
   const selectedHere = ids.filter((id) => selected.has(id)).length;
@@ -160,7 +184,7 @@ export function DataTable<Row>({
     >
       {/* The status stays mounted so a change of its text is announced; the table carries aria-busy. */}
       {loadingLabel && <output className="sr-only">{loading ? loadingLabel : ''}</output>}
-      <div className="min-h-0 overflow-auto">
+      <div ref={focusWhenScrolling} className="min-h-0 overflow-auto">
         <table aria-busy={loading || undefined} className="w-full border-separate border-spacing-0 text-body text-text">
           <caption className="sr-only">{caption}</caption>
           {/* shortcut: the header sticks inside the table's own scroll box only, so it stays in view only when the caller

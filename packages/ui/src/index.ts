@@ -54,7 +54,7 @@ export type { CompetencyRowProps } from './CompetencyRow.tsx';
 export { NeedVsProvenBar, ScoreWithUncertainty } from './ScoreBar.tsx';
 export type { NeedVsProvenBarProps, ScoreWithUncertaintyProps } from './ScoreBar.tsx';
 
-// AIV-P3-003: the level a job needs, on the candidate site
+// AIV-P3-003: the level a job needs, on the candidate site; AIV-P1-034: how many competencies meet the need ("4 of 6")
 export { LevelMeter } from './LevelMeter.tsx';
 export type { LevelMeterProps } from './LevelMeter.tsx';
 

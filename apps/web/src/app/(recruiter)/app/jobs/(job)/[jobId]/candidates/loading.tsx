@@ -1,5 +1,5 @@
-import { ApplicantList } from '@/features/add-applicants/components/ApplicantList.tsx';
+import { RankingTable } from '@/features/ranking/components/RankingTable.tsx';
 
 export default function CandidatesLoading() {
-  return <ApplicantList view={{ status: 'loading' }} />;
+  return <RankingTable view={{ status: 'loading' }} />;
 }

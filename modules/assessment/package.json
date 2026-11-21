@@ -15,6 +15,7 @@
     "@credalent/audit": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",
+    "@credalent/jobs": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "drizzle-orm": "0.45.4"
   },

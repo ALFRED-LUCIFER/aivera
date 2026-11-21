@@ -274,7 +274,7 @@ const modulesOn = (db: Db): Modules => {
     workspaces,
     candidates,
     evidence: createEvidence(workspaces, audit, () => NOW),
-    assessment: createAssessment(workspaces, audit, () => NOW),
+    assessment: createAssessment(workspaces, audit, jobs, () => NOW),
     jobs,
     intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => NOW),
   };
@@ -477,6 +477,9 @@ async function seed(
     // A handled jobs message (jobs.inbox, AIV-P2-048).
     await ctx.tx.execute(sql`insert into jobs.inbox (consumer, message_id, workspace_id, handled_at)
       values ('jobs.catalogue.eval', ${crypto.randomUUID()}, ${workspaceId}, now())`);
+    // A handled assessment message (assessment.inbox, AIV-P1-031).
+    await ctx.tx.execute(sql`insert into assessment.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('assessment.evidence-mapped', ${crypto.randomUUID()}, ${workspaceId}, now())`);
     // A CV parse and an "Unusual content in this source" note on it (evidence.cv_parse, .source_note, AIV-P1-025).
     const cv = await evidence.requestCvParse(ctx, {
       candidateId: personId,

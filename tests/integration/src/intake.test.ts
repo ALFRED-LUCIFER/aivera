@@ -317,10 +317,10 @@ describe('AIV-P1-086: listApplicationsForJob', () => {
     ];
     const expected = [];
     for (const [i, [name, source]] of cast.entries()) {
-      const { applicationId } = await as(ALEX, w1, (ctx) =>
+      const { applicationId, personId } = await as(ALEX, w1, (ctx) =>
         intake.receiveApplication(ctx, arrival(jobId, name, 200 + i, source)),
       );
-      expected.unshift({ applicationId, displayName: name, stage: 'new', receivedAt: NOW, source });
+      expected.unshift({ applicationId, personId, displayName: name, stage: 'new', receivedAt: NOW, source });
     }
     // A second arrival of Sara's CV adds a source, not a row, and her row keeps the first source.
     await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(jobId, 'Sara Al Qahtani', 200, 'whatsapp')));

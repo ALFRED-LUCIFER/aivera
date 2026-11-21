@@ -120,6 +120,7 @@ export function EvidenceSections() {
           {sample.levels.map(([level, label]) => (
             <LevelMeter key={level} level={level} label={label} />
           ))}
+          <LevelMeter {...sample.meetsNeed} />
         </div>
       </Section>
 

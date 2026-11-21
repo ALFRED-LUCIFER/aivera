@@ -182,6 +182,8 @@ export const createDomainDetection = (ai: Pick<AiClient, 'generateStructured'>):
 
 /**
  * A job's approved rubric version for worker jobs (AIV-P1-072: grading repository skill signals), in the consumer's
- * workspace-scoped transaction. No session: the worker acts for the workspace whose message it handles.
+ * workspace-scoped transaction. No session: the worker acts for the workspace whose message it handles. Not authorised
+ * itself: the web app's ranked table (AIV-P1-034) calls it in the member's transaction only after `listRanking`
+ * authorised the job.
  */
 export const createApprovedRubricReads = (): ApprovedRubricReads => ({ approvedRubric });
