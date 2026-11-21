@@ -210,11 +210,11 @@ describe('the golden set', () => {
       }
   });
 
-  it('AIV-P1-027: every recorded mapping is valid against the product schema, 21 source/competency pairs', () => {
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 23 source/competency pairs', () => {
     const cases = golden.get('evidence.mapToCompetency') ?? [];
     for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
-    expect(pairs).toHaveLength(21);
+    expect(pairs).toHaveLength(23);
   });
 
   it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {
@@ -470,7 +470,7 @@ describe('Feature: AI eval harness with a golden set', () => {
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 11 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 14 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );
