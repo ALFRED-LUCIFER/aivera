@@ -8,7 +8,7 @@ const rootEnv = join(import.meta.dirname, '..', '..', '.env.local');
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const config: NextConfig = {
-  // Set only by tests/e2e/playwright.config.ts: its second `next dev` (no candidate sign-in) needs its own folder.
+  // Set only by the e2e configs (tests/e2e): the second `next dev` (no candidate sign-in) and the production build each need their own folder.
   distDir: process.env['NEXT_DIST_DIR'] ?? '.next',
   poweredByHeader: false,
   typedRoutes: true,
