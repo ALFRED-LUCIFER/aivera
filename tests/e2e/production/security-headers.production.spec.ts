@@ -49,7 +49,7 @@ test('Scenario: recruiter pages run under the production policy with no CSP viol
     displayName: 'Alex Recruiter',
   });
   const value = await encode({ token: { sub: id, remember: false }, secret: e2eAuthSecret, salt: SESSION_COOKIE });
-  await context.addCookies([{ name: SESSION_COOKIE, value, url: baseURL ?? '', httpOnly: true, secure: true }]);
+  await context.addCookies([{ name: SESSION_COOKIE, value, url: `${baseURL}/`, httpOnly: true, secure: true }]);
   const violations = watchCsp(page);
   for (const path of ['/app', '/app/jobs', '/app/jobs/new']) {
     await page.goto(path);
