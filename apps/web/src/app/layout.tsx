@@ -1,7 +1,8 @@
-import { defaultLocale, defaultTimeZone, dir, getTranslations } from '@credalent/i18n';
+import { defaultLocale, defaultTimeZone, dir, getTranslations, intlConfig } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
+import { RootIntl } from '@/features/shell/components/RootIntl.tsx';
 import { readTheme } from '@/features/shell/services/request.ts';
 import './globals.css';
 
@@ -31,6 +32,9 @@ export async function generateMetadata(): Promise<Metadata> {
 // shortcut: reading the cookie makes every route render dynamically; revisit for the marketing and candidate sites
 // (static pages with an inline theme script, or a theme read only in the /app layout).
 export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Only the strings the root error page reads (RootError) cross to the client; nested layouts bring their own provider.
+  const { messages, ...intl } = await intlConfig(locale, defaultTimeZone);
+  const { errorTitle, retry } = messages.access;
   return (
     <html
       lang={locale}
@@ -38,7 +42,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       data-theme={await readTheme()}
       className={`${bricolage.variable} ${hanken.variable} ${jetbrains.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <RootIntl {...intl} messages={{ access: { errorTitle, retry } }}>
+          {children}
+        </RootIntl>
+      </body>
     </html>
   );
 }
