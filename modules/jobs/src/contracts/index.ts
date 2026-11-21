@@ -200,10 +200,11 @@ export interface JobsContract {
     alongside?: (sent: RubricVersion) => Promise<void>,
   ): Promise<RubricVersion>;
   /**
-   * The job's own hiring owner, or an admin acting as owner (audited as such), approves the version awaiting approval
-   * (AIV-P1-014): the previous approved version becomes superseded and RubricApproved.v1, which starts assessment, is
-   * written to the outbox in the same transaction. Anyone else throws `ForbiddenError`. `revision` is the copy the
-   * approver read: an older one throws `JobError('stale')`; a version not awaiting approval `version_status`.
+   * An admin or recruiter on the job approves its open version (a draft directly), or the job's own hiring owner a
+   * version sent to them (AIV-P1-014, ADR-014), audited with `actingAs`: the previous approved version becomes superseded
+   * and RubricApproved.v1, which starts assessment, is written to the outbox in the same transaction. Anyone else throws
+   * `ForbiddenError`. `revision` is the copy the approver read: an older one throws `JobError('stale')`; a version that
+   * cannot be approved (already approved, superseded) `version_status`.
    * `alongside` runs in the same transaction before the audit write: the caller queues the decision email there.
    */
   approveRubric(

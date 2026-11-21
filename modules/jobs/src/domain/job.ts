@@ -220,8 +220,9 @@ export function describeChanges(before: readonly Competency[], after: readonly C
 }
 
 const TRANSITIONS: Partial<Record<RubricStatus, RubricStatus[]>> = {
-  draft: ['awaiting_approval'],
-  returned: ['awaiting_approval'],
+  // A recruiter approves a draft or returned version directly (ADR-014); sending it to the hiring owner is optional.
+  draft: ['awaiting_approval', 'approved'],
+  returned: ['awaiting_approval', 'approved'],
   awaiting_approval: ['approved', 'returned'],
   approved: ['superseded'],
 };
@@ -241,21 +242,20 @@ export function validReturnNote(value: string): string {
 }
 
 /**
- * Who may approve or return a job's rubric (AIV-P1-014): the job's own hiring owner, or an admin, who acts as the owner
- * and is recorded as such. A hiring owner granted the job through its client, but not its owner, may not. The role and
- * job grant are checked by `rubric.approve` first; this narrows hiring owners to the one named on the job.
+ * Who may approve or return a job's rubric (AIV-P1-014, ADR-014): the job's own hiring owner ('owner'), or an admin or
+ * recruiter, who owns the job's rubric ('recruiter'). A hiring owner granted the job through its client, but not its
+ * owner, may not. The role and job grant are checked by `rubric.approve` first; this narrows hiring owners to the one
+ * named on the job. Audit entries from before ADR-014 may say 'admin_as_owner'.
  */
 export const approvesAs = (
   role: string,
   userId: string,
   job: Pick<Job, 'hiringOwnerUserId'>,
-): 'owner' | 'admin_as_owner' | null =>
-  role === 'admin'
-    ? job.hiringOwnerUserId === userId
-      ? 'owner'
-      : 'admin_as_owner'
-    : role === 'hiring_owner' && job.hiringOwnerUserId === userId
-      ? 'owner'
+): 'owner' | 'recruiter' | null =>
+  job.hiringOwnerUserId === userId && (role === 'admin' || role === 'hiring_owner')
+    ? 'owner'
+    : role === 'admin' || role === 'recruiter'
+      ? 'recruiter'
       : null;
 
 /** The longest public descriptor ("A BNPL fintech", "A retail bank"); job_publication_check repeats it. */
@@ -324,7 +324,7 @@ export type NextAction =
 /** Progress other modules report; null means not yet available, never a guessed "nothing to do" (AGENTS.md 1.7). */
 export type JobProgress = { packReady: boolean | null; openEvidenceRequests: number | null };
 
-/** The rubric comes first: nothing is assessed before the hiring owner approves it. Null when nothing is known to do. */
+/** The rubric comes first: nothing is assessed before it is approved (ADR-014). Null when nothing is known to do. */
 export function nextAction(rubric: RubricState, progress: JobProgress): NextAction | null {
   if (rubric.latest === null || rubric.latest === 'draft' || rubric.latest === 'returned')
     return { kind: 'send_rubric' };

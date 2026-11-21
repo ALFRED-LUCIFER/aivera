@@ -1,6 +1,15 @@
 import type { Rubric } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
-import { approverView, canSave, newCompetency, reviewLink, reviewPath, rubricView, weightsTotal } from './rubric.ts';
+import {
+  approverView,
+  canSave,
+  decisionPanel,
+  newCompetency,
+  reviewLink,
+  reviewPath,
+  rubricView,
+  weightsTotal,
+} from './rubric.ts';
 
 const HEAD = 'head-id';
 const at = new Date('2026-11-12T08:00:00.000Z');
@@ -66,8 +75,21 @@ describe('Rubric page view (AIV-P1-012)', () => {
       history: [],
       edit: null,
       review: null,
+      approvable: null,
       approvedCompetencies: 0,
     });
+  });
+
+  // ADR-014: the open draft or returned version is what a recruiter approves; a version sent for approval is `review`.
+  it('the open draft or returned version is approvable; a version awaiting approval is the review instead', () => {
+    const draft = rubricView([version(1, 'draft', { id: 'v1' })], new Map());
+    expect(draft.approvable?.versionId).toBe('v1');
+    expect(draft.review).toBeNull();
+    expect(rubricView([version(2, 'returned', { id: 'v2' })], new Map()).approvable?.versionId).toBe('v2');
+    const sent = rubricView([version(1, 'awaiting_approval', { id: 'v1' })], new Map());
+    expect(sent.approvable).toBeNull();
+    expect(sent.review?.versionId).toBe('v1');
+    expect(rubricView([version(1, 'approved')], new Map()).approvable).toBeNull();
   });
 
   it('edit mode opens the open version, so a second editor resumes it, or else the approved one (AIV-P1-013)', () => {
@@ -130,5 +152,30 @@ describe('Rubric page view (AIV-P1-012)', () => {
 
   it('totals the weights', () => {
     expect(weightsTotal([25, 20, 15, 15, 10, 15].map((weightPercent) => ({ weightPercent })))).toBe(100);
+  });
+});
+
+// AIV-P1-083 (ADR-014): what the approval panel offers, per approver and version, matching the jobs module's rule.
+describe('decisionPanel', () => {
+  const draft = rubricView([version(1, 'draft', { id: 'd' })], new Map());
+  const sent = rubricView([version(1, 'awaiting_approval', { id: 's' })], new Map());
+
+  // SAFETY: mutation check: offered the draft to approvers who cannot edit (dropped `canEdit`) -> this test failed
+  it.each([
+    ['admin or recruiter, draft, job has an owner', draft, 'recruiter', true, true, 'd', false, true, false],
+    ['admin or recruiter, draft, no owner', draft, 'recruiter', true, false, 'd', false, false, false],
+    ['admin who is the named owner, draft', draft, 'owner', true, true, 'd', false, true, false],
+    ['hiring owner, draft never sent', draft, 'owner', false, true, null, false, false, false],
+    ['hiring owner, version sent to them', sent, 'owner', false, true, 's', true, false, false],
+    ['recruiter, version they sent', sent, 'recruiter', true, true, 's', false, false, true],
+    ['no approver', draft, null, true, true, null, false, false, false],
+  ] as const)('%s', (_, rubric, approver, canEdit, owner, versionId, canReturn, canSend, withOwner) => {
+    const panel = decisionPanel(rubric, approver, canEdit, owner);
+    expect([panel.review?.versionId ?? null, panel.canReturn, panel.canSend, panel.withOwner]).toEqual([
+      versionId,
+      canReturn,
+      canSend,
+      withOwner,
+    ]);
   });
 });

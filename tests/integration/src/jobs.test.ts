@@ -343,24 +343,20 @@ describe('Scenario: Approving a version supersedes the previous one', () => {
     ]);
   });
 
-  it('a version that is not awaiting approval cannot be approved', async () => {
-    const [draft] = await rows<{ id: string }>(
-      ALEX,
-      demo,
-      sql`select id from jobs.rubric_version where job_id = ${demoJobs['QA Automation Engineer'] ?? ''}`,
-    );
-    await expect(as(ALEX, demo, (ctx) => jobs.approveRubric(ctx, draft?.id ?? ''))).rejects.toThrow(
+  // ADR-014: a draft may now be approved directly by an admin or recruiter; an approved version still cannot be again.
+  it('a version already approved cannot be approved again', async () => {
+    const approved = await as(ALEX, demo, (ctx) => jobs.getApprovedRubric(ctx, demoJobs['Senior AI Engineer'] ?? ''));
+    await expect(as(ALEX, demo, (ctx) => jobs.approveRubric(ctx, approved?.id ?? ''))).rejects.toThrow(
       new JobError('version_status'),
     );
   });
 
-  it('only admins and the granted hiring owner approve', async () => {
+  it("admins, recruiters and the job's own hiring owner approve; a hiring owner may not edit (ADR-014)", async () => {
     const sbe = demoJobs['Staff Backend Engineer'] ?? '';
     const v2 = await as(ALEX, demo, (ctx) =>
       jobs.saveRubric(ctx, sbe, { successStatement: 'Owns the backend.', competencies: competencies(SIX, 'Backend') }),
     );
     await as(ALEX, demo, (ctx) => jobs.submitRubric(ctx, v2.id));
-    await expect(as(RANA, demo, (ctx) => jobs.approveRubric(ctx, v2.id))).rejects.toThrow(ForbiddenError);
     await expect(
       as(HEAD, demo, (ctx) => jobs.saveRubric(ctx, sbe, { successStatement: 'x', competencies: competencies([100]) })),
     ).rejects.toThrow(ForbiddenError);
