@@ -2,7 +2,8 @@ import { context, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { MockLanguageModelV4 } from 'ai/test';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { log } from '@credalent/observability';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   checkOutput,
@@ -10,6 +11,7 @@ import {
   findQuote,
   InvalidCitation,
   SchemaMismatch,
+  schemaRules,
   UncitedOutput,
   type Source,
 } from './citations';
@@ -224,22 +226,39 @@ describe('Scenario: Schema mismatch', () => {
   const twenty = statement([harness], { weight: 'twenty' });
   // SAFETY: mutation check: put `text` into either SchemaMismatch message in checkOutput -> the matching case failed
   // SAFETY: mutation check: annotateSpan({ "credalent.ai.output": text }) before checkOutput -> both cases failed
+  // AIV-P1-082: the failed rule is logged as `path:code`, so a live failure can be fixed; never the output.
+  // SAFETY: mutation check: logged `text` beside the rules in client.ts -> both cases failed (candidate text in the log)
   it.each([
-    ['a weight of "twenty"', twenty],
-    ['output that is not JSON', 'weight: twenty'],
-  ])('%s fails with SchemaMismatch after one retry, and the raw output is not kept anywhere', async (_, output) => {
-    const { run, prompts } = answers(output, output);
-    const error = await run().catch((e: unknown) => e);
-    expect(error).toEqual(new SchemaMismatch('jobs.draftCompetencies'));
-    expect((error as Error).cause).toBeUndefined();
-    expect(prompts).toHaveLength(2);
-    expect(String((error as Error).stack)).not.toMatch(candidateText);
-    const telemetry = spans
-      .getFinishedSpans()
-      .map((s) => ({ name: s.name, attributes: s.attributes, events: s.events }));
-    expect(JSON.stringify(telemetry)).not.toMatch(candidateText);
-    expect(structuredSpan()?.attributes).toMatchObject({ 'error.type': 'SchemaMismatch' });
-  });
+    ['a weight of "twenty"', twenty, ['strengths.0.weight:invalid_type']],
+    ['output that is not JSON', 'weight: twenty', ['json:invalid']],
+  ])(
+    '%s fails with SchemaMismatch after one retry, and the raw output is not kept anywhere',
+    async (_, output, rules) => {
+      const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+      const { run, prompts } = answers(output, output);
+      const error = await run().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(SchemaMismatch);
+      expect((error as SchemaMismatch).message).toBe(new SchemaMismatch('jobs.draftCompetencies').message);
+      expect((error as SchemaMismatch).rules).toEqual(rules);
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'credalent.ai.task': 'jobs.draftCompetencies',
+          'credalent.ai.schema_rules': rules.join(' '),
+        }),
+        'ai schema mismatch',
+      );
+      expect(JSON.stringify(warn.mock.calls)).not.toMatch(candidateText);
+      warn.mockRestore();
+      expect((error as Error).cause).toBeUndefined();
+      expect(prompts).toHaveLength(2);
+      expect(String((error as Error).stack)).not.toMatch(candidateText);
+      const telemetry = spans
+        .getFinishedSpans()
+        .map((s) => ({ name: s.name, attributes: s.attributes, events: s.events }));
+      expect(JSON.stringify(telemetry)).not.toMatch(candidateText);
+      expect(structuredSpan()?.attributes).toMatchObject({ 'error.type': 'SchemaMismatch' });
+    },
+  );
 });
 
 describe('Prompt versions', () => {
@@ -355,5 +374,22 @@ describe('Scenario: Extraction that cites text not in the CV is rejected (AIV-P1
 
   it('without drop mode the whole answer is rejected', () => {
     expect(() => checkOutput('evidence.parseCv', JSON.stringify(two), schema, [S1, S2])).toThrow(InvalidCitation);
+  });
+});
+
+describe('schemaRules (AIV-P1-082)', () => {
+  // SAFETY: mutation check: dropped the RULE filter in schemaRules -> this test failed (a key holding text was kept)
+  it('keeps schema paths and zod codes, at most 5, and drops anything that could hold text', () => {
+    expect(
+      schemaRules([
+        { path: ['suggestions', 1, 'weight'], code: 'too_big' },
+        { path: [], code: 'custom' },
+        { path: ['competencies'], code: 'too_big' },
+        { path: ['Sara Al Qahtani'], code: 'invalid_type' },
+        { path: ['name'], code: 'Sara said hi' },
+      ]),
+    ).toEqual(['suggestions.1.weight:too_big', ':custom', 'competencies:too_big']);
+    const many = Array.from({ length: 9 }, (_, i) => ({ path: ['competencies', i, 'name'], code: 'too_big' }));
+    expect(schemaRules(many)).toHaveLength(5);
   });
 });

@@ -50,6 +50,9 @@ const ALLOWED = [
   // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@2+untrusted@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
   'credalent.ai.template_version',
+  // Which schema rules a rejected answer broke (AIV-P1-082): `path:code` pairs, pattern-checked by packages/ai
+  // citations.ts `schemaRules`; trusted only because of that check.
+  'credalent.ai.schema_rules',
   // How alike two evidence sources' fingerprints are, 0..1, logged with their ids when a flag is raised (AIV-P1-071).
   'credalent.evidence.similarity',
   // "Unusual content in this source" notes found on one CV parse (AIV-P1-025): a count, never the notes.

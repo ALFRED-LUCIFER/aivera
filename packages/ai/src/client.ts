@@ -1,7 +1,7 @@
 import { annotateSpan, log, withSpan } from '@credalent/observability';
 import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
 import type { z } from 'zod';
-import { checkOutput, formatSources, type Checked, type Source } from './citations.ts';
+import { checkOutput, formatSources, SchemaMismatch, type Checked, type Source } from './citations.ts';
 import {
   circuitBreaker,
   deployments,
@@ -284,6 +284,16 @@ export function createAiClient(options: {
           } catch (error) {
             // checkOutput throws only the contract's three errors, whose messages hold no output.
             outcome('rejected', { 'credalent.ai.attempts': attempts, 'error.type': (error as Error).name });
+            // Which schema rules failed, so a live failure can be fixed (AIV-P1-082): paths and codes, never output.
+            if (error instanceof SchemaMismatch && error.rules.length > 0)
+              log.warn(
+                {
+                  'credalent.ai.task': task,
+                  'credalent.ai.attempts': attempts,
+                  'credalent.ai.schema_rules': error.rules.join(' '),
+                },
+                'ai schema mismatch',
+              );
             if (attempts >= 2) throw error;
           }
         }
