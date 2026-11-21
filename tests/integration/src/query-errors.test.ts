@@ -115,3 +115,49 @@ describe('Scenario Outline: Every failure kind is redacted', () => {
     expect(error).toMatchObject({ code: '23514', constraint: 'entry_action_check' });
   });
 });
+
+// AIV-P1-088: a lock wait on an application connection ends with an error instead of holding a pooled connection.
+describe('Scenario: A lock wait ends with an error', () => {
+  // SAFETY: mutation check: lock_timeout removed -> this test failed (Test timed out in 20000ms: the update kept waiting)
+  it('an update of a row another transaction holds fails with 55P03 after the lock timeout, without its parameters', async () => {
+    await admin.execute(sql`create table public.contended (id int primary key, note text)`);
+    await admin.execute(sql`insert into public.contended values (1, null)`);
+    await admin.execute(sql`grant select, update on public.contended to aivera_app`);
+    const held = Promise.withResolvers<void>();
+    const locked = Promise.withResolvers<void>();
+    const holder = admin.transaction(async (tx) => {
+      await tx.execute(sql`select id from public.contended where id = 1 for update`);
+      locked.resolve();
+      await held.promise;
+    });
+    await locked.promise;
+    const started = Date.now();
+    try {
+      const error = await failure(() => app.execute(sql`update public.contended set note = ${NOTE} where id = 1`));
+      expectNoNote(error);
+      expect(error.code).toBe('55P03');
+      expect(Date.now() - started).toBeGreaterThanOrEqual(9_000);
+    } finally {
+      held.resolve();
+      await holder;
+    }
+  }, 20_000);
+});
+
+const timeouts = async (db: Db) => [
+  ...(await db.execute(
+    sql`select current_setting('lock_timeout') as lock, current_setting('statement_timeout') as statement`,
+  )),
+];
+
+describe('Application connections carry the timeouts; the migrator does not', () => {
+  it('createDb sets lock_timeout 10s and statement_timeout 1min, and timeouts: false leaves both off', async () => {
+    expect(await timeouts(app)).toEqual([{ lock: '10s', statement: '1min' }]);
+    const migrator = createDb(urlFor('aivera_migrator'), { max: 1, timeouts: false });
+    try {
+      expect(await timeouts(migrator)).toEqual([{ lock: '0', statement: '0' }]);
+    } finally {
+      await migrator.$client.end();
+    }
+  });
+});

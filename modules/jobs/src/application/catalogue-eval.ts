@@ -126,7 +126,9 @@ export async function runDraftEval(
   // shortcut: the whole eval runs in the consumer transaction, holding the run row (minutes; Service Bus renews the
   // message lock for 5 minutes), and tokens spent by an attempt that throws before finishRun are not counted, so each of
   // up to 10 deliveries can spend liveTokenCap. Split request, run and record into their own transactions, with the
-  // spend saved per call, if a live run nears the lock renewal or retries show in the token use.
+  // spend saved per call, if a live run nears the lock renewal or retries show in the token use. A copy redelivered while
+  // this transaction runs waits on the inbox row, fails after the 10 s lock timeout (AIV-P1-088) and spends a delivery,
+  // so it can dead-letter while the first copy finishes.
   const { outcome, tokens, ...result } = await evaluate(run.keys, EVAL_DAILY_TOKEN_CAP - spent);
   const status = outcome === 'unavailable' ? 'error' : outcome;
   await store.finishRun(runId, { status, result: status === 'error' ? null : result, tokens, finishedAt: now() });

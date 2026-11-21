@@ -449,7 +449,9 @@ export async function refreshStaleRepositorySources(
   jobId: string,
 ): Promise<void> {
   // shortcut: holds FOR UPDATE locks on the candidate's reads across every GitHub call of the refresh, inside the
-  // consumer transaction; fetch before locking if pilot refreshes hold connections or locks too long.
+  // consumer transaction; fetch before locking if pilot refreshes hold connections or locks too long. A copy redelivered
+  // meanwhile waits on the inbox row, fails after the 10 s lock timeout (AIV-P1-088) and spends a delivery, so it can
+  // dead-letter while the first copy finishes.
   const { github, now, approvedRubric } = ports;
   const store = ports.readStoreFor(tx);
   for (const found of await store.lockForCandidate(workspaceId, candidateId)) {
