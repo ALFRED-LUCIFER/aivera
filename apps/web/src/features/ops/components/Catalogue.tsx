@@ -2,13 +2,12 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Card, Chip } from '@credalent/ui';
-import { CATALOGUE_SOURCE, type CatalogueView } from '../domain/catalogue.ts';
+import type { CatalogueView } from '../domain/catalogue.ts';
 
 type PackJobType = CatalogueView['domainPacks']['packs'][number]['jobTypes'][number];
 type Entry = PackJobType['core'][number] | PackJobType['hints'][number]['entries'][number];
 
 const LEVELS = [1, 3, 5] as const;
-const link = 'underline underline-offset-2 hover:text-text';
 const summary =
   'flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-2 font-semibold text-text pointer-coarse:min-h-11';
 
@@ -52,23 +51,14 @@ function EntryGroup({ title, entries }: { title: string; entries: readonly Entry
 }
 
 /**
- * The published job types and domain packs, read-only (AIV-P5-015). Until the editor ships (AIV-P2-045) a change is a
- * reviewed migration, so there are no controls
- * here; packs and job types expand with native disclosure, which the keyboard opens with Enter or Space.
- * Deviation from the console spec (AIV-P2-041): the catalogue editor layout is not used yet; it lands with the editor
- * (AIV-P2-045), so this page keeps its read-only layout.
+ * The published job types and domain packs, read-only (AIV-P5-015), shown while no draft is open; changes are made in a
+ * draft (AIV-P2-045, CatalogueEditor). Packs and job types expand with native disclosure, which the keyboard opens with
+ * Enter or Space.
  */
 export function Catalogue({ view }: { view: CatalogueView }) {
   const t = useTranslations();
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-body text-text-2">
-        <p>{t('ops.catalogue.readOnly')}</p>
-        <a href={CATALOGUE_SOURCE} className={link}>
-          {t('ops.catalogue.source')}
-        </a>
-      </div>
-
       <Card title={t('ops.catalogue.jobTypes', { version: view.jobTypes.version })} level={2}>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-body">
