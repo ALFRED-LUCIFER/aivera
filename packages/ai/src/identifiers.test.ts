@@ -86,8 +86,8 @@ describe('the replacer', () => {
     expect(seen).toBe('[CANDIDATE]: mail [EMAIL_1]. [CANDIDATE] built the merchant assistant.');
     const span = (quote: string) => {
       const start = seen.indexOf(quote);
-      const { start: s, end: e } = redaction.original(0, { start, end: start + quote.length });
-      return text.slice(s, e);
+      const mapped = redaction.original(0, { start, end: start + quote.length });
+      return mapped && text.slice(mapped.start, mapped.end);
     };
     expect(span('[CANDIDATE] built the merchant assistant')).toBe('Sara built the merchant assistant');
     expect(span('built the merchant assistant')).toBe('built the merchant assistant');
@@ -304,12 +304,21 @@ describe('Feature: Protected traits never reach the model', () => {
     ['Birth date: 14 March 1990', '[REMOVED]'],
     ['Place of birth: Cairo', '[REMOVED]'],
     ['Born: 1990', '[REMOVED]'],
-    ['Personal details: Age: 34, Sex: F', 'Personal details: [REMOVED]'],
+    ['Personal details: Age: 34, Sex: F', 'Personal details: [REMOVED], [REMOVED]'],
+    [
+      'Nationality: Egyptian, Date of birth: 14 March, 1990, Gender: Female, Skills: Python, Go',
+      '[REMOVED], [REMOVED], [REMOVED], Skills: Python, Go',
+    ],
+    ['Nationality - Egyptian', '[REMOVED]'],
+    ['DOB - 14/03/1990 · Dubai', '[REMOVED] · Dubai'],
+    ['Gender – Female', '[REMOVED]'],
+    ['Nationality\tEgyptian', '[REMOVED]'],
     ['Civil status: Single', '[REMOVED]'],
     ['Family status: Married, two children', '[REMOVED]'],
     ['Religion: Muslim', '[REMOVED]'],
     ['Photo: attached', '[REMOVED]'],
     ['Photograph:\nattached\nSkills: Go', '[REMOVED]\nSkills: Go'],
+    ['Photo:\nBuilt payment APIs in Python', '[REMOVED]\nBuilt payment APIs in Python'],
     ['Nationality :Egyptian', '[REMOVED]'],
     ['تاريخ الميلاد: ١٤ مارس ١٩٩٠', '[REMOVED]'],
     ['مكان الميلاد: القاهرة', '[REMOVED]'],
@@ -323,14 +332,39 @@ describe('Feature: Protected traits never reach the model', () => {
     ['Backend Engineer [Photo attached] (photograph)', 'Backend Engineer [REMOVED] [REMOVED]'],
   ])('pattern: %s', (text, expected) => expect(cvText(text)).toBe(expected));
 
-  // SAFETY: mutation check: dropped the `(?<arabicName>...)` alternative from patternFor -> both rows failed
+  // SAFETY: mutation check: dropped the `(?<arabicName>...)` alternative from patternFor -> every row failed; dropped
+  // the two lines-next-to-the-record-name alternatives from arabicNameOf -> the "Layla Haddad\n..." and
+  // "...\nLayla Haddad" rows failed; dropped the name-label alternative -> the two label rows failed
   it.each([
     ['ليلى حداد\nSenior AI Engineer', '[CANDIDATE]\nSenior AI Engineer'],
     ['Layla Haddad · ليلى حداد · Dubai', '[CANDIDATE] · [CANDIDATE] · Dubai'],
+    ['Layla Haddad\nليلى حداد\nSenior AI Engineer', '[CANDIDATE]\n[CANDIDATE]\nSenior AI Engineer'],
+    ['Curriculum vitae\nليلى حداد\nLayla Haddad · Dubai', 'Curriculum vitae\n[CANDIDATE]\n[CANDIDATE] · Dubai'],
+    ['Senior AI Engineer\nالاسم: ليلى حداد', 'Senior AI Engineer\nالاسم: [CANDIDATE]'],
+    ['Senior AI Engineer\nFull name: ليلى حداد · Dubai', 'Senior AI Engineer\nFull name: [CANDIDATE] · Dubai'],
     ['\u200fليلى حداد\n\u200fالجنسية: مصرية', '\u200f[CANDIDATE]\n\u200f[REMOVED]'],
   ])('Scenario: An Arabic-script name on the CV name line is removed: %s', (text, expected) =>
     expect(cvText(text)).toBe(expected),
   );
+
+  it('removes labelled traits from CV, document and reference sources only, never from code', () => {
+    const code = 'type Candidate = {\n  age: number;\n};\nPhoto: Lightroom presets';
+    expect(cvText(code, 'repo')).toBe(code);
+    for (const kind of ['document', 'reference'] as const)
+      expect(cvText('Nationality: Egyptian', kind)).toBe('[REMOVED]');
+  });
+
+  // SAFETY: mutation check: removed the trait-overlap check in redactSources `original` -> this test failed
+  it('rejects a citation that touches removed trait text, so a trait never comes back as a stored quote', () => {
+    const schema = z.object({ items: z.array(cited(z.object({}))) });
+    const cv = source('Gender: Female\nBuilt an Arabic OCR pipeline in Python.', 'cv');
+    const redaction = redactSources([cv], layla, false);
+    const check = (quote: string) =>
+      checkOutput('evidence.parseCv', answer(quote), schema, [cv], undefined, redaction).items[0]?.citations[0]?.quote;
+    expect(check('Built an Arabic OCR pipeline')).toBe('Built an Arabic OCR pipeline');
+    expect(() => check('[REMOVED]')).toThrow(InvalidCitation);
+    expect(() => check('[REMOVED] Built an Arabic OCR')).toThrow(InvalidCitation);
+  });
 
   it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {
     expect(cvText('Built it with ليلى حداد and Omar.', 'document', ['Layla Haddad', 'ليلى حداد'])).toBe(
@@ -351,8 +385,8 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(cvText(skills)).toBe(skills);
   });
 
-  // SAFETY: mutation check: matched every source with `pattern` instead of `cvPattern` in redactSources -> every row
-  // failed on the Arabic name line; dropped the trait alternative -> every row failed
+  // SAFETY: mutation check: matched a CV with the document pattern in redactSources `patternOf` -> every row failed on
+  // the Arabic name line; dropped the trait alternative -> every row failed
   it.each([
     ['evidence.mapToCompetency', () => mapToCompetencyRequest(competencies, [source(traits, 'cv')]), noLinks],
     ['evidence.compareExcerpts', () => compareExcerptsRequest([source(traits, 'cv')], []), { contradictions: [] }],

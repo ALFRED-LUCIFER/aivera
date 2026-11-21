@@ -73,7 +73,11 @@ export class UncitedOutput extends Error {
 /** A citation names a source the model was not given, or quotes text that is not in that source. */
 export class InvalidCitation extends Error {
   override name = 'InvalidCitation';
-  constructor(task: string, label: string, reason: 'unknown source' | 'quote not in source' | 'not a requested pair') {
+  constructor(
+    task: string,
+    label: string,
+    reason: 'unknown source' | 'quote not in source' | 'quotes removed text' | 'not a requested pair',
+  ) {
     // The label comes from the model: named only when it has the shape we gave, so no model text reaches the message.
     super(`AI task ${task} cited ${/^S\d{1,4}$/.test(label) ? label : 'a source'}: ${reason}`);
   }
@@ -173,6 +177,7 @@ export function checkOutput<S extends z.ZodType>(
       const found = findQuote(seen, quote) ?? findQuote(seen, quote.replaceAll('&lt;', '<'));
       if (!found) throw new InvalidCitation(task, label, 'quote not in source');
       const span = redaction ? redaction.original(index, found) : found;
+      if (!span) throw new InvalidCitation(task, label, 'quotes removed text');
       kinds.push(source.kind);
       return { sourceId: source.id, quote: source.text.slice(span.start, span.end), ...span };
     });
