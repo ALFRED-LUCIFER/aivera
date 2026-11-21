@@ -388,5 +388,8 @@ describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', ()
       'A region is a market whose rules a candidate can show skill in, never where someone lives or is from.',
     );
     expect(refusedRegion({ ok: false, error: 'failed' })).toBe('That did not go through. Nothing was changed.');
+    expect(refusedRegion({ ok: false, error: 'stale', by: 'Theo Platform' })).toContain(
+      'Theo Platform changed this draft. Reload to see the latest.',
+    );
   });
 });

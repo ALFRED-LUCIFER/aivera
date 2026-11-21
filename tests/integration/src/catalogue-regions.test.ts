@@ -181,6 +181,9 @@ describe('Feature: Add and retire regions in a catalogue draft', () => {
     // Recruiters read version 1: India and its hints are still offered.
     const published = await createCatalogueReads(app).getPublishedCatalogue();
     expect(published.regions.find((r) => r.key === 'india')?.retired).toBe(false);
+    expect(
+      published.packs.find((p) => p.key === 'payments_fintech')?.hints.find((h) => h.name === 'UPI and NPCI rules'),
+    ).toMatchObject({ region: 'india', retired: false });
   });
 
   it('Scenario: Errors leave the draft unchanged: a stale revision is refused and writes no audit entry', async () => {
