@@ -255,9 +255,10 @@ const region = (page: Page, heading: string) =>
 const hint = (page: Page, name: string) =>
   page.locator('main details section li').filter({ has: page.getByRole('heading', { level: 3, name, exact: true }) });
 
-async function fillHint(page: Page, name: string) {
+/** Fills the hint form; the name too when given. */
+async function fillHint(page: Page, name?: string) {
   const dialog = page.getByRole('dialog', { name: 'Add a regional hint' });
-  await dialog.getByLabel('Name').fill(name);
+  if (name) await dialog.getByLabel('Name').fill(name);
   await dialog.getByLabel('What it means').fill('Integrates customs clearance with the FASAH platform.');
   await dialog.getByLabel('Evidence that counts').fill('Integration code and tests against FASAH documents');
   for (const level of [1, 3, 5])
@@ -279,7 +280,7 @@ test.describe('regional hints in the draft', () => {
     await expect(dialog.getByLabel('Name')).toBeFocused();
     await page.keyboard.type('FASAH customs integration');
     await expect(dialog.getByLabel('Name')).toHaveValue('FASAH customs integration');
-    await fillHint(page, 'FASAH customs integration');
+    await fillHint(page);
     // Always Desirable: no Mandatory option and no default suggestions.
     await expect(dialog).toContainText('Desirable');
     for (const role of ['radio', 'checkbox', 'option', 'combobox'] as const)
@@ -292,10 +293,11 @@ test.describe('regional hints in the draft', () => {
     await expect(added).toContainText('New in draft');
     await expect(added).toContainText('Desirable');
     await expect(region(page, 'Regional hints for KSA')).toContainText('FASAH customs integration');
+    // Newest first: the hint's own entry is the top row.
     await page.goto('/ops/audit');
-    await expect(page.getByRole('row').filter({ hasText: 'Catalogue entry added' }).first()).toContainText(
-      'pia.platform',
-    );
+    const newest = page.getByRole('row').nth(1);
+    await expect(newest).toContainText('Catalogue entry added');
+    await expect(newest).toContainText('pia.platform');
   });
 
   test('Scenario Outline: A hint is a skill, never a residency rule', async ({ page }) => {

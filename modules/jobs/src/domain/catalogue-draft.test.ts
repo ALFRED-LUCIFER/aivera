@@ -231,6 +231,12 @@ describe('Scenario Outline: A hint is a skill, never a residency rule', () => {
     'Lives in Abu Dhabi',
     'Based in Bengaluru',
     'Candidates who are from the Gulf',
+    'Must hold a UAE visa',
+    'Must have an Emirates ID',
+    'Valid Saudi ID required',
+    'Aadhaar holder',
+    'Transferable sponsorship',
+    'Kafala transfer accepted',
   ])('"%s" breaks the residency rule', (text) => {
     expect(residencyRule(text)).toBe(true);
   });
@@ -242,6 +248,10 @@ describe('Scenario Outline: A hint is a skill, never a residency rule', () => {
     'Visa and Mastercard card payments',
     'Free-zone customs procedures',
     'Reads data from the FASAH platform',
+    'Handles messages that are from ZATCA',
+    'Data-residency controls for cloud workloads',
+    'Tax residency certificate integration',
+    'Aadhaar authentication',
   ])('the near-miss "%s" passes', (text) => {
     expect(residencyRule(text)).toBe(false);
   });

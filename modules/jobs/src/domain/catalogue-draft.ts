@@ -285,15 +285,18 @@ export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, inp
  * shortcut: a short list like COUNTRIES; extend it when an operator finds a gap (each addition must keep version 1 passing).
  */
 const RESIDENCY: readonly RegExp[] = [
-  // "Data residency rules" is market knowledge; a person's residence or residency is not.
-  /\b(?<!data )residen(?:ce|cy|ts?)\b/i,
+  // "Data residency rules" and "tax residency certificates" are market knowledge; a person's residence is not.
+  /\b(?<!(?:data|tax)[ -])residen(?:ce|cy|ts?)\b/i,
   /\b(?:work|employment|entry) (?:visas?|permits?)\b/i,
-  /\bvisa (?:holders?|status|sponsorship)\b/i,
+  /\b(?:visa|iqama|aadhaar|emirates id|national id) (?:holders?|status|sponsorship)\b/i,
+  /\b(?:holds?|holding|has|have|having|possess(?:es)?) (?:an? |the |valid )*(?:[\w-]+ )?(?:visa|iqama|aadhaar|emirates id|national id|id card)\b/i,
+  /\bvalid (?:[\w-]+ )?(?:id|visa|iqama)\b/i,
+  /\b(?:transferable sponsorship|kafala)\b/i,
   /\biqama\b/i,
   /\bpassports?\b/i,
   /\bnationality\b/i,
   /\b(?:lives?|living|located|based|reside[sd]?) in\b/i,
-  /\b(?:is|are|be|being) from\b/i,
+  /\b(?:candidates?|people|someone|engineers?|applicants?) (?:who (?:are|is) )?from\b/i,
 ];
 
 /** Whether `text` asks for a residency, an origin or papers rather than market knowledge. */
