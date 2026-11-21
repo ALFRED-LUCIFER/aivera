@@ -26,10 +26,9 @@ export type JobGrants<Tx> = {
 
 /** The user's active workspace, held server-side (ADR-009): the session cookie holds only the user id. */
 export type ActiveWorkspaces = {
-  get(userId: string): Promise<string | null>;
+  /** The pointer checked against the user's active memberships, moved when stale, in one transaction (pickActiveWorkspace). */
+  resolve(userId: string): Promise<string | null>;
   set(userId: string, workspaceId: string): Promise<void>;
-  /** The workspaces where the user is an active member, oldest membership first. */
-  memberOf(userId: string): Promise<string[]>;
 };
 
 export type ContextPorts<Tx> = {
@@ -85,13 +84,7 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
      * Checked against the user's active memberships on every read (AIV-P2-060): a pointer to a workspace they no longer
      * belong to moves to their oldest other membership, or gives null (the no-workspace page) when they have none.
      */
-    async activeWorkspace(userId: string): Promise<string | null> {
-      const [current, memberOf] = await Promise.all([active.get(userId), active.memberOf(userId)]);
-      if (current && memberOf.includes(current)) return current;
-      const next = memberOf[0] ?? null;
-      if (next) await active.set(userId, next);
-      return next;
-    },
+    activeWorkspace: (userId: string): Promise<string | null> => active.resolve(userId),
 
     /** Re-checks membership; a refused switch throws `ForbiddenError` and leaves the active workspace as it was. */
     async switchWorkspace(session: Session, workspaceId: string): Promise<void> {

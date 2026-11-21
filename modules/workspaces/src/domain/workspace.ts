@@ -64,6 +64,14 @@ export type WorkspaceSummary = {
 export type WorkspaceStatusFact = Pick<WorkspaceSummary, 'id' | 'status' | 'createdAt'>;
 
 /**
+ * The workspace a user works in (AIV-P2-060): the pointer while they are still an active member there, otherwise their
+ * oldest active membership (`memberOf` is oldest first), or null when they have none. Workspace status is not weighed:
+ * a suspended or pending workspace is still theirs, and the request context shows its banner or waiting page.
+ */
+export const pickActiveWorkspace = (current: string | null, memberOf: string[]): string | null =>
+  current && memberOf.includes(current) ? current : (memberOf[0] ?? null);
+
+/**
  * Input plus output AI tokens a workspace may spend per UTC day (AIV-P0-033, AIV-P2-038): the platform default, and the
  * bounds of an operator's per-workspace override. Mirrored by `workspace_ai_daily_token_budget_check`.
  */

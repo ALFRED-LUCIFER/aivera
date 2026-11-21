@@ -33,7 +33,7 @@ import { forbidden, redirect } from 'next/navigation';
 import type { VersionRow } from '@/features/ops/domain/catalogueHistory.ts';
 import { cache } from 'react';
 import type { DashboardReads } from '@/features/ops/domain/dashboard.ts';
-import { getIdentity, getSessionUserId } from './auth';
+import { getIdentity, getSessionUserId, sessionSignedInAsOperator } from './auth';
 import { getDb } from './db';
 import { env } from './env';
 import { getJobs } from './jobs';
@@ -72,6 +72,8 @@ export const platformOperator = cache(async (): Promise<PlatformOperator> => {
   if (!userId) redirect('/sign-in?next=%2Fops');
   const user = await operatorUser(userId);
   if (!user) forbidden();
+  // A session signed in before this person became an operator lacks the one-hour idle limit (AIV-P2-060): sign in again.
+  if (!(await sessionSignedInAsOperator())) redirect('/sign-in?next=%2Fops');
   // AIV-P2-052: the operator's own name and email for the shell, from the same read; the email is the name when
   // there is no display name. Only ever the caller's own (ADR-012 point 1 keeps the list itself out of pages).
   return { userId, name: user.displayName?.trim() || user.email, email: user.email };

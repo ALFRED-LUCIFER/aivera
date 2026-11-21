@@ -5,6 +5,7 @@ import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
 import {
   AI_DAILY_TOKEN_BUDGET,
+  pickActiveWorkspace,
   usageWindow,
   WorkspaceError,
   type AiTokenUse,
@@ -323,7 +324,9 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
 }
 
 /** The active-workspace pointer, by user id only (it is not workspace-owned; see the schema). */
-export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
+export function activeWorkspaceStore(tx: Tx): Pick<ActiveWorkspaces, 'set'> & {
+  get(userId: string): Promise<string | null>;
+} {
   return {
     async get(userId) {
       const [row] = await tx
@@ -338,18 +341,30 @@ export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
         .values({ userId, workspaceId })
         .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
     },
-    // The named cross-workspace read (ADR-005 point 4): member_own_read shows the user's own rows in every workspace.
-    // Call it in its own transaction only: the setting would widen every later member read in that transaction.
-    async memberOf(userId) {
-      await tx.execute(sql`select set_config('app.user_id', ${userId}, true)`);
-      const rows = await tx
-        .select({ workspaceId: member.workspaceId })
-        .from(member)
-        .where(and(eq(member.userId, userId), eq(member.status, 'active')))
-        .orderBy(asc(member.createdAt), asc(member.workspaceId));
-      return rows.map((r) => r.workspaceId);
-    },
   };
+}
+
+/**
+ * The user's active workspace checked against their active memberships, and the pointer moved when it names one they
+ * left (AIV-P2-060), all in `tx`, which must be a transaction of its own (composition.ts opens it): `app.user_id` widens
+ * every later member read in it. The named cross-workspace read (ADR-005 point 4) is member_own_read; only this
+ * function sets `app.user_id` (architecture rule `own-membership-read`).
+ */
+export async function resolveActiveWorkspace(tx: Tx, userId: string): Promise<string | null> {
+  await tx.execute(sql`select set_config('app.user_id', ${userId}, true)`);
+  const memberOf = await tx
+    .select({ workspaceId: member.workspaceId })
+    .from(member)
+    .where(and(eq(member.userId, userId), eq(member.status, 'active')))
+    .orderBy(asc(member.createdAt), asc(member.workspaceId));
+  const pointer = activeWorkspaceStore(tx);
+  const current = await pointer.get(userId);
+  const next = pickActiveWorkspace(
+    current,
+    memberOf.map((r) => r.workspaceId),
+  );
+  if (next && next !== current) await pointer.set(userId, next);
+  return next;
 }
 
 /** Every workspace id in the platform directory, newest first (not workspace-owned; see the schema). */

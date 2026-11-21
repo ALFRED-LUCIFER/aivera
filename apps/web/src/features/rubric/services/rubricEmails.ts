@@ -32,6 +32,8 @@ async function versionOf(ctx: WorkspaceContext, jobId: string, versionId: string
 export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVersion): Promise<boolean> {
   const job = await getJobs().getJob(ctx, sent.jobId);
   if (!job?.hiringOwnerUserId) return false;
+  // shortcut: a job whose owner was removed before AIV-P2-060 keeps their id, so its header still shows their name; this
+  // check stops the email. Clear such owners when the job header edit (AIV-P1-012) lets an admin assign another.
   const member = await getWorkspaces().getMembership(job.hiringOwnerUserId, ctx.workspaceId);
   if (!member || approvesAs(member.role, member.userId, job) !== 'owner') return false;
   const email = configured();

@@ -88,9 +88,14 @@ describe('parseWebEnv sign-in settings (AIV-P0-009)', () => {
 
   // Scenario: The pilot refuses to start without AUTH_URL (AIV-P2-060).
   // SAFETY: mutation check: removed the AUTH_URL refine -> this test failed (pilot and prod started without it)
+  // SAFETY: mutation check: accepted any AUTH_URL scheme in pilot and prod -> this test failed (http was accepted)
   it.each(['pilot', 'prod'])('%s refuses to start without AUTH_URL, naming it and no secret value', (APP_ENV) => {
     const start = () => parseWebEnv({ ...valid, ...auth, APP_ENV });
     expect(start).toThrow('missing or invalid: AUTH_URL');
+    // An http origin would send the session cookie's callbacks in the clear.
+    expect(() => parseWebEnv({ ...valid, ...auth, APP_ENV, AUTH_URL: 'http://app.credalent.example' })).toThrow(
+      'missing or invalid: AUTH_URL',
+    );
     expect(start).not.toThrow(/client-secret-value|aaaa/);
     expect(parseWebEnv({ ...valid, ...auth, APP_ENV, AUTH_URL: 'https://app.credalent.example' }).AUTH_URL).toBe(
       'https://app.credalent.example',
