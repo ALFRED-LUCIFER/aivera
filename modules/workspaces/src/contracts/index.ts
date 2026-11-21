@@ -202,10 +202,13 @@ export interface WorkspacesContract {
   acceptInvitation(user: { userId: string; email: string }, token: string): Promise<{ workspaceId: string }>;
   /** Admins. The member's grants become exactly `access` (each change audited); next request onwards. */
   changeJobAccess(ctx: WorkspaceContext, userId: string, access: JobAccess): Promise<void>;
-  /** Admins. Removes the member and their grants; refuses the last admin (`last_admin`). */
+  /** Admins. Removes the member, their grants and their active-workspace pointer here; refuses the last admin (`last_admin`). */
   removeMember(ctx: WorkspaceContext, userId: string): Promise<void>;
 
-  /** The user's active workspace id, or null when they have none yet. */
+  /**
+   * The user's active workspace id, re-checked against their active memberships: a pointer to one they left moves to
+   * their oldest other membership; null when they belong to none.
+   */
   activeWorkspace(userId: string): Promise<string | null>;
   /** Re-checks membership; throws `ForbiddenError` and keeps the current active workspace when refused. */
   switchWorkspace(session: Session, workspaceId: string): Promise<void>;

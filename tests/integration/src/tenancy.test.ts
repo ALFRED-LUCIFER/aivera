@@ -85,6 +85,18 @@ const isDeliveryReportPolicy = (p: {
   p.qual === PROVIDER_ID_EXPR;
 
 /**
+ * The one named read of a person's own memberships across workspaces (ADR-005 point 4, AIV-P2-060): read-only, on
+ * workspaces.member only, for aivera_app, reaching the rows of the user the transaction names in `app.user_id`
+ * (tests/integration/src/workspaces.test.ts). Expression matched exactly.
+ */
+const isOwnMembershipPolicy = (p: { table: string; name: string; cmd: string; roles: string[]; qual: string | null }) =>
+  p.table === 'workspaces.member' &&
+  p.name === 'member_own_read' &&
+  p.cmd === 'SELECT' &&
+  p.roles.join() === 'aivera_app' &&
+  p.qual === tenantExpr('user_id', 'app.user_id');
+
+/**
  * Tables a candidate account may own instead of a workspace (ADR-009): a row's workspace_id is null exactly when its
  * account column is set (a check constraint, tests/integration/src/files.test.ts). Their one extra permissive policy
  * must be the account policy on that column, exactly as `candidateAccountPolicy` generates it.
@@ -107,7 +119,7 @@ const ACCOUNT_TABLES: Record<string, string> = {
 };
 const isAccountTable = (table: string) => table.startsWith(`${ACCOUNT_SCHEMA}.`);
 
-type Setting = 'app.workspace_id' | 'app.candidate_account_id';
+type Setting = 'app.workspace_id' | 'app.candidate_account_id' | 'app.user_id';
 /** The expression every policy must use, exactly as PostgreSQL prints the one `tenantPolicy` (or `candidateAccountPolicy`) generates. */
 const tenantExpr = (column: string, setting: Setting = 'app.workspace_id') =>
   `(${column} = (NULLIF(current_setting('${setting}'::text, true), ''::text))::uuid)`;
@@ -209,7 +221,13 @@ async function isolationViolations(db: Db | Tx): Promise<string[]> {
     const isPublicRead = (p: Policy) =>
       PUBLIC_READ[t.name]?.name === p.name && PUBLIC_READ[t.name]?.qual === p.qual && p.cmd === 'SELECT';
     for (const loose of permissive.filter(
-      (p) => !isTenant(p) && !isPublicRead(p) && !isRelayPolicy(p) && !isDeliveryReportPolicy(p) && !isAccountOwner(p),
+      (p) =>
+        !isTenant(p) &&
+        !isPublicRead(p) &&
+        !isRelayPolicy(p) &&
+        !isDeliveryReportPolicy(p) &&
+        !isAccountOwner(p) &&
+        !isOwnMembershipPolicy(p),
     ))
       violations.push(`${t.name}: permissive policy ${loose.name} does not compare with ${setting}`);
   }

@@ -44,6 +44,7 @@ export function createWorkspaces(db: Db, audit: AuditContract, now: () => Date =
     active: {
       get: (userId) => db.transaction((tx) => activeWorkspaceStore(tx).get(userId)),
       set: (userId, workspaceId) => db.transaction((tx) => activeWorkspaceStore(tx).set(userId, workspaceId)),
+      memberOf: (userId) => db.transaction((tx) => activeWorkspaceStore(tx).memberOf(userId)),
     },
   });
   const clients = clientsUseCases({ storeFor, newId, authorize: context.authorize });

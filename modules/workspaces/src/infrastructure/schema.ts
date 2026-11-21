@@ -8,6 +8,7 @@ import {
   foreignKey,
   integer,
   jsonb,
+  pgPolicy,
   pgSchema,
   primaryKey,
   text,
@@ -73,6 +74,13 @@ export const member = workspaces
       check('member_role_check', sql`${t.role} in ('admin', 'recruiter', 'hiring_owner', 'interviewer')`),
       check('member_status_check', sql`${t.status} in ('invited', 'active', 'removed')`),
       tenantPolicy('member_tenant_isolation', t.workspaceId),
+      // The named cross-workspace read (ADR-005 point 4, AIV-P2-060): read-only, the rows of the user the transaction
+      // names in `app.user_id`, set only by activeWorkspaceStore.memberOf in its own transaction (tenancy.test.ts).
+      pgPolicy('member_own_read', {
+        for: 'select',
+        to: 'aivera_app',
+        using: sql`${t.userId} = nullif(current_setting('app.user_id', true), '')::uuid`,
+      }),
     ],
   )
   .enableRLS();
