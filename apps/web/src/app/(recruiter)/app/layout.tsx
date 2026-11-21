@@ -25,8 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RecruiterLayout({ children }: { children: ReactNode }) {
   // The server-side session check behind the proxy's redirect (AIV-P0-009), then the workspace context (AIV-P0-010):
-  // a removed member gets the 403 page, a signed-in user with no workspace yet gets the message below (a platform
-  // operator goes to the console instead, AIV-P2-058).
+  // a removed member lands on their other workspace (AIV-P2-060), and a signed-in user with no workspace (yet, or any
+  // more) gets the message below (a platform operator goes to the console instead, AIV-P2-058).
   const userId = await getSessionUserId();
   if (!userId) redirect('/sign-in');
   const member = await currentMember();
