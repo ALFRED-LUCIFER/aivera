@@ -427,8 +427,8 @@ test.describe('job types in the draft', () => {
     await openCatalogue(page);
     const starters = ['Cloud IAM', 'Network policy', 'Audit logging', 'Secrets handling'];
     for (const [key, message] of [
-      ['software_engineering', 'This key is already used.'],
-      ['Security Engineering', 'Use lower-case letters, digits and underscores.'],
+      ['software_engineering', 'That key is already in the catalogue.'],
+      ['Security Engineering', 'Use lower-case letters, digits and underscores for the key.'],
     ] as const) {
       const dialog = await addJobType(page, { key, starters });
       await expect(dialog.getByRole('alert')).toHaveText(message);
@@ -464,6 +464,126 @@ test.describe('job types in the draft', () => {
       await expectAccessible(page);
       await page.getByRole('button', { name: 'Edit Security engineering' }).click();
       await expect(page.getByRole('dialog', { name: 'Edit job type' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+});
+
+// AIV-P2-059: regions in the draft. Runs after the blocks above, on the draft "the draft" opened.
+const regionRows = (page: Page) => page.getByRole('list', { name: 'Regions in the draft' }).getByRole('listitem');
+const regionRow = (page: Page, name: string) =>
+  regionRows(page).filter({ has: page.getByRole('heading', { level: 3, name, exact: true }) });
+const hintsFor = (page: Page, packName: string, heading: string) =>
+  pack(page, packName)
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { level: 3, name: heading }) });
+/** The newest platform audit row: the action just taken, by Pia. */
+async function expectNewestAudit(page: Page, action: string) {
+  await page.goto('/ops/audit');
+  const newest = page.getByRole('row').nth(1);
+  await expect(newest).toContainText(action);
+  await expect(newest).toContainText('pia.platform');
+}
+
+test.describe('regions in the draft', () => {
+  test('Scenario: Adding a region, by keyboard', async ({ page }) => {
+    await openCatalogue(page);
+    await expect(regionRows(page).getByRole('heading', { level: 3 })).toHaveText(['UAE', 'KSA', 'India']);
+    await page.getByRole('button', { name: 'Add a region' }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Add a region' });
+    await expect(dialog.getByLabel('Key')).toBeFocused();
+    await page.keyboard.type('eu');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('EU');
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    await expect(regionRow(page, 'EU')).toContainText('New in draft');
+    await packSummary(page, 'Payments and fintech').click();
+    await expect(hintsFor(page, 'Payments and fintech', 'Regional hints for EU')).toContainText(
+      'No regional hints for EU yet.',
+    );
+    await expectNewestAudit(page, 'Catalogue entry added');
+  });
+
+  test('Scenario Outline: The region key and label are validated', async ({ page }) => {
+    await openCatalogue(page);
+    for (const [key, label, field, message] of [
+      ['EU', 'EU', 'Key', 'Use lower-case letters, digits and underscores for the key.'],
+      ['ksa', 'Saudi Arabia', 'Key', 'That key is already in the catalogue.'],
+      ['gcc', '', 'English label', 'Add an English label.'],
+      [
+        'uae_r',
+        'UAE residents',
+        'English label',
+        'A region is a market whose rules a candidate can show skill in, never where someone lives or is from.',
+      ],
+    ] as const) {
+      await page.getByRole('button', { name: 'Add a region' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Add a region' });
+      await dialog.getByLabel('Key').fill(key);
+      await dialog.getByLabel('English label').fill(label);
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect(dialog.getByRole('alert')).toHaveText(message);
+      await expect(dialog.getByLabel(field)).toHaveAttribute('aria-invalid', 'true');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+    }
+    await expect(regionRow(page, 'UAE residents')).toHaveCount(0);
+  });
+
+  test("Scenario: Editing a region's label, by keyboard: a published key cannot be renamed", async ({ page }) => {
+    await openCatalogue(page);
+    await page.getByRole('button', { name: 'Edit KSA' }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Edit region' });
+    await expect(dialog.getByLabel('Key')).toHaveAttribute('readonly', '');
+    await expect(dialog).toContainText('Published keys never change.');
+    await dialog.getByLabel('English label').focus();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('Saudi Arabia');
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    await expect(regionRow(page, 'Saudi Arabia')).toContainText('Changed in draft');
+    await expect(regionRow(page, 'Saudi Arabia')).toContainText('ksa');
+    await expectNewestAudit(page, 'Catalogue entry edited');
+  });
+
+  test('Scenario: A region new in the draft is removed', async ({ page }) => {
+    await openCatalogue(page);
+    await page.getByRole('button', { name: 'Add a region' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add a region' });
+    await dialog.getByLabel('Key').fill('gcc');
+    await dialog.getByLabel('English label').fill('GCC');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(regionRow(page, 'GCC')).toContainText('New in draft');
+    await expect(page.getByRole('button', { name: 'Retire GCC' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Remove GCC' }).click();
+    await expect(regionRow(page, 'GCC')).toHaveCount(0);
+    await expectNewestAudit(page, 'Catalogue entry removed from draft');
+  });
+
+  test('Scenario: Retiring a region keeps its hints visible as retired', async ({ page }) => {
+    await openCatalogue(page);
+    await expect(page.getByRole('button', { name: 'Remove India' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Retire India' }).click();
+    await expect(regionRow(page, 'India')).toContainText('Retired');
+    await expect(regionRow(page, 'India').getByRole('button')).toHaveCount(0);
+    await packSummary(page, 'Payments and fintech').click();
+    const india = hintsFor(page, 'Payments and fintech', 'Regional hints for India');
+    await expect(india.getByRole('button')).toHaveCount(0);
+    const upi = india.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'UPI and NPCI rules' }) });
+    await expect(upi).toContainText('Retired');
+    await expectNewestAudit(page, 'Catalogue entry retired');
+  });
+
+  for (const theme of themes) {
+    test(`axe passes on the regions and the region form (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+      await openCatalogue(page);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expectAccessible(page);
+      await page.getByRole('button', { name: 'Edit EU' }).click();
+      await expect(page.getByRole('dialog', { name: 'Edit region' })).toBeVisible();
       await expectAccessible(page);
     });
   }
@@ -603,6 +723,10 @@ test.describe('publish preview and discard', () => {
     ])
       await expect(card.getByRole('listitem').filter({ hasText: line })).toHaveCount(1);
     await expect(card.getByRole('heading', { level: 3, name: 'Packs' })).toBeVisible();
+    // AIV-P2-059: the Regions group: added, label edited and retired.
+    await expect(card.getByRole('heading', { level: 3, name: 'Regions' })).toBeVisible();
+    for (const line of ['Added: EU', 'Edited: KSA label, KSA → Saudi Arabia', 'Retired: India'])
+      await expect(card.getByRole('listitem').filter({ hasText: line })).toHaveCount(1);
     await expect(card).toContainText('Nothing changes until you confirm.');
     // The last run of the eval tests failed: publish stays disabled whatever the reason says.
     await expect(card).toContainText('The last eval run failed. Fix the draft and run it again.');

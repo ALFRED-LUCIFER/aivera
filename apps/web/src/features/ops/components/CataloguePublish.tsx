@@ -59,7 +59,8 @@ export function CataloguePublish({ model }: { model: CataloguePublishViewModel }
         onConfirm={publish.onConfirm}
         done={null}
       >
-        <div className="mt-3 max-h-80 overflow-y-auto">
+        {/* No scroll box of its own: the dialog scrolls, so a long diff stays reachable by keyboard (axe). */}
+        <div className="mt-3">
           <CatalogueDiff changes={model.changes} />
         </div>
         {publish.block && <p className="mt-3 font-semibold">{t(`publish.blocked.${publish.block}`)}</p>}
