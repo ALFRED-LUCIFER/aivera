@@ -2,7 +2,7 @@ import { createDb } from '@credalent/db/client';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from 'drizzle-orm';
 import { databaseUrl } from '../playwright.config.ts';
-import { signIn } from './auth.ts';
+import { signIn, signInOperator } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P5-015 (ADR-012): the catalogue at /ops/catalogue. AIV-P2-045 (ADR-013): with no draft it is read-only with
@@ -668,7 +668,10 @@ test.describe('the draft eval', () => {
   });
 
   test('Scenario: Runs do not overlap', async ({ page }) => {
-    await openCatalogue(page);
+    // The page stays as it loaded: no console-opened re-render shows the run written below (signInOperator).
+    await signInOperator(page, PIA);
+    await page.goto('/ops/catalogue');
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
     // Another operator's run starts after this page loaded.
     const db = createDb(databaseUrl, { max: 1 });
     const runs = async () =>
