@@ -314,9 +314,9 @@ export interface CatalogueEditor {
   saveDraftPack(operatorId: string, input: DraftPackInput): Promise<void>;
   /**
    * Adds (`position` null) or edits a pack competency, always desirable. Refused: empty evidence
-   * (`evidence_required`), a retired entry (`entry_retired`), a name or meaning naming an employer or where someone is from (`fairness_employer`,
-   * `fairness_origin`), a job type the draft does not offer, core outside applies-to, more than `CORE_LIMIT` core per job
-   * type in the pack (`core_limit`), a retired pack.
+   * (`evidence_required`), a retired entry (`entry_retired`), a name or meaning naming an employer or where someone is
+   * from (`fairness_employer`, `fairness_origin`), a job type the draft does not offer, core outside applies-to, more
+   * than 4 core per job type in the pack (`core_limit`), a retired pack (`pack_retired`).
    */
   saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
   /**

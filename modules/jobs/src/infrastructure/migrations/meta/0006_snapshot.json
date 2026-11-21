@@ -76,8 +76,14 @@
           "tableFrom": "competency",
           "tableTo": "rubric_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "rubric_version_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "rubric_version_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -87,7 +93,11 @@
         "competency_version_position_key": {
           "name": "competency_version_position_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "rubric_version_id", "position"]
+          "columns": [
+            "workspace_id",
+            "rubric_version_id",
+            "position"
+          ]
         }
       },
       "policies": {
@@ -95,7 +105,9 @@
           "name": "competency_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -103,7 +115,9 @@
           "name": "competency_job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")",
           "withCheck": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")"
         }
@@ -282,7 +296,10 @@
         "job_workspace_id_key": {
           "name": "job_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         }
       },
       "policies": {
@@ -290,7 +307,9 @@
           "name": "job_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -298,7 +317,9 @@
           "name": "job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))",
           "withCheck": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))"
         }
@@ -446,8 +467,14 @@
           "tableFrom": "public_job",
           "tableTo": "job",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "job_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -457,7 +484,9 @@
         "public_job_slug_key": {
           "name": "public_job_slug_key",
           "nullsNotDistinct": false,
-          "columns": ["slug"]
+          "columns": [
+            "slug"
+          ]
         }
       },
       "policies": {
@@ -465,7 +494,9 @@
           "name": "public_job_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -473,7 +504,9 @@
           "name": "public_job_public_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "current_user = 'aivera_public'"
         }
       },
@@ -581,8 +614,14 @@
           "tableFrom": "rubric_version",
           "tableTo": "job",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "job_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -592,12 +631,19 @@
         "rubric_version_workspace_id_key": {
           "name": "rubric_version_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         },
         "rubric_version_job_version_key": {
           "name": "rubric_version_job_version_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "job_id", "version"]
+          "columns": [
+            "workspace_id",
+            "job_id",
+            "version"
+          ]
         }
       },
       "policies": {
@@ -605,7 +651,9 @@
           "name": "rubric_version_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -613,7 +661,9 @@
           "name": "rubric_version_job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")",
           "withCheck": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")"
         }

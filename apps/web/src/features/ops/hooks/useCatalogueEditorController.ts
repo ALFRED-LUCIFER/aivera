@@ -21,8 +21,8 @@ import {
 } from '../services/editCatalogue.ts';
 
 /**
- * Editing the catalogue draft (AIV-P2-045): each save sends the draft's version and the revision the page was loaded with, so a save after
- * another operator's is refused, never overwrites; after a save the page reloads the draft from the server.
+ * Editing the catalogue draft (AIV-P2-045): each save sends the draft's version and the revision the page was loaded
+ * with, so a save after another operator's is refused, never overwrites; after a save the page reloads the draft.
  */
 export function useCatalogueEditorController(draft: DraftModel): EditorViewModel {
   const router = useRouter();

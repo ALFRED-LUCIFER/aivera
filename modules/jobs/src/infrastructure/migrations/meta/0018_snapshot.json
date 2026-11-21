@@ -59,8 +59,12 @@
           "tableFrom": "catalogue_job_type",
           "tableTo": "catalogue_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["version"],
-          "columnsTo": ["version"],
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -68,7 +72,10 @@
       "compositePrimaryKeys": {
         "catalogue_job_type_pkey": {
           "name": "catalogue_job_type_pkey",
-          "columns": ["version", "key"]
+          "columns": [
+            "version",
+            "key"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -132,8 +139,12 @@
           "tableFrom": "catalogue_pack",
           "tableTo": "catalogue_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["version"],
-          "columnsTo": ["version"],
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -141,7 +152,10 @@
       "compositePrimaryKeys": {
         "catalogue_pack_pkey": {
           "name": "catalogue_pack_pkey",
-          "columns": ["version", "key"]
+          "columns": [
+            "version",
+            "key"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -255,8 +269,12 @@
           "tableFrom": "catalogue_pack_competency",
           "tableTo": "catalogue_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["version"],
-          "columnsTo": ["version"],
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -265,8 +283,14 @@
           "tableFrom": "catalogue_pack_competency",
           "tableTo": "catalogue_pack",
           "schemaTo": "jobs",
-          "columnsFrom": ["version", "pack_key"],
-          "columnsTo": ["version", "key"],
+          "columnsFrom": [
+            "version",
+            "pack_key"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -274,7 +298,11 @@
       "compositePrimaryKeys": {
         "catalogue_pack_competency_pkey": {
           "name": "catalogue_pack_competency_pkey",
-          "columns": ["version", "pack_key", "position"]
+          "columns": [
+            "version",
+            "pack_key",
+            "position"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -342,8 +370,12 @@
           "tableFrom": "catalogue_region",
           "tableTo": "catalogue_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["version"],
-          "columnsTo": ["version"],
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -351,7 +383,10 @@
       "compositePrimaryKeys": {
         "catalogue_region_pkey": {
           "name": "catalogue_region_pkey",
-          "columns": ["version", "key"]
+          "columns": [
+            "version",
+            "key"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -465,8 +500,12 @@
           "tableFrom": "catalogue_regional_hint",
           "tableTo": "catalogue_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["version"],
-          "columnsTo": ["version"],
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -475,8 +514,14 @@
           "tableFrom": "catalogue_regional_hint",
           "tableTo": "catalogue_pack",
           "schemaTo": "jobs",
-          "columnsFrom": ["version", "pack_key"],
-          "columnsTo": ["version", "key"],
+          "columnsFrom": [
+            "version",
+            "pack_key"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -485,8 +530,14 @@
           "tableFrom": "catalogue_regional_hint",
           "tableTo": "catalogue_region",
           "schemaTo": "jobs",
-          "columnsFrom": ["version", "region"],
-          "columnsTo": ["version", "key"],
+          "columnsFrom": [
+            "version",
+            "region"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -494,7 +545,12 @@
       "compositePrimaryKeys": {
         "catalogue_regional_hint_pkey": {
           "name": "catalogue_regional_hint_pkey",
-          "columns": ["version", "pack_key", "region", "position"]
+          "columns": [
+            "version",
+            "pack_key",
+            "region",
+            "position"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -709,8 +765,14 @@
           "tableFrom": "competency",
           "tableTo": "rubric_version",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "rubric_version_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "rubric_version_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -720,7 +782,11 @@
         "competency_version_position_key": {
           "name": "competency_version_position_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "rubric_version_id", "position"]
+          "columns": [
+            "workspace_id",
+            "rubric_version_id",
+            "position"
+          ]
         }
       },
       "policies": {
@@ -728,7 +794,9 @@
           "name": "competency_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -736,7 +804,9 @@
           "name": "competency_job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")",
           "withCheck": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")"
         }
@@ -923,7 +993,10 @@
         "job_workspace_id_key": {
           "name": "job_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         }
       },
       "policies": {
@@ -931,7 +1004,9 @@
           "name": "job_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -939,7 +1014,9 @@
           "name": "job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))",
           "withCheck": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))"
         }
@@ -1058,7 +1135,10 @@
         "outbox_workspace_dedupe_key": {
           "name": "outbox_workspace_dedupe_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "dedupe_key"]
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ]
         }
       },
       "policies": {
@@ -1066,7 +1146,9 @@
           "name": "outbox_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -1074,14 +1156,18 @@
           "name": "outbox_relay_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["aivera_relay"],
+          "to": [
+            "aivera_relay"
+          ],
           "using": "true"
         },
         "outbox_relay_mark": {
           "name": "outbox_relay_mark",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["aivera_relay"],
+          "to": [
+            "aivera_relay"
+          ],
           "using": "true",
           "withCheck": "true"
         }
@@ -1208,8 +1294,14 @@
           "tableFrom": "public_job",
           "tableTo": "job",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "job_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1219,7 +1311,9 @@
         "public_job_slug_key": {
           "name": "public_job_slug_key",
           "nullsNotDistinct": false,
-          "columns": ["slug"]
+          "columns": [
+            "slug"
+          ]
         }
       },
       "policies": {
@@ -1227,7 +1321,9 @@
           "name": "public_job_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -1235,7 +1331,9 @@
           "name": "public_job_public_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "current_user = 'aivera_public'"
         }
       },
@@ -1384,8 +1482,14 @@
           "tableFrom": "rubric_version",
           "tableTo": "job",
           "schemaTo": "jobs",
-          "columnsFrom": ["workspace_id", "job_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1395,12 +1499,19 @@
         "rubric_version_workspace_id_key": {
           "name": "rubric_version_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         },
         "rubric_version_job_version_key": {
           "name": "rubric_version_job_version_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "job_id", "version"]
+          "columns": [
+            "workspace_id",
+            "job_id",
+            "version"
+          ]
         }
       },
       "policies": {
@@ -1408,7 +1519,9 @@
           "name": "rubric_version_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -1416,7 +1529,9 @@
           "name": "rubric_version_job_scope",
           "as": "RESTRICTIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")",
           "withCheck": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")"
         }

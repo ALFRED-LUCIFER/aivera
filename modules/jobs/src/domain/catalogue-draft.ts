@@ -205,8 +205,7 @@ const EMPLOYERS = [
 const RULES: readonly (readonly [RegExp, 'employer' | 'origin'])[] = [
   [/\bworked at\b/i, 'employer'],
   [/\byears at\b/i, 'employer'],
-  // "ex-" only before a listed employer: "ex-dividend" and "ex-ante" are finance skills.
-  [new RegExp(`(?:^|[^a-z])ex-(?:${EMPLOYERS})\\b`, 'i'), 'employer'],
+  // A listed employer, "Ex-Careem" included; a bare "ex-" is not a rule ("ex-dividend" and "ex-ante" are skills).
   [new RegExp(`\\b(?:${EMPLOYERS})\\b`, 'i'), 'employer'],
   [/\bnationals\b/i, 'origin'],
   [new RegExp(`\\b(?:${COUNTRIES}) nationals?\\b`, 'i'), 'origin'],

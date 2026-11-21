@@ -157,6 +157,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         const target = position === undefined ? pack : pack?.competencies.find((c) => c.position === position);
         if (!target) throw new CatalogueError('not_found');
         if (target.retired) throw new CatalogueError('entry_retired');
+        if (position !== undefined && pack?.retired) throw new CatalogueError('pack_retired');
         const removed = isNewInDraft(published, entry.packKey, position);
         await store.touch(version, operatorId);
         await (removed ? store.remove(version, entry) : store.retire(version, entry));
