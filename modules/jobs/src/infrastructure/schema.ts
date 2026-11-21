@@ -1,4 +1,4 @@
-import { outboxTable } from '@credalent/db/outbox';
+import { inboxTable, outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql, type SQL } from 'drizzle-orm';
 import {
@@ -26,6 +26,7 @@ import {
   type PublicListing,
 } from '../domain/job.ts';
 import { CATALOGUE_STATUSES, type Labels } from '../domain/catalogue.ts';
+import { EVAL_RUN_STATUSES } from '../domain/catalogue-eval.ts';
 
 export const jobs = pgSchema('jobs');
 
@@ -416,3 +417,41 @@ export const catalogueRegionalHint = jobs.table(
     ...skillChecks('catalogue_regional_hint', t),
   ],
 );
+
+/**
+ * The eval runs on catalogue drafts (AIV-P2-048, ADR-013 point 12): each against the draft content it was asked for
+ * (`content_hash`), with the keys it sends to the model and, once finished, the result. At most one runs per draft (the
+ * partial unique index). A platform table: no workspace data, golden-case ids and rates only.
+ */
+export const catalogueEvalRun = jobs.table(
+  'catalogue_eval_run',
+  {
+    id: uuid().primaryKey(),
+    version: version(),
+    contentHash: text('content_hash').notNull(),
+    keys: jsonb().$type<{ domains: string[]; regions: string[] }>().notNull(),
+    status: text({ enum: EVAL_RUN_STATUSES }).notNull(),
+    requestedBy: text('requested_by').notNull(),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    tokens: integer().notNull().default(0),
+    result: jsonb(),
+  },
+  (t) => [
+    uniqueIndex('catalogue_eval_run_one_running_idx')
+      .on(t.version)
+      .where(sql`${t.status} = 'running'`),
+    index('catalogue_eval_run_latest_idx').on(t.version, t.requestedAt),
+    check('catalogue_eval_run_status_check', sql`${t.status} in ('running', 'passed', 'failed', 'error')`),
+    check('catalogue_eval_run_hash_check', sql`${t.contentHash} ~ '^[0-9a-f]{64}$'`),
+    check('catalogue_eval_run_actor_check', isActor(t.requestedBy)),
+    check('catalogue_eval_run_tokens_check', sql`${t.tokens} >= 0`),
+    check(
+      'catalogue_eval_run_finished_check',
+      sql`(${t.status} = 'running') = (${t.finishedAt} is null) and (${t.status} in ('passed', 'failed')) = (${t.result} is not null)`,
+    ),
+  ],
+);
+
+// Handled worker messages (AIV-P0-015), so a redelivered catalogue eval message is skipped (AIV-P2-048).
+export const inbox = inboxTable(jobs);

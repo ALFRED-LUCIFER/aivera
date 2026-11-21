@@ -41,7 +41,7 @@ const GLOBAL_TABLES: Record<string, string> = {
     'One row of platform settings the operators change (ADR-012 point 9, AIV-P2-039): no tenant data, no personal data.',
   // SAFETY: mutation check: removed 'regional_hint' from this list -> the forced-RLS test failed (named jobs.catalogue_regional_hint)
   ...Object.fromEntries(
-    ['version', 'job_type', 'region', 'pack', 'pack_competency', 'regional_hint'].map((t) => [
+    ['version', 'job_type', 'region', 'pack', 'pack_competency', 'regional_hint', 'eval_run'].map((t) => [
       `jobs.catalogue_${t}`,
       'The catalogue every workspace is offered (ADR-013 point 2): no workspace or candidate data, no personal data; its actors are opaque operator ids or system:seed.',
     ]),
@@ -454,6 +454,9 @@ async function seed(
         'saga-maintainer-credalent-example', false)`);
     await ctx.tx.execute(sql`insert into evidence.inbox (consumer, message_id, workspace_id, handled_at)
       values ('evidence.repository.read', ${crypto.randomUUID()}, ${workspaceId}, now())`);
+    // A handled jobs message (jobs.inbox, AIV-P2-048).
+    await ctx.tx.execute(sql`insert into jobs.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('jobs.catalogue.eval', ${crypto.randomUUID()}, ${workspaceId}, now())`);
     // A CV parse and an "Unusual content in this source" note on it (evidence.cv_parse, .source_note, AIV-P1-025).
     const cv = await evidence.requestCvParse(ctx, {
       candidateId: personId,

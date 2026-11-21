@@ -112,6 +112,7 @@ export const CATALOGUE_ERROR_CODES = [
   'core_not_applied',
   'core_limit',
   'evidence_required',
+  'eval_running',
   'fairness_employer',
   'fairness_origin',
 ] as const;

@@ -4,7 +4,9 @@ import type {
   CatalogueEditor,
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftEval,
   DraftPackInput,
+  EvalRequestInput,
   JobCounts,
   RetireEntryInput,
 } from '@credalent/jobs';
@@ -230,6 +232,18 @@ export async function saveCatalogueCompetency(input: DraftCompetencyInput): Prom
 export async function retireCatalogueEntry(input: RetireEntryInput): Promise<'retired' | 'removed'> {
   const { userId } = await platformOperator();
   return catalogueEditor().retireDraftEntry(userId, input);
+}
+
+/** The open draft's eval state (AIV-P2-048), null with no draft. Checks the policy itself too. */
+export async function catalogueDraftEval(): Promise<DraftEval | null> {
+  await platformOperator();
+  return catalogueEditor().getDraftEval();
+}
+
+/** "Run the eval" on the draft as the signed-in operator (AIV-P2-048), audited. Throws `CatalogueError`. */
+export async function requestCatalogueEval(input: EvalRequestInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().requestEval(userId, input);
 }
 
 /**

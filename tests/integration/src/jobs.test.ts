@@ -185,7 +185,7 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'jobs' and t.tablename not like 'catalogue\_%' order by name`);
     expect([...tables]).toEqual(
-      ['competency', 'job', 'outbox', 'public_job', 'rubric_version'].map((name) => ({
+      ['competency', 'inbox', 'job', 'outbox', 'public_job', 'rubric_version'].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
@@ -195,7 +195,7 @@ describe('Migrations', () => {
   });
 
   // public_job holds only what is public anyway, so it has no job scope; its read policy is for aivera_public (AIV-P3-002).
-  // The outbox holds opaque ids only, read by the relay (AIV-P0-014, AIV-P1-014).
+  // The outbox holds opaque ids only, read by the relay (AIV-P0-014, AIV-P1-014); the inbox, handled message ids (AIV-P2-048).
   it('each table has the tenant policy and a restrictive job-scope policy', async () => {
     const policies = await admin.execute<{ table: string; name: string; permissive: string }>(sql`
       select tablename as table, policyname as name, permissive from pg_policies where schemaname = 'jobs'
@@ -203,6 +203,7 @@ describe('Migrations', () => {
     expect([...policies]).toEqual([
       { table: 'competency', name: 'competency_job_scope', permissive: 'RESTRICTIVE' },
       { table: 'competency', name: 'competency_tenant_isolation', permissive: 'PERMISSIVE' },
+      { table: 'inbox', name: 'inbox_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'job', name: 'job_scope', permissive: 'RESTRICTIVE' },
       { table: 'job', name: 'job_tenant_isolation', permissive: 'PERMISSIVE' },
       { table: 'outbox', name: 'outbox_relay_mark', permissive: 'PERMISSIVE' },

@@ -68,6 +68,10 @@ const ALLOWED = [
   'credalent.evidence.discarded.unknown_source',
   'credalent.evidence.discarded.claim_above_supporting',
   'credalent.evidence.discarded.no_evidence_grade',
+  // A catalogue eval run's end (AIV-P2-048): the version, tokens and failed case count; never a golden case.
+  'credalent.catalogue.version',
+  'credalent.catalogue.eval_tokens',
+  'credalent.catalogue.eval_failed_cases',
   // Why a sign-in failed: the cause's class name and code (AIV-P0-930). Trusted only because apps/web auth.ts
   // pattern-checks both; any other code that emits these keys must check them the same way.
   'credalent.auth.cause',

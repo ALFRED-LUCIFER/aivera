@@ -875,7 +875,42 @@
             "other": "Fill in this field."
           },
           "failed": "We could not save this change. Try again.",
-          "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest."
+          "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest.",
+          "eval_running": "An eval run is already in progress."
+        },
+        "eval": {
+          "title": "AI eval",
+          "run": "Run the eval",
+          "requesting": "Starting…",
+          "status": {
+            "not_run": "Not run",
+            "running": "Eval running…",
+            "passed": "Eval passed",
+            "failed": "Eval failed",
+            "stale": "Out of date",
+            "error": "Could not run"
+          },
+          "message": {
+            "not_run": "The eval has not run on this draft. Publishing needs a passed eval.",
+            "running": "The golden cases are running against the draft. This page updates when they finish.",
+            "stale": "The draft changed after the last eval run. Run it again.",
+            "error": "The eval could not run. Try again."
+          },
+          "ranAt": "Ran on {at, date, short} at {at, time, ::HHmm} ({timeZone})",
+          "tasks": {
+            "detectDomain": "Industry and region detection",
+            "draftCompetencies": "Competency drafting"
+          },
+          "metric": {
+            "domain": "Domain accuracy",
+            "none": "No clear domain",
+            "fairness": "Fairness",
+            "fieldMatch": "Field match"
+          },
+          "percent": "{value, number}%",
+          "observed": "Observed",
+          "failedCases": "Failed cases",
+          "uncovered": "Add golden cases for {keys} in packages/ai/evals before publishing."
         }
       }
     },

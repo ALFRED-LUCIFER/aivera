@@ -7,11 +7,15 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { sql } from 'drizzle-orm';
+import type { Handler } from '@credalent/db/consumer';
+import { log } from '@credalent/observability';
 import { catalogueEditor } from './application/catalogue-editor.ts';
+import { catalogueEval, runDraftEval, type EvalKeys, type EvalOutcome } from './application/catalogue-eval.ts';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
 import {
+  CatalogueEvalRequestedV1,
   JobPublishedV1,
   JobUnpublishedV1,
   RubricApprovedV1,
@@ -26,9 +30,10 @@ import {
 } from './contracts/index.ts';
 import { readPublishedCatalogue } from './infrastructure/catalogue.ts';
 import { draftStore } from './infrastructure/catalogue-draft.ts';
+import { CATALOGUE_EVAL_SCOPE, evalStore, runStore } from './infrastructure/catalogue-eval.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { approvedRubric, countJobs, jobStore } from './infrastructure/repository.ts';
-import { outbox } from './infrastructure/schema.ts';
+import { inbox, outbox } from './infrastructure/schema.ts';
 
 /**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
@@ -111,15 +116,55 @@ export function createCatalogueEditor(
   audit: Pick<AuditContract, 'recordPlatform'>,
   now: () => Date = () => new Date(),
 ): CatalogueEditor {
-  return catalogueEditor({
-    inTransaction: (work) => db.transaction((tx) => work(draftStore(tx, audit))),
-    inSnapshot: (work) =>
-      db.transaction((tx) => work(draftStore(tx, audit)), {
-        isolationLevel: 'repeatable read',
-        accessMode: 'read only',
-      }),
-    now,
-  });
+  const snapshot = { isolationLevel: 'repeatable read', accessMode: 'read only' } as const;
+  return {
+    ...catalogueEditor({
+      inTransaction: (work) => db.transaction((tx) => work(draftStore(tx, audit))),
+      inSnapshot: (work) => db.transaction((tx) => work(draftStore(tx, audit)), snapshot),
+      now,
+    }),
+    // The request writes the outbox, whose tenant policy needs a workspace: the eval's fixed scope (AIV-P2-048).
+    ...catalogueEval({
+      inTransaction: (work) => withWorkspace(db, CATALOGUE_EVAL_SCOPE, (tx) => work(evalStore(tx, audit))),
+      inSnapshot: (work) => db.transaction((tx) => work(evalStore(tx, audit)), snapshot),
+      newId: uuidv7,
+      now,
+    }),
+  };
+}
+
+/** The worker queue the catalogue eval job is consumed from (infra/modules/messaging.bicep). */
+export const CATALOGUE_EVAL_QUEUE = 'jobs';
+
+/**
+ * The catalogue eval worker job (AIV-P2-048) for `CATALOGUE_EVAL_QUEUE`. `evaluate` runs the golden sets with the run's
+ * keys within the tokens left today; the worker binds it to `@credalent/ai/evals` and the environment's AI deployment.
+ * Logs carry the run id, version and counts, never a golden case's text.
+ */
+export function createCatalogueEvalHandler(config: {
+  evaluate: (keys: EvalKeys, tokensLeftToday: number) => Promise<EvalOutcome>;
+  now: () => Date;
+}): Handler<{ runId: string }> {
+  return {
+    event: CatalogueEvalRequestedV1,
+    inbox,
+    consumer: 'jobs.catalogue.eval',
+    async handle(tx, { runId }) {
+      const end = await runDraftEval(runStore(tx), runId, config);
+      if (end)
+        log.info(
+          {
+            area: 'jobs',
+            'catalogue.run.id': runId,
+            code: end.status,
+            'credalent.catalogue.version': end.version,
+            'credalent.catalogue.eval_tokens': end.tokens,
+            'credalent.catalogue.eval_failed_cases': end.failed,
+          },
+          'catalogue eval finished',
+        );
+    },
+  };
 }
 
 /** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */

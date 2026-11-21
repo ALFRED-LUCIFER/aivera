@@ -78,8 +78,11 @@ const {
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
 const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
 const { createAiTokenBudget } = await import('@credalent/workspaces/composition');
-const { JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } = await import('@credalent/jobs');
-const { createApprovedRubricReads } = await import('@credalent/jobs/composition');
+const { CatalogueEvalRequestedV1, JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } =
+  await import('@credalent/jobs');
+const { CATALOGUE_EVAL_QUEUE, createApprovedRubricReads, createCatalogueEvalHandler } =
+  await import('@credalent/jobs/composition');
+const { evaluateCatalogue, runBudget } = await import('@credalent/ai/evals');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { FileCleanV1, FileRejectedV1 } = await import('@credalent/files');
@@ -104,7 +107,8 @@ const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', .
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App, below); otherwise they go to `assessment` as before, so the evidence queue never
 // receives an event nothing handles.
-const mapping = !!githubApp && (env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake');
+const model = env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake';
+const mapping = !!githubApp && model;
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
   // shortcut: nothing consumes `assessment` until AIV-P1-031, so EvidenceMapped.v1 (and, without a model,
@@ -119,6 +123,9 @@ const QUEUES: Record<string, string> = {
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
+  // The catalogue draft eval (AIV-P2-048) runs only with a model; without one its requests wait in jobs.outbox, and the
+  // page shows a run that could not run once it times out.
+  ...(model && { [CatalogueEvalRequestedV1.type]: CATALOGUE_EVAL_QUEUE }),
   ...(githubApp && {
     [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
     [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
@@ -187,6 +194,19 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
     }),
   ],
 };
+// The catalogue draft eval (AIV-P2-048, ADR-013 point 12): the golden sets live against this environment's deployment,
+// each run within liveTokenCap and the platform eval budget's tokens left today, never a workspace's budget.
+if (model)
+  CONSUMERS[CATALOGUE_EVAL_QUEUE] = [
+    createCatalogueEvalHandler({
+      now,
+      evaluate: async (keys, tokensLeftToday) => {
+        const budget = runBudget(tokensLeftToday);
+        const ai = createAiClient({ provider: providerFromEnv(process.env), budget });
+        return { ...(await evaluateCatalogue(ai, keys)), tokens: budget.used() };
+      },
+    }),
+  ];
 // The evidence handlers share the queue, so all wait for the GitHub App: an unknown event type is dead-lettered.
 const evidenceHandlers: NonNullable<(typeof CONSUMERS)[string]> = [];
 if (mapping)
