@@ -3,11 +3,19 @@ import type { Tx } from '@credalent/db';
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { ReceiveApplicationInput, ReceiveApplicationResult } from '../application/applications.ts';
+import type {
+  ApplicationListItem,
+  ReceiveApplicationInput,
+  ReceiveApplicationResult,
+} from '../application/applications.ts';
 
 export { IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
 export type { Source, Stage } from '../domain/application.ts';
-export type { ReceiveApplicationInput, ReceiveApplicationResult } from '../application/applications.ts';
+export type {
+  ApplicationListItem,
+  ReceiveApplicationInput,
+  ReceiveApplicationResult,
+} from '../application/applications.ts';
 
 /**
  * Written to `intake.outbox` in the transaction that records an arrival or a member's link; evidence ingestion
@@ -34,6 +42,12 @@ export interface IntakeContract {
    * a grant on it or its client (`ForbiddenError`, writing nothing). Throws `IntakeError('application_not_found')`.
    */
   addLink(ctx: WorkspaceContext, applicationId: string, url: string): Promise<{ sourceId: string }>;
+  /**
+   * The job's applicants, newest first, each with the source of their first arrival (AIV-P1-086). Every role with
+   * `candidate.view`; hiring owners and interviewers on a granted job only. Throws `IntakeError('job_not_found')` for a
+   * job the context cannot see (another workspace's, or not granted), revealing nothing about its applicants.
+   */
+  listApplicationsForJob(ctx: WorkspaceContext, jobId: string): Promise<ApplicationListItem[]>;
 }
 
 /**

@@ -17,6 +17,7 @@ import {
   findGaps,
   guardLinks,
   rankChanges,
+  settleProvenance,
   sourceText,
   type DiscardReason,
   type EvidenceGap,
@@ -217,6 +218,7 @@ export async function mapEvidence(
       id: sourceId,
       kind: source.kind,
       authorship: measured && classifyAuthorship(measured),
+      hasLogin: !!read?.read.githubLogin,
       declarationSpans,
     });
     originSources.push({
@@ -263,23 +265,20 @@ export async function mapEvidence(
         : undefined,
   }));
   // A source in an open contradiction vouches for nothing until a person resolves it.
-  const withheld = new Set(
-    pairs
-      .filter((p) => p.outcome === 'contradiction' && !p.resolved)
-      .flatMap((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']),
-  );
-  const corroborated = corroboratedCompetencies({
-    links: guarded.links,
-    sources: originSources,
-    originGroups,
-    logins,
-    withheld,
+  const open = pairs
+    .filter((p) => p.outcome === 'contradiction' && !p.resolved)
+    .map((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']);
+  const withheld = new Set(open.flat());
+  const rules = { links: guarded.links, sources: originSources, originGroups, logins };
+  const corroborated = corroboratedCompetencies({ ...rules, withheld });
+  // A withheld link shows "Contradictory" while its contradiction is open, then its stored provenance, with no re-map
+  // after a resolution: so it is stored as it settles once its own contradictions are resolved, every other open one
+  // still withheld (never as the claim its withholding made it, never vouched for by a source still in dispute).
+  const links = guarded.links.map((l) => {
+    if (!withheld.has(l.sourceId)) return settleProvenance([l], mapSources, corroborated)[0] ?? l;
+    const stillHeld = new Set(open.filter((p) => !p.includes(l.sourceId)).flat());
+    return settleProvenance([l], mapSources, corroboratedCompetencies({ ...rules, withheld: stillHeld }))[0] ?? l;
   });
-  const links = guarded.links.map((l) =>
-    l.provenance === 'submitted' && corroborated.has(l.competencyId)
-      ? { ...l, provenance: 'corroborated' as const }
-      : l,
-  );
   const gaps = findGaps(competencyIds, links, mapGrades);
   const ranked = rankChanges({
     competencies: rubric.competencies.map((c) => ({ id: c.id, weight: c.weightPercent })),

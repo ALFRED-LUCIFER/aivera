@@ -151,9 +151,10 @@ describe('Scenario: Suggestions never duplicate drafted competencies (AIV-P1-009
 const weights = (list: Competency[]) => list.map((c) => c.weightPercent);
 
 describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)', () => {
-  it('scales 85 to 100 and gives the rounding remainder to the heaviest', () => {
-    // 25 20 15 15 10 (Product judgement's 15 removed): 29.4 23.5 17.6 17.6 11.8 rounds down to 29 23 17 17 11 = 97.
-    expect(weights(rebalanceWeights(rubric([25, 20, 15, 15, 10])))).toEqual([32, 23, 17, 17, 11]);
+  it('scales 85 to 100 and gives the missing points to the largest remainders', () => {
+    // 25 20 15 15 10 (Product judgement's 15 removed): 29.41 23.53 17.65 17.65 11.76 round down to 97; the three
+    // largest remainders (.76, .65, .65) get a point each.
+    expect(weights(rebalanceWeights(rubric([25, 20, 15, 15, 10])))).toEqual([29, 23, 18, 18, 12]);
   });
 
   it('keeps weights that already total 100, and keeps every other field', () => {
@@ -165,23 +166,65 @@ describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)
     ]);
   });
 
-  // SAFETY: mutation check: remainder no longer added to the heaviest in rebalanceWeights -> this test failed
-  // SAFETY: mutation check: Math.floor back to Math.round in rebalanceWeights -> this test failed (heaviest no longer heaviest)
-  it('always totals exactly 100, each weight a whole percent from 1 to 100 (1,000 random rubrics)', () => {
+  // AIV-P1-082 review: the old rule (round down, at least 1, remainder to the heaviest) broke the order on each of these.
+  // SAFETY: mutation check: pinning pass not repeated in rebalanceWeights -> the 3s-and-2s case failed (3s got 0)
+  it.each([
+    // The 1% floor pushed the sum over 100 and the heaviest paid for it: [13,14,14,14,14,14,14,1,1,1] before.
+    [
+      [100, 99, 99, 99, 99, 99, 99, 1, 1, 1],
+      [14, 14, 14, 14, 14, 14, 13, 1, 1, 1],
+    ],
+    // [36,24,1,1,35,1,1,1] before: 94 ended above 95.
+    [
+      [94, 63, 3, 2, 95, 1, 1, 1],
+      [35, 24, 1, 1, 36, 1, 1, 1],
+    ],
+    // The whole remainder on one row: [37, 7 x 9] before.
+    [
+      [40, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+      [31, 8, 8, 8, 8, 8, 8, 7, 7, 7],
+    ],
+    // Equal weights end within 1 of each other: [20,16,16,16,16,16] before.
+    [
+      [30, 30, 30, 30, 30, 30],
+      [17, 17, 17, 17, 16, 16],
+    ],
+    // Pinning the sixty 2s to 1% lowers the twenty 3s' share to 0.67%, so they are pinned on the next pass, never 0.
+    [
+      [...Array.from({ length: 20 }, () => 3), ...Array.from({ length: 60 }, () => 2), 60, 60],
+      [...Array.from({ length: 80 }, () => 1), 10, 10],
+    ],
+  ])('scales %j to %j', (input, output) => {
+    expect(weights(rebalanceWeights(rubric(input)))).toEqual(output);
+  });
+
+  // SAFETY: mutation check: missing points given in list order, not by largest remainder, in rebalanceWeights -> this test
+  // failed ("99 ended lighter than 97"), as did the 85-to-100 and [94,63,...] cases
+  // SAFETY: mutation check: restored the old rule (round down, at least 1, remainder to the heaviest) -> this test failed
+  // ("equal weights 100: expected 7 to be less than or equal to 1"), as did every case above
+  it('always totals exactly 100, whole percents 1 to 100, heavier never lighter, equal within 1 (2,000 rubrics)', () => {
     let seed = 7;
     const random = () => (seed = (seed * 48_271) % 2_147_483_647) / 2_147_483_647; // a fixed-seed generator
-    for (let run = 0; run < 1_000; run++) {
-      const list = Array.from({ length: 1 + Math.floor(random() * 20) }, () => 1 + Math.floor(random() * 100));
+    // Every other rubric mixes heavy weights with many of 1 to 3, the shape that pushes weights onto the 1% floor.
+    const weight = (skewed: boolean) =>
+      skewed && random() < 0.5 ? 1 + Math.floor(random() * 3) : 1 + Math.floor(random() * 100);
+    // Violations are collected and asserted once: an expect per pair (~800k) timed the test out on CI.
+    const failures: string[] = [];
+    for (let run = 0; run < 2_000; run++) {
+      const list = Array.from({ length: 1 + Math.floor(random() * 20) }, () => weight(run % 2 === 1));
       const result = weights(rebalanceWeights(rubric(list)));
-      expect(
-        result.reduce((a, b) => a + b, 0),
-        list.join(' '),
-      ).toBe(100);
-      for (const w of result) expect(Number.isInteger(w) && w >= 1 && w <= 100, list.join(' ')).toBe(true);
-      // The recruiter's order holds: no weight ends above the one that was heaviest.
-      const heaviest = result[list.indexOf(Math.max(...list))] ?? 0;
-      expect(Math.max(...result), list.join(' ')).toBe(heaviest);
+      const label = list.join(' ');
+      if (result.reduce((a, b) => a + b, 0) !== 100) failures.push(`${label}: total is not 100`);
+      for (const [i, w] of result.entries()) {
+        if (!(Number.isInteger(w) && w >= 1 && w <= 100)) failures.push(`${label}: weight ${w} out of 1 to 100`);
+        for (const [j, v] of result.entries()) {
+          const [a, b] = [list[i] ?? 0, list[j] ?? 0];
+          if (a > b && w < v) failures.push(`${label}: ${a} ended lighter than ${b}`);
+          if (a === b && Math.abs(w - v) > 1) failures.push(`${label}: equal weights ${a} differ by more than 1`);
+        }
+      }
     }
+    expect(failures.slice(0, 5)).toEqual([]);
   });
 });
 

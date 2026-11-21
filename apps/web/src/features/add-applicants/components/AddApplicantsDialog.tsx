@@ -9,8 +9,8 @@ import type { DirectUpload } from '@/features/files';
 // artboards only name the upload page. Built from the shared Dialog, RadioGroup and FilePicker (whose control is the
 // CApply artboard's "Upload CV"). Deviations, since there is nothing to port:
 // - CVs are added one at a time with the FilePicker's single-file button, each listed once the files module has it clean;
-// - the result is listed in the dialog ("Unnamed applicant · CV received"), not as rows on the page: the Candidates tab
-//   has no applicant list until the ranked table (AIV-P1-034) and the Inbox (AIV-P1-021) read intake.
+// - the result is listed in the dialog ("Unnamed applicant · CV received"); the Candidates tab's applicant list
+//   (AIV-P1-086) shows the new rows behind it.
 
 export type AddApplicantsDialogProps = {
   open: boolean;

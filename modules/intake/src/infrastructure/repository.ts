@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import type { IntakeStore } from '../application/applications.ts';
 import { application, applicationSource } from './schema.ts';
 
@@ -58,6 +58,32 @@ export function intakeStore(tx: Tx): IntakeStore {
         .from(application)
         .where(and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId)));
       return row ?? null;
+    },
+    listForJob(workspaceId, jobId) {
+      // One row per application: DISTINCT ON keeps its earliest source.
+      return tx
+        .selectDistinctOn([application.receivedAt, application.id], {
+          applicationId: application.id,
+          personId: application.personId,
+          stage: application.stage,
+          receivedAt: application.receivedAt,
+          source: applicationSource.source,
+        })
+        .from(application)
+        .innerJoin(
+          applicationSource,
+          and(
+            eq(applicationSource.workspaceId, application.workspaceId),
+            eq(applicationSource.applicationId, application.id),
+          ),
+        )
+        .where(and(eq(application.workspaceId, workspaceId), eq(application.jobId, jobId)))
+        .orderBy(
+          desc(application.receivedAt),
+          desc(application.id),
+          asc(applicationSource.receivedAt),
+          asc(applicationSource.id),
+        );
     },
   };
 }
