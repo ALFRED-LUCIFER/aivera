@@ -1,9 +1,11 @@
 import { createAudit } from '@credalent/audit/composition';
 import { CandidateAccountError } from '@credalent/candidate-accounts';
 import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
+import { createIntake } from '@credalent/intake/composition';
 import type { Competency } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
 import type { WorkspaceContext } from '@credalent/workspaces';
@@ -314,6 +316,37 @@ export default async function seed() {
     await workspaces.switchWorkspace({ userId: head }, workspaceId);
     await artboardRubric(workspaceId, recruiter, head, sae);
     await as((ctx) => jobs.changeStage(ctx, sae, 'round_1'));
+    // AIV-P1-086: three applicants received 14 Nov, a minute apart, as "Add applicants" files them (this harness has no
+    // Blob storage, so not through the dialog), for the Candidates tab's list. Not assessed, so none has a score.
+    let received: Date;
+    const intake = createIntake(
+      workspaces,
+      createCandidates(workspaces),
+      jobs,
+      displayNamesInWorkspace,
+      () => received,
+    );
+    for (const [i, [name, source]] of (
+      [
+        ['Sara Al Qahtani', 'linkedin'],
+        ['Arjun Menon', 'referral'],
+        ['Layla Haddad', 'email'],
+      ] as const
+    ).entries()) {
+      received = new Date(Date.UTC(2026, 10, 14, 8, i));
+      await as((ctx) =>
+        intake.receiveApplication(ctx, {
+          jobId: sae,
+          person: {
+            displayName: name,
+            identifiers: [{ type: 'cv_hash', value: String(i + 1).padStart(64, '0') }],
+            synthetic: true,
+          },
+          source,
+          fileIds: [crypto.randomUUID()],
+        }),
+      );
+    }
   }
 
   /**
