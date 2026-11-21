@@ -10,7 +10,7 @@ import { migrationsFolder, type MigratableModule } from './modules.ts';
  * `migrations.<module>` (ADR-004). Already-applied migrations are skipped, so a rerun applies nothing.
  */
 export async function migrateModules(migratorUrl: string, modules: MigratableModule[]): Promise<void> {
-  const db = createDb(migratorUrl, { max: 1 });
+  const db = createDb(migratorUrl, { max: 1, timeouts: false });
   try {
     // The app role may use what the migrator creates. Run as the migrator itself: Azure has no superuser (ADR-008).
     await db.execute(sql`ALTER DEFAULT PRIVILEGES GRANT USAGE ON SCHEMAS TO aivera_app`);

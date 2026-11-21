@@ -101,8 +101,8 @@ export type ReadPorts = Pick<ParsePorts, 'cvStoreFor' | 'publishRecorded' | 'rea
  * Candidate-submitted item per page, the "Unusual content in this source" notes (embedded instructions, hidden text), and
  * the text's fingerprint (flagging another applicant's near-duplicate), all in `tx`. No model reads the text here. A file
  * still in quarantine leaves the read pending (FileClean.v1 runs it again); a `failed` read runs again on a redelivery,
- * and a finished one is never read twice. Throws DocumentIntelligenceUnavailable. Returns the status, the number of notes
- * and the page items for the search index, or null when there was nothing to do.
+ * and a finished one is never read twice. Throws DocumentIntelligenceUnavailable. Returns the status and the number of
+ * notes, or null when there was nothing to do.
  */
 // shortcut: Document Intelligence runs inside the consumer's workspace transaction, as the CV parse does.
 export async function readDocument(
@@ -110,7 +110,7 @@ export async function readDocument(
   tx: Tx,
   workspaceId: string,
   sourceId: string,
-): Promise<{ status: DocumentReadStatus; notes: number; items: Pick<EvidenceItem, 'id' | 'excerpt'>[] } | null> {
+): Promise<{ status: DocumentReadStatus; notes: number } | null> {
   const store = ports.documentStoreFor(tx);
   const found = await store.find(workspaceId, sourceId);
   const open = found?.read.status === 'pending' || found?.read.status === 'failed';
@@ -121,7 +121,7 @@ export async function readDocument(
   const file = await ports.readCleanFile(tx, workspaceId, fileId);
   if (file === 'pending') return null;
   const end = async (status: 'unreadable') =>
-    (await store.finish(workspaceId, sourceId, status)) ? { status, notes: 0, items: [] } : null;
+    (await store.finish(workspaceId, sourceId, status)) ? { status, notes: 0 } : null;
   // Infected, rejected or missing, even when FileRejected.v1 ran before this read was requested.
   if (file === 'rejected') return end('unreadable');
 
@@ -163,5 +163,5 @@ export async function readDocument(
       source,
       items.map((i) => i.id),
     );
-  return { status: 'read', notes: notes.length, items };
+  return { status: 'read', notes: notes.length };
 }

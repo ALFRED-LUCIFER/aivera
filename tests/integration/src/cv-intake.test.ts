@@ -270,7 +270,6 @@ beforeAll(async () => {
       readCleanFile: createCleanFileReader(blobs),
       recordContact: createContactRecorder(),
       readPerson: readPersonAsSystem,
-      index: async () => undefined,
       now: () => NOW,
     }),
   ];

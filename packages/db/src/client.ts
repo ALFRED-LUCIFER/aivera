@@ -59,15 +59,24 @@ redactErrors(PostgresJsTransaction.prototype, 'transaction');
 
 // shortcut: $client (raw postgres-js) is not redacted; use it only for role setup and end(); add a lint restriction once app code needs raw SQL
 /**
+ * Sent at connection start (milliseconds): a lock wait ends with 55P03 and a runaway statement with 57014, a
+ * DbQueryError without the bound values, instead of holding a pooled connection for ever (AIV-P1-088). Neither counts
+ * the time a transaction spends between statements, so a delivery that calls a model inside its transaction still works.
+ */
+const APP_TIMEOUTS = { lock_timeout: 10_000, statement_timeout: 60_000 };
+
+/**
  * A Drizzle client over postgres-js. The caller owns the connection and closes it with `$client.end()`.
  * A URL without a password signs in with the managed identity's Entra token (Azure, ADR-008), always over verified
  * TLS because the token travels as the password. Without an identity endpoint the first connection fails clearly.
+ * `timeouts: false` is for the migrator only: a migration may wait for its locks and run as long as it needs.
  */
-export function createDb(url: string, options: { max?: number; clientId?: string } = {}): Db {
+export function createDb(url: string, options: { max?: number; clientId?: string; timeouts?: false } = {}): Db {
   // `clientId` picks a second identity in one process (the worker's relay, AIV-P0-015); default AZURE_CLIENT_ID.
   const env = options.clientId ? { ...process.env, AZURE_CLIENT_ID: options.clientId } : process.env;
   const entra = new URL(url).password ? {} : { password: () => entraToken(env), ssl: 'verify-full' as const };
-  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...entra }));
+  const connection = options.timeouts === false ? {} : { connection: APP_TIMEOUTS };
+  return drizzle(postgres(url, { max: options.max ?? 10, onnotice: () => {}, ...connection, ...entra }));
 }
 
 /** True when `select 1` answers within `timeoutMs`; never throws (readiness probes). */

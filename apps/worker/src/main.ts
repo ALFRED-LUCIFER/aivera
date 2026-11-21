@@ -36,7 +36,7 @@ const env = z
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
     // CV parsing and document reads (AIV-P1-025, AIV-P1-028): Document Intelligence on the AI resource, signed in with
     // AZURE_CLIENT_ID's identity. Set, with AZURE_STORAGE_BLOB_URL, the worker reads clean CVs and documents; the model
-    // and the embeddings come from AI_PROVIDER or AZURE_OPENAI_RESOURCE_NAME (packages/ai providerFromEnv).
+    // comes from AI_PROVIDER or AZURE_OPENAI_RESOURCE_NAME (packages/ai providerFromEnv).
     AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: z.url({ protocol: /^https$/ }).optional(),
     // Evidence mapping (AIV-P1-027): the AI Foundry resource, called with the app identity; or AI_PROVIDER=fake in
     // local and dev (packages/ai providerFromEnv). Without either, evidence is recorded but not mapped.
@@ -58,7 +58,6 @@ const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
-const { createSearchIndex } = await import('@credalent/ai/search');
 const { createContactRecorder, readPersonAsSystem } = await import('@credalent/candidates/composition');
 const {
   CvParseRequestedV1,
@@ -143,7 +142,7 @@ const QUEUES: Record<string, string> = {
   ...(fileReading && {
     [CvParseRequestedV1.type]: EVIDENCE_QUEUE,
     [DocumentReadRequestedV1.type]: EVIDENCE_QUEUE,
-    // Link reads (AIV-P1-077) share file reading's search index client, so they run with it.
+    // Link reads (AIV-P1-077) are switched on with the other evidence reads.
     [LinkReadRequestedV1.type]: EVIDENCE_QUEUE,
     [FileCleanV1.type]: EVIDENCE_QUEUE,
     [FileRejectedV1.type]: EVIDENCE_QUEUE,
@@ -253,7 +252,6 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
 else log.warn('GitHub App not configured: repository reads are not consumed');
 if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL) {
   const ai = createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) });
-  const search = createSearchIndex({ db: appDb, ai, now });
   evidenceHandlers.push(
     ...createFileReadHandlers({
       db: appDb,
@@ -272,14 +270,9 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
       ),
       recordContact: createContactRecorder(),
       readPerson: readPersonAsSystem,
-      index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
       now,
     }),
-    createLinkReadHandler({
-      db: appDb,
-      index: (workspaceId, itemId, text) => search.indexDocument(workspaceId, 'evidence', itemId, text),
-      now,
-    }),
+    createLinkReadHandler({ now }),
   );
 }
 // shortcut: without Document Intelligence, CV parses, document reads and link reads stay pending and their events wait unsent in
