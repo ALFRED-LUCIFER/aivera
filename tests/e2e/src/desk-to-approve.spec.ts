@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
+import { approvedWorkspace } from './workspaces.ts';
 
-// AIV-P1-084 (ADR-014): My desk's "Rubrics to approve". Nadia Freelance (a one-person workspace, seed.ts) sees the
+// AIV-P1-084 (ADR-014): My desk's "Rubrics to approve". A recruiter alone in a fresh workspace sees the
 // draft she just saved, opens it from the keyboard, approves it, and it leaves the list. A hiring owner never sees the
 // section. Drafting answers from tests/e2e/ai-fixtures.json (senior-ai-engineer). The query, roles and row-level
 // security are in tests/integration jobs.test.ts.
@@ -31,7 +32,10 @@ for (const theme of themes) {
     baseURL,
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
-    await signIn(page, { email: 'nadia@example.com' });
+    // A solo workspace of its own: Nadia's must stay empty for jobs-list.spec.ts "Empty workspace".
+    const solo = `solo.desk.${theme}.${Date.now()}@example.com`;
+    await approvedWorkspace(solo, `Solo ${theme} ${Date.now()}`);
+    await signIn(page, { email: solo });
     await page.waitForURL(/\/app/);
     const title = `Desk AI Engineer ${theme} ${Date.now()}`;
     await saveDraft(page, title);
