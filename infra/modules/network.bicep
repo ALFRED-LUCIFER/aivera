@@ -4,7 +4,7 @@
 param location string
 param tags object
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param logAnalyticsName string
 param vnetName string

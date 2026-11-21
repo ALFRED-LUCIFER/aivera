@@ -5,7 +5,7 @@
 param location string
 param tags object
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param vnetName string
 @description('Prefix of the subnet to add to a VNet that is not ours (dev); empty when the VNet already declares it.')

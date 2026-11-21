@@ -4,7 +4,7 @@
 // (between send and commit) is dropped by the consumer's inbox on the message id (AIV-P0-015). Move to Standard and set
 // requiresDuplicateDetection on each queue for the pilot (AIV-P5-E03, #34), or earlier if a consumer needs topics.
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param location string
 param tags object

@@ -63,3 +63,12 @@ test('the pilot parameter file holds no id, address or secret', () => {
   assert.doesNotMatch(pilot, /@[a-z0-9-]+\.[a-z]/i);
   assert.doesNotMatch(pilot, /secret|password|key\b/i);
 });
+
+// pr.yml's Bicep build is the last step of "web" and needs the Bicep CLI; this catches an unparseable decorator first.
+// SAFETY: mutation check: wrote @description(q{...}) back into foundation.bicep -> this test failed
+test('every @description is a quoted string', () => {
+  for (const { path, lines } of bicep)
+    lines.forEach((line, i) => {
+      if (line.includes('@description(')) assert.match(line, /@description\('/, `${path}:${i + 1}`);
+    });
+});

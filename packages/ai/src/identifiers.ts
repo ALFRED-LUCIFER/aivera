@@ -27,7 +27,8 @@ export class MissingIdentifiers extends Error {
 type Cut = { at: number; length: number; from: number; fromLength: number; trait: boolean };
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const letter = String.raw`[\p{L}\p{M}\p{N}_]`;
+// An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
+const letter = String.raw`(?:\p{L}|\p{M}|\p{N}|_)`;
 const EMAIL = String.raw`[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
@@ -49,7 +50,9 @@ const PARTICLES = new Set(['al', 'el', 'bin', 'bint', 'ibn', 'abu', 'de', 'da', 
 // `age: number;` stays): a labelled field, Latin or Arabic label, becomes `[REMOVED]` with its value. A label counts
 // only at a field start (line start or after · • | ; , ، : or a bracket), so "Project name:" or "storage:" in a skills
 // line stay, and is followed by a colon, a spaced dash or a tab. The value runs to the line end, the next · • | ; or a
-// comma before another "Label:". `[REMOVED]` that the model repeats in its text is shown to a recruiter as written.
+// comma before another "Label:". A bare label's value may sit on the next line: one short field (40 characters at most,
+// no colon), removed even when it is not the value; never after Photo, whose next line is usually the next section.
+// `[REMOVED]` that the model repeats in its text is shown to a recruiter as written.
 const PROTECTED_PLACEHOLDER = '[REMOVED]';
 const TRAIT_KINDS: ReadonlySet<Source['kind']> = new Set(['cv', 'document', 'reference']);
 const TRAIT_LABELS = [
@@ -83,30 +86,33 @@ const GAP = String.raw`[ \t\u200e\u200f]*`;
 const FIELD = String.raw`(?:^|[\n·•|;,،:(\[])${GAP}`;
 const SEPARATOR = String.raw`(?:[ \t]*[:：]|[ \t]+[-–][ \t]|\t)`;
 const VALUE = String.raw`[^\n·•|;]*?(?=[ \t]*(?:$|[\n·•|;]|[,،][ \t]*\p{L}[\p{L}\p{M} .]{0,29}[:：]))`;
+const NEXT_LINE = String.raw`(?<!(?:photo(?:graph)?|الصورة)${SEPARATOR})${GAP}\n${GAP}[^\n·•|;:：]{1,40}?(?=[ \t]*(?:$|[\n·•|;]))`;
 // shortcut: unlabelled traits are caught only as "34 years old", "34-year-old", "aged 34", "Photo attached" and
 // "[photo ...]"; a "20-year-old codebase" is removed too. Widen from pilot CVs if another shape reaches a prompt.
 const TRAIT = [
   String.raw`(?<=${FIELD})photo(?:graph)?(?:[ \t]*[:：])?\s*(?:attached|enclosed|included|(?:available )?on request)(?!${letter})`,
-  String.raw`(?<=${FIELD})(?:${TRAIT_LABELS.join('|')})${SEPARATOR}${VALUE}`,
+  String.raw`(?<=${FIELD})(?:${TRAIT_LABELS.join('|')})${SEPARATOR}(?:${NEXT_LINE}|${VALUE})`,
   String.raw`(?<!${letter})(?:aged[ \t]+\d{2}|\d{2}[ -](?:years?|yrs)[ -]old)(?!${letter})`,
   String.raw`[[(][ \t]*photo(?:graph)?(?!${letter})[^\])\n]*[\])]`,
 ].join('|');
 // A CV's own name in Arabic script (the record usually holds the Latin form): two to four Arabic words that are a field
-// of the first line, the value of a "Name:" or "الاسم:" label, or a whole line next to a line the record's name matched.
-// shortcut: an Arabic name elsewhere is removed only when the record holds it; widen if pilot CVs need.
-const ARABIC_WORDS = String.raw`(?=\p{sc=Arabic})\p{sc=Arabic}+(?:[ \t]+\p{sc=Arabic}+){1,3}`;
+// of the first line, the value of a "Name:" or "الاسم:" label (on its line or the next), or a whole line next to a line
+// the record's name matched.
+// shortcut: an Arabic name elsewhere, or past the first 300 characters of its line, is removed only when the record
+// holds it; widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
+const ARABIC_WORDS = String.raw`\p{sc=Arabic}+(?:[ \t]+\p{sc=Arabic}+){1,3}`;
 const FIELD_END = String.raw`(?=${GAP}(?:$|[\n·•|,،;–-]))`;
 const arabicNameOf = (recordName: string) =>
-  [
-    String.raw`(?<=^(?:\s*|[^\n]*[·•|,،;–-])${GAP})${ARABIC_WORDS}${FIELD_END}`,
-    String.raw`(?<=${FIELD}(?:full name|name|الاسم الكامل|الاسم)[ \t]*[:：]${GAP})${ARABIC_WORDS}${FIELD_END}`,
+  String.raw`(?=\p{sc=Arabic})(?:${[
+    String.raw`(?<=^(?:\s*|[^\n]{0,300}[·•|,،;–-])${GAP})${ARABIC_WORDS}${FIELD_END}`,
+    String.raw`(?<=${FIELD}(?:full name|name|الاسم الكامل|الاسم)[ \t]*[:：]${GAP}(?:\n${GAP})?)${ARABIC_WORDS}${FIELD_END}`,
     ...(recordName
       ? [
-          String.raw`(?<=(?:^|\n)[^\n]*${recordName}[^\n]*\n${GAP})${ARABIC_WORDS}(?=${GAP}(?:$|\n))`,
+          String.raw`(?<=(?:^|\n)[^\n]{0,300}${recordName}[^\n]{0,300}\n${GAP})${ARABIC_WORDS}(?=${GAP}(?:$|\n))`,
           String.raw`(?<=(?:^|\n)${GAP})${ARABIC_WORDS}(?=${GAP}\n[^\n]*${recordName})`,
         ]
       : []),
-  ].join('|');
+  ].join('|')})`;
 
 /** One pattern per source kind: `traits` for TRAIT_KINDS, and `cv` adds the Arabic name. */
 function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv: boolean): RegExp {
@@ -116,6 +122,9 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   const alone = parts.filter((part) => !PARTICLES.has(part.toLowerCase()));
   const word = (list: string[]) => `(?:${list.map(escape).join('|')})(?!${letter})`;
   const particles = alone.length ? parts.filter((part) => !alone.includes(part)) : [];
+  // Without its letter boundaries: each `letter` class costs ~0.15 ms to compile, so the Arabic-name line check
+  // (which only asks whether an adjacent line holds the name, and errs towards removing) uses this.
+  const ownParts = parts.length ? `(?:${(alone.length ? alone : parts).map(escape).join('|')})` : '';
   const own = word(alone.length ? alone : parts);
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's") is one placeholder; it starts and ends on a non-particle.
@@ -132,7 +141,7 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
     `(?<phone>${DOTTED}|${PHONE})`,
     ...(traits ? [`(?<trait>${TRAIT})`] : []),
-    ...(cv ? [`(?<arabicName>${arabicNameOf(name)})`] : []),
+    ...(cv ? [`(?<arabicName>${arabicNameOf(ownParts)})`] : []),
     ...(name ? [`(?<name>${name})`] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');

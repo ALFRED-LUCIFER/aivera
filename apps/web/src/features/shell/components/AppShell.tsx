@@ -1,4 +1,5 @@
 // Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
+// No section counts (AGENTS.md 1.7, AIV-P1-094): no real count exists until each section's contract supplies one.
 import { useTranslations } from '@credalent/i18n/react';
 import { Button } from '@credalent/ui';
 import Image from 'next/image';

@@ -2,7 +2,7 @@
 // query, and the cheapest metric alert cannot divide one count by another.
 // shortcut: production routing and on-call with AIV-P5-010
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param location string
 param tags object

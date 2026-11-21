@@ -295,6 +295,8 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(requests[0]).not.toContain(value);
   });
 
+  // SAFETY: mutation check: dropped NEXT_LINE from the labelled-trait alternative -> the four bare-label rows failed;
+  // dropped its Photo lookbehind -> the "Photo:\nBuilt payment APIs" row failed
   it.each([
     ['Nationality: Egyptian · Skills: Python', '[REMOVED] · Skills: Python'],
     ['Citizenship: Jordanian', '[REMOVED]'],
@@ -319,6 +321,15 @@ describe('Feature: Protected traits never reach the model', () => {
     ['Photo: attached', '[REMOVED]'],
     ['Photograph:\nattached\nSkills: Go', '[REMOVED]\nSkills: Go'],
     ['Photo:\nBuilt payment APIs in Python', '[REMOVED]\nBuilt payment APIs in Python'],
+    ['Nationality:\nEgyptian\nSkills: Go', '[REMOVED]\nSkills: Go'],
+    ['Age:\n34', '[REMOVED]'],
+    ['Date of birth:\n14 March 1990 · Dubai', '[REMOVED] · Dubai'],
+    ['الجنسية:\nمصرية', '[REMOVED]'],
+    ['Nationality:\nSkills: Python', '[REMOVED]\nSkills: Python'],
+    [
+      'Gender:\nBuilt payment APIs in Python and Go for ten years',
+      '[REMOVED]\nBuilt payment APIs in Python and Go for ten years',
+    ],
     ['Nationality :Egyptian', '[REMOVED]'],
     ['تاريخ الميلاد: ١٤ مارس ١٩٩٠', '[REMOVED]'],
     ['مكان الميلاد: القاهرة', '[REMOVED]'],
@@ -334,13 +345,15 @@ describe('Feature: Protected traits never reach the model', () => {
 
   // SAFETY: mutation check: dropped the `(?<arabicName>...)` alternative from patternFor -> every row failed; dropped
   // the two lines-next-to-the-record-name alternatives from arabicNameOf -> the "Layla Haddad\n..." and
-  // "...\nLayla Haddad" rows failed; dropped the name-label alternative -> the two label rows failed
+  // "...\nLayla Haddad" rows failed; dropped the name-label alternative -> the two label rows failed;
+  // dropped the optional line break after the name label -> the "Name:\n" row failed
   it.each([
     ['ليلى حداد\nSenior AI Engineer', '[CANDIDATE]\nSenior AI Engineer'],
     ['Layla Haddad · ليلى حداد · Dubai', '[CANDIDATE] · [CANDIDATE] · Dubai'],
     ['Layla Haddad\nليلى حداد\nSenior AI Engineer', '[CANDIDATE]\n[CANDIDATE]\nSenior AI Engineer'],
     ['Curriculum vitae\nليلى حداد\nLayla Haddad · Dubai', 'Curriculum vitae\n[CANDIDATE]\n[CANDIDATE] · Dubai'],
     ['Senior AI Engineer\nالاسم: ليلى حداد', 'Senior AI Engineer\nالاسم: [CANDIDATE]'],
+    ['Senior AI Engineer\nName:\nليلى حداد\nDubai', 'Senior AI Engineer\nName:\n[CANDIDATE]\nDubai'],
     ['Senior AI Engineer\nFull name: ليلى حداد · Dubai', 'Senior AI Engineer\nFull name: [CANDIDATE] · Dubai'],
     ['\u200fليلى حداد\n\u200fالجنسية: مصرية', '\u200f[CANDIDATE]\n\u200f[REMOVED]'],
   ])('Scenario: An Arabic-script name on the CV name line is removed: %s', (text, expected) =>

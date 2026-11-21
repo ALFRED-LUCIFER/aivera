@@ -2,7 +2,7 @@
 // one Credalent resource (the web and worker apps, the job, Credalent's own environment, Credalent's identities): never the resource group,
 // never a Medvya resource.
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param cicdPrincipalId string
 param containerAppsEnvName string

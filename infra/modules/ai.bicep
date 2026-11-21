@@ -3,7 +3,7 @@
 // allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity. The pilot's sits in
 // the pilot's own resource group (AIV-P1-096).
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param tags object
 param appIdentityPrincipalId string

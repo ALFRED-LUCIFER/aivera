@@ -3,7 +3,7 @@
 // shortcut: the Azure-managed sender domain (DoNotReply@<guid>.azurecomm.net, low send limits) in dev; a verified
 // custom domain comes with the pilot (AIV-P0-003 runbook follow-up, AIV-P5-E03 #34)
 param env string
-@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
 param brand string
 param tags object
 param appIdentityPrincipalId string
