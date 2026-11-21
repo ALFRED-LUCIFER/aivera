@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
+import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-019: "Add applicants" on a job's Candidates tab, as AP, admin of "Demo" (seed.ts). This harness has no Blob
