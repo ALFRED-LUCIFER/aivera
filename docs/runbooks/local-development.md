@@ -73,7 +73,7 @@ When `@playwright/test` is upgraded, change the image tag in `.github/workflows/
 The migration has to be safe on a live database (AIV-P2-061). `tests/architecture/src/migrations.test.ts` and CI check it:
 
 - **Journal order.** Drizzle's migrator skips, with no error, a migration whose journal `when` is not later than the last one applied. Every module journal's `when` must be strictly increasing. After a rebase, regenerate your migration; never edit `when` by hand.
-- **Generated, not hand-written.** CI runs `pnpm db:generate && git diff --exit-code`, so a schema change without its migration fails.
+- **Generated, not hand-written.** CI runs `pnpm db:generate` and fails when `git status --porcelain` then lists any file, so a schema change without its migration fails.
 - **No NOT NULL column without a default on an existing table.** Add it nullable or with a `DEFAULT`, backfill, then `SET NOT NULL` in a later migration.
 - **CHECK constraints on `audit` are added `NOT VALID`.** A plain `ADD CONSTRAINT … CHECK` checks every row of the audit log under an exclusive lock. Edit the generated SQL to `ADD CONSTRAINT … CHECK (…) NOT VALID`. Widening an allowed list needs nothing more: every existing row already met the narrower check. Put any `VALIDATE CONSTRAINT` in a migration that ships in a later deploy. The runner applies all of a module's pending migrations in one transaction, so a `VALIDATE` in the same deploy still holds the exclusive lock.
 - **No `CREATE INDEX CONCURRENTLY`.** It cannot run inside that transaction. Plain `CREATE INDEX` blocks writes to the table while it builds, so keep it to tables that are small at the time.

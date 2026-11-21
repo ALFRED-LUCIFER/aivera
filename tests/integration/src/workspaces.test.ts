@@ -185,7 +185,7 @@ describe('Scenario: Members of another workspace are invisible at the database',
     expect(await workspaces.withWorkspace({ userId: ALEX }, w2, (ctx) => workspaces.listMembers(ctx))).toHaveLength(2);
   });
 
-  // AIV-P2-061: what the members page, the add-job form and an email's sender read, on this one-connection pool: a read
+  // AIV-P2-061: what the members page, the add-job form, an email's sender and the rubric emails read, on this one-connection pool: a read
   // that took a second pooled connection while the context holds the only one would wait forever.
   // SAFETY: mutation check: getUser ignoring `within` (read through its own transaction) -> this test failed (timed out)
   // SAFETY: mutation check: listMembers through inWorkspace instead of ctx.tx -> this test failed (timed out)

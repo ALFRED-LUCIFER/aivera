@@ -42,8 +42,26 @@ export const riskyStatements = (migration: string): string[] =>
         : []),
     ]);
 
-// Migrations up to this journal `when` were applied before the lint and are never edited (AGENTS.md 3.3).
-const LINTED_AFTER = 1795262176631;
+/**
+ * Each journal's entry count before the lint: those migrations were applied and are never edited (AGENTS.md 3.3).
+ * Every later entry is linted, whatever its `when`; a journal not listed here (a new module) is linted from its first.
+ */
+const APPLIED_BEFORE_LINT: Record<string, number> = {
+  'modules/assessment': 2,
+  'modules/audit': 26,
+  'modules/candidate-accounts': 3,
+  'modules/candidates': 4,
+  'modules/evidence': 24,
+  'modules/files': 2,
+  'modules/identity': 1,
+  'modules/intake': 3,
+  'modules/jobs': 24,
+  'modules/notifications': 2,
+  'modules/ops': 2,
+  'modules/workspaces': 17,
+  'packages/ai': 4,
+  'tests/integration/fixtures/modules/fixture_notes': 2,
+};
 
 const journals = execFileSync('git', ['ls-files', '*/migrations/meta/_journal.json'], {
   cwd: repoRoot,
@@ -76,15 +94,13 @@ describe('migrations (ADR-004, AIV-P2-061)', () => {
     ]);
   });
 
-  // SAFETY: mutation check: added `ALTER TABLE "evidence"."source" ADD COLUMN "x" text NOT NULL;` to the new migration -> this test failed
+  // SAFETY: mutation check: added `ALTER TABLE "evidence"."source" ADD COLUMN "x" text NOT NULL;` to the new migration, its `when` set back to just after 0023 -> this test failed
   it('no migration after the lint adds a NOT NULL column without a default or a plain CHECK on audit', () => {
     const misses = journals.flatMap(({ file, journal }) =>
-      journal.entries
-        .filter((entry) => entry.when > LINTED_AFTER)
-        .flatMap(({ tag }) => {
-          const path = join(dirname(dirname(file)), `${tag}.sql`);
-          return riskyStatements(readFileSync(join(repoRoot, path), 'utf8')).map((reason) => `${path}: ${reason}`);
-        }),
+      journal.entries.slice(APPLIED_BEFORE_LINT[file.split('/src/')[0] ?? ''] ?? 0).flatMap(({ tag }) => {
+        const path = join(dirname(dirname(file)), `${tag}.sql`);
+        return riskyStatements(readFileSync(join(repoRoot, path), 'utf8')).map((reason) => `${path}: ${reason}`);
+      }),
     );
     expect(misses).toEqual([]);
   });

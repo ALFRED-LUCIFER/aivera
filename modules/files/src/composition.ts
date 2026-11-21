@@ -13,8 +13,6 @@ import { outbox } from './infrastructure/schema.ts';
 
 export { createBlobStore, type BlobStoreConfig } from './infrastructure/blobs.ts';
 export type { BlobStore } from './application/files.ts';
-// For the integration suite's two-layer check of the store's owner filter under row-level security (AIV-P2-061).
-export { fileStore };
 
 /** The Service Bus queue Event Grid delivers Defender's scan results to (infra/modules/storage.bicep). */
 export const SCAN_RESULTS_QUEUE = 'malware-scan-results';

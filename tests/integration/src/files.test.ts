@@ -8,7 +8,8 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, DbQueryError, withCandidateAccount, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { FileError, type FilesContract, type Purpose } from '@credalent/files';
-import { createBlobStore, createFiles, fileStore, type BlobStore } from '@credalent/files/composition';
+import { createBlobStore, createFiles, type BlobStore } from '@credalent/files/composition';
+import { fileStore } from '../../../modules/files/src/infrastructure/repository.ts';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
