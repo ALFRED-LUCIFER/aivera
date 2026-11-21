@@ -9,13 +9,15 @@ on:
   pull_request:
   push:
     branches: [main]
+    # Kept filtered: every push to main would otherwise spend the live token cap.
+    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ai-eval-${{ github.ref }}
+  group: ai-eval-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
