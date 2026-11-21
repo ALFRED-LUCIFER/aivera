@@ -34,10 +34,14 @@ export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVe
   if (!job?.hiringOwnerUserId) return false;
   // shortcut: a job whose owner was removed before AIV-P2-060 keeps their id, so its header still shows their name; this
   // check stops the email. Clear such owners when the job header lets an admin assign another (AIV-P1-097, #495).
-  const member = await getWorkspaces().getMembership(job.hiringOwnerUserId, ctx.workspaceId);
+  // Read in the action's transaction, as is the owner below: a second pooled connection while it is held can exhaust the
+  // pool (AIV-P2-061).
+  const member = (await getWorkspaces().listMembers(ctx)).find(
+    (m) => m.userId === job.hiringOwnerUserId && m.status === 'active',
+  );
   if (!member || approvesAs(member.role, member.userId, job) !== 'owner') return false;
   const email = configured();
-  const owner = await getIdentity().getUser(job.hiringOwnerUserId);
+  const owner = await getIdentity().getUser(job.hiringOwnerUserId, ctx);
   if (!owner) throw new Error('hiring owner not found');
   const { versions, version } = await versionOf(ctx, job.id, sent.id);
   const approved = versions.find((v) => v.status === 'approved');
@@ -75,7 +79,7 @@ export async function queueDecisionEmail(ctx: WorkspaceContext, jobId: string, v
   const recipientId = version.submittedBy;
   if (!recipientId || recipientId === ctx.userId) return;
   const email = configured();
-  const recipient = await getIdentity().getUser(recipientId);
+  const recipient = await getIdentity().getUser(recipientId, ctx);
   if (!recipient) throw new Error('recipient not found');
   const job = await getJobs().getJob(ctx, jobId);
   if (!job) throw new Error('job not found');

@@ -11,14 +11,16 @@ export type IdentityStore = {
   setDisplayName(userId: string, displayName: string): Promise<void>;
 };
 
-export type Ports = {
+export type Ports<Tx> = {
   inTransaction<T>(work: (store: IdentityStore) => Promise<T>): Promise<T>;
+  /** The store over a transaction the caller already holds. */
+  storeFor(tx: Tx): IdentityStore;
   newId(): string;
   /** Credalent's own External ID tenant issuer, whose emails count as verified without the claim. */
   trustedIssuer: string;
 };
 
-export function identityUseCases({ inTransaction, newId, trustedIssuer }: Ports) {
+export function identityUseCases<Tx>({ inTransaction, storeFor, newId, trustedIssuer }: Ports<Tx>) {
   return {
     upsertUserFromIdToken(token: IdTokenIdentity): Promise<User> {
       return inTransaction(async (store) => {
@@ -41,8 +43,8 @@ export function identityUseCases({ inTransaction, newId, trustedIssuer }: Ports)
       });
     },
 
-    getUser(id: string): Promise<User | null> {
-      return inTransaction((store) => store.findById(id));
+    getUser(id: string, within?: { tx: Tx }): Promise<User | null> {
+      return within ? storeFor(within.tx).findById(id) : inTransaction((store) => store.findById(id));
     },
   };
 }

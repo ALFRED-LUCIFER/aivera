@@ -745,14 +745,14 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
 
 /** What W1's list functions return, for a module build on the given connection. */
 const listedInW1 = async (m: Modules) => ({
-  // These two open their own transaction, so they run outside the request context (one pooled connection).
-  members: (await m.workspaces.listMembers(w1.workspaceId)).map((r) => r.workspaceId),
+  // The audit reads open their own transaction, so they run outside the request context (one pooled connection).
   ownAudit: new Set(
     (await m.audit.listFor(w1.workspaceId, { type: 'workspace', id: w1.workspaceId })).map((r) => r.workspaceId),
   ),
   w2Audit: await m.audit.listFor(w1.workspaceId, { type: 'workspace', id: w2.workspaceId }),
   ...(await as(m, ALEX, w1.workspaceId, async (ctx) => ({
     workspace: (await m.workspaces.getWorkspace(ctx))?.id,
+    members: (await m.workspaces.listMembers(ctx)).map((r) => r.workspaceId),
     clients: (await m.workspaces.listClients(ctx)).map((r) => r.id),
     grants: (await m.workspaces.listJobGrants(ctx)).map((r) => r.id),
     people: (await m.candidates.listPeople(ctx)).map((r) => r.id),

@@ -21,6 +21,10 @@ export function fileStore(tx: Tx): FileStore {
       const [found] = await (forUpdate ? query.for('update') : query);
       return (found as FileRecord | undefined) ?? null;
     },
-    settle: async (id, change) => void (await tx.update(file).set(change).where(eq(file.id, id))),
+    settle: async (owner, id, change) =>
+      void (await tx
+        .update(file)
+        .set(change)
+        .where(and(ownedBy(owner), eq(file.id, id)))),
   };
 }

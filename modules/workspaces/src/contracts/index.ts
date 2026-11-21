@@ -128,7 +128,6 @@ export interface WorkspacesContract {
   createWorkspace(input: CreateWorkspaceInput): Promise<Workspace>;
   /** The user's active membership of the workspace; null when they are not a member, or are invited or removed. */
   getMembership(userId: string, workspaceId: string): Promise<Member | null>;
-  listMembers(workspaceId: string): Promise<Member[]>;
   /** Admins only; refuses to remove the last admin. Throws `WorkspaceError` (`forbidden`, `not_found`, `last_admin`). */
   changeRole(input: ChangeRoleInput): Promise<void>;
 
@@ -136,6 +135,8 @@ export interface WorkspacesContract {
   withWorkspace<T>(session: Session, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>): Promise<T>;
   /** The context's workspace, read in its checked transaction. */
   getWorkspace(ctx: WorkspaceContext): Promise<Workspace | null>;
+  /** The context's members, every status, read in its transaction. Callers authorise first. */
+  listMembers(ctx: WorkspaceContext): Promise<Member[]>;
   /** Throws `ForbiddenError` unless the role allows `action`; job-scoped roles also need a grant on `resource`. */
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
 
