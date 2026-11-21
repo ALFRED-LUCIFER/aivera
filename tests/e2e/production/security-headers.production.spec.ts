@@ -27,7 +27,8 @@ test('Scenario: /candidates carries Strict-Transport-Security', async ({ request
 // The recruiter pages are the ones whose client bundle builds zod schemas (zod probes `new Function`, which the
 // production policy refuses unless instrumentation-client.ts sets `jitless`). Sign-in through the mocked tenant cannot
 // run here: the production `form-action` does not allow localhost. So the session cookie is minted with the test secret.
-// SAFETY: mutation check: deleted apps/web/src/instrumentation-client.ts -> this test failed (MUTATION-RUN)
+// Mutation check, CI run 44906950201: deleting apps/web/src/instrumentation-client.ts did NOT fail this test, so it does
+// not prove the jitless fix (no violation shows on these pages); it guards the production policy as a whole.
 test('Scenario: recruiter pages run under the production policy with no CSP violation', async ({
   page,
   context,
