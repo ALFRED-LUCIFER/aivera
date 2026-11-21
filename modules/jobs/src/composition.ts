@@ -7,6 +7,7 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { sql } from 'drizzle-orm';
+import { catalogueEditor } from './application/catalogue-editor.ts';
 import { domainDetection } from './application/detect-domain.ts';
 import { competencyDrafting } from './application/draft-competencies.ts';
 import { jobsUseCases } from './application/jobs.ts';
@@ -15,6 +16,7 @@ import {
   JobUnpublishedV1,
   RubricApprovedV1,
   type ApprovedRubricReads,
+  type CatalogueEditor,
   type CatalogueReads,
   type CompetencyDrafting,
   type DomainDetecting,
@@ -23,6 +25,7 @@ import {
   type PublicJobsContract,
 } from './contracts/index.ts';
 import { readPublishedCatalogue } from './infrastructure/catalogue.ts';
+import { draftStore } from './infrastructure/catalogue-draft.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
 import { approvedRubric, countJobs, jobStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
@@ -96,6 +99,19 @@ export function createCatalogueReads(db: Db): CatalogueReads {
     getPublishedCatalogue: () =>
       db.transaction(readPublishedCatalogue, { isolationLevel: 'repeatable read', accessMode: 'read only' }),
   };
+}
+
+/**
+ * The catalogue editor (ADR-013 points 3 to 6, 15) on the app's pool, with no workspace: platform tables. Each call is
+ * one transaction, its platform audit entry last. For /ops only, behind platformOperator() (architecture rule
+ * `operator-only-writes`).
+ */
+export function createCatalogueEditor(
+  db: Db,
+  audit: Pick<AuditContract, 'recordPlatform'>,
+  now: () => Date = () => new Date(),
+): CatalogueEditor {
+  return catalogueEditor({ inTransaction: (work) => db.transaction((tx) => work(draftStore(tx, audit))), now });
 }
 
 /** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */

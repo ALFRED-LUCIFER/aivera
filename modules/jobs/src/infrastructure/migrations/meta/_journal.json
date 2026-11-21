@@ -127,6 +127,13 @@
       "when": 1795150822273,
       "tag": "0017_catalogue_v1_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795227447739,
+      "tag": "0018_catalogue_draft_revision",
+      "breakpoints": true
     }
   ]
 }
