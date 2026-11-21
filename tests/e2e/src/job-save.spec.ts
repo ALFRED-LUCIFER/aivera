@@ -51,7 +51,7 @@ for (const theme of themes) {
     await page.keyboard.press('Enter');
     await expect(page.getByText(SAVED)).toBeFocused();
     await expect(
-      page.getByText('Next: the hiring owner approves the rubric. Candidates are assessed only after that.'),
+      page.getByText('Next: approve the rubric on its page. Candidates are assessed only after that.'),
     ).toBeVisible();
     await expectAccessible(page);
 

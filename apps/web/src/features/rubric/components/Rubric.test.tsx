@@ -37,7 +37,10 @@ describe('Scenario: Loading and error', () => {
 
 describe('A job with no rubric', () => {
   it('says so, with no weights total', () => {
-    show({ status: 'ready', rubric: { shown: null, history: [], edit: null, review: null, approvedCompetencies: 0 } });
+    show({
+      status: 'ready',
+      rubric: { shown: null, history: [], edit: null, review: null, approvable: null, approvedCompetencies: 0 },
+    });
     expect(screen.getByText('No rubric yet.')).toBeTruthy();
     expect(screen.queryByText(/Weights total/)).toBeNull();
   });

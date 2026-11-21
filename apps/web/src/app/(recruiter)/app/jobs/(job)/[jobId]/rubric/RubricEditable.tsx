@@ -4,7 +4,7 @@ import type { approvesAs } from '@credalent/jobs';
 import { Rubric } from '@/features/rubric/components/Rubric.tsx';
 import { RubricDecision } from '@/features/rubric/components/RubricDecision.tsx';
 import { RubricPublish } from '@/features/rubric/components/RubricPublish.tsx';
-import { approverView, type PublicationView, type RubricView } from '@/features/rubric/domain/rubric.ts';
+import { approverView, decisionPanel, type PublicationView, type RubricView } from '@/features/rubric/domain/rubric.ts';
 import { useRubricDecisionController } from '@/features/rubric/hooks/useRubricDecisionController.ts';
 import { useRubricEditController } from '@/features/rubric/hooks/useRubricEditController.ts';
 import { useRubricPublishController } from '@/features/rubric/hooks/useRubricPublishController.ts';
@@ -20,30 +20,33 @@ type Props = {
 };
 
 /**
- * The rubric with edit mode for admins and recruiters (AIV-P1-013), and the approval panel for the job's hiring owner
- * or an admin acting as owner (AIV-P1-014); the hiring owner reads the version awaiting approval. Admins and recruiters
- * also publish the job on the candidate site (AIV-P1-015).
+ * The rubric with edit mode for admins and recruiters (AIV-P1-013), and the approval panel (AIV-P1-014): an admin or
+ * recruiter approves the open version, a draft directly (ADR-014); the job's hiring owner reads and decides the version
+ * sent to them. Admins and recruiters also publish the job on the candidate site (AIV-P1-015).
  */
 export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, link, publication }: Props) {
   const editor = useRubricEditController(jobId, rubric.edit);
-  const decision = useRubricDecisionController(jobId, rubric.review);
+  const { review, canReturn, canSend, withOwner } = decisionPanel(rubric, approver, canEdit, hiringOwner !== null);
+  const decision = useRubricDecisionController(jobId, review);
   const publish = useRubricPublishController(jobId, publication.descriptor);
   const view = approverView(rubric, link);
   return (
     <Rubric
-      // An editor (an admin acting as owner) keeps reading the version in force, as edit mode does (AIV-P1-013).
+      // An editor keeps reading the version in force, as edit mode does (AIV-P1-013); the hiring owner reads what was sent.
       state={{ status: 'ready', rubric: approver && !canEdit ? view.rubric : rubric }}
       editor={canEdit ? editor : undefined}
       hiringOwner={hiringOwner}
       aside={
         <>
           {/* One primary button per view: the approval panel steps aside while the admin edits the rubric. */}
-          {approver && !editor.editing && (rubric.review || decision.status !== 'idle') && (
+          {approver && !editor.editing && (review || decision.status !== 'idle') && (
             <RubricDecision
-              review={rubric.review}
+              review={review}
               decision={decision}
               outdatedLink={view.outdatedLink}
-              actingAsAdmin={approver === 'admin_as_owner'}
+              canReturn={canReturn}
+              canSend={canSend}
+              withOwner={withOwner}
             />
           )}
           {/* job.publish allows the same roles as rubric.edit; the jobs module checks it again. It steps aside while
