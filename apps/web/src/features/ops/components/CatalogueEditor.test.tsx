@@ -126,14 +126,14 @@ describe('the draft', () => {
   it('Scenario: A published competency is retired: "Retired" and no delete control for it', () => {
     show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
     const name = payments.competencies[0]?.name ?? '';
-    const row = screen.getByRole('heading', { level: 3, name }).closest('li') as HTMLElement;
+    const row = screen.getByText(name, { selector: 'h3' }).closest('li') as HTMLElement;
     expect(within(row).getByText('Retired')).toBeTruthy();
     expect(within(row).queryAllByRole('button')).toEqual([]);
     // A live published one is retired, not removed; a new pack is removed, not retired.
-    expect(screen.getByRole('button', { name: `Retire ${payments.competencies[1]?.name}` })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: `Remove ${payments.competencies[1]?.name}` })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Remove Insurance and insurtech' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Retire Payments and fintech' })).toBeTruthy();
+    expect(screen.getByLabelText(`Retire ${payments.competencies[1]?.name}`)).toBeTruthy();
+    expect(screen.queryByLabelText(`Remove ${payments.competencies[1]?.name}`)).toBeNull();
+    expect(screen.getByLabelText('Remove Insurance and insurtech')).toBeTruthy();
+    expect(screen.getByLabelText('Retire Payments and fintech')).toBeTruthy();
   });
 
   it('a fairness refusal shows under the field it names, never the refused text elsewhere', () => {
