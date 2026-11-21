@@ -285,12 +285,13 @@ export function createAiClient(options: {
             // checkOutput throws only the contract's three errors, whose messages hold no output.
             outcome('rejected', { 'credalent.ai.attempts': attempts, 'error.type': (error as Error).name });
             // Which schema rules failed, so a live failure can be fixed (AIV-P1-082): paths and codes, never output.
-            if (error instanceof SchemaMismatch && error.rules.length > 0)
+            // `(dropped)` when every rule failed the pattern check, so the miss is visible rather than silent.
+            if (error instanceof SchemaMismatch)
               log.warn(
                 {
                   'credalent.ai.task': task,
                   'credalent.ai.attempts': attempts,
-                  'credalent.ai.schema_rules': error.rules.join(' '),
+                  'credalent.ai.schema_rules': error.rules.join(' ') || '(dropped)',
                 },
                 'ai schema mismatch',
               );

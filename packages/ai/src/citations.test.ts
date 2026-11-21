@@ -16,6 +16,7 @@ import {
   type Source,
 } from './citations';
 import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from './client';
+import { draftCompetenciesSchema } from './prompts/jobs.draftCompetencies.ts';
 import { detectUnusualContent } from './untrusted';
 import { fakeProvider, type AiProvider } from './providers';
 
@@ -238,7 +239,9 @@ describe('Scenario: Schema mismatch', () => {
       const { run, prompts } = answers(output, output);
       const error = await run().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(SchemaMismatch);
-      expect((error as SchemaMismatch).message).toBe(new SchemaMismatch('jobs.draftCompetencies').message);
+      expect((error as SchemaMismatch).message).toBe(
+        'AI task jobs.draftCompetencies returned output that does not match its schema',
+      );
       expect((error as SchemaMismatch).rules).toEqual(rules);
       expect(warn).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -391,5 +394,31 @@ describe('schemaRules (AIV-P1-082)', () => {
     ).toEqual(['suggestions.1.weight:too_big', ':custom', 'competencies:too_big']);
     const many = Array.from({ length: 9 }, (_, i) => ({ path: ['competencies', i, 'name'], code: 'too_big' }));
     expect(schemaRules(many)).toHaveLength(5);
+  });
+});
+
+// The rules part 2 of AIV-P1-082 is looking for, on the real draft schema (no citations needed to reach them).
+const competency = { name: 'Retrieval', evidenceExpected: 'Shipped search', weight: 60, level: 3, type: 'mandatory' };
+const draft = (competencies: unknown[], suggestions: unknown[] = []) => ({
+  competencies: competencies.map((c) => ({ ...(c as object), citations: [{ sourceId: 'S1', quote: 'search' }] })),
+  refused: false,
+  reason: null,
+  suggestions: suggestions.map((c) => ({ ...(c as object), citations: [{ sourceId: 'S1', quote: 'search' }] })),
+});
+const rulesOf = (value: unknown) => {
+  const parsed = draftCompetenciesSchema.safeParse(value);
+  return parsed.success ? [] : schemaRules(parsed.error.issues);
+};
+
+describe('schemaRules on the jobs.draftCompetencies schema', () => {
+  it('weights over 100 in total is the whole-answer rule', () => {
+    expect(rulesOf(draft([competency, competency]))).toEqual([':custom']);
+    expect(rulesOf(draft([competency], [{ ...competency, why: 'Implied' }]))).toEqual([':custom']);
+  });
+
+  it('nine competencies is too many', () => {
+    expect(rulesOf(draft(Array.from({ length: 9 }, () => ({ ...competency, weight: 5 }))))).toEqual([
+      'competencies:too_big',
+    ]);
   });
 });
