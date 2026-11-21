@@ -78,9 +78,9 @@ const JOB_OWNER_CALL = /\.setJobOwner\(/;
 // AIV-P2-044 (ADR-013 point 15): the catalogue is read from the database; its old code constants must not come back.
 const CODE_CATALOGUE =
   /\b(?:JOB_TYPES|JOB_TYPE_CATALOGUE|JOB_TYPE_CATALOGUE_VERSION|DOMAIN_KEYS|DOMAIN_PACK_CATALOGUE_VERSION|listDomainPacks|getDomainPack)\b/;
-// AIV-P2-060 (ADR-005 point 4): `app.user_id` opens member_own_read, a person's memberships in every workspace. Only
-// resolveActiveWorkspace (workspaces repository) sets it, in a transaction composition.ts opens for it alone, so the
-// setting never reaches a workspace-scoped transaction.
+// AIV-P2-060 (ADR-005 point 4): `app.user_id` opens member_own_read, a person's memberships in every workspace. A
+// tripwire, not the guarantee: resolveActiveWorkspace's own SQL refuses the setting while a workspace is open and clears
+// it after its read; this rule flags anyone else naming the setting or calling it outside composition.ts.
 const USER_SETTING = /app\.user_id/;
 const RESOLVE_CALL = /\bresolveActiveWorkspace\(/;
 const WORKSPACES_FILE = (file: string, name: string) =>

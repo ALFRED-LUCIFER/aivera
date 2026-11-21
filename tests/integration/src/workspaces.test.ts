@@ -22,6 +22,7 @@ import {
 import { createAudit } from '@credalent/audit/composition';
 import { createNotifications } from '@credalent/notifications/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
+import { resolveActiveWorkspace } from '../../../modules/workspaces/src/infrastructure/repository.ts';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -464,6 +465,16 @@ describe('Scenario: The active-workspace pointer follows membership', () => {
       tx.execute(sql`update workspaces.member set status = 'removed' where user_id = ${user(65)}`),
     );
     expect(await workspaces.activeWorkspace(user(65))).toBe(own);
+  });
+
+  // The database, not convention, keeps app.user_id out of workspace transactions. A deep import: no contract can call
+  // the resolver inside a workspace transaction, which is the misuse this proves impossible.
+  // SAFETY: mutation check: dropped the `where ... app.workspace_id ... = ''` guard from resolveActiveWorkspace -> this test failed
+  it('resolving the active workspace inside a workspace transaction throws, and nothing is widened', async () => {
+    const w = (await newWorkspace('Own read guard', user(69))).id;
+    await expect(withWorkspace(app, w, (tx) => resolveActiveWorkspace(tx, user(69)))).rejects.toThrow(
+      'resolveActiveWorkspace needs a transaction with no workspace open',
+    );
   });
 
   // SAFETY: mutation check: replaced policy member_own_read with USING (true) -> this test failed (saw every member)
