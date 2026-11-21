@@ -135,7 +135,7 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
   await expect(packs.filter({ hasText: 'Insurance and insurtech' })).toHaveCount(1);
   await expect(packs.filter({ hasText: 'Telecom and 5G' })).toHaveCount(1);
 
-  // AIV-P2-050, in this test so a retry never tries to publish version 2 again: Theo reads the version history.
+  // AIV-P2-050, in this test so no separate test drags the publish into a retry: Theo reads the version history.
   await page.context().clearCookies();
   await signIn(page, { email: 'theo.platform@example.com' });
   await page.goto('/ops/catalogue/versions');
