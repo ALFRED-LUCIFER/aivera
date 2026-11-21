@@ -11,11 +11,13 @@ import {
   retireCatalogueEntry,
   saveCatalogueCompetency,
   saveCatalogueHint,
+  saveCatalogueJobType,
   saveCataloguePack,
 } from '@/server/operator';
 import {
   draftCompetencySchema,
   draftHintSchema,
+  draftJobTypeSchema,
   draftPackSchema,
   invalidResult,
   retireEntrySchema,
@@ -73,7 +75,14 @@ export async function saveDraftHintAction(input: unknown): Promise<CatalogueSave
   return parsed.success ? attempt(() => saveCatalogueHint(parsed.data)) : invalidResult(parsed.error);
 }
 
-/** Retires a published pack, competency or regional hint, or removes one new in the draft. */
+/** Adds a job type, or edits its texts, starters and place in the Add a job list (AIV-P2-047). */
+export async function saveDraftJobTypeAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = draftJobTypeSchema.safeParse(input);
+  return parsed.success ? attempt(() => saveCatalogueJobType(parsed.data)) : invalidResult(parsed.error);
+}
+
+/** Retires a published pack, competency, job type or regional hint, or removes one new in the draft. */
 export async function retireDraftEntryAction(input: unknown): Promise<CatalogueSaveResult> {
   await platformOperator();
   const parsed = retireEntrySchema.safeParse(input);

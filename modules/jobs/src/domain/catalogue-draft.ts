@@ -5,6 +5,7 @@ import {
   CATALOGUE_KEY,
   type CatalogueCompetency,
   type CatalogueHint,
+  type CatalogueJobType,
   type CataloguePack,
   type CatalogueVersion,
 } from './catalogue.ts';
@@ -62,6 +63,23 @@ export const hintStatus = (published: EditorVersion, packKey: string, h: EditorH
 /** Whether a regional hint is new in this draft, so it is removed rather than retired. */
 export const isHintNewInDraft = (published: EditorVersion, packKey: string, region: string, position: number) =>
   !publishedHint(published, packKey, region, position);
+/** A job type's status: by key, its position not compared (order is not content). */
+export const jobTypeStatus = (published: EditorVersion, jobType: CatalogueJobType): EntryStatus =>
+  status(
+    jobType,
+    published.jobTypes.find((t) => t.key === jobType.key),
+  );
+
+/**
+ * The draft's job type keys in their new order with `key` placed at `position` of the offered (not retired) list:
+ * before the offered job type now there, or last. Retired ones keep their place among the rest.
+ */
+export function placeJobType(jobTypes: readonly CatalogueJobType[], key: string, position: number): string[] {
+  const rest = jobTypes.filter((t) => t.key !== key);
+  const before = rest.filter((t) => !t.retired)[position];
+  const at = before ? rest.indexOf(before) : rest.length;
+  return [...rest.slice(0, at).map((t) => t.key), key, ...rest.slice(at).map((t) => t.key)];
+}
 
 /** Whether a draft entry may be removed: it is new in this draft. Anything a published version holds is retired. */
 export const isNewInDraft = (published: EditorVersion, packKey: string, position?: number): boolean => {
@@ -110,20 +128,33 @@ export const draftCompetencySchema = z.strictObject({
 export type DraftCompetencyInput = z.infer<typeof draftCompetencySchema>;
 
 /**
+ * Add a job type (`adding`) or edit its English label, evidence text and starters, and place it at `position` of the Add
+ * a job list (0 is first). Its key never changes (ADR-013 point 5). Exactly four starters (AIV-P1-004).
+ */
+export const draftJobTypeSchema = z.strictObject({
+  ...base,
+  adding: z.boolean(),
+  key,
+  label: filled(120),
+  evidence: filled(1000),
+  starters: z.array(filled(200)).length(4),
+  position: z.int().min(0).max(500),
+});
+export type DraftJobTypeInput = z.infer<typeof draftJobTypeSchema>;
+
+/**
  * Add a regional hint to a pack's region (`position` null) or edit one (AIV-P2-046): the competency's fields without
  * core. Strict, so a request that sends `type` (say "mandatory") is refused (ADR-013 point 11).
  */
 export const draftHintSchema = draftCompetencySchema.omit({ core: true }).extend({ region: key });
 export type DraftHintInput = z.infer<typeof draftHintSchema>;
 
-/**
- * Retire an entry, or remove it when it is new in the draft. One shape per entry kind; regional hints (AIV-P2-046) and
- * job types (AIV-P2-047) add theirs.
- */
+/** Retire an entry, or remove it when it is new in the draft. One shape per entry kind. */
 export const retireEntrySchema = z.discriminatedUnion('entry', [
   z.strictObject({ ...base, entry: z.literal('pack'), packKey: key }),
   z.strictObject({ ...base, entry: z.literal('competency'), packKey: key, position: z.int().min(0) }),
   z.strictObject({ ...base, entry: z.literal('regionalHint'), packKey: key, region: key, position: z.int().min(0) }),
+  z.strictObject({ ...base, entry: z.literal('jobType'), jobTypeKey: key }),
 ]);
 export type RetireEntryInput = z.infer<typeof retireEntrySchema>;
 
@@ -138,6 +169,7 @@ export const CATALOGUE_ERROR_CODES = [
   'pack_retired',
   'entry_retired',
   'job_type',
+  'job_type_in_use',
   'core_not_applied',
   'core_limit',
   'evidence_required',
@@ -146,7 +178,7 @@ export const CATALOGUE_ERROR_CODES = [
   'fairness_residency',
 ] as const;
 export type CatalogueErrorCode = (typeof CATALOGUE_ERROR_CODES)[number];
-export type CatalogueField = 'key' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core';
+export type CatalogueField = 'key' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core' | 'starters';
 
 /** A refusal of a draft save. The message names the code only, never what was typed. */
 export class CatalogueError extends Error {
@@ -230,6 +262,7 @@ const EMPLOYERS = [
   'infosys',
   'wipro',
   'goldman sachs',
+  'big four',
 ].join('|');
 
 const RULES: readonly (readonly [RegExp, 'employer' | 'origin'])[] = [
@@ -264,12 +297,27 @@ export function assertFairCompetency({
   }
 }
 
+/** A job type's starters are competencies too: the same fairness rule (ADR-013 point 11), under the starters field. */
+export function assertFairStarters(starters: readonly string[]) {
+  const rule = starters.map(fairnessRule).find(Boolean);
+  if (rule)
+    throw new CatalogueError(rule === 'employer' ? 'fairness_employer' : 'fairness_origin', { field: 'starters' });
+}
+
 /**
- * Throws unless the competency's job types are job types of the draft that are not retired, its core ones are among
- * them, and no job type gets more than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
+ * Throws unless the competency's job types are job types of the draft that are not retired (or ones the edited entry
+ * already had: a retired job type stays on it, AIV-P2-047), its core ones are among them, and no job type gets more
+ * than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
  */
-export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, input: DraftCompetencyInput) {
-  const offered = new Set(draft.jobTypes.filter((t) => !t.retired).map((t) => t.key));
+export function assertCompetencyFits(
+  draft: EditorVersion,
+  pack: EditorPack,
+  input: DraftCompetencyInput,
+  // The entry's own job types before this save; a regional hint passes its own (AIV-P2-046).
+  kept: readonly string[] = pack.competencies.find((c) => c.position === input.position)?.appliesTo ?? [],
+) {
+  // shortcut: the form does not list a retired job type, so it can be kept but not unticked; list it when operators ask.
+  const offered = new Set([...draft.jobTypes.filter((t) => !t.retired).map((t) => t.key), ...kept]);
   if (input.appliesTo.some((t) => !offered.has(t))) throw new CatalogueError('job_type', { field: 'appliesTo' });
   if (input.core.some((t) => !input.appliesTo.includes(t)))
     throw new CatalogueError('core_not_applied', { field: 'core' });

@@ -16,6 +16,7 @@ import type {
   CatalogueEditorView,
   DraftCompetencyInput,
   DraftHintInput,
+  DraftJobTypeInput,
   DraftPackInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -55,10 +56,12 @@ export {
   competencyStatus,
   draftCompetencySchema,
   draftHintSchema,
+  draftJobTypeSchema,
   draftPackSchema,
   hintStatus,
   isHintNewInDraft,
   isNewInDraft,
+  jobTypeStatus,
   packStatus,
   retireEntrySchema,
 } from '../domain/catalogue-draft.ts';
@@ -68,6 +71,7 @@ export type {
   CatalogueField,
   DraftCompetencyInput,
   DraftHintInput,
+  DraftJobTypeInput,
   DraftPackInput,
   EditorCompetency,
   EditorHint,
@@ -327,14 +331,22 @@ export interface CatalogueEditor {
    */
   saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
   /**
+   * Adds (`adding`) or edits a job type: English label, evidence text, exactly four starters, and its place in the Add a
+   * job list. Refused: a key any version holds (`key_taken`, retired keys included), a starter naming an employer or
+   * where someone is from (`fairness_employer`, `fairness_origin`), a retired job type (`entry_retired`).
+   * `catalogue.entry_added` / `catalogue.entry_edited` (AIV-P2-047).
+   */
+  saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
+  /**
    * Adds (`position` null) or edits a pack's regional hint for one region (AIV-P2-046), always desirable: the
    * competency's rules without core, after a residency rule (`fairness_residency`: never where someone lives, is from
    * or holds papers for). An unknown or retired region is `not_found`.
    */
   saveDraftHint(operatorId: string, input: DraftHintInput): Promise<void>;
   /**
-   * Retires a pack, competency or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in this
-   * draft (`catalogue.entry_removed`). Returns which.
+   * Retires a pack, competency, job type or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in
+   * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
+   * Returns which.
    */
   retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
 }

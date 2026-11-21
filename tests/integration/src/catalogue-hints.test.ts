@@ -212,4 +212,27 @@ describe('Feature: Edit regional hints in a catalogue draft', () => {
       editor.saveDraftHint(PIA, { ...fasah, revision: opened, region: 'india', packKey: 'telecom' }),
     ).rejects.toMatchObject({ code: 'stale', by: THEO });
   });
+
+  // SAFETY: mutation check: saveDraftHint passed no kept job types to assertCompetencyFits -> this test failed (job_type)
+  it('a retired job type stays on the hints that already had it; a new hint cannot take it', async () => {
+    await editor.retireDraftEntry(PIA, {
+      version: 2,
+      revision: await revision(),
+      entry: 'jobType',
+      jobTypeKey: 'software_engineering',
+    });
+    const [kept] = (await hints('telecom', 'india')).filter((h) => h.name === fasah.name);
+    const telecom = { ...fasah, packKey: 'telecom', region: 'india' };
+    await editor.saveDraftHint(PIA, {
+      ...telecom,
+      revision: await revision(),
+      position: kept?.position ?? -1,
+      levelNeeded: 3,
+    });
+    expect((await hints('telecom', 'india')).find((h) => h.position === kept?.position)).toMatchObject({
+      appliesTo: ['software_engineering'],
+      levelNeeded: 3,
+    });
+    expect(await outcome(editor.saveDraftHint(PIA, { ...telecom, revision: await revision() }))).toBe('job_type');
+  });
 });

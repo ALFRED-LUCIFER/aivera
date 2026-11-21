@@ -9,7 +9,8 @@ import type { EditorField, EditorViewModel, Refusal } from '../domain/catalogueE
 export function RefusalText({ error }: { error: Refusal }) {
   const t = useTranslations('ops.catalogue.editor.errors');
   if (error.error === 'stale') return error.by ? t('stale', { name: error.by }) : t('staleUnknown');
-  if (error.error === 'invalid') return error.field === 'key' ? t('invalid.key') : t('invalid.other');
+  if (error.error === 'invalid')
+    return t(error.field === 'key' || error.field === 'starters' ? `invalid.${error.field}` : 'invalid.other');
   return t(error.error);
 }
 
@@ -127,6 +128,112 @@ export function PackFormDialog({ view }: { view: EditorViewModel }) {
             )}
           </Field>
           <FormRefusal view={view} shown={FORM_FIELDS} />
+          <Actions view={view} />
+        </form>
+      )}
+    </Dialog>
+  );
+}
+
+const JOB_TYPE_FIELDS: readonly (EditorField | undefined)[] = [...FORM_FIELDS, 'starters', 'position'];
+
+/** Add a job type, or edit its texts, starters and place (AIV-P2-047); its key is fixed once saved. */
+export function JobTypeFormDialog({ view }: { view: EditorViewModel }) {
+  const t = useTranslations('ops.catalogue.editor');
+  const form = view.jobTypeForm;
+  const startersRefused = view.error?.field === 'starters';
+  return (
+    <Dialog
+      open={form !== null}
+      onOpenChange={(open) => !open && view.onClose()}
+      title={form?.adding ? t('addJobType') : t('editJobType')}
+      closeLabel={t('close')}
+      className="max-w-2xl"
+    >
+      {form && (
+        <form noValidate className="flex flex-col gap-4" onSubmit={submit(view)}>
+          <Field
+            field="key"
+            label={t('fields.key')}
+            hint={form.adding ? t('fields.keyHint') : t('fields.keyFixed')}
+            error={view.error}
+          >
+            {(aria) => (
+              <Input
+                {...aria}
+                autoComplete="off"
+                spellCheck={false}
+                readOnly={!form.adding}
+                value={form.key}
+                onChange={(event) => view.onJobTypeChange({ key: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field field="label" label={t('fields.label')} error={view.error}>
+            {(aria) => (
+              <Input
+                {...aria}
+                maxLength={120}
+                value={form.label}
+                onChange={(event) => view.onJobTypeChange({ label: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field field="evidence" label={t('fields.evidence')} error={view.error}>
+            {(aria) => (
+              <Textarea
+                {...aria}
+                rows={2}
+                maxLength={1000}
+                value={form.evidence}
+                onChange={(event) => view.onJobTypeChange({ evidence: event.target.value })}
+              />
+            )}
+          </Field>
+          <fieldset
+            className="flex flex-col gap-2"
+            aria-describedby={startersRefused ? errorId('starters') : undefined}
+          >
+            <legend className="mb-1 text-body font-semibold text-text">{t('fields.starters')}</legend>
+            {form.starters.map((starter, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <Label htmlFor={`catalogue-starter-${i}`}>{t('fields.starter', { n: i + 1 })}</Label>
+                <Input
+                  id={`catalogue-starter-${i}`}
+                  maxLength={200}
+                  aria-invalid={startersRefused || undefined}
+                  value={starter}
+                  onChange={(event) =>
+                    view.onJobTypeChange({ starters: form.starters.map((s, j) => (j === i ? event.target.value : s)) })
+                  }
+                />
+              </div>
+            ))}
+            {startersRefused && view.error && (
+              <p id={errorId('starters')} role="alert" className="text-meta font-semibold text-err-text">
+                <RefusalText error={view.error} />
+              </p>
+            )}
+          </fieldset>
+          <Field
+            field="position"
+            label={t('fields.position')}
+            hint={t('fields.positionHint', { count: view.draft.jobTypes.length })}
+            error={view.error}
+          >
+            {(aria) => (
+              <Input
+                {...aria}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                className="max-w-32"
+                value={Number.isNaN(form.position) ? '' : form.position}
+                onChange={(event) => view.onJobTypeChange({ position: event.target.valueAsNumber })}
+              />
+            )}
+          </Field>
+          <FormRefusal view={view} shown={JOB_TYPE_FIELDS} />
           <Actions view={view} />
         </form>
       )}

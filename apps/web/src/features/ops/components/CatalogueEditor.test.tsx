@@ -7,7 +7,14 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
-import { draftModel, newCompetencyForm, type EditorViewModel, type Refusal } from '../domain/catalogueEditor.ts';
+import {
+  draftModel,
+  newCompetencyForm,
+  newJobTypeForm,
+  type DraftModel,
+  type EditorViewModel,
+  type Refusal,
+} from '../domain/catalogueEditor.ts';
 import { CatalogueEditor, StartDraft } from './CatalogueEditor.tsx';
 
 // AIV-P2-045: the catalogue editor's states, statuses and refusals. Synthetic catalogue text only.
@@ -30,6 +37,18 @@ const v1: EditorVersion = {
 const payments = v1.packs[0] as EditorVersion['packs'][number];
 const draft = {
   ...v1,
+  // AIV-P2-047: a retired published job type and one new in the draft, placed second.
+  jobTypes: [
+    ...v1.jobTypes.slice(0, 1),
+    {
+      key: 'security_engineering',
+      label: { en: 'Security engineering' },
+      evidence: { en: 'Threat models, security reviews, fixed vulnerabilities' },
+      starterCompetencies: ['Threat modelling', 'Secure code review', 'Incident response', 'Identity and access'],
+      retired: false,
+    },
+    ...v1.jobTypes.slice(1).map((t) => ({ ...t, retired: t.key === 'technical_writing_support' })),
+  ],
   version: 2,
   status: 'draft' as const,
   revision: 5,
@@ -55,9 +74,10 @@ const draft = {
 const model = draftModel({ published: v1, draft });
 
 const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
-  draft: model ?? { version: 2, revision: 0, jobTypes: [], regions: [], packs: [] },
+  draft: model ?? { version: 2, revision: 0, jobTypes: [], jobTypeEntries: [], regions: [], packs: [] },
   packForm: null,
   competencyForm: null,
+  jobTypeForm: null,
   error: null,
   pending: false,
   onAddPack: vi.fn(),
@@ -70,6 +90,10 @@ const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
   onRetireHint: vi.fn(async () => {}),
   onCompetencyChange: vi.fn(),
   onToggleJobType: vi.fn(),
+  onAddJobType: vi.fn(),
+  onEditJobType: vi.fn(),
+  onJobTypeChange: vi.fn(),
+  onRetireJobType: vi.fn(async () => {}),
   onSave: vi.fn(async () => {}),
   onClose: vi.fn(),
   onReload: vi.fn(),
@@ -221,5 +245,57 @@ describe('Feature: Edit regional hints in a catalogue draft', () => {
       />,
     );
     expect(screen.getByRole('alert').textContent).toBe('That did not go through. Nothing was changed.');
+  });
+});
+
+const jobTypes = () => screen.getByRole('list', { name: 'Job types in the draft' });
+
+describe('job types in the draft (AIV-P2-047)', () => {
+  it('Scenario: Adding a job type: "New in draft" at the position chosen; recruiters\' list is not this one', () => {
+    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    const rows = within(jobTypes()).getAllByRole('listitem');
+    expect(rows).toHaveLength(11);
+    expect(rows[1]?.textContent).toContain('Security engineering');
+    expect(rows[1]?.textContent).toContain('New in draft');
+    expect(rows[1]?.textContent).toContain('Starter competencies: Threat modelling, Secure code review');
+    expect(rows[0]?.textContent).toContain('Live');
+    expect(screen.getByRole('button', { name: 'Remove Security engineering' })).toBeTruthy();
+  });
+
+  it('Scenario: A published job type is retired, never deleted: "Retired" and no controls', () => {
+    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    const row = within(jobTypes())
+      .getByRole('heading', { level: 3, name: 'Technical writing and support' })
+      .closest('li') as HTMLElement;
+    expect(within(row).getByText('Retired')).toBeTruthy();
+    expect(within(row).queryAllByRole('button')).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Retire Software engineering' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Remove Software engineering' })).toBeNull();
+  });
+
+  it('Scenario: A job type needs exactly four starters: the refusal shows under the starters', () => {
+    const form = { ...newJobTypeForm(model as DraftModel), starters: ['a', 'b', 'c', ''] };
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ jobTypeForm: form, error: { ok: false, error: 'invalid', field: 'starters' } })}
+      />,
+    );
+    const group = screen.getByRole('group', { name: 'Starter competencies' });
+    expect(within(group).getByRole('alert').textContent).toBe('Add exactly four starter competencies.');
+    expect(screen.getByLabelText('Starter competency 4').getAttribute('aria-invalid')).toBe('true');
+    expect((screen.getByLabelText('Position in Add a job') as HTMLInputElement).value).toBe('11');
+  });
+
+  it('Scenario: Error: "That did not go through. Nothing was changed."', () => {
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ jobTypeForm: newJobTypeForm(model as DraftModel), error: { ok: false, error: 'failed' } })}
+      />,
+    );
+    expect(screen.getByRole('dialog').querySelector('[role="alert"]')?.textContent).toBe(
+      'That did not go through. Nothing was changed.',
+    );
   });
 });

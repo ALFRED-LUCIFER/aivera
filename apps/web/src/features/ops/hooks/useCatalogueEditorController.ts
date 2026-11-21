@@ -2,7 +2,10 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   competencyFormFor,
+  jobTypeFormFor,
+  jobTypeInput,
   newCompetencyForm,
+  newJobTypeForm,
   newPackForm,
   packFormFor,
   toggleJobType,
@@ -10,6 +13,7 @@ import {
   type CompetencyForm,
   type DraftModel,
   type EditorViewModel,
+  type JobTypeForm,
   type PackForm,
   type Refusal,
 } from '../domain/catalogueEditor.ts';
@@ -17,6 +21,7 @@ import {
   retireDraftEntryAction,
   saveDraftCompetencyAction,
   saveDraftHintAction,
+  saveDraftJobTypeAction,
   saveDraftPackAction,
   startCatalogueDraft,
 } from '../services/editCatalogue.ts';
@@ -29,12 +34,14 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
   const router = useRouter();
   const [packForm, setPackForm] = useState<PackForm | null>(null);
   const [competencyForm, setCompetencyForm] = useState<CompetencyForm | null>(null);
+  const [jobTypeForm, setJobTypeForm] = useState<JobTypeForm | null>(null);
   const [error, setError] = useState<Refusal | null>(null);
   const [pending, setPending] = useState(false);
 
-  const open = (pack: PackForm | null, competency: CompetencyForm | null) => {
+  const open = (pack: PackForm | null, competency: CompetencyForm | null, jobType: JobTypeForm | null = null) => {
     setPackForm(pack);
     setCompetencyForm(competency);
+    setJobTypeForm(jobType);
     setError(null);
   };
   const send = async (save: () => Promise<CatalogueSaveResult>) => {
@@ -57,6 +64,7 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
     draft,
     packForm,
     competencyForm,
+    jobTypeForm,
     error,
     pending,
     onAddPack: () => open(newPackForm(), null),
@@ -68,8 +76,14 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
     onEditHint: (packKey, row) => open(null, competencyFormFor(packKey, row)),
     onCompetencyChange: (patch) => setCompetencyForm((form) => form && { ...form, ...patch }),
     onToggleJobType: (list, key) => setCompetencyForm((form) => form && toggleJobType(form, list, key)),
+    onAddJobType: () => open(null, null, newJobTypeForm(draft)),
+    onEditJobType: (row) => open(null, null, jobTypeFormFor(draft, row)),
+    onJobTypeChange: (patch) => setJobTypeForm((form) => form && { ...form, ...patch }),
+    onRetireJobType: (jobTypeKey) =>
+      send(() => retireDraftEntryAction({ version, revision, entry: 'jobType', jobTypeKey })),
     onSave: () =>
       send(() => {
+        if (jobTypeForm) return saveDraftJobTypeAction(jobTypeInput(draft, jobTypeForm));
         if (packForm) {
           const { previousKey, key, label } = packForm;
           return saveDraftPackAction({ version, revision, previousKey, key: key.trim(), label });

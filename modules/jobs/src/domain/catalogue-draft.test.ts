@@ -4,16 +4,20 @@ import {
   assertCompetencyFits,
   assertFairCompetency,
   assertFairHint,
+  assertFairStarters,
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
   draftHintSchema,
+  draftJobTypeSchema,
   draftPackSchema,
   fairnessRule,
   hintStatus,
   isHintNewInDraft,
   isNewInDraft,
+  jobTypeStatus,
   packStatus,
+  placeJobType,
   residencyRule,
   retireEntrySchema,
   type EditorPack,
@@ -302,5 +306,78 @@ describe('hint status and what can be removed', () => {
     expect(hintStatus(v1, logistics.key, { ...fasah, retired: true })).toBe('retired');
     expect(isHintNewInDraft(v1, logistics.key, 'ksa', fasah.position)).toBe(false);
     expect(isHintNewInDraft(v1, logistics.key, 'ksa', 9)).toBe(true);
+  });
+
+  // SAFETY: mutation check: assertCompetencyFits ignored `kept` -> this test failed (job_type)
+  it('a retired job type the hint already had stays on it; a new hint cannot take it', () => {
+    const retiredSwe = {
+      ...v1,
+      jobTypes: v1.jobTypes.map((t) => ({ ...t, retired: t.key === 'software_engineering' })),
+    };
+    const input = { ...hint, position: fasah.position, core: [] };
+    expect(refusal(() => assertCompetencyFits(retiredSwe, logistics, input, ['software_engineering']))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(retiredSwe, logistics, input, []))).toEqual({
+      code: 'job_type',
+      field: 'appliesTo',
+    });
+  });
+});
+
+// AIV-P2-047: job types in a draft.
+const refused = (starters: string[]) => refusal(() => assertFairStarters(starters));
+describe('Feature: Edit job types in a catalogue draft', () => {
+  const security = {
+    version: 2,
+    revision: 4,
+    adding: true,
+    key: 'security_engineering',
+    label: 'Security engineering',
+    evidence: 'Threat models, security reviews, fixed vulnerabilities',
+    starters: ['Threat modelling', 'Secure code review', 'Incident response', 'Identity and access'],
+    position: 2,
+  };
+
+  it('Scenario: A job type needs exactly four starters, each filled in', () => {
+    expect(draftJobTypeSchema.safeParse(security).success).toBe(true);
+    for (const starters of [security.starters.slice(0, 3), [...security.starters, 'Fuzzing'], ['a', 'b', 'c', ' ']])
+      expect(draftJobTypeSchema.safeParse({ ...security, starters }).error?.issues[0]?.path[0]).toBe('starters');
+  });
+
+  it('Scenario Outline: Keys are checked: format and reserved keys', () => {
+    for (const key of ['Security Engineering', 'security-engineering', 'none', 'se'])
+      expect(draftJobTypeSchema.safeParse({ ...security, key }).error?.issues[0]?.path[0], key).toBe('key');
+  });
+
+  it('Scenario: Starter competencies follow the fairness rule', () => {
+    expect(refused([...security.starters.slice(0, 3), 'Ex-Big Four experience'])).toEqual({
+      code: 'fairness_employer',
+      field: 'starters',
+    });
+    expect(refused(['Saudi nationals', 'b', 'c', 'd'])).toEqual({ code: 'fairness_origin', field: 'starters' });
+    expect(refused(security.starters)).toBe('saved');
+    // Version 1's starters all pass.
+    for (const t of CATALOGUE_V1.jobTypes) expect(refused([...t.starterCompetencies]), t.key).toBe('saved');
+  });
+
+  it('position ordering: before the offered job type at that place, or last; retired ones keep their place', () => {
+    const types = ['a', 'b', 'c', 'd'].map((key) => ({
+      ...(CATALOGUE_V1.jobTypes[0] as (typeof CATALOGUE_V1.jobTypes)[number]),
+      key,
+      retired: key === 'b',
+    }));
+    expect(placeJobType(types, 'new', 0)).toEqual(['new', 'a', 'b', 'c', 'd']);
+    // Offered: a, c, d. Position 1 is before c.
+    expect(placeJobType(types, 'new', 1)).toEqual(['a', 'b', 'new', 'c', 'd']);
+    expect(placeJobType(types, 'new', 9)).toEqual(['a', 'b', 'c', 'd', 'new']);
+    // Moving an existing one: d to first.
+    expect(placeJobType(types, 'd', 0)).toEqual(['d', 'a', 'b', 'c']);
+  });
+
+  it('job type status: Live, Changed in draft, New in draft, Retired', () => {
+    const swe = v1.jobTypes[0] as (typeof v1.jobTypes)[number];
+    expect(jobTypeStatus(v1, swe)).toBe('live');
+    expect(jobTypeStatus(v1, { ...swe, starterCompetencies: ['a', 'b', 'c', 'd'] })).toBe('changed');
+    expect(jobTypeStatus(v1, { ...swe, key: 'security_engineering' })).toBe('new');
+    expect(jobTypeStatus(v1, { ...swe, retired: true })).toBe('retired');
   });
 });
