@@ -1645,31 +1645,60 @@
     "received": "Unnamed applicant · CV received",
     "sourceAdded": "Same CV as an existing application · source added",
     "added": "{count, plural, =0 {No new applications: each CV was already filed for this job.} one {# application added.} other {# applications added.}}",
-    "jobNotFound": "This job does not exist or you do not have access.",
-    "list": {
-      "caption": "Applicants",
-      "columns": {
-        "candidate": "Candidate",
-        "received": "Received ({timeZone})",
-        "source": "Source",
-        "score": "Backed score"
-      },
-      "receivedOn": "{value, date, ::d MMM}",
-      "stages": {
-        "new": "New",
-        "first_pass_done": "First pass done",
-        "assessing": "Assessing",
-        "in_process": "In process",
-        "in_pool": "In talent pool",
-        "withdrawn": "Withdrawn"
-      },
-      "empty": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
-      "fairness": "Ranking orders your attention; nobody is rejected automatically.",
-      "notScored": "Not yet scored",
-      "notYetAvailable": "Not yet available",
-      "loading": "Loading applicants",
-      "error": "We could not load applicants. Try again.",
-      "retry": "Try again"
-    }
+    "jobNotFound": "This job does not exist or you do not have access."
+  },
+  "ranking": {
+    "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",
+    "caption": "Ranked candidates",
+    "basis": "Backed scores and needs met are observed from inspected evidence.",
+    "observed": "Observed",
+    "search": "Search candidates",
+    "stageFilter": "Stage",
+    "stageAll": "Stage: all",
+    "stageOption": "Stage: {stage}",
+    "missingFilter": "Missing evidence",
+    "missingAny": "Missing evidence: any",
+    "missingOption": "Missing evidence: {name}",
+    "columnsMenu": "Columns",
+    "columnsLegend": "Columns to show",
+    "columns": {
+      "rank": "#",
+      "candidate": "Candidate",
+      "score": "Backed score",
+      "meetsNeed": "Meets the job's need",
+      "confidence": "Confidence",
+      "missing": "Missing critical evidence",
+      "lastScored": "Last scored",
+      "nextAction": "Next action"
+    },
+    "lastScoredIn": "Last scored ({timeZone})",
+    "unnamed": "Unnamed applicant",
+    "stages": {
+      "new": "New",
+      "first_pass_done": "First pass done",
+      "assessing": "Assessing",
+      "in_process": "In process",
+      "in_pool": "In talent pool",
+      "withdrawn": "Withdrawn"
+    },
+    "meetsNeed": "{meets} of {count}",
+    "confidence": {
+      "High": "High",
+      "Medium": "Medium",
+      "Low": "Low"
+    },
+    "noneMissing": "None",
+    "scoredOn": "{value, date, ::d MMM}",
+    "notScored": "Not yet scored",
+    "notYetAvailable": "Not yet available",
+    "awaitingRubric": "Starts after rubric approval",
+    "sendRubric": "Send rubric for approval",
+    "footer": "{filtered, select, true {{assessed, plural, =0 {None of these is assessed yet.} other {Showing {shown} of # assessed that match.}}} other {{assessed, plural, =0 {No one is assessed yet.} other {Showing {shown} of # assessed.}}}} Ranking orders your attention; nobody is rejected automatically.",
+    "showAll": "Show all {count}",
+    "empty": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
+    "emptyFiltered": "No candidates match these filters.",
+    "loading": "Loading the ranking",
+    "error": "We could not load the ranking. Try again.",
+    "retry": "Try again"
   }
 }

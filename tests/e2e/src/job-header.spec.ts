@@ -20,7 +20,7 @@ test('Scenario: Senior AI Engineer header', async ({ page }) => {
   await signIn(page, { email: AP });
   await openJob(page, 'Senior AI Engineer');
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveText('Jobs/Senior AI Engineer');
-  // Not yet "· 64 candidates assessed": assessment (AIV-P1-031) reports no count, and none is invented.
+  // Not yet "· 64 candidates assessed": the count comes with AIV-P1-099, and none is invented.
   await expect(page.getByText('Engineering · DIFC, Dubai · Hiring owner: Head of Engineering')).toBeVisible();
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();
   await expect(stages(page)).toHaveText([

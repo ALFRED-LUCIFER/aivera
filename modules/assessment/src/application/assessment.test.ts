@@ -1,7 +1,7 @@
 import type { EvidenceItemView } from '@credalent/evidence';
 import { describe, expect, it } from 'vitest';
 import { assess, type RubricInput } from '../domain/assess.ts';
-import { toLinks } from './assessment.ts';
+import { rank, toLinks, type StoredAssessment } from './assessment.ts';
 
 const JOB = 'job-sae';
 const RUBRIC: RubricInput = {
@@ -94,5 +94,40 @@ describe("only the assessed candidate's evidence reaches the score", () => {
   it("another candidate's item in the list is dropped, so it can never be cited", () => {
     const other = { ...cvItem('i9', 'c-llm', 5, 'medium'), candidateId: 'someone-else' };
     expect(toLinks('maria', JOB, [...CLEAN, other]).map((l) => l.itemId)).toEqual(['i1', 'i2']);
+  });
+});
+
+/** A stored result assessed on 1–30 November 2026. */
+const result = (candidateId: string, rubricVersionId: string, backed: number, upper: number, november: number) =>
+  ({
+    ...assess(RUBRIC, []),
+    rubricVersionId,
+    backedScore: backed,
+    upperBound: upper,
+    id: `${candidateId}-${november}`,
+    workspaceId: 'w1',
+    candidateId,
+    jobId: JOB,
+    assessedAt: new Date(Date.UTC(2026, 10, november)),
+  }) satisfies StoredAssessment;
+
+describe('The ranking of a job', () => {
+  it("ranks each candidate's latest result on the version by backed score, then upper bound, then first assessed", () => {
+    const rows = rank(
+      [
+        result('maria', 'rubric-v1', 90, 90, 1), // assessed first, on version 1 only until 6 November
+        result('daniel', 'rubric-v2', 40, 60, 2),
+        result('sara', 'rubric-v2', 55, 70, 3),
+        result('omar', 'rubric-v1', 99, 99, 4), // never assessed on version 2: not ranked yet
+        result('daniel', 'rubric-v2', 55, 80, 5), // Daniel's latest replaces his earlier result
+        result('maria', 'rubric-v2', 55, 70, 6), // ties Sara on both scores; Maria was assessed first
+      ],
+      'rubric-v2',
+    );
+    expect(rows.map((r) => [r.rank, r.candidateId, r.backedScore, r.upperBound])).toEqual([
+      [1, 'daniel', 55, 80],
+      [2, 'maria', 55, 70],
+      [3, 'sara', 55, 70],
+    ]);
   });
 });

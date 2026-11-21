@@ -15,6 +15,20 @@
       "when": 1795162814688,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795273115847,
+      "tag": "0002_inbox_and_job_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795273116165,
+      "tag": "0003_force_rls_inbox",
+      "breakpoints": true
     }
   ]
 }

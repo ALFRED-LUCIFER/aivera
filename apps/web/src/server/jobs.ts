@@ -1,6 +1,13 @@
 import { createAudit } from '@credalent/audit/composition';
-import type { CatalogueReads, CompetencyDrafting, DomainDetecting, JobsContract } from '@credalent/jobs';
+import type {
+  ApprovedRubricReads,
+  CatalogueReads,
+  CompetencyDrafting,
+  DomainDetecting,
+  JobsContract,
+} from '@credalent/jobs';
 import {
+  createApprovedRubricReads,
   createCatalogueReads,
   createCompetencyDrafting,
   createDomainDetection,
@@ -25,3 +32,9 @@ export const getDomainDetection = (): DomainDetecting => (detection ??= createDo
 let catalogue: CatalogueReads | undefined;
 /** The catalogue (ADR-013): everything outside /ops reads only its latest published version. */
 export const getCatalogue = (): CatalogueReads => (catalogue ??= createCatalogueReads(getDb()));
+
+/**
+ * The approved rubric's competency names by id, for the ranked table's "Missing critical evidence" (AIV-P1-034). Not
+ * authorised itself: call it in the member's transaction only after `listRanking` authorised the job.
+ */
+export const getApprovedRubricReads = (): ApprovedRubricReads => createApprovedRubricReads();

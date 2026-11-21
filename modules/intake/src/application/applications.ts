@@ -62,6 +62,8 @@ export type ReceiveApplicationResult = { applicationId: string; personId: string
 /** One row of a job's applicant list (AIV-P1-086). `displayName` is null only if the person record is gone. */
 export type ApplicationListItem = {
   applicationId: string;
+  /** The opaque person id: the ranked table (AIV-P1-034) joins it to the assessment ranking's `candidateId`. */
+  personId: string;
   displayName: string | null;
   stage: Stage;
   receivedAt: Date;
@@ -112,7 +114,7 @@ export function applicationUseCases({
       return { applicationId: application.id, personId, sourceId: source.id, created: application.id === id };
     },
 
-    // shortcut: no paging; the ranked candidates table (AIV-P1-034) replaces this list and adds it.
+    // shortcut: no paging; the ranked table (AIV-P1-034) shows the first 7 in the browser, page here past ~500 applicants.
     async listApplicationsForJob(ctx: WorkspaceContext, jobId: string): Promise<ApplicationListItem[]> {
       // An ungranted job is hidden by the jobs module's row-level security: not found, so nothing says it exists.
       const job = await jobResource(ctx, jobId);
@@ -121,7 +123,7 @@ export function applicationUseCases({
       const rows = await storeFor(ctx.tx).listForJob(ctx.workspaceId, jobId);
       const people = await displayNames(ctx.tx, ctx.workspaceId, [...new Set(rows.map((r) => r.personId))]);
       const names = new Map(people.map((p) => [p.id, p.displayName]));
-      return rows.map(({ personId, ...r }) => ({ ...r, displayName: names.get(personId) ?? null }));
+      return rows.map((r) => ({ ...r, displayName: names.get(r.personId) ?? null }));
     },
 
     async addLink(ctx: WorkspaceContext, applicationId: string, url: string): Promise<{ sourceId: string }> {

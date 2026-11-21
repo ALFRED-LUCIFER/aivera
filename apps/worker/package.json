@@ -12,6 +12,8 @@
     "@azure/identity": "4.14.1",
     "@azure/service-bus": "7.10.0",
     "@credalent/ai": "workspace:*",
+    "@credalent/assessment": "workspace:*",
+    "@credalent/audit": "workspace:*",
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",

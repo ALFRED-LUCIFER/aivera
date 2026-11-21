@@ -1,4 +1,4 @@
-import { type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
@@ -58,63 +58,153 @@ test('the dialog is keyboard operable: source, upload, then close with Escape ba
   await expect(page.getByRole('button', { name: 'Add applicants' })).toBeFocused();
 });
 
-// AIV-P1-086: seed.ts files three applicants on Senior AI Engineer, received 14 Nov a minute apart (Sara first), as
-// "Add applicants" does.
+// AIV-P1-034: the ranked candidates, replacing AIV-P1-086's plain list. seed.ts files nine applicants on Senior AI
+// Engineer and writes an assessment result for eight, as personas.md scores them; Youssef Aziz is not assessed yet.
 async function openCandidates(page: Page) {
   await page.goto('/app/jobs');
   await page.getByRole('link', { name: 'Senior AI Engineer' }).click();
   await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
-  return page.getByRole('table', { name: 'Applicants' });
+  return page.getByRole('table', { name: 'Ranked candidates' });
 }
+const bodyRows = (table: Locator) => table.getByRole('row').filter({ has: table.page().getByRole('cell') });
+const FAIRNESS = 'Ranking orders your attention; nobody is rejected automatically.';
 
-test('Scenario: Applicants appear right after adding them', async ({ page }) => {
+test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   await signIn(page, { email: AP });
   const table = await openCandidates(page);
   // The URL carries the job's opaque id only.
   expect(new URL(page.url()).pathname).toMatch(/^\/app\/jobs\/[0-9a-f-]{36}\/candidates$/);
+  await expect(page.getByText(/^Ranked by backed score: only evidence that can be inspected counts\./)).toBeVisible();
   await expect(table.getByRole('columnheader')).toHaveText([
+    '#',
     'Candidate',
-    /^Received \(.+\)$/,
-    'Source',
     'Backed score',
+    "Meets the job's need",
+    'Confidence',
+    'Missing critical evidence',
+    /^Last scored \(.+\)$/,
+    'Next action',
   ]);
-  // Newest first, each unscored with its basis, and no invented score.
-  await expect(table.getByRole('row').filter({ has: page.getByRole('cell') })).toHaveText([
-    'Layla HaddadNew14 NovEmailNot yet scoredNot yet available',
-    'Arjun MenonNew14 NovReferralNot yet scoredNot yet available',
-    'Sara Al QahtaniNew14 NovLinkedInNot yet scoredNot yet available',
-  ]);
-  await expect(page.getByText('Ranking orders your attention; nobody is rejected automatically.')).toBeVisible();
+  const rows = bodyRows(table);
+  await expect(rows).toHaveCount(7);
+  await expect(rows.nth(0)).toHaveText(
+    '1Sara Al QahtaniNew68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+  );
+  await expect(rows.nth(1)).toHaveText(/^2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/);
+  await expect(rows.nth(2)).toHaveText(/^3Tarek MansourNew63up to 80 if claims hold/);
+  await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
-test('Scenario: Empty job', async ({ page }) => {
+test('Scenario: Show all', async ({ page }) => {
+  await signIn(page, { email: AP });
+  const table = await openCandidates(page);
+  await page.getByRole('button', { name: 'Show all 9' }).click();
+  const rows = bodyRows(table);
+  await expect(rows).toHaveCount(9);
+  await expect(rows.nth(7)).toHaveText(/^8Maria SantosNew31up to 69 if claims hold/);
+  // Not assessed yet and still listed: nobody drops out of the ranking (AGENTS.md 1.5).
+  await expect(rows.nth(8)).toHaveText(/^Youssef AzizNewNot yet scoredNot yet available/);
+  await expect(page.getByText(`Showing 8 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+});
+
+test('Scenario: Filter by missing evidence', async ({ page }) => {
+  await signIn(page, { email: AP });
+  const table = await openCandidates(page);
+  await page
+    .getByRole('combobox', { name: 'Missing evidence' })
+    .selectOption({ label: 'Missing evidence: Retrieval and evaluation' });
+  await expect(bodyRows(table)).toHaveText([/^2Arjun Menon/, /^4Layla Haddad/]);
+});
+
+test('Scenario: Job without an approved rubric, and no applicants', async ({ page }) => {
   await signIn(page, { email: AP });
   await page.goto('/app/jobs');
   // Senior Product Designer has no applicants (seed.ts); its rubric is a draft, so it opens on the rubric.
   await page.getByRole('link', { name: 'Senior Product Designer' }).click();
   await page.getByRole('link', { name: /^Evidence and ranking/ }).click();
   await expect(page).toHaveTitle('Senior Product Designer: Evidence and ranking · Credalent');
-  await expect(page.getByRole('table', { name: 'Applicants' })).toContainText(
+  await expect(page.getByRole('table', { name: 'Ranked candidates' })).toContainText(
     'No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.',
   );
   await expect(page.getByRole('button', { name: 'Add applicants' })).toBeVisible();
+  // The stage line in the header says it too; this is the page's own notice, with its link.
+  await expect(page.locator('p').filter({ hasText: /^Starts after rubric approval/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Send rubric for approval' }).click();
+  await expect(page).toHaveURL(/\/rubric$/);
 });
 
-test('Scenario: The Candidates tab is keyboard operable: from the last stage to "Add applicants"', async ({ page }) => {
+test("Scenario: Another workspace's job", async ({ page, context }) => {
   await signIn(page, { email: AP });
-  await expect(await openCandidates(page)).toBeVisible();
+  await openCandidates(page);
+  const path = new URL(page.url()).pathname;
+  await context.clearCookies({ name: '__Host-credalent-session' });
+  // Alex runs "Demo Hiring Co", another workspace.
+  await signIn(page, { email: 'alex@example.com' });
+  expect((await page.goto(path))?.status()).toBe(404);
+  await expect(page.getByText('This job does not exist or you do not have access.')).toBeVisible();
+  // The page's messages bundle names the table, so check the rendered table and the names, not the words.
+  await expect(page.getByRole('table', { name: 'Ranked candidates' })).toHaveCount(0);
+  expect(await page.content()).not.toMatch(/Sara Al Qahtani|Arjun Menon/);
+});
+
+test('Scenario: The ranking is keyboard operable: "Add applicants", search, the filters and Columns', async ({
+  page,
+}) => {
+  await signIn(page, { email: AP });
+  const table = await openCandidates(page);
+  // The rows have streamed in: loading.tsx's skeleton is gone, so focus stays where it is put.
+  await expect(bodyRows(table)).toHaveCount(7);
   await page.getByRole('navigation', { name: 'Stages of this job' }).getByRole('link').last().focus();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Add applicants' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('searchbox', { name: 'Search candidates' })).toBeFocused();
+  await page.keyboard.type('menon');
+  await expect(bodyRows(table)).toHaveText([/^2Arjun Menon/]);
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('combobox', { name: 'Stage' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('combobox', { name: 'Missing evidence' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('checkbox', { name: 'Backed score' })).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(table.getByRole('columnheader', { name: 'Backed score' })).toHaveCount(0);
+});
+
+test('Scenario: "Add applicants" opens from the ranking with Enter', async ({ page }) => {
+  await signIn(page, { email: AP });
+  await expect(await openCandidates(page)).toBeVisible();
+  await page.getByRole('button', { name: 'Add applicants' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Add applicants' })).toBeVisible();
 });
 
 for (const theme of themes) {
-  test(`axe passes on the Candidates tab with its applicants (${theme})`, async ({ page, context, baseURL }) => {
+  test(`axe passes on the ranked candidates, with the Columns panel open (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: AP });
-    await expect((await openCandidates(page)).getByRole('row')).toHaveCount(4);
+    await expect(bodyRows(await openCandidates(page))).toHaveCount(7);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expectAccessible(page);
+    await page.getByText('Columns', { exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'Confidence' })).toBeVisible();
+    await expectAccessible(page);
+  });
+
+  test(`axe passes on the ranking of a job awaiting its rubric (${theme})`, async ({ page, context, baseURL }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: AP });
+    await page.goto('/app/jobs');
+    await page.getByRole('link', { name: 'Senior Product Designer' }).click();
+    await page.getByRole('link', { name: /^Evidence and ranking/ }).click();
+    await expect(page).toHaveTitle('Senior Product Designer: Evidence and ranking · Credalent');
+    await expect(page.getByRole('link', { name: 'Send rubric for approval' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
   });

@@ -10,6 +10,7 @@ import { createAudit } from '@credalent/audit/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { EvidenceContract, RecordEvidenceInput } from '@credalent/evidence';
 import { createEvidence } from '@credalent/evidence/composition';
+import { createJobs } from '@credalent/jobs/composition';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -148,7 +149,12 @@ beforeAll(async () => {
   audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
   evidence = createEvidence(workspaces, audit, () => NOW);
-  assessment = createAssessment(workspaces, audit, () => NOW);
+  assessment = createAssessment(
+    workspaces,
+    audit,
+    createJobs(workspaces, audit, () => NOW),
+    () => NOW,
+  );
   w1 = await newWorkspace('Demo hiring team');
   w2 = await newWorkspace('Gulf Talent Partners');
   await withWorkspace(app, w1, (tx) =>
@@ -165,12 +171,15 @@ afterAll(async () => {
 });
 
 describe('Migrations', () => {
-  it('assessment.result is owned by aivera_migrator with row-level security enabled and forced', async () => {
+  it('assessment.result and assessment.inbox are owned by aivera_migrator with row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'assessment' order by name`);
-    expect([...tables]).toEqual([{ name: 'result', owner: 'aivera_migrator', rls: true, forced: true }]);
+    expect([...tables]).toEqual([
+      { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'result', owner: 'aivera_migrator', rls: true, forced: true },
+    ]);
   });
 
   it('an evidence link level outside 0–5 is refused by the domain and the database', async () => {
