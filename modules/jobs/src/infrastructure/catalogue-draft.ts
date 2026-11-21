@@ -38,6 +38,10 @@ const hint = (version: number, packKey: string, region: string, position: number
 const pack = (version: number, key: string) => and(eq(cataloguePack.version, version), eq(cataloguePack.key, key));
 const jobType = (version: number, key: string) =>
   and(eq(catalogueJobType.version, version), eq(catalogueJobType.key, key));
+const regionRow = (version: number, key: string) =>
+  and(eq(catalogueRegion.version, version), eq(catalogueRegion.key, key));
+const regionHints = (version: number, key: string) =>
+  and(eq(catalogueRegionalHint.version, version), eq(catalogueRegionalHint.region, key));
 
 /** The draft store over one transaction on the app's pool; the platform audit write joins it. */
 export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>): DraftStore {
@@ -111,6 +115,31 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
           .set({ packKey: key })
           .where(and(eq(table.version, version), eq(table.packKey, previousKey)));
       await tx.delete(cataloguePack).where(pack(version, previousKey));
+    },
+
+    async putRegion(version, previousKey, { key, label }) {
+      if (previousKey === null) {
+        await tx.insert(catalogueRegion).values({
+          version,
+          key,
+          label: { en: label },
+          position: sql`(select coalesce(max(position), -1) + 1 from jobs.catalogue_region where version = ${version})`,
+        });
+        return;
+      }
+      if (previousKey === key) {
+        await tx
+          .update(catalogueRegion)
+          .set({ label: setEnglish(catalogueRegion.label, label) })
+          .where(regionRow(version, key));
+        return;
+      }
+      // A new region's key changes: the row under the new key first, its hints moved to it, then the old row goes.
+      await tx.execute(sql`insert into jobs.catalogue_region (version, key, position, label, retired)
+        select version, ${key}, position, jsonb_set(label, '{en}', to_jsonb(${label}::text)), retired
+        from jobs.catalogue_region where version = ${version} and key = ${previousKey}`);
+      await tx.update(catalogueRegionalHint).set({ region: key }).where(regionHints(version, previousKey));
+      await tx.delete(catalogueRegion).where(regionRow(version, previousKey));
     },
 
     async putCompetency(version, { packKey, position, levels, ...fields }) {
@@ -213,6 +242,11 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
         await tx.update(catalogueJobType).set({ retired: true }).where(jobType(version, entry.jobTypeKey));
         return;
       }
+      if (entry.entry === 'region') {
+        // Its hints are not touched: they read back as retired through their region (ADR-013 point 16).
+        await tx.update(catalogueRegion).set({ retired: true }).where(regionRow(version, entry.region));
+        return;
+      }
       await (entry.entry === 'pack'
         ? tx.update(cataloguePack).set({ retired: true }).where(pack(version, entry.packKey))
         : tx
@@ -224,6 +258,11 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
     async remove(version, entry) {
       if (entry.entry === 'jobType') {
         await tx.delete(catalogueJobType).where(jobType(version, entry.jobTypeKey));
+        return;
+      }
+      if (entry.entry === 'region') {
+        await tx.delete(catalogueRegionalHint).where(regionHints(version, entry.region));
+        await tx.delete(catalogueRegion).where(regionRow(version, entry.region));
         return;
       }
       const { packKey } = entry;

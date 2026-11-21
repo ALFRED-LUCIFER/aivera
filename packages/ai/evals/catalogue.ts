@@ -22,7 +22,7 @@ export type CatalogueEvalTask = {
 
 /**
  * `unavailable`: the AI deployment did not answer (or the eval budget ran out), so the run says nothing about the draft.
- * `uncovered`: the draft's pack keys with no golden case; a run with any fails before a model call.
+ * `uncovered`: the draft's pack and region keys with no golden case; a run with any fails before a model call.
  */
 export type CatalogueEvalResult = {
   outcome: 'passed' | 'failed' | 'unavailable';
@@ -33,10 +33,14 @@ export type CatalogueEvalResult = {
 const TASKS = ['jobs.detectDomain', 'jobs.draftCompetencies'] as const;
 const UNAVAILABLE = new Set(['AiUnavailable', 'BudgetExceeded']);
 
-/** The pack keys no `jobs.detectDomain` golden case expects as its industry: each needs golden cases in code first. */
-export const uncoveredPacks = (domains: readonly string[], cases: readonly GoldenCase[]): string[] => {
-  const covered = new Set(cases.map((c) => c.expected.match?.['industry.domain']));
-  return domains.filter((domain) => !covered.has(domain));
+/**
+ * The pack and region keys no `jobs.detectDomain` golden case expects (as its industry, or among its regions): each
+ * needs golden cases in code first (AIV-P2-048 for packs, AIV-P2-059 for regions).
+ */
+export const uncoveredKeys = ({ domains, regions }: CatalogueKeys, cases: readonly GoldenCase[]): string[] => {
+  const domainsCovered = new Set(cases.map((c) => c.expected.match?.['industry.domain']));
+  const regionsCovered = new Set(cases.flatMap((c) => [c.expected.match?.['regions[*].region'] ?? []].flat()));
+  return [...domains.filter((d) => !domainsCovered.has(d)), ...regions.filter((r) => !regionsCovered.has(r))];
 };
 
 /**
@@ -56,7 +60,7 @@ export async function evaluateCatalogue(
   const catalogue = { domains: [domain, ...domains], regions: [region, ...regions] } satisfies Parameters<
     typeof detectDomainRunner
   >[0];
-  const uncovered = uncoveredPacks(catalogue.domains, golden.get('jobs.detectDomain') ?? []);
+  const uncovered = uncoveredKeys(catalogue, golden.get('jobs.detectDomain') ?? []);
   if (uncovered.length > 0) return { outcome: 'failed', uncovered, tasks: [] };
 
   const run: Record<string, Runner | undefined> = { ...runners, 'jobs.detectDomain': detectDomainRunner(catalogue) };

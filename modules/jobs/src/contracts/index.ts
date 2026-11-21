@@ -21,6 +21,7 @@ import type {
   DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
+  DraftRegionInput,
   PublishDraftInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -64,12 +65,15 @@ export {
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   hintStatus,
   isHintNewInDraft,
   isNewInDraft,
+  isRegionNewInDraft,
   jobTypeStatus,
   packStatus,
   publishDraftSchema,
+  regionStatus,
   retireEntrySchema,
 } from '../domain/catalogue-draft.ts';
 export { catalogueDiff } from '../domain/catalogue-diff.ts';
@@ -83,6 +87,7 @@ export type {
   DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
+  DraftRegionInput,
   EditorCompetency,
   EditorHint,
   EditorVersion,
@@ -375,7 +380,13 @@ export interface CatalogueEditor {
    */
   saveDraftHint(operatorId: string, input: DraftHintInput): Promise<void>;
   /**
-   * Retires a pack, competency, job type or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in
+   * Adds a region (`previousKey` null) or edits its English label (AIV-P2-059); its key only while it is new in the
+   * draft (`key_fixed`), never to a key the draft holds (`key_taken`). A label or key reading as a residency, an origin
+   * or an employer is `fairness_region`. `catalogue.entry_added` / `catalogue.entry_edited`.
+   */
+  saveDraftRegion(operatorId: string, input: DraftRegionInput): Promise<void>;
+  /**
+   * Retires a pack, competency, job type, region or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in
    * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
    * Returns which.
    */

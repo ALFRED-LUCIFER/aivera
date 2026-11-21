@@ -10,6 +10,7 @@ import type {
   DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
+  DraftRegionInput,
   EvalRequestInput,
   JobCounts,
   PublishDraftInput,
@@ -287,6 +288,11 @@ export async function saveCatalogueCompetency(input: DraftCompetencyInput): Prom
 export async function saveCatalogueHint(input: DraftHintInput): Promise<void> {
   const { userId } = await platformOperator();
   await catalogueEditor().saveDraftHint(userId, input);
+}
+
+export async function saveCatalogueRegion(input: DraftRegionInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftRegion(userId, input);
 }
 
 export async function saveCatalogueJobType(input: DraftJobTypeInput): Promise<void> {

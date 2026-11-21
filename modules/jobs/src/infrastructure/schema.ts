@@ -339,7 +339,11 @@ export const catalogueRegion = jobs.table(
   },
   (t) => [
     primaryKey({ name: 'catalogue_region_pkey', columns: [t.version, t.key] }),
-    check('catalogue_region_key_check', isKey(t.key)),
+    // Two letters allowed ("eu", "uk"): a market's usual short name (AIV-P2-059).
+    check(
+      'catalogue_region_key_check',
+      sql`${t.key} ~ '^[a-z][a-z0-9_]{1,47}$' and ${t.key} not in ('none', 'several', 'other')`,
+    ),
     check('catalogue_region_label_check', hasEnglish(t.label)),
   ],
 );

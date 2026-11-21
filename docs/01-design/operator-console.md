@@ -66,10 +66,11 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 - Then a row of stat tiles: workspaces by status, AI tokens today against budgets, approval mode on or off. Each tile links to the filtered list.
 - Built (AIV-P2-051): the stat tiles for workspaces by status, AI tokens today and the catalogue (live version, "1 draft waiting · last edited …" or "No draft", and the draft's eval state as icon and word). Not yet: the "Needs an operator" rows and the approval-mode tile.
 
-## Catalogue editor layout (AIV-P2-045 to 049)
+## Catalogue editor layout (AIV-P2-045 to 049, AIV-P2-059)
 
 - **Draft banner** above the entries while a draft exists: "Draft — not live. Recruiters see version N." with Discard and "Review and publish" (the page's one primary action).
 - **Entry list** grouped by job type or pack, each entry with a status word and icon: Live, Changed in draft, New in draft, Retired.
+- **Regions** (AIV-P2-059): a list of the draft's regions with their status word; add (key and English label), edit the label (a published key never changes), remove one new in the draft, retire a published one. A retired region's hints stay listed under each pack, marked Retired, with no controls.
 - **Entry form** in the main column, the entry's meaning, evidence and levels as labelled fields; the fairness check's message under the field it refers to.
 - **Diff list** on the publish preview-confirm card: added, changed (before and after), retired, with the reason field and the eval result.
 - **Version history** (AIV-P2-050) at `/ops/catalogue/versions`, linked from the catalogue header: a table of published versions, newest first, 20 a page (version, published at with its time zone, published by, reason, change counts, eval status with icon and word); `/ops/catalogue/versions/N` shows the version's facts, the same diff list against the version before ("First version" for version 1) and its entries, read-only.

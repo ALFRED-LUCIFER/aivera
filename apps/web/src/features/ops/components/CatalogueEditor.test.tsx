@@ -11,6 +11,8 @@ import {
   draftModel,
   newCompetencyForm,
   newJobTypeForm,
+  newPackForm,
+  packFormFor,
   type DraftModel,
   type EditorViewModel,
   type Refusal,
@@ -84,6 +86,9 @@ const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
   onAddPack: vi.fn(),
   onEditPack: vi.fn(),
   onPackChange: vi.fn(),
+  onAddRegion: vi.fn(),
+  onEditRegion: vi.fn(),
+  onRetireRegion: vi.fn(async () => {}),
   onAddCompetency: vi.fn(),
   onEditCompetency: vi.fn(),
   onAddHint: vi.fn(),
@@ -297,6 +302,94 @@ describe('job types in the draft (AIV-P2-047)', () => {
     );
     expect(screen.getByRole('dialog').querySelector('[role="alert"]')?.textContent).toBe(
       'That did not go through. Nothing was changed.',
+    );
+  });
+});
+
+// AIV-P2-059: India retired, EU new in the draft.
+const regionsModel = draftModel({
+  published: v1,
+  draft: {
+    ...draft,
+    regions: [
+      ...v1.regions.map((r) => ({ ...r, retired: r.key === 'india' })),
+      { key: 'eu', label: { en: 'EU' }, retired: false },
+    ],
+  },
+}) as DraftModel;
+const regionList = () => screen.getByRole('list', { name: 'Regions in the draft' });
+const regionRow = (label: string) =>
+  within(regionList()).getByText(label, { selector: 'h3' }).closest('li') as HTMLElement;
+
+const refusedRegion = (error: Refusal) => {
+  cleanup();
+  show(
+    <CatalogueEditor
+      publishedVersion={1}
+      view={viewModel({ draft: regionsModel, packForm: newPackForm('region'), error })}
+    />,
+  );
+  return within(screen.getByRole('dialog', { name: 'Add a region' })).getByRole('alert').textContent;
+};
+
+describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', () => {
+  it('Scenario: Adding a region: "EU" shows "New in draft" and each pack shows its empty hint section', async () => {
+    const onAddRegion = vi.fn();
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel, onAddRegion })} />);
+    expect(within(regionRow('EU')).getByText('New in draft')).toBeTruthy();
+    expect(within(regionRow('EU')).getByRole('button', { name: 'Remove EU' })).toBeTruthy();
+    const paymentsPack = document.querySelector('details') as HTMLElement;
+    expect(within(paymentsPack).getByText('Regional hints for EU')).toBeTruthy();
+    expect(within(paymentsPack).getByText('No regional hints for EU yet.')).toBeTruthy();
+    expect(within(paymentsPack).getByRole('button', { name: /Add a regional hint to .* for EU/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Add a region' }));
+    expect(onAddRegion).toHaveBeenCalledOnce();
+  });
+
+  it('Scenario: Retiring a region keeps its hints visible as retired, with no edit, delete or add control', () => {
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel })} />);
+    const india = regionRow('India');
+    expect(within(india).getByText('Retired')).toBeTruthy();
+    expect(within(india).queryByRole('button')).toBeNull();
+    const paymentsPack = document.querySelector('details') as HTMLElement;
+    const section = within(paymentsPack).getByText('Regional hints for India').closest('section') as HTMLElement;
+    const upi = within(section).getByText('UPI and NPCI rules', { selector: 'h3' }).closest('li') as HTMLElement;
+    expect(within(upi).getByText('Retired')).toBeTruthy();
+    expect(within(section).queryByRole('button')).toBeNull();
+  });
+
+  it('Scenario: A published region key cannot be renamed: its form has a read-only key, only its label to edit', () => {
+    const ksa = regionsModel.regions.find((r) => r.key === 'ksa');
+    if (!ksa) throw new Error('no ksa');
+    // A published region is retired, never removed.
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel })} />);
+    expect(within(regionRow('KSA')).getByRole('button', { name: 'Retire KSA' })).toBeTruthy();
+    cleanup();
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ draft: regionsModel, packForm: packFormFor(ksa, 'region') })}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Edit region' });
+    expect(within(dialog).getByLabelText('Key').hasAttribute('readonly')).toBe(true);
+    expect(within(dialog).getByLabelText('English label').hasAttribute('readonly')).toBe(false);
+  });
+
+  it('the region refusals read as the ticket says, under their fields', () => {
+    expect(refusedRegion({ ok: false, error: 'invalid', field: 'key' })).toBe(
+      'Use lower-case letters, digits and underscores for the key.',
+    );
+    expect(refusedRegion({ ok: false, error: 'key_taken', field: 'key' })).toBe(
+      'That key is already in the catalogue.',
+    );
+    expect(refusedRegion({ ok: false, error: 'invalid', field: 'label' })).toBe('Add an English label.');
+    expect(refusedRegion({ ok: false, error: 'fairness_region', field: 'label' })).toBe(
+      'A region is a market whose rules a candidate can show skill in, never where someone lives or is from.',
+    );
+    expect(refusedRegion({ ok: false, error: 'failed' })).toBe('That did not go through. Nothing was changed.');
+    expect(refusedRegion({ ok: false, error: 'stale', by: 'Theo Platform' })).toContain(
+      'Theo Platform changed this draft. Reload to see the latest.',
     );
   });
 });

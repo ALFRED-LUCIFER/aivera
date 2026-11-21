@@ -2,7 +2,7 @@
 // preview's list and the audit entry's change counts. Pure: no database, no clock.
 import type { EditorCompetency, EditorHint, EditorVersion } from './catalogue-draft.ts';
 
-export type DiffGroup = 'jobTypes' | 'packs' | 'competencies' | 'hints';
+export type DiffGroup = 'jobTypes' | 'regions' | 'packs' | 'competencies' | 'hints';
 export type DiffField =
   | 'label'
   | 'evidence'
@@ -63,7 +63,7 @@ function change(
 }
 
 /**
- * Every change of `draft` against `published`, grouped by job types, packs, competencies and regional hints, each in the
+ * Every change of `draft` against `published`, grouped by job types, regions (AIV-P2-059), packs, competencies and regional hints, each in the
  * draft's order. English texts only (the editor edits nothing else). An entry new in the draft and removed again is
  * not in either version, so it is not a change.
  */
@@ -96,6 +96,16 @@ export function catalogueDiff(published: EditorVersion, draft: EditorVersion): C
             fields: [{ field: 'order', before: orderBefore, after: orderAfter }],
           },
         ];
+
+  const regions = draft.regions.flatMap((r) => {
+    const before = published.regions.find((b) => b.key === r.key);
+    return change(
+      'regions',
+      r.key,
+      { retired: r.retired, name: r.label.en, values: { label: r.label.en } },
+      before && { retired: before.retired, name: before.label.en, values: { label: before.label.en } },
+    );
+  });
 
   const packs: CatalogueChange[] = [];
   const competencies: CatalogueChange[] = [];
@@ -133,7 +143,7 @@ export function catalogueDiff(published: EditorVersion, draft: EditorVersion): C
       );
     }
   }
-  return [...jobTypes, ...order, ...packs, ...competencies, ...hints];
+  return [...jobTypes, ...order, ...regions, ...packs, ...competencies, ...hints];
 }
 
 /** How many entries the diff adds, edits and retires: the `catalogue.published` audit entry's counts. */
