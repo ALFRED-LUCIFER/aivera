@@ -63,10 +63,11 @@ const RAW_DATABASE = /^(?:@credalent\/db(?:\/.*)?|drizzle-orm(?:\/.*)?|postgres|
 // jobs contracts), console code imports only operator.ts, which holds the policy and the metadata reads.
 const APP_SERVER = /(?:^@|[/\\]src)[/\\]server[/\\]([^/\\]+?)(?:\.tsx?)?$/;
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs)$/;
-// AIV-P2-037, AIV-P2-039 (ADR-012 points 7 and 9): the contract methods that change a workspace or a platform setting for
-// an operator take no member context
-// and check no role, so only server/operator.ts, behind platformOperator(), may call them.
-const OPERATOR_ONLY_CALL = /\.(?:changeStatus|pausePublicListings|setApprovalRequired)\(/;
+// AIV-P2-037, AIV-P2-039 (ADR-012 points 7 and 9), AIV-P2-045 (ADR-013 point 15): the contract methods that change a
+// workspace, a platform setting or the catalogue draft for an operator take no member context and check no role, so only
+// server/operator.ts, behind platformOperator(), may call them.
+const OPERATOR_ONLY_CALL =
+  /\.(?:changeStatus|pausePublicListings|setApprovalRequired|openDraft|saveDraftPack|saveDraftCompetency|saveDraftJobType|retireDraftEntry)\(/;
 const OPERATOR_SERVER = /[/\\]src[/\\]server[/\\]operator\.ts$/;
 // AIV-P2-053 (ADR-012 point 8): the platform audit log is read only by console code (and server/operator.ts, which
 // wires the console's reads).
@@ -151,7 +152,7 @@ export function findViolations(root: string): Violation[] {
           rule: 'operator-only-writes',
           file: rel,
           detail:
-            'changeStatus, pausePublicListings and setApprovalRequired are called only from server/operator.ts (ADR-012)',
+            'changeStatus, pausePublicListings, setApprovalRequired and the catalogue draft writes are called only from server/operator.ts (ADR-012, ADR-013)',
         });
 
       if (

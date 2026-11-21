@@ -72,7 +72,20 @@ export type PlatformAction = (typeof PLATFORM_ACTIONS)[number];
  * The only keys a platform entry's `before` and `after` may hold: platform values, never a candidate field (AIV-P2-053).
  * A new platform action with other values adds its keys here.
  */
-export const PLATFORM_VALUE_KEYS: readonly string[] = ['dailyTokenBudget', 'status', 'approvalRequired'];
+export const PLATFORM_VALUE_KEYS: readonly string[] = [
+  'dailyTokenBudget',
+  'status',
+  'approvalRequired',
+  // The catalogue editor (AIV-P2-045): version numbers, the entry kind (pack, competency), its pack key and position.
+  'catalogueVersion',
+  'publishedVersion',
+  'revision',
+  'entry',
+  'packKey',
+  'position',
+  // AIV-P2-047: a job type entry's key.
+  'jobTypeKey',
+];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */
 export const NOTE_REQUIRED: readonly Action[] = [

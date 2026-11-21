@@ -13,6 +13,13 @@ import type {
 } from '../application/jobs.ts';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
 import type {
+  CatalogueEditorView,
+  DraftCompetencyInput,
+  DraftJobTypeInput,
+  DraftPackInput,
+  RetireEntryInput,
+} from '../domain/catalogue-draft.ts';
+import type {
   DeskJob,
   Job,
   JobHeader,
@@ -44,6 +51,29 @@ export type {
   Labels,
   PackForJobType,
 } from '../domain/catalogue.ts';
+export {
+  CatalogueError,
+  competencyStatus,
+  draftCompetencySchema,
+  draftJobTypeSchema,
+  draftPackSchema,
+  isNewInDraft,
+  jobTypeStatus,
+  packStatus,
+  retireEntrySchema,
+} from '../domain/catalogue-draft.ts';
+export type {
+  CatalogueEditorView,
+  CatalogueErrorCode,
+  CatalogueField,
+  DraftCompetencyInput,
+  DraftJobTypeInput,
+  DraftPackInput,
+  EditorCompetency,
+  EditorVersion,
+  EntryStatus,
+  RetireEntryInput,
+} from '../domain/catalogue-draft.ts';
 export {
   approvesAs,
   COMPETENCY_ORIGINS,
@@ -274,7 +304,46 @@ export interface DomainDetecting {
 export interface CatalogueReads {
   /** The latest published version, retired entries flagged. Throws when the read fails. */
   getPublishedCatalogue(): Promise<CatalogueVersion>;
-  // Draft reads join this contract with the editor (AIV-P2-045), on the ops allow-list behind platformOperator().
+}
+
+/**
+ * The catalogue editor (AIV-P2-045, ADR-013 points 3 to 6, 11, 14): one open draft that every operator edits. For
+ * `/ops` only: each call takes the operator id from `platformOperator()`, never from the form, and only
+ * server/operator.ts calls the writes (architecture rule `operator-only-writes`). Writes validate their input with zod
+ * (a `ZodError` before anything is read), name the draft revision they read, and throw `CatalogueError`: `stale` (with
+ * who saved last) when the draft moved on, `no_draft`, `not_found`, and the rule refusals. Each writes its
+ * `audit.platform_entry` last in its transaction. Nothing here changes what recruiters see until publish (AIV-P2-049).
+ */
+export interface CatalogueEditor {
+  /** The latest published version and the open draft (null when none), competencies with their positions. */
+  getEditor(): Promise<CatalogueEditorView>;
+  /** "Start a draft": copies the latest published version. `draft_open` when one is open. `catalogue.draft_opened`. */
+  openDraft(operatorId: string): Promise<void>;
+  /**
+   * Adds a pack (`previousKey` null) or edits its English label; its key only while it is new in the draft
+   * (`key_fixed`), never to a key the draft holds (`key_taken`). `catalogue.entry_added` / `catalogue.entry_edited`.
+   */
+  saveDraftPack(operatorId: string, input: DraftPackInput): Promise<void>;
+  /**
+   * Adds (`position` null) or edits a pack competency, always desirable. Refused: empty evidence
+   * (`evidence_required`), a retired entry (`entry_retired`), a name or meaning naming an employer or where someone is
+   * from (`fairness_employer`, `fairness_origin`), a job type the draft does not offer, core outside applies-to, more
+   * than 4 core per job type in the pack (`core_limit`), a retired pack (`pack_retired`).
+   */
+  saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
+  /**
+   * Adds (`adding`) or edits a job type: English label, evidence text, exactly four starters, and its place in the Add a
+   * job list. Refused: a key any version holds (`key_taken`, retired keys included), a starter naming an employer or
+   * where someone is from (`fairness_employer`, `fairness_origin`), a retired job type (`entry_retired`).
+   * `catalogue.entry_added` / `catalogue.entry_edited` (AIV-P2-047).
+   */
+  saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
+  /**
+   * Retires a pack, competency or job type a published version holds (`catalogue.entry_retired`), or removes one new in
+   * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
+   * Returns which.
+   */
+  retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
 }
 
 /**
