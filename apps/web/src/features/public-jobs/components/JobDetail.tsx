@@ -1,5 +1,5 @@
 import { useTranslations } from '@credalent/i18n/react';
-import { Button, buttonClassName, Card, Chip, LevelMeter } from '@credalent/ui';
+import { Button, buttonClassName, LevelMeter } from '@credalent/ui';
 import Link from 'next/link';
 
 export type JobDetailProps = {
@@ -12,8 +12,6 @@ export type JobDetailProps = {
   pay: string;
   postedDays: number;
   competencies: { name: string; evidenceExpected: string; levelNeeded: number }[];
-  cvCheckHref: `/candidates/cv-check?job=${string}`;
-  applyHref: `/candidates/jobs/${string}/apply`;
 };
 
 const section = 'font-display text-section tracking-tight';
@@ -22,7 +20,7 @@ export function JobDetail(props: JobDetailProps) {
   const t = useTranslations();
   const { title, descriptor, location, jobTypeLabel, pay, postedDays, competencies } = props;
   return (
-    <article className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <article className="max-w-3xl">
       <div className="flex min-w-0 flex-col gap-8">
         <header className="flex flex-col gap-2">
           <h1 className="font-display text-title tracking-tight">{title}</h1>
@@ -71,37 +69,7 @@ export function JobDetail(props: JobDetailProps) {
           </ul>
         </section>
       </div>
-
-      <aside className="flex flex-col gap-4">
-        <Card level={2} title={t('candidate.job.beforeTitle')}>
-          <p className="text-text-2">{t('candidate.job.beforeBody')}</p>
-          <div className="mt-4 flex flex-col gap-2">
-            <Link href={props.applyHref} className={buttonClassName('primary')}>
-              {t('candidate.job.apply')}
-            </Link>
-            <Link href={props.cvCheckHref} className={buttonClassName('secondary')}>
-              {t('candidate.job.checkCv')}
-            </Link>
-          </div>
-        </Card>
-        <Card
-          level={2}
-          title={
-            <span className="flex items-center justify-between gap-2">
-              {t('candidate.job.gapTitle')}
-              <Chip>{t('candidate.job.plus')}</Chip>
-            </span>
-          }
-        >
-          <p className="text-text-2">{t('candidate.job.gapBody')}</p>
-          <Link
-            href="/candidates/plans"
-            className="mt-3 inline-flex min-h-10 items-center font-semibold underline-offset-4 hover:underline"
-          >
-            {t('candidate.job.gapLink')}
-          </Link>
-        </Card>
-      </aside>
+      {/* Deviation from the CJob artboard: no Apply, CV check or Plus gap-report cards until their tickets ship (AIV-P1-095). */}
     </article>
   );
 }

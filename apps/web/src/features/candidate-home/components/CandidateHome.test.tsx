@@ -57,7 +57,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
     expect(search.closest('form')?.getAttribute('action')).toBe('/candidates/jobs');
     expect(search.getAttribute('name')).toBe('q');
     expect(screen.getByRole('button', { name: 'Find jobs' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Check my CV, free' })).toHaveProperty('pathname', '/candidates/cv-check');
+    expect(screen.queryByRole('link', { name: 'Check my CV, free' })).toBeNull();
   });
 
   it('the sample job shows what will be judged', () => {
@@ -110,12 +110,10 @@ describe('CandidateHome (AIV-P3-003)', () => {
     expect(screen.getByRole('heading', { name: 'Want an edge that is still honest?' })).toBeDefined();
   });
 
-  it('the Plus teaser shows the price and links Plans, and promises no rank', () => {
+  it('the Plus teaser shows the price, links nowhere until Plans is built, and promises no rank', () => {
     renderHome();
     expect(screen.getByText(/before you apply\. AED 49 a month\.$/)).toBeDefined();
-    const plus = screen.getByRole('link', { name: 'See what Plus adds' });
-    expect(plus).toHaveProperty('pathname', '/candidates/plans');
-    expect(plus.className).toContain('bg-hl'); // the artboard's highlighter call to action
+    expect(screen.queryByRole('link', { name: 'See what Plus adds' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/rank higher|top of the list|boost/i);
   });
 });

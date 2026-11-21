@@ -24,7 +24,7 @@ const member = (synthetic: boolean): Member => ({
 describe('Scenario: Counts fail softly', () => {
   it('a failed counts read gives null, so the sidebar shows names without numbers', async () => {
     expect(await loadShellCounts(member(true), () => Promise.reject(new Error('down')))).toBeNull();
-    expect(await loadShellCounts(member(true))).toEqual({ desk: 4, inbox: 20, jobs: 5, interviews: 5, packs: 1 });
+    expect(await loadShellCounts(member(true))).toEqual({ desk: 4, jobs: 5 });
   });
 
   // SAFETY: mutation check: removed the synthetic check in loadShellCounts -> this test failed

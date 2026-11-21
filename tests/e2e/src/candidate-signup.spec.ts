@@ -76,18 +76,17 @@ test('Scenario: Creating a free account after the tenant sign-up, then signing o
   await page.goto('/candidates/me');
   await expect(page).toHaveURL(/\/candidates\/sign-in\?next=%2Fcandidates%2Fme$/);
 
-  // Scenario: Signing in returns me where I was (the apply form; AIV-P3-008 sends a signed-out candidate here).
-  // The apply form is a placeholder for any job address until AIV-P3-008; candidate-job.spec.ts links a real job to it.
-  const apply = '/candidates/jobs/senior-ai-engineer/apply';
+  // Scenario: Signing in returns me where I was (a page that needs the account; the apply form, AIV-P3-008, will be one).
+  const apply = '/candidates/jobs';
   await page.goto(`/candidates/sign-in?next=${encodeURIComponent(apply)}`);
   await throughTenant(page, email, 'Sign in');
   await expect(page).toHaveURL(new RegExp(`${apply}$`));
-  await expect(page.getByRole('banner').getByRole('link', { name: 'My applications' })).toBeVisible();
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Sign out' })).toBeVisible();
 });
 
 test('Scenario: Signing in returns me where I was, for a new candidate who signs up on the way', async ({ page }) => {
-  // AIV-P3-008's apply form sends a signed-out candidate to sign-in with this next.
-  const apply = '/candidates/jobs/senior-ai-engineer/apply';
+  // AIV-P3-008's apply form will send a signed-out candidate to sign-in with a next like this one.
+  const apply = '/candidates/jobs';
   const next = `next=${encodeURIComponent(apply)}`;
   await page.goto(`/candidates/sign-in?${next}`);
   await page.getByRole('link', { name: 'Create free account' }).click();

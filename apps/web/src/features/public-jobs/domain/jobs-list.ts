@@ -82,7 +82,7 @@ export const postedDaysAgo = (postedAt: Date, now: Date) =>
   Math.max(0, Math.floor((now.getTime() - postedAt.getTime()) / 86_400_000));
 
 /** The list URL for a query, leaving defaults out so links stay short and shareable. */
-export function jobsHref({ q, filter, page }: Partial<JobsQuery>): `/candidates/jobs${string}` {
+export function jobsHref({ q, filter, page }: Partial<JobsQuery>): `/candidates/jobs` | `/candidates/jobs?${string}` {
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (filter && filter !== 'all') params.set('filter', filter);

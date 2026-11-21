@@ -70,6 +70,26 @@ describe('navigation map (ADR-002 item 4)', () => {
   });
 });
 
+const ids = (flags: string[]) =>
+  navigation.filter((entry) => canOpen(entry, ['recruiter'], new Set(flags))).map(({ id }) => id);
+
+describe('unbuilt sections (AIV-P1-095)', () => {
+  it('stay out of the sidebar until their flag is on', () => {
+    expect(ids([])).toEqual(['desk', 'jobs', 'settings']);
+    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'settings']);
+  });
+
+  // SAFETY: mutation check: removed the canOpen check from requireScreen -> this test failed (source guard; the e2e direct-URL test covers the render)
+  it('answer 404 on their own route, not only hide from the nav', () => {
+    const guard = readFileSync(new URL('../services/request.ts', import.meta.url), 'utf8');
+    expect(guard).toMatch(/!canOpen\(screen, member\.capabilities, enabledFlags\)\) notFound\(\)/);
+    for (const id of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
+      const source = readFileSync(join(appDir, '(recruiter)/app', id, 'page.tsx'), 'utf8');
+      expect(source, id).toMatch(/screen="/);
+    }
+  });
+});
+
 describe('parseTheme', () => {
   it('accepts dark and turns anything else into light', () => {
     expect(parseTheme('dark')).toBe('dark');

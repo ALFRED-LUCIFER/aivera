@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 // Serves /candidates/me and every path under it, so ../layout.tsx (the server-side candidate session check) wraps them
-// all; without this page the /candidates/[...section] placeholder would serve them outside that layout.
+// all; deeper paths are 404.
 // shortcut: My applications is a placeholder until its CDash ticket; deeper pages arrive with their own tickets.
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations(defaultLocale, defaultTimeZone))('candidate.shell.myApplications') };
