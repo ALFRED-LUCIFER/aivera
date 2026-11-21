@@ -22,8 +22,12 @@ export type EditorPack = Omit<CataloguePack, 'competencies' | 'hints'> & {
   readonly hints: readonly EditorHint[];
 };
 export type EditorVersion = Omit<CatalogueVersion, 'packs'> & { readonly packs: readonly EditorPack[] };
-/** The open draft: its entries, its revision and who saved it last (an operator's opaque id). */
-export type CatalogueDraft = EditorVersion & { readonly revision: number; readonly revisedBy: string | null };
+/** The open draft: its entries, its revision, who saved it last (an operator's opaque id) and when (opened, if never saved). */
+export type CatalogueDraft = EditorVersion & {
+  readonly revision: number;
+  readonly revisedBy: string | null;
+  readonly revisedAt: Date;
+};
 /** What `/ops/catalogue` reads: the latest published version, and the open draft or null. */
 export type CatalogueEditorView = { readonly published: EditorVersion; readonly draft: CatalogueDraft | null };
 

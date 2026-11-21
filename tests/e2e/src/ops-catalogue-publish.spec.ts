@@ -14,6 +14,8 @@ import { expectAccessible } from './gallery.ts';
 // tests/integration catalogue-publish.test.ts. Synthetic people and catalogue text only.
 
 test.skip(!process.env['CI'] && !process.env['E2E_PUBLISH_CATALOGUE'], 'publishes a permanent catalogue version');
+// One journey through three eval runs and a publish: about 33 s on a CI runner (trace of PR #446), over the 30 s default.
+test.setTimeout(60_000);
 
 const REASON = 'Add insurance pack for the pilot client';
 

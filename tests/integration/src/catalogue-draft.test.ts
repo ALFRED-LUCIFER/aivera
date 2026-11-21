@@ -88,7 +88,8 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
     expect((await editor.getEditor()).draft).toBeNull();
     await editor.openDraft(PIA);
     const { draft, published: live } = await editor.getEditor();
-    expect(draft).toMatchObject({ version: 2, status: 'draft', revision: 0, revisedBy: null });
+    // Never saved: its last edit is its opening (AIV-P2-051, the console home's "last edited").
+    expect(draft).toMatchObject({ version: 2, status: 'draft', revision: 0, revisedBy: null, revisedAt: NOW });
     expect(live.version).toBe(1);
     // Every entry is copied as it is, positions included, so each shows "Live".
     const entriesOf = (v: typeof live | null) => v && { jobTypes: v.jobTypes, regions: v.regions, packs: v.packs };
@@ -111,7 +112,11 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
       key: 'insurance',
       label: 'Insurance and insurtech',
     });
-    await editor.saveDraftCompetency(PIA, { ...claims, revision: 1 });
+    // AIV-P2-051: each save stamps the draft with the clock's time.
+    // SAFETY: mutation check: dropped `revisedAt: at` from the draft touch -> this test failed
+    const later = new Date(NOW.getTime() + 2 * 3_600_000);
+    await createCatalogueEditor(app, audit, () => later).saveDraftCompetency(PIA, { ...claims, revision: 1 });
+    expect((await editor.getEditor()).draft?.revisedAt).toEqual(later);
     const pack = await draftPack('insurance');
     expect(pack).toMatchObject({ label: { en: 'Insurance and insurtech' }, retired: false });
     expect(pack?.competencies).toEqual([

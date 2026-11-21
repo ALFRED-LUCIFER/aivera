@@ -30,7 +30,7 @@ export type DraftStore = {
   /** Copies published version `from` into a new draft numbered `to`, created by `operatorId` at `createdAt`. */
   createDraft(from: number, to: number, operatorId: string, createdAt: Date): Promise<void>;
   /** One more revision, by `operatorId`. */
-  touch(version: number, operatorId: string): Promise<void>;
+  touch(version: number, operatorId: string, at: Date): Promise<void>;
   /** Inserts the pack at the end, or updates `previousKey`'s label and key, moving its entries with it. */
   putPack(version: number, previousKey: string | null, pack: { key: string; label: string }): Promise<void>;
   /** Inserts the competency at the pack's end (`position` null) or updates it; returns its position. */
@@ -127,7 +127,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
           // The draft holds every key ever published (retired, never deleted), so this also refuses reuse.
           if (draft.packs.some((p) => p.key === key)) throw new CatalogueError('key_taken', { field: 'key' });
         }
-        await store.touch(version, operatorId);
+        await store.touch(version, operatorId, now());
         await store.putPack(version, previousKey, { key, label: input.label });
         await store.recordPlatform(
           audit(operatorId, previousKey === null ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
@@ -153,7 +153,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         if (pack.retired) throw new CatalogueError('pack_retired');
         if (before?.retired) throw new CatalogueError('entry_retired');
         assertCompetencyFits(draft, pack, parsed, before?.appliesTo ?? []);
-        await store.touch(version, operatorId);
+        await store.touch(version, operatorId, now());
         const position = await store.putCompetency(version, input);
         await store.recordPlatform(
           audit(operatorId, input.position === null ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
@@ -186,7 +186,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         if (before?.retired) throw new CatalogueError('entry_retired');
         // A hint has no core, so this checks its job types only; a retired one it already had stays on it.
         assertCompetencyFits(draft, pack, { ...parsed, core: [] }, before?.appliesTo ?? []);
-        await store.touch(version, operatorId);
+        await store.touch(version, operatorId, now());
         const position = await store.putHint(version, input);
         await store.recordPlatform(
           audit(operatorId, input.position === null ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
@@ -217,7 +217,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
           if (await store.jobTypeKeyUsed(input.key)) throw new CatalogueError('key_taken', { field: 'key' });
         } else if (!before) throw new CatalogueError('not_found');
         else if (before.retired) throw new CatalogueError('entry_retired');
-        await store.touch(version, operatorId);
+        await store.touch(version, operatorId, now());
         await store.putJobType(version, input, placeJobType(draft.jobTypes, input.key, input.position));
         await store.recordPlatform(
           audit(operatorId, input.adding ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
@@ -267,7 +267,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
               ? isHintNewInDraft(published, entry.packKey, entry.region, entry.position)
               : isNewInDraft(published, entry.packKey, position);
         }
-        await store.touch(version, operatorId);
+        await store.touch(version, operatorId, now());
         await (removed ? store.remove(version, entry) : store.retire(version, entry));
         await store.recordPlatform(
           audit(operatorId, removed ? 'catalogue.entry_removed' : 'catalogue.entry_retired', {

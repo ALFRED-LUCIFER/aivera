@@ -1,0 +1,1 @@
+ALTER TABLE "jobs"."catalogue_version" ADD COLUMN "revised_at" timestamp with time zone;

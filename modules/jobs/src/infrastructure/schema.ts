@@ -282,6 +282,8 @@ export const catalogueVersion = jobs.table(
     // (ADR-013 point 3).
     revision: integer().notNull().default(0),
     revisedBy: text('revised_by'),
+    // When the draft was last saved (AIV-P2-051, the console home); null until its first save after this column.
+    revisedAt: timestamp('revised_at', { withTimezone: true }),
   },
   (t) => [
     uniqueIndex('catalogue_version_one_draft_idx')

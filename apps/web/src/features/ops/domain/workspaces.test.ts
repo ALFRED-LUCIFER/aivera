@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysWaiting, pageCount, toDirectorySearch, workspaceSearchSchema } from './workspaces.ts';
+import { daysWaiting, pageCount, toDirectorySearch, urlSearch, workspaceSearchSchema } from './workspaces.ts';
 
 // AIV-P2-036: the list request's schema and paging.
 describe('workspaceSearchSchema', () => {
@@ -42,4 +42,25 @@ describe('daysWaiting', () => {
     ['2026-11-19T10:00:00Z', 1],
     ['2026-11-25T11:00:00Z', 7],
   ])('%s -> %i', (now, days) => expect(daysWaiting(created, new Date(now))).toBe(days));
+});
+
+describe('the console home links: ?status= and ?sort=ai (AIV-P2-051)', () => {
+  it('reads a known status and sort from the URL and passes the status to the directory', () => {
+    expect(urlSearch({ status: 'suspended' })).toEqual({ status: 'suspended' });
+    expect(urlSearch({ sort: 'ai' })).toEqual({ sort: 'ai' });
+    expect(toDirectorySearch({ query: '', page: 1, status: 'suspended' })).toEqual({
+      query: '',
+      offset: 0,
+      limit: 50,
+      status: 'suspended',
+    });
+  });
+
+  it.each([
+    ['an unknown status', { status: 'deleted' }],
+    ['a repeated parameter', { status: ['active', 'suspended'] }],
+    ['an unknown sort', { sort: 'name' }],
+  ])('ignores %s: the full list, newest first', (_, params) => {
+    expect(urlSearch(params)).toEqual({});
+  });
 });

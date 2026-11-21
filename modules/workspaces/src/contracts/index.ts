@@ -17,6 +17,7 @@ import type {
   Role,
   Workspace,
   WorkspaceSummary,
+  WorkspaceStatusFact,
   WorkspaceType,
 } from '../domain/workspace.ts';
 
@@ -40,6 +41,7 @@ export type {
   Workspace,
   WorkspaceErrorCode,
   WorkspaceStatus,
+  WorkspaceStatusFact,
   WorkspaceSummary,
   WorkspaceType,
 } from '../domain/workspace.ts';
@@ -94,6 +96,8 @@ export interface WorkspaceDirectory {
   getSummary(workspaceId: string): Promise<WorkspaceSummary | null>;
   /** Workspaces waiting for approval, oldest first, each with its creator's opaque user id (AIV-P2-039). */
   listPending(): Promise<PendingApproval[]>;
+  /** Every workspace's opaque id, status and created date, for the console home's counts (AIV-P2-051). */
+  listStatuses(): Promise<WorkspaceStatusFact[]>;
 }
 
 /**

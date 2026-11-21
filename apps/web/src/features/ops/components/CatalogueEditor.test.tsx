@@ -53,6 +53,7 @@ const draft = {
   status: 'draft' as const,
   revision: 5,
   revisedBy: null,
+  revisedAt: new Date('2026-11-21T08:00:00Z'),
   packs: [
     {
       ...payments,

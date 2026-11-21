@@ -77,10 +77,10 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       }
     },
 
-    async touch(version, operatorId) {
+    async touch(version, operatorId, at) {
       await tx
         .update(catalogueVersion)
-        .set({ revision: sql`${catalogueVersion.revision} + 1`, revisedBy: operatorId })
+        .set({ revision: sql`${catalogueVersion.revision} + 1`, revisedBy: operatorId, revisedAt: at })
         .where(and(eq(catalogueVersion.version, version), isDraft));
     },
 

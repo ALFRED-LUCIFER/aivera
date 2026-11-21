@@ -85,6 +85,7 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
     reason: header.reason,
     revision: header.revision,
     revisedBy: header.revisedBy,
+    revisedAt: header.revisedAt ?? header.createdAt,
     jobTypes: jobTypes.map(({ key, label, evidence, starterCompetencies, retired }) => ({
       key,
       label,
@@ -113,7 +114,7 @@ export async function readPublishedCatalogue(tx: Tx): Promise<CatalogueVersion> 
   const catalogue = await readCatalogueVersion(tx, eq(catalogueVersion.status, 'published'));
   if (!catalogue) throw new Error('no published catalogue version');
   // Readers outside the editor get the entries only: no revision, no positions.
-  const { revision: _revision, revisedBy: _revisedBy, ...published } = catalogue;
+  const { revision: _revision, revisedBy: _revisedBy, revisedAt: _revisedAt, ...published } = catalogue;
   return {
     ...published,
     packs: published.packs.map((p) => ({

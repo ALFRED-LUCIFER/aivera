@@ -173,6 +173,45 @@ describe('Scenario: Listing workspaces (the read contracts)', () => {
   });
 });
 
+describe('AIV-P2-051: the console home counts (listStatuses) and the status filter', () => {
+  // SAFETY: mutation check: added `name: workspace.name` to readStatus's select -> this test failed (extra field)
+  it("returns each workspace's opaque id, status and created date only, each read in its own scope", async () => {
+    const statuses = await directory.listStatuses();
+    expect(statuses).toHaveLength(4);
+    for (const s of statuses) expect(Object.keys(s).toSorted()).toEqual(['createdAt', 'id', 'status']);
+    expect(statuses.find((s) => s.id === EARLY)).toEqual({ id: EARLY, status: 'active', createdAt: EARLY_AT });
+    expect(JSON.stringify(statuses)).not.toMatch(/Demo Hiring Co|Gulf Talent Partners|Sara/);
+  });
+
+  it('another workspace stays invisible under one workspace scope: RLS, not only the id filter', async () => {
+    const demo = ids['Demo Hiring Co'] ?? '';
+    const gulf = ids['Gulf Talent Partners'] ?? '';
+    const seen = await withWorkspace(app, demo, (tx) => tx.execute(sql`select id, status from workspaces.workspace`));
+    expect([...seen].map((r) => r.id)).toEqual([demo]);
+    expect(seen).not.toContainEqual(expect.objectContaining({ id: gulf }));
+  });
+
+  it('counts a suspended workspace under its status, and listSummaries filters by it', async () => {
+    const nadia = ids['Nadia Freelance'] ?? '';
+    const change = (c: 'suspend' | 'reactivate') =>
+      workspaces.changeStatus({
+        operatorId: user(8), // not Pia: the platform log test below expects her entry alone
+        workspaceId: nadia,
+        change: c,
+        reason: 'Synthetic integration check',
+      });
+    await change('suspend');
+    try {
+      expect((await directory.listStatuses()).find((s) => s.id === nadia)?.status).toBe('suspended');
+      const suspended = await directory.listSummaries({ query: '', offset: 0, limit: 50, status: 'suspended' });
+      expect([suspended.total, suspended.summaries.map((s) => s.name)]).toEqual([1, ['Nadia Freelance']]);
+      expect((await directory.listSummaries({ query: '', offset: 0, limit: 50, status: 'active' })).total).toBe(3);
+    } finally {
+      await change('reactivate');
+    }
+  });
+});
+
 describe('Scenario: The console never returns candidate data', () => {
   // SAFETY: mutation check: made readSummary return the member rows as well -> this test failed (named user ids)
   it('the list, detail and job count for Demo Hiring Co hold no candidate name, email or member', async () => {
