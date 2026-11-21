@@ -2,6 +2,7 @@
 
 import { CatalogueEditor, StartDraft } from '@/features/ops/components/CatalogueEditor.tsx';
 import { CatalogueEval } from '@/features/ops/components/CatalogueEval.tsx';
+import { CataloguePublish } from '@/features/ops/components/CataloguePublish.tsx';
 import type { DraftModel } from '@/features/ops/domain/catalogueEditor.ts';
 import type { EvalView } from '@/features/ops/domain/catalogueEval.ts';
 import {
@@ -9,6 +10,7 @@ import {
   useStartDraftController,
 } from '@/features/ops/hooks/useCatalogueEditorController.ts';
 import { useCatalogueEvalController } from '@/features/ops/hooks/useCatalogueEvalController.ts';
+import { useCataloguePublishController } from '@/features/ops/hooks/useCataloguePublishController.ts';
 
 export function CatalogueEditorClient({
   publishedVersion,
@@ -21,9 +23,14 @@ export function CatalogueEditorClient({
 }) {
   const editor = useCatalogueEditorController(draft);
   const evalModel = useCatalogueEvalController(draft, evalView);
+  const publish = useCataloguePublishController(draft, publishedVersion, evalView);
   return (
     <div className="flex flex-col gap-6">
-      <CatalogueEditor publishedVersion={publishedVersion} view={editor} />
+      <CatalogueEditor
+        publishedVersion={publishedVersion}
+        view={editor}
+        actions={<CataloguePublish model={publish} />}
+      />
       <CatalogueEval eval={evalModel} />
     </div>
   );

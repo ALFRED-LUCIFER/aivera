@@ -2,6 +2,7 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Card, Chip, StatusBadge, type StatusBadgeStatus } from '@credalent/ui';
+import type { ReactNode } from 'react';
 import type {
   CompetencyRow,
   EditorViewModel,
@@ -15,8 +16,7 @@ import { CompetencyFormDialog, JobTypeFormDialog, PackFormDialog, RefusalText } 
 
 /*
  * The catalogue editor (AIV-P2-045), from the console spec's catalogue editor layout (operator-console.md); there is no
- * artboard for it. Deviations, each for a later ticket: the banner has no Discard or "Review and publish" yet
- * (AIV-P2-049), so the page has no primary button outside a form; job types are one list and entries are grouped by pack,
+ * artboard for it. Deviations: job types are one list and entries are grouped by pack,
  * a pack's regional hints (AIV-P2-046) following its competencies, one section per region; the entry form opens in a
  * dialog rather than in the main column, so the long pack list keeps its place.
  */
@@ -214,14 +214,24 @@ function JobType({ row, view }: { row: JobTypeRow; view: EditorViewModel }) {
 }
 
 /** The open draft: its banner, every pack with its status and competencies, and the entry forms. */
-export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: number; view: EditorViewModel }) {
+export function CatalogueEditor({
+  publishedVersion,
+  view,
+  actions,
+}: {
+  publishedVersion: number;
+  view: EditorViewModel;
+  /** The banner's Discard and "Review and publish" (AIV-P2-049). */
+  actions?: ReactNode;
+}) {
   const t = useTranslations('ops.catalogue');
   const formOpen = view.packForm !== null || view.competencyForm !== null || view.jobTypeForm !== null;
   return (
     <div className="flex flex-col gap-6">
-      <p className="rounded-card border border-border-strong bg-surface-subtle p-4 text-body font-semibold text-text">
-        {t('editor.banner', { version: publishedVersion })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border-strong bg-surface-subtle p-4">
+        <p className="text-body font-semibold text-text">{t('editor.banner', { version: publishedVersion })}</p>
+        {actions}
+      </div>
       {!formOpen && view.error && (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-body font-semibold text-err-text">
           <RefusalText error={view.error} />

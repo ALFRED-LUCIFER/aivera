@@ -9,8 +9,8 @@ import { expectAccessible, themes } from './gallery.ts';
 // "Start a draft"; with one, operators add, edit and retire packs and competencies. playwright.config.ts makes Pia
 // Platform an operator. Synthetic people and catalogue text only (docs/00-product/personas.md).
 //
-// One draft at a time across the whole database, so this file runs in order and starts with none: the draft of an
-// earlier run is discarded here (the discard screen is AIV-P2-049).
+// One draft at a time across the whole database, so this file runs in order and starts with none: a draft an earlier
+// run left (one stopped before its last test, which discards it through the page, AIV-P2-049) is deleted here.
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
@@ -583,4 +583,66 @@ test.describe('the draft eval', () => {
       await expectAccessible(page);
     });
   }
+});
+
+// AIV-P2-049: the publish preview and Discard. Publishing itself changes what every recruiter spec sees, so it runs in
+// its own project on its own database (ops-catalogue-publish.spec.ts); here the draft is previewed, then discarded.
+const preview = (page: Page) => page.getByRole('dialog', { name: 'Publish catalogue version 2' });
+
+test.describe('publish preview and discard', () => {
+  test('Scenario: The diff is previewed before anything changes, by keyboard', async ({ page }) => {
+    await openCatalogue(page);
+    await page.getByRole('button', { name: 'Review and publish' }).focus();
+    await page.keyboard.press('Enter');
+    const card = preview(page);
+    await expect(card.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    for (const line of [
+      'Added: Insurance and insurtech',
+      'Edited: Telecom label, Telecom → Telecoms',
+      `Retired: ${LEDGER}`,
+    ])
+      await expect(card.getByRole('listitem').filter({ hasText: line })).toHaveCount(1);
+    await expect(card.getByRole('heading', { level: 3, name: 'Packs' })).toBeVisible();
+    await expect(card).toContainText('Nothing changes until you confirm.');
+    // The last run of the eval tests failed: publish stays disabled whatever the reason says.
+    await expect(card).toContainText('The last eval run failed. Fix the draft and run it again.');
+    await card.getByLabel('Reason').fill('Add insurance pack for the pilot client');
+    await expect(card.getByRole('button', { name: 'Publish version 2' })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(card).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Review and publish' })).toBeFocused();
+    await expect(page.getByText('Draft — not live. Recruiters see version 1.')).toBeVisible();
+  });
+
+  for (const theme of themes) {
+    test(`axe passes on the publish preview (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+      await openCatalogue(page);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await page.getByRole('button', { name: 'Review and publish' }).click();
+      await expect(preview(page)).toBeVisible();
+      await expectAccessible(page);
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Discard draft' }).click();
+      await expect(page.getByRole('dialog', { name: 'Discard draft version 2' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+
+  test('Scenario: Discarding a draft, by keyboard', async ({ page }) => {
+    await openCatalogue(page);
+    await page.getByRole('button', { name: 'Discard draft' }).focus();
+    await page.keyboard.press('Enter');
+    const card = page.getByRole('dialog', { name: 'Discard draft version 2' });
+    await expect(card).toContainText('Every change in this draft is deleted. Recruiters keep seeing version 1.');
+    await expect(card).toContainText('Nothing changes until you confirm.');
+    await card.getByRole('button', { name: 'Discard draft' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Recruiters see version 1. Start a draft to change it.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start a draft' })).toBeVisible();
+    await page.goto('/ops/audit?action=catalogue.draft_discarded');
+    const discarded = page.getByRole('row').filter({ hasText: 'Catalogue draft discarded' }).first();
+    await expect(discarded).toContainText('pia.platform');
+    await expect(discarded).toContainText('Catalogue version 2');
+  });
 });

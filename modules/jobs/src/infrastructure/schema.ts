@@ -429,7 +429,8 @@ export const catalogueEvalRun = jobs.table(
   'catalogue_eval_run',
   {
     id: uuid().primaryKey(),
-    version: version(),
+    // Null once its draft is discarded (AIV-P2-049): the run stays, so its tokens still count against the day's budget.
+    version: integer().references(() => catalogueVersion.version, { onDelete: 'set null' }),
     contentHash: text('content_hash').notNull(),
     keys: jsonb().$type<{ domains: string[]; regions: string[] }>().notNull(),
     status: text({ enum: EVAL_RUN_STATUSES }).notNull(),

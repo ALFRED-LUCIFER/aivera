@@ -27,6 +27,10 @@ export type ReasonedChangeProps = {
   onConfirm: () => Promise<void>;
   /** The success message once confirmed; null before. */
   done: ReactNode;
+  /** The trigger is the view's one primary action (AIV-P2-049 "Review and publish"); secondary otherwise. */
+  primary?: boolean;
+  /** More preview after the body, e.g. a diff (AIV-P2-049). */
+  children?: ReactNode;
 };
 
 /**
@@ -41,6 +45,8 @@ export function ReasonedChange({
   canConfirm,
   onConfirm,
   done,
+  primary = false,
+  children,
 }: ReasonedChangeProps) {
   const reasonId = useId();
   const hintId = useId();
@@ -50,7 +56,7 @@ export function ReasonedChange({
         title={labels.title}
         trigger={
           // openLabel starts with the visible word (WCAG 2.5.3) and tells rows of "Approve" apart.
-          <Button className="self-start" aria-label={labels.openLabel}>
+          <Button className="self-start" variant={primary ? 'primary' : 'secondary'} aria-label={labels.openLabel}>
             {labels.open}
           </Button>
         }
@@ -67,6 +73,7 @@ export function ReasonedChange({
         onCancel={() => {}}
       >
         <p>{labels.body}</p>
+        {children}
         {reason && (
           <div className="mt-4 flex flex-col gap-1.5">
             <Label htmlFor={reasonId}>{labels.reason}</Label>

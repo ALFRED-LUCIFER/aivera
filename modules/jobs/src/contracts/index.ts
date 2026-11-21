@@ -15,10 +15,12 @@ import type { CatalogueVersion } from '../domain/catalogue.ts';
 import type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 import type {
   CatalogueEditorView,
+  DiscardDraftInput,
   DraftCompetencyInput,
   DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
+  PublishDraftInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
 import type {
@@ -56,6 +58,7 @@ export type {
 export {
   CatalogueError,
   competencyStatus,
+  discardDraftSchema,
   draftCompetencySchema,
   draftHintSchema,
   draftJobTypeSchema,
@@ -65,12 +68,16 @@ export {
   isNewInDraft,
   jobTypeStatus,
   packStatus,
+  publishDraftSchema,
   retireEntrySchema,
 } from '../domain/catalogue-draft.ts';
+export { catalogueDiff } from '../domain/catalogue-diff.ts';
+export type { CatalogueChange, DiffField, DiffGroup } from '../domain/catalogue-diff.ts';
 export type {
   CatalogueEditorView,
   CatalogueErrorCode,
   CatalogueField,
+  DiscardDraftInput,
   DraftCompetencyInput,
   DraftHintInput,
   DraftJobTypeInput,
@@ -79,6 +86,7 @@ export type {
   EditorHint,
   EditorVersion,
   EntryStatus,
+  PublishDraftInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
 export {
@@ -331,7 +339,7 @@ export interface CatalogueReads {
  * server/operator.ts calls the writes (architecture rule `operator-only-writes`). Writes validate their input with zod
  * (a `ZodError` before anything is read), name the draft revision they read, and throw `CatalogueError`: `stale` (with
  * who saved last) when the draft moved on, `no_draft`, `not_found`, and the rule refusals. Each writes its
- * `audit.platform_entry` last in its transaction. Nothing here changes what recruiters see until publish (AIV-P2-049).
+ * `audit.platform_entry` last in its transaction. Nothing changes what recruiters see until `publishDraft` (AIV-P2-049).
  */
 export interface CatalogueEditor {
   /** The latest published version and the open draft (null when none), competencies with their positions. */
@@ -381,6 +389,19 @@ export interface CatalogueEditor {
    * `evalAllowsPublish` (AIV-P2-049).
    */
   getDraftEval(): Promise<DraftEval | null>;
+  /**
+   * "Publish version N" (AIV-P2-049, ADR-013 point 13): the draft as the page showed it becomes the latest published
+   * version with the operator, time and reason (10 to 500 characters), in one transaction; readers get it on their next
+   * request. Refused: `stale`, `no_draft`, `eval_required` (the latest run did not pass on the draft's current content,
+   * checked here, never taken from the client), `no_changes`. `catalogue.published` with the reason and change counts.
+   */
+  publishDraft(operatorId: string, input: PublishDraftInput): Promise<void>;
+  /**
+   * "Discard draft" (AIV-P2-049): deletes the draft as the page showed it; its eval runs stay with no version, so their
+   * tokens still count against the day's eval budget. Refused: `stale`, `no_draft`, `eval_running`.
+   * `catalogue.draft_discarded`.
+   */
+  discardDraft(operatorId: string, input: DiscardDraftInput): Promise<void>;
 }
 
 /**

@@ -43,6 +43,8 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
   // SAFETY: mutation check: dropped requestEval from OPERATOR_ONLY_CALL -> this test failed (features/ops missing)
   // SAFETY: mutation check: dropped saveDraftHint from OPERATOR_ONLY_CALL -> this test failed (job-new/services/hint.ts missing)
   // SAFETY: mutation check: dropped saveDraftJobType from OPERATOR_ONLY_CALL -> this test failed (features/job-types missing)
+  // SAFETY: mutation check: dropped publishDraft from OPERATOR_ONLY_CALL -> this test failed (ops/services/publish.ts missing)
+  // SAFETY: mutation check: dropped discardDraft from OPERATOR_ONLY_CALL -> this test failed (ops/services/discard.ts missing)
   it('a call to changeStatus, pausePublicListings, setApprovalRequired or a catalogue draft write outside server/operator.ts is reported', () => {
     expect(
       findViolations(fixture('operator-writes'))
@@ -53,6 +55,8 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
       'apps/web/src/features/job-new/services/z.ts',
       'apps/web/src/features/job-types/services/w.ts',
       'apps/web/src/features/jobs/services/x.ts',
+      'apps/web/src/features/ops/services/discard.ts',
+      'apps/web/src/features/ops/services/publish.ts',
       'apps/web/src/features/ops/services/w.ts',
       'apps/web/src/features/signup/services/y.ts',
     ]);

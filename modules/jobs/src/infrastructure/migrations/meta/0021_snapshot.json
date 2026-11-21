@@ -1,5 +1,5 @@
 {
-  "id": "b50da04f-d00e-4350-83e6-0f712dcc2b6d",
+  "id": "5c5ee526-4c69-4507-a0c3-cf71db3013bb",
   "prevId": "b3fcb7e7-32f7-4240-b8f0-dbc223cd1bac",
   "version": "7",
   "dialect": "postgresql",
@@ -18,7 +18,7 @@
           "name": "version",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "content_hash": {
           "name": "content_hash",
@@ -121,7 +121,7 @@
           "columnsTo": [
             "version"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -775,12 +775,6 @@
         "revised_by": {
           "name": "revised_by",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "revised_at": {
-          "name": "revised_at",
-          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         }
