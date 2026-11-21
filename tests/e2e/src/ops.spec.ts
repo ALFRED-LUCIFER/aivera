@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { signIn } from './auth.ts';
+import { OPENED_COOKIE, signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P2-035 (ADR-012): the operator console at /ops. playwright.config.ts sets PLATFORM_OPERATOR_EMAILS to
@@ -7,7 +7,6 @@ import { expectAccessible, themes } from './gallery.ts';
 // Synthetic people only (docs/00-product/personas.md).
 
 const PIA = 'pia.platform@example.com';
-const OPENED_COOKIE = '__Host-credalent-ops-opened';
 const noAccess = 'You do not have access to this. Ask your workspace admin.';
 const cookie = async (context: BrowserContext, name: string) => (await context.cookies()).find((c) => c.name === name);
 
