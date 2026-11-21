@@ -474,7 +474,8 @@ const repo = (handle: string, name: string) => `https://code.credalent.example/$
  * The Senior AI Engineer evidence of the three candidates the Candidate and Compare artboards show (Sara Al Qahtani
  * 68 up to 84, Arjun Menon 64 up to 76, Layla Haddad 61 up to 82), one item per competency the artboards cite. A
  * competency an artboard marks as having nothing stated (Arjun's Arabic NLP, Layla's cost and reliability) has no item.
- * Limits the artboards do not show are synthetic.
+ * Limits the artboards do not show are synthetic. Deviation (AIV-P1-094): the artboards show short labels; the excerpts
+ * here are full synthetic sentences, so the demo reads as quoted evidence.
  */
 export const EVIDENCE: CastEvidence[] = [
   {

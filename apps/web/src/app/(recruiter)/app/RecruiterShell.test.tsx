@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
-import type { Member, ShellCounts } from '@/features/shell/domain/shell.ts';
+import type { Member } from '@/features/shell/domain/shell.ts';
 import { RecruiterShell } from './RecruiterShell.tsx';
 
 let pathname = '/app';
@@ -30,23 +30,12 @@ const member: Member = {
   capabilities: ['recruiter'],
   workspace: { synthetic: true, status: 'active' },
 };
-const seed: ShellCounts = { desk: 4, jobs: 5 };
 // What the layout passes: no flag is on, so only built sections.
 const built = navigation.filter((entry) => canOpen(entry, ['recruiter'], new Set()));
 
-const renderShell = ({
-  counts = seed as ShellCounts | null,
-  synthetic = true,
-  status = 'active' as Member['workspace']['status'],
-} = {}) =>
+const renderShell = ({ synthetic = true, status = 'active' as Member['workspace']['status'] } = {}) =>
   render(
-    <RecruiterShell
-      intl={intl}
-      theme="light"
-      member={{ ...member, workspace: { synthetic, status } }}
-      counts={counts}
-      screens={built}
-    >
+    <RecruiterShell intl={intl} theme="light" member={{ ...member, workspace: { synthetic, status } }} screens={built}>
       <p>Page body</p>
     </RecruiterShell>,
   );
@@ -59,10 +48,10 @@ const sectionNames = () =>
 
 describe('Recruiter app shell', () => {
   // SAFETY: mutation check: aria-current compared against undefined -> this test failed
-  it('Scenario: The sidebar shows the built sections with their counts', () => {
+  it('Scenario: The sidebar shows the built sections, with no counts', () => {
     renderShell();
-    expect(sectionNames()).toEqual(['Credalent', 'My desk 4', 'Jobs 5', 'Settings']);
-    expect(within(sidebar()).getByRole('link', { name: 'My desk 4' }).getAttribute('aria-current')).toBe('page');
+    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Settings']);
+    expect(within(sidebar()).getByRole('link', { name: 'My desk' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     // The Main artboard draws the Credalent mark beside the wordmark (AIV-P0-035).
     expect(
@@ -83,8 +72,8 @@ describe('Recruiter app shell', () => {
   it('marks the section of a nested page as current', () => {
     pathname = '/app/jobs/42/pack';
     renderShell();
-    expect(within(sidebar()).getByRole('link', { name: 'Jobs 5' }).getAttribute('aria-current')).toBe('page');
-    expect(within(sidebar()).getByRole('link', { name: 'My desk 4' }).getAttribute('aria-current')).toBeNull();
+    expect(within(sidebar()).getByRole('link', { name: 'Jobs' }).getAttribute('aria-current')).toBe('page');
+    expect(within(sidebar()).getByRole('link', { name: 'My desk' }).getAttribute('aria-current')).toBeNull();
   });
 
   // SAFETY: mutation check: rendered the badge without the synthetic check -> this test failed
@@ -138,7 +127,7 @@ describe('Recruiter app shell', () => {
     expect(menu.getAttribute('aria-expanded')).toBe('true');
     expect(menu.getAttribute('aria-label')).toBe('Close navigation');
     expect(sidebar().className).not.toMatch(/(^|\s)hidden(\s|$)/);
-    await userEvent.click(within(sidebar()).getByRole('link', { name: 'Jobs 5' }));
+    await userEvent.click(within(sidebar()).getByRole('link', { name: 'Jobs' }));
     expect(screen.getByRole('button', { name: 'Open navigation' })).toBeTruthy();
   });
 
@@ -147,16 +136,10 @@ describe('Recruiter app shell', () => {
     renderShell();
     const menu = screen.getByRole('button', { name: 'Open navigation' });
     await userEvent.click(menu);
-    expect(document.activeElement).toBe(within(sidebar()).getByRole('link', { name: 'My desk 4' }));
+    expect(document.activeElement).toBe(within(sidebar()).getByRole('link', { name: 'My desk' }));
     await userEvent.keyboard('{Escape}');
     expect(menu.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(menu);
-  });
-
-  it('Scenario: Counts fail softly', () => {
-    renderShell({ counts: null });
-    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Settings']);
-    expect(screen.getByRole('main').textContent).toBe('Page body');
   });
 
   it('switches the theme on <html> at once and stores it in the cookie', async () => {

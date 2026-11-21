@@ -82,8 +82,6 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
     <RecruiterShell
       intl={intl}
       member={member}
-      // shortcut: no sidebar badges until a module contract supplies real counts (AGENTS.md 1.7: no invented number).
-      counts={null}
       theme={theme}
       screens={navigation.filter((screen) => canOpen(screen, member.capabilities, enabledFlags))}
     >
