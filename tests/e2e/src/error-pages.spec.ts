@@ -32,5 +32,9 @@ for (const theme of themes) {
     // The dev-tools overlay takes the first Tab, so the button is focused directly and checked to be in view.
     await page.getByRole('button', { name: 'Try again' }).focus();
     expect(await focusInView(page)).toBe('visible');
+    // Next 16 passes `retry`: it asks the server for the page again (which crashes again here).
+    const again = page.waitForRequest((request) => request.url().includes('/dev/crash'));
+    await page.keyboard.press('Enter');
+    await again;
   });
 }

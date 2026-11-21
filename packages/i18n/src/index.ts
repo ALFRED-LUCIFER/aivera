@@ -7,9 +7,6 @@ export type Locale = (typeof locales)[number];
 export type Messages = typeof en;
 export type Money = { amountMinor: number; currency: string };
 
-/** The English catalogue itself, for the one client page no server layout can feed: the root error boundary. */
-export const englishMessages: Messages = en;
-
 export const defaultLocale: Locale = 'en';
 export const defaultTimeZone = 'Asia/Dubai';
 
