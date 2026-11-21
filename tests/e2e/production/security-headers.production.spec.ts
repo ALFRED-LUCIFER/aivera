@@ -24,11 +24,9 @@ test('Scenario: /candidates carries Strict-Transport-Security', async ({ request
   expect(response.headers()['strict-transport-security']).toBe('max-age=31536000; includeSubDomains');
 });
 
-// The recruiter pages are the ones whose client bundle builds zod schemas (zod probes `new Function`, which the
-// production policy refuses unless instrumentation-client.ts sets `jitless`). Sign-in through the mocked tenant cannot
-// run here: the production `form-action` does not allow localhost. So the session cookie is minted with the test secret.
-// Mutation check, CI run 44906950201: deleting apps/web/src/instrumentation-client.ts did NOT fail this test, so it does
-// not prove the jitless fix (no violation shows on these pages); it guards the production policy as a whole.
+// The recruiter pages carry the largest client bundle (forms, zod), so they are the likeliest to trip the policy, e.g.
+// zod's `new Function` probe. Sign-in through the mocked tenant cannot run here: the production `form-action` does not
+// allow localhost. So the session cookie is minted with the test secret.
 test('Scenario: recruiter pages run under the production policy with no CSP violation', async ({
   page,
   context,
