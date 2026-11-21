@@ -15,6 +15,10 @@ export type CastJob = {
   location: string;
   /** `key` of the hiring owner in `HIRING_OWNERS`. */
   hiringOwner: string;
+  /** Two paragraphs, as the recruiter would paste them; the employer is described, never named. */
+  description: string;
+  /** The UTC date the job was added, on or before its first rubric approval. */
+  addedOn: string;
   stage: 'defining_rubric' | 'collecting_evidence' | 'round_1';
   /** The rubric's "What success means". */
   successStatement: string;
@@ -35,6 +39,31 @@ export type CastCompetency = {
   type: 'mandatory' | 'desirable';
   suggested?: true;
 };
+/** "Evidence expected" for the job types' starter competencies the industry jobs use (catalogue-v1.json). */
+const STARTER_EVIDENCE: Record<string, string> = {
+  'System design in production': 'A service they designed that runs in production, and the trade-offs they made',
+  'Code quality and testing': 'Code they wrote, with its tests and review history',
+  'Reliability and operations': 'Incidents they handled and the monitoring they set up',
+  'Delivery with a team': 'Shipped work, with their part confirmed by a reference',
+  'Customer problem discovery': 'Notes or a write-up showing how they found the real problem on a customer site',
+  'Shipping in the customer environment':
+    'A deployment into a customer system they did not control, and what went wrong',
+  'Integration engineering': 'An integration they built between two systems, with its tests and mappings',
+  'Working with AI systems': 'A feature or workflow where they used a model, and how they checked its output',
+  'Problem framing': 'A brief or design note that turned a business question into a data problem',
+  'Modelling and evaluation': 'A model or analysis with the metrics used to judge it and what they changed',
+  'Data quality and pipelines': 'Pipelines they built, with the checks that catch late or wrong data',
+  Experimentation: 'An experiment they designed, its result, and the decision that followed',
+  'Infrastructure as code': 'Infrastructure they defined in code, with its review and change history',
+  'Incident response': 'Incidents they led, with timelines and the follow-up actions',
+  Observability: 'Dashboards and alerts they set up, and an issue they found with them',
+  'Automation and tooling': 'Tools or scripts they wrote that removed manual work, and who uses them',
+  'Test automation design': 'A test suite they wrote, and what it covers',
+  'Defect finding and reporting': 'Bug reports that led to fixes',
+  'CI and release quality': 'Pipelines and release checks they own',
+  'Test strategy and risk': 'A test plan that shows what they chose not to test, and why',
+};
+
 const row = (
   name: string,
   evidence: string,
@@ -60,14 +89,19 @@ export type CastIndustryJob = {
 };
 
 export const WORKSPACE = {
-  name: 'Demo',
-  company: 'Demo Hiring Co',
+  name: 'Meridian Talent',
+  company: 'Meridian Digital',
   hiringFocus: 'several',
   synthetic: true,
 } as const;
 
-/** The signed-in recruiter of the design; the workspace's admin. */
-export const RECRUITER: CastUser = { key: 'ap', displayName: 'AP', email: 'ap@example.com', synthetic: true };
+/** The signed-in recruiter of the design ("AP", a talent partner); the workspace's admin. */
+export const RECRUITER: CastUser = {
+  key: 'ap',
+  displayName: 'Ayesha Perera',
+  email: 'ap@example.com',
+  synthetic: true,
+};
 
 const owner = (key: string, displayName: string): CastUser => ({
   key,
@@ -77,11 +111,11 @@ const owner = (key: string, displayName: string): CastUser => ({
 });
 
 export const HIRING_OWNERS: CastUser[] = [
-  owner('head.engineering', 'Head of Engineering'),
-  owner('cpo.payments', 'CPO, Payments'),
-  owner('head.quality', 'Head of Quality'),
-  owner('vp.engineering', 'VP Engineering'),
-  owner('design.director', 'Design Director'),
+  owner('head.engineering', 'Hassan Barakat'),
+  owner('cpo.payments', 'Camille Fares'),
+  owner('head.quality', 'Rashid Al Nuaimi'),
+  owner('vp.engineering', 'Vikram Deshmukh'),
+  owner('design.director', 'Dina Sabbagh'),
 ];
 
 // Evidence expected, levels and types from docs/01-design/artboards: Rubric.dc.html (Senior AI Engineer) and
@@ -121,10 +155,18 @@ export const JOBS: CastJob[] = [
     team: 'Engineering',
     location: 'DIFC, Dubai',
     hiringOwner: 'head.engineering',
+    description:
+      'Our merchants ask the same questions every day: why a payout is late, how a refund works, what a fee covers. ' +
+      'We are building an assistant that answers them in English and Arabic, grounded in our own help content and ' +
+      'merchant records, and we need a senior engineer to take it from a working prototype to a service people rely on.\n\n' +
+      'You will own the retrieval and evaluation work, set up the evaluation sets that decide whether a change ships, ' +
+      'and keep latency and cost per request inside agreed limits. You will work with product and support on what the ' +
+      'assistant should refuse to answer. Production Python experience is essential; work on Arabic text is a plus.',
+    addedOn: '2026-11-03',
     stage: 'round_1',
     successStatement:
-      'Within six months, a bilingual assistant that answers merchant questions in English and Arabic is live, ' +
-      'measured against an evaluation set, and running within an agreed cost per request.',
+      'A bilingual assistant that answers merchant questions in English and Arabic is live by the end of the second ' +
+      'quarter, measured against an evaluation set and running within an agreed cost per request.',
     rubric: {
       version: 2,
       approvedOn: '2026-11-12',
@@ -149,9 +191,17 @@ export const JOBS: CastJob[] = [
     team: 'Product',
     location: 'Dubai Internet City',
     hiringOwner: 'cpo.payments',
+    description:
+      'We run a buy-now-pay-later product used at checkout by merchants across the Gulf, and the next release changes ' +
+      'how failed and retried payments are handled. We are hiring a senior product manager to lead that work from ' +
+      'research through launch.\n\n' +
+      'You will talk to merchants and operations teams, turn what you hear into a clear decision, and agree the ' +
+      'success targets with engineering and design before anything is built. We want someone who can show the numbers ' +
+      'from products they shipped and explain the trade-offs they made along the way.',
+    addedOn: '2026-11-02',
     stage: 'round_1',
     successStatement:
-      'Within six months, a payments feature they led is live with merchants, and its adoption and failure rates are ' +
+      'By the next payments release, a feature they led is live with merchants, and its adoption and failure rates are ' +
       'measured against the targets agreed before launch.',
     rubric: {
       version: 1,
@@ -170,10 +220,17 @@ export const JOBS: CastJob[] = [
     team: 'Quality',
     location: 'Dubai, hybrid',
     hiringOwner: 'head.quality',
+    description:
+      'Releases go out every two weeks, and the regression checks still depend on a long manual script. We need a QA ' +
+      'automation engineer to replace it with a suite the team trusts, starting with the checkout and onboarding flows.\n\n' +
+      'You will design the suite, wire it into the pipeline so a failing check blocks the release, and keep it fast ' +
+      'enough that developers run it. You will also write the test plan for each release, including what we choose ' +
+      'not to test and why.',
+    addedOn: '2026-11-06',
     stage: 'collecting_evidence',
     successStatement:
-      'Within six months, every release runs an automated regression suite they own, and escaped defects fall ' +
-      'release on release.',
+      'Every release runs an automated regression suite they own, and escaped defects fall release on release from ' +
+      'their third release onward.',
     rubric: {
       version: 1,
       approvedOn: '2026-11-09',
@@ -191,10 +248,18 @@ export const JOBS: CastJob[] = [
     team: 'Engineering',
     location: 'Riyadh, hybrid',
     hiringOwner: 'vp.engineering',
+    description:
+      'Our ledger and settlement services carry every transaction we process and have outgrown the design they started ' +
+      'with. We are hiring a staff backend engineer to redesign the core of them without a rewrite, one slice at a ' +
+      'time, while they keep running.\n\n' +
+      'You will set the technical direction, review the designs of the engineers around you, and be on the ' +
+      'escalation path when something fails in production. We are looking for someone who has run a service with ' +
+      'real traffic and can describe an incident they handled and what changed afterwards.',
+    addedOn: '2026-11-04',
     stage: 'collecting_evidence',
     successStatement:
-      'Within six months, a core service they designed runs in production within its agreed latency and error ' +
-      'budgets, with the team able to change it safely.',
+      'After two quarters on the team, a core service they designed runs in production within its agreed latency ' +
+      'and error budgets, and the team can change it safely.',
     rubric: {
       version: 1,
       approvedOn: '2026-11-10',
@@ -217,10 +282,18 @@ export const JOBS: CastJob[] = [
     team: 'Design',
     location: 'Abu Dhabi',
     hiringOwner: 'design.director',
+    description:
+      'The way merchants onboard and verify their business is the first thing they see of us, and it is slow and ' +
+      'text-heavy. We are looking for a senior product designer to redesign that flow for English and Arabic, ' +
+      'including right-to-left layouts.\n\n' +
+      'You will run research with merchants, prototype and test options before committing to one, and contribute to ' +
+      'our component library as you go. We care about how you reached a decision more than how the final screens ' +
+      'look, so bring the reasoning behind your work.',
+    addedOn: '2026-11-09',
     stage: 'defining_rubric',
     successStatement:
-      'Within six months, a redesigned core flow they led has shipped in English and Arabic, tested with users ' +
-      'before and after launch.',
+      'Half a year in, a redesigned core flow they led has shipped in English and Arabic, tested with users before ' +
+      'and after launch.',
     rubric: {
       version: 1,
       approvedOn: null,
@@ -244,7 +317,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
     location: 'DIFC, Dubai',
     hiringOwner: 'vp.engineering',
     description:
-      'A card and wallet payments company is hiring a senior backend engineer to build the services that authorise, capture and settle payments for merchants across the region.',
+      'A card and wallet payments company is hiring a senior backend engineer for the team behind its authorisation and settlement services. Merchants across the region depend on them, and a duplicated or lost payment is the failure the team is organised around preventing.\n\nYou will design and run services that authorise, capture and settle payments, and take your turn on call. We are looking for someone who has built retry and idempotency handling for money movement and can explain how they reconciled the results.',
   },
   {
     title: 'Integration Engineer, Health Records',
@@ -255,7 +328,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
     location: 'Abu Dhabi',
     hiringOwner: 'head.engineering',
     description:
-      'A digital health company is hiring an integration engineer to connect hospital and clinic record systems to its platform, on site with each customer.',
+      "Hospitals and clinics sign up for our platform, and then somebody has to make it talk to the record systems they already run. This role is that person: part engineer, part guide, on site with each customer through go-live.\n\nExpect to map data between formats, test with the customer's own staff, and write down what you learned so the next integration is faster. Experience with health data standards helps, as does patience with legacy systems.",
   },
   {
     title: 'Data Engineer, Marketplace',
@@ -266,7 +339,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
     location: 'Riyadh',
     hiringOwner: 'vp.engineering',
     description:
-      'An online marketplace is hiring a data engineer to build the pipelines behind search, recommendations and seller payouts.',
+      'Search ranking, recommendations and seller payouts at a large online marketplace all run on the same data, and it arrives late and untidy more often than anyone likes. We want a data engineer to make it dependable.\n\nYou will build and monitor pipelines, put checks on data quality where it enters, and work with analysts and machine learning engineers who depend on the output. Clear thinking about what a late or wrong number costs the business matters here.',
   },
   {
     title: 'SRE, Core Banking',
@@ -277,7 +350,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
     location: 'Riyadh, hybrid',
     hiringOwner: 'vp.engineering',
     description:
-      'A retail bank is hiring a site reliability engineer to keep its core banking platform and the services around it available and safe to change.',
+      'Customers of a retail bank expect their balance to be right and their app to open at any hour. The platform team is looking for a site reliability engineer to keep the core banking system and its neighbours available, and to make changes to them less frightening.\n\nYou will own monitoring and alerting, lead incident response, and automate the manual steps that cause outages. The bank is regulated, so you will also help show auditors how changes are controlled.',
   },
   {
     title: 'QA Engineer, Payments',
@@ -288,7 +361,7 @@ export const INDUSTRY_JOBS: CastIndustryJob[] = [
     location: 'Bengaluru, hybrid',
     hiringOwner: 'head.quality',
     description:
-      'A payments gateway is hiring a QA engineer to automate the tests that certify card and instant payment flows before each release.',
+      'A payments gateway needs every release certified against card and instant payment flows before it reaches merchants. The current checks take days, and the team wants them to take hours.\n\nAs QA engineer you will automate those checks, keep test data realistic without using real cards, and report defects in a way developers can act on the same day. Knowing how payment schemes and their test environments behave is a strong advantage.',
   },
 ];
 
@@ -309,7 +382,7 @@ export function industryRubric(
   const starters: Competency[] = (catalogue.jobTypes.find((e) => e.key === jobType)?.starterCompetencies ?? []).map(
     (name) => ({
       name,
-      evidenceExpected: '',
+      evidenceExpected: STARTER_EVIDENCE[name] ?? '',
       weightPercent: 25,
       levelNeeded: 3,
       type: 'mandatory',
@@ -346,7 +419,7 @@ const NAMES: [string, string][] = [
   ['Tarek Mansour', 'Riyadh'],
   // Inbox arrivals
   ['Fatima Al Hammadi', 'Dubai'],
-  ['Sneha Iyer', 'Bengaluru'],
+  ['Sneha Kulkarni', 'Bengaluru'],
   ['Anna Schmidt', 'Berlin'],
   ['Mark Reyes', 'Manila'],
   ['Youssef Aziz', 'Cairo'],
@@ -355,7 +428,7 @@ const NAMES: [string, string][] = [
   ['Hala Saleh', 'Amman'],
   ['Imran Qureshi', 'Dubai'],
   ['Kristine Dela Cruz', 'Dubai'],
-  ['Lukas Schmidt', 'Munich'],
+  ['Lukas Brandt', 'Munich'],
   ['Noura Al Ketbi', 'Abu Dhabi'],
 ];
 
@@ -416,7 +489,7 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'LLM systems in production',
-        excerpt: 'used by about 9,000 merchants',
+        excerpt: 'The assistant now handles first-line questions for about 9,000 merchants, in English and Arabic.',
         provenance: 'corroborated',
         strength: 'strong',
         limit: 'The user count comes from her own write-up; the reference confirmed the scale only roughly.',
@@ -436,7 +509,7 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Retrieval and evaluation',
-        excerpt: 'authored 412 of 460 commits',
+        excerpt: "412 of the 460 commits in the repository are mine; the rest are two colleagues' dataset fixes.",
         provenance: 'corroborated',
         strength: 'strong',
         limit: 'Shows the tooling, not how results changed product decisions.',
@@ -454,7 +527,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Python service engineering',
-        excerpt: 'contract tests on every endpoint and blue-green deploy scripts',
+        excerpt:
+          'Every endpoint has a contract test, and deploys go through a blue-green script that rolls back on a failed health check.',
         provenance: 'submitted',
         strength: 'medium',
         limit: 'A personal project. Production code at her employer is private and was not seen.',
@@ -467,7 +541,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Product judgement',
-        excerpt: 'argued against a fully automatic refund bot and shipped suggest-then-confirm instead',
+        excerpt:
+          'I argued against a refund bot that acts alone. We shipped suggestions that a support agent confirms with one click.',
         provenance: 'corroborated',
         strength: 'medium',
         limit: 'One reference, no written decision document.',
@@ -480,7 +555,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Cost and reliability',
-        excerpt: 'cut cost per request by 40%',
+        excerpt:
+          'Reduced cost per request by 40% by caching retrieval results and routing simple questions to a smaller model.',
         excerptSpan: 'page 2',
         provenance: 'claim',
         strength: 'supporting',
@@ -494,7 +570,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Arabic and bilingual NLP',
-        excerpt: 'built a Gulf Arabic evaluation set',
+        excerpt:
+          'I built a 600-question evaluation set in Gulf Arabic, written with native speakers on the support team.',
         provenance: 'awaiting-defence',
         strength: 'claim',
         limit: 'Claim only. Counts as zero in the backed score.',
@@ -507,7 +584,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'LLM systems in production',
-        excerpt: 'KYC document reader in production',
+        excerpt:
+          'The KYC document reader has run in production for 14 months and extracts fields from about 3,000 documents a week.',
         provenance: 'submitted',
         strength: 'strong',
         limit: 'His own write-up, with no second source.',
@@ -525,7 +603,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Retrieval and evaluation',
-        excerpt: 'retrieval evaluation notebook',
+        excerpt:
+          'This notebook compares four retrieval setups on 250 labelled questions and reports recall at 5 for each.',
         provenance: 'submitted',
         strength: 'medium',
         limit: 'Authorship is shared with a colleague.',
@@ -545,7 +624,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Python service engineering',
-        excerpt: 'maintainer of an open-source queue library',
+        excerpt:
+          'I have maintained this open-source queue library since 2023 and review every pull request that touches the scheduler.',
         provenance: 'corroborated',
         strength: 'strong',
         limit: 'Shows library code, not the services he runs at work.',
@@ -558,7 +638,7 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Cost and reliability',
-        excerpt: 'on-call ownership',
+        excerpt: 'Owned the on-call rota for the document service and wrote its runbooks.',
         excerptSpan: 'page 1',
         provenance: 'claim',
         strength: 'supporting',
@@ -572,7 +652,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Product judgement',
-        excerpt: 'decision document supplied',
+        excerpt:
+          'We chose to extract fields first and review exceptions by hand, because a wrong field costs more than a slow one.',
         provenance: 'submitted',
         strength: 'medium',
         limit: 'Authorship unverified.',
@@ -585,7 +666,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'LLM systems in production',
-        excerpt: 'support search prototype with 300 pilot users',
+        excerpt:
+          'The prototype has 300 pilot users across two support teams, and their average search time fell from four minutes to one.',
         provenance: 'submitted',
         strength: 'medium',
         limit: 'A prototype with pilot users; production scale is unproven.',
@@ -605,7 +687,7 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Retrieval and evaluation',
-        excerpt: 'published retrieval benchmark',
+        excerpt: 'The benchmark covers 1,200 queries over five document sets, with scripts to reproduce every result.',
         provenance: 'corroborated',
         strength: 'strong',
         limit: 'Shows benchmark work, not a production system.',
@@ -618,7 +700,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Python service engineering',
-        excerpt: 'service code sample, tests present',
+        excerpt:
+          'The sample is a small ticket-routing service with unit tests, a Dockerfile and a README that explains each endpoint.',
         provenance: 'submitted',
         strength: 'medium',
         limit: 'A sample she chose; the rest of her code was not seen.',
@@ -638,7 +721,8 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Arabic and bilingual NLP',
-        excerpt: 'Arabic OCR pipeline, public and documented',
+        excerpt:
+          'The pipeline reads scanned Arabic forms, corrects common letter confusions, and documents its error rate per document type.',
         provenance: 'corroborated',
         strength: 'strong',
         limit: 'OCR work, not conversational Arabic.',
@@ -651,7 +735,7 @@ export const EVIDENCE: CastEvidence[] = [
     items: [
       {
         competency: 'Product judgement',
-        excerpt: 'described in interview only',
+        excerpt: 'I would pick the smaller feature first, because we could measure it within a month.',
         provenance: 'claim',
         strength: 'supporting',
         limit: 'A claim until a document or a reference supports it.',

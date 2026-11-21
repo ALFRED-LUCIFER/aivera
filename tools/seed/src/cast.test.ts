@@ -55,7 +55,7 @@ describe('the demo cast (AIV-P0-031)', () => {
     }
   });
 
-  it('matches the design: AI Engineer rubric v2 approved by the Head of Engineering on 12 Nov 2026; Designer a draft', () => {
+  it('matches the design: AI Engineer rubric v2 approved by its hiring owner on 12 Nov 2026; Designer a draft', () => {
     const ai = JOBS.find((j) => j.title === 'Senior AI Engineer');
     expect(ai).toMatchObject({ hiringOwner: 'head.engineering', location: 'DIFC, Dubai' });
     expect(ai?.rubric).toMatchObject({ version: 2, approvedOn: '2026-11-12' });
@@ -111,11 +111,12 @@ describe('the industry demo jobs (AIV-P1-065)', () => {
 
   // Every capitalised word is a known place, acronym or the title's own words, so a named employer fails here.
   it('describes each employer generically, never by name', () => {
-    const known = new Set('A An Abu Dhabi Dubai DIFC Riyadh Bengaluru QA SRE'.split(' '));
+    const known = new Set('Abu Dhabi Dubai DIFC Riyadh Bengaluru QA SRE'.split(' '));
     for (const job of INDUSTRY_JOBS) {
       const words = new Set([...known, ...`${job.title} ${job.location}`.split(/[\s,]+/)]);
-      expect([...job.description.matchAll(/\b[A-Z][\w-]*/g)].map(([w]) => w).filter((w) => !words.has(w))).toEqual([]);
-      expect(job.description).toMatch(/^An? [a-z]/);
+      // Only words inside a sentence: the first word of each sentence is capitalised anyway.
+      const inside = [...job.description.matchAll(/(?<=[a-z,] )[A-Z][\w-]*/g)].map(([w]) => w);
+      expect(inside.filter((w) => !words.has(w))).toEqual([]);
     }
   });
 
@@ -131,5 +132,39 @@ describe('the industry demo jobs (AIV-P1-065)', () => {
       e.items.map((i) => i.competency),
     );
     expect(sara.toSorted()).toEqual(competencies?.toSorted());
+  });
+});
+
+const lastWord = (name: string) => name.split(' ').at(-1);
+
+describe('the demo cast reads like a real hiring team (AIV-P1-094)', () => {
+  it('names every person, not a title or initials, and no two share a surname', () => {
+    for (const p of people) expect(p.displayName).toMatch(/^[A-Z][a-z]+( [A-Za-z]+)+$/);
+    for (const { displayName } of [RECRUITER, ...HIRING_OWNERS])
+      expect(displayName).not.toMatch(/\b(Head|VP|CPO|Director|Manager)\b/);
+    const surnames = people.map((p) => lastWord(p.displayName));
+    expect(surnames.filter((n, i) => surnames.indexOf(n) !== i)).toEqual([]);
+  });
+
+  it('gives every job a written description and its own date, and varies how success statements open', () => {
+    for (const job of [...JOBS, ...INDUSTRY_JOBS]) {
+      expect(job.description).not.toMatch(/a synthetic demo job/);
+      expect(job.description.split('\n\n')).toHaveLength(2);
+    }
+    expect(new Set(JOBS.map((j) => j.addedOn)).size).toBe(JOBS.length);
+    for (const job of JOBS)
+      expect(job.addedOn <= (job.supersedes?.approvedOn ?? job.rubric.approvedOn ?? '9')).toBe(true);
+    const openers = JOBS.map((j) => j.successStatement.split(' ').slice(0, 2).join(' '));
+    expect(new Set(openers).size).toBe(JOBS.length);
+  });
+
+  it('fills "Evidence expected" on every rubric row, industry jobs included', () => {
+    for (const job of INDUSTRY_JOBS)
+      for (const c of industryRubric(job, v1))
+        expect(c.evidenceExpected.trim(), `${job.title}: ${c.name}`).not.toBe('');
+  });
+
+  it('keeps evidence excerpts as quotes, not labels', () => {
+    for (const { items } of EVIDENCE) for (const i of items) expect(i.excerpt.split(' ').length).toBeGreaterThan(6);
   });
 });
