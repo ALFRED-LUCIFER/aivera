@@ -19,10 +19,28 @@ const BADGES: Record<Exclude<EntryStatus, 'retired'>, StatusBadgeStatus> = {
   new: 'informational',
 };
 
-/** The entry's status with its icon and word, never colour alone; Retired is a plain word. */
+// Retired: an archive box, neutral ink, beside the word.
+const RETIRED_ICON = (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    aria-hidden="true"
+    className="size-3.5 shrink-0"
+  >
+    <path d="M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3" />
+  </svg>
+);
+
+/** The entry's status with its icon and word, never colour alone (Retired in neutral ink). */
 export function EntryStatusBadge({ status }: { status: EntryStatus }) {
   const t = useTranslations('ops.catalogue.editor.status');
-  return status === 'retired' ? <Chip>{t('retired')}</Chip> : <StatusBadge status={BADGES[status]} label={t(status)} />;
+  return status === 'retired' ? (
+    <Chip icon={RETIRED_ICON}>{t('retired')}</Chip>
+  ) : (
+    <StatusBadge status={BADGES[status]} label={t(status)} />
+  );
 }
 
 /** No draft open: what recruiters see, and "Start a draft". */
@@ -134,7 +152,7 @@ export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: 
                   <span className="font-mono text-meta font-normal text-text-2">{pack.key}</span>
                   <EntryStatusBadge status={pack.status} />
                   <span className="ms-auto text-meta font-normal text-text-2">
-                    {t('competencies', { count: pack.competencies.length })}
+                    {t('competencies', { count: pack.competencies.filter((c) => c.status !== 'retired').length })}
                   </span>
                 </summary>
                 <div className="flex flex-col gap-3 px-2 pt-2 pb-4">

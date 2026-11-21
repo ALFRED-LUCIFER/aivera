@@ -21,7 +21,7 @@ import {
 } from '../services/editCatalogue.ts';
 
 /**
- * Editing the catalogue draft (AIV-P2-045): each save sends the revision the page was loaded with, so a save after
+ * Editing the catalogue draft (AIV-P2-045): each save sends the draft's version and the revision the page was loaded with, so a save after
  * another operator's is refused, never overwrites; after a save the page reloads the draft from the server.
  */
 export function useCatalogueEditorController(draft: DraftModel): EditorViewModel {
@@ -50,7 +50,7 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
       setPending(false);
     }
   };
-  const { revision } = draft;
+  const { version, revision } = draft;
 
   return {
     draft,
@@ -69,16 +69,23 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
       send(() => {
         if (packForm) {
           const { previousKey, key, label } = packForm;
-          return saveDraftPackAction({ revision, previousKey, key: key.trim(), label });
+          return saveDraftPackAction({ version, revision, previousKey, key: key.trim(), label });
         }
-        return saveDraftCompetencyAction({ revision, ...competencyForm });
+        return saveDraftCompetencyAction({ version, revision, ...competencyForm });
       }),
     onClose: () => open(null, null),
     onReload: () => {
       open(null, null);
       router.refresh();
     },
-    onRetire: (packKey, position) => send(() => retireDraftEntryAction({ revision, packKey, position })),
+    onRetire: (packKey, position) =>
+      send(() =>
+        retireDraftEntryAction(
+          position === undefined
+            ? { version, revision, entry: 'pack', packKey }
+            : { version, revision, entry: 'competency', packKey, position },
+        ),
+      ),
   };
 }
 

@@ -17,7 +17,7 @@ import {
 import type { ZodError } from 'zod';
 
 export { draftCompetencySchema, draftPackSchema, retireEntrySchema };
-export type { DraftCompetencyInput, DraftPackInput, EntryStatus, RetireEntryInput } from '@credalent/jobs';
+export type { EntryStatus } from '@credalent/jobs';
 
 export type CompetencyRow = Pick<
   EditorCompetency,
@@ -30,7 +30,13 @@ export type PackRow = {
   removable: boolean;
   competencies: CompetencyRow[];
 };
-export type DraftModel = { revision: number; jobTypes: { key: string; label: string }[]; packs: PackRow[] };
+/** The draft's version and revision name it in every save, so a save on another draft or an older copy is stale. */
+export type DraftModel = {
+  version: number;
+  revision: number;
+  jobTypes: { key: string; label: string }[];
+  packs: PackRow[];
+};
 
 /**
  * The draft as the editor lists it: every pack with its status word, each competency with its own, and whether it is
@@ -40,6 +46,7 @@ export type DraftModel = { revision: number; jobTypes: { key: string; label: str
 export function draftModel({ published, draft }: CatalogueEditorView): DraftModel | null {
   if (!draft) return null;
   return {
+    version: draft.version,
     revision: draft.revision,
     jobTypes: draft.jobTypes.filter((t) => !t.retired).map((t) => ({ key: t.key, label: t.label.en })),
     packs: draft.packs.map((pack) => ({
@@ -74,7 +81,9 @@ export const packFormFor = (pack: PackRow): PackForm => ({
 });
 
 /** The competency form: `position` null adds one to `packKey`. Type is always Desirable, so it is not a field. */
-export type CompetencyForm = Omit<DraftCompetencyInput, 'revision' | 'levelNeeded'> & { levelNeeded: 2 | 3 };
+export type CompetencyForm = Omit<DraftCompetencyInput, 'version' | 'revision' | 'levelNeeded'> & {
+  levelNeeded: 2 | 3;
+};
 export const newCompetencyForm = (packKey: string): CompetencyForm => ({
   packKey,
   position: null,

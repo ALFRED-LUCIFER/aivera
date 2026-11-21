@@ -35,6 +35,7 @@ const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
 
 const claims: DraftCompetencyInput = {
+  version: 2,
   revision: 0,
   packKey: 'insurance',
   position: null,
@@ -104,6 +105,7 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
 
   it('Scenario: Adding a pack and a competency; recruiters still read version 1', async () => {
     await editor.saveDraftPack(PIA, {
+      version: 2,
       revision: 0,
       previousKey: null,
       key: 'insurance',
@@ -132,23 +134,40 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
   });
 
   it('a new pack may change its key, its competencies moving with it; a published key is fixed and never reused', async () => {
-    await editor.saveDraftPack(PIA, { revision: 2, previousKey: 'insurance', key: 'insurtech', label: 'Insurtech' });
+    await editor.saveDraftPack(PIA, {
+      version: 2,
+      revision: 2,
+      previousKey: 'insurance',
+      key: 'insurtech',
+      label: 'Insurtech',
+    });
     expect((await draftPack('insurtech'))?.competencies.map((c) => c.name)).toEqual(['Claims processing systems']);
     expect(await draftPack('insurance')).toBeUndefined();
     await editor.saveDraftPack(PIA, {
+      version: 2,
       revision: 3,
       previousKey: 'insurtech',
       key: 'insurance',
       label: 'Insurance and insurtech',
     });
     expect(
-      await outcome(editor.saveDraftPack(PIA, { revision: 4, previousKey: 'telecom', key: 'telco', label: 'Telecom' })),
+      await outcome(
+        editor.saveDraftPack(PIA, { version: 2, revision: 4, previousKey: 'telecom', key: 'telco', label: 'Telecom' }),
+      ),
     ).toBe('key_fixed');
     expect(
-      await outcome(editor.saveDraftPack(PIA, { revision: 4, previousKey: null, key: 'telecom', label: 'Telecom' })),
+      await outcome(
+        editor.saveDraftPack(PIA, { version: 2, revision: 4, previousKey: null, key: 'telecom', label: 'Telecom' }),
+      ),
     ).toBe('key_taken');
     // A published pack's label may change; its Arabic label, when it has one, is kept.
-    await editor.saveDraftPack(PIA, { revision: 4, previousKey: 'telecom', key: 'telecom', label: 'Telecom and 5G' });
+    await editor.saveDraftPack(PIA, {
+      version: 2,
+      revision: 4,
+      previousKey: 'telecom',
+      key: 'telecom',
+      label: 'Telecom and 5G',
+    });
     expect((await draftPack('telecom'))?.label).toEqual({ en: 'Telecom and 5G' });
     expect(await versionOne()).toEqual(published);
   });
@@ -233,7 +252,9 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
     const ledger = payments?.competencies.find((c) => c.name === 'Ledger and double-entry accounting');
     expect(
       await editor.retireDraftEntry(THEO, {
+        version: 2,
         revision: await revision(),
+        entry: 'competency',
         packKey: 'payments_fintech',
         position: ledger?.position ?? -1,
       }),
@@ -241,6 +262,28 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
     const retired = (await draftPack('payments_fintech'))?.competencies.find((c) => c.position === ledger?.position);
     expect(retired).toMatchObject({ name: 'Ledger and double-entry accounting', retired: true });
     expect((await entries())[0]).toMatchObject({ action: 'catalogue.entry_retired', actorId: THEO });
+    // A retired entry is neither edited nor retired again (and writes no second audit entry).
+    const at = await revision();
+    const retiredLedger = {
+      version: 2,
+      revision: at,
+      entry: 'competency',
+      packKey: 'payments_fintech',
+      position: ledger?.position ?? -1,
+    } as const;
+    expect(await outcome(editor.retireDraftEntry(THEO, retiredLedger))).toBe('entry_retired');
+    expect(
+      await outcome(
+        editor.saveDraftCompetency(THEO, {
+          ...claims,
+          revision: at,
+          packKey: 'payments_fintech',
+          position: ledger?.position ?? -1,
+          core: [],
+        }),
+      ),
+    ).toBe('entry_retired');
+    expect(await revision()).toBe(at);
 
     const [rubric] = (await as((ctx) => jobs.listRubricVersions(ctx, job.id))) ?? [];
     expect(rubric?.competencies).toEqual([expect.objectContaining({ packKey: 'payments_fintech', packVersion: 1 })]);
@@ -249,7 +292,9 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
     const newOne = (await draftPack('insurance'))?.competencies.at(-1);
     expect(
       await editor.retireDraftEntry(PIA, {
+        version: 2,
         revision: await revision(),
+        entry: 'competency',
         packKey: 'insurance',
         position: newOne?.position ?? -1,
       }),
@@ -262,18 +307,33 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
   it('Scenario: A stale save is refused, not overwritten', async () => {
     const opened = await revision();
     await editor.saveDraftPack(THEO, {
+      version: 2,
       revision: opened,
       previousKey: 'insurance',
       key: 'insurance',
       label: 'Insurance',
     });
     const stale = editor.saveDraftPack(PIA, {
+      version: 2,
       revision: opened,
       previousKey: 'insurance',
       key: 'insurance',
       label: 'Insurers',
     });
     await expect(stale).rejects.toMatchObject({ code: 'stale', by: THEO });
+    // A form left open on another draft (say one discarded since) is stale too, even at the same revision number.
+    // SAFETY: mutation check: removed the version comparison in begin() -> this test failed (saved)
+    expect(
+      await outcome(
+        editor.saveDraftPack(PIA, {
+          version: 3,
+          revision: opened + 1,
+          previousKey: 'insurance',
+          key: 'insurance',
+          label: 'Insurers',
+        }),
+      ),
+    ).toBe('stale');
     expect((await draftPack('insurance'))?.label.en).toBe('Insurance');
     expect(await revision()).toBe(opened + 1);
   });
@@ -282,16 +342,25 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
     const failing = createCatalogueEditor(app, { recordPlatform: async () => Promise.reject(new Error('audit down')) });
     const before = await revision();
     await expect(
-      failing.saveDraftPack(PIA, { revision: before, previousKey: null, key: 'gaming', label: 'Gaming' }),
+      failing.saveDraftPack(PIA, { version: 2, revision: before, previousKey: null, key: 'gaming', label: 'Gaming' }),
     ).rejects.toThrow('audit down');
     expect(await draftPack('gaming')).toBeUndefined();
     expect(await revision()).toBe(before);
   });
 
   it('a new pack is removed with its competencies; a published pack is retired', async () => {
-    expect(await editor.retireDraftEntry(PIA, { revision: await revision(), packKey: 'insurance' })).toBe('removed');
+    expect(
+      await editor.retireDraftEntry(PIA, {
+        version: 2,
+        revision: await revision(),
+        entry: 'pack',
+        packKey: 'insurance',
+      }),
+    ).toBe('removed');
     expect(await draftPack('insurance')).toBeUndefined();
-    expect(await editor.retireDraftEntry(PIA, { revision: await revision(), packKey: 'telecom' })).toBe('retired');
+    expect(
+      await editor.retireDraftEntry(PIA, { version: 2, revision: await revision(), entry: 'pack', packKey: 'telecom' }),
+    ).toBe('retired');
     expect((await draftPack('telecom'))?.retired).toBe(true);
     expect(
       await outcome(editor.saveDraftCompetency(PIA, { ...claims, revision: await revision(), packKey: 'telecom' })),

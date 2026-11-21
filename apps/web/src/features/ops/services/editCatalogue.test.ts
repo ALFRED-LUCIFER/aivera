@@ -26,6 +26,7 @@ vi.mock('@/server/operator', () => ({
 }));
 
 const claims = {
+  version: 2,
   revision: 4,
   packKey: 'insurance',
   position: null,
@@ -62,7 +63,9 @@ describe('the catalogue draft server actions', () => {
 
   it('Scenario: A stale save is refused with the name of who changed the draft', async () => {
     saveCataloguePack.mockRejectedValueOnce(new CatalogueError('stale', { by: THEO }));
-    expect(await saveDraftPackAction({ revision: 4, previousKey: 'insurance', key: 'insurance', label: 'x' })).toEqual({
+    expect(
+      await saveDraftPackAction({ version: 2, revision: 4, previousKey: 'insurance', key: 'insurance', label: 'x' }),
+    ).toEqual({
       ok: false,
       error: 'stale',
       by: 'Theo Platform',
@@ -70,7 +73,9 @@ describe('the catalogue draft server actions', () => {
   });
 
   it('input outside the schema is refused before the module, naming the field', async () => {
-    expect(await saveDraftPackAction({ revision: 0, previousKey: null, key: 'Insurance!', label: 'x' })).toEqual({
+    expect(
+      await saveDraftPackAction({ version: 2, revision: 0, previousKey: null, key: 'Insurance!', label: 'x' }),
+    ).toEqual({
       ok: false,
       error: 'invalid',
       field: 'key',
@@ -85,8 +90,8 @@ describe('the catalogue draft server actions', () => {
     operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
     for (const action of [
       () => saveDraftCompetencyAction(claims),
-      () => saveDraftPackAction({ revision: 0, previousKey: null, key: 'insurance', label: 'Insurance' }),
-      () => retireDraftEntryAction({ revision: 0, packKey: 'insurance' }),
+      () => saveDraftPackAction({ version: 2, revision: 0, previousKey: null, key: 'insurance', label: 'Insurance' }),
+      () => retireDraftEntryAction({ version: 2, revision: 0, entry: 'pack', packKey: 'insurance' }),
       () => startCatalogueDraft(),
     ])
       await expect(action()).rejects.toThrow('403');

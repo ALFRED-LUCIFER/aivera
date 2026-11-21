@@ -111,7 +111,15 @@ export function createCatalogueEditor(
   audit: Pick<AuditContract, 'recordPlatform'>,
   now: () => Date = () => new Date(),
 ): CatalogueEditor {
-  return catalogueEditor({ inTransaction: (work) => db.transaction((tx) => work(draftStore(tx, audit))), now });
+  return catalogueEditor({
+    inTransaction: (work) => db.transaction((tx) => work(draftStore(tx, audit))),
+    inSnapshot: (work) =>
+      db.transaction((tx) => work(draftStore(tx, audit)), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      }),
+    now,
+  });
 }
 
 /** "Draft competencies" on the app's AI client (`createAiClient` with the workspaces budget store). */

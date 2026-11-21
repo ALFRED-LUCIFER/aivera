@@ -18,7 +18,7 @@ describe('toggleJobType', () => {
 
 describe('invalidResult', () => {
   it('names the first field the schema refused', () => {
-    const refused = draftPackSchema.safeParse({ revision: 0, previousKey: null, key: 'X', label: '' });
+    const refused = draftPackSchema.safeParse({ version: 2, revision: 0, previousKey: null, key: 'X', label: '' });
     expect(refused.success).toBe(false);
     if (!refused.success) expect(invalidResult(refused.error)).toEqual({ ok: false, error: 'invalid', field: 'key' });
   });

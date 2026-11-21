@@ -1,24 +1,20 @@
 import type { AuditContract } from '@credalent/audit';
 import type { Tx } from '@credalent/db/client';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, getTableColumns, getTableName, sql } from 'drizzle-orm';
 import type { DraftStore } from '../application/catalogue-editor.ts';
 import { readCatalogueVersion } from './catalogue.ts';
-import { cataloguePack, cataloguePackCompetency, catalogueRegionalHint, catalogueVersion } from './schema.ts';
+import {
+  catalogueJobType,
+  cataloguePack,
+  cataloguePackCompetency,
+  catalogueRegion,
+  catalogueRegionalHint,
+  catalogueVersion,
+} from './schema.ts';
 
-// Columns a draft copies from the published version, parents before children (foreign keys). Constants, not input.
-const COPIED: readonly (readonly [string, string])[] = [
-  ['catalogue_job_type', 'key, position, label, evidence, starter_competencies, retired'],
-  ['catalogue_region', 'key, position, label, retired'],
-  ['catalogue_pack', 'key, position, label, retired'],
-  [
-    'catalogue_pack_competency',
-    'pack_key, position, name, meaning, evidence, level_1, level_3, level_5, applies_to, level_needed, type, retired, core',
-  ],
-  [
-    'catalogue_regional_hint',
-    'pack_key, region, position, name, meaning, evidence, level_1, level_3, level_5, applies_to, level_needed, type, retired',
-  ],
-];
+// The tables a draft copies from the published version, parents before children (foreign keys). Every column but
+// `version` is copied, read from the Drizzle schema, so a column a later ticket adds is copied too.
+const COPIED = [catalogueJobType, catalogueRegion, cataloguePack, cataloguePackCompetency, catalogueRegionalHint];
 
 // A pack's children: its competencies and regional hints.
 const children = [cataloguePackCompetency, catalogueRegionalHint] as const;
@@ -57,10 +53,16 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
 
     async createDraft(from, to, operatorId, createdAt) {
       await tx.insert(catalogueVersion).values({ version: to, status: 'draft', createdBy: operatorId, createdAt });
-      for (const [table, columns] of COPIED) {
-        const name = sql`${sql.identifier('jobs')}.${sql.identifier(table)}`;
+      for (const table of COPIED) {
+        const name = sql`${sql.identifier('jobs')}.${sql.identifier(getTableName(table))}`;
+        const columns = sql.join(
+          Object.values(getTableColumns(table))
+            .filter((column) => column.name !== 'version')
+            .map((column) => sql.identifier(column.name)),
+          sql`, `,
+        );
         await tx.execute(
-          sql`insert into ${name} (version, ${sql.raw(columns)}) select ${to}, ${sql.raw(columns)} from ${name} where version = ${from}`,
+          sql`insert into ${name} (version, ${columns}) select ${to}, ${columns} from ${name} where version = ${from}`,
         );
       }
     },
@@ -125,18 +127,19 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       return row.position;
     },
 
-    async retire(version, packKey, position) {
-      await (position === undefined
-        ? tx.update(cataloguePack).set({ retired: true }).where(pack(version, packKey))
+    async retire(version, entry) {
+      await (entry.entry === 'pack'
+        ? tx.update(cataloguePack).set({ retired: true }).where(pack(version, entry.packKey))
         : tx
             .update(cataloguePackCompetency)
             .set({ retired: true })
-            .where(competency(version, packKey, position)));
+            .where(competency(version, entry.packKey, entry.position)));
     },
 
-    async remove(version, packKey, position) {
-      if (position !== undefined) {
-        await tx.delete(cataloguePackCompetency).where(competency(version, packKey, position));
+    async remove(version, entry) {
+      const { packKey } = entry;
+      if (entry.entry === 'competency') {
+        await tx.delete(cataloguePackCompetency).where(competency(version, packKey, entry.position));
         return;
       }
       for (const table of children)

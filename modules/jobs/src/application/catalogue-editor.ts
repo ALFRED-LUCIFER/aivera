@@ -26,24 +26,34 @@ export type DraftStore = {
   /** Inserts the pack at the end, or updates `previousKey`'s label and key, moving its entries with it. */
   putPack(version: number, previousKey: string | null, pack: { key: string; label: string }): Promise<void>;
   /** Inserts the competency at the pack's end (`position` null) or updates it; returns its position. */
-  putCompetency(version: number, input: Omit<DraftCompetencyInput, 'revision'>): Promise<number>;
-  /** Marks the pack, or its competency at `position`, retired. */
-  retire(version: number, packKey: string, position?: number): Promise<void>;
-  /** Deletes the pack with its entries, or its competency at `position`. */
-  remove(version: number, packKey: string, position?: number): Promise<void>;
+  putCompetency(version: number, input: Omit<DraftCompetencyInput, 'revision' | 'version'>): Promise<number>;
+  /** Marks the entry retired. */
+  retire(version: number, entry: DraftEntry): Promise<void>;
+  /** Deletes the entry; a pack with its competencies and hints. */
+  remove(version: number, entry: DraftEntry): Promise<void>;
   recordPlatform(entry: NewPlatformEntry): Promise<void>;
 };
 
+/** A retire or remove target without the save's version and revision. */
+export type DraftEntry =
+  { entry: 'pack'; packKey: string } | { entry: 'competency'; packKey: string; position: number };
+
 export type CatalogueEditorPorts = {
   inTransaction<T>(work: (store: DraftStore) => Promise<T>): Promise<T>;
+  /** One repeatable-read, read-only snapshot, for the page's read. */
+  inSnapshot<T>(work: (store: DraftStore) => Promise<T>): Promise<T>;
   now: () => Date;
 };
 
-/** Locks the draft and refuses a save based on an older revision; returns the draft and what to audit with it. */
-const begin = async (store: DraftStore, revision: number) => {
+/**
+ * Locks the draft and refuses a save made on another draft or an older revision; returns the draft and what to audit
+ * with it.
+ */
+const begin = async (store: DraftStore, { version, revision }: { version: number; revision: number }) => {
   const draft = await store.lockDraft();
   if (!draft) throw new CatalogueError('no_draft');
-  if (draft.revision !== revision) throw new CatalogueError('stale', { by: draft.revisedBy });
+  if (draft.version !== version || draft.revision !== revision)
+    throw new CatalogueError('stale', { by: draft.revisedBy });
   const view = await store.read();
   if (!view.draft) throw new CatalogueError('no_draft');
   return { ...view, draft: view.draft, version: draft.version, next: draft.revision + 1 };
@@ -59,9 +69,9 @@ const audit = (operatorId: string, action: NewPlatformEntry['action'], after: Re
  * `platformOperator()`, never from the form. Every save names the revision it read; a newer one refuses it (`stale`),
  * and the audit entry is the last write of its transaction.
  */
-export function catalogueEditor({ inTransaction, now }: CatalogueEditorPorts) {
+export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEditorPorts) {
   return {
-    getEditor: (): Promise<CatalogueEditorView> => inTransaction((store) => store.read()),
+    getEditor: (): Promise<CatalogueEditorView> => inSnapshot((store) => store.read()),
 
     /** "Start a draft": a copy of the latest published version. At most one draft is open (`draft_open`). */
     openDraft: (operatorId: string): Promise<void> =>
@@ -82,10 +92,11 @@ export function catalogueEditor({ inTransaction, now }: CatalogueEditorPorts) {
     saveDraftPack: async (operatorId: string, raw: DraftPackInput): Promise<void> => {
       const input = draftPackSchema.parse(raw);
       return inTransaction(async (store) => {
-        const { draft, published, version, next } = await begin(store, input.revision);
+        const { draft, published, version, next } = await begin(store, input);
         const { previousKey, key } = input;
-        if (previousKey !== null && !draft.packs.some((p) => p.key === previousKey))
-          throw new CatalogueError('not_found');
+        const before = previousKey === null ? null : draft.packs.find((p) => p.key === previousKey);
+        if (before === undefined) throw new CatalogueError('not_found');
+        if (before?.retired) throw new CatalogueError('entry_retired');
         if (previousKey !== key) {
           if (previousKey !== null && !isNewInDraft(published, previousKey))
             throw new CatalogueError('key_fixed', { field: 'key' });
@@ -107,15 +118,17 @@ export function catalogueEditor({ inTransaction, now }: CatalogueEditorPorts) {
 
     /** Adds or edits a pack competency after the fairness check (ADR-013 point 11) and the core limit. */
     saveDraftCompetency: async (operatorId: string, raw: DraftCompetencyInput): Promise<void> => {
-      const { revision, ...input } = draftCompetencySchema.parse(raw);
+      const parsed = draftCompetencySchema.parse(raw);
+      const { revision: _revision, version: _version, ...input } = parsed;
       assertFairCompetency(input);
       return inTransaction(async (store) => {
-        const { draft, version, next } = await begin(store, revision);
+        const { draft, version, next } = await begin(store, parsed);
         const pack = draft.packs.find((p) => p.key === input.packKey);
-        if (!pack || (input.position !== null && !pack.competencies.some((c) => c.position === input.position)))
-          throw new CatalogueError('not_found');
+        const before = pack?.competencies.find((c) => c.position === input.position);
+        if (!pack || (input.position !== null && !before)) throw new CatalogueError('not_found');
         if (pack.retired) throw new CatalogueError('pack_retired');
-        assertCompetencyFits(draft, pack, { revision, ...input });
+        if (before?.retired) throw new CatalogueError('entry_retired');
+        assertCompetencyFits(draft, pack, parsed);
         await store.touch(version, operatorId);
         const position = await store.putCompetency(version, input);
         await store.recordPlatform(
@@ -135,22 +148,23 @@ export function catalogueEditor({ inTransaction, now }: CatalogueEditorPorts) {
      * Returns which it did.
      */
     retireDraftEntry: async (operatorId: string, raw: RetireEntryInput): Promise<'retired' | 'removed'> => {
-      const { revision, packKey, position } = retireEntrySchema.parse(raw);
+      const parsed = retireEntrySchema.parse(raw);
+      const { revision: _revision, version: _version, ...entry } = parsed;
+      const position = entry.entry === 'competency' ? entry.position : undefined;
       return inTransaction(async (store) => {
-        const { draft, published, version, next } = await begin(store, revision);
-        const pack = draft.packs.find((p) => p.key === packKey);
-        if (!pack || (position !== undefined && !pack.competencies.some((c) => c.position === position)))
-          throw new CatalogueError('not_found');
-        const removed = isNewInDraft(published, packKey, position);
+        const { draft, published, version, next } = await begin(store, parsed);
+        const pack = draft.packs.find((p) => p.key === entry.packKey);
+        const target = position === undefined ? pack : pack?.competencies.find((c) => c.position === position);
+        if (!target) throw new CatalogueError('not_found');
+        if (target.retired) throw new CatalogueError('entry_retired');
+        const removed = isNewInDraft(published, entry.packKey, position);
         await store.touch(version, operatorId);
-        await (removed ? store.remove(version, packKey, position) : store.retire(version, packKey, position));
+        await (removed ? store.remove(version, entry) : store.retire(version, entry));
         await store.recordPlatform(
           audit(operatorId, removed ? 'catalogue.entry_removed' : 'catalogue.entry_retired', {
             catalogueVersion: version,
             revision: next,
-            entry: position === undefined ? 'pack' : 'competency',
-            packKey,
-            ...(position === undefined ? {} : { position }),
+            ...entry,
           }),
         );
         return removed ? 'removed' : 'retired';
@@ -158,5 +172,3 @@ export function catalogueEditor({ inTransaction, now }: CatalogueEditorPorts) {
     },
   };
 }
-
-export type CatalogueEditorUseCases = ReturnType<typeof catalogueEditor>;

@@ -3,7 +3,10 @@
 import { z } from 'zod';
 import { CATALOGUE_KEY, type CatalogueCompetency, type CataloguePack, type CatalogueVersion } from './catalogue.ts';
 
-/** A pack competency as the editor sees it: its position in the pack, which a draft copies, so it names the entry. */
+/**
+ * A pack competency as the editor sees it: its position in the pack, which a draft copies, so it names the entry.
+ * shortcut: position is both order and identity; a reorder feature must add a stable entry id first.
+ */
 export type EditorCompetency = CatalogueCompetency & { readonly position: number };
 export type EditorPack = Omit<CataloguePack, 'competencies'> & { readonly competencies: readonly EditorCompetency[] };
 export type EditorVersion = Omit<CatalogueVersion, 'packs'> & { readonly packs: readonly EditorPack[] };
@@ -54,11 +57,13 @@ const key = z
   .regex(CATALOGUE_KEY)
   .refine((k) => !RESERVED_KEYS.includes(k));
 const filled = (max: number) => z.string().trim().min(1).max(max);
-const revision = z.int().min(0);
+// Every save names the draft (its version) and the revision it read: a save made on a discarded draft, or before
+// another operator's save, is refused as stale.
+const base = { version: z.int().min(2), revision: z.int().min(0) };
 
 /** Add a pack (`previousKey` null) or edit one: its key (only while it is new in the draft) and English label. */
 export const draftPackSchema = z.strictObject({
-  revision,
+  ...base,
   previousKey: key.nullable(),
   key,
   label: filled(120),
@@ -70,7 +75,7 @@ export type DraftPackInput = z.infer<typeof draftPackSchema>;
  * type is always desirable and not part of the input (ADR-013 point 11).
  */
 export const draftCompetencySchema = z.strictObject({
-  revision,
+  ...base,
   packKey: key,
   position: z.int().min(0).nullable(),
   name: filled(200),
@@ -83,8 +88,14 @@ export const draftCompetencySchema = z.strictObject({
 });
 export type DraftCompetencyInput = z.infer<typeof draftCompetencySchema>;
 
-/** Retire an entry (a pack, or with `position` one of its competencies), or remove it when it is new in the draft. */
-export const retireEntrySchema = z.strictObject({ revision, packKey: key, position: z.int().min(0).optional() });
+/**
+ * Retire an entry, or remove it when it is new in the draft. One shape per entry kind; regional hints (AIV-P2-046) and
+ * job types (AIV-P2-047) add theirs.
+ */
+export const retireEntrySchema = z.discriminatedUnion('entry', [
+  z.strictObject({ ...base, entry: z.literal('pack'), packKey: key }),
+  z.strictObject({ ...base, entry: z.literal('competency'), packKey: key, position: z.int().min(0) }),
+]);
 export type RetireEntryInput = z.infer<typeof retireEntrySchema>;
 
 /** Why a save was refused; `field` is the form field the message goes under. Never the refused text (AGENTS.md 1.2). */
@@ -96,6 +107,7 @@ export const CATALOGUE_ERROR_CODES = [
   'key_taken',
   'key_fixed',
   'pack_retired',
+  'entry_retired',
   'job_type',
   'core_not_applied',
   'core_limit',
@@ -106,6 +118,7 @@ export const CATALOGUE_ERROR_CODES = [
 export type CatalogueErrorCode = (typeof CATALOGUE_ERROR_CODES)[number];
 export type CatalogueField = 'key' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core';
 
+/** A refusal of a draft save. The message names the code only, never what was typed. */
 export class CatalogueError extends Error {
   readonly code: CatalogueErrorCode;
   readonly field: CatalogueField | undefined;
@@ -192,7 +205,8 @@ const EMPLOYERS = [
 const RULES: readonly (readonly [RegExp, 'employer' | 'origin'])[] = [
   [/\bworked at\b/i, 'employer'],
   [/\byears at\b/i, 'employer'],
-  [/(?:^|[^a-z])ex-[a-z]/i, 'employer'],
+  // "ex-" only before a listed employer: "ex-dividend" and "ex-ante" are finance skills.
+  [new RegExp(`(?:^|[^a-z])ex-(?:${EMPLOYERS})\\b`, 'i'), 'employer'],
   [new RegExp(`\\b(?:${EMPLOYERS})\\b`, 'i'), 'employer'],
   [/\bnationals\b/i, 'origin'],
   [new RegExp(`\\b(?:${COUNTRIES}) nationals?\\b`, 'i'), 'origin'],

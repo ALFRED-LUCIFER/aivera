@@ -17,6 +17,7 @@ import {
 // AIV-P2-045: the rules a catalogue draft save checks (ADR-013 points 5, 6 and 11). Synthetic catalogue text only.
 
 const competency = {
+  version: 2,
   revision: 4,
   packKey: 'insurance',
   position: null,
@@ -77,6 +78,8 @@ describe('Scenario Outline: Fairness is enforced on save', () => {
     'Cloud-native network functions',
     'Reads the payment funnel from checkout to authorisation',
     'Explains index rebalancing',
+    'Ex-dividend date handling',
+    'Ex-ante and ex-post risk reconciliation',
   ])('the near-miss "%s" passes', (text) => {
     expect(fairnessRule(text)).toBeNull();
   });
@@ -172,7 +175,7 @@ describe('entry status and what can be removed', () => {
 
 describe('input schemas', () => {
   it('refuse a reserved or malformed key, and a type or mandatory flag', () => {
-    const pack = { revision: 0, previousKey: null, key: 'insurance', label: 'Insurance and insurtech' };
+    const pack = { version: 2, revision: 0, previousKey: null, key: 'insurance', label: 'Insurance and insurtech' };
     expect(draftPackSchema.safeParse(pack).success).toBe(true);
     for (const key of ['none', 'other', 'Insurance', 'in', '1insurance'])
       expect(draftPackSchema.safeParse({ ...pack, key }).success, key).toBe(false);
