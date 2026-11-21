@@ -1,0 +1,106 @@
+# AIV-P1-082: a full-length data description with a responsibilities list and a requirements list, the shape that
+# failed on Azure dev (synthetic). Relative weights over 100 in total; the jobs module scales them to 100.
+id: data-engineer-long
+input:
+  jobType: data_ml
+  title: 'Data Engineer, Analytics Platform'
+sources:
+  - id: S1
+    kind: job_description
+    text: |
+      Our analytics platform gives store managers daily sales and stock reports.
+      Responsibilities:
+      - Build and run batch pipelines in Python and SQL that load sales data into our warehouse every night.
+      - Model the warehouse tables that analysts and dashboards query.
+      - Add data quality checks so a broken load is caught before a report goes out.
+      - Move our slowest pipelines to streaming so stock levels update within minutes.
+      - Work with analysts to turn their questions into tables they can use.
+      Requirements:
+      - Strong SQL and Python.
+      - Experience with Airflow or a similar scheduler.
+      - Clear written documentation of the tables you own.
+expected:
+  match:
+    competencies[*].name:
+      - Batch data pipelines
+      - Data modelling
+      - Data quality
+      - Streaming pipelines
+      - Working with analysts
+      - Pipeline orchestration
+      - Data documentation
+    suggestions[*].name:
+      - Retail data knowledge
+recorded:
+  output:
+    competencies:
+      - name: Batch data pipelines
+        evidenceExpected: Nightly pipelines they built in Python and SQL, and how they kept them on time
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Build and run batch pipelines in Python and SQL that load sales data into our warehouse every night.
+          - sourceId: S1
+            quote: Strong SQL and Python.
+      - name: Data modelling
+        evidenceExpected: Warehouse tables they designed that analysts and dashboards query
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Model the warehouse tables that analysts and dashboards query.
+      - name: Data quality
+        evidenceExpected: Checks they added that caught a broken load before anyone used it
+        weight: 20
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Add data quality checks so a broken load is caught before a report goes out.
+      - name: Streaming pipelines
+        evidenceExpected: A batch pipeline they moved to streaming, and the latency before and after
+        weight: 20
+        level: 3
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: Move our slowest pipelines to streaming so stock levels update within minutes.
+      - name: Working with analysts
+        evidenceExpected: Tables they built from an analyst's question, and how the analyst used them
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Work with analysts to turn their questions into tables they can use.
+      - name: Pipeline orchestration
+        evidenceExpected: Airflow or similar schedules they wrote, with retries and dependencies
+        weight: 15
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Experience with Airflow or a similar scheduler.
+      - name: Data documentation
+        evidenceExpected: Written documentation of tables they owned that others relied on
+        weight: 5
+        level: 2
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: Clear written documentation of the tables you own.
+    refused: false
+    reason: null
+    suggestions:
+      - name: Retail data knowledge
+        evidenceExpected: Sales or stock data they worked with, such as returns, promotions or stock counts
+        weight: 10
+        level: 2
+        type: desirable
+        why: The reports are about store sales and stock, but the description asks for no knowledge of retail data.
+        citations:
+          - sourceId: S1
+            quote: Our analytics platform gives store managers daily sales and stock reports.
