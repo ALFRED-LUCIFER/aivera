@@ -35,8 +35,9 @@ export function useCatalogueEvalController(
       );
       setPending(false);
       if (!result.ok) setError(result);
-      // A refusal because a run is in progress reloads too, so the page shows that run.
-      if (result.ok || result.error === 'eval_running') router.refresh();
+      // A success already carries the new page (the action revalidates it); a refusal because a run is in progress
+      // reloads, so the page shows that run.
+      if (!result.ok && result.error === 'eval_running') router.refresh();
     },
   };
 }

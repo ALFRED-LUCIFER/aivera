@@ -49,10 +49,9 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
     setPending(true);
     try {
       const result = await save();
-      if (result.ok) {
-        open(null, null);
-        router.refresh();
-      } else setError(result);
+      // A success already carries the new page: the action revalidates it.
+      if (result.ok) open(null, null);
+      else setError(result);
     } catch {
       setError({ ok: false, error: 'failed' });
     } finally {
@@ -119,7 +118,6 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
 
 /** "Start a draft" (AIV-P2-045): a copy of the published version, then the page shows the editor. */
 export function useStartDraftController() {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState<Refusal | null>(null);
   return {
@@ -129,8 +127,7 @@ export function useStartDraftController() {
       setPending(true);
       const result = await startCatalogueDraft().catch((): CatalogueSaveResult => ({ ok: false, error: 'failed' }));
       setPending(false);
-      if (result.ok) router.refresh();
-      else setFailed(result);
+      if (!result.ok) setFailed(result);
     },
   };
 }
