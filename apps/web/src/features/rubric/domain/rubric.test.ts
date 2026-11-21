@@ -66,8 +66,21 @@ describe('Rubric page view (AIV-P1-012)', () => {
       history: [],
       edit: null,
       review: null,
+      approvable: null,
       approvedCompetencies: 0,
     });
+  });
+
+  // ADR-014: the open draft or returned version is what a recruiter approves; a version sent for approval is `review`.
+  it('the open draft or returned version is approvable; a version awaiting approval is the review instead', () => {
+    const draft = rubricView([version(1, 'draft', { id: 'v1' })], new Map());
+    expect(draft.approvable?.versionId).toBe('v1');
+    expect(draft.review).toBeNull();
+    expect(rubricView([version(2, 'returned', { id: 'v2' })], new Map()).approvable?.versionId).toBe('v2');
+    const sent = rubricView([version(1, 'awaiting_approval', { id: 'v1' })], new Map());
+    expect(sent.approvable).toBeNull();
+    expect(sent.review?.versionId).toBe('v1');
+    expect(rubricView([version(1, 'approved')], new Map()).approvable).toBeNull();
   });
 
   it('edit mode opens the open version, so a second editor resumes it, or else the approved one (AIV-P1-013)', () => {

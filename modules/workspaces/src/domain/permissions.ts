@@ -19,7 +19,8 @@ export const PERMISSIONS = {
   'job.assign_owner': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   // Inviting, revoking invitations and removing members (AIV-P1-003).
   'member.invite': { scope: 'workspace', roles: ['admin'] },
-  'rubric.approve': { scope: 'job', roles: ['admin', 'hiring_owner'] },
+  // Recruiters approve their jobs' rubrics; the hiring owner only what was sent to them (ADR-014, AIV-P1-083).
+  'rubric.approve': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
   // Moving a job between its five stages (AIV-P1-067); the jobs module refuses leaving "defining rubric" unapproved.
   'job.change_stage': { scope: 'job', roles: ['admin', 'recruiter'] },
   'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },

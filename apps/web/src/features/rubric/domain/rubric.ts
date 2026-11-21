@@ -36,6 +36,8 @@ export type RubricView = {
   edit: { base: RubricBase; successStatement: string; competencies: Competency[] } | null;
   /** The version awaiting approval, or null when none is. */
   review: ReviewView | null;
+  /** The open draft or returned version, which an admin or recruiter may approve directly (ADR-014), or null. */
+  approvable: ReviewView | null;
   /** How many competencies the approved version has: what the candidate site lists (AIV-P1-015). */
   approvedCompetencies: number;
 };
@@ -162,20 +164,19 @@ export function rubricView(versions: Rubric[], names: ReadonlyMap<string, string
     (v) => v.status === 'draft' || v.status === 'awaiting_approval' || v.status === 'returned',
   );
   const editable = open ?? approved;
-  const awaiting = open?.status === 'awaiting_approval' ? open : null;
+  const reviewOf = (v: Rubric): ReviewView => ({
+    versionId: v.id,
+    revision: v.revision,
+    version: v.version,
+    changeNote: v.changeNote,
+    approvedVersion: approved?.version ?? null,
+    successStatement: v.successStatement,
+    competencies: v.competencies,
+  });
   return {
     approvedCompetencies: approved?.competencies.length ?? 0,
-    review: awaiting
-      ? {
-          versionId: awaiting.id,
-          revision: awaiting.revision,
-          version: awaiting.version,
-          changeNote: awaiting.changeNote,
-          approvedVersion: approved?.version ?? null,
-          successStatement: awaiting.successStatement,
-          competencies: awaiting.competencies,
-        }
-      : null,
+    review: open?.status === 'awaiting_approval' ? reviewOf(open) : null,
+    approvable: open && open.status !== 'awaiting_approval' ? reviewOf(open) : null,
     edit: editable
       ? {
           base: { versionId: editable.id, revision: editable.revision },

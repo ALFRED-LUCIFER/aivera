@@ -39,7 +39,7 @@ const decision = (more: Partial<RubricDecisionView> = {}): RubricDecisionView =>
 const show = (props: Partial<Parameters<typeof RubricDecision>[0]> = {}) =>
   render(
     <IntlProvider {...intl}>
-      <RubricDecision review={review} decision={decision()} outdatedLink={false} actingAsAdmin={false} {...props} />
+      <RubricDecision review={review} decision={decision()} outdatedLink={false} canReturn {...props} />
     </IntlProvider>,
   );
 
@@ -87,9 +87,20 @@ describe('Scenario: Approving an outdated version is refused', () => {
   });
 });
 
-describe('An admin who is not the hiring owner', () => {
-  it("is told the decision is recorded as made on the owner's behalf", () => {
-    show({ actingAsAdmin: true });
-    expect(screen.getByText(/As an admin you decide on their behalf/)).toBeTruthy();
+describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {
+  it('offers "Approve version 2" and no "Return with a note", with no on-behalf note', async () => {
+    const d = decision();
+    show({ decision: d, canReturn: false });
+    expect(screen.getByText('Version 2 is ready for you to approve')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Return with a note' })).toBeNull();
+    expect(screen.queryByText(/on their behalf/)).toBeNull();
+    expect(screen.getByText(/To ask the hiring owner first/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Approve version 2' }));
+    expect(d.onApprove).toHaveBeenCalledOnce();
+  });
+
+  it('a version sent for approval can still be returned', () => {
+    show();
+    expect(screen.getByRole('button', { name: 'Return with a note' })).toBeTruthy();
   });
 });

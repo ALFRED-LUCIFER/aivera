@@ -488,7 +488,7 @@
     "keepEditing": "Keep editing",
     "close": "Close",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
-    "savedNext": "Next: the hiring owner approves the rubric. Candidates are assessed only after that.",
+    "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
     "backToJobs": "Back to Jobs",
     "forbidden": "You do not have access to add jobs.",
     "errors": {
@@ -1132,11 +1132,12 @@
     "returnNote": "Returned with a note: “{note}”",
     "decide": {
       "title": "Version {version} is waiting for your approval",
+      "titleDraft": "Version {version} is ready for you to approve",
       "doneTitle": "Your approval",
       "intro": "Review the competencies, then approve this version or return it with a note. Nothing is assessed against it until you approve.",
+      "introDraft": "Review the competencies, then approve this version. Nothing is assessed against it until you approve. To ask the hiring owner first, edit the rubric and send it to them instead.",
       "changed": "What changed since version {version}",
       "changedNone": "What changed",
-      "actingAsAdmin": "You are not this job's hiring owner. As an admin you decide on their behalf, and the audit log records it.",
       "approve": "Approve version {version}",
       "return": "Return with a note",
       "noteLabel": "Note for the recruiter",
