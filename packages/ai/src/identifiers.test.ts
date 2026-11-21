@@ -296,7 +296,7 @@ describe('Feature: Protected traits never reach the model', () => {
   });
 
   // SAFETY: mutation check: dropped NEXT_LINE from the labelled-trait alternative -> the four bare-label rows failed;
-  // dropped its Photo lookbehind -> the "Photo:\nBuilt payment APIs" row failed
+  // dropped its Photo lookbehind -> the "Photo:\nBuilt payment APIs" row failed; dropped its \r? -> the "\r\n" row failed
   it.each([
     ['Nationality: Egyptian · Skills: Python', '[REMOVED] · Skills: Python'],
     ['Citizenship: Jordanian', '[REMOVED]'],
@@ -323,6 +323,7 @@ describe('Feature: Protected traits never reach the model', () => {
     ['Photo:\nBuilt payment APIs in Python', '[REMOVED]\nBuilt payment APIs in Python'],
     ['Nationality:\nEgyptian\nSkills: Go', '[REMOVED]\nSkills: Go'],
     ['Age:\n34', '[REMOVED]'],
+    ['Nationality:\r\nEgyptian', '[REMOVED]'],
     ['Date of birth:\n14 March 1990 · Dubai', '[REMOVED] · Dubai'],
     ['الجنسية:\nمصرية', '[REMOVED]'],
     ['Nationality:\nSkills: Python', '[REMOVED]\nSkills: Python'],
@@ -377,6 +378,21 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(check('Built an Arabic OCR pipeline')).toBe('Built an Arabic OCR pipeline');
     expect(() => check('[REMOVED]')).toThrow(InvalidCitation);
     expect(() => check('[REMOVED] Built an Arabic OCR')).toThrow(InvalidCitation);
+  });
+
+  // SAFETY: mutation check: dropped the letter boundaries from the name check in arabicNameOf -> both rows failed
+  it.each([
+    ['Quality assurance lead\nمهندس برمجيات أول', 'Ali Hassan'],
+    ['Khalilov Systems\nمهندس برمجيات أول', 'Omar Khalil'],
+  ])('keeps an Arabic job title next to a word that only contains a name part: %s', (text, name) =>
+    expect(cvText(text, 'cv', [name])).toBe(text),
+  );
+
+  // SAFETY: mutation check: dropped the (?<![\w.%+-]) lookbehind from EMAIL -> this test timed out (quadratic scan)
+  it('scans a long unbroken run once, so it finishes', () => {
+    const run = 'a'.repeat(120_000);
+    expect(cvText(run)).toBe(run);
+    expect(cvText('Write to a+b@example.com', 'document')).toBe('Write to [EMAIL_1]');
   });
 
   it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {

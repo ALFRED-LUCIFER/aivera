@@ -29,7 +29,8 @@ type Cut = { at: number; length: number; from: number; fromLength: number; trait
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
 const letter = String.raw`(?:\p{L}|\p{M}|\p{N}|_)`;
-const EMAIL = String.raw`[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
+// Starts only at the start of a run, so a long run with no @ is scanned once, not from every position.
+const EMAIL = String.raw`(?<![\w.%+-])[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
 const END = String.raw`(?![\w]|[.,]\d)`;
@@ -86,7 +87,7 @@ const GAP = String.raw`[ \t\u200e\u200f]*`;
 const FIELD = String.raw`(?:^|[\n·•|;,،:(\[])${GAP}`;
 const SEPARATOR = String.raw`(?:[ \t]*[:：]|[ \t]+[-–][ \t]|\t)`;
 const VALUE = String.raw`[^\n·•|;]*?(?=[ \t]*(?:$|[\n·•|;]|[,،][ \t]*\p{L}[\p{L}\p{M} .]{0,29}[:：]))`;
-const NEXT_LINE = String.raw`(?<!(?:photo(?:graph)?|الصورة)${SEPARATOR})${GAP}\n${GAP}[^\n·•|;:：]{1,40}?(?=[ \t]*(?:$|[\n·•|;]))`;
+const NEXT_LINE = String.raw`(?<!(?:photo(?:graph)?|الصورة)${SEPARATOR})${GAP}\r?\n${GAP}[^\n·•|;:：]{1,40}?(?=[ \t]*(?:$|[\n·•|;]))`;
 // shortcut: unlabelled traits are caught only as "34 years old", "34-year-old", "aged 34", "Photo attached" and
 // "[photo ...]"; a "20-year-old codebase" is removed too. Widen from pilot CVs if another shape reaches a prompt.
 const TRAIT = [
@@ -122,10 +123,9 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   const alone = parts.filter((part) => !PARTICLES.has(part.toLowerCase()));
   const word = (list: string[]) => `(?:${list.map(escape).join('|')})(?!${letter})`;
   const particles = alone.length ? parts.filter((part) => !alone.includes(part)) : [];
-  // Without its letter boundaries: each `letter` class costs ~0.15 ms to compile, so the Arabic-name line check
-  // (which only asks whether an adjacent line holds the name, and errs towards removing) uses this.
-  const ownParts = parts.length ? `(?:${(alone.length ? alone : parts).map(escape).join('|')})` : '';
   const own = word(alone.length ? alone : parts);
+  // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
+  const ownWord = parts.length ? `(?<!${letter})${own}` : '';
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's") is one placeholder; it starts and ends on a non-particle.
   const name = parts.length ? `(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
@@ -141,7 +141,7 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
     `(?<phone>${DOTTED}|${PHONE})`,
     ...(traits ? [`(?<trait>${TRAIT})`] : []),
-    ...(cv ? [`(?<arabicName>${arabicNameOf(ownParts)})`] : []),
+    ...(cv ? [`(?<arabicName>${arabicNameOf(ownWord)})`] : []),
     ...(name ? [`(?<name>${name})`] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
