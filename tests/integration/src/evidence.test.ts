@@ -169,6 +169,17 @@ describe('Migrations', () => {
       })),
     );
   });
+
+  // AIV-P2-061: what `\d evidence.source` and `\d evidence.comparison` list.
+  it("indexes a candidate's sources and a comparison's items", async () => {
+    const indexes = await admin.execute<{ indexdef: string }>(sql`
+      select indexdef from pg_indexes
+      where schemaname = 'evidence' and indexname in ('source_candidate_idx', 'comparison_items_idx') order by indexname`);
+    expect(indexes.map((i) => i.indexdef)).toEqual([
+      'CREATE INDEX comparison_items_idx ON evidence.comparison USING btree (item_id, other_item_id)',
+      'CREATE INDEX source_candidate_idx ON evidence.source USING btree (workspace_id, candidate_id)',
+    ]);
+  });
 });
 
 describe('Scenario: Recording a repository as evidence', () => {

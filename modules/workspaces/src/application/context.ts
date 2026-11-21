@@ -7,7 +7,7 @@ import {
   type Action,
   type JobResource,
 } from '../domain/permissions.ts';
-import type { Role, Workspace, WorkspaceStatus } from '../domain/workspace.ts';
+import type { Member, Role, Workspace, WorkspaceStatus } from '../domain/workspace.ts';
 import type { WorkspaceStore } from './workspaces.ts';
 
 /**
@@ -64,6 +64,9 @@ export function contextUseCases<Tx>({ inWorkspace, storeFor, grants, active }: C
     /** The context's workspace, read in its checked transaction. */
     getWorkspace: (ctx: WorkspaceContext<Tx>): Promise<Workspace | null> =>
       storeFor(ctx.tx).findWorkspace(ctx.workspaceId),
+
+    /** The context's members, read in its transaction, so no second pooled connection is taken (AIV-P2-061). */
+    listMembers: (ctx: WorkspaceContext<Tx>): Promise<Member[]> => storeFor(ctx.tx).listMembers(ctx.workspaceId),
 
     /**
      * Throws `ForbiddenError` unless the context's role, and for job-scoped roles a job grant, allows `action`, and

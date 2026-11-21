@@ -22,14 +22,12 @@ export async function newJobOptions(ctx: WorkspaceContext): Promise<NewJobOption
   await workspaces.authorize(ctx, 'job.create');
   const workspace = await workspaces.getWorkspace(ctx);
   if (!workspace) throw new Error('active workspace not found');
-  const owners = (await workspaces.listMembers(ctx.workspaceId)).filter(
-    (m) => m.role === 'hiring_owner' && m.status === 'active',
-  );
+  const owners = (await workspaces.listMembers(ctx)).filter((m) => m.role === 'hiring_owner' && m.status === 'active');
   // shortcut: one identity read per hiring owner; a batch read in identity when a workspace has more than a handful.
   const hiringOwners = (
     await Promise.all(
       owners.map(async ({ userId }) => {
-        const user = await getIdentity().getUser(userId);
+        const user = await getIdentity().getUser(userId, ctx);
         return user && { value: userId, label: user.displayName ?? user.email };
       }),
     )

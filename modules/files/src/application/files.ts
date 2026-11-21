@@ -33,7 +33,9 @@ export type FileStore = {
   insert(file: FileRecord): Promise<void>;
   /** `forUpdate` locks the row to the transaction's end, so two scan results for one file settle it once. */
   find(owner: Owner, id: string, forUpdate?: boolean): Promise<FileRecord | null>;
+  /** Filters by owner too, so a file id from elsewhere changes nothing. */
   settle(
+    owner: Owner,
     id: string,
     change: Pick<FileRecord, 'status'> & Partial<Pick<FileRecord, 'sha256' | 'blobPath'>>,
   ): Promise<void>;
@@ -90,7 +92,7 @@ export function filesUseCases(p: Ports) {
    * final container, hashed, `clean`. Infected, or not what was asked for: deleted, `infected` or `rejected`. Settling
    * an already settled file changes nothing, so a redelivered scan result is harmless.
    */
-  async function settle(tx: Tx, file: FileRecord, verdict: ScanVerdict): Promise<FileStatus> {
+  async function settle(tx: Tx, owner: Owner, file: FileRecord, verdict: ScanVerdict): Promise<FileStatus> {
     if (file.status !== 'pending') return file.status;
     const store = p.storeFor(tx);
     const quarantine = file.blobPath;
@@ -105,7 +107,7 @@ export function filesUseCases(p: Ports) {
       // magic bytes (AIV-P1-025); sniff here too when other purposes are read by the server.
       if (blob?.data && blob.size === file.sizeBytes && blob.contentType === file.contentType) {
         await p.blobs.write(final, blob.data, file.contentType);
-        await store.settle(file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });
+        await store.settle(owner, file.id, { status: 'clean', sha256: sha256(blob.data), blobPath: final });
         await publish('clean');
         await p.blobs.delete(quarantine);
         return 'clean';
@@ -116,7 +118,7 @@ export function filesUseCases(p: Ports) {
     // worker does not have; audit it when the audit module takes a system actor (AIV-P5-E03, #34)
     await p.blobs.delete(quarantine);
     const status = verdict === 'infected' ? 'infected' : 'rejected';
-    await store.settle(file.id, { status });
+    await store.settle(owner, file.id, { status });
     await publish(status);
     return status;
   }
@@ -167,7 +169,7 @@ export function filesUseCases(p: Ports) {
       if (p.malwareScanning) throw new FileError('scanning_required');
       const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId, true);
       if (file?.uploadedBy !== ctx.userId) throw new FileError('not_found');
-      return settle(ctx.tx, file, 'clean');
+      return settle(ctx.tx, { workspaceId: ctx.workspaceId }, file, 'clean');
     },
 
     async openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null> {
@@ -182,7 +184,7 @@ export function filesUseCases(p: Ports) {
     async applyScanResult(target: { owner: Owner; fileId: string }, verdict: ScanVerdict): Promise<FileStatus | null> {
       return p.inScope(target.owner, async (tx) => {
         const file = await p.storeFor(tx).find(target.owner, target.fileId, true);
-        return file ? settle(tx, file, verdict) : null;
+        return file ? settle(tx, target.owner, file, verdict) : null;
       });
     },
   };

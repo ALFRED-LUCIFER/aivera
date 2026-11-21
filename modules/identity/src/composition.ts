@@ -11,6 +11,7 @@ export function createIdentity(db: Db, { trustedIssuer }: { trustedIssuer: strin
   return identityUseCases({
     trustedIssuer,
     inTransaction: (work) => db.transaction((tx) => work(identityStore(tx))),
+    storeFor: identityStore,
     newId: () => uuidv7(),
   });
 }

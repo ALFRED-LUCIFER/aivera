@@ -20,6 +20,7 @@ import {
   type WorkspacesContract,
 } from '@credalent/workspaces';
 import { createAudit } from '@credalent/audit/composition';
+import { createIdentity } from '@credalent/identity/composition';
 import { createNotifications } from '@credalent/notifications/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { resolveActiveWorkspace } from '../../../modules/workspaces/src/infrastructure/repository.ts';
@@ -181,7 +182,39 @@ describe('Scenario: Members of another workspace are invisible at the database',
     );
     expect(rows).toHaveLength(3);
     expect(new Set(rows.map((r) => r.workspace_id))).toEqual(new Set([w1]));
-    expect(await workspaces.listMembers(w2)).toHaveLength(2);
+    expect(await workspaces.withWorkspace({ userId: ALEX }, w2, (ctx) => workspaces.listMembers(ctx))).toHaveLength(2);
+  });
+
+  // AIV-P2-061: what the members page, the add-job form and an email's sender read, on this one-connection pool: a read
+  // that took a second pooled connection while the context holds the only one would wait forever.
+  // SAFETY: mutation check: getUser ignoring `within` (read through its own transaction) -> this test failed (timed out)
+  // SAFETY: mutation check: listMembers through inWorkspace instead of ctx.tx -> this test failed (timed out)
+  it('a request reads its workspace, members and their users on the one connection its context holds', async () => {
+    const identity = createIdentity(app, { trustedIssuer: 'https://tenant.credalent.example' });
+    const alex = await identity.upsertUserFromIdToken({
+      issuer: 'https://tenant.credalent.example',
+      subject: 'alex-one-connection',
+      email: 'alex.rivera@example.com',
+      emailVerified: true,
+      displayName: 'Alex Rivera',
+    });
+    const { id } = await newWorkspace('One connection', alex.id);
+    await addMember(id, user(31), 'recruiter');
+    const read = workspaces.withWorkspace({ userId: alex.id }, id, async (ctx) => ({
+      workspace: (await workspaces.getWorkspace(ctx))?.name,
+      members: (await workspaces.listMembers(ctx)).length,
+      users: await Promise.all(
+        (await workspaces.listMembers(ctx)).map(async (m) => (await identity.getUser(m.userId, ctx))?.email ?? null),
+      ),
+    }));
+    await expect(
+      Promise.race([read, sleep(5_000).then(() => Promise.reject(new Error('a second connection was awaited')))]),
+    ).resolves.toEqual({
+      workspace: 'One connection',
+      members: 2,
+      // user(31) has no identity row: null, read on the same connection.
+      users: expect.arrayContaining(['alex.rivera@example.com', null]),
+    });
   });
 
   // SAFETY: mutation check: replaced the policy with one using current_setting('app.workspace_id', true)::uuid (no nullif) -> this test failed (invalid input syntax for type uuid: "")

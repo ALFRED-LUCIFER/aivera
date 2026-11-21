@@ -145,10 +145,6 @@ export function workspacesUseCases({ inWorkspace, newId }: Ports) {
       return found?.status === 'active' ? found : null;
     },
 
-    listMembers(workspaceId: string): Promise<Member[]> {
-      return inWorkspace(workspaceId, (store) => store.listMembers(workspaceId));
-    },
-
     changeRole({ workspaceId, actorUserId, targetUserId, role }: ChangeRoleInput): Promise<void> {
       return inWorkspace(workspaceId, async (store) => {
         const members = await store.lockMembers(workspaceId);

@@ -8,7 +8,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, DbQueryError, withCandidateAccount, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { FileError, type FilesContract, type Purpose } from '@credalent/files';
-import { createBlobStore, createFiles, type BlobStore } from '@credalent/files/composition';
+import { createBlobStore, createFiles, fileStore, type BlobStore } from '@credalent/files/composition';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -329,5 +329,23 @@ describe('Row-level security on files.file (ADR-005, ADR-009)', () => {
   it('a row with both a workspace and an account, or neither, is refused', async () => {
     expect(await insertOwnedBy(w1, ACCOUNT_A)).toBe('23514');
     expect(await insertOwnedBy(null, null)).toBe('23514');
+  });
+});
+
+// AIV-P2-061: the store's settle filters by owner, under row-level security; each layer alone keeps B's file as it is.
+describe('Scenario: settle respects the owner', () => {
+  // SAFETY: mutation check: settle without `ownedBy(owner)` (id only) -> this test failed (the admin connection set B's file infected)
+  it("workspace A settling workspace B's file changes nothing", async () => {
+    const { fileId } = await upload(w2, 'evidence', pdfOf(4096));
+    const infected = { status: 'infected' } as const;
+    // The owner filter alone: the test's superuser connection bypasses row-level security.
+    await admin.transaction((tx) => fileStore(tx).settle({ workspaceId: w1 }, fileId, infected));
+    expect((await row(w2, fileId))?.status).toBe('pending');
+    // Row-level security alone: A's scope, with the filter naming B.
+    await withWorkspace(app, w1, (tx) => fileStore(tx).settle({ workspaceId: w2 }, fileId, infected));
+    expect((await row(w2, fileId))?.status).toBe('pending');
+    // Control: B's own scope settles it.
+    await withWorkspace(app, w2, (tx) => fileStore(tx).settle({ workspaceId: w2 }, fileId, infected));
+    expect((await row(w2, fileId))?.status).toBe('infected');
   });
 });

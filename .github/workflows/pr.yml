@@ -29,6 +29,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      # AIV-P2-061: a schema change without its generated migration changes a journal here, and fails.
+      - run: pnpm db:generate && git diff --exit-code
       # Unit, architecture and integration tests (Testcontainers starts PostgreSQL on the runner's Docker).
       - run: pnpm test
       - run: pnpm build
