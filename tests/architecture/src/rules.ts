@@ -78,6 +78,13 @@ const JOB_OWNER_CALL = /\.setJobOwner\(/;
 // AIV-P2-044 (ADR-013 point 15): the catalogue is read from the database; its old code constants must not come back.
 const CODE_CATALOGUE =
   /\b(?:JOB_TYPES|JOB_TYPE_CATALOGUE|JOB_TYPE_CATALOGUE_VERSION|DOMAIN_KEYS|DOMAIN_PACK_CATALOGUE_VERSION|listDomainPacks|getDomainPack)\b/;
+// AIV-P2-060 (ADR-005 point 4): `app.user_id` opens member_own_read, a person's memberships in every workspace. Only
+// resolveActiveWorkspace (workspaces repository) sets it, in a transaction composition.ts opens for it alone, so the
+// setting never reaches a workspace-scoped transaction.
+const USER_SETTING = /app\.user_id/;
+const RESOLVE_CALL = /\bresolveActiveWorkspace\(/;
+const WORKSPACES_FILE = (file: string, name: string) =>
+  new RegExp(`modules[/\\\\]workspaces[/\\\\]src[/\\\\]${name.replace('/', '[/\\\\]')}\\.ts$`).test(file);
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
 const IMPORT =
   /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
@@ -179,6 +186,21 @@ export function findViolations(root: string): Violation[] {
           file: rel,
           detail: 'setJobOwner is called only by the jobs module, for the job it is saving (AIV-P1-056)',
         });
+
+      if (!/\.test\.tsx?$/.test(file)) {
+        const text = readFileSync(file, 'utf8');
+        const repository = WORKSPACES_FILE(file, 'infrastructure/repository');
+        if (
+          (USER_SETTING.test(text) && !repository && !WORKSPACES_FILE(file, 'infrastructure/schema')) ||
+          (RESOLVE_CALL.test(text) && !repository && !WORKSPACES_FILE(file, 'composition'))
+        )
+          violations.push({
+            rule: 'own-membership-read',
+            file: rel,
+            detail:
+              'app.user_id is set only by resolveActiveWorkspace, which only composition.ts calls, in its own transaction (ADR-005 point 4)',
+          });
+      }
 
       if (CODE_CATALOGUE.test(readFileSync(file, 'utf8')))
         violations.push({

@@ -442,7 +442,18 @@ describe('Scenario: The active-workspace pointer follows membership', () => {
     expect(await workspaces.activeWorkspace(user(64))).toBeNull();
   });
 
-  // SAFETY: mutation check: made activeWorkspace return the stored pointer unchecked -> this test failed (it stayed on Gulf)
+  // Carried from the e2e "A removed member loses access immediately" (AIV-P0-010), which now lands elsewhere.
+  // SAFETY: mutation check: made withWorkspace skip the membership status check -> this test failed (the handler ran)
+  it('a removed member who still names the workspace is refused, and the handler never runs', async () => {
+    const gulf = (await newWorkspace('Gulf removed P2-060')).id;
+    await addMember(gulf, user(68), 'interviewer');
+    await removeAs(ALEX, gulf, user(68));
+    const handler = vi.fn(async () => 'ran');
+    await expect(workspaces.withWorkspace({ userId: user(68) }, gulf, handler)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: made pickActiveWorkspace keep any stored pointer -> this test failed (it stayed on Gulf)
   it('a pointer left on a workspace she no longer belongs to moves on the next read', async () => {
     const own = (await newWorkspace('Nadia Freelance stale', user(65))).id;
     const gulf = (await newWorkspace('Gulf stale')).id;

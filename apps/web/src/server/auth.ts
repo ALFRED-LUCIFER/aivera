@@ -230,8 +230,7 @@ export function authConfig(
       // Only the identity user id, the "Keep me signed in" choice, the sign-in time and whether an operator signed in
       // go into the cookie: no name, email or token. A token from before signedInAt existed is dropped (sign in again),
       // or it would slide forever. The operator flag sets the session length only; operator.ts checks the list per request.
-      // shortcut: the flag is fixed at sign-in, so a person added to PLATFORM_OPERATOR_EMAILS keeps their longer session
-      // until they sign in again; refuse /ops to an unflagged token in platformOperator() if operators join mid-pilot.
+      // A person added to PLATFORM_OPERATOR_EMAILS after signing in has no flag: platformOperator() sends them to sign in.
       jwt: ({ token, user }) =>
         user?.id
           ? {
@@ -243,7 +242,11 @@ export function authConfig(
           : typeof token.signedInAt === 'number'
             ? token
             : null,
-      session: ({ session, token }) => ({ expires: session.expires, user: { id: token.sub ?? '' } }),
+      session: ({ session, token }) => ({
+        expires: session.expires,
+        user: { id: token.sub ?? '' },
+        operator: token['operator'] === true,
+      }),
     },
   };
 }
@@ -262,6 +265,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
  */
 // next-auth's overloads do not type the (request, event) middleware call it supports at runtime.
 export const sessionProxy = auth as unknown as (request: NextRequest, event: NextFetchEvent) => Promise<Response>;
+
+/** Whether the session was signed in as a platform operator (its length, tokenMaxAge); the list is checked apart. */
+export async function sessionSignedInAsOperator(): Promise<boolean> {
+  if (!authConfigured()) return false;
+  return ((await auth()) as { operator?: unknown } | null)?.operator === true;
+}
 
 /** The signed-in user's identity id, or null. The one way server code learns who is signed in (AIV-P0-010 builds on it). */
 export async function getSessionUserId(): Promise<string | null> {
