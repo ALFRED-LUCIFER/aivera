@@ -74,7 +74,7 @@ const draft = {
 const model = draftModel({ published: v1, draft });
 
 const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
-  draft: model ?? { version: 2, revision: 0, jobTypes: [], jobTypeEntries: [], regions: [], packs: [] },
+  draft: model ?? { version: 2, revision: 0, jobTypes: [], jobTypeEntries: [], regions: [], packs: [], changes: [] },
   packForm: null,
   competencyForm: null,
   jobTypeForm: null,

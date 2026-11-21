@@ -7,8 +7,8 @@ import { RefusalText } from './CatalogueForms.tsx';
 
 /*
  * The draft's AI eval (AIV-P2-048), from the console spec's catalogue editor layout (operator-console.md); there is no
- * artboard for it. Deviation: "Review and publish", which this result gates, is AIV-P2-049, so the panel shows no
- * Publish button yet; publish reads the same state through `evalAllowsPublish`.
+ * artboard for it. "Review and publish" in the draft banner (AIV-P2-049) is gated by this state, and the server
+ * checks it again through `evalAllowsPublish`.
  */
 
 const BADGES: Record<EvalView['status'], StatusBadgeStatus> = {

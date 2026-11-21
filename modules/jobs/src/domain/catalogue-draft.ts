@@ -149,6 +149,14 @@ export type DraftJobTypeInput = z.infer<typeof draftJobTypeSchema>;
 export const draftHintSchema = draftCompetencySchema.omit({ core: true }).extend({ region: key });
 export type DraftHintInput = z.infer<typeof draftHintSchema>;
 
+/** "Publish version N" (AIV-P2-049): the draft as the page showed it and the operator's reason, at least 10 characters. */
+export const publishDraftSchema = z.strictObject({ ...base, reason: z.string().trim().min(10).max(500) });
+export type PublishDraftInput = z.infer<typeof publishDraftSchema>;
+
+/** "Discard draft" (AIV-P2-049): the draft as the page showed it, so a discard never deletes edits it did not show. */
+export const discardDraftSchema = z.strictObject(base);
+export type DiscardDraftInput = z.infer<typeof discardDraftSchema>;
+
 /** Retire an entry, or remove it when it is new in the draft. One shape per entry kind. */
 export const retireEntrySchema = z.discriminatedUnion('entry', [
   z.strictObject({ ...base, entry: z.literal('pack'), packKey: key }),
@@ -174,6 +182,8 @@ export const CATALOGUE_ERROR_CODES = [
   'core_limit',
   'evidence_required',
   'eval_running',
+  'eval_required',
+  'no_changes',
   'fairness_employer',
   'fairness_origin',
   'fairness_residency',

@@ -1,6 +1,8 @@
 import { CatalogueError } from '@credalent/jobs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  discardCatalogueAction,
+  publishCatalogueAction,
   retireDraftEntryAction,
   runCatalogueEvalAction,
   saveDraftCompetencyAction,
@@ -19,6 +21,8 @@ const saveCataloguePack = vi.fn(async (..._args: unknown[]) => {});
 const requestCatalogueEval = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueHint = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueJobType = vi.fn(async (..._args: unknown[]) => {});
+const publishCatalogueDraft = vi.fn(async (..._args: unknown[]) => {});
+const discardCatalogueDraft = vi.fn(async (..._args: unknown[]) => {});
 const revalidatePath = vi.fn();
 
 vi.mock('next/cache', () => ({ revalidatePath: (path: string) => revalidatePath(path) }));
@@ -31,6 +35,8 @@ vi.mock('@/server/operator', () => ({
   saveCatalogueJobType: (...args: unknown[]) => saveCatalogueJobType(...args),
   retireCatalogueEntry: async () => 'retired',
   requestCatalogueEval: (...args: unknown[]) => requestCatalogueEval(...args),
+  publishCatalogueDraft: (...args: unknown[]) => publishCatalogueDraft(...args),
+  discardCatalogueDraft: (...args: unknown[]) => discardCatalogueDraft(...args),
   operatorName: async (id: string) => (id === THEO ? 'Theo Platform' : null),
 }));
 
@@ -225,5 +231,45 @@ describe('the save-hint server action', () => {
       }),
     ).rejects.toThrow('403');
     expect(saveCatalogueHint).not.toHaveBeenCalled();
+  });
+});
+
+const REASON = 'Add insurance pack for the pilot client';
+
+describe('Publish or discard the draft (AIV-P2-049)', () => {
+  it('publish sends the draft the page showed and the reason; discard the draft; the page reloads', async () => {
+    expect(await publishCatalogueAction({ version: 2, revision: 4, reason: REASON })).toEqual({ ok: true });
+    expect(publishCatalogueDraft).toHaveBeenCalledWith({ version: 2, revision: 4, reason: REASON });
+    expect(await discardCatalogueAction({ version: 2, revision: 4 })).toEqual({ ok: true });
+    expect(discardCatalogueDraft).toHaveBeenCalledWith({ version: 2, revision: 4 });
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/catalogue');
+  });
+
+  it('a reason under 10 characters is refused before the module, under the reason field', async () => {
+    expect(await publishCatalogueAction({ version: 2, revision: 4, reason: 'Add it' })).toEqual({
+      ok: false,
+      error: 'invalid',
+      field: 'reason',
+    });
+    expect(publishCatalogueDraft).not.toHaveBeenCalled();
+  });
+
+  it('Scenario: A racing change is refused, not merged: the publish answers stale', async () => {
+    publishCatalogueDraft.mockRejectedValueOnce(new CatalogueError('stale', { by: THEO }));
+    expect(await publishCatalogueAction({ version: 2, revision: 4, reason: REASON })).toEqual({
+      ok: false,
+      error: 'stale',
+      by: 'Theo Platform',
+    });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from publishCatalogueAction -> this test failed
+  // SAFETY: mutation check: removed `await platformOperator()` from discardCatalogueAction -> this test failed
+  it('Scenario: Only operators can publish: a non-operator gets 403 and nothing is published or discarded', async () => {
+    operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
+    await expect(publishCatalogueAction({ version: 2, revision: 4, reason: REASON })).rejects.toThrow('403');
+    await expect(discardCatalogueAction({ version: 2, revision: 4 })).rejects.toThrow('403');
+    expect(publishCatalogueDraft).not.toHaveBeenCalled();
+    expect(discardCatalogueDraft).not.toHaveBeenCalled();
   });
 });

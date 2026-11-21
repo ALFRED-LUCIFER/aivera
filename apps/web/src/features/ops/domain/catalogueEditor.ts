@@ -1,7 +1,9 @@
 // The catalogue editor at /ops/catalogue (AIV-P2-045, ADR-013): what the page shows of the draft, the form values and
 // what a save answers. Pure (ADR-003). The input schemas and rules are the jobs module's; the server checks them again.
 import {
+  catalogueDiff,
   competencyStatus,
+  discardDraftSchema,
   draftCompetencySchema,
   draftHintSchema,
   draftJobTypeSchema,
@@ -11,7 +13,9 @@ import {
   isNewInDraft,
   jobTypeStatus,
   packStatus,
+  publishDraftSchema,
   retireEntrySchema,
+  type CatalogueChange,
   type CatalogueEditorView,
   type CatalogueErrorCode,
   type CatalogueField,
@@ -21,7 +25,15 @@ import {
 } from '@credalent/jobs';
 import type { ZodError } from 'zod';
 
-export { draftCompetencySchema, draftHintSchema, draftJobTypeSchema, draftPackSchema, retireEntrySchema };
+export {
+  discardDraftSchema,
+  draftCompetencySchema,
+  draftHintSchema,
+  draftJobTypeSchema,
+  draftPackSchema,
+  publishDraftSchema,
+  retireEntrySchema,
+};
 export type { EntryStatus } from '@credalent/jobs';
 
 export type CompetencyRow = Pick<
@@ -58,6 +70,8 @@ export type DraftModel = {
   /** Every job type of the draft in Add a job order, for the job type list (AIV-P2-047). */
   jobTypeEntries: JobTypeRow[];
   packs: PackRow[];
+  /** What the draft changes against the published version: the publish preview's diff (AIV-P2-049). */
+  changes: CatalogueChange[];
 };
 
 /**
@@ -109,6 +123,7 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
         removable: isHintNewInDraft(published, pack.key, h.region, h.position),
       })),
     })),
+    changes: catalogueDiff(published, draft),
   };
 }
 
@@ -206,7 +221,7 @@ export function toggleJobType(form: CompetencyForm, list: 'appliesTo' | 'core', 
 }
 
 /** A form field the error goes under: the refused rule's field, or the first field the schema refused. */
-export type EditorField = CatalogueField | 'label' | 'levels' | 'position';
+export type EditorField = CatalogueField | 'label' | 'levels' | 'position' | 'reason';
 
 /** What a save answers. `invalid` names the field the schema refused; `stale` names who saved last (null: unknown). */
 export type CatalogueSaveResult =
@@ -224,6 +239,7 @@ const FIELDS: readonly string[] = [
   'core',
   'starters',
   'position',
+  'reason',
 ];
 
 /** The schema's refusal as a save result, naming the first field it refused. */

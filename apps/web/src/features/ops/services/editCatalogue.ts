@@ -5,9 +5,11 @@ import { log } from '@credalent/observability';
 import { revalidatePath } from 'next/cache';
 import { unstable_rethrow } from 'next/navigation';
 import {
+  discardCatalogueDraft,
   openCatalogueDraft,
   operatorName,
   platformOperator,
+  publishCatalogueDraft,
   requestCatalogueEval,
   retireCatalogueEntry,
   saveCatalogueCompetency,
@@ -16,11 +18,13 @@ import {
   saveCataloguePack,
 } from '@/server/operator';
 import {
+  discardDraftSchema,
   draftCompetencySchema,
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
   invalidResult,
+  publishDraftSchema,
   retireEntrySchema,
   type CatalogueSaveResult,
 } from '../domain/catalogueEditor.ts';
@@ -96,4 +100,22 @@ export async function runCatalogueEvalAction(input: unknown): Promise<CatalogueS
   await platformOperator();
   const parsed = evalRequestSchema.safeParse(input);
   return parsed.success ? attempt(() => requestCatalogueEval(parsed.data)) : { ok: false, error: 'failed' };
+}
+
+/**
+ * "Publish version N" (AIV-P2-049) with the operator's reason. The eval gate and the change check run again in the
+ * module, on the locked draft: what the page showed is never trusted. Every page is dynamic (the root layout reads the
+ * theme cookie), so recruiters' pages read the new version on their next request.
+ */
+export async function publishCatalogueAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = publishDraftSchema.safeParse(input);
+  return parsed.success ? attempt(() => publishCatalogueDraft(parsed.data)) : invalidResult(parsed.error);
+}
+
+/** "Discard draft" (AIV-P2-049): deletes the draft as the page showed it; recruiters keep the published version. */
+export async function discardCatalogueAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = discardDraftSchema.safeParse(input);
+  return parsed.success ? attempt(() => discardCatalogueDraft(parsed.data)) : { ok: false, error: 'failed' };
 }

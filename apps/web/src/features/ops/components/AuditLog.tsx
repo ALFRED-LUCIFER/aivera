@@ -148,6 +148,10 @@ function OperatorCell({ row }: { row: AuditRow }) {
 
 function TargetCell({ row }: { row: AuditRow }) {
   const t = useTranslations('ops.audit');
+  // A catalogue entry names its version in `after`: the version number is not an opaque id (ADR-013 point 14).
+  const catalogueVersion = row.after?.['catalogueVersion'];
+  if (!row.subject && typeof catalogueVersion === 'number')
+    return <span className="whitespace-nowrap">{t('catalogueVersion', { version: catalogueVersion })}</span>;
   if (!row.subject) return <span className="text-text-2">{t('none')}</span>;
   if (row.subject.type !== 'workspace') return <span className="font-mono text-meta">{row.subject.id}</span>;
   return (

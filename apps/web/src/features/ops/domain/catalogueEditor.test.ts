@@ -76,6 +76,7 @@ describe('the job type form', () => {
     jobTypeEntries: [row('sales'), row('product_design')],
     regions: [],
     packs: [],
+    changes: [],
   };
 
   it('a new job type goes last; an edited one starts where it is', () => {
