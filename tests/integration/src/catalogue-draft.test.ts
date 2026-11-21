@@ -113,6 +113,7 @@ describe('Feature: Edit domain packs and competencies in a catalogue draft', () 
       label: 'Insurance and insurtech',
     });
     // AIV-P2-051: each save stamps the draft with the clock's time.
+    // SAFETY: mutation check: dropped `revisedAt: at` from the draft touch -> this test failed
     const later = new Date(NOW.getTime() + 2 * 3_600_000);
     await createCatalogueEditor(app, audit, () => later).saveDraftCompetency(PIA, { ...claims, revision: 1 });
     expect((await editor.getEditor()).draft?.revisedAt).toEqual(later);
