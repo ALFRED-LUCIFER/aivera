@@ -87,6 +87,10 @@ export const PLATFORM_VALUE_KEYS: readonly string[] = [
   'region',
   // AIV-P2-047: a job type entry's key.
   'jobTypeKey',
+  // AIV-P2-049: how many entries a published catalogue version adds, edits and retires.
+  'added',
+  'edited',
+  'retired',
 ];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */

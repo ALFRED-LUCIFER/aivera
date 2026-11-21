@@ -114,7 +114,12 @@ export async function runDraftEval(
   store: RunStore,
   runId: string,
   { evaluate, now }: { evaluate: (keys: EvalKeys, tokensLeftToday: number) => Promise<EvalOutcome>; now: () => Date },
-): Promise<{ version: number; status: Exclude<EvalRunStatus, 'running'>; tokens: number; failed: number } | null> {
+): Promise<{
+  version: number | null;
+  status: Exclude<EvalRunStatus, 'running'>;
+  tokens: number;
+  failed: number;
+} | null> {
   const run = await store.lockRun(runId);
   if (run?.status !== 'running') return null;
   const spent = await store.tokensOn(now().toISOString().slice(0, 10));

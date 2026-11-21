@@ -3,6 +3,7 @@ import { createAudit } from '@credalent/audit/composition';
 import type {
   CatalogueEditor,
   CatalogueEditorView,
+  DiscardDraftInput,
   DraftCompetencyInput,
   DraftEval,
   DraftHintInput,
@@ -10,6 +11,7 @@ import type {
   DraftPackInput,
   EvalRequestInput,
   JobCounts,
+  PublishDraftInput,
   RetireEntryInput,
 } from '@credalent/jobs';
 import { log } from '@credalent/observability';
@@ -256,6 +258,21 @@ export async function catalogueDraftEval(): Promise<DraftEval | null> {
 export async function requestCatalogueEval(input: EvalRequestInput): Promise<void> {
   const { userId } = await platformOperator();
   await catalogueEditor().requestEval(userId, input);
+}
+
+/**
+ * "Publish version N" as the signed-in operator (AIV-P2-049): the module re-checks the eval on the locked draft. Throws
+ * `CatalogueError`.
+ */
+export async function publishCatalogueDraft(input: PublishDraftInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().publishDraft(userId, input);
+}
+
+/** "Discard draft" as the signed-in operator (AIV-P2-049), audited. Throws `CatalogueError`. */
+export async function discardCatalogueDraft(input: DiscardDraftInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().discardDraft(userId, input);
 }
 
 /**

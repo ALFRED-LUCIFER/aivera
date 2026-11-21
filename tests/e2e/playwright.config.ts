@@ -43,7 +43,7 @@ export default defineConfig({
   projects: [
     {
       name: 'gallery',
-      testIgnore: [/\.unconfigured\.spec\.ts$/, /publish-job\.spec\.ts$/],
+      testIgnore: [/\.unconfigured\.spec\.ts$/, /publish-job\.spec\.ts$/, /ops-catalogue-publish\.spec\.ts$/],
       use: { ...devices['Desktop Chrome'] },
     },
     // AIV-P1-015: publishing adds a listing to the candidate site, whose specs count its jobs, so locally it runs after
@@ -51,6 +51,15 @@ export default defineConfig({
     {
       name: 'publish',
       testMatch: /publish-job\.spec\.ts$/,
+      dependencies: ['gallery'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // AIV-P2-049: publishing a catalogue version is permanent and gallery specs read the catalogue (job-industry checks
+    // the whole pack list), so it runs after them locally, and in CI with --no-deps in the publish-unconfigured shard,
+    // whose database it shares with "publish" and "unconfigured": a spec added there must not depend on the pack list.
+    {
+      name: 'catalogue-publish',
+      testMatch: /ops-catalogue-publish\.spec\.ts$/,
       dependencies: ['gallery'],
       use: { ...devices['Desktop Chrome'] },
     },

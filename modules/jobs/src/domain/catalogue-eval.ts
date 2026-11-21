@@ -33,7 +33,8 @@ export type EvalResult = z.infer<typeof evalResultSchema>;
 /** A run as stored: for which draft content (`contentHash`), its status and, once finished, its result. */
 export type EvalRun = {
   readonly id: string;
-  readonly version: number;
+  /** Null once its draft is discarded (AIV-P2-049). */
+  readonly version: number | null;
   readonly contentHash: string;
   readonly status: EvalRunStatus;
   readonly requestedAt: Date;

@@ -893,7 +893,9 @@
           "failed": "That did not go through. Nothing was changed.",
           "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest.",
           "job_type_in_use": "A pack competency or regional hint applies to this job type. Take it off there first.",
-          "eval_running": "An eval run is already in progress."
+          "eval_running": "An eval run is already in progress.",
+          "eval_required": "Run the eval before publishing.",
+          "no_changes": "This draft changes nothing yet."
         },
         "eval": {
           "title": "AI eval",
@@ -928,6 +930,60 @@
           "observed": "Observed",
           "failedCases": "Failed cases",
           "uncovered": "Add golden cases for {keys} in packages/ai/evals before publishing."
+        },
+        "publish": {
+          "open": "Review and publish",
+          "title": "Publish catalogue version {version, number}",
+          "body": "Recruiters get version {version, number} on their next request. Rubrics already drafted or approved keep the version that seeded them.",
+          "confirm": "Publish version {version, number}",
+          "pending": "Publishing…",
+          "reason": "Reason",
+          "reasonHint": "At least 10 characters. It goes in the platform audit log with your name.",
+          "footer": "Nothing changes until you confirm.",
+          "stale": "The draft changed. Review it again.",
+          "blocked": {
+            "noChanges": "Make a change before publishing.",
+            "evalNotRun": "Run the eval before publishing.",
+            "evalRunning": "Wait for the eval run to finish.",
+            "evalFailed": "The last eval run failed. Fix the draft and run it again.",
+            "evalStale": "The draft changed after the last eval run. Run it again.",
+            "evalError": "The eval could not run. Run it again.",
+            "reason": "Write a reason of at least 10 characters."
+          }
+        },
+        "discard": {
+          "open": "Discard draft",
+          "title": "Discard draft version {version, number}",
+          "body": "Every change in this draft is deleted. Recruiters keep seeing version {version, number}.",
+          "confirm": "Discard draft",
+          "pending": "Discarding…"
+        },
+        "diff": {
+          "none": "This draft changes nothing yet.",
+          "added": "Added: {name}",
+          "edited": "Edited: {name} {field}, {before} → {after}",
+          "editedUnnamed": "Edited: {field}, {before} → {after}",
+          "retired": "Retired: {name}",
+          "groups": {
+            "jobTypes": "Job types",
+            "packs": "Packs",
+            "competencies": "Competencies",
+            "hints": "Regional hints"
+          },
+          "fields": {
+            "label": "label",
+            "evidence": "evidence",
+            "starters": "starters",
+            "order": "Add a job order",
+            "name": "name",
+            "meaning": "meaning",
+            "level1": "level 1",
+            "level3": "level 3",
+            "level5": "level 5",
+            "appliesTo": "job types",
+            "core": "default suggestion for",
+            "levelNeeded": "level needed"
+          }
         }
       }
     },
@@ -994,6 +1050,7 @@
       "noName": "Name not set",
       "none": "None",
       "workspace": "Workspace {id}",
+      "catalogueVersion": "Catalogue version {version, number}",
       "change": "{field}: {before} → {after}",
       "values": {
         "dailyTokenBudget": "Daily AI budget",
@@ -1001,7 +1058,10 @@
         "approvalRequired": "Approval required",
         "on": "On",
         "off": "Off",
-        "count": "{count, number}"
+        "count": "{count, number}",
+        "added": "Added",
+        "edited": "Edited",
+        "retired": "Retired"
       },
       "empty": "No operator actions yet.",
       "noMatch": "No entries match these filters.",
