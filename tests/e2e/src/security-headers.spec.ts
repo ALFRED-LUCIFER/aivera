@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { watchCsp } from './csp.ts';
 
@@ -24,14 +26,22 @@ test('Scenario: the violation listener sees a blocked connection', async ({ page
   await expect.poll(() => violations.length).toBeGreaterThan(0);
 });
 
+// SAFETY: mutation check: removed X-Frame-Options and frame-ancestors from securityHeaders -> this test failed (run on the production build)
 test('Scenario: Framing is refused', async ({ page, baseURL }) => {
   const origin = new URL(baseURL ?? '').origin;
-  await page.route('http://framer.example/', (route) =>
-    route.fulfill({ contentType: 'text/html', body: `<iframe src="${origin}/app"></iframe>` }),
+  // A real server on another port is another origin: a route-fulfilled or made-up host is refused by the browser's
+  // local network checks before the policy is read, which would pass this test without it.
+  const framer = createServer((_request, response) =>
+    response.setHeader('content-type', 'text/html').end(`<iframe src="${origin}/sign-in"></iframe>`),
   );
-  await page.goto('http://framer.example/');
-  const frame = page.locator('iframe').contentFrame();
-  // A refused frame shows the browser's error page, never ours.
-  await expect.poll(() => page.frames().map((f) => f.url())).not.toContainEqual(expect.stringContaining(origin));
-  await expect(frame.locator('body')).not.toContainText('Credalent');
+  await new Promise<void>((resolve) => framer.listen(0, 'localhost', resolve));
+  try {
+    await page.goto(`http://localhost:${(framer.address() as AddressInfo).port}/`);
+    // The page's load event waits for the iframe, so by now it either rendered the sign-in page or was refused.
+    const urls = page.frames().map((f) => f.url());
+    expect(urls).toHaveLength(2);
+    expect(urls).not.toContainEqual(expect.stringContaining(origin));
+  } finally {
+    framer.close();
+  }
 });
