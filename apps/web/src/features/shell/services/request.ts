@@ -29,7 +29,7 @@ export async function readTheme() {
 
 // shortcut: seeded counts for the synthetic demo workspace only; each section's module contract supplies real counts
 // when that screen's ticket ships.
-const seedCounts = async (): Promise<ShellCounts> => ({ desk: 4, inbox: 20, jobs: 5, interviews: 5, packs: 1 });
+const seedCounts = async (): Promise<ShellCounts> => ({ desk: 4, jobs: 5 });
 
 /** Counts are a hint: a failed read shows the sections without numbers instead of blocking the page. */
 export async function loadShellCounts(member: Member, read = seedCounts): Promise<ShellCounts | null> {

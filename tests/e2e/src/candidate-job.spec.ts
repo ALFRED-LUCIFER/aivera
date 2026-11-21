@@ -59,7 +59,7 @@ for (const [title, descriptor, pay, competency, evidence] of [
   });
 }
 
-test('the page states how candidates are judged, and links the CV check, Apply and Plus', async ({ page }) => {
+test('the page states how candidates are judged and links to no unbuilt page', async ({ page }) => {
   await open(page, 'Senior AI Engineer');
   const judged = page.getByRole('region', { name: 'How you will be judged' });
   await expect(judged).toContainText('On work you can show. There is no test.');
@@ -67,16 +67,8 @@ test('the page states how candidates are judged, and links the CV check, Apply a
     'What you state without evidence is treated as a claim, and you may be asked for more.',
   );
   await expect(judged).toContainText('A person makes every decision. Nobody is rejected automatically.');
-  const slug = new URL(page.url()).pathname.split('/').at(-1) ?? '';
-  await expect(page.getByRole('link', { name: 'See what Plus adds' })).toHaveAttribute('href', '/candidates/plans');
-  // The CV check (AIV-P3-010) and the apply form (AIV-P3-008) are placeholders until their tickets; the links are right.
-  await page.getByRole('link', { name: 'Check my CV against this job, free' }).click();
-  await expect(page).toHaveURL(`/candidates/cv-check?job=${slug}`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Free CV check' })).toBeVisible();
-  await page.goBack();
-  await page.getByRole('link', { name: 'Apply', exact: true }).click();
-  await expect(page).toHaveURL(`/candidates/jobs/${slug}/apply`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Apply' })).toBeVisible();
+  // AIV-P1-095: no Apply, CV check or Plans link until those pages are built.
+  await expect(page.getByRole('main').getByRole('link')).toHaveCount(0);
 });
 
 test('a job that is no longer open answers 404 with a link to all jobs', async ({ page }) => {

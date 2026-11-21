@@ -26,8 +26,10 @@ for (const button of ['Sign in', 'Continue with Google'] as const) {
     await candidateSignIn(page, 'sara@example.com', button);
     await expect(page).toHaveURL(/\/candidates\/me$/);
     await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
-    // The candidate layout reads the candidate session: the header offers My applications, not Create account.
-    await expect(page.getByRole('banner').getByRole('link', { name: 'My applications' })).toBeVisible();
+    // The candidate layout reads the candidate session: the header offers Sign out, not Create account, and no link
+    // to the unbuilt My applications page (AIV-P1-095).
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Sign out' })).toBeVisible();
+    await expect(page.getByRole('banner').getByRole('link', { name: 'My applications' })).toHaveCount(0);
     expect(await cookie(context, CANDIDATE_COOKIE)).toMatchObject({
       httpOnly: true,
       secure: true,

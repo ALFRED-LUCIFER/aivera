@@ -5,7 +5,7 @@ import { OPS_SECTION_PAGES, OPS_SECTIONS } from '@/features/ops/domain/ops.ts';
 import { readTheme } from '@/features/shell/services/request.ts';
 import { platformOperator } from '@/server/operator';
 import { ConsoleOpened } from './ConsoleOpened.tsx';
-import { OpsIntl } from './OpsIntl.tsx';
+import { RootIntl } from '@/features/shell/components/RootIntl.tsx';
 import { OpsShellClient } from './OpsShellClient.tsx';
 
 // The console is never indexed; its title is set by each page after the policy, so a 403 does not name it.
@@ -22,7 +22,7 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
     readTheme(),
   ]);
   return (
-    <OpsIntl {...intl}>
+    <RootIntl {...intl}>
       <OpsShellClient
         labels={{
           skipToContent: t('shell.skipToContent'),
@@ -43,6 +43,6 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
         <ConsoleOpened />
         {children}
       </OpsShellClient>
-    </OpsIntl>
+    </RootIntl>
   );
 }

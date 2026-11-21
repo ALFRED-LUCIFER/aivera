@@ -25,7 +25,7 @@ test('the hiring owner fixture is signed in, without the recruiter desk', async 
   expect((await context.cookies()).some((c) => c.name === '__Host-credalent-session')).toBe(true);
   // My desk needs the recruiter capability (navigation.ts); a hiring owner reaches only the jobs she is granted.
   await page.goto('/app');
-  await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' })).toBeVisible();
 });
 
 test('the candidate fixture lands on My applications', async ({ candidate: page }) => {
