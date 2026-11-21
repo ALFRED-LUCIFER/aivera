@@ -1,6 +1,6 @@
 import type { AiTokenUse, WorkspaceStatus } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
-import { dashboardView, statusHref } from './dashboard.ts';
+import { dashboardView, editedAgo, statusHref } from './dashboard.ts';
 
 // AIV-P2-051: the console home's tiles from per-workspace ids and numbers. Synthetic ids only.
 const NOW = new Date('2026-11-25T09:00:00Z');
@@ -12,7 +12,7 @@ const use = (tokens: number, dailyBudget = 1_000_000): AiTokenUse => ({
   overridden: false,
   days: [{ day: '2026-11-25', tokens }],
 });
-const reads = { workspaces: [], ai: [], catalogueVersion: 1 };
+const reads = { workspaces: [], ai: [], catalogue: { version: 1, draft: null } };
 
 describe('Scenario: The dashboard shows observed counts with links', () => {
   it('counts every status, and the oldest waiting workspace in whole days', () => {
@@ -71,12 +71,36 @@ describe('Scenario: Nothing to show yet', () => {
 describe('Scenario: A read fails', () => {
   // SAFETY: mutation check: made a null `ai` read give `{ tokens: null, ... }` -> this test failed
   it('each failed read empties only its own tile', () => {
-    const view = dashboardView({ workspaces: [ws('active')], ai: null, catalogueVersion: 1 }, NOW);
+    const view = dashboardView({ workspaces: [ws('active')], ai: null, catalogue: { version: 1, draft: null } }, NOW);
     expect(view.ai).toBeNull();
     expect(view.statuses?.[0]).toEqual({ status: 'active', count: 1 });
-    expect(view.catalogue).toEqual({ version: 1 });
-    const other = dashboardView({ workspaces: null, ai: [use(10)], catalogueVersion: null }, NOW);
+    expect(view.catalogue).toEqual({ version: 1, draft: null });
+    const other = dashboardView({ workspaces: null, ai: [use(10)], catalogue: null }, NOW);
     expect([other.statuses, other.oldestWaitingDays, other.catalogue]).toEqual([null, null, null]);
     expect(other.ai?.tokens).toBe(10);
+  });
+});
+
+describe('Scenario: A catalogue draft is waiting', () => {
+  it('Theo saved the draft 2 hours ago and its eval has not run: the line has its age and eval state', () => {
+    const view = dashboardView(
+      {
+        ...reads,
+        catalogue: { version: 1, draft: { editedAt: new Date(NOW.getTime() - 2 * 3_600_000), eval: 'not_run' } },
+      },
+      NOW,
+    );
+    expect(view.catalogue).toEqual({ version: 1, draft: { edited: { unit: 'hours', count: 2 }, eval: 'not_run' } });
+  });
+
+  it.each([
+    [0, { unit: 'minutes', count: 0 }],
+    [59 * 60_000, { unit: 'minutes', count: 59 }],
+    [60 * 60_000, { unit: 'hours', count: 1 }],
+    [23.9 * 3_600_000, { unit: 'hours', count: 23 }],
+    [3 * 86_400_000, { unit: 'days', count: 3 }],
+    [-5 * 60_000, { unit: 'minutes', count: 0 }],
+  ])('%i ms ago reads as %o (a clock skew is never negative)', (ms, expected) => {
+    expect(editedAgo(new Date(NOW.getTime() - ms), NOW)).toEqual(expected);
   });
 });

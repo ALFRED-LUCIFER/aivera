@@ -1,4 +1,5 @@
 // The console home's stat tiles (AIV-P2-051, ADR-012 point 6): platform counts only, never a name. Pure (ADR-003).
+import type { DraftEval } from '@credalent/jobs';
 import { type AiTokenUse, type WorkspaceStatus, type WorkspaceStatusFact } from '@credalent/workspaces';
 import { daysWaiting } from './workspaces.ts';
 
@@ -7,9 +8,12 @@ export type DashboardReads = {
   workspaces: WorkspaceStatusFact[] | null;
   /** Today's usage per workspace (null for one gone since the list); null when any read failed. */
   ai: (AiTokenUse | null)[] | null;
-  /** The published catalogue's version number. */
-  catalogueVersion: number | null;
+  /** The published catalogue's version, and the open draft's last save and eval state (null: no draft). */
+  catalogue: { version: number; draft: { editedAt: Date; eval: DraftEval['status'] } | null } | null;
 };
+
+/** How long ago, in the largest whole unit under a day's 24 hours, then days (never negative). */
+export type EditedAgo = { unit: 'minutes' | 'hours' | 'days'; count: number };
 
 export type DashboardView = {
   /** Every status with its count, in STATUS_TILES order; null when the read failed. */
@@ -18,9 +22,8 @@ export type DashboardView = {
   oldestWaitingDays: number | null;
   /** `tokens` null: no AI call today, "Not yet available", never an invented 0. */
   ai: { tokens: number | null; nearBudget: number; atBudget: number } | null;
-  // shortcut: the version only; the draft line ("1 draft waiting · last edited …", eval state) waits on the catalogue
-  // draft (AIV-P2-045, #362) and its eval (AIV-P2-048, #365). Add `draft` here, read through the jobs catalogue contract.
-  catalogue: { version: number } | null;
+  /** The live version, and the waiting draft's age and eval state, or null for "No draft". */
+  catalogue: { version: number; draft: { edited: EditedAgo; eval: DraftEval['status'] } | null } | null;
 };
 
 /** The status tiles in the order an operator acts on them (AIV-P2-051). */
@@ -38,10 +41,17 @@ export const statusHref = (status: WorkspaceStatus) =>
   status === 'pending_approval' ? ('/ops/approvals' as const) : (`/ops/workspaces?status=${status}` as const);
 export const AI_SORTED_HREF = '/ops/workspaces?sort=ai' as const;
 
+export function editedAgo(at: Date, now: Date): EditedAgo {
+  const minutes = Math.max(0, Math.floor((now.getTime() - at.getTime()) / 60_000));
+  if (minutes < 60) return { unit: 'minutes', count: minutes };
+  if (minutes < 24 * 60) return { unit: 'hours', count: Math.floor(minutes / 60) };
+  return { unit: 'days', count: Math.floor(minutes / (24 * 60)) };
+}
+
 const todayTokens = (u: AiTokenUse) => u.days[0]?.tokens ?? 0;
 const share = (u: AiTokenUse) => todayTokens(u) / u.dailyBudget;
 
-export function dashboardView({ workspaces, ai, catalogueVersion }: DashboardReads, now: Date): DashboardView {
+export function dashboardView({ workspaces, ai, catalogue }: DashboardReads, now: Date): DashboardView {
   const waiting = workspaces?.filter((w) => w.status === 'pending_approval') ?? [];
   const oldest = waiting.reduce<Date | null>((min, w) => (min && min <= w.createdAt ? min : w.createdAt), null);
   const used = ai?.filter((u) => u !== null) ?? [];
@@ -59,6 +69,9 @@ export function dashboardView({ workspaces, ai, catalogueVersion }: DashboardRea
       nearBudget: used.filter((u) => share(u) >= NEAR_BUDGET && share(u) < 1).length,
       atBudget: used.filter((u) => share(u) >= 1).length,
     },
-    catalogue: catalogueVersion === null ? null : { version: catalogueVersion },
+    catalogue: catalogue && {
+      version: catalogue.version,
+      draft: catalogue.draft && { edited: editedAgo(catalogue.draft.editedAt, now), eval: catalogue.draft.eval },
+    },
   };
 }

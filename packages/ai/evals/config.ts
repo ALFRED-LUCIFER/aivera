@@ -91,19 +91,31 @@ export const taskThresholds: Record<
  * schema, calling `ai.generateStructured` with the case's sources and `workspaceId` (so every call counts against
  * liveTokenCap). A contract error (UncitedOutput, InvalidCitation, SchemaMismatch) fails the case under its name.
  */
-export type Runner = (ai: AiClient, golden: GoldenCase, workspaceId: string) => Promise<unknown>;
+export type Runner = (
+  ai: Pick<AiClient, 'generateStructured'>,
+  golden: GoldenCase,
+  workspaceId: string,
+) => Promise<unknown>;
+
+/**
+ * `jobs.detectDomain` against `catalogue`'s pack and region keys: version 1's snapshot in CI, a draft's in its live eval
+ * (AIV-P2-048). AIV-P1-063: sources are the description (S1) and, when the job has one, the location (S2), as the jobs
+ * module sends.
+ */
+export const detectDomainRunner =
+  (catalogue: { domains: [string, ...string[]]; regions: [string, ...string[]] }): Runner =>
+  (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...detectDomainRequest(jobInput.parse(golden.input), catalogue, golden.sources),
+      workspaceId,
+    });
 
 // shortcut: evidence.firstPass has no prompt yet; AIV-P1-020 adds its runner.
 export const runners: Record<string, Runner> = {
   // The product's own prompt and schema (AIV-P1-008), as the jobs module calls them.
   'jobs.draftCompetencies': (ai, golden, workspaceId) =>
     ai.generateStructured({ ...draftCompetenciesRequest(jobInput.parse(golden.input), golden.sources), workspaceId }),
-  // AIV-P1-063: sources are the description (S1) and, when the job has one, the location (S2), as the jobs module sends.
-  'jobs.detectDomain': (ai, golden, workspaceId) =>
-    ai.generateStructured({
-      ...detectDomainRequest(jobInput.parse(golden.input), domainCatalogue, golden.sources),
-      workspaceId,
-    }),
+  'jobs.detectDomain': detectDomainRunner(domainCatalogue),
   // AIV-P1-027: the approved rubric's competencies in the prompt, one source per evidence source, as the evidence module sends.
   'evidence.mapToCompetency': (ai, golden, workspaceId) =>
     ai.generateStructured({

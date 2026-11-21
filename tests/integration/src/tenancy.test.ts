@@ -46,6 +46,8 @@ const GLOBAL_TABLES: Record<string, string> = {
       'The catalogue every workspace is offered (ADR-013 point 2): no workspace or candidate data, no personal data; its actors are opaque operator ids or system:seed.',
     ]),
   ),
+  'jobs.catalogue_eval_run':
+    'AI eval runs on a catalogue draft (AIV-P2-048): golden-case ids, rates and opaque operator ids; no workspace data.',
 };
 /**
  * The only permissive policies allowed that do not compare with app.workspace_id: read-only, for the aivera_public role
@@ -454,6 +456,9 @@ async function seed(
         'saga-maintainer-credalent-example', false)`);
     await ctx.tx.execute(sql`insert into evidence.inbox (consumer, message_id, workspace_id, handled_at)
       values ('evidence.repository.read', ${crypto.randomUUID()}, ${workspaceId}, now())`);
+    // A handled jobs message (jobs.inbox, AIV-P2-048).
+    await ctx.tx.execute(sql`insert into jobs.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('jobs.catalogue.eval', ${crypto.randomUUID()}, ${workspaceId}, now())`);
     // A CV parse and an "Unusual content in this source" note on it (evidence.cv_parse, .source_note, AIV-P1-025).
     const cv = await evidence.requestCvParse(ctx, {
       candidateId: personId,

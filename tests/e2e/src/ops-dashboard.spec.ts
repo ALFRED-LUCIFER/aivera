@@ -27,6 +27,7 @@ test('Scenario: The dashboard shows observed counts with links', async ({ page }
   // seed.ts makes Demo Hiring Co spend 1,500 AI tokens today, so the total is an observed figure.
   await expect(tile(page, 'AI tokens today (UTC)')).toContainText(/[\d,]+Observed/);
   await expect(tile(page, 'AI tokens today (UTC)')).toContainText(/\d+ at 80% or more · \d+ at the budget/);
+  // Only the version here: ops-catalogue.spec.ts opens drafts in the same database, so it tests the draft line.
   await expect(tile(page, 'Catalogue version')).toContainText(/Version \d+ live/);
 
   await page.getByRole('link', { name: 'View approvals' }).click();

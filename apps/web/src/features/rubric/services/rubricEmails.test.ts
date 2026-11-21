@@ -96,6 +96,14 @@ describe('The decision reaches the recruiter who sent it', () => {
     );
   });
 
+  // ADR-014: a draft approved directly was never sent, so no one is told; the creator is not emailed.
+  // SAFETY: mutation check: restored the `?? version.createdBy` fallback for the recipient -> this test failed
+  it('a draft another recruiter approved directly emails no one, not even its creator', async () => {
+    versions = [v({ status: 'approved', submittedBy: null, approvedAt: new Date('2026-11-21T08:00:00Z') })];
+    await queueDecisionEmail(ctx('colleague'), 'spd', 'v1');
+    expect(queueEmail).not.toHaveBeenCalled();
+  });
+
   it('a version of another job is refused, so a forged job id sends nothing', async () => {
     versions = [];
     await expect(queueDecisionEmail(ctx(DIRECTOR), 'other', 'v1')).rejects.toThrow('not found');

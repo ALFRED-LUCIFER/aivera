@@ -1,8 +1,19 @@
 import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
-import type { CatalogueVersion, JobCounts } from '@credalent/jobs';
+import type {
+  CatalogueEditor,
+  CatalogueEditorView,
+  DraftCompetencyInput,
+  DraftEval,
+  DraftHintInput,
+  DraftJobTypeInput,
+  DraftPackInput,
+  EvalRequestInput,
+  JobCounts,
+  RetireEntryInput,
+} from '@credalent/jobs';
 import { log } from '@credalent/observability';
-import { createJobCounts } from '@credalent/jobs/composition';
+import { createCatalogueEditor, createJobCounts } from '@credalent/jobs/composition';
 import {
   STATUS_CHANGES,
   type AiBudgetConsole,
@@ -19,7 +30,7 @@ import type { DashboardReads } from '@/features/ops/domain/dashboard.ts';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
-import { getCatalogue, getJobs } from './jobs';
+import { getJobs } from './jobs';
 import { getPlatformSettings } from './platformSettings';
 import { getWorkspaces } from './workspace';
 
@@ -218,28 +229,91 @@ const failed = (read: string) => (error: unknown) => {
 
 /**
  * The console home's reads (AIV-P2-051): each workspace's status and today's AI tokens, each in its own
- * withWorkspace(<it>) through the named contracts (ADR-012 point 6), and the catalogue version. Only ids and numbers
- * come back; a failed read is null so only its tile shows the error. Checks the policy itself too.
+ * withWorkspace(<it>) through the named contracts (ADR-012 point 6), and the catalogue version with its open draft's
+ * last save and eval state. Only ids, numbers, times and states come back; a failed read is null so only its tile shows the error. Checks the policy itself too.
  */
 export async function dashboardReads(): Promise<DashboardReads> {
   await platformOperator();
   const statuses = opsReads().workspaces.listStatuses();
   const today = utcToday();
-  const [workspaces, ai, catalogueVersion] = await Promise.all([
+  const [workspaces, ai, catalogue] = await Promise.all([
     statuses.catch(failed('workspaces')),
     statuses.then((all) => Promise.all(all.map(({ id }) => opsReads().ai.usage(id, today, 1)))).catch(failed('ai')),
-    getCatalogue()
-      .getPublishedCatalogue()
-      .then((c) => c.version)
+    Promise.all([catalogueEditor().getEditor(), catalogueEditor().getDraftEval()])
+      .then(([{ published, draft }, state]) => ({
+        version: published.version,
+        draft: draft && { editedAt: draft.revisedAt, eval: state?.status ?? 'not_run' },
+      }))
       .catch(failed('catalogue')),
   ]);
-  return { workspaces, ai, catalogueVersion };
+  return { workspaces, ai, catalogue };
 }
 
-/** The latest published catalogue (ADR-013), for the read-only catalogue page. Checks the policy itself too. */
-export async function publishedCatalogue(): Promise<CatalogueVersion> {
+let editor: CatalogueEditor | undefined;
+// The catalogue editor (AIV-P2-045, ADR-013 point 15): only this file calls its writes (operator-only-writes).
+const catalogueEditor = () => (editor ??= createCatalogueEditor(getDb(), getAudit()));
+
+/** The latest published catalogue and the open draft, for /ops/catalogue. Checks the policy itself too. */
+export async function catalogueEditorView(): Promise<CatalogueEditorView> {
   await platformOperator();
-  return getCatalogue().getPublishedCatalogue();
+  return catalogueEditor().getEditor();
+}
+
+/**
+ * The catalogue draft's writes as the signed-in operator (AIV-P2-045): the operator id comes from the session, the
+ * input is validated again by the jobs module, and each is audited in the platform log. Each checks the policy too.
+ * Throws `CatalogueError` from the contract.
+ */
+export async function openCatalogueDraft(): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().openDraft(userId);
+}
+
+export async function saveCataloguePack(input: DraftPackInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftPack(userId, input);
+}
+
+export async function saveCatalogueCompetency(input: DraftCompetencyInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftCompetency(userId, input);
+}
+
+export async function saveCatalogueHint(input: DraftHintInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftHint(userId, input);
+}
+
+export async function saveCatalogueJobType(input: DraftJobTypeInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftJobType(userId, input);
+}
+
+export async function retireCatalogueEntry(input: RetireEntryInput): Promise<'retired' | 'removed'> {
+  const { userId } = await platformOperator();
+  return catalogueEditor().retireDraftEntry(userId, input);
+}
+
+/** The open draft's eval state (AIV-P2-048), null with no draft. Checks the policy itself too. */
+export async function catalogueDraftEval(): Promise<DraftEval | null> {
+  await platformOperator();
+  return catalogueEditor().getDraftEval();
+}
+
+/** "Run the eval" on the draft as the signed-in operator (AIV-P2-048), audited. Throws `CatalogueError`. */
+export async function requestCatalogueEval(input: EvalRequestInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().requestEval(userId, input);
+}
+
+/**
+ * Another operator's display name, or their email when they have none, for "Theo Platform changed this draft."; null
+ * for an unknown id. Only ever one operator, never a list (ADR-012 point 1). Checks the policy too.
+ */
+export async function operatorName(userId: string): Promise<string | null> {
+  await platformOperator();
+  const user = await getIdentity().getUser(userId);
+  return user ? user.displayName?.trim() || user.email : null;
 }
 
 /** Whether new sign-ups wait for approval, for the approvals page. Checks the policy itself too. */

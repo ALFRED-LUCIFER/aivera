@@ -1,6 +1,7 @@
 import type { Tx } from '@credalent/db/client';
 import { and, desc, eq, type SQL } from 'drizzle-orm';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
+import type { CatalogueDraft } from '../domain/catalogue-draft.ts';
 import {
   catalogueJobType,
   cataloguePack,
@@ -34,10 +35,11 @@ const skill = ({
 });
 
 /**
- * The newest version matching `where`, with every entry, retired ones flagged, in catalogue order; null when none.
+ * The newest version matching `where`, with every entry, retired ones flagged, in catalogue order, competencies with
+ * their positions, and the version's revision; null when none.
  * `tx` is one repeatable-read snapshot (composition.ts): a draft may be saved or discarded meanwhile.
  */
-export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<CatalogueVersion | null> {
+export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<CatalogueDraft | null> {
   const [header] = await tx
     .select()
     .from(catalogueVersion)
@@ -81,6 +83,9 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
     publishedAt: header.publishedAt,
     publishedBy: header.publishedBy,
     reason: header.reason,
+    revision: header.revision,
+    revisedBy: header.revisedBy,
+    revisedAt: header.revisedAt ?? header.createdAt,
     jobTypes: jobTypes.map(({ key, label, evidence, starterCompetencies, retired }) => ({
       key,
       label,
@@ -93,11 +98,13 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
       key,
       label,
       retired,
-      competencies: competencies.filter((c) => c.packKey === key).map((c) => ({ ...skill(c), core: c.core })),
+      competencies: competencies
+        .filter((c) => c.packKey === key)
+        .map((c) => ({ ...skill(c), core: c.core, position: c.position })),
       hints: hints
         .map((r) => r.hint)
         .filter((h) => h.packKey === key)
-        .map((h) => ({ ...skill(h), region: h.region })),
+        .map((h) => ({ ...skill(h), region: h.region, position: h.position })),
     })),
   };
 }
@@ -106,5 +113,14 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
 export async function readPublishedCatalogue(tx: Tx): Promise<CatalogueVersion> {
   const catalogue = await readCatalogueVersion(tx, eq(catalogueVersion.status, 'published'));
   if (!catalogue) throw new Error('no published catalogue version');
-  return catalogue;
+  // Readers outside the editor get the entries only: no revision, no positions.
+  const { revision: _revision, revisedBy: _revisedBy, revisedAt: _revisedAt, ...published } = catalogue;
+  return {
+    ...published,
+    packs: published.packs.map((p) => ({
+      ...p,
+      competencies: p.competencies.map(({ position: _p, ...c }) => c),
+      hints: p.hints.map(({ position: _p, ...h }) => h),
+    })),
+  };
 }

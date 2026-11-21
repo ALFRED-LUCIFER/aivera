@@ -23,7 +23,7 @@ const view: DashboardView = {
   ],
   oldestWaitingDays: 3,
   ai: { tokens: 2_820_000, nearBudget: 1, atBudget: 1 },
-  catalogue: { version: 1 },
+  catalogue: { version: 1, draft: null },
 };
 const show = (v: Partial<DashboardView> = {}) =>
   render(
@@ -64,10 +64,30 @@ describe('Scenario: AI tokens today against budgets', () => {
   });
 });
 
-describe('Scenario: A catalogue draft is waiting (published version only until AIV-P2-045/048)', () => {
-  it('shows the live version and links to the catalogue', () => {
+describe('Scenario: A catalogue draft is waiting', () => {
+  it('shows "Version 1 live · 1 draft waiting · last edited 2 hours ago" and "Eval not run" as icon and word', () => {
+    show({ catalogue: { version: 1, draft: { edited: { unit: 'hours', count: 2 }, eval: 'not_run' } } });
+    expect(tile('Catalogue version').textContent).toContain(
+      'Version 1 live · 1 draft waiting · last edited 2 hours agoEval not run',
+    );
+    expect(tile('Catalogue version').querySelector('svg')).toBeTruthy();
+  });
+
+  it.each([
+    ['passed', 'Eval passed'],
+    ['failed', 'Eval failed'],
+    ['running', 'Eval running…'],
+    ['stale', 'Out of date'],
+    ['error', 'Could not run'],
+  ] as const)('a %s eval reads "%s"', (state, word) => {
+    show({ catalogue: { version: 2, draft: { edited: { unit: 'minutes', count: 0 }, eval: state } } });
+    expect(tile('Catalogue version').textContent).toContain(`last edited just now${word}`);
+  });
+
+  it('no draft: "Version 1 live · No draft", no eval state, and a link to the catalogue', () => {
     show();
-    expect(tile('Catalogue version').textContent).toContain('Version 1 live');
+    expect(tile('Catalogue version').textContent).toContain('Version 1 live · No draft');
+    expect(tile('Catalogue version').textContent).not.toContain('Eval');
     expect(screen.getByRole('link', { name: 'Open the catalogue' }).getAttribute('href')).toBe('/ops/catalogue');
   });
 });

@@ -206,7 +206,9 @@ describe('Versions', () => {
     expect(editsInPlace(null)).toBe(false);
   });
 
-  it('only a version awaiting approval can be approved or returned, and only an approved one superseded', () => {
+  // ADR-014: a recruiter approves a draft or returned version directly; only a version sent for approval is returned.
+  // SAFETY: mutation check: dropped 'approved' from draft's transitions -> this test failed
+  it('a draft or returned version is approved directly or sent; only a sent one is returned; only an approved one superseded', () => {
     const allowed = RUBRIC_STATUSES.flatMap((from) =>
       RUBRIC_STATUSES.flatMap((to) => {
         try {
@@ -219,23 +221,28 @@ describe('Versions', () => {
     );
     expect(allowed).toEqual([
       'draft->awaiting_approval',
+      'draft->approved',
       'awaiting_approval->approved',
       'awaiting_approval->returned',
       'approved->superseded',
       'returned->awaiting_approval',
+      'returned->approved',
     ]);
   });
 });
 
-describe('Scenario: Only the hiring owner approves (AIV-P1-014)', () => {
+describe('Scenario: Who approves a rubric (AIV-P1-014, ADR-014)', () => {
   const job = { hiringOwnerUserId: 'owner' };
 
   // SAFETY: mutation check: let any hiring owner approve (dropped the owner id comparison) -> this test failed
-  it("is the job's own hiring owner, or an admin acting as owner; no one else", () => {
+  // SAFETY: mutation check: made an interviewer a 'recruiter' approver -> this test failed
+  it("is an admin or recruiter on the job, or the job's own hiring owner; no one else", () => {
     expect(approvesAs('hiring_owner', 'owner', job)).toBe('owner');
-    expect(approvesAs('admin', 'someone', job)).toBe('admin_as_owner');
+    expect(approvesAs('admin', 'owner', job)).toBe('owner');
+    expect(approvesAs('admin', 'someone', job)).toBe('recruiter');
+    expect(approvesAs('recruiter', 'someone', job)).toBe('recruiter');
+    expect(approvesAs('recruiter', 'someone', { hiringOwnerUserId: null })).toBe('recruiter');
     expect(approvesAs('hiring_owner', 'another-owner', job)).toBeNull();
-    expect(approvesAs('recruiter', 'someone', job)).toBeNull();
     expect(approvesAs('interviewer', 'someone', { hiringOwnerUserId: null })).toBeNull();
     // An owner moved to another role since no longer decides.
     expect(approvesAs('interviewer', 'owner', job)).toBeNull();
@@ -316,9 +323,9 @@ describe('Next action on the Jobs list (AIV-P1-006)', () => {
   const approved = { approved: true, latest: 'approved' } as const;
 
   it.each([
-    [null, 'send_rubric'],
-    ['draft', 'send_rubric'],
-    ['returned', 'send_rubric'],
+    [null, 'approve_rubric'],
+    ['draft', 'approve_rubric'],
+    ['returned', 'approve_rubric'],
     ['awaiting_approval', 'rubric_approval_pending'],
   ] as const)('a latest rubric version %s gives %s', (latest, kind) => {
     expect(nextAction({ approved: false, latest }, unknown)).toEqual({ kind });
@@ -326,7 +333,7 @@ describe('Next action on the Jobs list (AIV-P1-006)', () => {
 
   it('a new draft is sent for approval first, even while an older version is in force', () => {
     expect(nextAction({ approved: true, latest: 'draft' }, { packReady: true, openEvidenceRequests: 3 })).toEqual({
-      kind: 'send_rubric',
+      kind: 'approve_rubric',
     });
   });
 

@@ -30,6 +30,7 @@ import {
   type PublicListing,
   type Rubric,
   type RubricApproval,
+  type RubricToApprove,
   type RubricVersion,
 } from '../domain/job.ts';
 import { slugFor } from '../domain/public-job.ts';
@@ -83,7 +84,9 @@ export type JobStore = {
   rubricApprovals(
     workspaceId: string,
     approvedSince: Date,
-  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status'] })[]>;
+  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status']; approvedBy: string | null })[]>;
+  /** Each job's open draft or returned version, oldest job first (AIV-P1-084). */
+  openRubrics(workspaceId: string): Promise<RubricToApprove[]>;
   /** Deletes every job of the workspace and its rubrics and listings; false, deleting nothing, if any is not synthetic. */
   deleteSyntheticJobs(workspaceId: string): Promise<boolean>;
 };
@@ -213,7 +216,9 @@ export function jobsUseCases({
 
   /**
    * A version the context may approve or return, locked through its job row so decisions on one job run one after the
-   * other: `rubric.approve` (admins and granted hiring owners), then only the job's own hiring owner or an admin.
+   * other: `rubric.approve` (admins, recruiters and granted hiring owners), then only the job's own hiring owner, an
+   * admin or a recruiter (ADR-014). A draft or returned version is approved directly only by an admin or recruiter: the
+   * hiring owner decides only what was sent to them.
    */
   async function decidable(ctx: WorkspaceContext, versionId: string, to: 'approved' | 'returned', revision?: number) {
     const store = storeFor(ctx.tx);
@@ -224,6 +229,10 @@ export function jobsUseCases({
     if (!actingAs) throw new ForbiddenError();
     const version = await store.getVersion(ctx.workspaceId, versionId);
     if (!version) throw new JobError('not_found');
+    // Authorised first, so a refused caller always gets 403: a hiring owner decides only a version sent to them, and
+    // only the job's hiring owner returns one (a recruiter would edit it instead).
+    if (version.status !== 'awaiting_approval' && ctx.role === 'hiring_owner') throw new ForbiddenError();
+    if (to === 'returned' && actingAs !== 'owner') throw new ForbiddenError();
     if (revision !== undefined && version.revision !== revision) throw new JobError('stale');
     assertTransition(version.status, to);
     return { job, version, actingAs };
@@ -531,8 +540,8 @@ export function jobsUseCases({
     },
 
     /**
-     * The job's hiring owner, or an admin acting as owner (recorded as such), approves the version awaiting approval
-     * (AIV-P1-014). The previously approved version becomes superseded and RubricApproved.v1 is written to the outbox,
+     * An admin or recruiter approves the job's open version (draft, returned or awaiting approval), or the job's hiring
+     * owner the version sent to them (AIV-P1-014, ADR-014); `actingAs` records which. The previously approved version becomes superseded and RubricApproved.v1 is written to the outbox,
      * which starts assessment, in this transaction. `revision` is the copy the approver read; an older copy throws
      * `JobError('stale')`.
      */
@@ -568,8 +577,8 @@ export function jobsUseCases({
     },
 
     /**
-     * The job's hiring owner, or an admin acting as owner, returns the version awaiting approval with a note
-     * (AIV-P1-014). The approved version stays in force. `revision` as `approveRubric`. Audited with the note.
+     * The job's hiring owner returns the version sent to them with a note (AIV-P1-014, ADR-014); a recruiter edits
+     * their own version instead. The approved version stays in force. `revision` as `approveRubric`. Audited with the note.
      */
     async returnRubric(
       ctx: WorkspaceContext,
@@ -596,9 +605,20 @@ export function jobsUseCases({
       await authorize(ctx, 'job.list');
       const since = new Date(now().getTime() - DONE_ON_DESK_MS);
       const rows = await storeFor(ctx.tx).rubricApprovals(ctx.workspaceId, since);
-      return rows.flatMap(({ status, ...row }) =>
-        status === 'awaiting_approval' || status === 'approved' ? [{ ...row, status }] : [],
+      // Done only when the hiring owner approved it: one a recruiter approved, sent or not, never waited on them
+      // (ADR-014), so it never says "With the {owner}".
+      return rows.flatMap(({ status, approvedBy, ...row }) =>
+        status === 'awaiting_approval' || (status === 'approved' && approvedBy === row.hiringOwnerUserId)
+          ? [{ ...row, status }]
+          : [],
       );
+    },
+
+    async listRubricsToApprove(ctx: WorkspaceContext): Promise<RubricToApprove[]> {
+      // Only admins and recruiters approve a draft (ADR-014); anyone else has nothing waiting for them here.
+      if (ctx.role !== 'admin' && ctx.role !== 'recruiter') return [];
+      await authorize(ctx, 'rubric.edit');
+      return storeFor(ctx.tx).openRubrics(ctx.workspaceId);
     },
 
     /**

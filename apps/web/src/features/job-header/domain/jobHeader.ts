@@ -41,7 +41,7 @@ export function jobHeaderView(
       : latest && latest.status !== 'superseded'
         ? { key: latest.status, values: { version: latest.version } }
         : { key: 'notStarted' },
-    // Nothing is assessed before the hiring owner approves the rubric.
+    // Nothing is assessed before the rubric is approved (by a recruiter, or the hiring owner it was sent to).
     candidates: !approved
       ? { key: 'afterApproval' }
       : assessed === null

@@ -22,7 +22,7 @@ export type TaskReport = {
   rates: Record<Metric, number | null>;
   thresholds: Record<Metric, number>;
   /** Per case group: cases passed of the group's cases (failures are their ids), against the group's minimum. */
-  groups: (Ratio & { label: string; min: number })[];
+  groups: (Ratio & { group: string; label: string; min: number })[];
 };
 
 export const recordedAnswer: Answer = async (_task, golden) => golden.recorded.output;
@@ -47,7 +47,7 @@ export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
  * fails with SchemaMismatch, never patched (AGENTS.md 3.7).
  */
-export function liveJudge(ai: AiClient): Judge {
+export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
   return async (rubric, golden, output) =>
     ai.generateStructured({
       task: 'evals.judge',
@@ -117,7 +117,7 @@ export async function evaluateTask(
   const groups = Object.entries(groupThresholds).map(([group, { label, min }]) => {
     const inGroup = results.filter((_, i) => cases[i]?.group === group);
     const failures = inGroup.filter((result) => !result.passed).map((result) => result.id);
-    return { label, min, n: inGroup.length - failures.length, total: inGroup.length, failures };
+    return { group, label, min, n: inGroup.length - failures.length, total: inGroup.length, failures };
   });
   const passed =
     results.every((result) => !result.error) &&

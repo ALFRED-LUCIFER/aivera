@@ -488,7 +488,7 @@
     "keepEditing": "Keep editing",
     "close": "Close",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
-    "savedNext": "Next: the hiring owner approves the rubric. Candidates are assessed only after that.",
+    "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
     "backToJobs": "Back to Jobs",
     "forbidden": "You do not have access to add jobs.",
     "errors": {
@@ -580,7 +580,7 @@
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
-    "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",
+    "intro": "Every job runs on an approved rubric. Candidates are assessed only after its recruiter approves it.",
     "add": "Add a job",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
@@ -612,7 +612,7 @@
       "returned": "Returned, needs changes"
     },
     "nextAction": {
-      "send_rubric": "Send rubric for approval",
+      "approve_rubric": "Approve the rubric",
       "rubric_approval_pending": "Rubric approval pending",
       "decide_shortlist": "Decide on the Round 2 shortlist",
       "chase_evidence": "Chase {count, plural, one {# evidence request} other {# evidence requests}}"
@@ -661,7 +661,14 @@
         "label": "Catalogue version",
         "live": "Version {version, number} live",
         "view": "Open the catalogue",
-        "error": "We could not load the catalogue. Try again."
+        "error": "We could not load the catalogue. Try again.",
+        "draft": "1 draft waiting",
+        "noDraft": "No draft",
+        "edited": {
+          "minutes": "{count, plural, =0 {last edited just now} one {last edited # minute ago} other {last edited # minutes ago}}",
+          "hours": "{count, plural, one {last edited # hour ago} other {last edited # hours ago}}",
+          "days": "{count, plural, one {last edited # day ago} other {last edited # days ago}}"
+        }
       }
     },
     "nav": {
@@ -819,8 +826,6 @@
     "catalogue": {
       "title": "Catalogue",
       "description": "The job types and industry packs that suggest each new job's competencies.",
-      "readOnly": "The catalogue changes only through a reviewed pull request.",
-      "source": "Catalogue migrations on GitHub",
       "jobTypes": "Job types · version {version, number}",
       "columns": {
         "jobType": "Job type",
@@ -835,7 +840,133 @@
       "hintsFor": "{region, select, uae {Regional hints for the UAE} ksa {Regional hints for KSA} india {Regional hints for India} other {Regional hints for {label}}}",
       "desirable": "Desirable",
       "levelNeeded": "Level {level, number} needed",
-      "level": "Level {level, number}"
+      "level": "Level {level, number}",
+      "loading": "Loading the catalogue…",
+      "error": "We could not load the catalogue. Try again.",
+      "retry": "Try again",
+      "editor": {
+        "noDraft": "Recruiters see version {version, number}. Start a draft to change it.",
+        "start": "Start a draft",
+        "starting": "Starting…",
+        "banner": "Draft — not live. Recruiters see version {version, number}.",
+        "jobTypes": "Job types in the draft",
+        "packs": "Domain packs in the draft",
+        "addPack": "Add a pack",
+        "editPack": "Edit pack",
+        "addJobType": "Add a job type",
+        "editJobType": "Edit job type",
+        "addCompetency": "Add a competency",
+        "editCompetency": "Edit competency",
+        "edit": "Edit",
+        "retire": "Retire",
+        "remove": "Remove",
+        "editNamed": "Edit {name}",
+        "retireNamed": "Retire {name}",
+        "removeNamed": "Remove {name}",
+        "addCompetencyTo": "Add a competency to {name}",
+        "noCompetencies": "No competencies yet.",
+        "addHint": "Add a regional hint",
+        "editHint": "Edit regional hint",
+        "addHintTo": "Add a regional hint to {name} {region, select, uae {for the UAE} ksa {for KSA} india {for India} other {for {label}}}",
+        "noHints": "No regional hints {region, select, uae {for the UAE} ksa {for KSA} india {for India} other {for {label}}} yet.",
+        "status": {
+          "live": "Live",
+          "changed": "Changed in draft",
+          "new": "New in draft",
+          "retired": "Retired"
+        },
+        "fields": {
+          "key": "Key",
+          "keyHint": "3 to 48 lower-case letters, digits and underscores, starting with a letter. It cannot change once published.",
+          "keyFixed": "Published keys never change.",
+          "label": "English label",
+          "name": "Name",
+          "meaning": "What it means",
+          "evidence": "Evidence that counts",
+          "starters": "Starter competencies",
+          "starter": "Starter competency {n, number}",
+          "position": "Position in Add a job",
+          "positionHint": "1 is first. Add a job offers {count, plural, one {# job type} other {# job types}} now.",
+          "level": "Level {level, number}",
+          "appliesTo": "Applies to job types",
+          "core": "Default suggestion for",
+          "coreHint": "At most 4 default suggestions per job type in a pack.",
+          "levelNeeded": "Level needed",
+          "type": "Type",
+          "typeHint": "The catalogue never makes a competency mandatory.",
+          "hintTypeHint": "A regional hint is market knowledge, never mandatory and never a residency requirement.",
+          "desirable": "Desirable"
+        },
+        "appliesTo": "Applies to {jobTypes}",
+        "coreFor": "Default suggestion for {jobTypes}",
+        "evidenceIs": "Evidence that counts: {evidence}",
+        "startersAre": "Starter competencies: {starters}",
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "close": "Close",
+        "reload": "Reload",
+        "errors": {
+          "stale": "{name} changed this draft. Reload to see the latest.",
+          "staleUnknown": "Another operator changed this draft. Reload to see the latest.",
+          "no_draft": "There is no open draft. Reload to see the latest.",
+          "draft_open": "A draft is already open. Reload to see it.",
+          "not_found": "This entry is no longer in the draft. Reload to see the latest.",
+          "key_taken": "This key is already used.",
+          "key_fixed": "Published keys never change.",
+          "pack_retired": "This pack is retired. Add competencies to a live pack.",
+          "job_type": "Choose job types the catalogue offers.",
+          "core_not_applied": "A default suggestion must also apply to that job type.",
+          "core_limit": "At most 4 default suggestions per job type in a pack.",
+          "evidence_required": "Say what evidence shows this skill.",
+          "fairness_employer": "A competency is a skill with evidence, never an employer.",
+          "fairness_origin": "A competency is a skill with evidence, never a nationality or where someone is from.",
+          "fairness_residency": "A regional hint is market knowledge shown with evidence, never where someone lives or is from.",
+          "invalid": {
+            "key": "Use lower-case letters, digits and underscores.",
+            "other": "Fill in this field.",
+            "starters": "Add exactly four starter competencies."
+          },
+          "failed": "That did not go through. Nothing was changed.",
+          "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest.",
+          "job_type_in_use": "A pack competency or regional hint applies to this job type. Take it off there first.",
+          "eval_running": "An eval run is already in progress."
+        },
+        "eval": {
+          "title": "AI eval",
+          "run": "Run the eval",
+          "requesting": "Starting…",
+          "status": {
+            "not_run": "Eval not run",
+            "running": "Eval running…",
+            "passed": "Eval passed",
+            "failed": "Eval failed",
+            "stale": "Out of date",
+            "error": "Could not run"
+          },
+          "message": {
+            "not_run": "The eval has not run on this draft. Publishing needs a passed eval.",
+            "running": "The golden cases are running against the draft. This page updates when they finish.",
+            "stale": "The draft changed after the last eval run. Run it again.",
+            "error": "The eval could not run. Try again."
+          },
+          "ranAt": "Ran on {at, date, short} at {at, time, ::HHmm} ({timeZone})",
+          "tasks": {
+            "detectDomain": "Industry and region detection",
+            "draftCompetencies": "Competency drafting"
+          },
+          "metric": {
+            "domain": "Domain accuracy",
+            "none": "No clear domain",
+            "fairness": "Fairness",
+            "fieldMatch": "Field match"
+          },
+          "percent": "{value, number}%",
+          "observed": "Observed",
+          "failedCases": "Failed cases",
+          "uncovered": "Add golden cases for {keys} in packages/ai/evals before publishing."
+        }
+      }
     },
     "approvals": {
       "title": "Approvals",
@@ -1162,19 +1293,24 @@
     "returnNote": "Returned with a note: “{note}”",
     "decide": {
       "title": "Version {version} is waiting for your approval",
+      "titleDraft": "Version {version} is ready for you to approve",
+      "titleSent": "Version {version} is with the hiring owner",
       "doneTitle": "Your approval",
       "intro": "Review the competencies, then approve this version or return it with a note. Nothing is assessed against it until you approve.",
+      "introDraft": "Review the competencies, then approve this version. Nothing is assessed against it until you approve.",
+      "introSent": "The hiring owner can approve it or return it with a note. You can still approve it yourself.",
       "changed": "What changed since version {version}",
       "changedNone": "What changed",
-      "actingAsAdmin": "You are not this job's hiring owner. As an admin you decide on their behalf, and the audit log records it.",
       "approve": "Approve version {version}",
       "return": "Return with a note",
+      "send": "Send to the hiring owner",
       "noteLabel": "Note for the recruiter",
       "confirmReturn": "Return version {version}",
       "cancel": "Cancel",
       "footer": "The approved version stays in force until a new one is approved.",
       "approved": "Version {version} is approved. Assessment can now start for this job.",
       "returned": "Version {version} was returned with your note. {inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "sent": "Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.",
       "stale": "This version changed since you opened it. Reload to see the latest.",
       "failed": "That did not go through. Nothing was changed.",
       "newer": "A newer version is waiting for you",
@@ -1380,6 +1516,9 @@
     }
   },
   "desk": {
+    "toApprove": "Rubrics to approve",
+    "nothingToApprove": "No rubrics are waiting for you",
+    "returned": "Returned with a note",
     "waitingOnOthers": "Waiting on others",
     "nothingWaiting": "Nothing is waiting on others.",
     "rubricApproval": "Rubric approval",

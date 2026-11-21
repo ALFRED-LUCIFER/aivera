@@ -12,6 +12,15 @@ import type {
   SaveRubricInput,
 } from '../application/jobs.ts';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
+import type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
+import type {
+  CatalogueEditorView,
+  DraftCompetencyInput,
+  DraftHintInput,
+  DraftJobTypeInput,
+  DraftPackInput,
+  RetireEntryInput,
+} from '../domain/catalogue-draft.ts';
 import type {
   DeskJob,
   Job,
@@ -20,6 +29,7 @@ import type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricVersion,
 } from '../domain/job.ts';
 import type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
@@ -44,6 +54,34 @@ export type {
   PackForJobType,
 } from '../domain/catalogue.ts';
 export {
+  CatalogueError,
+  competencyStatus,
+  draftCompetencySchema,
+  draftHintSchema,
+  draftJobTypeSchema,
+  draftPackSchema,
+  hintStatus,
+  isHintNewInDraft,
+  isNewInDraft,
+  jobTypeStatus,
+  packStatus,
+  retireEntrySchema,
+} from '../domain/catalogue-draft.ts';
+export type {
+  CatalogueEditorView,
+  CatalogueErrorCode,
+  CatalogueField,
+  DraftCompetencyInput,
+  DraftHintInput,
+  DraftJobTypeInput,
+  DraftPackInput,
+  EditorCompetency,
+  EditorHint,
+  EditorVersion,
+  EntryStatus,
+  RetireEntryInput,
+} from '../domain/catalogue-draft.ts';
+export {
   approvesAs,
   COMPETENCY_ORIGINS,
   COMPETENCY_TYPES,
@@ -65,6 +103,7 @@ export type {
   PublicListing,
   Rubric,
   RubricApproval,
+  RubricToApprove,
   RubricState,
   RubricStatus,
   RubricVersion,
@@ -82,6 +121,8 @@ export type {
   SuggestedCompetency,
 } from '../application/draft-competencies.ts';
 export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
+export { evalAllowsPublish, evalRequestSchema } from '../domain/catalogue-eval.ts';
+export type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
@@ -106,6 +147,16 @@ export const JobUnpublishedV1 = {
   type: 'JobUnpublished.v1',
   payload: z.strictObject({ jobId: z.uuid() }),
 } satisfies EventDefinition<{ jobId: string }>;
+
+/**
+ * Written to `jobs.outbox` when an operator asks for an eval run on the catalogue draft (AIV-P2-048), and sent to the
+ * `jobs` queue, whose worker job runs it. The run's id only; the envelope's workspace is the fixed eval scope, no real
+ * workspace's.
+ */
+export const CatalogueEvalRequestedV1 = {
+  type: 'CatalogueEvalRequested.v1',
+  payload: z.strictObject({ runId: z.uuid() }),
+} satisfies EventDefinition<{ runId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
@@ -174,10 +225,11 @@ export interface JobsContract {
     alongside?: (sent: RubricVersion) => Promise<void>,
   ): Promise<RubricVersion>;
   /**
-   * The job's own hiring owner, or an admin acting as owner (audited as such), approves the version awaiting approval
-   * (AIV-P1-014): the previous approved version becomes superseded and RubricApproved.v1, which starts assessment, is
-   * written to the outbox in the same transaction. Anyone else throws `ForbiddenError`. `revision` is the copy the
-   * approver read: an older one throws `JobError('stale')`; a version not awaiting approval `version_status`.
+   * An admin or recruiter on the job approves its open version (a draft directly), or the job's own hiring owner a
+   * version sent to them (AIV-P1-014, ADR-014), audited with `actingAs`: the previous approved version becomes superseded
+   * and RubricApproved.v1, which starts assessment, is written to the outbox in the same transaction. Anyone else throws
+   * `ForbiddenError`. `revision` is the copy the approver read: an older one throws `JobError('stale')`; a version that
+   * cannot be approved (already approved, superseded) `version_status`.
    * `alongside` runs in the same transaction before the audit write: the caller queues the decision email there.
    */
   approveRubric(
@@ -202,6 +254,11 @@ export interface JobsContract {
    * week, oldest job first. Every role; job-scoped roles get their granted jobs only.
    */
   listRubricApprovals(ctx: WorkspaceContext): Promise<RubricApproval[]>;
+  /**
+   * My desk's "Rubrics to approve" (AIV-P1-084, ADR-014): per job, its open draft or returned version, which an admin
+   * or recruiter approves directly, oldest job first. Empty for every other role.
+   */
+  listRubricsToApprove(ctx: WorkspaceContext): Promise<RubricToApprove[]>;
   /**
    * Admins and recruiters: what the candidate site would show (the allow-listed listing, from the approved rubric),
    * for the publish preview. Null when no rubric version is approved.
@@ -266,7 +323,64 @@ export interface DomainDetecting {
 export interface CatalogueReads {
   /** The latest published version, retired entries flagged. Throws when the read fails. */
   getPublishedCatalogue(): Promise<CatalogueVersion>;
-  // Draft reads join this contract with the editor (AIV-P2-045), on the ops allow-list behind platformOperator().
+}
+
+/**
+ * The catalogue editor (AIV-P2-045, ADR-013 points 3 to 6, 11, 14): one open draft that every operator edits. For
+ * `/ops` only: each call takes the operator id from `platformOperator()`, never from the form, and only
+ * server/operator.ts calls the writes (architecture rule `operator-only-writes`). Writes validate their input with zod
+ * (a `ZodError` before anything is read), name the draft revision they read, and throw `CatalogueError`: `stale` (with
+ * who saved last) when the draft moved on, `no_draft`, `not_found`, and the rule refusals. Each writes its
+ * `audit.platform_entry` last in its transaction. Nothing here changes what recruiters see until publish (AIV-P2-049).
+ */
+export interface CatalogueEditor {
+  /** The latest published version and the open draft (null when none), competencies with their positions. */
+  getEditor(): Promise<CatalogueEditorView>;
+  /** "Start a draft": copies the latest published version. `draft_open` when one is open. `catalogue.draft_opened`. */
+  openDraft(operatorId: string): Promise<void>;
+  /**
+   * Adds a pack (`previousKey` null) or edits its English label; its key only while it is new in the draft
+   * (`key_fixed`), never to a key the draft holds (`key_taken`). `catalogue.entry_added` / `catalogue.entry_edited`.
+   */
+  saveDraftPack(operatorId: string, input: DraftPackInput): Promise<void>;
+  /**
+   * Adds (`position` null) or edits a pack competency, always desirable. Refused: empty evidence
+   * (`evidence_required`), a retired entry (`entry_retired`), a name or meaning naming an employer or where someone is
+   * from (`fairness_employer`, `fairness_origin`), a job type the draft does not offer, core outside applies-to, more
+   * than 4 core per job type in the pack (`core_limit`), a retired pack (`pack_retired`).
+   */
+  saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
+  /**
+   * Adds (`adding`) or edits a job type: English label, evidence text, exactly four starters, and its place in the Add a
+   * job list. Refused: a key any version holds (`key_taken`, retired keys included), a starter naming an employer or
+   * where someone is from (`fairness_employer`, `fairness_origin`), a retired job type (`entry_retired`).
+   * `catalogue.entry_added` / `catalogue.entry_edited` (AIV-P2-047).
+   */
+  saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
+  /**
+   * Adds (`position` null) or edits a pack's regional hint for one region (AIV-P2-046), always desirable: the
+   * competency's rules without core, after a residency rule (`fairness_residency`: never where someone lives, is from
+   * or holds papers for). An unknown or retired region is `not_found`.
+   */
+  saveDraftHint(operatorId: string, input: DraftHintInput): Promise<void>;
+  /**
+   * Retires a pack, competency, job type or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in
+   * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
+   * Returns which.
+   */
+  retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
+  /**
+   * "Run the eval" (AIV-P2-048, ADR-013 point 12): starts a run on the draft's current content and queues its worker
+   * job (`CatalogueEvalRequested.v1`). `eval_running` while another run on the draft is running.
+   * `catalogue.eval_requested`.
+   */
+  requestEval(operatorId: string, input: EvalRequestInput): Promise<void>;
+  /**
+   * The open draft's eval state (null when no draft is open): `passed` only when the latest run passed on the draft's
+   * current content hash; an edit since makes it `stale`. The console home reads it too (AIV-P2-051); publish requires
+   * `evalAllowsPublish` (AIV-P2-049).
+   */
+  getDraftEval(): Promise<DraftEval | null>;
 }
 
 /**
