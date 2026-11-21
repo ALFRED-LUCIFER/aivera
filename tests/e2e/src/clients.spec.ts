@@ -102,5 +102,5 @@ test('Scenario: In-house workspaces have no clients', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Clients' })).toHaveCount(0);
   // The settings loading boundary streams the page, so the not-found page arrives with status 200.
   await page.goto('/app/settings/clients');
-  await expect(page.getByText('This page could not be found.')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' })).toBeVisible();
 });
