@@ -7,7 +7,7 @@ import type { Theme } from '@/features/shell/domain/shell.ts';
 import { useShellController } from '@/features/shell/hooks/useShellController.ts';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 
-type Props = Pick<AppShellProps, 'member' | 'counts' | 'screens' | 'children'> & {
+type Props = Pick<AppShellProps, 'member' | 'screens' | 'children'> & {
   intl: Omit<ComponentProps<typeof IntlProvider>, 'children'>;
   theme: Theme;
 };

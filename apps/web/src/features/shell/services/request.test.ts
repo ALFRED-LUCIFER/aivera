@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Member } from '../domain/shell.ts';
-import { loadShellCounts, requireScreen } from './request.ts';
+import { requireScreen } from './request.ts';
 import { setTheme } from './theme.ts';
 
 const cookieSet = vi.fn();
@@ -16,25 +15,6 @@ vi.mock('@/server/flags', () => ({ enabledFlags: flags }));
 
 const membership = vi.fn();
 vi.mock('@/server/workspace', () => ({ currentMembership: () => membership() }));
-
-const member = (synthetic: boolean): Member => ({
-  name: 'AP',
-  initials: 'AP',
-  capabilities: ['recruiter'],
-  workspace: { synthetic, status: 'active' },
-});
-
-describe('Scenario: Counts fail softly', () => {
-  it('a failed counts read gives null, so the sidebar shows names without numbers', async () => {
-    expect(await loadShellCounts(member(true), () => Promise.reject(new Error('down')))).toBeNull();
-    expect(await loadShellCounts(member(true))).toEqual({ desk: 4, jobs: 5 });
-  });
-
-  // SAFETY: mutation check: removed the synthetic check in loadShellCounts -> this test failed
-  it('never shows the seeded numbers for a workspace that is not synthetic', async () => {
-    expect(await loadShellCounts(member(false))).toBeNull();
-  });
-});
 
 describe('requireScreen', () => {
   it('lets a recruiter open a mapped screen', async () => {

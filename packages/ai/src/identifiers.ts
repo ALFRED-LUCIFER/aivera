@@ -24,11 +24,13 @@ export class MissingIdentifiers extends Error {
 }
 
 /** One replacement: at `at` in the redacted text, `length` long, standing for `fromLength` characters at `from`. */
-type Cut = { at: number; length: number; from: number; fromLength: number };
+type Cut = { at: number; length: number; from: number; fromLength: number; trait: boolean };
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const letter = String.raw`[\p{L}\p{M}\p{N}_]`;
-const EMAIL = String.raw`[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
+// An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
+const letter = String.raw`(?:\p{L}|\p{M}|\p{N}|_)`;
+// Starts only at the start of a run, so a long run with no @ is scanned once, not from every position.
+const EMAIL = String.raw`(?<![\w.%+-])[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
 const END = String.raw`(?![\w]|[.,]\d)`;
@@ -45,7 +47,76 @@ const yearsOrDate = /^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/;
 // Particles that are a name part only next to another part: "Al Qahtani" is the candidate, "Al Ain" is a place.
 const PARTICLES = new Set(['al', 'el', 'bin', 'bint', 'ibn', 'abu', 'de', 'da', 'di', 'van', 'von', 'le', 'la']);
 
-function patternFor({ names, emails, phones }: Identifiers): RegExp {
+// Protected traits (AIV-P2-065, AGENTS.md 1.5), in CV, document and reference sources only (a repository's
+// `age: number;` stays): a labelled field, Latin or Arabic label, becomes `[REMOVED]` with its value. A label counts
+// only at a field start (line start or after · • | ; , ، : or a bracket), so "Project name:" or "storage:" in a skills
+// line stay, and is followed by a colon, a spaced dash or a tab. The value runs to the line end, the next · • | ; or a
+// comma before another "Label:". A bare label's value may sit on the next line: one short field (40 characters at most,
+// no colon), removed even when it is not the value; never after Photo, whose next line is usually the next section.
+// `[REMOVED]` that the model repeats in its text is shown to a recruiter as written.
+const PROTECTED_PLACEHOLDER = '[REMOVED]';
+const TRAIT_KINDS: ReadonlySet<Source['kind']> = new Set(['cv', 'document', 'reference']);
+const TRAIT_LABELS = [
+  'nationality',
+  'citizenship',
+  'date of birth',
+  'birth ?date',
+  String.raw`d\.?o\.?b\.?`,
+  'place of birth',
+  'born',
+  'age',
+  'marital status',
+  'civil status',
+  'family status',
+  'gender',
+  'sex',
+  'religion',
+  'photo(?:graph)?',
+  'الجنسية',
+  'تاريخ الميلاد',
+  'مكان الميلاد',
+  'العمر',
+  'السن',
+  'الحالة الاجتماعية',
+  'الجنس',
+  'الديانة',
+  'الدين',
+  'الصورة',
+];
+const GAP = String.raw`[ \t\u200e\u200f]*`;
+const FIELD = String.raw`(?:^|[\n·•|;,،:(\[])${GAP}`;
+const SEPARATOR = String.raw`(?:[ \t]*[:：]|[ \t]+[-–][ \t]|\t)`;
+const VALUE = String.raw`[^\n·•|;]*?(?=[ \t]*(?:$|[\n·•|;]|[,،][ \t]*\p{L}[\p{L}\p{M} .]{0,29}[:：]))`;
+const NEXT_LINE = String.raw`(?<!(?:photo(?:graph)?|الصورة)${SEPARATOR})${GAP}\r?\n${GAP}[^\n·•|;:：]{1,40}?(?=[ \t]*(?:$|[\n·•|;]))`;
+// shortcut: unlabelled traits are caught only as "34 years old", "34-year-old", "aged 34", "Photo attached" and
+// "[photo ...]"; a "20-year-old codebase" is removed too. Widen from pilot CVs if another shape reaches a prompt.
+const TRAIT = [
+  String.raw`(?<=${FIELD})photo(?:graph)?(?:[ \t]*[:：])?\s*(?:attached|enclosed|included|(?:available )?on request)(?!${letter})`,
+  String.raw`(?<=${FIELD})(?:${TRAIT_LABELS.join('|')})${SEPARATOR}(?:${NEXT_LINE}|${VALUE})`,
+  String.raw`(?<!${letter})(?:aged[ \t]+\d{2}|\d{2}[ -](?:years?|yrs)[ -]old)(?!${letter})`,
+  String.raw`[[(][ \t]*photo(?:graph)?(?!${letter})[^\])\n]*[\])]`,
+].join('|');
+// A CV's own name in Arabic script (the record usually holds the Latin form): two to four Arabic words that are a field
+// of the first line, the value of a "Name:" or "الاسم:" label (on its line or the next), or a whole line next to a line
+// the record's name matched.
+// shortcut: an Arabic name elsewhere, or past the first 300 characters of its line, is removed only when the record
+// holds it; widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
+const ARABIC_WORDS = String.raw`\p{sc=Arabic}+(?:[ \t]+\p{sc=Arabic}+){1,3}`;
+const FIELD_END = String.raw`(?=${GAP}(?:$|[\n·•|,،;–-]))`;
+const arabicNameOf = (recordName: string) =>
+  String.raw`(?=\p{sc=Arabic})(?:${[
+    String.raw`(?<=^(?:\s*|[^\n]{0,300}[·•|,،;–-])${GAP})${ARABIC_WORDS}${FIELD_END}`,
+    String.raw`(?<=${FIELD}(?:full name|name|الاسم الكامل|الاسم)[ \t]*[:：]${GAP}(?:\n${GAP})?)${ARABIC_WORDS}${FIELD_END}`,
+    ...(recordName
+      ? [
+          String.raw`(?<=(?:^|\n)[^\n]{0,300}${recordName}[^\n]{0,300}\n${GAP})${ARABIC_WORDS}(?=${GAP}(?:$|\n))`,
+          String.raw`(?<=(?:^|\n)${GAP})${ARABIC_WORDS}(?=${GAP}\n[^\n]*${recordName})`,
+        ]
+      : []),
+  ].join('|')})`;
+
+/** One pattern per source kind: `traits` for TRAIT_KINDS, and `cv` adds the Arabic name. */
+function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv: boolean): RegExp {
   const parts = [...new Set(names.flatMap((name) => name.trim().split(/[\s-]+/)))]
     .filter((part) => (part.match(/\p{L}/gu)?.length ?? 0) >= 2)
     .toSorted((a, b) => b.length - a.length);
@@ -53,11 +124,11 @@ function patternFor({ names, emails, phones }: Identifiers): RegExp {
   const word = (list: string[]) => `(?:${list.map(escape).join('|')})(?!${letter})`;
   const particles = alone.length ? parts.filter((part) => !alone.includes(part)) : [];
   const own = word(alone.length ? alone : parts);
+  // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
+  const ownWord = parts.length ? `(?<!${letter})${own}` : '';
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's") is one placeholder; it starts and ends on a non-particle.
-  const run = parts.length
-    ? `(?<name>(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?)`
-    : '';
+  const name = parts.length ? `(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
   // The record's own phones match by their digits in any formatting, spaced dashes included, at any length.
   const record = phones
     .map((phone) => phone.replace(/\D/g, '').replace(/^00/, ''))
@@ -69,7 +140,9 @@ function patternFor({ names, emails, phones }: Identifiers): RegExp {
     `(?<email>${[...emails.filter(Boolean).map(escape), EMAIL].join('|')})`,
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
     `(?<phone>${DOTTED}|${PHONE})`,
-    ...(run ? [run] : []),
+    ...(traits ? [`(?<trait>${TRAIT})`] : []),
+    ...(cv ? [`(?<arabicName>${arabicNameOf(ownWord)})`] : []),
+    ...(name ? [`(?<name>${name})`] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
 }
@@ -88,8 +161,11 @@ function toOriginal(cuts: readonly Cut[], offset: number, end: boolean): number 
 export type Redaction = {
   /** The sources as the model sees them, in the same order. */
   sources: Source[];
-  /** A span of the redacted `sources[index]` as a span of the original source text. */
-  original(index: number, span: { start: number; end: number }): { start: number; end: number };
+  /**
+   * A span of the redacted `sources[index]` as a span of the original source text; undefined when it touches a removed
+   * trait, so a protected trait never comes back as a cited, stored quote.
+   */
+  original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
 
 /**
@@ -98,7 +174,10 @@ export type Redaction = {
  * `keepContact`, emails and phones stay as written.
  */
 export function redactSources(sources: readonly Source[], identifiers: Identifiers, keepContact: boolean): Redaction {
-  const pattern = patternFor(identifiers);
+  const plain = patternFor(identifiers, false, false);
+  const traits = patternFor(identifiers, true, false);
+  const cv = patternFor(identifiers, true, true);
+  const patternOf = (kind: Source['kind']) => (kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
   const numbers = { EMAIL: new Map<string, string>(), PHONE: new Map<string, string>() };
   const numbered = (kind: keyof typeof numbers, key: string) => {
     const seen = numbers[kind];
@@ -111,10 +190,10 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    for (const match of source.text.matchAll(pattern)) {
+    for (const match of source.text.matchAll(patternOf(source.kind))) {
       const value = match[0];
-      const { email, own, phone } = match.groups ?? {};
-      let to = CANDIDATE_PLACEHOLDER;
+      const { email, own, phone, trait } = match.groups ?? {};
+      let to = trait ? PROTECTED_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
       if (email || own || phone) {
         if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
         if (keepContact) continue;
@@ -123,7 +202,7 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
           : numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''));
       }
       text += source.text.slice(last, match.index);
-      cuts.push({ at: text.length, length: to.length, from: match.index, fromLength: value.length });
+      cuts.push({ at: text.length, length: to.length, from: match.index, fromLength: value.length, trait: !!trait });
       text += to;
       last = match.index + value.length;
     }
@@ -134,6 +213,7 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     sources: redacted,
     original: (index, { start, end }) => {
       const cuts = cutsOf[index] ?? [];
+      if (cuts.some((cut) => cut.trait && start < cut.at + cut.length && end > cut.at)) return undefined;
       return { start: toOriginal(cuts, start, false), end: toOriginal(cuts, end, true) };
     },
   };

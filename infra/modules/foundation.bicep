@@ -1,13 +1,18 @@
 // AIV-P0-003: Credalent's own identities, Key Vault and Application Insights inside the shared Medvya dev resource group
-// (ADR-008). Log Analytics is Medvya's workspace, referenced, not created.
+// (ADR-008). Log Analytics is Medvya's workspace, referenced, not created (the pilot's own: modules/network.bicep).
+param env string
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
+param brand string
 param location string
 param tags object
 param logAnalyticsName string
 param githubOidcRepo string
+@description('main.bicep names it, and reads acs-webhook-key from it.')
+param keyVaultName string
 
 // Web and worker. Reads Credalent's Key Vault; signs in to PostgreSQL as aivera_app (no DDL, row-level security applies).
 resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-dev'
+  name: 'id-${brand}-${env}'
   location: location
   tags: tags
 }
@@ -15,15 +20,16 @@ resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
 // GitHub Actions (OIDC, no stored secret) and the migration job. Signs in to PostgreSQL as aivera_migrator.
 // Kept apart from the app identity: a compromised web app must never be able to run DDL or bypass RLS.
 resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-cicd-dev'
+  name: 'id-${brand}-cicd-${env}'
   location: location
   tags: tags
 
+  // Dev trusts main (deploy-dev.yml); the pilot trusts only the owner-approved "pilot" environment (deploy-pilot.yml).
   resource github 'federatedIdentityCredentials' = {
-    name: 'github-main'
+    name: env == 'dev' ? 'github-main' : 'github-${env}'
     properties: {
       issuer: 'https://token.actions.githubusercontent.com'
-      subject: 'repo:${githubOidcRepo}:ref:refs/heads/main'
+      subject: env == 'dev' ? 'repo:${githubOidcRepo}:ref:refs/heads/main' : 'repo:${githubOidcRepo}:environment:${env}'
       audiences: ['api://AzureADTokenExchange']
     }
   }
@@ -31,12 +37,13 @@ resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
 
 // GitHub Actions' ai-eval-live job (AIV-P0-029): may call the dev AI deployments and nothing else (ai.bicep). Trusts the
 // "ai-eval" environment only, so a pull request never gets the deploy identity, and this one cannot deploy.
-resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-ai-eval-dev'
+// Dev only: evals never call the pilot's AI.
+resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (env == 'dev') {
+  name: 'id-${brand}-ai-eval-${env}'
   location: location
   tags: tags
 
-  resource github 'federatedIdentityCredentials' = {
+  resource github 'federatedIdentityCredentials' = if (env == 'dev') {
     name: 'github-ai-eval'
     properties: {
       issuer: 'https://token.actions.githubusercontent.com'
@@ -47,7 +54,7 @@ resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: 'kv-aivera-dev-${take(uniqueString(resourceGroup().id), 6)}'
+  name: keyVaultName
   location: location
   tags: tags
   properties: {
@@ -85,7 +92,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' exis
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: 'appi-aivera-dev'
+  name: 'appi-${brand}-${env}'
   location: location
   tags: tags
   kind: 'web'
@@ -107,8 +114,8 @@ output appIdentityPrincipalId string = appIdentity.properties.principalId
 output cicdIdentityId string = cicdIdentity.id
 output cicdIdentityClientId string = cicdIdentity.properties.clientId
 output cicdIdentityPrincipalId string = cicdIdentity.properties.principalId
-output aiEvalIdentityClientId string = aiEvalIdentity.properties.clientId
-output aiEvalIdentityPrincipalId string = aiEvalIdentity.properties.principalId
+output aiEvalIdentityClientId string = env == 'dev' ? aiEvalIdentity!.properties.clientId : ''
+output aiEvalIdentityPrincipalId string = env == 'dev' ? aiEvalIdentity!.properties.principalId : ''
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
 output appInsightsId string = appInsights.id

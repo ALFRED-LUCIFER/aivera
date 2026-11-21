@@ -35,16 +35,16 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 
 ## Everyday commands
 
-| Command                                                     | What it does                                                                                                                                                                           |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Every package, through Turborepo                                                                                                                                                       |
-| `pnpm --filter <pkg> test`                                  | One package (`web`, `@credalent/ui`, `@credalent/db`, `@credalent/tests-integration`…)                                                                                                 |
-| `pnpm format`                                               | Prettier over the repository                                                                                                                                                           |
-| `pnpm db:generate`                                          | Drizzle Kit generates SQL migrations for every module whose schema changed (ADR-004)                                                                                                   |
-| `pnpm db:migrate`                                           | Applies every module's migrations in order; a rerun applies nothing                                                                                                                    |
-| `pnpm db:seed` / `pnpm db:seed --reset`                     | Seeds the demo workspace "Demo" from `tools/seed/src/cast.ts`; a rerun changes nothing; `--reset` purges and reseeds it (synthetic only). Refused unless `APP_ENV` is `local` or `dev` |
-| `pnpm --filter @credalent/tokens build`                     | Regenerates `tokens.css` after editing `tokens.json`                                                                                                                                   |
-| `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                                                                                                                            |
+| Command                                                     | What it does                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Every package, through Turborepo                                                                                                                                                                                                                                                                |
+| `pnpm --filter <pkg> test`                                  | One package (`web`, `@credalent/ui`, `@credalent/db`, `@credalent/tests-integration`…)                                                                                                                                                                                                          |
+| `pnpm format`                                               | Prettier over the repository                                                                                                                                                                                                                                                                    |
+| `pnpm db:generate`                                          | Drizzle Kit generates SQL migrations for every module whose schema changed (ADR-004)                                                                                                                                                                                                            |
+| `pnpm db:migrate`                                           | Applies every module's migrations in order; a rerun applies nothing                                                                                                                                                                                                                             |
+| `pnpm db:seed` / `pnpm db:seed --reset`                     | Seeds the demo workspace "Meridian Talent" from `tools/seed/src/cast.ts`; a rerun changes nothing; `--reset` purges and reseeds it (synthetic only), and is how an existing dev database picks up a changed cast: a plain rerun keeps the old one. Refused unless `APP_ENV` is `local` or `dev` |
+| `pnpm --filter @credalent/tokens build`                     | Regenerates `tokens.css` after editing `tokens.json`                                                                                                                                                                                                                                            |
+| `pnpm check:links` / `pnpm check:guard`                     | Markdown links; Claude guard hook self-test                                                                                                                                                                                                                                                     |
 
 ## End-to-end tests and the component gallery (Playwright)
 
@@ -69,6 +69,14 @@ When `@playwright/test` is upgraded, change the image tag in `.github/workflows/
 2. `pnpm db:generate`, read the SQL, commit it. For a new workspace-owned table also run `pnpm --filter @credalent/db exec drizzle-kit generate --custom --name force_rls` from the module folder and add `ALTER TABLE … FORCE ROW LEVEL SECURITY;`.
 3. Add an integration test proving RLS isolates workspaces with the repository filter removed (copy `tests/integration/src/migrations-and-rls.test.ts`).
 4. A new module adds its name to `MODULES` in `packages/db/src/modules.ts`, in dependency order.
+
+The migration has to be safe on a live database (AIV-P2-061). `tests/architecture/src/migrations.test.ts` and CI check it:
+
+- **Journal order.** Drizzle's migrator skips, with no error, a migration whose journal `when` is not later than the last one applied. Every module journal's `when` must be strictly increasing. After a rebase, regenerate your migration; never edit `when` by hand.
+- **Generated, not hand-written.** CI runs `pnpm db:generate` and fails when `git status --porcelain` then lists any file, so a schema change without its migration fails.
+- **No NOT NULL column without a default on an existing table.** Add it nullable or with a `DEFAULT`, backfill, then `SET NOT NULL` in a later migration.
+- **CHECK constraints on `audit` are added `NOT VALID`.** A plain `ADD CONSTRAINT … CHECK` checks every row of the audit log under an exclusive lock. Edit the generated SQL to `ADD CONSTRAINT … CHECK (…) NOT VALID`. Widening an allowed list needs nothing more: every existing row already met the narrower check. Put any `VALIDATE CONSTRAINT` in a migration that ships in a later deploy. The runner applies all of a module's pending migrations in one transaction, so a `VALIDATE` in the same deploy still holds the exclusive lock.
+- **No `CREATE INDEX CONCURRENTLY`.** It cannot run inside that transaction. Plain `CREATE INDEX` blocks writes to the table while it builds, so keep it to tables that are small at the time.
 
 ## Docker with Colima
 

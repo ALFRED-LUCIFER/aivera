@@ -3,6 +3,7 @@
 // Malware scanning (Defender for Storage) is off in dev because of its cost (owner, 20 Nov 2026): the pilot and
 // production pass malwareScanning=true, and their apps set MALWARE_SCANNING=on (the web app refuses to start otherwise).
 // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
+param env string
 param location string
 param tags object
 @description('Globally unique account name; main.bicep derives it so the web app can be given its endpoint first.')
@@ -120,7 +121,7 @@ resource scanQueue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = if (mal
 }
 
 resource scanTopic 'Microsoft.EventGrid/topics@2024-06-01-preview' = if (malwareScanning) {
-  name: 'evgt-credalent-scan-dev'
+  name: 'evgt-credalent-scan-${env}'
   location: location
   tags: tags
   identity: { type: 'SystemAssigned' }

@@ -29,6 +29,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      # AIV-P2-061: a schema change without its generated migration leaves new or changed files here, and fails.
+      - run: pnpm db:generate && git status --porcelain && test -z "$(git status --porcelain)"
       # Unit, architecture and integration tests (Testcontainers starts PostgreSQL on the runner's Docker).
       - run: pnpm test
       - run: pnpm build
@@ -44,6 +46,9 @@ jobs:
           az bicep build --file infra/main.bicep --stdout > /dev/null
           lint=$(az bicep lint --file infra/main.bicep 2>&1)
           if [ -n "$lint" ]; then echo "$lint"; exit 1; fi
+          # The pilot (AIV-P1-096): placeholders for the values the owner's shell supplies at deploy time.
+          IMAGE_TAG=ci ALERT_EMAIL=ci@example.com ENTRA_TENANT_SUBDOMAIN=ci ENTRA_TENANT_ID=ci ENTRA_RECRUITER_CLIENT_ID=ci \
+            az bicep build-params --file infra/pilot.bicepparam --stdout > /dev/null
 
   # Playwright on the @credalent/ui gallery: axe and visual snapshots in light and dark (AIV-P0-025), in four parallel
   # jobs (AIV-P0-929). Each has its own database, so "publish" runs without waiting for "gallery" (playwright.config.ts).

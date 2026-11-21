@@ -1,0 +1,2 @@
+CREATE INDEX "comparison_items_idx" ON "evidence"."comparison" USING btree ("item_id","other_item_id");--> statement-breakpoint
+CREATE INDEX "source_candidate_idx" ON "evidence"."source" USING btree ("workspace_id","candidate_id");

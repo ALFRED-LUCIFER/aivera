@@ -30,11 +30,12 @@ export async function loadMembers(ctx: WorkspaceContext): Promise<MembersData> {
   const access = (jobIds: string[], clientIds: string[]) =>
     [...jobIds, ...clientIds].map((id) => names.get(id)).filter((n) => n !== undefined);
   const grants = await workspaces.listJobGrants(ctx);
-  const members = (await workspaces.listMembers(ctx.workspaceId)).filter((m) => m.status === 'active');
+  const members = (await workspaces.listMembers(ctx)).filter((m) => m.status === 'active');
+  // Every read in the context's transaction: a second pooled connection while it is held can exhaust the pool.
   // shortcut: one identity read per member, as newJobOptions does; a batch read in identity once workspaces grow.
   const memberRows = await Promise.all(
     members.map(async (m): Promise<MemberRow> => {
-      const user = await getIdentity().getUser(m.userId);
+      const user = await getIdentity().getUser(m.userId, ctx);
       const own = grants.filter((g) => g.userId === m.userId);
       const jobIds = own.flatMap((g) => (g.jobId ? [g.jobId] : []));
       const clientIds = own.flatMap((g) => (g.clientId ? [g.clientId] : []));

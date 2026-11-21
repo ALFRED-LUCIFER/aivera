@@ -20,9 +20,9 @@ export function getNotifications(): { notifications: NotificationsContract; orig
   return { notifications, origin };
 }
 
-/** The member an email is from: named in it, and its replies go to their work email. */
+/** The member an email is from: named in it, and its replies go to their work email. Read in the context's transaction. */
 export async function senderFor(ctx: WorkspaceContext): Promise<Sender> {
-  const [user, workspace] = [await getIdentity().getUser(ctx.userId), await getWorkspaces().getWorkspace(ctx)];
+  const [user, workspace] = [await getIdentity().getUser(ctx.userId, ctx), await getWorkspaces().getWorkspace(ctx)];
   if (!user || !workspace) throw new Error('sender or workspace not found');
   const name = user.displayName ?? user.email;
   return { name, shortName: name.split(' ')[0] ?? name, email: user.email, workspace: workspace.name };

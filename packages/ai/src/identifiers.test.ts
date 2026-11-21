@@ -86,8 +86,8 @@ describe('the replacer', () => {
     expect(seen).toBe('[CANDIDATE]: mail [EMAIL_1]. [CANDIDATE] built the merchant assistant.');
     const span = (quote: string) => {
       const start = seen.indexOf(quote);
-      const { start: s, end: e } = redaction.original(0, { start, end: start + quote.length });
-      return text.slice(s, e);
+      const mapped = redaction.original(0, { start, end: start + quote.length });
+      return mapped && text.slice(mapped.start, mapped.end);
     };
     expect(span('[CANDIDATE] built the merchant assistant')).toBe('Sara built the merchant assistant');
     expect(span('built the merchant assistant')).toBe('built the merchant assistant');
@@ -258,7 +258,8 @@ describe('Feature: Candidate names and contact details never reach the model', (
     ]);
   });
 
-  // SAFETY: mutation check: removed the MissingIdentifiers guard in generateStructured -> this test failed
+  // SAFETY: mutation check: removed the MissingIdentifiers guard in generateStructured -> this test failed (it is also
+  // what makes "Redaction cannot be skipped" hold for a caller that leaves identifiers out, AIV-P2-065)
   it('Scenario: An evidence prompt sent without identifiers fails closed', async () => {
     const { ai, requests, budget } = recording(noLinks);
     const writeUp = source('Sara built the merchant assistant.');
@@ -267,5 +268,162 @@ describe('Feature: Candidate names and contact details never reach the model', (
     ).rejects.toBeInstanceOf(MissingIdentifiers);
     expect(requests).toEqual([]);
     expect(await budget.spentToday(workspaceId, new Date().toISOString().slice(0, 10))).toMatchObject({ spent: 0 });
+  });
+});
+
+// Feature: Protected traits never reach the model (AIV-P2-065, AGENTS.md 1.5). Synthetic people only.
+describe('Feature: Protected traits never reach the model', () => {
+  const layla = { names: ['Layla Haddad'], emails: [], phones: [] };
+  const cvText = (text: string, kind: Source['kind'] = 'cv', names = layla.names) =>
+    redactSources([source(text, kind)], { ...layla, names }, false).sources[0]?.text;
+  const emptyParse = { contact: { emails: [], phones: [] }, workHistory: [], skills: [], statements: [] };
+  const traits =
+    'ليلى حداد\nNationality: Egyptian · Date of birth: 14 March 1990 · Marital status: Married\nLed the OCR work.';
+
+  // SAFETY: mutation check: dropped the `(?<trait>...)` alternative from patternFor -> every row of this outline failed
+  it.each([
+    ['Nationality: Indian', 'Indian'],
+    ['Date of birth: 14 March 1990', '1990'],
+    ['Marital status: Married', 'Married'],
+    ['Gender: Female', 'Female'],
+    ['الجنسية: مصري', 'مصري'],
+  ])('Scenario Outline: the labelled line "%s" is removed', async (line, value) => {
+    const { ai, requests } = recording(emptyParse);
+    const cv = source(`Layla Haddad\n${line}\nBuilt an Arabic OCR pipeline in Python.`, 'cv');
+    await ai.generateStructured({ ...parseCvRequest([cv]), workspaceId, identifiers: layla });
+    expect(requests[0]).toContain('[CANDIDATE]\\n[REMOVED]\\nBuilt an Arabic OCR pipeline in Python.');
+    expect(requests[0]).not.toContain(value);
+  });
+
+  // SAFETY: mutation check: dropped NEXT_LINE from the labelled-trait alternative -> the four bare-label rows failed;
+  // dropped its Photo lookbehind -> the "Photo:\nBuilt payment APIs" row failed; dropped its \r? -> the "\r\n" row failed
+  it.each([
+    ['Nationality: Egyptian · Skills: Python', '[REMOVED] · Skills: Python'],
+    ['Citizenship: Jordanian', '[REMOVED]'],
+    ['DATE OF BIRTH: 14/03/1990 | Dubai', '[REMOVED] | Dubai'],
+    ['DOB: 1990-03-14', '[REMOVED]'],
+    ['D.O.B.: 14.03.1990', '[REMOVED]'],
+    ['Birth date: 14 March 1990', '[REMOVED]'],
+    ['Place of birth: Cairo', '[REMOVED]'],
+    ['Born: 1990', '[REMOVED]'],
+    ['Personal details: Age: 34, Sex: F', 'Personal details: [REMOVED], [REMOVED]'],
+    [
+      'Nationality: Egyptian, Date of birth: 14 March, 1990, Gender: Female, Skills: Python, Go',
+      '[REMOVED], [REMOVED], [REMOVED], Skills: Python, Go',
+    ],
+    ['Nationality - Egyptian', '[REMOVED]'],
+    ['DOB - 14/03/1990 · Dubai', '[REMOVED] · Dubai'],
+    ['Gender – Female', '[REMOVED]'],
+    ['Nationality\tEgyptian', '[REMOVED]'],
+    ['Civil status: Single', '[REMOVED]'],
+    ['Family status: Married, two children', '[REMOVED]'],
+    ['Religion: Muslim', '[REMOVED]'],
+    ['Photo: attached', '[REMOVED]'],
+    ['Photograph:\nattached\nSkills: Go', '[REMOVED]\nSkills: Go'],
+    ['Photo:\nBuilt payment APIs in Python', '[REMOVED]\nBuilt payment APIs in Python'],
+    ['Nationality:\nEgyptian\nSkills: Go', '[REMOVED]\nSkills: Go'],
+    ['Age:\n34', '[REMOVED]'],
+    ['Nationality:\r\nEgyptian', '[REMOVED]'],
+    ['Date of birth:\n14 March 1990 · Dubai', '[REMOVED] · Dubai'],
+    ['الجنسية:\nمصرية', '[REMOVED]'],
+    ['Nationality:\nSkills: Python', '[REMOVED]\nSkills: Python'],
+    [
+      'Gender:\nBuilt payment APIs in Python and Go for ten years',
+      '[REMOVED]\nBuilt payment APIs in Python and Go for ten years',
+    ],
+    ['Nationality :Egyptian', '[REMOVED]'],
+    ['تاريخ الميلاد: ١٤ مارس ١٩٩٠', '[REMOVED]'],
+    ['مكان الميلاد: القاهرة', '[REMOVED]'],
+    ['العمر: ٣٤', '[REMOVED]'],
+    ['السن: 34', '[REMOVED]'],
+    ['الحالة الاجتماعية: متزوجة · الجنس: أنثى', '[REMOVED] · [REMOVED]'],
+    ['الديانة: مسلمة', '[REMOVED]'],
+    ['الدين: مسلم', '[REMOVED]'],
+    ['الصورة: مرفقة', '[REMOVED]'],
+    ['I am 34 years old, a 34-year-old engineer, aged 34.', 'I am [REMOVED], a [REMOVED] engineer, [REMOVED].'],
+    ['Backend Engineer [Photo attached] (photograph)', 'Backend Engineer [REMOVED] [REMOVED]'],
+  ])('pattern: %s', (text, expected) => expect(cvText(text)).toBe(expected));
+
+  // SAFETY: mutation check: dropped the `(?<arabicName>...)` alternative from patternFor -> every row failed; dropped
+  // the two lines-next-to-the-record-name alternatives from arabicNameOf -> the "Layla Haddad\n..." and
+  // "...\nLayla Haddad" rows failed; dropped the name-label alternative -> the two label rows failed;
+  // dropped the optional line break after the name label -> the "Name:\n" row failed
+  it.each([
+    ['ليلى حداد\nSenior AI Engineer', '[CANDIDATE]\nSenior AI Engineer'],
+    ['Layla Haddad · ليلى حداد · Dubai', '[CANDIDATE] · [CANDIDATE] · Dubai'],
+    ['Layla Haddad\nليلى حداد\nSenior AI Engineer', '[CANDIDATE]\n[CANDIDATE]\nSenior AI Engineer'],
+    ['Curriculum vitae\nليلى حداد\nLayla Haddad · Dubai', 'Curriculum vitae\n[CANDIDATE]\n[CANDIDATE] · Dubai'],
+    ['Senior AI Engineer\nالاسم: ليلى حداد', 'Senior AI Engineer\nالاسم: [CANDIDATE]'],
+    ['Senior AI Engineer\nName:\nليلى حداد\nDubai', 'Senior AI Engineer\nName:\n[CANDIDATE]\nDubai'],
+    ['Senior AI Engineer\nFull name: ليلى حداد · Dubai', 'Senior AI Engineer\nFull name: [CANDIDATE] · Dubai'],
+    ['\u200fليلى حداد\n\u200fالجنسية: مصرية', '\u200f[CANDIDATE]\n\u200f[REMOVED]'],
+  ])('Scenario: An Arabic-script name on the CV name line is removed: %s', (text, expected) =>
+    expect(cvText(text)).toBe(expected),
+  );
+
+  it('removes labelled traits from CV, document and reference sources only, never from code', () => {
+    const code = 'type Candidate = {\n  age: number;\n};\nPhoto: Lightroom presets';
+    expect(cvText(code, 'repo')).toBe(code);
+    for (const kind of ['document', 'reference'] as const)
+      expect(cvText('Nationality: Egyptian', kind)).toBe('[REMOVED]');
+  });
+
+  // SAFETY: mutation check: removed the trait-overlap check in redactSources `original` -> this test failed
+  it('rejects a citation that touches removed trait text, so a trait never comes back as a stored quote', () => {
+    const schema = z.object({ items: z.array(cited(z.object({}))) });
+    const cv = source('Gender: Female\nBuilt an Arabic OCR pipeline in Python.', 'cv');
+    const redaction = redactSources([cv], layla, false);
+    const check = (quote: string) =>
+      checkOutput('evidence.parseCv', answer(quote), schema, [cv], undefined, redaction).items[0]?.citations[0]?.quote;
+    expect(check('Built an Arabic OCR pipeline')).toBe('Built an Arabic OCR pipeline');
+    expect(() => check('[REMOVED]')).toThrow(InvalidCitation);
+    expect(() => check('[REMOVED] Built an Arabic OCR')).toThrow(InvalidCitation);
+  });
+
+  // SAFETY: mutation check: dropped the letter boundaries from the name check in arabicNameOf -> both rows failed
+  it.each([
+    ['Quality assurance lead\nمهندس برمجيات أول', 'Ali Hassan'],
+    ['Khalilov Systems\nمهندس برمجيات أول', 'Omar Khalil'],
+  ])('keeps an Arabic job title next to a word that only contains a name part: %s', (text, name) =>
+    expect(cvText(text, 'cv', [name])).toBe(text),
+  );
+
+  // SAFETY: mutation check: dropped the (?<![\w.%+-]) lookbehind from EMAIL -> this test timed out (quadratic scan)
+  it('scans a long unbroken run once, so it finishes', () => {
+    const run = 'a'.repeat(120_000);
+    expect(cvText(run)).toBe(run);
+    expect(cvText('Write to a+b@example.com', 'document')).toBe('Write to [EMAIL_1]');
+  });
+
+  it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {
+    expect(cvText('Built it with ليلى حداد and Omar.', 'document', ['Layla Haddad', 'ليلى حداد'])).toBe(
+      'Built it with [CANDIDATE] and Omar.',
+    );
+    expect(cvText('خط معالجة النصوص\nThe Arabic OCR pipeline.', 'document')).toBe(
+      'خط معالجة النصوص\nThe Arabic OCR pipeline.',
+    );
+  });
+
+  it('Scenario: Skills text is untouched', () => {
+    const skills = [
+      'Built payment APIs in Python',
+      'Project name: Ledger; storage: 40 TB; Usage: 34 rps; message age: 2 s',
+      'Skills: Python, sex-disaggregated metrics, photo editing, Gender bias evals',
+      'Senior AI Engineer, A BNPL fintech, Jun 2020 - Aug 2023, 9,000 merchants, 99.95% uptime',
+    ].join('\n');
+    expect(cvText(skills)).toBe(skills);
+  });
+
+  // SAFETY: mutation check: matched a CV with the document pattern in redactSources `patternOf` -> every row failed on
+  // the Arabic name line; dropped the trait alternative -> every row failed
+  it.each([
+    ['evidence.mapToCompetency', () => mapToCompetencyRequest(competencies, [source(traits, 'cv')]), noLinks],
+    ['evidence.compareExcerpts', () => compareExcerptsRequest([source(traits, 'cv')], []), { contradictions: [] }],
+    ['evidence.parseCv', () => parseCvRequest([source(traits, 'cv')]), emptyParse],
+  ])('Scenario: Redaction cannot be skipped: %s', async (_task, request, output) => {
+    const { ai, requests } = recording(output);
+    await ai.generateStructured({ ...request(), workspaceId, identifiers: layla } as never);
+    expect(requests[0]).toContain('[CANDIDATE]\\n[REMOVED] · [REMOVED] · [REMOVED]\\nLed the OCR work.');
+    expect(requests[0]).not.toMatch(/ليلى|Egyptian|1990|Married/);
   });
 });

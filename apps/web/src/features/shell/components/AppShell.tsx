@@ -1,16 +1,15 @@
 // Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
+// No section counts (AGENTS.md 1.7, AIV-P1-094): no real count exists until each section's contract supplies one.
 import { useTranslations } from '@credalent/i18n/react';
 import { Button } from '@credalent/ui';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { NavigationEntry, ScreenId } from '../domain/navigation.ts';
-import type { Member, ShellCounts, Theme } from '../domain/shell.ts';
+import type { Member, Theme } from '../domain/shell.ts';
 
 export type AppShellProps = {
   member: Member;
-  /** null when the counts could not be read: the sections show without numbers. */
-  counts: ShellCounts | null;
   /** The map entries this member may open. */
   screens: readonly NavigationEntry[];
   activeId: ScreenId | undefined;
@@ -33,7 +32,6 @@ const icon = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strok
 
 export function AppShell({
   member,
-  counts,
   screens,
   activeId,
   navOpen,
@@ -146,12 +144,6 @@ export function AppShell({
                 className={navLink}
               >
                 {t(`nav.${id}`)}
-                {counts?.[id] !== undefined && (
-                  <>
-                    {/* The space keeps the accessible name "Inbox 20", not "Inbox20". */}{' '}
-                    <span className="ms-auto text-meta tabular-nums">{counts[id]}</span>
-                  </>
-                )}
               </Link>
             </li>
           ))}

@@ -46,7 +46,9 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
   const store = {
     insert: vi.fn(),
     find: vi.fn(async () => row),
-    settle: vi.fn(async (_id: string, change: Partial<FileRecord>) => void (row = { ...row, ...change })),
+    settle: vi.fn(
+      async (_owner: unknown, _id: string, change: Partial<FileRecord>) => void (row = { ...row, ...change }),
+    ),
   };
   const published: FileStatus[] = [];
   const useCases = filesUseCases({

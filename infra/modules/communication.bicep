@@ -2,6 +2,9 @@
 // reports back to the web app through Event Grid (ADR-008: synthetic data only in dev).
 // shortcut: the Azure-managed sender domain (DoNotReply@<guid>.azurecomm.net, low send limits) in dev; a verified
 // custom domain comes with the pilot (AIV-P0-003 runbook follow-up, AIV-P5-E03 #34)
+param env string
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
+param brand string
 param tags object
 param appIdentityPrincipalId string
 @description('The web app FQDN that receives delivery reports (POST /api/webhooks/acs-email).')
@@ -14,7 +17,7 @@ param webhookKey string
 var dataLocation = 'UAE'
 
 resource emailService 'Microsoft.Communication/emailServices@2023-04-01' = {
-  name: 'acs-email-aivera-dev'
+  name: 'acs-email-${brand}-${env}'
   location: 'global'
   tags: tags
   properties: { dataLocation: dataLocation }
@@ -33,7 +36,7 @@ resource domain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
 }
 
 resource acs 'Microsoft.Communication/communicationServices@2023-04-01' = {
-  name: 'acs-aivera-dev'
+  name: 'acs-${brand}-${env}'
   location: 'global'
   tags: tags
   properties: {
@@ -52,7 +55,7 @@ resource appSends 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource events 'Microsoft.EventGrid/systemTopics@2024-06-01-preview' = {
-  name: 'evgt-aivera-acs-dev'
+  name: 'evgt-${brand}-acs-${env}'
   location: 'global'
   tags: tags
   properties: {

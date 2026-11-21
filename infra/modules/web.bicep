@@ -1,5 +1,8 @@
 // AIV-P0-005: the Credalent web app in Credalent's external environment cae-aivera-dev (ADR-008). Consumption, scale to zero.
 // shortcut: no Front Door and no custom domain in dev; the public default FQDN serves it. Front Door, a dev host and portfolio subdomains come with the launch epic AIV-P5-E03 (#34)
+param env string
+@description('aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).')
+param brand string
 param location string
 param tags object
 param containerAppsEnvName string
@@ -13,6 +16,9 @@ param databaseName string
 param webImage string
 param aiResourceName string
 param commitSha string
+param entraTenantSubdomain string
+param entraTenantId string
+param entraRecruiterClientId string
 @description('Candidate app registration (client) id in the dev External ID tenant (docs/runbooks/candidate-sign-in.md). Empty until the owner registers it: the candidate settings are then left out and candidate sign-in stays off.')
 param entraCandidateClientId string = ''
 @description('Google OAuth client id for recruiter "Continue with Google" (AIV-P0-928, docs/runbooks/recruiter-sign-in.md). Empty until the owner creates it and writes google-client-secret to the vault: the Google button stays hidden.')
@@ -27,7 +33,7 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
 }
 
 var probe = { port: 3000, scheme: 'HTTP' }
-var appName = 'ca-aivera-web-dev'
+var appName = 'ca-${brand}-web-${env}'
 // Candidate sign-in (AIV-P0-011): added only once the app exists, since an apply fails on a missing Key Vault secret.
 var candidateSecrets = empty(entraCandidateClientId)
   ? []
@@ -107,7 +113,8 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'web'
           image: webImage
           env: concat([
-            { name: 'APP_ENV', value: 'dev' }
+            // pilot turns off synthetic-only behaviour (the email band, fake AI) and requires sign-in and scanning.
+            { name: 'APP_ENV', value: env }
             { name: 'COMMIT_SHA', value: commitSha }
             // No password: packages/db signs in as aivera_app with the identity's Entra token.
             {
@@ -118,11 +125,10 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             // @credalent/ai calls https://<name>.openai.azure.com with the identity's token (AIV-P0-034).
             { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
-            // The dev External ID tenant and its recruiter app registration (not secrets).
-            // shortcut: dev tenant values written in the module; make them params when a pilot environment is added
-            { name: 'AUTH_ENTRA_TENANT_SUBDOMAIN', value: 'aiveradev' }
-            { name: 'AUTH_ENTRA_TENANT_ID', value: '88c795fc-1018-45f7-8904-75e1c2991b8f' }
-            { name: 'AUTH_ENTRA_CLIENT_ID', value: '463fb57b-570d-4384-b914-1078df012bd8' }
+            // The External ID tenant and its recruiter app registration (not secrets; main.bicep).
+            { name: 'AUTH_ENTRA_TENANT_SUBDOMAIN', value: entraTenantSubdomain }
+            { name: 'AUTH_ENTRA_TENANT_ID', value: entraTenantId }
+            { name: 'AUTH_ENTRA_CLIENT_ID', value: entraRecruiterClientId }
             { name: 'AUTH_ENTRA_CLIENT_SECRET', secretRef: 'entra-recruiter-client-secret' }
             { name: 'AUTH_SECRET', secretRef: 'auth-secret' }
             { name: 'PLATFORM_OPERATOR_EMAILS', secretRef: 'platform-operator-emails' }

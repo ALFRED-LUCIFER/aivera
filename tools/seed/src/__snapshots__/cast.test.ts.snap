@@ -3,6 +3,10 @@
 exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exactly as they are 1`] = `
 [
   {
+    "addedOn": "2026-11-03",
+    "description": "Our merchants ask the same questions every day: why a payout is late, how a refund works, what a fee covers. We are building an assistant that answers them in English and Arabic, grounded in our own help content and merchant records, and we need a senior engineer to take it from a working prototype to a service people rely on.
+
+You will own the retrieval and evaluation work, set up the evaluation sets that decide whether a change ships, and keep latency and cost per request inside agreed limits. You will work with product and support on what the assistant should refuse to answer. Production Python experience is essential; work on Arabic text is a plus.",
     "hiringOwner": "head.engineering",
     "jobType": "ai_llm_engineering",
     "location": "DIFC, Dubai",
@@ -58,7 +62,7 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 2,
     },
     "stage": "round_1",
-    "successStatement": "Within six months, a bilingual assistant that answers merchant questions in English and Arabic is live, measured against an evaluation set, and running within an agreed cost per request.",
+    "successStatement": "A bilingual assistant that answers merchant questions in English and Arabic is live by the end of the second quarter, measured against an evaluation set and running within an agreed cost per request.",
     "supersedes": {
       "approvedOn": "2026-11-05",
       "competencies": [
@@ -112,6 +116,10 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
     "title": "Senior AI Engineer",
   },
   {
+    "addedOn": "2026-11-02",
+    "description": "We run a buy-now-pay-later product used at checkout by merchants across the Gulf, and the next release changes how failed and retried payments are handled. We are hiring a senior product manager to lead that work from research through launch.
+
+You will talk to merchants and operations teams, turn what you hear into a clear decision, and agree the success targets with engineering and design before anything is built. We want someone who can show the numbers from products they shipped and explain the trade-offs they made along the way.",
     "hiringOwner": "cpo.payments",
     "jobType": "product_management",
     "location": "Dubai Internet City",
@@ -150,11 +158,15 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 1,
     },
     "stage": "round_1",
-    "successStatement": "Within six months, a payments feature they led is live with merchants, and its adoption and failure rates are measured against the targets agreed before launch.",
+    "successStatement": "By the next payments release, a feature they led is live with merchants, and its adoption and failure rates are measured against the targets agreed before launch.",
     "team": "Product",
     "title": "Senior Product Manager, Payments",
   },
   {
+    "addedOn": "2026-11-06",
+    "description": "Releases go out every two weeks, and the regression checks still depend on a long manual script. We need a QA automation engineer to replace it with a suite the team trusts, starting with the checkout and onboarding flows.
+
+You will design the suite, wire it into the pipeline so a failing check blocks the release, and keep it fast enough that developers run it. You will also write the test plan for each release, including what we choose not to test and why.",
     "hiringOwner": "head.quality",
     "jobType": "qa_test_automation",
     "location": "Dubai, hybrid",
@@ -193,11 +205,15 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 1,
     },
     "stage": "collecting_evidence",
-    "successStatement": "Within six months, every release runs an automated regression suite they own, and escaped defects fall release on release.",
+    "successStatement": "Every release runs an automated regression suite they own, and escaped defects fall release on release from their third release onward.",
     "team": "Quality",
     "title": "QA Automation Engineer",
   },
   {
+    "addedOn": "2026-11-04",
+    "description": "Our ledger and settlement services carry every transaction we process and have outgrown the design they started with. We are hiring a staff backend engineer to redesign the core of them without a rewrite, one slice at a time, while they keep running.
+
+You will set the technical direction, review the designs of the engineers around you, and be on the escalation path when something fails in production. We are looking for someone who has run a service with real traffic and can describe an incident they handled and what changed afterwards.",
     "hiringOwner": "vp.engineering",
     "jobType": "software_engineering",
     "location": "Riyadh, hybrid",
@@ -236,11 +252,15 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 1,
     },
     "stage": "collecting_evidence",
-    "successStatement": "Within six months, a core service they designed runs in production within its agreed latency and error budgets, with the team able to change it safely.",
+    "successStatement": "After two quarters on the team, a core service they designed runs in production within its agreed latency and error budgets, and the team can change it safely.",
     "team": "Engineering",
     "title": "Staff Backend Engineer",
   },
   {
+    "addedOn": "2026-11-09",
+    "description": "The way merchants onboard and verify their business is the first thing they see of us, and it is slow and text-heavy. We are looking for a senior product designer to redesign that flow for English and Arabic, including right-to-left layouts.
+
+You will run research with merchants, prototype and test options before committing to one, and contribute to our component library as you go. We care about how you reached a decision more than how the final screens look, so bring the reasoning behind your work.",
     "hiringOwner": "design.director",
     "jobType": "product_design",
     "location": "Abu Dhabi",
@@ -279,7 +299,7 @@ exports[`the industry demo jobs (AIV-P1-065) > leaves the five design jobs exact
       "version": 1,
     },
     "stage": "defining_rubric",
-    "successStatement": "Within six months, a redesigned core flow they led has shipped in English and Arabic, tested with users before and after launch.",
+    "successStatement": "Half a year in, a redesigned core flow they led has shipped in English and Arabic, tested with users before and after launch.",
     "team": "Design",
     "title": "Senior Product Designer",
   },

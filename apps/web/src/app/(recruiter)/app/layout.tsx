@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
-import { currentMember, loadShellCounts, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
+import { currentMember, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
 import { AuthPage, inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 import { offeredJobTypes } from '@credalent/jobs';
@@ -77,16 +77,11 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
       </AccessMessage>
     );
   }
-  const [counts, theme, intl] = await Promise.all([
-    loadShellCounts(member),
-    readTheme(),
-    intlConfig(defaultLocale, defaultTimeZone),
-  ]);
+  const [theme, intl] = await Promise.all([readTheme(), intlConfig(defaultLocale, defaultTimeZone)]);
   return (
     <RecruiterShell
       intl={intl}
       member={member}
-      counts={counts}
       theme={theme}
       screens={navigation.filter((screen) => canOpen(screen, member.capabilities, enabledFlags))}
     >

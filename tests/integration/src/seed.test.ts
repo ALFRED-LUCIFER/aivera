@@ -80,7 +80,8 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 2 });
+  // One connection, as the CLI opens: a read on `app` inside a transaction would wait forever (AIV-P1-094).
+  app = createDb(urlFor('aivera_app'), { max: 1 });
 });
 
 afterAll(async () => {
@@ -113,15 +114,17 @@ describe('Scenario: Production is refused', () => {
 
 describe('Scenario: Seeding a fresh database', () => {
   let workspaceId: string;
+  // Scenario: Seeding a fresh database finishes (exits within 60 seconds); a hang fails here, not in CI's job timeout.
+  // SAFETY: mutation check: read the catalogue inside withWorkspace again -> this hook timed out
   beforeAll(async () => {
     workspaceId = await seedDemo(app, { appEnv: 'local' });
-  });
+  }, 60_000);
 
-  it('creates a synthetic workspace with recruiter AP as admin and 5 hiring owners', async () => {
+  it('creates a synthetic workspace with the recruiter as admin and 5 hiring owners', async () => {
     const [ws] = await admin.execute<{ name: string; synthetic: boolean }>(
       sql`select name, synthetic from workspaces.workspace where id = ${workspaceId}`,
     );
-    expect(ws).toEqual({ name: 'Demo', synthetic: true });
+    expect(ws).toEqual({ name: 'Meridian Talent', synthetic: true });
     const members = await admin.execute<{ role: string; email: string; status: string }>(sql`
       select m.role, u.email, m.status from workspaces.member m join identity.user u on u.id = m.user_id
       where m.workspace_id = ${workspaceId} order by m.role, u.email`);
@@ -234,7 +237,7 @@ describe('Scenario: Seeding a fresh database', () => {
       const [vp] = await admin.execute<{ id: string }>(
         sql`select id from identity.user where email = 'vp.engineering@example.com'`,
       );
-      if (!vp) throw new Error('the seed created VP Engineering');
+      if (!vp) throw new Error('the seed created Vikram Deshmukh');
       const seen = await workspaces.withWorkspace({ userId: vp.id }, workspaceId, (ctx) => jobs.listJobs(ctx));
       expect(seen.map((j) => j.title).toSorted()).toEqual([
         'Data Engineer, Marketplace',
@@ -287,10 +290,10 @@ describe('Scenario: Seeding a fresh database', () => {
 
   describe('Scenario Outline: Design jobs are seeded at their stages and rubric versions', () => {
     it.each([
-      ['Senior AI Engineer', 'round_1', 2, '2026-11-12', 'Head of Engineering'],
-      ['Senior Product Manager, Payments', 'round_1', 1, '2026-11-05', 'CPO, Payments'],
-      ['QA Automation Engineer', 'collecting_evidence', 1, '2026-11-09', 'Head of Quality'],
-      ['Staff Backend Engineer', 'collecting_evidence', 1, '2026-11-10', 'VP Engineering'],
+      ['Senior AI Engineer', 'round_1', 2, '2026-11-12', 'Hassan Barakat'],
+      ['Senior Product Manager, Payments', 'round_1', 1, '2026-11-05', 'Camille Fares'],
+      ['QA Automation Engineer', 'collecting_evidence', 1, '2026-11-09', 'Rashid Al Nuaimi'],
+      ['Staff Backend Engineer', 'collecting_evidence', 1, '2026-11-10', 'Vikram Deshmukh'],
     ])('%s is at %s, rubric v%i approved on %s by %s', async (title, stage, version, approvedOn, owner) => {
       expect((await versionsOf(title)).at(-1)).toEqual({
         stage,
@@ -299,7 +302,7 @@ describe('Scenario: Seeding a fresh database', () => {
         approved_on: approvedOn,
         approver: owner,
       });
-      // Of the design jobs, the owner is granted this one only (VP Engineering and Head of Engineering also own
+      // Of the design jobs, the owner is granted this one only (Vikram Deshmukh and Hassan Barakat also own
       // industry jobs, AIV-P1-065).
       const granted = await admin.execute<{ title: string }>(sql`select j.title from workspaces.job_grant g
         join identity.user u on u.id = g.user_id join jobs.job j on j.id = g.job_id
@@ -325,12 +328,18 @@ describe('Scenario: Seeding a fresh database', () => {
       where j.workspace_id = ${workspaceId} and j.title not in ${industryTitles}
       and (btrim(c.evidence_expected) = '' or btrim(v.success_statement) = '')`);
     expect([...empty]).toEqual([]);
+    // AIV-P1-094: no competency of any seeded job, industry jobs included, leaves "Evidence expected" blank.
+    const blank =
+      await admin.execute(sql`select c.name from jobs.competency c join jobs.job j on j.workspace_id = c.workspace_id
+      join jobs.rubric_version v on v.id = c.rubric_version_id and v.job_id = j.id
+      where j.workspace_id = ${workspaceId} and btrim(c.evidence_expected) = ''`);
+    expect([...blank]).toEqual([]);
     // The Rubric artboard: version 2 with its change note, two rows suggested by Credalent, Arabic NLP desirable.
     const [v2] = await admin.execute<{ change_note: string; success_statement: string }>(sql`select v.change_note,
       v.success_statement from jobs.rubric_version v join jobs.job j on j.id = v.job_id
       where j.workspace_id = ${workspaceId} and j.title = 'Senior AI Engineer' and v.version = 2`);
     expect(v2?.change_note).toBe('Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.');
-    expect(v2?.success_statement).toMatch(/^Within six months, a bilingual assistant/);
+    expect(v2?.success_statement).toMatch(/^A bilingual assistant that answers merchant questions/);
     const rows = await admin.execute(sql`select c.name, c.weight_percent, c.level_needed, c.type, c.origin
       from jobs.competency c join jobs.rubric_version v on v.id = c.rubric_version_id join jobs.job j on j.id = v.job_id
       where j.workspace_id = ${workspaceId} and j.title = 'Senior AI Engineer' and v.version = 2 order by c.position`);
