@@ -83,7 +83,12 @@ vi.mock('./env', async (actual) => {
   const real = await actual<typeof import('./env')>();
   return { ...real, env: () => ({ platformOperators: real.parseOperatorEmails(config.list) }) };
 });
-vi.mock('./auth', () => ({ getSessionUserId: () => session(), getIdentity: () => ({ getUser }) }));
+const operatorSession = vi.fn(async () => true);
+vi.mock('./auth', () => ({
+  getSessionUserId: () => session(),
+  getIdentity: () => ({ getUser }),
+  sessionSignedInAsOperator: () => operatorSession(),
+}));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
 const listOperatorEntries = vi.fn();
 const listPlatformEntries = vi.fn();
@@ -106,6 +111,7 @@ vi.mock('next/navigation', () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   config.list = 'pia.platform@example.com,Theo.Platform@example.com';
+  operatorSession.mockResolvedValue(true);
 });
 
 describe('platformOperator', () => {
@@ -127,6 +133,22 @@ describe('platformOperator', () => {
   // SAFETY: mutation check: removed `if (!user) forbidden()` from platformOperator -> this test failed
   it('Scenario Outline: Everyone else is refused on the server: a signed-in non-operator gets 403', async () => {
     session.mockResolvedValue(ALEX);
+    await expect(platformOperator()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
+  });
+
+  // AIV-P2-060: a session signed in before Pia was listed has no one-hour idle limit, so she signs in again.
+  // SAFETY: mutation check: removed the sessionSignedInAsOperator check from platformOperator -> this test failed
+  it('an operator whose session was not signed in as one is sent to sign in again', async () => {
+    session.mockResolvedValue(PIA);
+    operatorSession.mockResolvedValue(false);
+    await expect(platformOperator()).rejects.toThrow('NEXT_REDIRECT;/sign-in?next=%2Fops');
+  });
+
+  // A non-operator is refused before the flag is read: the other order would send them to sign in, round and round.
+  // SAFETY: mutation check: moved the sessionSignedInAsOperator check above operatorUser -> this test failed (sign-in loop)
+  it('a non-operator without the flag still gets 403, never a sign-in loop', async () => {
+    session.mockResolvedValue(ALEX);
+    operatorSession.mockResolvedValue(false);
     await expect(platformOperator()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
   });
 

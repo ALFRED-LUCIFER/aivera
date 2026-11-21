@@ -22,11 +22,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const settings = env().candidateAuth;
   // Callers check candidateAuthConfigured() first; reaching here without settings is a bug, not a user error.
   if (!settings) throw new Error('Candidate sign-in is not configured.');
-  // Never "Keep me signed in": that choice (and its cookie) belongs to the recruiter sign-in; candidates get 8 hours idle.
+  // Never "Keep me signed in": that choice (and its cookie) belongs to the recruiter sign-in; candidates get 8 hours from sign-in.
   return authConfig(settings, false, CANDIDATE);
 });
 
-/** The proxy form of `auth` for `/candidates/me`: no candidate session goes to the candidate sign-in (idle 8 hours). */
+/** The proxy form of `auth` for `/candidates/me`: no candidate session goes to the candidate sign-in (8 hours from sign-in). */
 // next-auth's overloads do not type the (request, event) middleware call it supports at runtime.
 export const candidateSessionProxy = auth as unknown as (
   request: NextRequest,

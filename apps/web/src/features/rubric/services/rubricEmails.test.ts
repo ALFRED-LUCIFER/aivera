@@ -25,9 +25,14 @@ const v = (more: Partial<Rubric>): Rubric =>
     ...more,
   }) as Rubric;
 let versions: Rubric[] = [];
+// The hiring owner's active membership; null once removed (getMembership returns only active members).
+let ownerMember: { userId: string; role: string } | null = null;
 
 vi.mock('@/server/jobs', () => ({
   getJobs: () => ({ getJob: async () => job, listRubricVersions: async () => versions }),
+}));
+vi.mock('@/server/workspace', () => ({
+  getWorkspaces: () => ({ getMembership: async () => ownerMember }),
 }));
 vi.mock('@/server/auth', () => ({
   getIdentity: () => ({
@@ -53,6 +58,7 @@ const ctx = (userId: string) => ({ userId, workspaceId: 'w1', role: 'recruiter',
 beforeEach(() => {
   vi.clearAllMocks();
   job.hiringOwnerUserId = DIRECTOR;
+  ownerMember = { userId: DIRECTOR, role: 'hiring_owner' };
 });
 
 describe('Scenario: Send version 1 for approval from Add a job', () => {
@@ -73,6 +79,18 @@ describe('Scenario: Send version 1 for approval from Add a job', () => {
         }),
       }),
     );
+  });
+
+  // Scenario: A removed hiring owner is not emailed (AIV-P2-060).
+  // SAFETY: mutation check: removed the membership check in queueApprovalRequest -> this test failed
+  it.each([
+    ['removed from the workspace', null],
+    ['now an interviewer', { userId: DIRECTOR, role: 'interviewer' }],
+  ])('a hiring owner %s is not emailed, and the sender is told an admin approves', async (_why, member) => {
+    ownerMember = member;
+    versions = [v({})];
+    expect(await queueApprovalRequest(ctx(RANA), v({}))).toBe(false);
+    expect(queueEmail).not.toHaveBeenCalled();
   });
 
   it('a job with no hiring owner sends nothing', async () => {

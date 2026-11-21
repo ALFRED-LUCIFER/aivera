@@ -196,7 +196,10 @@ export function invitationsUseCases<Tx>(ports: InvitationPorts<Tx>) {
         if (!current.some((g) => g.clientId === clientId)) await ports.grantJobAccess(ctx, { userId, clientId });
     },
 
-    /** Admins. The member loses access on their next request and their job grants go; the last admin stays. */
+    /**
+     * Admins. The member loses access on their next request, their job grants go and their active workspace stops
+     * pointing here; the last admin stays.
+     */
     async removeMember(ctx: WorkspaceContext<Tx>, userId: string): Promise<void> {
       await authorize(ctx, 'member.invite');
       const store = storeFor(ctx.tx);
@@ -210,6 +213,7 @@ export function invitationsUseCases<Tx>(ports: InvitationPorts<Tx>) {
           before: { grantId: grant.id, jobId: grant.jobId, clientId: grant.clientId },
         });
       await store.updateMemberStatus(ctx.workspaceId, userId, 'removed');
+      await store.clearActiveWorkspace(userId, ctx.workspaceId);
       await store.audit(ctx.workspaceId, ctx.userId, {
         action: 'member.removed',
         subject: { type: 'member', id: userId },

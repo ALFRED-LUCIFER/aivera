@@ -113,6 +113,13 @@
       "when": 1795125315206,
       "tag": "0015_force_rls_invitation",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795262176631,
+      "tag": "0016_member_own_read",
+      "breakpoints": true
     }
   ]
 }

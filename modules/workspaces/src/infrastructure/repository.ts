@@ -5,6 +5,7 @@ import type { ActiveWorkspaces } from '../application/context.ts';
 import type { WorkspaceStore } from '../application/workspaces.ts';
 import {
   AI_DAILY_TOKEN_BUDGET,
+  pickActiveWorkspace,
   usageWindow,
   WorkspaceError,
   type AiTokenUse,
@@ -84,6 +85,11 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
       return row ?? null;
     },
     setActiveWorkspace: (userId, workspaceId) => activeWorkspaceStore(tx).set(userId, workspaceId),
+    async clearActiveWorkspace(userId, workspaceId) {
+      await tx
+        .delete(activeWorkspace)
+        .where(and(eq(activeWorkspace.userId, userId), eq(activeWorkspace.workspaceId, workspaceId)));
+    },
     async insertMember(values) {
       return (
         (
@@ -318,7 +324,9 @@ export function workspaceStore(tx: Tx, audit: AuditContract): WorkspaceStore {
 }
 
 /** The active-workspace pointer, by user id only (it is not workspace-owned; see the schema). */
-export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
+export function activeWorkspaceStore(tx: Tx): Pick<ActiveWorkspaces, 'set'> & {
+  get(userId: string): Promise<string | null>;
+} {
   return {
     async get(userId) {
       const [row] = await tx
@@ -334,6 +342,35 @@ export function activeWorkspaceStore(tx: Tx): ActiveWorkspaces {
         .onConflictDoUpdate({ target: activeWorkspace.userId, set: { workspaceId, updatedAt: sql`now()` } });
     },
   };
+}
+
+/**
+ * The user's active workspace checked against their active memberships, and the pointer moved when it names one they
+ * left (AIV-P2-060), all in `tx`, a transaction of its own (composition.ts opens it). The named cross-workspace read
+ * (ADR-005 point 4) is member_own_read; only this function sets `app.user_id`, which the database refuses while a
+ * workspace is open (throws), and clears after the read. The architecture rule `own-membership-read` is a tripwire.
+ */
+export async function resolveActiveWorkspace(tx: Tx, userId: string): Promise<string | null> {
+  // The database refuses the setting inside a workspace transaction, and it is cleared straight after the one read, so
+  // it can never widen a workspace-scoped transaction's member reads.
+  const opened = await tx.execute(
+    sql`select set_config('app.user_id', ${userId}, true) where coalesce(current_setting('app.workspace_id', true), '') = ''`,
+  );
+  if (opened.length === 0) throw new Error('resolveActiveWorkspace needs a transaction with no workspace open');
+  const memberOf = await tx
+    .select({ workspaceId: member.workspaceId })
+    .from(member)
+    .where(and(eq(member.userId, userId), eq(member.status, 'active')))
+    .orderBy(asc(member.createdAt), asc(member.workspaceId));
+  await tx.execute(sql`select set_config('app.user_id', '', true)`);
+  const pointer = activeWorkspaceStore(tx);
+  const current = await pointer.get(userId);
+  const next = pickActiveWorkspace(
+    current,
+    memberOf.map((r) => r.workspaceId),
+  );
+  if (next && next !== current) await pointer.set(userId, next);
+  return next;
 }
 
 /** Every workspace id in the platform directory, newest first (not workspace-owned; see the schema). */

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { assertCanChangeRole, usageWindow, type Member, type MemberStatus, type Role } from './workspace.ts';
+import {
+  assertCanChangeRole,
+  pickActiveWorkspace,
+  usageWindow,
+  type Member,
+  type MemberStatus,
+  type Role,
+} from './workspace.ts';
 
 const W = '0190d4a2-0000-7000-8000-000000000001';
 const member = (userId: string, role: Role, status: MemberStatus = 'active'): Member => ({
@@ -71,5 +78,18 @@ describe('usageWindow (AIV-P2-038)', () => {
       '2026-11-26',
     ]);
     expect(window.map((d) => d.tokens)).toEqual([1_500, 0, 0, 0, 40, 0, 0]);
+  });
+});
+
+// AIV-P2-060: the active-workspace pointer follows membership.
+describe('pickActiveWorkspace', () => {
+  it('keeps the pointer while the user is a member there', () => {
+    expect(pickActiveWorkspace('gulf', ['own', 'gulf'])).toBe('gulf');
+  });
+
+  it('moves a pointer to a workspace they left to their oldest membership, or none', () => {
+    expect(pickActiveWorkspace('gulf', ['own', 'harbour'])).toBe('own');
+    expect(pickActiveWorkspace(null, ['own'])).toBe('own');
+    expect(pickActiveWorkspace('gulf', [])).toBeNull();
   });
 });

@@ -19,15 +19,21 @@ import { env, type WebEnv } from './env';
 // AIV-P1-051 (#201) ships.
 const EIGHT_HOURS = 8 * 60 * 60;
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
+// ADR-012: an operator session also ends after one hour with no request, whatever the sign-in choice.
+const ONE_HOUR = 60 * 60;
 
 /**
- * The token's lifetime in seconds at each (re-)issue: with "Keep me signed in", 30 days from sign-in (a re-issued token
- * keeps its first expiry); without, 8 hours from this request (idle). Exported for its test.
+ * The token's lifetime in seconds at each (re-)issue: 30 days from sign-in with "Keep me signed in", 8 hours from
+ * sign-in without, however often it is used; an operator's also restarts a one-hour idle limit on each request (never
+ * past that end). Exported for its test.
  */
-export function tokenMaxAge(token: { remember?: unknown; exp?: unknown } | undefined, nowSeconds: number): number {
-  if (!token?.remember) return EIGHT_HOURS;
-  return typeof token.exp === 'number' ? token.exp - nowSeconds : THIRTY_DAYS;
+export function tokenMaxAge(token: Record<string, unknown> | undefined, nowSeconds: number): number {
+  const signedInAt = typeof token?.signedInAt === 'number' ? token.signedInAt : nowSeconds;
+  const left = signedInAt + (token?.remember ? THIRTY_DAYS : EIGHT_HOURS) - nowSeconds;
+  return token?.operator ? Math.min(left, ONE_HOUR) : left;
 }
+
+const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 // The ID token's claims, validated at the trust boundary (AGENTS.md 3.7). `email_verified` stays undefined when absent;
 // identity decides what counts as verified (ADR-009 point 4).
@@ -185,7 +191,7 @@ export function authConfig(
     session: { strategy: 'jwt', maxAge: THIRTY_DAYS },
     // Each token expires on its own clock (tokenMaxAge); an expired token fails decode and Auth.js drops the cookie.
     jwt: {
-      encode: (params) => encode({ ...params, maxAge: tokenMaxAge(params.token, Math.floor(Date.now() / 1000)) }),
+      encode: (params) => encode({ ...params, maxAge: tokenMaxAge(params.token, nowSeconds()) }),
     },
     cookies: {
       sessionToken: {
@@ -211,17 +217,36 @@ export function authConfig(
             emailVerified: claims.data.email_verified,
             displayName: claims.data.name ?? null,
           });
-          // Auth.js passes this same `user` object to the jwt callback below (no adapter), so the id travels on.
+          // Auth.js passes this same `user` object to the jwt callback below (no adapter), so the id travels on, and
+          // the stored email (verified, lower-case) is what the operator list is compared with (operator.ts).
           user.id = found.id;
+          user.email = found.email;
           return true;
         } catch (error) {
           if (error instanceof IdentityError) return `${side.signInPage}?error=${error.code}`;
           throw error;
         }
       },
-      // Only the identity user id and the "Keep me signed in" choice go into the cookie: no name, email or token.
-      jwt: ({ token, user }) => (user?.id ? { sub: user.id, remember } : token),
-      session: ({ session, token }) => ({ expires: session.expires, user: { id: token.sub ?? '' } }),
+      // Only the identity user id, the "Keep me signed in" choice, the sign-in time and whether an operator signed in
+      // go into the cookie: no name, email or token. A token from before signedInAt existed is dropped (sign in again),
+      // or it would slide forever. The operator flag sets the session length only; operator.ts checks the list per request.
+      // A person added to PLATFORM_OPERATOR_EMAILS after signing in has no flag: platformOperator() sends them to sign in.
+      jwt: ({ token, user }) =>
+        user?.id
+          ? {
+              sub: user.id,
+              remember,
+              signedInAt: nowSeconds(),
+              operator: env().platformOperators.has(user.email ?? ''),
+            }
+          : typeof token.signedInAt === 'number'
+            ? token
+            : null,
+      session: ({ session, token }) => ({
+        expires: session.expires,
+        user: { id: token.sub ?? '' },
+        operator: token['operator'] === true,
+      }),
     },
   };
 }
@@ -235,11 +260,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
 });
 
 /**
- * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, so the 8-hour limit
- * counts from the last request (idle); a "Keep me signed in" session ends 30 days after sign-in.
+ * The proxy form of `auth`: runs the `authorized` callback above and re-issues the session cookie, which ends 8 hours
+ * (or 30 days with "Keep me signed in") after sign-in, and an operator's after one idle hour (tokenMaxAge).
  */
 // next-auth's overloads do not type the (request, event) middleware call it supports at runtime.
 export const sessionProxy = auth as unknown as (request: NextRequest, event: NextFetchEvent) => Promise<Response>;
+
+/** Whether the session was signed in as a platform operator (its length, tokenMaxAge); the list is checked apart. */
+export async function sessionSignedInAsOperator(): Promise<boolean> {
+  if (!authConfigured()) return false;
+  return ((await auth()) as { operator?: unknown } | null)?.operator === true;
+}
 
 /** The signed-in user's identity id, or null. The one way server code learns who is signed in (AIV-P0-010 builds on it). */
 export async function getSessionUserId(): Promise<string | null> {

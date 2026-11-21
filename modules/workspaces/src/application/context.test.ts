@@ -29,7 +29,7 @@ const useCases = (member: Member | null = null, status: WorkspaceStatus | null =
       ),
     storeFor: () => ({}) as WorkspaceStore,
     grants: { covers: async (_ctx, resource) => resource.jobId === J1.jobId },
-    active: { get: async () => null, set: async () => {} },
+    active: { resolve: async () => null, set: async () => {} },
   });
 
 const ctx = (role: Role, status: WorkspaceStatus = 'active'): WorkspaceContext<null> => ({

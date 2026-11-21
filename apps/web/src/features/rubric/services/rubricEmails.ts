@@ -1,8 +1,9 @@
-import type { Rubric, RubricVersion } from '@credalent/jobs';
+import { approvesAs, type Rubric, type RubricVersion } from '@credalent/jobs';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
 import { getNotifications, senderFor } from '@/server/notifications';
+import { getWorkspaces } from '@/server/workspace';
 import { reviewPath } from '../domain/rubric.ts';
 
 // The rubric approval emails (AIV-P1-014), queued in the confirmed action's transaction, so none is sent unless the
@@ -24,12 +25,17 @@ async function versionOf(ctx: WorkspaceContext, jobId: string, versionId: string
 
 /**
  * "Rubric waiting for your approval" (ERubric) to the job's hiring owner, from the recruiter who sent it, linking to
- * the version and revision sent. Nothing is queued for a job with no hiring owner: its recruiters approve it
- * themselves (ADR-014). Returns whether an email was queued.
+ * the version and revision sent. Nothing is queued for a job with no hiring owner, or one who can no longer approve it
+ * (removed, or no longer a hiring owner or admin, AIV-P2-060): its recruiters approve it themselves (ADR-014). Returns
+ * whether an email was queued.
  */
 export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVersion): Promise<boolean> {
   const job = await getJobs().getJob(ctx, sent.jobId);
   if (!job?.hiringOwnerUserId) return false;
+  // shortcut: a job whose owner was removed before AIV-P2-060 keeps their id, so its header still shows their name; this
+  // check stops the email. Clear such owners when the job header lets an admin assign another (AIV-P1-097, #495).
+  const member = await getWorkspaces().getMembership(job.hiringOwnerUserId, ctx.workspaceId);
+  if (!member || approvesAs(member.role, member.userId, job) !== 'owner') return false;
   const email = configured();
   const owner = await getIdentity().getUser(job.hiringOwnerUserId);
   if (!owner) throw new Error('hiring owner not found');
