@@ -34,8 +34,9 @@ export function useCatalogueEvalController(
         (): CatalogueSaveResult => ({ ok: false, error: 'failed' }),
       );
       setPending(false);
-      if (result.ok) router.refresh();
-      else setError(result);
+      if (!result.ok) setError(result);
+      // A refusal because a run is in progress reloads too, so the page shows that run.
+      if (result.ok || result.error === 'eval_running') router.refresh();
     },
   };
 }

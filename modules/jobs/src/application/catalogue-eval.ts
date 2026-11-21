@@ -31,8 +31,11 @@ export type EvalStore = Pick<DraftStore, 'lockDraft' | 'read' | 'recordPlatform'
     requestedBy: string;
     requestedAt: Date;
   }): Promise<void>;
-  /** Ends a lost run (`running` past its timeout) as `error`, so a new run may start. */
-  abandonRun(id: string, at: Date): Promise<void>;
+  /**
+   * Ends a lost run (`running` past its timeout) as `error`, so a new run may start. False when a worker still holds
+   * it (its row is locked): it is not lost after all.
+   */
+  abandonRun(id: string, at: Date): Promise<boolean>;
   /** Writes `CatalogueEvalRequested.v1` for the run to the outbox, in this transaction. */
   enqueueRun(id: string, at: Date): Promise<void>;
 };
@@ -57,7 +60,8 @@ export function catalogueEval({ inTransaction, inSnapshot, newId, now }: Catalog
         const at = now();
         const latest = await store.latestRun(version);
         if (isRunning(latest, at)) throw new CatalogueError('eval_running');
-        if (latest?.status === 'running') await store.abandonRun(latest.id, at);
+        if (latest?.status === 'running' && !(await store.abandonRun(latest.id, at)))
+          throw new CatalogueError('eval_running');
         const id = newId();
         await store.startRun({
           id,
@@ -114,6 +118,10 @@ export async function runDraftEval(
   const run = await store.lockRun(runId);
   if (run?.status !== 'running') return null;
   const spent = await store.tokensOn(now().toISOString().slice(0, 10));
+  // shortcut: the whole eval runs in the consumer transaction, holding the run row (minutes; Service Bus renews the
+  // message lock for 5 minutes), and tokens spent by an attempt that throws before finishRun are not counted, so each of
+  // up to 10 deliveries can spend liveTokenCap. Split request, run and record into their own transactions, with the
+  // spend saved per call, if a live run nears the lock renewal or retries show in the token use.
   const { outcome, tokens, ...result } = await evaluate(run.keys, EVAL_DAILY_TOKEN_CAP - spent);
   const status = outcome === 'unavailable' ? 'error' : outcome;
   await store.finishRun(runId, { status, result: status === 'error' ? null : result, tokens, finishedAt: now() });

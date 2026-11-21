@@ -54,10 +54,12 @@ export function evalStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>):
     },
 
     async abandonRun(id, at) {
-      await tx
-        .update(catalogueEvalRun)
-        .set({ status: 'error', finishedAt: at })
-        .where(and(eq(catalogueEvalRun.id, id), eq(catalogueEvalRun.status, 'running')));
+      // SKIP LOCKED: a worker still holding the run (a slow eval) keeps it; the request never waits on it.
+      const rows =
+        await tx.execute(sql`update jobs.catalogue_eval_run set status = 'error', finished_at = ${at.toISOString()}
+        where id = (select id from jobs.catalogue_eval_run where id = ${id} and status = 'running'
+          for update skip locked) returning id`);
+      return rows.length > 0;
     },
 
     enqueueRun: (runId, at) =>

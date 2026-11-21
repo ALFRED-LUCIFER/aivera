@@ -329,15 +329,22 @@ test.describe('the draft eval', () => {
     await openCatalogue(page);
     // Another operator's run starts after this page loaded.
     const db = createDb(databaseUrl, { max: 1 });
+    const runs = async () =>
+      (await db.execute<{ n: number }>(sql`select count(*)::int as n from jobs.catalogue_eval_run`))[0]?.n;
     try {
       await db.execute(sql`insert into jobs.catalogue_eval_run (id, version, content_hash, keys, status, requested_by,
         requested_at) select gen_random_uuid(), version, repeat('0', 64), '{"domains":[],"regions":[]}', 'running',
         '0190d4a2-0000-7000-8000-00000000a002', now() from jobs.catalogue_version where status = 'draft'`);
+      const before = await runs();
+      await page.getByRole('button', { name: 'Run the eval' }).focus();
+      await page.keyboard.press('Enter');
+      // The request is refused and the page reloads to the run in progress: no second run starts.
+      await expect(panel(page)).toContainText('An eval run is already in progress.');
+      await expect(page.getByRole('button', { name: 'Run the eval' })).toBeDisabled();
+      expect(await runs()).toBe(before);
     } finally {
       await db.$client.end();
     }
-    await page.getByRole('button', { name: 'Run the eval' }).click();
-    await expect(panel(page).getByRole('alert')).toHaveText('An eval run is already in progress.');
     await finish('passed', { uncovered: [], tasks: [detectDomain(true)] });
   });
 

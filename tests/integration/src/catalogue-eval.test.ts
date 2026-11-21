@@ -220,4 +220,32 @@ describe('Feature: Run the eval set on a catalogue draft', () => {
         values (gen_random_uuid(), 2, ${'0'.repeat(64)}, '{"domains":[],"regions":[]}', 'running', ${PIA}, now())`),
     ).rejects.toThrow();
   });
+
+  // SAFETY: mutation check: latestRun read only passed runs (any passed run on the hash) -> this test failed (passed)
+  it('only the latest run counts: an older pass on the same content does not outweigh a newer failure', async () => {
+    await deliver(await latestEnvelope());
+    expect((await editor.getDraftEval())?.status).toBe('failed');
+    await admin.execute(sql`insert into jobs.catalogue_eval_run
+      (id, version, content_hash, keys, status, requested_by, requested_at, finished_at, result)
+      select gen_random_uuid(), version, content_hash, keys, 'passed', requested_by, ${'2026-11-20T09:00:00.000Z'},
+        ${'2026-11-20T09:05:00.000Z'}, '{"uncovered":[],"tasks":[]}'
+      from jobs.catalogue_eval_run where status = 'failed' order by requested_at desc limit 1`);
+    expect((await editor.getDraftEval())?.status).toBe('failed');
+  });
+
+  it('a run a worker still holds is not abandoned, even past its timeout', async () => {
+    const later = createCatalogueEditor(app, audit, () => new Date(NOW.getTime() + 62 * 60_000));
+    const { version, revision } = await draft();
+    await later.requestEval(PIA, { version, revision });
+    // A worker holds the run's row in its transaction while the request comes in after the timeout.
+    const { promise: held, resolve: release } = Promise.withResolvers<void>();
+    const worker = admin.transaction(async (tx) => {
+      await tx.execute(sql`select id from jobs.catalogue_eval_run where status = 'running' for update`);
+      await held;
+    });
+    const muchLater = createCatalogueEditor(app, audit, () => new Date(NOW.getTime() + 93 * 60_000));
+    expect(await outcome(muchLater.requestEval(PIA, { version, revision }))).toBe('eval_running');
+    release();
+    await worker;
+  });
 });

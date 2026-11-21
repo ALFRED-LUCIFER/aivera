@@ -7,8 +7,6 @@ import { evalWorkspaceId, evaluateTask, liveJudge } from './run.ts';
 // golden sets under the thresholds of config.ts, the draft's keys as data. Inputs are the synthetic golden cases only,
 // never a workspace's job or a candidate (AGENTS.md 1.1).
 
-export { evalWorkspaceId };
-
 /** The pack and region keys a draft offers (not retired), as the jobs module sends them to `jobs.detectDomain`. */
 export type CatalogueKeys = { domains: string[]; regions: string[] };
 
@@ -41,7 +39,12 @@ export const uncoveredPacks = (domains: readonly string[], cases: readonly Golde
   return domains.filter((domain) => !covered.has(domain));
 };
 
-/** Runs the draft's eval with `ai`, one call at a time. `dir` is the golden set (tests pass their own). */
+/**
+ * shortcut: only the pack and region keys reach the model (as detect-domain.ts sends them); jobs.draftCompetencies takes
+ * no catalogue data, so label and competency edits cannot change a result: the gate tells only for packs or regions
+ * added, retired or renamed. Pass the draft's pack competencies in the requests once the prompts use them.
+ *
+ * Runs the draft's eval with `ai`, one call at a time. `dir` is the golden set (tests pass their own). */
 export async function evaluateCatalogue(
   ai: Pick<AiClient, 'generateStructured'>,
   { domains: [domain, ...domains], regions: [region, ...regions] }: CatalogueKeys,
