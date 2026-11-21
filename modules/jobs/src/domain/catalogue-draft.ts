@@ -7,6 +7,7 @@ import {
   type CatalogueHint,
   type CatalogueJobType,
   type CataloguePack,
+  type CatalogueRegion,
   type CatalogueVersion,
 } from './catalogue.ts';
 
@@ -64,6 +65,17 @@ const publishedHint = (published: EditorVersion, packKey: string, region: string
 export const hintStatus = (published: EditorVersion, packKey: string, h: EditorHint): EntryStatus =>
   status(h, publishedHint(published, packKey, h.region, h.position));
 
+/** A region's status: by key, its label compared (AIV-P2-059). */
+export const regionStatus = (published: EditorVersion, region: CatalogueRegion): EntryStatus =>
+  status(
+    region,
+    published.regions.find((r) => r.key === region.key),
+  );
+
+/** Whether a region is new in this draft, so it is removed rather than retired and its key may still change. */
+export const isRegionNewInDraft = (published: EditorVersion, key: string) =>
+  !published.regions.some((r) => r.key === key);
+
 /** Whether a regional hint is new in this draft, so it is removed rather than retired. */
 export const isHintNewInDraft = (published: EditorVersion, packKey: string, region: string, position: number) =>
   !publishedHint(published, packKey, region, position);
@@ -98,6 +110,11 @@ const RESERVED_KEYS = ['none', 'several', 'other'];
 const key = z
   .string()
   .regex(CATALOGUE_KEY)
+  .refine((k) => !RESERVED_KEYS.includes(k));
+// A region key may be two letters ("eu"), unlike the other catalogue keys (migration 0023, AIV-P2-059).
+const regionKey = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]{1,47}$/)
   .refine((k) => !RESERVED_KEYS.includes(k));
 const filled = (max: number) => z.string().trim().min(1).max(max);
 // Every save names the draft (its version) and the revision it read: a save made on a discarded draft, or before
@@ -150,8 +167,20 @@ export type DraftJobTypeInput = z.infer<typeof draftJobTypeSchema>;
  * Add a regional hint to a pack's region (`position` null) or edit one (AIV-P2-046): the competency's fields without
  * core. Strict, so a request that sends `type` (say "mandatory") is refused (ADR-013 point 11).
  */
-export const draftHintSchema = draftCompetencySchema.omit({ core: true }).extend({ region: key });
+export const draftHintSchema = draftCompetencySchema.omit({ core: true }).extend({ region: regionKey });
 export type DraftHintInput = z.infer<typeof draftHintSchema>;
+
+/**
+ * Add a region (`previousKey` null) or edit one (AIV-P2-059): its key (only while it is new in the draft) and English
+ * label. A region is a market whose rules a candidate can show skill in, never where someone lives or is from.
+ */
+export const draftRegionSchema = z.strictObject({
+  ...base,
+  previousKey: regionKey.nullable(),
+  key: regionKey,
+  label: filled(120),
+});
+export type DraftRegionInput = z.infer<typeof draftRegionSchema>;
 
 /** "Publish version N" (AIV-P2-049): the draft as the page showed it and the operator's reason, at least 10 characters. */
 export const publishDraftSchema = z.strictObject({ ...base, reason: z.string().trim().min(10).max(500) });
@@ -165,8 +194,15 @@ export type DiscardDraftInput = z.infer<typeof discardDraftSchema>;
 export const retireEntrySchema = z.discriminatedUnion('entry', [
   z.strictObject({ ...base, entry: z.literal('pack'), packKey: key }),
   z.strictObject({ ...base, entry: z.literal('competency'), packKey: key, position: z.int().min(0) }),
-  z.strictObject({ ...base, entry: z.literal('regionalHint'), packKey: key, region: key, position: z.int().min(0) }),
+  z.strictObject({
+    ...base,
+    entry: z.literal('regionalHint'),
+    packKey: key,
+    region: regionKey,
+    position: z.int().min(0),
+  }),
   z.strictObject({ ...base, entry: z.literal('jobType'), jobTypeKey: key }),
+  z.strictObject({ ...base, entry: z.literal('region'), regionKey }),
 ]);
 export type RetireEntryInput = z.infer<typeof retireEntrySchema>;
 
@@ -191,9 +227,10 @@ export const CATALOGUE_ERROR_CODES = [
   'fairness_employer',
   'fairness_origin',
   'fairness_residency',
+  'fairness_region',
 ] as const;
 export type CatalogueErrorCode = (typeof CATALOGUE_ERROR_CODES)[number];
-export type CatalogueField = 'key' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core' | 'starters';
+export type CatalogueField = 'key' | 'label' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core' | 'starters';
 
 /** A refusal of a draft save. The message names the code only, never what was typed. */
 export class CatalogueError extends Error {
@@ -370,4 +407,14 @@ export function assertFairHint(input: Pick<DraftHintInput, 'name' | 'meaning' | 
   for (const field of ['name', 'meaning'] as const)
     if (residencyRule(input[field])) throw new CatalogueError('fairness_residency', { field });
   assertFairCompetency(input);
+}
+
+/**
+ * A region is market knowledge, never a residency or an origin (ADR-013 points 11 and 16, AIV-P2-059): its label, and
+ * its key read as words, go through the hint's residency rule and every competency rule.
+ */
+const unfairRegion = (text: string) => residencyRule(text) || fairnessRule(text) !== null;
+export function assertFairRegion(input: Pick<DraftRegionInput, 'key' | 'label'>) {
+  if (unfairRegion(input.label)) throw new CatalogueError('fairness_region', { field: 'label' });
+  if (unfairRegion(input.key.replaceAll('_', ' '))) throw new CatalogueError('fairness_region', { field: 'key' });
 }

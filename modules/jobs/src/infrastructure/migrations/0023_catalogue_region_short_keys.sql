@@ -1,0 +1,2 @@
+ALTER TABLE "jobs"."catalogue_region" DROP CONSTRAINT "catalogue_region_key_check";--> statement-breakpoint
+ALTER TABLE "jobs"."catalogue_region" ADD CONSTRAINT "catalogue_region_key_check" CHECK ("jobs"."catalogue_region"."key" ~ '^[a-z][a-z0-9_]{1,47}$' and "jobs"."catalogue_region"."key" not in ('none', 'several', 'other'));

@@ -100,4 +100,30 @@ describe('catalogueDiff', () => {
       'security_engineering',
     ]);
   });
+
+  it('AIV-P2-059: regions added, label edited and retired form the Regions group, counted once each', () => {
+    const after: EditorVersion = {
+      ...v1,
+      regions: [
+        ...v1.regions.map((r) =>
+          r.key === 'india' ? { ...r, retired: true } : r.key === 'ksa' ? { ...r, label: { en: 'Saudi Arabia' } } : r,
+        ),
+        { key: 'eu', label: { en: 'EU' }, retired: false },
+      ],
+    };
+    const changes = catalogueDiff(v1, after);
+    expect(changes).toEqual([
+      {
+        group: 'regions',
+        kind: 'edited',
+        id: 'ksa',
+        name: 'KSA',
+        fields: [{ field: 'label', before: 'KSA', after: 'Saudi Arabia' }],
+      },
+      { group: 'regions', kind: 'retired', id: 'india', name: 'India', fields: [] },
+      { group: 'regions', kind: 'added', id: 'eu', name: 'EU', fields: [] },
+    ]);
+    // A retired region's hints are not retired themselves: no hint change.
+    expect(diffCounts(changes)).toEqual({ added: 1, edited: 1, retired: 1 });
+  });
 });

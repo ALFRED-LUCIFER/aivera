@@ -4,6 +4,7 @@ import {
   assertCompetencyFits,
   assertFairCompetency,
   assertFairHint,
+  assertFairRegion,
   assertFairStarters,
   CatalogueError,
   competencyStatus,
@@ -11,13 +12,16 @@ import {
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   fairnessRule,
   hintStatus,
   isHintNewInDraft,
   isNewInDraft,
+  isRegionNewInDraft,
   jobTypeStatus,
   packStatus,
   placeJobType,
+  regionStatus,
   residencyRule,
   retireEntrySchema,
   type EditorPack,
@@ -381,5 +385,51 @@ describe('Feature: Edit job types in a catalogue draft', () => {
     expect(jobTypeStatus(v1, { ...swe, starterCompetencies: ['a', 'b', 'c', 'd'] })).toBe('changed');
     expect(jobTypeStatus(v1, { ...swe, key: 'security_engineering' })).toBe('new');
     expect(jobTypeStatus(v1, { ...swe, retired: true })).toBe('retired');
+  });
+});
+
+// AIV-P2-059: regions in a draft. A region is a market, never where someone lives or is from (ADR-013 points 11, 16).
+const regionInput = (key: string, label: string) => ({ version: 2, revision: 4, previousKey: null, key, label });
+const save = (key: string, label: string) => {
+  const parsed = draftRegionSchema.safeParse(regionInput(key, label));
+  if (!parsed.success) return { invalid: parsed.error.issues[0]?.path[0] };
+  return refusal(() => assertFairRegion(parsed.data));
+};
+describe('Feature: Add and retire regions in a catalogue draft', () => {
+  // SAFETY: mutation check: assertFairRegion returned without checking -> the "UAE residents" row failed (saved)
+  it.each([
+    ['gcc', 'GCC', 'saved'],
+    ['eu', 'EU', 'saved'],
+    ['uk', 'United Kingdom', 'saved'],
+    ['EU', 'EU', { invalid: 'key' }],
+    ['other', 'Other', { invalid: 'key' }],
+    ['eu', ' ', { invalid: 'label' }],
+    ['uae_r', 'UAE residents', { code: 'fairness_region', field: 'label' }],
+    ['ksa_residents', 'KSA', { code: 'fairness_region', field: 'key' }],
+    ['india', 'Indian nationals', { code: 'fairness_region', field: 'label' }],
+    ['ex_aramco', 'Aramco', { code: 'fairness_region', field: 'label' }],
+  ])('key "%s" with label "%s" is %j', (key, label, result) => {
+    expect(save(key, label)).toEqual(result);
+  });
+
+  it('version 1 regions pass the fairness rule', () => {
+    for (const r of CATALOGUE_V1.regions) expect(save(r.key, r.label.en), r.key).toBe('saved');
+  });
+
+  it('a region is retired or removed through the retire schema; a hint may name a two-letter region', () => {
+    expect(retireEntrySchema.safeParse({ version: 2, revision: 4, entry: 'region', regionKey: 'eu' }).success).toBe(
+      true,
+    );
+    expect(draftHintSchema.shape.region.safeParse('eu').success).toBe(true);
+  });
+
+  it('region status: Live, Changed in draft, New in draft, Retired; only a new region is new in the draft', () => {
+    const india = v1.regions.find((r) => r.key === 'india') as (typeof v1.regions)[number];
+    expect(regionStatus(v1, india)).toBe('live');
+    expect(regionStatus(v1, { ...india, label: { en: 'Republic of India' } })).toBe('changed');
+    expect(regionStatus(v1, { key: 'eu', label: { en: 'EU' }, retired: false })).toBe('new');
+    expect(regionStatus(v1, { ...india, retired: true })).toBe('retired');
+    expect(isRegionNewInDraft(v1, 'eu')).toBe(true);
+    expect(isRegionNewInDraft(v1, 'ksa')).toBe(false);
   });
 });

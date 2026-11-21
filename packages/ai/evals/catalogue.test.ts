@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AiUnavailable, type AiClient } from '../src/client.ts';
-import { evaluateCatalogue, recordedClient, runBudget, uncoveredPacks } from './catalogue.ts';
+import { evaluateCatalogue, recordedClient, runBudget, uncoveredKeys } from './catalogue.ts';
 import { domainCatalogue, liveTokenCap } from './config.ts';
 import { loadGolden } from './golden.ts';
 
@@ -13,14 +13,20 @@ const noModel: Pick<AiClient, 'generateStructured'> = {
 };
 
 describe('the coverage rule', () => {
-  it('every pack key of version 1 has golden cases', () => {
-    expect(uncoveredPacks(v1.domains, golden.get('jobs.detectDomain') ?? [])).toEqual([]);
+  it('every pack and region key of version 1 has golden cases', () => {
+    expect(uncoveredKeys(v1, golden.get('jobs.detectDomain') ?? [])).toEqual([]);
   });
 
   // SAFETY: mutation check: skipped the uncovered check in evaluateCatalogue -> this test failed (the model was called)
   it('Scenario: A new pack without golden cases cannot pass, and no model is called', async () => {
     const result = await evaluateCatalogue(noModel, { ...v1, domains: [...v1.domains, 'insurance'] });
     expect(result).toEqual({ outcome: 'failed', uncovered: ['insurance'], tasks: [] });
+  });
+
+  // SAFETY: mutation check: skipped region keys in uncoveredKeys -> this test failed (the model was called)
+  it('Scenario: A new region key cannot publish without golden cases (AIV-P2-059)', async () => {
+    const result = await evaluateCatalogue(noModel, { ...v1, regions: [...v1.regions, 'eu'] });
+    expect(result).toEqual({ outcome: 'failed', uncovered: ['eu'], tasks: [] });
   });
 });
 

@@ -3,14 +3,17 @@ import {
   assertCompetencyFits,
   assertFairCompetency,
   assertFairHint,
+  assertFairRegion,
   assertFairStarters,
   CatalogueError,
   draftCompetencySchema,
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   isHintNewInDraft,
   isNewInDraft,
+  isRegionNewInDraft,
   placeJobType,
   retireEntrySchema,
   type CatalogueEditorView,
@@ -18,6 +21,7 @@ import {
   type DraftHintInput,
   type DraftJobTypeInput,
   type DraftPackInput,
+  type DraftRegionInput,
   type RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
 
@@ -37,6 +41,8 @@ export type DraftStore = {
   putCompetency(version: number, input: Omit<DraftCompetencyInput, 'revision' | 'version'>): Promise<number>;
   /** Inserts the hint at the end of its pack's region (`position` null) or updates it; returns its position. */
   putHint(version: number, input: Omit<DraftHintInput, 'revision' | 'version'>): Promise<number>;
+  /** Inserts the region at the end, or updates `previousKey`'s label and key, moving its hints with it. */
+  putRegion(version: number, previousKey: string | null, region: { key: string; label: string }): Promise<void>;
   /** Whether any catalogue version, the draft included, holds this job type key. */
   jobTypeKeyUsed(key: string): Promise<boolean>;
   /** Inserts (`adding`) or updates the job type's English texts and starters, then orders the job types as `order`. */
@@ -47,7 +53,7 @@ export type DraftStore = {
   ): Promise<void>;
   /** Marks the entry retired. */
   retire(version: number, entry: DraftEntry): Promise<void>;
-  /** Deletes the entry; a pack with its competencies and hints. */
+  /** Deletes the entry; a pack with its competencies and hints, a region with its hints. */
   remove(version: number, entry: DraftEntry): Promise<void>;
   recordPlatform(entry: NewPlatformEntry): Promise<void>;
 };
@@ -57,7 +63,8 @@ export type DraftEntry =
   | { entry: 'pack'; packKey: string }
   | { entry: 'competency'; packKey: string; position: number }
   | { entry: 'regionalHint'; packKey: string; region: string; position: number }
-  | { entry: 'jobType'; jobTypeKey: string };
+  | { entry: 'jobType'; jobTypeKey: string }
+  | { entry: 'region'; regionKey: string };
 
 export type CatalogueEditorPorts = {
   inTransaction<T>(work: (store: DraftStore) => Promise<T>): Promise<T>;
@@ -202,6 +209,39 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
     },
 
     /**
+     * Adds a region, or edits its label (AIV-P2-059); its key only while it is new in the draft (`key_fixed`), never to
+     * one the draft holds (`key_taken`). The label is market knowledge, never a residency (`fairness_region`).
+     */
+    saveDraftRegion: async (operatorId: string, raw: DraftRegionInput): Promise<void> => {
+      const input = draftRegionSchema.parse(raw);
+      assertFairRegion(input);
+      return inTransaction(async (store) => {
+        const { draft, published, version, next } = await begin(store, input);
+        const { previousKey, key } = input;
+        const before = previousKey === null ? null : draft.regions.find((r) => r.key === previousKey);
+        if (before === undefined) throw new CatalogueError('not_found');
+        if (before?.retired) throw new CatalogueError('entry_retired');
+        if (previousKey !== key) {
+          // SAFETY: mutation check: dropped the key_fixed check -> "a published region key never changes" failed
+          if (previousKey !== null && !isRegionNewInDraft(published, previousKey))
+            throw new CatalogueError('key_fixed', { field: 'key' });
+          // The draft holds every region ever published (retired, never deleted), so this also refuses reuse.
+          if (draft.regions.some((r) => r.key === key)) throw new CatalogueError('key_taken', { field: 'key' });
+        }
+        await store.touch(version, operatorId, now());
+        await store.putRegion(version, previousKey, { key, label: input.label });
+        await store.recordPlatform(
+          audit(operatorId, previousKey === null ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
+            catalogueVersion: version,
+            revision: next,
+            entry: 'region',
+            regionKey: key,
+          }),
+        );
+      });
+    },
+
+    /**
      * Adds a job type, or edits its English label, evidence and starters, and places it in the Add a job list. Its key
      * is never reused (ADR-013 point 5); its starters pass the fairness check. A new job type is in no pack until the
      * competency form adds it, so the core limit holds.
@@ -231,7 +271,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
     },
 
     /**
-     * Retires a pack, competency, job type or regional hint a published version holds, or removes one new in this draft (ADR-013
+     * Retires a pack, competency, job type, region or regional hint a published version holds, or removes one new in this draft (ADR-013
      * point 6). Returns which it did.
      */
     retireDraftEntry: async (operatorId: string, raw: RetireEntryInput): Promise<'retired' | 'removed'> => {
@@ -250,6 +290,12 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
             [...p.competencies, ...p.hints].some((c) => c.appliesTo.includes(entry.jobTypeKey)),
           );
           if (removed && used) throw new CatalogueError('job_type_in_use');
+        } else if (entry.entry === 'region') {
+          const target = draft.regions.find((r) => r.key === entry.regionKey);
+          if (!target) throw new CatalogueError('not_found');
+          if (target.retired) throw new CatalogueError('entry_retired');
+          // A retired region keeps its row and hints; recruiters keep it until publish (ADR-013 point 16).
+          removed = isRegionNewInDraft(published, entry.regionKey);
         } else {
           const position = entry.entry === 'competency' ? entry.position : undefined;
           const pack = draft.packs.find((p) => p.key === entry.packKey);
@@ -260,7 +306,10 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
                 ? pack
                 : pack?.competencies.find((c) => c.position === position);
           if (!target) throw new CatalogueError('not_found');
-          if (target.retired) throw new CatalogueError('entry_retired');
+          // A retired region's hints stay as they are until publish, like the region (AIV-P2-059).
+          const regionRetired =
+            entry.entry === 'regionalHint' && draft.regions.some((r) => r.key === entry.region && r.retired);
+          if (target.retired || regionRetired) throw new CatalogueError('entry_retired');
           if (entry.entry !== 'pack' && pack?.retired) throw new CatalogueError('pack_retired');
           removed =
             entry.entry === 'regionalHint'

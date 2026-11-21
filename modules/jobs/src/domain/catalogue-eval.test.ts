@@ -71,6 +71,9 @@ describe('the content hash', () => {
       // Regional hints as AIV-P2-046 stores them: with their region and their position among that region's hints.
       { ...draft, packs: [{ ...first, hints: first.hints.map((h) => ({ ...h, region: 'europe' })) }, ...rest] },
       { ...draft, packs: [{ ...first, hints: first.hints.map((h, position) => ({ ...h, position })) }, ...rest] },
+      // Regions as AIV-P2-059 edits them: one added, one retired.
+      { ...draft, regions: [...draft.regions, { key: 'eu', label: { en: 'EU' }, retired: false }] },
+      { ...draft, regions: draft.regions.map((r, i) => (i === 0 ? { ...r, retired: true } : r)) },
     ];
     for (const variant of variants) expect(contentHash(variant)).not.toBe(hash);
   });
