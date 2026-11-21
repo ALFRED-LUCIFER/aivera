@@ -36,8 +36,11 @@ export function createCandidates(
  * Reads a person as the system, in a worker job's workspace-scoped transaction with no member (the evidence module's
  * `ApplicationReceived.v1` handler, AIV-P1-076): the workspace filter here, row-level security below it.
  */
-export const readPersonAsSystem = (tx: Tx, workspaceId: string, personId: string) =>
-  candidateStore(tx).getPerson(workspaceId, personId);
+export const readPersonAsSystem = async (tx: Tx, workspaceId: string, personId: string) => {
+  const store = candidateStore(tx);
+  const person = await store.getPerson(workspaceId, personId);
+  return person && { ...person, identifierEmails: await store.identifierEmails(workspaceId, personId) };
+};
 
 /** `recordCvContact` over the worker's transaction (AIV-P1-025): the CV's contact on the record, never as identifiers. */
 export function createContactRecorder() {
