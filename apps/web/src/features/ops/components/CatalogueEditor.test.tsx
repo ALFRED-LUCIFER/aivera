@@ -125,7 +125,9 @@ describe('Scenario Outline: Page states', () => {
 
 describe('the draft', () => {
   it('Scenario: Starting a draft: the banner and the 8 published packs "Live", a new pack "New in draft"', () => {
-    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: model })} />);
+    // Every pack, without its entries: the summaries are all this reads, and a pack's status comes from draftModel.
+    const packs = model.packs.map((p) => ({ ...p, competencies: [], hints: [] }));
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: { ...model, packs } })} />);
     expect(screen.getByText('Draft — not live. Recruiters see version 1.')).toBeTruthy();
     const summaries = [...document.querySelectorAll('summary')];
     expect(summaries).toHaveLength(9);
@@ -332,16 +334,14 @@ const regionList = () => screen.getByRole('list', { name: 'Regions in the draft'
 const regionRow = (label: string) =>
   within(regionList()).getByText(label, { selector: 'h3' }).closest('li') as HTMLElement;
 
-const refusedRegion = (error: Refusal) => {
-  cleanup();
-  show(
+const regionForm = (error: Refusal) => (
+  <IntlProvider {...intl}>
     <CatalogueEditor
       publishedVersion={1}
       view={viewModel({ draft: withPacks(regionsModel), packForm: newPackForm('region'), error })}
-    />,
-  );
-  return within(screen.getByRole('dialog', { name: 'Add a region' })).getByRole('alert').textContent;
-};
+    />
+  </IntlProvider>
+);
 
 describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', () => {
   it('Scenario: Adding a region: "EU" shows "New in draft" and each pack shows its empty hint section', async () => {
@@ -395,6 +395,12 @@ describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', ()
   });
 
   it('the region refusals read as the ticket says, under their fields', () => {
+    // One open form, re-rendered with each refusal rather than mounted six times.
+    const { rerender } = render(regionForm({ ok: false, error: 'failed' }));
+    const refusedRegion = (error: Refusal) => {
+      rerender(regionForm(error));
+      return within(screen.getByRole('dialog', { name: 'Add a region' })).getByRole('alert').textContent;
+    };
     expect(refusedRegion({ ok: false, error: 'invalid', field: 'key' })).toBe(
       'Use lower-case letters, digits and underscores for the key.',
     );
