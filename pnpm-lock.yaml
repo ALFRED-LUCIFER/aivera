@@ -906,6 +906,9 @@ importers:
       '@credalent/candidate-accounts':
         specifier: workspace:*
         version: link:../../modules/candidate-accounts
+      '@credalent/candidates':
+        specifier: workspace:*
+        version: link:../../modules/candidates
       '@credalent/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -915,6 +918,9 @@ importers:
       '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@credalent/intake':
+        specifier: workspace:*
+        version: link:../../modules/intake
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs

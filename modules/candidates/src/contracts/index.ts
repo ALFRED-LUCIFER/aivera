@@ -1,6 +1,6 @@
 // The only public surface of @credalent/candidates (ADR-002).
 import type { EventDefinition } from '@credalent/db/outbox';
-import type { WorkspaceContext } from '@credalent/workspaces';
+import type { JobResource, WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 import type { Person } from '../domain/person.ts';
@@ -31,6 +31,11 @@ export interface CandidatesContract {
   findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<FindOrCreatePersonResult>;
   /** The person, or null when the workspace has no such person. Admins and recruiters. */
   getPerson(ctx: WorkspaceContext, personId: string): Promise<Person | null>;
+  /**
+   * Display names by person id, for a job's applicant list (AIV-P1-086): `candidate.view` on `job`, so hiring owners
+   * and interviewers need a grant on it (`ForbiddenError`). The caller passes only that job's applicants' ids.
+   */
+  displayNames(ctx: WorkspaceContext, job: JobResource, personIds: string[]): Promise<Map<string, string>>;
   /** Every person not merged into another, oldest first. Admins and recruiters. */
   listPeople(ctx: WorkspaceContext): Promise<Person[]>;
   /**
