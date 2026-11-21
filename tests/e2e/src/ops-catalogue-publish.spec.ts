@@ -62,6 +62,8 @@ async function blocked(page: Page, copy: string) {
 }
 
 test('Scenarios: the gate, publish with a reason, the audit row, and the new pack in Add a job', async ({ page }) => {
+  // One journey through two operators and a recruiter, in one test so a retry never splits it: longer than the default.
+  test.setTimeout(120_000);
   await signIn(page, { email: 'pia.platform@example.com' });
   await page.goto('/ops/catalogue');
   await page.getByRole('button', { name: 'Start a draft' }).click();
