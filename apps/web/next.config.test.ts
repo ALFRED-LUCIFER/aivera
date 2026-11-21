@@ -27,16 +27,25 @@ describe('Scenario: Every page is served with security headers (AIV-P1-092)', ()
     },
   );
 
+  // SAFETY: mutation check: removed headers() in next.config.ts -> this test failed
   it('applies to every route through next.config headers()', async () => {
     expect(await config(PHASE_PRODUCTION_BUILD).headers?.()).toEqual([
       { source: '/:path*', headers: securityHeaders(PHASE_PRODUCTION_BUILD) },
     ]);
   });
 
-  it('sets HSTS in production only, and eval and localhost only in dev', () => {
-    expect(value(PHASE_PRODUCTION_SERVER, 'Strict-Transport-Security')).toBe('max-age=31536000; includeSubDomains');
+  it('denies camera, microphone and geolocation, and allows sign-in redirects and Blob uploads only', () => {
+    const csp = value(PHASE_PRODUCTION_BUILD, 'Content-Security-Policy');
+    expect(value(PHASE_PRODUCTION_BUILD, 'Permissions-Policy')).toBe('camera=(), microphone=(), geolocation=()');
+    expect(csp).toContain("form-action 'self' https://*.ciamlogin.com https://accounts.google.com;");
+    expect(csp).toContain("connect-src 'self' https://*.blob.core.windows.net;");
+  });
+
+  // `next start` serves the headers the build wrote to routes-manifest.json, so the build phase must carry HSTS.
+  it('sets HSTS in the production build only, and eval and localhost only in dev', () => {
+    expect(value(PHASE_PRODUCTION_BUILD, 'Strict-Transport-Security')).toBe('max-age=31536000; includeSubDomains');
     expect(value(PHASE_DEVELOPMENT_SERVER, 'Strict-Transport-Security')).toBeUndefined();
-    expect(value(PHASE_PRODUCTION_SERVER, 'Content-Security-Policy')).not.toMatch(/unsafe-eval|localhost/);
+    expect(value(PHASE_PRODUCTION_BUILD, 'Content-Security-Policy')).not.toMatch(/unsafe-eval|localhost/);
     expect(value(PHASE_DEVELOPMENT_SERVER, 'Content-Security-Policy')).toContain('unsafe-eval');
   });
 });

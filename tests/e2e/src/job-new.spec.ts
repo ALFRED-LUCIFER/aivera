@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
+import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-007 J1 step 3, Add a job step 1 (seed.ts: Alex at Demo Hiring Co with hiring owner "Head of Engineering" and

@@ -96,6 +96,9 @@ jobs:
           ADMIN_URL: postgres://aivera:local_dev_only@postgres:5432/aivera
           DATABASE_MIGRATOR_URL: postgres://aivera_migrator:local_dev_only@postgres:5432/aivera
       - run: pnpm e2e ${{ matrix.args }}
+      # AIV-P1-092: the built app under the production content security policy, once, in the lightest shard.
+      - run: pnpm --filter @credalent/tests-e2e e2e:production
+        if: matrix.name == 'publish-unconfigured'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
