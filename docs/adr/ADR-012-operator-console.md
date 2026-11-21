@@ -40,3 +40,4 @@ Every workspace-owned table has a tenant policy on `app.workspace_id` with `FORC
 - On Azure dev, nobody can open the console until the owner creates the secret and applies the web Bicep change ([runbook](../runbooks/operator-console.md)). Until then it fails closed.
 - Tenant policies, `FORCE ROW LEVEL SECURITY` and role attributes are unchanged. The tenancy suite (`tests/integration/src/tenancy.test.ts`) keeps proving it: every table with a `workspace_id` has RLS enabled, forced and the tenant policy, no Credalent role has `BYPASSRLS`, and `audit.platform_entry` is listed as a platform table with its reason.
 - The metadata-only guarantee rests on contracts and an architecture test, not on database privileges, until `aivera_ops` exists.
+- 2026-11-21, AIV-P1-088: application connections set `lock_timeout` 10 s, so a suspension's wait for work in flight is bounded; past it the operator gets a 55P03 error and retries.
