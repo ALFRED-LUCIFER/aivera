@@ -289,8 +289,17 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
   Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> &
   Pick<LinkPorts, 'linkStoreFor' | 'publishLinkReadRequested'> & {
     readArrival(tx: Tx, workspaceId: string, sourceId: string): Promise<Arrival | null>;
-    /** The emails on the candidate record: commits by these count as theirs. */
-    readPerson(tx: Tx, workspaceId: string, personId: string): Promise<{ emails: string[]; synthetic: boolean } | null>;
+    // shortcut: identifier emails are what the applicant supplied, not proven to be theirs; require proof of control
+    // when email verification exists.
+    /**
+     * The candidate's email identifiers: commits by these count as theirs. Never the record's CV contact, which anyone
+     * can write into a CV (AIV-P1-087).
+     */
+    readPerson(
+      tx: Tx,
+      workspaceId: string,
+      personId: string,
+    ): Promise<{ identifierEmails: string[]; synthetic: boolean } | null>;
     /** A workspace file's purpose (the files module), or null when there is no such file. */
     readFilePurpose(tx: Tx, workspaceId: string, fileId: string): Promise<string | null>;
     /** Opaque ids only, never the link, login, emails, file name or content type (AGENTS.md 1.2). */
@@ -302,8 +311,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
 
 /**
  * The `ApplicationReceived.v1` handler's work: one read per GitHub repository link on the arrival (AIV-P1-076), by
- * the login the candidate supplied (dropped when it is not a valid login, never guessed) and the emails on their
- * record, one CV parse per file of purpose `cv` on the arrival, for the arrival's own person (AIV-P1-079), and one
+ * the login the candidate supplied (dropped when it is not a valid login, never guessed) and their email identifiers
+ * (never CV contact), one CV parse per file of purpose `cv` on the arrival, for the arrival's own person (AIV-P1-079), and one
  * link read per other link (AIV-P1-077), which stays on the application as a plain link too. Any other file is not a CV.
  */
 export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId: string, sourceId: string) {
@@ -320,7 +329,7 @@ export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId
       candidateId,
       url,
       githubLogin: login && isGitHubLogin(login) ? login : null,
-      emails: person.emails,
+      emails: person.identifierEmails,
       synthetic: person.synthetic,
     });
     ports.logQueued('repository', { sourceId: read.sourceId, candidateId, queued: read.queued });

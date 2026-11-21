@@ -13,8 +13,9 @@ export type Source = { id: string; kind: SourceKind; text: string; uri?: string 
 
 // A statement citing the candidate's own account is a claim (zero in the backed score) unless a source about the
 // candidate's work backs it too; the job description says nothing about the candidate, so it backs nothing.
-// shortcut: only `cv` counts as the candidate's words; a submitted `document` (cover letter) or interview answer does
-// not yet, decide per kind when evidence mapping (AIV-P1-027) sets provenance.
+// Here only `cv` sets `claim`: `document` stands for several evidence kinds, so evidence mapping decides per kind
+// (modules/evidence/src/domain/mapping.ts, AIV-P1-087): a candidate-written source with no second, independent source
+// is a claim, and every non-repository kind is capped below Strong.
 const CANDIDATE_WORDS: ReadonlySet<SourceKind> = new Set(['cv']);
 const BACKS_NOTHING: ReadonlySet<SourceKind> = new Set(['cv', 'job_description']);
 
