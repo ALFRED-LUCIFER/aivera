@@ -1,0 +1,119 @@
+# AIV-P1-082: a full-length QA description stating ten needs, the shape that failed on Azure dev (synthetic). The draft
+# merges related needs to stay within 8, and weighs each on its own (relative weights over 100 in total; the jobs module
+# scales them to 100).
+id: qa-automation-long
+input:
+  jobType: qa_test_automation
+  title: 'Senior QA Automation Engineer, Checkout'
+sources:
+  - id: S1
+    kind: job_description
+    text: |
+      You will own test automation for the checkout and payments web app used by merchants every day.
+      What you will do:
+      - Design and maintain end-to-end tests in Playwright for the checkout flows.
+      - Write API tests for the payments and refunds services.
+      - Run the tests in our CI pipeline and keep them fast and stable.
+      - Find and fix flaky tests, and report what caused them.
+      - Plan test coverage with product managers and engineers before work starts.
+      - Test accessibility with screen readers and automated checks.
+      - Run load tests before every sales event and report the results.
+      - Review pull requests for testability.
+      - Write clear bug reports that engineers can reproduce.
+      - Mentor two junior testers.
+expected:
+  match:
+    competencies[*].name:
+      - End-to-end test automation
+      - API testing
+      - CI test reliability
+      - Test planning
+      - Accessibility testing
+      - Performance testing
+      - Bug reporting and code review
+      - Mentoring testers
+    suggestions[*].name:
+      - Payments domain testing
+recorded:
+  output:
+    competencies:
+      - name: End-to-end test automation
+        evidenceExpected: Playwright suites they built and kept running for a web app's main flows
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Design and maintain end-to-end tests in Playwright for the checkout flows.
+      - name: API testing
+        evidenceExpected: API test suites they wrote for services with money or state changes
+        weight: 20
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Write API tests for the payments and refunds services.
+      - name: CI test reliability
+        evidenceExpected: Pipelines whose test time or flake rate they brought down, with the causes they found
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Run the tests in our CI pipeline and keep them fast and stable.
+          - sourceId: S1
+            quote: Find and fix flaky tests, and report what caused them.
+      - name: Test planning
+        evidenceExpected: Test plans they agreed with product and engineering before a feature was built
+        weight: 15
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Plan test coverage with product managers and engineers before work starts.
+      - name: Accessibility testing
+        evidenceExpected: Accessibility defects they found with screen readers or automated checks, and the fixes
+        weight: 15
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Test accessibility with screen readers and automated checks.
+      - name: Performance testing
+        evidenceExpected: Load tests they ran before a traffic peak, and what the results changed
+        weight: 15
+        level: 3
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: Run load tests before every sales event and report the results.
+      - name: Bug reporting and code review
+        evidenceExpected: Bug reports engineers reproduced from, and review comments that made code easier to test
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Review pull requests for testability.
+          - sourceId: S1
+            quote: Write clear bug reports that engineers can reproduce.
+      - name: Mentoring testers
+        evidenceExpected: Junior testers they mentored and what those testers went on to own
+        weight: 10
+        level: 2
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: Mentor two junior testers.
+    refused: false
+    reason: null
+    suggestions:
+      - name: Payments domain testing
+        evidenceExpected: Tests they wrote for refunds, partial captures or currency rounding
+        weight: 15
+        level: 2
+        type: desirable
+        why: The app takes payments and refunds, but the description asks for no knowledge of how payments fail.
+        citations:
+          - sourceId: S1
+            quote: Write API tests for the payments and refunds services.

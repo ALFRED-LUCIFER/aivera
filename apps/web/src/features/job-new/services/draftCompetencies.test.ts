@@ -181,14 +181,17 @@ describe('draftCompetencies (server action)', () => {
 
   // AIV-P1-082 scenario 3: the failure log names the rule, never content.
   // SAFETY: mutation check: dropped the credalent.ai.schema_rules field from the "draft failed" line -> this test failed
-  it('a rejected answer logs which schema rule it broke on "draft failed", and never the description', async () => {
+  it('a rejected answer logs which schema rule it broke on "draft failed", and never the title or description', async () => {
     const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    draft.mockRejectedValueOnce(new SchemaMismatch('jobs.draftCompetencies', [':custom']));
+    draft.mockRejectedValueOnce(
+      new SchemaMismatch('jobs.draftCompetencies', ['competencies.0.evidenceExpected:too_big']),
+    );
     await expect(submit(job)).resolves.toEqual({ status: 'failed' });
     const written = log.mock.calls.join('');
-    expect(written).toContain('"credalent.ai.schema_rules":":custom"');
+    expect(written).toContain('"credalent.ai.schema_rules":"competencies.0.evidenceExpected:too_big"');
     expect(written).toContain('draft failed');
     expect(written).not.toContain('eval sets');
+    expect(written).not.toContain('Senior AI Engineer');
     log.mockRestore();
   });
 });

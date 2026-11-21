@@ -411,9 +411,12 @@ const rulesOf = (value: unknown) => {
 };
 
 describe('schemaRules on the jobs.draftCompetencies schema', () => {
-  it('weights over 100 in total is the whole-answer rule', () => {
-    expect(rulesOf(draft([competency, competency]))).toEqual([':custom']);
-    expect(rulesOf(draft([competency], [{ ...competency, why: 'Implied' }]))).toEqual([':custom']);
+  it('names the field of a weight or a text out of range; weights over 100 in total pass (the jobs module scales them)', () => {
+    expect(rulesOf(draft([competency, competency]))).toEqual([]);
+    expect(rulesOf(draft([{ ...competency, weight: 101 }]))).toEqual(['competencies.0.weight:too_big']);
+    expect(rulesOf(draft([competency], [{ ...competency, why: 'w'.repeat(401) }]))).toEqual([
+      'suggestions.0.why:too_big',
+    ]);
   });
 
   it('nine competencies is too many', () => {
