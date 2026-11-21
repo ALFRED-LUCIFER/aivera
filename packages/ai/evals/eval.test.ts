@@ -560,7 +560,7 @@ describe('Feature: AI eval harness with a golden set', () => {
   });
 
   it(
-    'Scenario: CI runs only when AI code changes, and posts the summary',
+    'Scenario: CI runs on every pull request and on pushes that change AI code, and posts the summary',
     () => {
       const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));
       // Pull requests always run it (AIV-P1-093: a required check must report); pushes to main only for AI code.
