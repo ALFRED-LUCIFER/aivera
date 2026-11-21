@@ -13,8 +13,8 @@ vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: 
 
 const row = {
   applicationId: '0190d4a2-0000-7000-8000-0000000000a1',
-  personId: '0190d4a2-0000-7000-8000-0000000000b1',
   displayName: 'Sara Al Qahtani',
+  stage: 'new',
   receivedAt: new Date('2026-11-14T08:00:00.000Z'),
   source: 'linkedin',
 };
@@ -22,6 +22,7 @@ const row = {
 afterEach(() => vi.restoreAllMocks());
 
 describe('loadApplicants', () => {
+  // SAFETY: mutation check: logged the names under the allowlisted `code` key -> this test failed (the line contained "Sara"); logging `rows: result.value` stayed green because the telemetry allowlist redacts an unlisted key
   it('Scenario: No personal data in URLs or logs: the log line carries the job id and a count, never a name', async () => {
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     fake.list.mockResolvedValue([row]);

@@ -7,7 +7,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { IntakeContract } from '@credalent/intake';
@@ -258,7 +258,7 @@ const modulesOn = (db: Db): Modules => {
     evidence: createEvidence(workspaces, audit, () => NOW),
     assessment: createAssessment(workspaces, audit, () => NOW),
     jobs,
-    intake: createIntake(workspaces, candidates, jobs, () => NOW),
+    intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => NOW),
   };
 };
 

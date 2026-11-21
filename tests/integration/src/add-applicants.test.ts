@@ -6,7 +6,7 @@ import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-bl
 import { AzuriteContainer, type StartedAzuriteContainer } from '@testcontainers/azurite';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { FilesContract } from '@credalent/files';
 import { createBlobStore, createFiles, type BlobStore } from '@credalent/files/composition';
@@ -156,6 +156,7 @@ beforeAll(async () => {
     workspaces,
     createCandidates(workspaces, () => NOW),
     jobs,
+    displayNamesInWorkspace,
     () => NOW,
   );
   w1 = (

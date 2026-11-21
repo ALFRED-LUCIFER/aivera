@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import {
   IntakeError,
@@ -93,6 +93,7 @@ beforeAll(async () => {
     workspaces,
     createCandidates(workspaces, () => NOW),
     jobs,
+    displayNamesInWorkspace,
     () => NOW,
   );
   const newWorkspace = async (name: string) =>
@@ -307,7 +308,7 @@ describe('Authorisation (ADR-005 point 6)', () => {
 });
 
 describe('AIV-P1-086: listApplicationsForJob', () => {
-  it('Scenario: Applicants appear right after adding them: one row each, with name, received date and first source', async () => {
+  it('Scenario: Applicants appear right after adding them: one row each, with name, stage, received date and first source', async () => {
     const jobId = await newJob(w1, 'Senior Backend Engineer');
     const cast: [string, Source][] = [
       ['Sara Al Qahtani', 'linkedin'],
@@ -316,10 +317,10 @@ describe('AIV-P1-086: listApplicationsForJob', () => {
     ];
     const expected = [];
     for (const [i, [name, source]] of cast.entries()) {
-      const { applicationId, personId } = await as(ALEX, w1, (ctx) =>
+      const { applicationId } = await as(ALEX, w1, (ctx) =>
         intake.receiveApplication(ctx, arrival(jobId, name, 200 + i, source)),
       );
-      expected.unshift({ applicationId, personId, displayName: name, receivedAt: NOW, source });
+      expected.unshift({ applicationId, displayName: name, stage: 'new', receivedAt: NOW, source });
     }
     // A second arrival of Sara's CV adds a source, not a row, and her row keeps the first source.
     await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(jobId, 'Sara Al Qahtani', 200, 'whatsapp')));
@@ -332,7 +333,7 @@ describe('AIV-P1-086: listApplicationsForJob', () => {
     expect(await as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, jobId))).toEqual([]);
   });
 
-  // SAFETY: mutation check: job-scope check removed -> this test failed (jobResource lookup and authorize dropped from listApplicationsForJob: no IntakeError, the candidates read refused with ForbiddenError instead)
+  // SAFETY: mutation check: job-scope check removed -> this test failed (jobResource lookup and authorize dropped from listApplicationsForJob: Huda read Senior Backend Engineer's applicant, name included)
   it('Scenario: A hiring owner not granted this job is refused: Huda, granted only "Data Analyst"', async () => {
     const analyst = await newJob(w1, 'Data Analyst');
     const backend = await newJob(w1, 'Senior Backend Engineer');

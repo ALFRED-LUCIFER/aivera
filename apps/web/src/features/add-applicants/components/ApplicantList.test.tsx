@@ -22,19 +22,19 @@ const show = (view: ApplicantListView) =>
   );
 
 describe('Scenario: Applicants appear right after adding them', () => {
-  it('each row shows name, received date, source and "Not yet scored" with the basis "Not yet available"', () => {
+  it('each row shows name, stage, received date, source and "Not yet scored" with the basis "Not yet available"', () => {
     show({
       status: 'ready',
       rows: [
         {
           applicationId: 'a1',
-          personId: 'p1',
           displayName: 'Sara Al Qahtani',
+          stage: 'new',
           // 22:30 UTC is 21 Nov in Dubai: the workspace time zone decides the day.
           receivedAt: new Date('2026-11-20T22:30:00.000Z'),
           source: 'linkedin',
         },
-        { applicationId: 'a2', personId: 'p2', displayName: null, receivedAt: new Date(), source: 'referral' },
+        { applicationId: 'a2', displayName: null, stage: 'withdrawn', receivedAt: new Date(), source: 'referral' },
       ],
     });
     const table = screen.getByRole('table', { name: 'Applicants' });
@@ -44,8 +44,10 @@ describe('Scenario: Applicants appear right after adding them', () => {
         .map((h) => h.textContent),
     ).toEqual(['Candidate', 'Received (Asia/Dubai)', 'Source', 'Backed score']);
     const [first, second] = within(table).getAllByRole('row').slice(1);
-    expect(first?.textContent).toBe('Sara Al Qahtani21 NovLinkedInNot yet scoredNot yet available');
-    expect(second?.textContent).toMatch(/^Unnamed applicant.*Referral/);
+    expect(first?.textContent).toBe('Sara Al QahtaniNew21 NovLinkedInNot yet scoredNot yet available');
+    expect(second?.textContent).toMatch(/^Unnamed applicantWithdrawn.*Referral/);
+    // Nobody is rejected automatically (AGENTS.md 1.5), said under the rows.
+    expect(screen.getByText('Ranking orders your attention; nobody is rejected automatically.')).toBeTruthy();
   });
 });
 
@@ -53,6 +55,7 @@ describe('Scenario: Empty job', () => {
   it("shows the Candidates tab's empty message", () => {
     show({ status: 'ready', rows: [] });
     expect(screen.getByText(/^No ranking yet\./)).toBeTruthy();
+    expect(screen.queryByText(/nobody is rejected automatically/)).toBeNull();
   });
 });
 

@@ -79,10 +79,24 @@ test('Scenario: Applicants appear right after adding them', async ({ page }) => 
   ]);
   // Newest first, each unscored with its basis, and no invented score.
   await expect(table.getByRole('row').filter({ has: page.getByRole('cell') })).toHaveText([
-    'Layla Haddad14 NovEmailNot yet scoredNot yet available',
-    'Arjun Menon14 NovReferralNot yet scoredNot yet available',
-    'Sara Al Qahtani14 NovLinkedInNot yet scoredNot yet available',
+    'Layla HaddadNew14 NovEmailNot yet scoredNot yet available',
+    'Arjun MenonNew14 NovReferralNot yet scoredNot yet available',
+    'Sara Al QahtaniNew14 NovLinkedInNot yet scoredNot yet available',
   ]);
+  await expect(page.getByText('Ranking orders your attention; nobody is rejected automatically.')).toBeVisible();
+});
+
+test('Scenario: Empty job', async ({ page }) => {
+  await signIn(page, { email: AP });
+  await page.goto('/app/jobs');
+  // Senior Product Designer has no applicants (seed.ts); its rubric is a draft, so it opens on the rubric.
+  await page.getByRole('link', { name: 'Senior Product Designer' }).click();
+  await page.getByRole('link', { name: /^Evidence and ranking/ }).click();
+  await expect(page).toHaveTitle('Senior Product Designer: Evidence and ranking · Credalent');
+  await expect(page.getByRole('table', { name: 'Applicants' })).toContainText(
+    'No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.',
+  );
+  await expect(page.getByRole('button', { name: 'Add applicants' })).toBeVisible();
 });
 
 test('Scenario: The Candidates tab is keyboard operable: from the last stage to "Add applicants"', async ({ page }) => {

@@ -1312,7 +1312,6 @@
       "notStarted": "Not started"
     },
     "empty": {
-      "candidates": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
       "interviews": "No interviews yet. Round 1 is planned from the ranking.",
       "pack": "No decision pack yet. It is built from the ranking and the Round 1 scorecards."
     },
@@ -1677,6 +1676,16 @@
         "score": "Backed score"
       },
       "receivedOn": "{value, date, ::d MMM}",
+      "stages": {
+        "new": "New",
+        "first_pass_done": "First pass done",
+        "assessing": "Assessing",
+        "in_process": "In process",
+        "in_pool": "In talent pool",
+        "withdrawn": "Withdrawn"
+      },
+      "empty": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
+      "fairness": "Ranking orders your attention; nobody is rejected automatically.",
       "notScored": "Not yet scored",
       "notYetAvailable": "Not yet available",
       "loading": "Loading applicants",

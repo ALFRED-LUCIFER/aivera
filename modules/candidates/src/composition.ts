@@ -25,7 +25,7 @@ export function createCandidates(
         dedupeKey: `person:${person.id}`,
         occurredAt: person.createdAt,
       }),
-    authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
+    authorize: (ctx, action) => workspaces.authorize(ctx, action),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),
     now,
@@ -44,3 +44,10 @@ export function createContactRecorder() {
   return (tx: Tx, workspaceId: string, personId: string, contact: { emails: string[]; phones: string[] }) =>
     recordCvContact(candidateStore(tx), workspaceId, personId, contact);
 }
+
+/**
+ * Display names by person id, unauthorised: apps wire it into `createIntake` only, whose `listApplicationsForJob`
+ * authorises the job and passes that job's applicants alone (AIV-P1-086). Workspace filter here, row-level security below.
+ */
+export const displayNamesInWorkspace = (tx: Tx, workspaceId: string, personIds: string[]) =>
+  candidateStore(tx).displayNames(workspaceId, personIds);
