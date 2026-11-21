@@ -256,6 +256,7 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
       expect(stored).toMatchObject({ strength: cap, ceiling: cap, level, provenance: 'submitted' });
     });
 
+    // SAFETY: mutation check: capped level by lowest(...caps) instead of the stored strength -> "caps a repository link's level by its ceiling…" failed
     it('caps a repository link’s level by its ceiling, and leaves a CV claim’s level as it claims', () => {
       expect(guard([link({ level: 5 })], [repo({ authorship: 'shared' })]).links[0]?.level).toBe(4);
       expect(guard([link({ level: 5 })], [repo()]).links[0]?.level).toBe(5);

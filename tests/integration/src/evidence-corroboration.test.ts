@@ -665,7 +665,7 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
 
   // SAFETY: mutation check: settled a withheld link with nothing withheld (every open contradiction treated as resolved) -> this test failed
   it('resolving one contradiction never lets a source still in another open contradiction vouch', async () => {
-    const hessa = await person('Hessa Al Mansoori', 'hessa.two.contradictions@example.com');
+    const hessa = await person('Hessa Al Mazrouei', 'hessa.two.contradictions@example.com');
     const write = await record(hessa, 'document', 'Team write-up', 'Led 12 engineers on the retrieval team.');
     await record(hessa, 'portal_submission', 'Portal answer', 'Led 5 engineers on the retrieval team.');
     await record(hessa, 'reference_call', 'Reference call', 'Her manager said answer accuracy was 80%.');
