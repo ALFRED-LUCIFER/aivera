@@ -9,10 +9,11 @@ import { versionNumber } from '@/features/ops/domain/catalogueHistory.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { getCatalogueVersion, platformOperator } from '@/server/operator';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<'/ops/catalogue/versions/[n]'>): Promise<Metadata> {
   await platformOperator();
   const t = await getTranslations(defaultLocale, defaultTimeZone);
-  return { title: t('ops.catalogue.history.title') };
+  const n = versionNumber((await params).n);
+  return { title: n ? t('ops.catalogue.history.detailTitle', { version: n }) : t('ops.catalogue.history.title') };
 }
 
 // One published catalogue version, read-only, with its diff against the version before (AIV-P2-050). Anything that is

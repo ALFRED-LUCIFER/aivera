@@ -15,8 +15,8 @@ import type {
   PublishDraftInput,
   RetireEntryInput,
 } from '@credalent/jobs';
-import { log } from '@credalent/observability';
 import { SEED_ACTOR } from '@credalent/jobs';
+import { log } from '@credalent/observability';
 import { createCatalogueEditor, createJobCounts } from '@credalent/jobs/composition';
 import {
   STATUS_CHANGES,
@@ -279,9 +279,11 @@ export async function discardCatalogueDraft(input: DiscardDraftInput): Promise<v
 }
 
 /** A version's publisher by display name, or email when they have none; null for the seed or an unknown id. */
-const publisherName = async (publishedBy: string) => {
-  if (publishedBy === SEED_ACTOR) return null;
-  const user = await getIdentity().getUser(publishedBy);
+const publisherName = async (publishedBy: string) => (publishedBy === SEED_ACTOR ? null : nameOf(publishedBy));
+
+/** A user's display name, or their email when they have none; null for an unknown id. Callers check the policy. */
+const nameOf = async (userId: string) => {
+  const user = await getIdentity().getUser(userId);
   return user ? user.displayName?.trim() || user.email : null;
 };
 
@@ -318,8 +320,7 @@ export async function getCatalogueVersion(
  */
 export async function operatorName(userId: string): Promise<string | null> {
   await platformOperator();
-  const user = await getIdentity().getUser(userId);
-  return user ? user.displayName?.trim() || user.email : null;
+  return nameOf(userId);
 }
 
 /** Whether new sign-ups wait for approval, for the approvals page. Checks the policy itself too. */

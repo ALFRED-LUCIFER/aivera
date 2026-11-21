@@ -18,9 +18,6 @@ test.skip(!process.env['CI'] && !process.env['E2E_PUBLISH_CATALOGUE'], 'publishe
 const REASON = 'Add insurance pack for the pilot client';
 const LEDGER = 'Ledger and double-entry accounting';
 
-// The history test reads the version the first test publishes.
-test.describe.configure({ mode: 'serial' });
-
 // A retry starts clean: a draft an earlier attempt left before publishing is deleted (its eval runs stay, version null).
 test.beforeAll(async () => {
   const db = createDb(databaseUrl, { max: 1 });
@@ -137,12 +134,9 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
   const packs = page.getByRole('list', { name: 'Industries' }).getByRole('button');
   await expect(packs.filter({ hasText: 'Insurance and insurtech' })).toHaveCount(1);
   await expect(packs.filter({ hasText: 'Telecom and 5G' })).toHaveCount(1);
-});
 
-// AIV-P2-050: the version history after the publish above.
-test('Scenarios: the history lists version 2 with its reason, and its detail shows the diff read-only', async ({
-  page,
-}) => {
+  // AIV-P2-050, in this test so a retry never tries to publish version 2 again: Theo reads the version history.
+  await page.context().clearCookies();
   await signIn(page, { email: 'theo.platform@example.com' });
   await page.goto('/ops/catalogue/versions');
   const rows = page.getByRole('table', { name: 'Published catalogue versions' }).getByRole('row');
