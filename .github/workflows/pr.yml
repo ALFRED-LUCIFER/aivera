@@ -9,8 +9,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-${{ github.ref }}
-  cancel-in-progress: true
+  group: pr-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  # Only pull requests are cancelled: every main commit gets a full run (AIV-P1-093), so deploy-dev can trust it.
+  # A main commit has its own group, because a shared one drops a pending run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:

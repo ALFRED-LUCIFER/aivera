@@ -92,15 +92,15 @@ The `aivera` database already exists: it was created on 18 Nov 2026 with charset
 
 ### First deploy, in order
 
-1. Merge the stack, then run `deploy-dev` by hand (`gh workflow run deploy-dev.yml --ref main`; it no longer runs on every push to `main`). It pushes `ghcr.io/alfred-lucifer/aivera/web:<sha>` and `…/migrate:<sha>`; its deploy job is skipped because the repository variables are not set yet.
+1. Merge the stack, then run `deploy-dev` by hand (`gh workflow run deploy-dev.yml --ref main`; it no longer runs on every push to `main`, and it needs `main` HEAD's `pr` push run green: wait for it or re-run it). It pushes `ghcr.io/alfred-lucifer/aivera/web:<sha>` and `…/migrate:<sha>`; its deploy job is skipped because the repository variables are not set yet.
 2. Make both packages public, once (GitHub, Packages, each package's settings, Change visibility). The repository is public, so the images reveal nothing new, and the apps then pull without a registry secret.
 3. `az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha from step 1> alertEmail=<team address>` (also creates the subnet `snet-aivera-dev` and the environment `cae-aivera-dev`). The `aivera` database was already created on 18 Nov 2026; the deployment leaves it unchanged.
 4. `sh infra/scripts/bootstrap-db.sh` (below).
 5. Set the repository variables from the deployment outputs and the account (`gh variable set AZURE_CLIENT_ID -b <cicdIdentityClientId>`, the same for `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`).
-6. Re-run `deploy-dev` (`gh workflow run deploy-dev.yml`). It migrates, deploys web, smoke-tests the public URL from the runner and rolls back the image on failure or cancellation.
+6. Re-run `deploy-dev` (`gh workflow run deploy-dev.yml`). It migrates, deploys web, smoke-tests the public URL from the runner and rolls web and the worker back to their previous images on failure or cancellation. It deploys only when the `pr` push run of `main` HEAD is green (otherwise it stops with "pr run not green: not deployed"), so wait for that run or re-run it first.
 7. Optional, for the live AI eval (AIV-P0-029): create the GitHub environment `ai-eval` and limit its deployment branches to `main` (the identity trusts the environment, so this is what keeps other branches out; the workflow also runs the live job only on `main` and manual runs), then `gh variable set AI_EVAL_CLIENT_ID -b <aiEvalIdentityClientId>` and `gh variable set AI_EVAL_RESOURCE_NAME -b <aiResourceName>`. Until `AI_EVAL_CLIENT_ID` is set, `ai-eval.yml` scores the recorded answers only. Spend is bounded twice: `liveTokenCap` per run in code, and the `gpt-main` deployment's 100k tokens per minute in `ai.bicep`, which no workflow can raise.
 
-**Migrations must be expand-only (backward-compatible).** A rollback restores the previous web image over the already-migrated schema, so the old code must still work against it. Contract steps (drop, rename, narrow) ship in a later release, once no running image needs the old shape (ADR-004).
+**Migrations must be expand-only (backward-compatible).** A rollback restores the previous web and worker images over the already-migrated schema, so the old code must still work against it. Contract steps (drop, rename, narrow) ship in a later release, once no running image needs the old shape (ADR-004).
 
 ### Database roles (once, after the first `create`)
 
