@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
+import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery, type Handler } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -314,6 +314,20 @@ describe('Scenario: No GitHub login supplied', () => {
         emails: ['maria.santos@example.com'],
       },
     ]);
+  });
+});
+
+// SAFETY: mutation check: readPersonAsSystem accepted any email on the record (CV contact included) as identifierEmails -> this test failed
+describe('Scenario: Commits are attributed only by verified emails (AIV-P1-087)', () => {
+  it('a CV email on the record that is not an identifier never matches commits', async () => {
+    const first = await receive(arrival(sae, 'Youssef Aziz', []));
+    // His parsed CV lists another address: display contact on the record, never an identifier.
+    await withWorkspace(app, demo, (tx) =>
+      createContactRecorder()(tx, demo, first.personId, { emails: ['youssef.cv@example.com'], phones: [] }),
+    );
+    const again = await receive(arrival(qa, 'Youssef Aziz', ['https://github.com/youssef-credalent-example/queue']));
+    expect(again.personId).toBe(first.personId);
+    expect(await reads(first.personId)).toMatchObject([{ emails: ['youssef.aziz@example.com'] }]);
   });
 });
 
