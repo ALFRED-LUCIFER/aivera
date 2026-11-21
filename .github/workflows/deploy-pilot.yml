@@ -3,7 +3,7 @@ name: deploy-pilot
 # deploys a commit that deploy-dev already built and shipped to the pilot in UAE North: the same gate, migration, smoke test
 # and rollback as deploy-dev.yml, with the pilot's names. The deploy job runs in the protected "pilot" environment, so it
 # waits for the owner's approval, and the pilot's CI/CD identity trusts that environment only (modules/foundation.bicep).
-# AZURE_CLIENT_ID (id-aivera-cicd-pilot), AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID are variables of the "pilot"
+# AZURE_CLIENT_ID (id-credalent-cicd-pilot), AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID are variables of the "pilot"
 # environment (docs/runbooks/pilot-environment.md). Every action is pinned to a commit SHA because this workflow can mint
 # Azure tokens.
 on:
@@ -18,10 +18,10 @@ concurrency:
 
 env:
   IMAGES: ghcr.io/alfred-lucifer/aivera
-  RG: rg-aivera-pilot
-  WEB: ca-aivera-web-pilot
-  WORKER: ca-aivera-worker-pilot
-  JOB: job-aivera-migrate-pilot
+  RG: rg-credalent-pilot
+  WEB: ca-credalent-web-pilot
+  WORKER: ca-credalent-worker-pilot
+  JOB: job-credalent-migrate-pilot
 
 jobs:
   # Before the approval is asked for: only a commit whose pr run succeeded, and whose images deploy-dev pushed, is deployed.

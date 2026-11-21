@@ -1,6 +1,8 @@
 // AIV-P0-005: the Credalent web app in Credalent's external environment cae-aivera-dev (ADR-008). Consumption, scale to zero.
 // shortcut: no Front Door and no custom domain in dev; the public default FQDN serves it. Front Door, a dev host and portfolio subdomains come with the launch epic AIV-P5-E03 (#34)
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param location string
 param tags object
 param containerAppsEnvName string
@@ -31,7 +33,7 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
 }
 
 var probe = { port: 3000, scheme: 'HTTP' }
-var appName = 'ca-aivera-web-${env}'
+var appName = 'ca-${brand}-web-${env}'
 // Candidate sign-in (AIV-P0-011): added only once the app exists, since an apply fails on a missing Key Vault secret.
 var candidateSecrets = empty(entraCandidateClientId)
   ? []

@@ -17,7 +17,7 @@ function run(env) {
     `#!/bin/sh\necho "$*" >> "${log}"\ncase "$*" in *"job start"*) echo exec-1 ;; *) echo Succeeded ;; esac\n`,
   );
   chmodSync(join(bin, 'az'), 0o755);
-  const result = spawnSync('sh', [script, 'job-aivera-migrate-pilot'], {
+  const result = spawnSync('sh', [script, 'job-credalent-migrate-pilot'], {
     env: { PATH: `${bin}:/usr/bin:/bin`, ...env },
     encoding: 'utf8',
   });
@@ -29,12 +29,12 @@ function run(env) {
 }
 
 test('runs the job in the resource group RG names', () => {
-  const { status, calls } = run({ RG: 'rg-aivera-pilot' });
+  const { status, calls } = run({ RG: 'rg-credalent-pilot' });
   assert.equal(status, 0);
-  assert.match(calls, /^containerapp job start -g rg-aivera-pilot -n job-aivera-migrate-pilot/m);
+  assert.match(calls, /^containerapp job start -g rg-credalent-pilot -n job-credalent-migrate-pilot/m);
   assert.match(
     calls,
-    /^containerapp job execution show -g rg-aivera-pilot -n job-aivera-migrate-pilot --job-execution-name exec-1/m,
+    /^containerapp job execution show -g rg-credalent-pilot -n job-credalent-migrate-pilot --job-execution-name exec-1/m,
   );
 });
 

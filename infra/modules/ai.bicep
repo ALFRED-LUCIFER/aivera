@@ -3,13 +3,15 @@
 // allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity. The pilot's sits in
 // the pilot's own resource group (AIV-P1-096).
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param tags object
 param appIdentityPrincipalId string
 param aiEvalIdentityPrincipalId string
 
 var location = 'uaenorth' // ADR-011: explicit, so a group created elsewhere cannot move the account.
 // The subdomain must equal the name: @ai-sdk/azure builds <AZURE_OPENAI_RESOURCE_NAME>.openai.azure.com.
-var name = 'ai-aivera-${env}-${take(uniqueString(resourceGroup().id), 6)}'
+var name = 'ai-${brand}-${env}-${take(uniqueString(resourceGroup().id), 6)}'
 
 resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: name

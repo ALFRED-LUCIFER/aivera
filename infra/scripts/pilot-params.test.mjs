@@ -43,6 +43,21 @@ test('the pilot turns off synthetic-only behaviour and turns on scanning and bac
   assert.match(read('modules/web.bicep'), /\{ name: 'APP_ENV', value: env \}/);
 });
 
+// Dev keeps its live "aivera" names; the pilot's are all built from `brand` (AIV-P0-035). Roles such as aivera_app keep theirs.
+// SAFETY: mutation check: wrote 'id-aivera-${env}' back into foundation.bicep -> this test failed
+test('no pilot resource name contains "aivera"', () => {
+  for (const { path, lines } of bicep)
+    lines.forEach((line, i) => {
+      const code = line.replace(/\/\/.*/, '');
+      if (!/'[^']*aivera[^']*'/.test(code) || /^(param|@description)/.test(code.trim())) return;
+      assert.match(code, /dev \?|env == 'dev' \?/, `${path}:${i + 1} names "aivera" outside a dev-only branch`);
+    });
+  assert.doesNotMatch(
+    read('../.github/workflows/deploy-pilot.yml').replace(/ghcr\.io\S+|aivera_migrator/g, ''),
+    /aivera/,
+  );
+});
+
 test('the pilot parameter file holds no id, address or secret', () => {
   assert.doesNotMatch(pilot, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
   assert.doesNotMatch(pilot, /@[a-z0-9-]+\.[a-z]/i);

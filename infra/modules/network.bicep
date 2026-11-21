@@ -4,6 +4,8 @@
 param location string
 param tags object
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param logAnalyticsName string
 param vnetName string
 @description('The VNet address space; the environment and PostgreSQL subnets are carved from its start.')
@@ -31,7 +33,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
     subnets: [
       {
         // The same name and settings modules/environment.bicep gives dev's subnet; /27 is the consumption minimum.
-        name: 'snet-aivera-${env}'
+        name: 'snet-${brand}-${env}'
         properties: {
           addressPrefix: cidrSubnet(vnetPrefix, 27, 0)
           privateEndpointNetworkPolicies: 'Disabled'
@@ -39,7 +41,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         }
       }
       {
-        name: 'snet-aivera-${env}-psql'
+        name: 'snet-${brand}-${env}-psql'
         properties: {
           addressPrefix: cidrSubnet(vnetPrefix, 28, 2)
           delegations: [
@@ -76,10 +78,10 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
     // Backups stay in region: geo-redundant backup would copy them to the paired region (AGENTS.md 1.10).
     backup: { backupRetentionDays: backupRetentionDays, geoRedundantBackup: 'Disabled' }
     highAvailability: { mode: 'Disabled' }
+    // A server in a delegated subnet has no public endpoint at all (publicNetworkAccess is not set: Azure derives it).
     network: {
       delegatedSubnetResourceId: vnet.properties.subnets[1].id
       privateDnsZoneArmResourceId: dnsZone.id
-      publicNetworkAccess: 'Disabled'
     }
     // Entra sign-in only, as on dev: roles map to managed identities (infra/sql/bootstrap-roles.sql). The owner adds
     // themselves as Entra admin after the apply (docs/runbooks/pilot-environment.md).

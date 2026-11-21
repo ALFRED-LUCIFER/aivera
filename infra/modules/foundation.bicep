@@ -1,14 +1,18 @@
 // AIV-P0-003: Credalent's own identities, Key Vault and Application Insights inside the shared Medvya dev resource group
 // (ADR-008). Log Analytics is Medvya's workspace, referenced, not created (the pilot's own: modules/network.bicep).
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param location string
 param tags object
 param logAnalyticsName string
 param githubOidcRepo string
+@description(q{main.bicep names it, and reads acs-webhook-key from it.})
+param keyVaultName string
 
 // Web and worker. Reads Credalent's Key Vault; signs in to PostgreSQL as aivera_app (no DDL, row-level security applies).
 resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-${env}'
+  name: 'id-${brand}-${env}'
   location: location
   tags: tags
 }
@@ -16,7 +20,7 @@ resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
 // GitHub Actions (OIDC, no stored secret) and the migration job. Signs in to PostgreSQL as aivera_migrator.
 // Kept apart from the app identity: a compromised web app must never be able to run DDL or bypass RLS.
 resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-cicd-${env}'
+  name: 'id-${brand}-cicd-${env}'
   location: location
   tags: tags
 
@@ -35,7 +39,7 @@ resource cicdIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
 // "ai-eval" environment only, so a pull request never gets the deploy identity, and this one cannot deploy.
 // Dev only: evals never call the pilot's AI.
 resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (env == 'dev') {
-  name: 'id-aivera-ai-eval-${env}'
+  name: 'id-${brand}-ai-eval-${env}'
   location: location
   tags: tags
 
@@ -50,7 +54,7 @@ resource aiEvalIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: 'kv-aivera-${env}-${take(uniqueString(resourceGroup().id), 6)}'
+  name: keyVaultName
   location: location
   tags: tags
   properties: {
@@ -88,7 +92,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' exis
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: 'appi-aivera-${env}'
+  name: 'appi-${brand}-${env}'
   location: location
   tags: tags
   kind: 'web'

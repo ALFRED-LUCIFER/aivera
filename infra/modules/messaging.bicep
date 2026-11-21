@@ -4,6 +4,8 @@
 // (between send and commit) is dropped by the consumer's inbox on the message id (AIV-P0-015). Move to Standard and set
 // requiresDuplicateDetection on each queue for the pilot (AIV-P5-E03, #34), or earlier if a consumer needs topics.
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param location string
 param tags object
 @description('The app identity (id-aivera-dev): the worker consumers receive with it (AIV-P0-015).')
@@ -12,13 +14,13 @@ param appIdentityPrincipalId string
 // The outbox relay signs in to PostgreSQL as aivera_relay (infra/sql/bootstrap-roles.sql) and sends to Service Bus.
 // Its own identity: aivera_relay reads every workspace's outbox, which neither the web app nor the consumers may.
 resource relayIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-aivera-relay-${env}'
+  name: 'id-${brand}-relay-${env}'
   location: location
   tags: tags
 }
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2024-01-01' = {
-  name: 'sb-aivera-${env}-${take(uniqueString(resourceGroup().id), 6)}'
+  name: 'sb-${brand}-${env}-${take(uniqueString(resourceGroup().id), 6)}'
   location: location
   tags: tags
   sku: { name: 'Basic', tier: 'Basic' }

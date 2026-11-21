@@ -1,6 +1,6 @@
 #!/bin/sh
 # One-off, owner only (AIV-P0-004): creates Credalent's database roles on the environment's PostgreSQL server from inside
-# the VNet. It borrows one execution of job-aivera-migrate-<env> with a psql container and the owner's own Entra token
+# the VNet. It borrows one execution of job-<brand>-migrate-<env> with a psql container and the owner's own Entra token
 # (the owner is a server Entra admin), so no Credalent identity ever becomes a server admin. Run after
 # `az deployment group create` (infra/README.md, docs/runbooks/pilot-environment.md).
 # Usage: sh infra/scripts/bootstrap-db.sh <resource group> <env> <postgres server>
@@ -14,12 +14,14 @@ set -eu
 rg=$1
 env=$2
 server=$3
-job=job-aivera-migrate-$env
+# Dev keeps its live "aivera" names; every other environment is named after the product (main.bicep, brand).
+brand=aivera; [ "$env" = dev ] || brand=credalent
+job=job-$brand-migrate-$env
 here=$(dirname "$0")
 
-app_oid=$(az identity show -g "$rg" -n "id-aivera-$env" --query principalId -o tsv)
-cicd_oid=$(az identity show -g "$rg" -n "id-aivera-cicd-$env" --query principalId -o tsv)
-relay_oid=$(az identity show -g "$rg" -n "id-aivera-relay-$env" --query principalId -o tsv)
+app_oid=$(az identity show -g "$rg" -n "id-$brand-$env" --query principalId -o tsv)
+cicd_oid=$(az identity show -g "$rg" -n "id-$brand-cicd-$env" --query principalId -o tsv)
+relay_oid=$(az identity show -g "$rg" -n "id-$brand-relay-$env" --query principalId -o tsv)
 # The server knows its Entra admins by their registered principal name, which for a guest (#EXT#) account differs
 # from the UPN, so look it up by the signed-in user's object id.
 me=$(az ad signed-in-user show --query id -o tsv)
@@ -40,11 +42,11 @@ az containerapp job secret set -g "$rg" -n "$job" -o none \
 
 # A job execution template (JSON is valid YAML for --yaml): the SQL travels as an environment variable.
 jq -n --arg sql "$(cat "$here/../sql/bootstrap-roles.sql")" --arg host "$host" --arg user "$admin" \
-  --arg app "$app_oid" --arg cicd "$cicd_oid" --arg relay "$relay_oid" '{containers: [{
+  --arg app "$app_oid" --arg cicd "$cicd_oid" --arg relay "$relay_oid" --arg db "$brand" '{containers: [{
     name: "bootstrap", image: "postgres:16-alpine",
-    command: ["sh", "-c", "printf %s \"$SQL\" | psql -v ON_ERROR_STOP=1 -v app_oid=\"$APP_OID\" -v cicd_oid=\"$CICD_OID\" -v relay_oid=\"$RELAY_OID\""],
+    command: ["sh", "-c", "printf %s \"$SQL\" | psql -v ON_ERROR_STOP=1 -v app_oid=\"$APP_OID\" -v cicd_oid=\"$CICD_OID\" -v relay_oid=\"$RELAY_OID\" -v db=\"$DB\""],
     env: [
-      {name: "SQL", value: $sql}, {name: "APP_OID", value: $app}, {name: "CICD_OID", value: $cicd}, {name: "RELAY_OID", value: $relay},
+      {name: "SQL", value: $sql}, {name: "APP_OID", value: $app}, {name: "CICD_OID", value: $cicd}, {name: "RELAY_OID", value: $relay}, {name: "DB", value: $db},
       {name: "PGHOST", value: $host}, {name: "PGUSER", value: $user}, {name: "PGDATABASE", value: "postgres"},
       {name: "PGSSLMODE", value: "verify-full"}, {name: "PGSSLROOTCERT", value: "system"},
       {name: "PGPASSWORD", secretRef: "bootstrap-pg-token"}

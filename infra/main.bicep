@@ -46,8 +46,12 @@ param postgresSku string = 'Standard_B1ms'
 param backupRetentionDays int = 7
 
 var dev = env == 'dev'
+// Dev keeps its live "aivera" names (renaming recreates them); everything new is named after the product (AIV-P0-035).
+var brand = dev ? 'aivera' : 'credalent'
 var suffix = take(uniqueString(resourceGroup().id), 6)
-var tags = { product: 'aivera', env: env, data: dev ? 'synthetic' : 'personal' }
+var tags = { product: brand, env: env, data: dev ? 'synthetic' : 'personal' }
+// Key Vault names stop at 24 characters: dev's is 20, the pilot's is cut to 24.
+var keyVaultName = take('kv-${brand}-${env}-${suffix}', 24)
 var images = 'ghcr.io/${toLower(githubRepo)}'
 // Dev: Credalent's own group in UAE North for the AI resource (ADR-011), since Medvya's group allows Indian regions only.
 var aiResourceGroup = dev ? 'rg-aivera-ai-dev' : resourceGroup().name
@@ -57,17 +61,18 @@ var blobUrl = 'https://${storageName}.blob.${az.environment().suffixes.storage}'
 
 // Dev: shared Medvya dev resources, referenced with `existing` and never changed. Pilot: its own, from modules/network.bicep.
 var shared = {
-  logAnalytics: dev ? 'log-medvya-dev-3afs7i' : 'log-aivera-${env}'
-  postgresServer: dev ? 'psql-medvya-dev-3afs7i' : 'psql-aivera-${env}-${suffix}'
-  vnet: dev ? 'vnet-medvya-dev-3afs7i' : 'vnet-aivera-${env}'
+  logAnalytics: dev ? 'log-medvya-dev-3afs7i' : 'log-${brand}-${env}'
+  postgresServer: dev ? 'psql-medvya-dev-3afs7i' : 'psql-${brand}-${env}-${suffix}'
+  vnet: dev ? 'vnet-medvya-dev-3afs7i' : 'vnet-${brand}-${env}'
 }
 
 module network 'modules/network.bicep' = if (!dev) {
-  name: 'aivera-network'
+  name: '${brand}-network'
   params: {
     location: location
     tags: tags
     env: env
+    brand: brand
     logAnalyticsName: shared.logAnalytics
     vnetName: shared.vnet
     vnetPrefix: vnetPrefix
@@ -78,13 +83,15 @@ module network 'modules/network.bicep' = if (!dev) {
 }
 
 module foundation 'modules/foundation.bicep' = {
-  name: 'aivera-foundation'
+  name: '${brand}-foundation'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     logAnalyticsName: shared.logAnalytics
     githubOidcRepo: githubOidcRepo
+    keyVaultName: keyVaultName
   }
   dependsOn: [network]
 }
@@ -93,9 +100,10 @@ module foundation 'modules/foundation.bicep' = {
 // 10.20.2.0/24 and 10.20.4.0/27 of 10.20.0.0/16, checked 18 Nov 2026). /27 is the minimum for a consumption environment.
 // The pilot's VNet declares its subnet itself.
 module environment 'modules/environment.bicep' = {
-  name: 'aivera-environment'
+  name: '${brand}-environment'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     vnetName: shared.vnet
@@ -106,9 +114,10 @@ module environment 'modules/environment.bicep' = {
 }
 
 module database 'modules/database.bicep' = {
-  name: 'aivera-database'
+  name: '${brand}-database'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     postgresServerName: shared.postgresServer
@@ -121,10 +130,11 @@ module database 'modules/database.bicep' = {
 }
 
 module ai 'modules/ai.bicep' = {
-  name: 'aivera-ai'
+  name: '${brand}-ai'
   scope: resourceGroup(aiResourceGroup)
   params: {
     env: env
+    brand: brand
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
     aiEvalIdentityPrincipalId: foundation.outputs.aiEvalIdentityPrincipalId
@@ -132,9 +142,10 @@ module ai 'modules/ai.bicep' = {
 }
 
 module web 'modules/web.bicep' = {
-  name: 'aivera-web'
+  name: '${brand}-web'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     containerAppsEnvName: environment.outputs.environmentName
@@ -159,9 +170,10 @@ module web 'modules/web.bicep' = {
 
 // Service Bus and the outbox relay's identity (AIV-P0-014).
 module messaging 'modules/messaging.bicep' = {
-  name: 'aivera-messaging'
+  name: '${brand}-messaging'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
@@ -170,14 +182,15 @@ module messaging 'modules/messaging.bicep' = {
 
 // Read for the Event Grid webhook URL key only; foundation.bicep creates the vault with this name.
 resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: 'kv-aivera-${env}-${suffix}'
+  name: keyVaultName
 }
 
 // Email through ACS and its delivery reports (AIV-P0-017).
 module communication 'modules/communication.bicep' = {
-  name: 'aivera-communication'
+  name: '${brand}-communication'
   params: {
     env: env
+    brand: brand
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
     webFqdn: web.outputs.webFqdn
@@ -202,9 +215,10 @@ module storage 'modules/storage.bicep' = {
 
 // The worker host: outbox relay and queue consumers (AIV-P0-015).
 module worker 'modules/worker.bicep' = {
-  name: 'aivera-worker'
+  name: '${brand}-worker'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     containerAppsEnvName: environment.outputs.environmentName
@@ -227,9 +241,10 @@ module worker 'modules/worker.bicep' = {
 }
 
 module alerts 'modules/alerts.bicep' = {
-  name: 'aivera-alerts'
+  name: '${brand}-alerts'
   params: {
     env: env
+    brand: brand
     location: location
     tags: tags
     appInsightsId: foundation.outputs.appInsightsId
@@ -239,9 +254,10 @@ module alerts 'modules/alerts.bicep' = {
 }
 
 module deployAccess 'modules/deploy-access.bicep' = {
-  name: 'aivera-deploy-access'
+  name: '${brand}-deploy-access'
   params: {
     env: env
+    brand: brand
     cicdPrincipalId: foundation.outputs.cicdIdentityPrincipalId
     containerAppsEnvName: environment.outputs.environmentName
   }

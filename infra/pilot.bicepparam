@@ -8,7 +8,7 @@ param env = 'pilot'
 param location = 'uaenorth'
 // Defender scans every upload: real candidate files (apps/web refuses to start with it off where APP_ENV is pilot).
 param malwareScanning = true
-param vnetPrefix = '10.20.0.0/16'
+param vnetPrefix = '10.60.0.0/16'
 param postgresSku = 'Standard_B2s'
 param backupRetentionDays = 14
 

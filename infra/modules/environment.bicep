@@ -5,12 +5,14 @@
 param location string
 param tags object
 param env string
+@description(q{aivera on dev (its live names), credalent elsewhere: the prefix of every name (main.bicep).})
+param brand string
 param vnetName string
 @description('Prefix of the subnet to add to a VNet that is not ours (dev); empty when the VNet already declares it.')
 param subnetPrefix string
 param logAnalyticsName string
 
-var subnetName = 'snet-aivera-${env}'
+var subnetName = 'snet-${brand}-${env}'
 
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: vnetName
@@ -36,7 +38,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' exis
 }
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: 'cae-aivera-${env}'
+  name: 'cae-${brand}-${env}'
   location: location
   tags: tags
   properties: {
