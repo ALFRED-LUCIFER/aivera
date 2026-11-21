@@ -6,6 +6,7 @@ import type {
   CompetencyRow,
   EditorViewModel,
   EntryStatus,
+  HintRow,
   JobTypeRow,
   PackRow,
   Refusal,
@@ -16,8 +17,8 @@ import { CompetencyFormDialog, JobTypeFormDialog, PackFormDialog, RefusalText } 
  * The catalogue editor (AIV-P2-045), from the console spec's catalogue editor layout (operator-console.md); there is no
  * artboard for it. Deviations, each for a later ticket: the banner has no Discard or "Review and publish" yet
  * (AIV-P2-049), so the page has no primary button outside a form; job types are one list and entries are grouped by pack,
- * since regional hints are edited in AIV-P2-046; the entry form opens in a dialog rather than in the main
- * column, so the long pack list keeps its place.
+ * a pack's regional hints (AIV-P2-046) following its competencies, one section per region; the entry form opens in a
+ * dialog rather than in the main column, so the long pack list keeps its place.
  */
 
 const BADGES: Record<Exclude<EntryStatus, 'retired'>, StatusBadgeStatus> = {
@@ -92,7 +93,20 @@ function RetireButton({ name, removable, onRetire }: { name: string; removable: 
   );
 }
 
-function Competency({ row, pack, view }: { row: CompetencyRow; pack: PackRow; view: EditorViewModel }) {
+/** A competency, or a regional hint (no core); its Edit and Retire act on the entry it is. */
+function Competency({
+  row,
+  pack,
+  view,
+  onEdit,
+  onRetire,
+}: {
+  row: CompetencyRow | HintRow;
+  pack: PackRow;
+  view: EditorViewModel;
+  onEdit: () => void;
+  onRetire: () => void;
+}) {
   const t = useTranslations('ops.catalogue');
   const labels = (keys: readonly string[]) =>
     keys.map((key) => view.draft.jobTypeEntries.find((j) => j.key === key)?.label ?? key).join(', ');
@@ -108,26 +122,66 @@ function Competency({ row, pack, view }: { row: CompetencyRow; pack: PackRow; vi
         <Chip>{t('levelNeeded', { level: row.levelNeeded })}</Chip>
       </p>
       <p className="text-meta text-text-2">{t('editor.appliesTo', { jobTypes: labels(row.appliesTo) })}</p>
-      {row.core.length > 0 && (
+      {'core' in row && row.core.length > 0 && (
         <p className="text-meta text-text-2">{t('editor.coreFor', { jobTypes: labels(row.core) })}</p>
       )}
       {/* A retired entry stays listed with no controls: it is never deleted (ADR-013 point 6). */}
       {row.status !== 'retired' && pack.status !== 'retired' && (
         <div className="flex flex-wrap gap-2">
-          <Button
-            aria-label={t('editor.editNamed', { name: row.name })}
-            onClick={() => view.onEditCompetency(pack.key, row)}
-          >
+          <Button aria-label={t('editor.editNamed', { name: row.name })} onClick={onEdit}>
             {t('editor.edit')}
           </Button>
-          <RetireButton
-            name={row.name}
-            removable={row.removable}
-            onRetire={() => void view.onRetire(pack.key, row.position)}
-          />
+          <RetireButton name={row.name} removable={row.removable} onRetire={onRetire} />
         </div>
       )}
     </li>
+  );
+}
+
+/** A pack's regional hints for one region (AIV-P2-046): never a residency rule, always Desirable. */
+function RegionHints({
+  region,
+  pack,
+  view,
+}: {
+  region: { key: string; label: string };
+  pack: PackRow;
+  view: EditorViewModel;
+}) {
+  const t = useTranslations('ops.catalogue');
+  const hints = pack.hints.filter((h) => h.region === region.key);
+  const names = { region: region.key, label: region.label };
+  const heading = t('hintsFor', names);
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-3">
+      <h3 className="text-body font-semibold text-text">{heading}</h3>
+      {pack.status !== 'retired' && (
+        <div>
+          <Button
+            aria-label={t('editor.addHintTo', { ...names, name: pack.label })}
+            onClick={() => view.onAddHint(pack.key, region.key)}
+          >
+            {t('editor.addHint')}
+          </Button>
+        </div>
+      )}
+      {hints.length === 0 ? (
+        <p className="text-body text-text-2">{t('editor.noHints', names)}</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {hints.map((row) => (
+            <Competency
+              key={row.position}
+              row={row}
+              pack={pack}
+              view={view}
+              onEdit={() => view.onEditHint(pack.key, row)}
+              onRetire={() => void view.onRetireHint(pack.key, row)}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -227,10 +281,20 @@ export function CatalogueEditor({ publishedVersion, view }: { publishedVersion: 
                   ) : (
                     <ul className="flex flex-col gap-3">
                       {pack.competencies.map((row) => (
-                        <Competency key={row.position} row={row} pack={pack} view={view} />
+                        <Competency
+                          key={row.position}
+                          row={row}
+                          pack={pack}
+                          view={view}
+                          onEdit={() => view.onEditCompetency(pack.key, row)}
+                          onRetire={() => void view.onRetire(pack.key, row.position)}
+                        />
                       ))}
                     </ul>
                   )}
+                  {view.draft.regions.map((region) => (
+                    <RegionHints key={region.key} region={region} pack={pack} view={view} />
+                  ))}
                 </div>
               </details>
             </li>

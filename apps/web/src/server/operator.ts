@@ -5,6 +5,7 @@ import type {
   CatalogueEditorView,
   DraftCompetencyInput,
   DraftEval,
+  DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
   EvalRequestInput,
@@ -228,6 +229,11 @@ export async function saveCataloguePack(input: DraftPackInput): Promise<void> {
 export async function saveCatalogueCompetency(input: DraftCompetencyInput): Promise<void> {
   const { userId } = await platformOperator();
   await catalogueEditor().saveDraftCompetency(userId, input);
+}
+
+export async function saveCatalogueHint(input: DraftHintInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftHint(userId, input);
 }
 
 export async function saveCatalogueJobType(input: DraftJobTypeInput): Promise<void> {

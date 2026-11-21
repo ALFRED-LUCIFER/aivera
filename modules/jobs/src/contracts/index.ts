@@ -16,6 +16,7 @@ import type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 import type {
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
   RetireEntryInput,
@@ -56,8 +57,11 @@ export {
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
+  draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  hintStatus,
+  isHintNewInDraft,
   isNewInDraft,
   jobTypeStatus,
   packStatus,
@@ -68,9 +72,11 @@ export type {
   CatalogueErrorCode,
   CatalogueField,
   DraftCompetencyInput,
+  DraftHintInput,
   DraftJobTypeInput,
   DraftPackInput,
   EditorCompetency,
+  EditorHint,
   EditorVersion,
   EntryStatus,
   RetireEntryInput,
@@ -352,7 +358,13 @@ export interface CatalogueEditor {
    */
   saveDraftJobType(operatorId: string, input: DraftJobTypeInput): Promise<void>;
   /**
-   * Retires a pack, competency or job type a published version holds (`catalogue.entry_retired`), or removes one new in
+   * Adds (`position` null) or edits a pack's regional hint for one region (AIV-P2-046), always desirable: the
+   * competency's rules without core, after a residency rule (`fairness_residency`: never where someone lives, is from
+   * or holds papers for). An unknown or retired region is `not_found`.
+   */
+  saveDraftHint(operatorId: string, input: DraftHintInput): Promise<void>;
+  /**
+   * Retires a pack, competency, job type or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in
    * this draft (`catalogue.entry_removed`); a new job type a pack entry applies to is not removed (`job_type_in_use`).
    * Returns which.
    */

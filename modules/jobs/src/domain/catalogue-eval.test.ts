@@ -68,6 +68,9 @@ describe('the content hash', () => {
         ),
       },
       { ...draft, jobTypes: draft.jobTypes.toReversed() },
+      // Regional hints as AIV-P2-046 stores them: with their region and their position among that region's hints.
+      { ...draft, packs: [{ ...first, hints: first.hints.map((h) => ({ ...h, region: 'europe' })) }, ...rest] },
+      { ...draft, packs: [{ ...first, hints: first.hints.map((h, position) => ({ ...h, position })) }, ...rest] },
     ];
     for (const variant of variants) expect(contentHash(variant)).not.toBe(hash);
   });

@@ -3,17 +3,23 @@ import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
 import {
   assertCompetencyFits,
   assertFairCompetency,
+  assertFairHint,
   assertFairStarters,
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
+  draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
   fairnessRule,
+  hintStatus,
+  isHintNewInDraft,
   isNewInDraft,
   jobTypeStatus,
   packStatus,
   placeJobType,
+  residencyRule,
+  retireEntrySchema,
   type EditorPack,
   type EditorVersion,
 } from './catalogue-draft.ts';
@@ -107,7 +113,12 @@ describe('Scenario Outline: Fairness is enforced on save', () => {
 
 const withPositions = (version: typeof CATALOGUE_V1): EditorVersion => ({
   ...version,
-  packs: version.packs.map((p) => ({ ...p, competencies: p.competencies.map((c, position) => ({ ...c, position })) })),
+  packs: version.packs.map((p) => ({
+    ...p,
+    competencies: p.competencies.map((c, position) => ({ ...c, position })),
+    // A hint's position counts within its region, as the draft stores it.
+    hints: p.hints.map((h, i) => ({ ...h, position: p.hints.slice(0, i).filter((o) => o.region === h.region).length })),
+  })),
 });
 const v1 = withPositions(CATALOGUE_V1);
 const insurance = (core: number): EditorPack => ({
@@ -127,28 +138,30 @@ const insurance = (core: number): EditorPack => ({
 describe('Scenario: More than four core competencies per job type are refused', () => {
   // SAFETY: mutation check: compared `> CORE_LIMIT` instead of `>= CORE_LIMIT` -> this test failed (saved)
   it('a fifth core for "Software engineering" is refused; a fourth is saved', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), competency))).toEqual({
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), competency, []))).toEqual({
       code: 'core_limit',
       field: 'core',
     });
-    expect(refusal(() => assertCompetencyFits(v1, insurance(3), competency))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(3), competency, []))).toBe('saved');
   });
 
   it('editing one of the four keeps it core; a retired one does not count; a non-core fifth is saved', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, position: 2 }))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, position: 2 }, []))).toBe('saved');
     const retiredOne = insurance(4);
     const pack = { ...retiredOne, competencies: retiredOne.competencies.map((c, i) => ({ ...c, retired: i === 0 })) };
-    expect(refusal(() => assertCompetencyFits(v1, pack, competency))).toBe('saved');
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, core: [] }))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, pack, competency, []))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, core: [] }, []))).toBe('saved');
   });
 
   it('refuses a job type the draft does not offer, and core outside applies-to', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, appliesTo: ['astronaut'] }))).toEqual({
+    expect(
+      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, appliesTo: ['astronaut'] }, [])),
+    ).toEqual({
       code: 'job_type',
       field: 'appliesTo',
     });
     expect(
-      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, core: ['qa_test_automation'] })),
+      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, core: ['qa_test_automation'] }, [])),
     ).toEqual({ code: 'core_not_applied', field: 'core' });
   });
 });
@@ -187,6 +200,128 @@ describe('input schemas', () => {
     expect(draftCompetencySchema.safeParse({ ...competency, type: 'mandatory' }).success).toBe(false);
     expect(draftCompetencySchema.safeParse({ ...competency, levelNeeded: 4 }).success).toBe(false);
     expect(draftCompetencySchema.safeParse({ ...competency, appliesTo: [] }).success).toBe(false);
+  });
+});
+
+// AIV-P2-046: a regional hint is market knowledge shown with evidence, never a residency rule.
+const { core: _core, ...hintFields } = competency;
+const hint = {
+  ...hintFields,
+  packKey: 'logistics_mobility',
+  region: 'ksa',
+  name: 'FASAH customs integration',
+  evidence: 'Integration code and tests against FASAH documents',
+  levelNeeded: 2 as const,
+};
+
+describe('Scenario Outline: A hint is a skill, never a residency rule', () => {
+  // SAFETY: mutation check: assertFairHint skipped the residency rules -> the residence visa row failed (fairness_origin)
+  it.each([
+    ['ZATCA e-invoicing integration', 'saved'],
+    ['Must hold a UAE residence visa', { code: 'fairness_residency', field: 'name' }],
+    ['Saudi national', { code: 'fairness_origin', field: 'name' }],
+    ['Worked at Aramco', { code: 'fairness_employer', field: 'name' }],
+  ])('"%s" is %j', (name, result) => {
+    expect(refusal(() => assertFairHint({ ...hint, name }))).toEqual(result);
+  });
+
+  it.each([
+    'Residency in Dubai',
+    'Resident of Riyadh',
+    'UAE work permit',
+    'Employment visa sponsorship',
+    'Visa holder in KSA',
+    'Holds an iqama',
+    'Indian passport',
+    'Nationality: Emirati',
+    'Lives in Abu Dhabi',
+    'Based in Bengaluru',
+    'Candidates who are from the Gulf',
+    'Must hold a UAE visa',
+    'Must have an Emirates ID',
+    'Valid Saudi ID required',
+    'Aadhaar holder',
+    'Transferable sponsorship',
+    'Kafala transfer accepted',
+  ])('"%s" breaks the residency rule', (text) => {
+    expect(residencyRule(text)).toBe(true);
+  });
+
+  it.each([
+    'ZATCA e-invoicing integration',
+    'UAE data residency rules',
+    'Emirates ID and UAE PASS sign-in',
+    'Visa and Mastercard card payments',
+    'Free-zone customs procedures',
+    'Reads data from the FASAH platform',
+    'Handles messages that are from ZATCA',
+    'Data-residency controls for cloud workloads',
+    'Tax residency certificate integration',
+    'Aadhaar authentication',
+  ])('the near-miss "%s" passes', (text) => {
+    expect(residencyRule(text)).toBe(false);
+  });
+
+  it('checks the meaning too, and finds nothing in version 1 hints', () => {
+    expect(refusal(() => assertFairHint({ ...hint, meaning: 'For engineers living in Jeddah.' }))).toEqual({
+      code: 'fairness_residency',
+      field: 'meaning',
+    });
+    const texts = CATALOGUE_V1.packs.flatMap((p) => p.hints.flatMap((h) => [h.name, h.meaning]));
+    expect(texts.length).toBeGreaterThan(80);
+    expect(texts.filter((t) => residencyRule(t))).toEqual([]);
+  });
+});
+
+describe('Scenario: A hint cannot be made mandatory', () => {
+  // SAFETY: mutation check: built draftHintSchema with .strip() instead of strict -> this test failed (type accepted)
+  it('the hint schema refuses a type, core, a bad region and level 4', () => {
+    const input = hint;
+    expect(draftHintSchema.safeParse(input).success).toBe(true);
+    expect(draftHintSchema.safeParse({ ...input, type: 'mandatory' }).success).toBe(false);
+    expect(draftHintSchema.safeParse({ ...input, core: [] }).success).toBe(false);
+    expect(draftHintSchema.safeParse({ ...input, region: 'KSA' }).success).toBe(false);
+    expect(draftHintSchema.safeParse({ ...input, levelNeeded: 4 }).success).toBe(false);
+    expect(retireEntrySchema.safeParse({ ...hint, entry: 'regionalHint', position: 0 }).success).toBe(false);
+    expect(
+      retireEntrySchema.safeParse({
+        version: 2,
+        revision: 0,
+        entry: 'regionalHint',
+        packKey: 'logistics_mobility',
+        region: 'ksa',
+        position: 0,
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('hint status and what can be removed', () => {
+  const logistics = v1.packs.find((p) => p.key === 'logistics_mobility') as EditorPack;
+  const fasah = logistics.hints.find((h) => h.region === 'ksa') as EditorPack['hints'][number];
+
+  it('Live, Changed in draft, New in draft and Retired; only a new hint is removable', () => {
+    expect(hintStatus(v1, logistics.key, fasah)).toBe('live');
+    expect(hintStatus(v1, logistics.key, { ...fasah, evidence: 'Other evidence' })).toBe('changed');
+    expect(hintStatus(v1, logistics.key, { ...fasah, position: 9 })).toBe('new');
+    expect(hintStatus(v1, logistics.key, { ...fasah, region: 'uae', position: 9 })).toBe('new');
+    expect(hintStatus(v1, logistics.key, { ...fasah, retired: true })).toBe('retired');
+    expect(isHintNewInDraft(v1, logistics.key, 'ksa', fasah.position)).toBe(false);
+    expect(isHintNewInDraft(v1, logistics.key, 'ksa', 9)).toBe(true);
+  });
+
+  // SAFETY: mutation check: assertCompetencyFits ignored `kept` -> this test failed (job_type)
+  it('a retired job type the hint already had stays on it; a new hint cannot take it', () => {
+    const retiredSwe = {
+      ...v1,
+      jobTypes: v1.jobTypes.map((t) => ({ ...t, retired: t.key === 'software_engineering' })),
+    };
+    const input = { ...hint, position: fasah.position, core: [] };
+    expect(refusal(() => assertCompetencyFits(retiredSwe, logistics, input, ['software_engineering']))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(retiredSwe, logistics, input, []))).toEqual({
+      code: 'job_type',
+      field: 'appliesTo',
+    });
   });
 });
 
