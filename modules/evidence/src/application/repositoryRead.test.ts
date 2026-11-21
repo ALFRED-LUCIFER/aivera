@@ -27,7 +27,7 @@ async function queue(
   let n = 0;
   const ports: ArrivalPorts = {
     readArrival: async () => ({ fileIds: [], ...arrival }),
-    readPerson: async () => ({ emails: [' Maria.Santos@example.com '], synthetic: true }),
+    readPerson: async () => ({ identifierEmails: [' Maria.Santos@example.com '], synthetic: true }),
     readFilePurpose: async (_tx, _w, fileId) => purposes[fileId] ?? null,
     // Only insertOrGet is reached when queueing.
     readStoreFor: () =>
