@@ -34,12 +34,21 @@ const decision = (more: Partial<RubricDecisionView> = {}): RubricDecisionView =>
   onCancelReturn: vi.fn(),
   onNote: vi.fn(),
   onReturn: vi.fn(),
+  onSend: vi.fn(),
   ...more,
 });
 const show = (props: Partial<Parameters<typeof RubricDecision>[0]> = {}) =>
   render(
     <IntlProvider {...intl}>
-      <RubricDecision review={review} decision={decision()} outdatedLink={false} actingAsAdmin={false} {...props} />
+      <RubricDecision
+        review={review}
+        decision={decision()}
+        outdatedLink={false}
+        canReturn
+        canSend={false}
+        withOwner={false}
+        {...props}
+      />
     </IntlProvider>,
   );
 
@@ -87,9 +96,41 @@ describe('Scenario: Approving an outdated version is refused', () => {
   });
 });
 
-describe('An admin who is not the hiring owner', () => {
-  it("is told the decision is recorded as made on the owner's behalf", () => {
-    show({ actingAsAdmin: true });
-    expect(screen.getByText(/As an admin you decide on their behalf/)).toBeTruthy();
+describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {
+  it('offers "Approve version 2" and no "Return with a note", with no on-behalf note', async () => {
+    const d = decision();
+    show({ decision: d, canReturn: false });
+    expect(screen.getByText('Version 2 is ready for you to approve')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Return with a note' })).toBeNull();
+    expect(screen.queryByText(/on their behalf/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Approve version 2' }));
+    expect(d.onApprove).toHaveBeenCalledOnce();
+  });
+
+  it('a version sent to the hiring owner can be returned by them', () => {
+    show();
+    expect(screen.getByRole('button', { name: 'Return with a note' })).toBeTruthy();
+  });
+
+  it('a draft of a job with a hiring owner offers "Send to the hiring owner", which only the recruiter triggers', async () => {
+    const d = decision();
+    show({ decision: d, canReturn: false, canSend: true });
+    await userEvent.click(screen.getByRole('button', { name: 'Send to the hiring owner' }));
+    expect(d.onSend).toHaveBeenCalledOnce();
+    expect(d.onApprove).not.toHaveBeenCalled();
+  });
+
+  it('a version the recruiter sent is "with the hiring owner", still approvable by them, not returnable', () => {
+    show({ canReturn: false, withOwner: true });
+    expect(screen.getByText('Version 2 is with the hiring owner')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Approve version 2' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Return with a note' })).toBeNull();
+  });
+
+  it('after sending, says the hiring owner has it', () => {
+    show({ decision: decision({ status: 'sent' }), canReturn: false });
+    expect(screen.getByRole('status').textContent).toBe(
+      'Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.',
+    );
   });
 });

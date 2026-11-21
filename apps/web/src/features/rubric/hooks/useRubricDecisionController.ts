@@ -2,10 +2,11 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { ReviewView, RubricDecisionView } from '../domain/rubric.ts';
 import { decideRubric } from '../services/decideRubric.ts';
+import { sendRubricForApproval } from '../services/sendRubricForApproval.ts';
 
 /**
- * The hiring owner's approval panel (AIV-P1-014): approve the version awaiting approval, or write a note and return it.
- * Nothing changes on the server until they choose "Approve version N" or "Return version N".
+ * The approval panel (AIV-P1-014, ADR-014): approve the version, return a sent one with a note, or send a draft to the
+ * hiring owner. Nothing changes on the server until a button is chosen.
  */
 export function useRubricDecisionController(jobId: string, review: ReviewView | null): RubricDecisionView {
   const router = useRouter();
@@ -46,5 +47,13 @@ export function useRubricDecisionController(jobId: string, review: ReviewView | 
     onCancelReturn: () => setReturning(false),
     onNote: setNote,
     onReturn: () => decide(note),
+    onSend: () =>
+      startTransition(async () => {
+        if (!review) return;
+        const result = await sendRubricForApproval(review.versionId);
+        if (!result.ok) return setStatus('failed');
+        setStatus('sent');
+        router.refresh();
+      }),
   };
 }
