@@ -153,6 +153,10 @@ test('removing a member asks first, then takes them off the list and out of the 
   await signIn(lina, { email: 'lina@example.com' });
   await lina.goto('/app/jobs');
   await expect(lina.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+  // Harbour Talent's jobs, not Gulf's: the shell names no workspace yet (AIV-P1-055), but only Harbour's carry clients.
+  await expect(
+    lina.getByRole('row').filter({ hasText: 'Senior Product Manager, Payments' }).filter({ hasText: 'Falcon Pay' }),
+  ).toHaveCount(1);
 
   await openMembers(page);
   await page.getByRole('button', { name: 'Remove lina@example.com' }).click();
