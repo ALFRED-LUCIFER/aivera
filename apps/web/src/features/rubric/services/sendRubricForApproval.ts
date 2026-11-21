@@ -9,9 +9,10 @@ import { inActiveWorkspace } from '@/server/workspace';
 import { queueApprovalRequest } from './rubricEmails.ts';
 
 /**
- * "Send rubric for approval" after Add a job (AIV-P1-014): the draft goes to the hiring owner, with the approval email,
- * in one transaction. The jobs module authorises `rubric.edit` (admins and recruiters; anyone else gets the 403 page).
- * Nothing is assessed until the hiring owner approves.
+ * "Send rubric for approval" after Add a job, or "Send to the hiring owner" from the rubric page's approval panel
+ * (AIV-P1-014, ADR-014): the draft goes to the hiring owner, with the approval email, in one transaction. It is the
+ * recruiter's choice; they may still approve it themselves. The jobs module authorises `rubric.edit` (admins and
+ * recruiters; anyone else gets the 403 page).
  */
 export async function sendRubricForApproval(rubricVersionId: string): Promise<{ ok: boolean; emailed?: boolean }> {
   if (!z.uuid().safeParse(rubricVersionId).success) return { ok: false };
