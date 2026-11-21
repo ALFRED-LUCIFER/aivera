@@ -82,6 +82,7 @@ export async function evaluateCatalogue(
 }
 
 /**
+ * Its own store, not the workspaces one: that table's rows belong to a workspace by foreign key (ADR-013 point 12).
  * The run's token budget: at most `liveTokenCap`, and no more than the platform eval budget has left today
  * (`tokensLeftToday`), counted apart from every workspace's (ADR-013 point 12). `used()` is what the run spent.
  */
@@ -96,6 +97,7 @@ export function runBudget(tokensLeftToday: number): TokenBudgetStore & { used():
 }
 
 /**
+ * A test helper on the production export, so the jobs integration suite can drive the worker job without a model.
  * A client whose answers are the golden cases' recorded ones (and recorded judge verdicts), for tests: no model call.
  * `answer` may replace a case's output, to model a draft that answers worse.
  */

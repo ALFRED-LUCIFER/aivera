@@ -2,6 +2,7 @@ import type { AuditContract } from '@credalent/audit';
 import type { Tx } from '@credalent/db/client';
 import { enqueue } from '@credalent/db/outbox';
 import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import type { EvalStore, RunStore } from '../application/catalogue-eval.ts';
 import { CatalogueEvalRequestedV1 } from '../contracts/index.ts';
 import { evalResultSchema, type EvalRun } from '../domain/catalogue-eval.ts';
@@ -9,11 +10,13 @@ import { draftStore } from './catalogue-draft.ts';
 import { catalogueEvalRun, outbox } from './schema.ts';
 
 /**
- * The workspace id a catalogue eval's outbox and inbox rows carry: a fixed synthetic id no real workspace has (the same
- * as packages/ai evals' `evalWorkspaceId`). The eval is platform work, but the outbox's tenant policy needs a workspace,
+ * The workspace id a catalogue eval's outbox and inbox rows carry: a fixed synthetic id no real workspace has
+ * (ADR-013 point 12). The eval is platform work, but the outbox's tenant policy needs a workspace,
  * so its transactions run in this scope; the catalogue tables have no tenant policy.
  */
 export const CATALOGUE_EVAL_SCOPE = '0190d4a2-0000-7000-8000-0000000e7a1e';
+
+const keysSchema = z.strictObject({ domains: z.array(z.string()), regions: z.array(z.string()) });
 
 const run = {
   id: catalogueEvalRun.id,
@@ -81,7 +84,7 @@ export function runStore(tx: Tx): RunStore {
         .from(catalogueEvalRun)
         .where(eq(catalogueEvalRun.id, id))
         .for('update');
-      return row ? { ...toRun(row), keys: row.keys } : null;
+      return row ? { ...toRun(row), keys: keysSchema.parse(row.keys) } : null;
     },
 
     async tokensOn(day) {
@@ -102,7 +105,8 @@ export function runStore(tx: Tx): RunStore {
       // Only a run still running: one abandoned meanwhile (timed out, a newer run started) keeps its end.
       await tx
         .update(catalogueEvalRun)
-        .set(end)
+        // Checked before it is stored: a result that is not the schema fails the job, never the page that reads it.
+        .set({ ...end, result: end.result && evalResultSchema.parse(end.result) })
         .where(and(eq(catalogueEvalRun.id, id), eq(catalogueEvalRun.status, 'running')));
     },
   };

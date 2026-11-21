@@ -536,7 +536,7 @@ test.describe('the draft eval', () => {
       await page.getByRole('button', { name: 'Run the eval' }).focus();
       await page.keyboard.press('Enter');
       // The request is refused and the page reloads to the run in progress: no second run starts.
-      await expect(panel(page)).toContainText('An eval run is already in progress.');
+      await expect(panel(page).getByRole('alert')).toHaveText('An eval run is already in progress.');
       await expect(page.getByRole('button', { name: 'Run the eval' })).toBeDisabled();
       expect(await runs()).toBe(before);
     } finally {

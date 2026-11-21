@@ -911,7 +911,7 @@
           },
           "message": {
             "not_run": "The eval has not run on this draft. Publishing needs a passed eval.",
-            "running": "An eval run is already in progress. This page updates when it finishes.",
+            "running": "The golden cases are running against the draft. This page updates when they finish.",
             "stale": "The draft changed after the last eval run. Run it again.",
             "error": "The eval could not run. Try again."
           },

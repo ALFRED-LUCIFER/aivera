@@ -130,7 +130,7 @@ export type {
 } from '../application/draft-competencies.ts';
 export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 export { evalAllowsPublish, evalRequestSchema } from '../domain/catalogue-eval.ts';
-export type { DraftEval, EvalRequestInput, EvalResult } from '../domain/catalogue-eval.ts';
+export type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
