@@ -258,7 +258,8 @@ describe('Feature: Candidate names and contact details never reach the model', (
     ]);
   });
 
-  // SAFETY: mutation check: removed the MissingIdentifiers guard in generateStructured -> this test failed
+  // SAFETY: mutation check: removed the MissingIdentifiers guard in generateStructured -> this test failed (it is also
+  // what makes "Redaction cannot be skipped" hold for a caller that leaves identifiers out, AIV-P2-065)
   it('Scenario: An evidence prompt sent without identifiers fails closed', async () => {
     const { ai, requests, budget } = recording(noLinks);
     const writeUp = source('Sara built the merchant assistant.');
@@ -267,5 +268,99 @@ describe('Feature: Candidate names and contact details never reach the model', (
     ).rejects.toBeInstanceOf(MissingIdentifiers);
     expect(requests).toEqual([]);
     expect(await budget.spentToday(workspaceId, new Date().toISOString().slice(0, 10))).toMatchObject({ spent: 0 });
+  });
+});
+
+// Feature: Protected traits never reach the model (AIV-P2-065, AGENTS.md 1.5). Synthetic people only.
+describe('Feature: Protected traits never reach the model', () => {
+  const layla = { names: ['Layla Haddad'], emails: [], phones: [] };
+  const cvText = (text: string, kind: Source['kind'] = 'cv', names = layla.names) =>
+    redactSources([source(text, kind)], { ...layla, names }, false).sources[0]?.text;
+  const emptyParse = { contact: { emails: [], phones: [] }, workHistory: [], skills: [], statements: [] };
+  const traits =
+    'ليلى حداد\nNationality: Egyptian · Date of birth: 14 March 1990 · Marital status: Married\nLed the OCR work.';
+
+  // SAFETY: mutation check: dropped the `(?<trait>...)` alternative from patternFor -> every row of this outline failed
+  it.each([
+    ['Nationality: Indian', 'Indian'],
+    ['Date of birth: 14 March 1990', '1990'],
+    ['Marital status: Married', 'Married'],
+    ['Gender: Female', 'Female'],
+    ['الجنسية: مصري', 'مصري'],
+  ])('Scenario Outline: the labelled line "%s" is removed', async (line, value) => {
+    const { ai, requests } = recording(emptyParse);
+    const cv = source(`Layla Haddad\n${line}\nBuilt an Arabic OCR pipeline in Python.`, 'cv');
+    await ai.generateStructured({ ...parseCvRequest([cv]), workspaceId, identifiers: layla });
+    expect(requests[0]).toContain('[CANDIDATE]\\n[REMOVED]\\nBuilt an Arabic OCR pipeline in Python.');
+    expect(requests[0]).not.toContain(value);
+  });
+
+  it.each([
+    ['Nationality: Egyptian · Skills: Python', '[REMOVED] · Skills: Python'],
+    ['Citizenship: Jordanian', '[REMOVED]'],
+    ['DATE OF BIRTH: 14/03/1990 | Dubai', '[REMOVED] | Dubai'],
+    ['DOB: 1990-03-14', '[REMOVED]'],
+    ['D.O.B.: 14.03.1990', '[REMOVED]'],
+    ['Birth date: 14 March 1990', '[REMOVED]'],
+    ['Place of birth: Cairo', '[REMOVED]'],
+    ['Born: 1990', '[REMOVED]'],
+    ['Personal details: Age: 34, Sex: F', 'Personal details: [REMOVED]'],
+    ['Civil status: Single', '[REMOVED]'],
+    ['Family status: Married, two children', '[REMOVED]'],
+    ['Religion: Muslim', '[REMOVED]'],
+    ['Photo: attached', '[REMOVED]'],
+    ['Photograph:\nattached\nSkills: Go', '[REMOVED]\nSkills: Go'],
+    ['Nationality :Egyptian', '[REMOVED]'],
+    ['تاريخ الميلاد: ١٤ مارس ١٩٩٠', '[REMOVED]'],
+    ['مكان الميلاد: القاهرة', '[REMOVED]'],
+    ['العمر: ٣٤', '[REMOVED]'],
+    ['السن: 34', '[REMOVED]'],
+    ['الحالة الاجتماعية: متزوجة · الجنس: أنثى', '[REMOVED] · [REMOVED]'],
+    ['الديانة: مسلمة', '[REMOVED]'],
+    ['الدين: مسلم', '[REMOVED]'],
+    ['الصورة: مرفقة', '[REMOVED]'],
+    ['I am 34 years old, a 34-year-old engineer, aged 34.', 'I am [REMOVED], a [REMOVED] engineer, [REMOVED].'],
+    ['Backend Engineer [Photo attached] (photograph)', 'Backend Engineer [REMOVED] [REMOVED]'],
+  ])('pattern: %s', (text, expected) => expect(cvText(text)).toBe(expected));
+
+  // SAFETY: mutation check: dropped the `(?<arabicName>...)` alternative from patternFor -> both rows failed
+  it.each([
+    ['ليلى حداد\nSenior AI Engineer', '[CANDIDATE]\nSenior AI Engineer'],
+    ['Layla Haddad · ليلى حداد · Dubai', '[CANDIDATE] · [CANDIDATE] · Dubai'],
+    ['\u200fليلى حداد\n\u200fالجنسية: مصرية', '\u200f[CANDIDATE]\n\u200f[REMOVED]'],
+  ])('Scenario: An Arabic-script name on the CV name line is removed: %s', (text, expected) =>
+    expect(cvText(text)).toBe(expected),
+  );
+
+  it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {
+    expect(cvText('Built it with ليلى حداد and Omar.', 'document', ['Layla Haddad', 'ليلى حداد'])).toBe(
+      'Built it with [CANDIDATE] and Omar.',
+    );
+    expect(cvText('خط معالجة النصوص\nThe Arabic OCR pipeline.', 'document')).toBe(
+      'خط معالجة النصوص\nThe Arabic OCR pipeline.',
+    );
+  });
+
+  it('Scenario: Skills text is untouched', () => {
+    const skills = [
+      'Built payment APIs in Python',
+      'Project name: Ledger; storage: 40 TB; Usage: 34 rps; message age: 2 s',
+      'Skills: Python, sex-disaggregated metrics, photo editing, Gender bias evals',
+      'Senior AI Engineer, A BNPL fintech, Jun 2020 - Aug 2023, 9,000 merchants, 99.95% uptime',
+    ].join('\n');
+    expect(cvText(skills)).toBe(skills);
+  });
+
+  // SAFETY: mutation check: matched every source with `pattern` instead of `cvPattern` in redactSources -> every row
+  // failed on the Arabic name line; dropped the trait alternative -> every row failed
+  it.each([
+    ['evidence.mapToCompetency', () => mapToCompetencyRequest(competencies, [source(traits, 'cv')]), noLinks],
+    ['evidence.compareExcerpts', () => compareExcerptsRequest([source(traits, 'cv')], []), { contradictions: [] }],
+    ['evidence.parseCv', () => parseCvRequest([source(traits, 'cv')]), emptyParse],
+  ])('Scenario: Redaction cannot be skipped: %s', async (_task, request, output) => {
+    const { ai, requests } = recording(output);
+    await ai.generateStructured({ ...request(), workspaceId, identifiers: layla } as never);
+    expect(requests[0]).toContain('[CANDIDATE]\\n[REMOVED] · [REMOVED] · [REMOVED]\\nLed the OCR work.');
+    expect(requests[0]).not.toMatch(/ليلى|Egyptian|1990|Married/);
   });
 });

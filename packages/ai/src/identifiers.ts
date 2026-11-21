@@ -45,7 +45,53 @@ const yearsOrDate = /^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/;
 // Particles that are a name part only next to another part: "Al Qahtani" is the candidate, "Al Ain" is a place.
 const PARTICLES = new Set(['al', 'el', 'bin', 'bint', 'ibn', 'abu', 'de', 'da', 'di', 'van', 'von', 'le', 'la']);
 
-function patternFor({ names, emails, phones }: Identifiers): RegExp {
+// Protected traits (AIV-P2-065, AGENTS.md 1.5): a labelled field, Latin or Arabic label, becomes `[REMOVED]` with its
+// value. A label counts only at a field start (line start or after · • | ; , : or a bracket), so "Project name:" or
+// "storage:" in a skills line stay. The value runs to the line end or the next · • | ; and, under a bare label, is the
+// next line.
+export const PROTECTED_PLACEHOLDER = '[REMOVED]';
+const TRAIT_LABELS = [
+  'nationality',
+  'citizenship',
+  'date of birth',
+  'birth ?date',
+  String.raw`d\.?o\.?b\.?`,
+  'place of birth',
+  'born',
+  'age',
+  'marital status',
+  'civil status',
+  'family status',
+  'gender',
+  'sex',
+  'religion',
+  'photo(?:graph)?',
+  'الجنسية',
+  'تاريخ الميلاد',
+  'مكان الميلاد',
+  'العمر',
+  'السن',
+  'الحالة الاجتماعية',
+  'الجنس',
+  'الديانة',
+  'الدين',
+  'الصورة',
+];
+const FIELD_START = String.raw`(?<=(?:^|[\n·•|;,:(\[])[ \t\u200e\u200f]*)`;
+const VALUE = String.raw`(?:[ \t]*\n)?[^\n·•|;]*?(?=[ \t]*(?:$|[\n·•|;]))`;
+// shortcut: unlabelled traits are caught only as "34 years old", "34-year-old", "aged 34" and "[photo ...]"; a
+// "20-year-old codebase" is removed too. Widen from pilot CVs if another shape reaches a prompt.
+const TRAIT = [
+  String.raw`${FIELD_START}(?:${TRAIT_LABELS.join('|')})[ \t]*[:：]${VALUE}`,
+  String.raw`(?<!${letter})(?:aged[ \t]+\d{2}|\d{2}[ -](?:years?|yrs)[ -]old)(?!${letter})`,
+  String.raw`[[(][ \t]*photo(?:graph)?(?!${letter})[^\])\n]*[\])]`,
+].join('|');
+// A CV's own name line in Arabic script: a field of two to four Arabic words on its first line (a Latin name there is
+// the record's). shortcut: an Arabic name elsewhere is removed only when the record holds it; widen if pilot CVs need.
+const ARABIC = String.raw`\p{sc=Arabic}+`;
+const ARABIC_NAME_LINE = String.raw`(?<=^(?:[\s\u200e\u200f]*|[^\n]*[·•|,،;–-][ \t\u200e\u200f]*))${ARABIC}(?:[ \t]+${ARABIC}){1,3}(?=[ \t\u200e\u200f]*(?:$|[\n·•|,،;–-]))`;
+
+function patternFor({ names, emails, phones }: Identifiers, cv: boolean): RegExp {
   const parts = [...new Set(names.flatMap((name) => name.trim().split(/[\s-]+/)))]
     .filter((part) => (part.match(/\p{L}/gu)?.length ?? 0) >= 2)
     .toSorted((a, b) => b.length - a.length);
@@ -69,6 +115,8 @@ function patternFor({ names, emails, phones }: Identifiers): RegExp {
     `(?<email>${[...emails.filter(Boolean).map(escape), EMAIL].join('|')})`,
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
     `(?<phone>${DOTTED}|${PHONE})`,
+    `(?<trait>${TRAIT})`,
+    ...(cv ? [`(?<arabicName>${ARABIC_NAME_LINE})`] : []),
     ...(run ? [run] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
@@ -98,7 +146,8 @@ export type Redaction = {
  * `keepContact`, emails and phones stay as written.
  */
 export function redactSources(sources: readonly Source[], identifiers: Identifiers, keepContact: boolean): Redaction {
-  const pattern = patternFor(identifiers);
+  const pattern = patternFor(identifiers, false);
+  const cvPattern = patternFor(identifiers, true);
   const numbers = { EMAIL: new Map<string, string>(), PHONE: new Map<string, string>() };
   const numbered = (kind: keyof typeof numbers, key: string) => {
     const seen = numbers[kind];
@@ -111,10 +160,10 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    for (const match of source.text.matchAll(pattern)) {
+    for (const match of source.text.matchAll(source.kind === 'cv' ? cvPattern : pattern)) {
       const value = match[0];
-      const { email, own, phone } = match.groups ?? {};
-      let to = CANDIDATE_PLACEHOLDER;
+      const { email, own, phone, trait } = match.groups ?? {};
+      let to = trait ? PROTECTED_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
       if (email || own || phone) {
         if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
         if (keepContact) continue;

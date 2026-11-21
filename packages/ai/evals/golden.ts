@@ -48,6 +48,11 @@ export const goldenCase = z
           })
           .strict()
           .optional(),
+        /** Phrases that must appear nowhere in the sources as the model reads them, after redaction (AIV-P2-065). */
+        prompt: z
+          .object({ forbidden: z.array(z.string().min(1)).min(1) })
+          .strict()
+          .optional(),
         /** A rubric for the LLM judge, where exact match is not possible. */
         judge: z.string().min(1).optional(),
       })
