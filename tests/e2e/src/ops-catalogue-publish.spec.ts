@@ -2,7 +2,7 @@ import { createDb } from '@credalent/db/client';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from 'drizzle-orm';
 import { databaseUrl } from '../playwright.config.ts';
-import { signIn } from './auth.ts';
+import { signIn, signInOperator } from './auth.ts';
 import { expectAccessible } from './gallery.ts';
 
 // AIV-P2-049 J0: Pia Platform reviews a catalogue draft's diff, meets the publish gate and publishes version 2; Mira then
@@ -139,7 +139,8 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
 
   // AIV-P2-050, in this test so no separate test drags the publish into a retry: Theo reads the version history.
   await page.context().clearCookies();
-  await signIn(page, { email: 'theo.platform@example.com' });
+  // Settled before the list opens, so no console-opened re-render swallows the keyboard press on Version 2 below.
+  await signInOperator(page, 'theo.platform@example.com');
   await page.goto('/ops/catalogue/versions');
   const rows = page.getByRole('table', { name: 'Published catalogue versions' }).getByRole('row');
   // The header row, then version 2 first.

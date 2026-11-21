@@ -24,6 +24,20 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   await page.getByRole('button', { name: tenantButton }).click();
 }
 
+/**
+ * Signs an operator in and waits on the console home until it has recorded its opening (AIV-P2-035). That server action
+ * sets a cookie, and a cookie set by a server action re-renders the page: on the page under test the re-render could
+ * show a row written after the page loaded, or swallow a link pressed meanwhile. With the cookie set, later pages in
+ * the session write nothing and do not re-render.
+ */
+export async function signInOperator(page: Page, email: string) {
+  await signIn(page, { email });
+  await expect(page).toHaveURL(/\/ops$/);
+  await expect
+    .poll(async () => (await page.context().cookies()).some((c) => c.name === '__Host-credalent-ops-opened'))
+    .toBe(true);
+}
+
 const signedIn =
   (options: SignInOptions) =>
   async ({ page, baseURL }: { page: Page; baseURL: string | undefined }, use: (page: Page) => Promise<void>) => {
