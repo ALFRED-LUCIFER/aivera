@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyStatusChange,
   dashboardReads,
+  getCatalogueVersion,
   getWorkspaceFacts,
+  listCatalogueVersions,
   isPlatformOperator,
   listOperatorActions,
   listPlatformAudit,
@@ -57,7 +59,13 @@ const summary = {
 const ai = vi.hoisted(() => ({ usage: vi.fn(), setDailyBudget: vi.fn(async (_input: unknown) => undefined) }));
 const listStatuses = vi.hoisted(() => vi.fn());
 const listSummaries = vi.hoisted(() => vi.fn(async (_search: unknown) => ({ total: 1, summaries: [summary] })));
-const catalogue = vi.hoisted(() => ({ getEditor: vi.fn(), getDraftEval: vi.fn() }));
+// The dashboard's reads (AIV-P2-051) and the catalogue history's (AIV-P2-050).
+const catalogue = vi.hoisted(() => ({
+  getEditor: vi.fn(),
+  getDraftEval: vi.fn(),
+  listVersions: vi.fn(),
+  getVersion: vi.fn(),
+}));
 vi.mock('@credalent/workspaces/composition', () => ({
   createWorkspaceDirectory: () => ({
     getSummary: async () => summary,
@@ -384,5 +392,45 @@ describe('the signed-in operator for the shell (AIV-P2-052)', () => {
     session.mockResolvedValue(PIA);
     getUser.mockResolvedValueOnce({ ...(users[PIA] as User), displayName: null });
     await expect(platformOperator()).resolves.toMatchObject({ name: 'pia.platform@example.com' });
+  });
+});
+
+const versionRow = (version: number, publishedBy: string) => ({
+  version,
+  publishedAt: new Date('2026-11-21T09:00:00Z'),
+  publishedBy,
+  reason: 'Add insurance pack for the pilot client',
+  counts: null,
+  evalStatus: null,
+});
+
+describe('the catalogue version history (AIV-P2-050)', () => {
+  it('names each publisher by display name, the seed as none, and an unknown id as none', async () => {
+    session.mockResolvedValue(THEO);
+    const UNKNOWN = '0190d4a2-0000-7000-8000-00000000a0ff';
+    catalogue.listVersions.mockResolvedValue({
+      total: 3,
+      rows: [versionRow(3, UNKNOWN), versionRow(2, PIA), versionRow(1, 'system:seed')],
+    });
+    const result = await listCatalogueVersions(1);
+    expect(catalogue.listVersions).toHaveBeenCalledWith(1);
+    expect(result.rows.map((r) => r.publisherName)).toEqual([null, 'Pia Platform', null]);
+    // The seed is never looked up as a user.
+    expect(getUser).not.toHaveBeenCalledWith('system:seed');
+  });
+
+  it('a missing version is null', async () => {
+    session.mockResolvedValue(THEO);
+    catalogue.getVersion.mockResolvedValue(null);
+    expect(await getCatalogueVersion(99)).toBeNull();
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from listCatalogueVersions and getCatalogueVersion -> this test failed (resolved)
+  it('Scenario: Only operators can read the history: Riya gets 403 before anything is read', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(listCatalogueVersions(1)).rejects.toThrow('403');
+    await expect(getCatalogueVersion(2)).rejects.toThrow('403');
+    expect(catalogue.listVersions).not.toHaveBeenCalled();
+    expect(catalogue.getVersion).not.toHaveBeenCalled();
   });
 });

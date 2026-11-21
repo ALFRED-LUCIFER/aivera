@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import type { CatalogueChange, DiffGroup } from '@credalent/jobs';
 import type { CataloguePublishViewModel } from '../domain/cataloguePublish.ts';
+import { CatalogueDiff } from './CatalogueDiff.tsx';
 import { ReasonedChange } from './ReasonedChange.tsx';
 
 /*
@@ -10,45 +10,6 @@ import { ReasonedChange } from './ReasonedChange.tsx';
  * layout (operator-console.md); there is no artboard. Both open the shared preview-confirm card. Deviation: the card
  * shows the eval's state as one line under the diff, not its full result, which the eval panel on the page shows.
  */
-
-const GROUPS: readonly DiffGroup[] = ['jobTypes', 'packs', 'competencies', 'hints'];
-
-function ChangeLines({ change }: { change: CatalogueChange }) {
-  const t = useTranslations('ops.catalogue.editor.diff');
-  if (change.kind !== 'edited') return <li>{t(change.kind, { name: change.name })}</li>;
-  return change.fields.map(({ field, before, after }) => (
-    <li key={field}>
-      {change.name
-        ? t('edited', { name: change.name, field: t(`fields.${field}`), before, after })
-        : t('editedUnnamed', { field: t(`fields.${field}`), before, after })}
-    </li>
-  ));
-}
-
-/** Every change against the published version, grouped; each line says what it does in words. */
-function Diff({ changes }: { changes: readonly CatalogueChange[] }) {
-  const t = useTranslations('ops.catalogue.editor.diff');
-  if (changes.length === 0) return <p className="mt-3">{t('none')}</p>;
-  return (
-    <div className="mt-3 flex max-h-80 flex-col gap-3 overflow-y-auto">
-      {GROUPS.map((group) => {
-        const rows = changes.filter((c) => c.group === group);
-        return (
-          rows.length > 0 && (
-            <section key={group} className="flex flex-col gap-1">
-              <h3 className="text-body font-semibold text-text">{t(`groups.${group}`)}</h3>
-              <ul className="flex flex-col gap-1 text-body text-text">
-                {rows.map((change) => (
-                  <ChangeLines key={change.id} change={change} />
-                ))}
-              </ul>
-            </section>
-          )
-        );
-      })}
-    </div>
-  );
-}
 
 export function CataloguePublish({ model }: { model: CataloguePublishViewModel }) {
   const t = useTranslations('ops.catalogue.editor');
@@ -98,7 +59,9 @@ export function CataloguePublish({ model }: { model: CataloguePublishViewModel }
         onConfirm={publish.onConfirm}
         done={null}
       >
-        <Diff changes={model.changes} />
+        <div className="mt-3 max-h-80 overflow-y-auto">
+          <CatalogueDiff changes={model.changes} />
+        </div>
         {publish.block && <p className="mt-3 font-semibold">{t(`publish.blocked.${publish.block}`)}</p>}
       </ReasonedChange>
     </div>

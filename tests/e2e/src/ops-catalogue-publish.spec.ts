@@ -14,10 +14,9 @@ import { expectAccessible } from './gallery.ts';
 // tests/integration catalogue-publish.test.ts. Synthetic people and catalogue text only.
 
 test.skip(!process.env['CI'] && !process.env['E2E_PUBLISH_CATALOGUE'], 'publishes a permanent catalogue version');
-// One journey through three eval runs and a publish: about 33 s on a CI runner (trace of PR #446), over the 30 s default.
-test.setTimeout(60_000);
 
 const REASON = 'Add insurance pack for the pilot client';
+const LEDGER = 'Ledger and double-entry accounting';
 
 // A retry starts clean: a draft an earlier attempt left before publishing is deleted (its eval runs stay, version null).
 test.beforeAll(async () => {
@@ -63,6 +62,8 @@ async function blocked(page: Page, copy: string) {
 }
 
 test('Scenarios: the gate, publish with a reason, the audit row, and the new pack in Add a job', async ({ page }) => {
+  // One journey through two operators and a recruiter, in one test so a retry never splits it: longer than the default.
+  test.setTimeout(120_000);
   await signIn(page, { email: 'pia.platform@example.com' });
   await page.goto('/ops/catalogue');
   await page.getByRole('button', { name: 'Start a draft' }).click();
@@ -84,6 +85,12 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
   await edit.getByLabel('English label').fill('Telecom and 5G');
   await edit.getByRole('button', { name: 'Save' }).click();
   await expect(edit).toBeHidden();
+  // AIV-P2-050: version 2 also retires a competency, so its history row reads one added, one edited, one retired.
+  // After the edit's refresh, so the retire names the draft's current revision.
+  await expect(page.locator('main summary').filter({ hasText: 'Telecom and 5G' }).first()).toBeVisible();
+  await page.locator('main summary').filter({ hasText: 'Payments and fintech' }).first().click();
+  await page.getByRole('button', { name: `Retire ${LEDGER}` }).click();
+  await expect(page.getByRole('button', { name: `Retire ${LEDGER}` })).toHaveCount(0);
   await blocked(page, 'The draft changed after the last eval run. Run it again.');
   await runEval(page, 'passed');
 
@@ -95,6 +102,7 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
   await expect(
     card.getByRole('listitem').filter({ hasText: 'Edited: Telecom label, Telecom → Telecom and 5G' }),
   ).toHaveCount(1);
+  await expect(card.getByRole('listitem').filter({ hasText: `Retired: ${LEDGER}` })).toHaveCount(1);
   await card.getByLabel('Reason').fill('Add it');
   await expect(card).toContainText('Write a reason of at least 10 characters.');
   await expect(card.getByRole('button', { name: 'Publish version 2' })).toBeDisabled();
@@ -128,4 +136,33 @@ test('Scenarios: the gate, publish with a reason, the audit row, and the new pac
   const packs = page.getByRole('list', { name: 'Industries' }).getByRole('button');
   await expect(packs.filter({ hasText: 'Insurance and insurtech' })).toHaveCount(1);
   await expect(packs.filter({ hasText: 'Telecom and 5G' })).toHaveCount(1);
+
+  // AIV-P2-050, in this test so no separate test drags the publish into a retry: Theo reads the version history.
+  await page.context().clearCookies();
+  await signIn(page, { email: 'theo.platform@example.com' });
+  await page.goto('/ops/catalogue/versions');
+  const rows = page.getByRole('table', { name: 'Published catalogue versions' }).getByRole('row');
+  // The header row, then version 2 first.
+  const first = rows.nth(1);
+  await expect(first).toContainText('Version 2');
+  await expect(first).toContainText('pia.platform');
+  await expect(first).toContainText(REASON);
+  await expect(first).toContainText('1 added · 1 edited · 1 retired');
+  await expect(first).toContainText('Eval passed');
+  await expect(rows.last()).toContainText('System');
+  await expect(rows.last()).toContainText('Catalogue version 1 from code (AIV-P1-004, AIV-P1-061)');
+
+  await first.getByRole('link', { name: 'Version 2' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL('/ops/catalogue/versions/2');
+  await expect(page.getByRole('heading', { level: 2, name: 'Changes against version 1' })).toBeVisible();
+  const diff = page.getByRole('main');
+  await expect(diff.getByRole('listitem').filter({ hasText: 'Added: Insurance and insurtech' })).toHaveCount(1);
+  await expect(
+    diff.getByRole('listitem').filter({ hasText: 'Edited: Telecom label, Telecom → Telecom and 5G' }),
+  ).toHaveCount(1);
+  await expect(diff.getByRole('listitem').filter({ hasText: `Retired: ${LEDGER}` })).toHaveCount(1);
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('textbox')).toHaveCount(0);
+  await expectAccessible(page);
 });

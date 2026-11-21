@@ -1,5 +1,7 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { buttonClassName } from '@credalent/ui';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Catalogue } from '@/features/ops/components/Catalogue.tsx';
 import { catalogueView } from '@/features/ops/domain/catalogue.ts';
 import { draftModel } from '@/features/ops/domain/catalogueEditor.ts';
@@ -28,7 +30,15 @@ export default async function CataloguePage() {
   const evaluation = evalView(draftEval) ?? { status: 'not_run' as const };
   return (
     <>
-      <PageHeader title={t('ops.catalogue.title')} description={t('ops.catalogue.description')} />
+      <PageHeader
+        title={t('ops.catalogue.title')}
+        description={t('ops.catalogue.description')}
+        actions={
+          <Link href="/ops/catalogue/versions" className={buttonClassName('secondary')}>
+            {t('ops.catalogue.historyLink')}
+          </Link>
+        }
+      />
       {draft ? (
         <CatalogueEditorClient publishedVersion={view.published.version} draft={draft} evalView={evaluation} />
       ) : (

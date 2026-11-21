@@ -72,3 +72,4 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 - **Entry list** grouped by job type or pack, each entry with a status word and icon: Live, Changed in draft, New in draft, Retired.
 - **Entry form** in the main column, the entry's meaning, evidence and levels as labelled fields; the fairness check's message under the field it refers to.
 - **Diff list** on the publish preview-confirm card: added, changed (before and after), retired, with the reason field and the eval result.
+- **Version history** (AIV-P2-050) at `/ops/catalogue/versions`, linked from the catalogue header: a table of published versions, newest first, 20 a page (version, published at with its time zone, published by, reason, change counts, eval status with icon and word); `/ops/catalogue/versions/N` shows the version's facts, the same diff list against the version before ("First version" for version 1) and its entries, read-only.
