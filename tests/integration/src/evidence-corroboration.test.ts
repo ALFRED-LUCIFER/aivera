@@ -662,6 +662,37 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
     const [shown] = (await assessed(priya, DISTRIBUTED)).competencies;
     expect(shown?.proven.itemIds.toSorted()).toEqual(items.map((i) => i.id).toSorted());
   });
+
+  // SAFETY: mutation check: settled a withheld link with nothing withheld (every open contradiction treated as resolved) -> this test failed
+  it('resolving one contradiction never lets a source still in another open contradiction vouch', async () => {
+    const hessa = await person('Hessa Al Mansoori', 'hessa.two.contradictions@example.com');
+    const write = await record(hessa, 'document', 'Team write-up', 'Led 12 engineers on the retrieval team.');
+    await record(hessa, 'portal_submission', 'Portal answer', 'Led 5 engineers on the retrieval team.');
+    await record(hessa, 'reference_call', 'Reference call', 'Her manager said answer accuracy was 80%.');
+    await record(hessa, 'document', 'Accuracy write-up', 'Raised answer accuracy to 88%.');
+    completion = answer(LLM, [
+      [1, 'Led 12 engineers on the retrieval team.'],
+      [2, 'Led 5 engineers on the retrieval team.'],
+      [3, 'answer accuracy was 80%'],
+      [4, 'Raised answer accuracy to 88%.'],
+    ]);
+    comparison = '{"contradictions":[]}';
+    await mapNow(hessa);
+    const comparisons = await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, hessa, JOB));
+    expect(comparisons.filter((c) => c.outcome === 'contradiction')).toHaveLength(2);
+    const items = await linked(hessa, LLM);
+    const writeItem = items.find((i) => i.sourceId === write.sourceId)?.id;
+    const teamPair = comparisons.find((c) => c.itemId === writeItem || c.otherItemId === writeItem);
+    // Only the head-count contradiction is resolved; the reference call still contradicts the accuracy write-up.
+    await as(ALEX, w1, (ctx) =>
+      evidence.resolveContradiction(ctx, teamPair?.id ?? '', {
+        note: 'The team grew from 5 to 12',
+        limit: 'Head count from her own accounts only.',
+      }),
+    );
+    expect((await linked(hessa, LLM)).find((i) => i.sourceId === write.sourceId)?.provenance).toBe('claim');
+    expect(await backed(hessa)).toBe(0);
+  });
 });
 
 describe('Feature: Candidate names and contact details never reach the model (AIV-P1-080)', () => {

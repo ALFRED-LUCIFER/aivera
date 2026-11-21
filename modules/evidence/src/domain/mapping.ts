@@ -13,20 +13,19 @@ export const CLAIM_LIMIT = 'A claim until a document or a second source supports
 export const OWN_ACCOUNT_LIMIT = "The candidate's own account: a claim until a second, independent source supports it.";
 
 /**
- * The strongest each source kind other than a repository or a CV can back (AIV-P1-087): nobody else can inspect how a
- * document, a submission or a page the candidate published was made, and a reference call or an interview note is an
- * indirect signal (the Rubric page's Supporting). A CV is a claim, capped by the claim rule.
+ * Each source kind other than a repository or a CV (AIV-P1-087), so a new kind cannot be added without a decision:
+ * `cap`, the strongest it can back: nobody else can inspect how a document, a submission or a page the candidate
+ * published was made, and a reference call or an interview note is an indirect signal (the Rubric page's Supporting);
+ * `ownAccount`, written by the candidate, so alone it is a claim. Neither these nor an interview note is independent
+ * of the candidate; only a reference call is (`isIndependent` in corroboration.ts). A CV is a claim by the claim rule.
  */
-const KIND_CAP: Record<Exclude<SourceKind, 'repository' | 'cv'>, Strength> = {
-  document: 'medium',
-  shipped_product: 'medium',
-  portal_submission: 'medium',
-  reference_call: 'supporting',
-  interview_note: 'supporting',
+const KINDS: Record<Exclude<SourceKind, 'repository' | 'cv'>, { cap: Strength; ownAccount: boolean }> = {
+  document: { cap: 'medium', ownAccount: true },
+  shipped_product: { cap: 'medium', ownAccount: true },
+  portal_submission: { cap: 'medium', ownAccount: true },
+  reference_call: { cap: 'supporting', ownAccount: false },
+  interview_note: { cap: 'supporting', ownAccount: false },
 };
-
-/** Kinds that are the candidate's own account: alone, a claim; they count only beside a second, independent origin. */
-const CANDIDATE_WRITTEN: readonly SourceKind[] = ['document', 'portal_submission', 'shipped_product'];
 
 /** The highest level 0–5 a link can show under each ceiling: expert needs Strong; an indirect signal shows 2 at most. */
 // shortcut: a first calibration of level against strength; revisit it with the pilot's rubric reviews.
@@ -93,7 +92,7 @@ const within = (spans: readonly { start: number; end: number }[], start: number,
 /**
  * The guards, per cited span (a link citing two sources is two links, each judged by its own source): competency
  * membership; a CV-sourced link above Supporting rejected, never lowered; a claim capped at Supporting; authorship,
- * login, skill-signal and declaration caps on repositories; a cap per other kind (KIND_CAP); the level capped by the
+ * login, skill-signal and declaration caps on repositories; a cap per other kind (KINDS); the level capped by the
  * source's caps (LEVEL_CAP); and never "Independently corroborated", which only AIV-P1-029 sets.
  */
 export function guardLinks(input: {
@@ -138,7 +137,7 @@ export function guardLinks(input: {
           caps.push(best.reduce((a, b) => (RANK[b] > RANK[a] ? b : a)));
         }
         if (within(source.declarationSpans, citation.start, citation.end)) caps.push('supporting');
-      } else if (source.kind !== 'cv') caps.push(KIND_CAP[source.kind]);
+      } else if (source.kind !== 'cv') caps.push(KINDS[source.kind].cap);
       const ceiling = lowest(...caps, ...(claim ? (['supporting'] as const) : []));
       const duplicate = kept.some(
         (k) => k.competencyId === link.competencyId && k.sourceId === source.id && k.start === citation.start,
@@ -153,8 +152,8 @@ export function guardLinks(input: {
         strength: lowest(link.strength, ceiling),
         provenance: claim ? 'claim' : 'submitted',
         // A claim's level is what it claims and counts only toward "up to N if claims hold": source caps bound it, not
-        // the claim cap.
-        level: Math.min(link.level, LEVEL_CAP[lowest(...caps)]),
+        // the claim cap. Any other link's level is bounded by the strength it is stored at.
+        level: Math.min(link.level, LEVEL_CAP[claim ? lowest(...caps) : lowest(link.strength, ceiling)]),
         limit: claim ? CLAIM_LIMIT : link.limit,
         ceiling,
       });
@@ -175,7 +174,7 @@ export function settleProvenance<
     if (l.provenance !== 'submitted') return l;
     if (corroborated.has(l.competencyId)) return { ...l, provenance: 'corroborated' };
     const kind = kinds.get(l.sourceId);
-    if (!kind || !CANDIDATE_WRITTEN.includes(kind)) return l;
+    if (!kind || kind === 'repository' || kind === 'cv' || !KINDS[kind].ownAccount) return l;
     return { ...l, provenance: 'claim', strength: lowest(l.strength, 'supporting'), limit: OWN_ACCOUNT_LIMIT };
   });
 }

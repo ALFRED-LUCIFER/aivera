@@ -243,7 +243,7 @@ const expert = (sourceId: string) =>
   link({ competencyId: LLM, sourceId, quote: 'I am an expert in production LLM systems', level: 5 });
 
 describe("Feature: Candidate-written sources cannot be proven on the model's word (AIV-P1-087)", () => {
-  // SAFETY: mutation check: removed the non-repository cap (KIND_CAP push) -> "A source kind is capped whatever the model says" failed
+  // SAFETY: mutation check: removed the non-repository cap (the KINDS cap push) -> "A source kind is capped whatever the model says" failed
   describe('Scenario Outline: A source kind is capped whatever the model says', () => {
     it.each([
       ['document', 'medium', 4],
@@ -251,7 +251,7 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
       ['portal_submission', 'medium', 4],
       ['reference_call', 'supporting', 2],
       ['interview_note', 'supporting', 2],
-    ] as const)('%s -> strength %s, level at most %i', (kind, cap, level) => {
+    ] as const)('%s -> strength ceiling %s, level at most %i', (kind, cap, level) => {
       const [stored] = guard([expert(kind)], [own(kind)]).links;
       expect(stored).toMatchObject({ strength: cap, ceiling: cap, level, provenance: 'submitted' });
     });
@@ -259,6 +259,11 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
     it('caps a repository link’s level by its ceiling, and leaves a CV claim’s level as it claims', () => {
       expect(guard([link({ level: 5 })], [repo({ authorship: 'shared' })]).links[0]?.level).toBe(4);
       expect(guard([link({ level: 5 })], [repo()]).links[0]?.level).toBe(5);
+      // The model's own lower strength bounds the level too: expert needs Strong.
+      expect(guard([link({ level: 5, strength: 'medium' })], [repo()]).links[0]).toMatchObject({
+        strength: 'medium',
+        level: 4,
+      });
       const cvClaim = link({ sourceId: 'cv', quote: 'expert in Python', strength: 'supporting', level: 5 });
       expect(guard([cvClaim]).links[0]).toMatchObject({ strength: 'supporting', provenance: 'claim', level: 5 });
     });

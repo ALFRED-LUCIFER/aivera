@@ -265,17 +265,20 @@ export async function mapEvidence(
         : undefined,
   }));
   // A source in an open contradiction vouches for nothing until a person resolves it.
-  const withheld = new Set(
-    pairs
-      .filter((p) => p.outcome === 'contradiction' && !p.resolved)
-      .flatMap((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']),
-  );
+  const open = pairs
+    .filter((p) => p.outcome === 'contradiction' && !p.resolved)
+    .map((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']);
+  const withheld = new Set(open.flat());
   const rules = { links: guarded.links, sources: originSources, originGroups, logins };
-  const settled = settleProvenance(guarded.links, mapSources, corroboratedCompetencies({ ...rules, withheld }));
-  // A withheld link shows "Contradictory" while the contradiction is open, then its stored provenance, with no re-map
-  // after a resolution: so it is stored as it would settle once resolved, never as the claim its withholding made it.
-  const ifResolved = settleProvenance(guarded.links, mapSources, corroboratedCompetencies(rules));
-  const links = settled.map((l, i) => (withheld.has(l.sourceId) ? (ifResolved[i] ?? l) : l));
+  const corroborated = corroboratedCompetencies({ ...rules, withheld });
+  // A withheld link shows "Contradictory" while its contradiction is open, then its stored provenance, with no re-map
+  // after a resolution: so it is stored as it settles once its own contradictions are resolved, every other open one
+  // still withheld (never as the claim its withholding made it, never vouched for by a source still in dispute).
+  const links = guarded.links.map((l) => {
+    if (!withheld.has(l.sourceId)) return settleProvenance([l], mapSources, corroborated)[0] ?? l;
+    const stillHeld = new Set(open.filter((p) => !p.includes(l.sourceId)).flat());
+    return settleProvenance([l], mapSources, corroboratedCompetencies({ ...rules, withheld: stillHeld }))[0] ?? l;
+  });
   const gaps = findGaps(competencyIds, links, mapGrades);
   const ranked = rankChanges({
     competencies: rubric.competencies.map((c) => ({ id: c.id, weight: c.weightPercent })),
