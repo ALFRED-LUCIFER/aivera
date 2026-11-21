@@ -1,5 +1,5 @@
 import type { Role, WorkspaceStatus } from '@credalent/workspaces';
-import type { Capability, ScreenId } from './navigation.ts';
+import type { Capability } from './navigation.ts';
 
 export type Member = {
   name: string;
@@ -26,9 +26,6 @@ export function shellMember({
   const capabilities: Capability[] = role === 'admin' || role === 'recruiter' ? ['recruiter'] : [];
   return { name, initials: initials(name), capabilities, workspace: { synthetic, status } };
 }
-
-/** Sidebar badges; a section without a number shows no badge. */
-export type ShellCounts = Partial<Record<ScreenId, number>>;
 
 export type Theme = 'light' | 'dark';
 export const themeCookie = 'theme';

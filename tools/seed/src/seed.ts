@@ -63,7 +63,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
 
   const recruiter = await userId(RECRUITER);
   const session = { userId: recruiter };
-  // shortcut: the demo is AP's active workspace, so two seeds started at once can create two; find it by the synthetic
+  // shortcut: the demo is the recruiter's active workspace, so two seeds started at once can create two; find it by the synthetic
   // flag under a lock if concurrent seeding ever matters.
   let workspaceId = await workspaces.activeWorkspace(recruiter);
   // shortcut: the reset purges people and jobs but not intake.* (the demo seeds no applications yet); the first seed
@@ -79,6 +79,9 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   }
   workspaceId ??= (await workspaces.createWorkspace({ ...WORKSPACE, creatorUserId: recruiter })).id;
 
+  // Read before the transaction below: it holds the seed's one connection (cli.ts max: 1), so a read on `db` inside it
+  // would wait for a connection that never frees and the seed would hang.
+  const catalogue = await createCatalogueReads(db).getPublishedCatalogue();
   const owners = await Promise.all(HIRING_OWNERS.map(userId));
   const ownerOf = (key: string) => owners[HIRING_OWNERS.findIndex((o) => o.key === key)] ?? null;
   const asRecruiter = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
@@ -100,7 +103,6 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     // AIV-P1-065: a job is found again by its title; each new one gets its draft rubric v1, audited as `job.created`.
     // shortcut: a demo job renamed in the app is seeded again on the next run; match on a seed key if that matters.
     const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
-    const catalogue = await createCatalogueReads(db).getPublishedCatalogue();
     for (const job of INDUSTRY_JOBS)
       if (!jobIds.has(job.title)) {
         const created = await jobs.createJobWithDraftRubric(ctx, {
@@ -119,7 +121,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   });
 
   // AIV-P1-067: each design job as the design shows it, on the seed clock so a reseed writes the same dates: added
-  // 3 Nov, each rubric version saved and sent by AP and approved by the job's hiring owner, then moved to its stage.
+  // on its own date, each rubric version saved and sent by the recruiter and approved by the job's hiring owner, then moved to its stage.
   // shortcut: one transaction per step (the hiring owner approves in their own), so a seed stopped midway leaves a job
   // part-seeded, which a rerun skips; run with --reset then. Resume from the job's state if that ever bites.
   // Only the jobs module's writes and audit entries take this clock; the hiring owner's grant is audited at real time.
@@ -131,14 +133,16 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     const owner = ownerOf(job.hiringOwner);
     if (!owner) throw new Error(`No hiring owner ${job.hiringOwner}`);
     const versions = [...(job.supersedes ? [job.supersedes] : []), job.rubric];
-    at('2026-11-03', 8);
+    // Each job on its own date and hour, so the demo's timeline does not read as one script run.
+    const hour = 8 + JOBS.indexOf(job);
+    at(job.addedOn, hour);
     const { job: created } = await asRecruiter((ctx) =>
       designJobs.createJobWithDraftRubric(ctx, {
         title: job.title,
         jobType: job.jobType,
         team: job.team,
         location: job.location,
-        description: `${job.title}, a synthetic demo job.`,
+        description: job.description,
         hiringOwnerUserId: owner,
         synthetic: true,
         competencies: rubricOf(versions[0]?.competencies ?? []),
@@ -154,9 +158,9 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         }),
       );
       if (!approvedOn) break;
-      at(approvedOn, 8);
+      at(approvedOn, hour + 1);
       await asRecruiter((ctx) => designJobs.submitRubric(ctx, saved.id));
-      at(approvedOn, 10);
+      at(approvedOn, hour + 3);
       await workspaces.withWorkspace({ userId: owner }, workspaceId, (ctx) => designJobs.approveRubric(ctx, saved.id));
     }
     await asRecruiter((ctx) => designJobs.changeStage(ctx, created.id, job.stage));

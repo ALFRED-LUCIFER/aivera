@@ -6,7 +6,7 @@
 
 | Role                                               | Who in the demo                                                                                                                                                                                       | Uses                                 |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Recruiter                                          | The signed-in user ("AP", a talent partner)                                                                                                                                                           | Everything in the recruiter app      |
+| Recruiter                                          | The signed-in user: Ayesha Perera (`ap@example.com`), a talent partner, "AP" in the end-to-end seed; admin of "Meridian Talent" in `pnpm db:seed`                                                     | Everything in the recruiter app      |
 | Workspace admin                                    | Alex Recruiter (`alex@example.com`), who creates workspace "Demo Hiring Co" in the workspaces tests                                                                                                   | Workspace members and roles          |
 | Hiring owner                                       | Head of Engineering (`hassan@example.com`, Demo Hiring Co); CPO, Payments; Head of Quality; VP Engineering; Design Director                                                                           | Rubric approval, decision pack       |
 | Interviewer                                        | The recruiter or the hiring owner; Rami Panel (`rami@example.com`, Demo Hiring Co, also on Gulf Talent Partners' panel)                                                                               | Scorecard                            |
@@ -29,15 +29,15 @@
 | Client "Dune Logistics" (a logistics firm) | Agency client  | Hiring owner Faisal Client (`faisal@example.com`), "Head of Engineering, Dune Logistics", granted one job: Staff Backend Engineer. Interviewer Lina Panel (`lina@example.com`), granted the same job. Neither sees Falcon Pay's job.    |
 | Harbour Talent                             | Agency         | Admin Tariq Agency (`tariq.agency@example.com`). The same two clients and jobs as Gulf Talent Partners, in the end-to-end tests only: Tariq invites people there and Faisal accepts an invitation to Dune Logistics' jobs (AIV-P1-003). |
 
-## Demo jobs (workspace "Demo")
+## Demo jobs (workspace "Meridian Talent", company Meridian Digital; "Demo" in the end-to-end seed)
 
-| Job                              | Team · location               | Hiring owner        | Stage                            |
-| -------------------------------- | ----------------------------- | ------------------- | -------------------------------- |
-| Senior AI Engineer               | Engineering · DIFC, Dubai     | Head of Engineering | Round 1 interviews, 64 assessed  |
-| Senior Product Manager, Payments | Product · Dubai Internet City | CPO, Payments       | Round 1 interviews, 52 assessed  |
-| QA Automation Engineer           | Quality · Dubai, hybrid       | Head of Quality     | Collecting evidence, 38 assessed |
-| Staff Backend Engineer           | Engineering · Riyadh, hybrid  | VP Engineering      | Collecting evidence, 31 assessed |
-| Senior Product Designer          | Design · Abu Dhabi            | Design Director     | Defining rubric                  |
+| Job                              | Team · location               | Hiring owner                        | Stage                            |
+| -------------------------------- | ----------------------------- | ----------------------------------- | -------------------------------- |
+| Senior AI Engineer               | Engineering · DIFC, Dubai     | Hassan Barakat, Head of Engineering | Round 1 interviews, 64 assessed  |
+| Senior Product Manager, Payments | Product · Dubai Internet City | Camille Fares, CPO, Payments        | Round 1 interviews, 52 assessed  |
+| QA Automation Engineer           | Quality · Dubai, hybrid       | Rashid Al Nuaimi, Head of Quality   | Collecting evidence, 38 assessed |
+| Staff Backend Engineer           | Engineering · Riyadh, hybrid  | Vikram Deshmukh, VP Engineering     | Collecting evidence, 31 assessed |
+| Senior Product Designer          | Design · Abu Dhabi            | Dina Sabbagh, Design Director       | Defining rubric                  |
 
 `pnpm db:seed` writes the five jobs above from the seed cast (`tools/seed/src/cast.ts`) at their stages (AIV-P1-067): each rubric approved by its hiring owner on its design date (Senior AI Engineer: version 1 on 5 Nov 2026, superseded by version 2 on 12 Nov; Senior Product Manager, Payments 5 Nov; QA Automation Engineer 9 Nov; Staff Backend Engineer 10 Nov), the Senior Product Designer's still a draft. Candidates and assessed counts are not seeded yet. It also writes five industry jobs (AIV-P1-065), each with a draft rubric v1 at "Defining rubric": the job type's starter competencies plus its domain pack's core competencies and regional hints (all desirable).
 
@@ -51,7 +51,7 @@
 
 Their employers are a card and wallet payments company, a digital health company, an online marketplace, a retail bank and a payments gateway.
 
-AP signs in as `ap@example.com` in the e2e seed. Each demo hiring owner is a user named by their title, at `head.engineering@example.com`, `cpo.payments@example.com`, `head.quality@example.com`, `vp.engineering@example.com` and `design.director@example.com`.
+Ayesha Perera signs in as `ap@example.com`. In `pnpm db:seed` each demo hiring owner has a full name and keeps the title in the job's hiring-owner field: Hassan Barakat at `head.engineering@example.com`, Camille Fares at `cpo.payments@example.com`, Rashid Al Nuaimi at `head.quality@example.com`, Vikram Deshmukh at `vp.engineering@example.com` and Dina Sabbagh at `design.director@example.com`. The end-to-end seed (`tests/e2e/seed.ts`) still names its copies of these users by title. Every seeded person has a different surname.
 
 Candidate-site listings also include Real Estate Sales Consultant (a property brokerage, Dubai) and Senior Software Engineer, Banking (a retail bank, Dubai). Employers are described generically ("A BNPL fintech"), never named.
 
@@ -73,3 +73,5 @@ Candidate-site listings also include Real Estate Sales Consultant (a property br
 | Tarek Mansour     | Staff Backend Engineer           | 63, up to 80 | In 2 jobs; saga library.                                                                                                                                                        |
 | Inbox arrivals    | various                          | —            | Fatima Al Hammadi, Sneha Iyer, Anna Schmidt, Mark Reyes, Youssef Aziz, Paolo Garcia                                                                                             |
 | Talent pool       | various                          | —            | Hala Saleh, Imran Qureshi, Kristine Dela Cruz, Lukas Schmidt, Noura Al Ketbi                                                                                                    |
+
+Sneha Iyer and Lukas Schmidt are fixture-only people: tests, evals and artboards use them, and `pnpm db:seed` loads Sneha Kulkarni and Lukas Brandt in their place so the seeded cast has no shared surname.

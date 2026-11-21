@@ -11,7 +11,7 @@ test('Scenario: J0 smoke journey', async ({ recruiter: page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
   await expect(page.getByText('Synthetic demo data')).toBeVisible();
   const primary = page.getByRole('navigation', { name: 'Primary' });
-  await expect(primary.getByRole('link', { name: 'My desk 4' })).toBeVisible();
+  await expect(primary.getByRole('link', { name: 'My desk' })).toBeVisible();
   await expectAccessible(page);
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
