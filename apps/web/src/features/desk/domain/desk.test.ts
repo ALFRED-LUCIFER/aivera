@@ -42,8 +42,8 @@ describe('toApproveItems (AIV-P1-084)', () => {
   it('keeps the jobs order and marks a returned version', () => {
     expect(
       toApproveItems([
-        { jobId: 'a', title: 'Senior Backend Engineer', versionId: 'v1', version: 1, status: 'draft' },
-        { jobId: 'b', title: 'Platform Engineer', versionId: 'v2', version: 2, status: 'returned' },
+        { jobId: 'a', title: 'Senior Backend Engineer', version: 1, status: 'draft' },
+        { jobId: 'b', title: 'Platform Engineer', version: 2, status: 'returned' },
       ]),
     ).toEqual([
       { jobId: 'a', job: 'Senior Backend Engineer', version: 1, returned: false },

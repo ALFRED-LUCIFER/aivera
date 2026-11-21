@@ -16,9 +16,16 @@ export default async function DeskPage() {
   return (
     <>
       <PageHeader title={t('shell.nav.desk')} />
-      <div className="flex flex-col gap-6">
-        {desk?.toApprove && <DeskToApprove items={desk.toApprove} />}
-        <DeskApprovals state={{ status: 'ready', items: desk?.approvals ?? [] }} />
+      {/* The Desk artboard's row of cards: side by side, wrapping on narrow screens. */}
+      <div className="flex flex-wrap items-start gap-6">
+        {desk?.toApprove && (
+          <div className="min-w-0 flex-[1_1_420px]">
+            <DeskToApprove items={desk.toApprove} />
+          </div>
+        )}
+        <div className="min-w-0 flex-[1_1_420px]">
+          <DeskApprovals state={{ status: 'ready', items: desk?.approvals ?? [] }} />
+        </div>
       </div>
     </>
   );

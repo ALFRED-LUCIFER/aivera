@@ -321,7 +321,6 @@ export type RubricApproval = {
 export type RubricToApprove = {
   jobId: string;
   title: string;
-  versionId: string;
   version: number;
   status: Extract<RubricStatus, 'draft' | 'returned'>;
 };

@@ -713,7 +713,7 @@ const desk = (userId: string, workspaceId: string) => as(userId, workspaceId, (c
 // Builds on the scenarios above: Senior Product Designer has only a draft; Senior AI Engineer has version 2 approved and
 // version 3 awaiting approval.
 describe('The Jobs list (AIV-P1-006)', () => {
-  it('Senior Product Designer has a draft: assessed 0, coverage not yet available, "Send rubric for approval"', async () => {
+  it('Senior Product Designer has a draft: assessed 0, coverage not yet available, "Approve the rubric"', async () => {
     const list = await desk(ALEX, demo);
     expect(list.find((j) => j.title === 'Senior Product Designer')).toMatchObject({
       rubric: { approved: false, latest: 'draft' },
@@ -1085,8 +1085,11 @@ describe("My desk: the rubrics waiting for the recruiter's approval", () => {
     expect(listed.map((r) => r.jobId)).not.toContain(elsewhere);
   });
 
-  // SAFETY: mutation check: listed every role's open rubrics (dropped the admin/recruiter role check) -> this test failed
-  it('a hiring owner and an interviewer have nothing waiting for them here', async () => {
+  // Lina is granted the Gulf job, which has a draft, so a leak would show it.
+  // SAFETY: mutation check: removed both the role check and authorize('rubric.edit') from listRubricsToApprove -> this
+  // test failed (Lina saw the Gulf draft)
+  it('a hiring owner and an interviewer granted a job with a draft have nothing waiting for them here', async () => {
+    await as(ALEX, gulf, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, jobId: elsewhere }));
     expect(await toApprove(HEAD, demo)).toEqual([]);
     expect(await toApprove(LINA, gulf)).toEqual([]);
   });
@@ -1104,8 +1107,6 @@ describe("My desk: the rubrics waiting for the recruiter's approval", () => {
     expect(new Set(open.map((r) => r.workspace_id))).toEqual(new Set([demo]));
   });
 
-  // SAFETY: mutation check: kept directly approved versions in listRubricApprovals (dropped the submittedBy check) -> this
-  // test failed (Desk Backend Engineer was "waiting on others")
   it('an approved draft leaves the list, and was never waiting on others', async () => {
     const [v1] = (await as(RANA, demo, (ctx) => jobs.listRubricVersions(ctx, deskJob))) ?? [];
     await as(RANA, demo, (ctx) => jobs.approveRubric(ctx, v1?.id ?? '', v1?.revision));
@@ -1122,5 +1123,15 @@ describe("My desk: the rubrics waiting for the recruiter's approval", () => {
       version: 1,
       status: 'returned',
     });
+  });
+
+  it('a version sent to the hiring owner but approved by the recruiter is not done "with the hiring owner"', async () => {
+    const v2 = await as(RANA, demo, (ctx) =>
+      jobs.saveRubric(ctx, deskJob, { successStatement: 'Ships more.', competencies: competencies([50, 50]) }),
+    );
+    await as(RANA, demo, (ctx) => jobs.submitRubric(ctx, v2.id));
+    await as(ALEX, demo, (ctx) => jobs.approveRubric(ctx, v2.id));
+    const approvals = await as(RANA, demo, (ctx) => jobs.listRubricApprovals(ctx));
+    expect(approvals.filter((r) => r.jobId === deskJob)).toEqual([]);
   });
 });

@@ -143,7 +143,7 @@ export function jobStore(tx: Tx): JobStore {
           version: rubricVersion.version,
           status: rubricVersion.status,
           approvedAt: rubricVersion.approvedAt,
-          submittedBy: rubricVersion.submittedBy,
+          approvedBy: rubricVersion.approvedBy,
         })
         .from(rubricVersion)
         .innerJoin(job, and(eq(job.workspaceId, rubricVersion.workspaceId), eq(job.id, rubricVersion.jobId)))
@@ -163,7 +163,6 @@ export function jobStore(tx: Tx): JobStore {
         .select({
           jobId: job.id,
           title: job.title,
-          versionId: rubricVersion.id,
           version: rubricVersion.version,
           status: rubricVersion.status,
         })

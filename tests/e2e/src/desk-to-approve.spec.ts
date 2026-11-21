@@ -24,12 +24,6 @@ async function saveDraft(page: Page, title: string) {
   await expect(page.getByText(/^Job saved\./)).toBeFocused();
 }
 
-const section = (page: Page) =>
-  page
-    .locator('section, div')
-    .filter({ has: page.getByRole('heading', { level: 2, name: 'Rubrics to approve' }) })
-    .last();
-
 for (const theme of themes) {
   test(`Scenario: A solo recruiter approves a draft from My desk, from the keyboard (${theme})`, async ({
     page,
@@ -44,14 +38,17 @@ for (const theme of themes) {
 
     await page.goto('/app');
     await expect(page.getByRole('heading', { level: 2, name: 'Rubrics to approve' })).toBeVisible();
-    await expect(section(page).getByText(`${title}, version 1.`)).toBeVisible();
+    await expect(page.getByText(`${title}, version 1.`)).toBeVisible();
     await expectAccessible(page);
 
     // SAFETY: mutation check: hid DeskToApprove on the desk page (dropped the `desk.toApprove &&` card) -> this test
     // failed (no "Rubrics to approve" heading)
+    // Tab through the page to the row's link, which shows a focus ring, then open it with Enter.
     const open = page.getByRole('link', { name: `Open the ${title} rubric` });
-    await open.focus();
+    for (let i = 0; i < 80 && !(await open.evaluate((el) => el === document.activeElement)); i++)
+      await page.keyboard.press('Tab');
     await expect(open).toBeFocused();
+    expect(await open.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]+\/rubric$/);
     await page.getByRole('button', { name: 'Approve version 1' }).click();

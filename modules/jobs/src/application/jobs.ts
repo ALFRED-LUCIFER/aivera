@@ -84,7 +84,7 @@ export type JobStore = {
   rubricApprovals(
     workspaceId: string,
     approvedSince: Date,
-  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status']; submittedBy: string | null })[]>;
+  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status']; approvedBy: string | null })[]>;
   /** Each job's open draft or returned version, oldest job first (AIV-P1-084). */
   openRubrics(workspaceId: string): Promise<RubricToApprove[]>;
   /** Deletes every job of the workspace and its rubrics and listings; false, deleting nothing, if any is not synthetic. */
@@ -605,9 +605,12 @@ export function jobsUseCases({
       await authorize(ctx, 'job.list');
       const since = new Date(now().getTime() - DONE_ON_DESK_MS);
       const rows = await storeFor(ctx.tx).rubricApprovals(ctx.workspaceId, since);
-      // A version a recruiter approved directly was never sent, so it never waited on anyone (ADR-014).
-      return rows.flatMap(({ status, submittedBy, ...row }) =>
-        status === 'awaiting_approval' || (status === 'approved' && submittedBy !== null) ? [{ ...row, status }] : [],
+      // Done only when the hiring owner approved it: one a recruiter approved, sent or not, never waited on them
+      // (ADR-014), so it never says "With the {owner}".
+      return rows.flatMap(({ status, approvedBy, ...row }) =>
+        status === 'awaiting_approval' || (status === 'approved' && approvedBy === row.hiringOwnerUserId)
+          ? [{ ...row, status }]
+          : [],
       );
     },
 
