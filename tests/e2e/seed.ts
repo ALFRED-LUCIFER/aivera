@@ -6,8 +6,9 @@ import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
 import { createIntake } from '@credalent/intake/composition';
+import type { Source } from '@credalent/intake';
 import type { Competency } from '@credalent/jobs';
-import { createJobs } from '@credalent/jobs/composition';
+import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -316,8 +317,12 @@ export default async function seed() {
     await workspaces.switchWorkspace({ userId: head }, workspaceId);
     await artboardRubric(workspaceId, recruiter, head, sae);
     await as((ctx) => jobs.changeStage(ctx, sae, 'round_1'));
-    // AIV-P1-086: three applicants received 14 Nov, a minute apart, as "Add applicants" files them (this harness has no
-    // Blob storage, so not through the dialog), for the Candidates tab's list. Not assessed, so none has a score.
+    // AIV-P1-086: applicants received 14 Nov, a minute apart, as "Add applicants" files them (this harness has no Blob
+    // storage, so not through the dialog), for the Candidates tab. AIV-P1-034: the seven Senior AI Engineer candidates
+    // of personas.md and Tarek Mansour ("in 2 jobs") carry its scores; Youssef Aziz, an Inbox arrival, is not assessed.
+    // The worker never runs in this harness, so these rows are hand-written into assessment.result, not produced by
+    // assessCandidate: their `competencies` are empty and they have no score.changed audit entry. Missing critical
+    // evidence lists only rubric v2's mandatory competencies, as assessment does (owner's decision, #98's Gherkin).
     let received: Date;
     const intake = createIntake(
       workspaces,
@@ -326,15 +331,46 @@ export default async function seed() {
       displayNamesInWorkspace,
       () => received,
     );
-    for (const [i, [name, source]] of (
+    const rubric = await withWorkspace(db, workspaceId, (tx) =>
+      createApprovedRubricReads().approvedRubric(tx, workspaceId, sae),
+    );
+    if (!rubric) throw new Error('The Senior AI Engineer rubric was not approved.');
+    const competency = (name: string) => {
+      const found = rubric.competencies.find((c) => c.name === name);
+      if (!found) throw new Error(`No competency "${name}" on the Senior AI Engineer rubric.`);
+      return found.id;
+    };
+    // [name, source, backed, up to, meets the need (of 6), confidence, missing critical evidence]; null: not assessed.
+    const cast: [string, Source, ...([number, number, number, string, string[]] | [null])][] = [
+      ['Sara Al Qahtani', 'linkedin', 68, 84, 4, 'High', ['Product judgement']],
+      ['Arjun Menon', 'referral', 64, 76, 3, 'High', ['Retrieval and evaluation']],
+      ['Layla Haddad', 'email', 61, 82, 3, 'Medium', ['Retrieval and evaluation']],
+      ['Daniel Novak', 'linkedin', 55, 78, 3, 'Medium', ['Product judgement']],
+      ['Priya Nair', 'careers_page', 49, 77, 2, 'Medium', ['Python service engineering', 'Product judgement']],
       [
-        ['Sara Al Qahtani', 'linkedin'],
-        ['Arjun Menon', 'referral'],
-        ['Layla Haddad', 'email'],
-      ] as const
-    ).entries()) {
+        'Omar Al Suwaidi',
+        'referral',
+        38,
+        74,
+        1,
+        'Low',
+        ['LLM systems in production', 'Python service engineering', 'Product judgement'],
+      ],
+      [
+        'Maria Santos',
+        'linkedin',
+        31,
+        69,
+        1,
+        'Low',
+        ['LLM systems in production', 'Python service engineering', 'Product judgement'],
+      ],
+      ['Tarek Mansour', 'referral', 63, 80, 3, 'Medium', ['LLM systems in production']],
+      ['Youssef Aziz', 'whatsapp', null],
+    ];
+    for (const [i, [name, source, ...score]] of cast.entries()) {
       received = new Date(Date.UTC(2026, 10, 14, 8, i));
-      await as((ctx) =>
+      const { personId } = await as((ctx) =>
         intake.receiveApplication(ctx, {
           jobId: sae,
           person: {
@@ -345,6 +381,15 @@ export default async function seed() {
           source,
           fileIds: [crypto.randomUUID()],
         }),
+      );
+      const [backed, upTo, meets, confidence, missing] = score;
+      if (backed === null) continue;
+      await withWorkspace(db, workspaceId, (tx) =>
+        tx.execute(sql`insert into assessment.result (id, workspace_id, candidate_id, job_id, rubric_version_id,
+            backed_score, upper_bound, meets_need, competency_count, missing_critical, confidence, competencies, assessed_at)
+          values (${crypto.randomUUID()}, ${workspaceId}, ${personId}, ${sae}, ${rubric.id}, ${backed}, ${upTo}, ${meets},
+            6, ${JSON.stringify(missing.map(competency))}::jsonb, ${confidence}, '[]'::jsonb,
+            ${new Date(Date.UTC(2026, 10, 14, 10, i)).toISOString()})`),
       );
     }
   }

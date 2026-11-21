@@ -58,6 +58,8 @@ const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
+const { ASSESSMENT_QUEUE, createAssessmentHandlers } = await import('@credalent/assessment/composition');
+const { createAudit } = await import('@credalent/audit/composition');
 const { createContactRecorder, readPersonAsSystem } = await import('@credalent/candidates/composition');
 const {
   CvParseRequestedV1,
@@ -77,6 +79,7 @@ const {
   createRepositoryReadHandler,
   createRepositoryRefreshHandler,
   EVIDENCE_QUEUE,
+  readEvidenceForJobAsSystem,
 } = await import('@credalent/evidence/composition');
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
 const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
@@ -108,20 +111,17 @@ const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZUR
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
 const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
-// has its consumer (the GitHub App, below); otherwise they go to `assessment` as before, so the evidence queue never
-// receives an event nothing handles.
+// has its consumer (the GitHub App, below), and its EvidenceMapped.v1 is scored on `assessment`; otherwise they go to
+// `assessment` directly (AIV-P1-031), so the evidence queue never receives an event nothing handles.
 const model = env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake';
 const mapping = !!githubApp && model;
 const catalogueEval = model && env.CATALOGUE_EVAL === 'on';
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
-  // shortcut: nothing consumes `assessment` until AIV-P1-031, so EvidenceMapped.v1 (and, without a model,
-  // RubricApproved.v1 and EvidenceRecorded.v1) dead-letter after their 14-day TTL like PersonCreated.v1 above; the
-  // assessment consumer replaces this note.
-  [RubricApprovedV1.type]: mapping ? EVIDENCE_QUEUE : 'assessment',
-  [EvidenceRecordedV1.type]: mapping ? EVIDENCE_QUEUE : 'assessment',
+  [RubricApprovedV1.type]: mapping ? EVIDENCE_QUEUE : ASSESSMENT_QUEUE,
+  [EvidenceRecordedV1.type]: mapping ? EVIDENCE_QUEUE : ASSESSMENT_QUEUE,
   [EvidenceMappingRequestedV1.type]: EVIDENCE_QUEUE,
-  [EvidenceMappedV1.type]: 'assessment',
+  [EvidenceMappedV1.type]: ASSESSMENT_QUEUE,
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
@@ -197,6 +197,14 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
       },
     }),
   ],
+  // Scores candidates when their mapped evidence or the job's approved rubric changes (AIV-P1-031).
+  [ASSESSMENT_QUEUE]: createAssessmentHandlers({
+    audit: createAudit(appDb, now),
+    ...createApprovedRubricReads(),
+    evidenceForJob: readEvidenceForJobAsSystem,
+    applications: createApplicationReads(),
+    now,
+  }),
 };
 // The catalogue draft eval (AIV-P2-048, ADR-013 point 12): the golden sets live against this environment's deployment,
 // each run within liveTokenCap and the platform eval budget's tokens left today, never a workspace's budget.

@@ -95,13 +95,16 @@ export const jobsForCandidate = async (tx: Tx, workspaceId: string, personId: st
       .select({ jobId: application.jobId })
       .from(application)
       .where(and(eq(application.workspaceId, workspaceId), eq(application.personId, personId)))
+      // Id order, so the assessment worker takes candidate-and-job locks in one order and never deadlocks (AIV-P1-031).
+      .orderBy(application.jobId)
   ).map((r) => r.jobId);
 
-/** The people who applied to a job, for the worker (AIV-P1-027). */
+/** The people who applied to a job, for the worker (AIV-P1-027), in id order as above. */
 export const candidatesForJob = async (tx: Tx, workspaceId: string, jobId: string) =>
   (
     await tx
       .select({ personId: application.personId })
       .from(application)
       .where(and(eq(application.workspaceId, workspaceId), eq(application.jobId, jobId)))
+      .orderBy(application.personId)
   ).map((r) => r.personId);

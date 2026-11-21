@@ -1,7 +1,7 @@
 // The only public surface of @credalent/assessment (ADR-002). It imports nothing from billing or portfolio (AGENTS.md 1.8,
 // rule `paying-never-changes-ranking`) nor from candidate-accounts (rule `recruiter-side-no-candidate-accounts`).
 import type { WorkspaceContext } from '@credalent/workspaces';
-import type { AssessCandidateInput, StoredAssessment } from '../application/assessment.ts';
+import type { AssessCandidateInput, JobRanking, StoredAssessment } from '../application/assessment.ts';
 
 export type {
   Assessment,
@@ -13,7 +13,7 @@ export type {
   RubricCompetency,
   RubricInput,
 } from '../domain/assess.ts';
-export type { AssessCandidateInput, StoredAssessment } from '../application/assessment.ts';
+export type { AssessCandidateInput, JobRanking, RankingRow, StoredAssessment } from '../application/assessment.ts';
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction, so
@@ -29,4 +29,12 @@ export interface AssessmentContract {
   assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment>;
   /** The latest assessment of the candidate for the job, or null. Admins and recruiters. */
   getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
+  /**
+   * The job's ranking (AIV-P1-031): `awaiting_rubric` until a rubric version is approved; then each candidate's latest
+   * result on the approved version, by backed score, then upper bound, then earliest first assessment, ranked from 1.
+   * A candidate not yet assessed on that version is not listed. It orders attention only; it rejects and hides nobody
+   * (AGENTS.md 1.5). `candidate.view` on the job: admins and recruiters, hiring owners and interviewers on a granted job
+   * only; a job the context cannot see throws `ForbiddenError`.
+   */
+  listRanking(ctx: WorkspaceContext, jobId: string): Promise<JobRanking>;
 }

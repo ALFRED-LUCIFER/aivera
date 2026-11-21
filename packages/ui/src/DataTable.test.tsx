@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BulkActionBar, type BulkAction } from './BulkActionBar.tsx';
 import { DataTable, type DataTableColumn, type DataTableSort } from './DataTable.tsx';
 import { FilterTabs } from './FilterTabs.tsx';
@@ -330,5 +330,58 @@ describe('DataTable structure', () => {
     expect(within(screen.getAllByRole('row')[1] as HTMLElement).getAllByRole('cell')[1]?.className).toContain(
       'text-end',
     );
+  });
+});
+
+describe('Scenario: A table wider than its box can be scrolled by keyboard', () => {
+  let width = 1200;
+  const resized: (() => void)[] = [];
+  beforeEach(() => {
+    width = 1200;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resized.push(callback);
+        }
+        observe() {
+          resized.at(-1)?.();
+        }
+        disconnect() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(() => width);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => 800);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  // mutation check: `if (scrolls)` -> `if (false)` -> this test failed (no region named "Applications")
+  it('the scroll box takes focus and is a named region only while the table overflows it', () => {
+    render(
+      <DataTable caption="Applications" columns={columns} rows={inbox} getRowId={(r) => r.id} emptyMessage="None" />,
+    );
+    expect(screen.getByRole('region', { name: 'Applications' }).tabIndex).toBe(0);
+    width = 600;
+    act(() => resized.forEach((update) => update()));
+    expect(screen.queryByRole('region')).toBeNull();
+  });
+
+  // mutation check: dropped the focusable-descendant check -> this test failed (a region beside the sort buttons)
+  it('adds no tab stop when the table has controls of its own to scroll it by', () => {
+    render(
+      <DataTable
+        caption="Applications"
+        columns={columns}
+        rows={inbox}
+        getRowId={(r) => r.id}
+        sort={{ columnId: 'name', direction: 'ascending' }}
+        onSortChange={() => {}}
+        emptyMessage="None"
+      />,
+    );
+    expect(screen.queryByRole('region')).toBeNull();
   });
 });

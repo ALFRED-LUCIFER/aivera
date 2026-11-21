@@ -1,3 +1,4 @@
+import { inboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { check, index, jsonb, pgSchema, smallint, text, timestamp, uuid } from 'drizzle-orm/pg-core';
@@ -28,6 +29,8 @@ export const result = assessment
     },
     (t) => [
       index('result_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.assessedAt),
+      // The ranking reads a job's results (AIV-P1-031).
+      index('result_job_idx').on(t.workspaceId, t.jobId, t.assessedAt),
       // The domain's guarantees again, so no write path can store a backed score above its range.
       check(
         'result_scores_check',
@@ -39,3 +42,6 @@ export const result = assessment
     ],
   )
   .enableRLS();
+
+// Handled message ids of the assessment consumers (AIV-P0-015).
+export const inbox = inboxTable(assessment);
