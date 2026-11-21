@@ -8,6 +8,7 @@ import {
   usageWindow,
   WorkspaceError,
   type AiTokenUse,
+  type WorkspaceStatusFact,
   type WorkspaceSummary,
 } from '../domain/workspace.ts';
 import {
@@ -363,6 +364,15 @@ export async function readSummary(tx: Tx, workspaceId: string): Promise<Workspac
     .from(member)
     .where(and(inWorkspace(workspaceId), eq(member.status, 'active')));
   return { ...found, activeMembers: members?.n ?? 0 };
+}
+
+/** The workspace's status and created date only (AIV-P2-051), over its own scoped transaction; the filter and RLS apply. */
+export async function readStatus(tx: Tx, workspaceId: string): Promise<WorkspaceStatusFact | null> {
+  const [found] = await tx
+    .select({ id: workspace.id, status: workspace.status, createdAt: workspace.createdAt })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId));
+  return found ?? null;
 }
 
 /** The workspace's first admin, its creator (createWorkspace adds them first), over its own scoped transaction. */

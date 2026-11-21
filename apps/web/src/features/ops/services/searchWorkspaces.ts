@@ -15,5 +15,5 @@ import {
 export async function searchWorkspaces(input: WorkspaceSearch): Promise<WorkspacePage> {
   await platformOperator();
   const search = workspaceSearchSchema.parse(input);
-  return { search, ...(await listWorkspaceFacts(toDirectorySearch(search))) };
+  return { search, ...(await listWorkspaceFacts(toDirectorySearch(search), search.sort)) };
 }

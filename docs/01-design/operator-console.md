@@ -64,6 +64,7 @@ Every colour, size and radius below is a Case file token (`--text`, `text-meta`,
 - Header "Credalent operations" with a one-line summary.
 - First, **Needs an operator**: rows with an icon, what is waiting and a link (workspaces waiting for approval, oldest first; workspaces near their AI budget; a catalogue draft waiting to publish).
 - Then a row of stat tiles: workspaces by status, AI tokens today against budgets, approval mode on or off. Each tile links to the filtered list.
+- Built (AIV-P2-051): the stat tiles for workspaces by status, AI tokens today and the catalogue (live version, "1 draft waiting · last edited …" or "No draft", and the draft's eval state as icon and word). Not yet: the "Needs an operator" rows and the approval-mode tile.
 
 ## Catalogue editor layout (AIV-P2-045 to 049)
 

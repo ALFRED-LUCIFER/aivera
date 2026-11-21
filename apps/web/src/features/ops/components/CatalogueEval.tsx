@@ -20,6 +20,12 @@ const BADGES: Record<EvalView['status'], StatusBadgeStatus> = {
   error: 'contradiction',
 };
 
+/** The draft's eval state as icon and word; the console home shows it too (AIV-P2-051). */
+export function EvalStatusBadge({ status }: Pick<EvalView, 'status'>) {
+  const t = useTranslations('ops.catalogue.editor.eval');
+  return <StatusBadge status={BADGES[status]} label={t(`status.${status}`)} />;
+}
+
 export function CatalogueEval({ eval: model }: { eval: CatalogueEvalViewModel }) {
   const t = useTranslations('ops.catalogue.editor.eval');
   const timeZone = useTimeZone();
@@ -29,7 +35,7 @@ export function CatalogueEval({ eval: model }: { eval: CatalogueEvalViewModel })
       <div className="flex flex-col gap-4">
         {/* A live region, so "Eval passed" or "Eval failed" is announced when the page reloads with the result. */}
         <output className="flex flex-wrap items-center gap-3">
-          <StatusBadge status={BADGES[view.status]} label={t(`status.${view.status}`)} />
+          <EvalStatusBadge status={view.status} />
           {(view.status === 'passed' || view.status === 'failed') && (
             <span className="text-meta text-text-2">{t('ranAt', { at: view.finishedAt, timeZone })}</span>
           )}

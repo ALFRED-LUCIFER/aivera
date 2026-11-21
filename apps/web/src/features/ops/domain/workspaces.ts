@@ -2,6 +2,7 @@
 import {
   MIN_REASON_LENGTH,
   STATUS_CHANGES,
+  WORKSPACE_STATUSES,
   type AiTokenUse,
   type StatusChange,
   type WorkspaceStatus,
@@ -11,10 +12,16 @@ import { z } from 'zod';
 
 const PAGE_SIZE = 50;
 
-/** The list request, sent in the server action's body, never in the URL: the name search and the 1-based page. */
+/**
+ * The list request, sent in the server action's body, never in the URL: the name search and the 1-based page. The
+ * status filter and the AI sort may also come from the URL (`?status=`, `?sort=ai`): the console home links there
+ * (AIV-P2-051); neither is a name or candidate value.
+ */
 export const workspaceSearchSchema = z.object({
   query: z.string().trim().max(100),
   page: z.int().min(1).max(10_000),
+  status: z.enum(WORKSPACE_STATUSES).optional(),
+  sort: z.literal('ai').optional(),
 });
 export type WorkspaceSearch = z.infer<typeof workspaceSearchSchema>;
 
@@ -38,17 +45,24 @@ export type WorkspacesListView = {
         rows: WorkspaceRow[];
         /** The search these rows answer, for the "No workspace matches" message. */
         searched: string;
+        /** The status filter or AI sort from the console home's link, shown above the table with "Show all". */
+        filter: Pick<WorkspaceSearch, 'status' | 'sort'>;
         page: number;
         pageCount: number;
         onPage: (page: number) => void;
       };
 };
 
-export const toDirectorySearch = ({ query, page }: WorkspaceSearch) => ({
+export const toDirectorySearch = ({ query, page, status }: WorkspaceSearch) => ({
   query,
   offset: (page - 1) * PAGE_SIZE,
   limit: PAGE_SIZE,
+  ...(status && { status }),
 });
+
+/** The list's filter and sort from the page URL; anything else is ignored (the full list, newest first). */
+export const urlSearch = (params: { status?: unknown; sort?: unknown }) =>
+  workspaceSearchSchema.pick({ status: true, sort: true }).catch({}).parse(params);
 
 export const pageCount = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
 

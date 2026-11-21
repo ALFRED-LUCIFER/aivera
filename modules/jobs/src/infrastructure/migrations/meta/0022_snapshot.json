@@ -1,0 +1,1783 @@
+{
+  "id": "bd2a61a7-d975-4ff3-a941-a3e32749ba65",
+  "prevId": "5c5ee526-4c69-4507-a0c3-cf71db3013bb",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "jobs.catalogue_eval_run": {
+      "name": "catalogue_eval_run",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "keys": {
+          "name": "keys",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tokens": {
+          "name": "tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "catalogue_eval_run_one_running_idx": {
+          "name": "catalogue_eval_run_one_running_idx",
+          "columns": [
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"catalogue_eval_run\".\"status\" = 'running'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "catalogue_eval_run_latest_idx": {
+          "name": "catalogue_eval_run_latest_idx",
+          "columns": [
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "catalogue_eval_run_version_catalogue_version_version_fk": {
+          "name": "catalogue_eval_run_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_eval_run",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_eval_run_status_check": {
+          "name": "catalogue_eval_run_status_check",
+          "value": "\"jobs\".\"catalogue_eval_run\".\"status\" in ('running', 'passed', 'failed', 'error')"
+        },
+        "catalogue_eval_run_hash_check": {
+          "name": "catalogue_eval_run_hash_check",
+          "value": "\"jobs\".\"catalogue_eval_run\".\"content_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "catalogue_eval_run_actor_check": {
+          "name": "catalogue_eval_run_actor_check",
+          "value": "(\"jobs\".\"catalogue_eval_run\".\"requested_by\" = 'system:seed' or \"jobs\".\"catalogue_eval_run\".\"requested_by\" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')"
+        },
+        "catalogue_eval_run_tokens_check": {
+          "name": "catalogue_eval_run_tokens_check",
+          "value": "\"jobs\".\"catalogue_eval_run\".\"tokens\" >= 0"
+        },
+        "catalogue_eval_run_finished_check": {
+          "name": "catalogue_eval_run_finished_check",
+          "value": "(\"jobs\".\"catalogue_eval_run\".\"status\" = 'running') = (\"jobs\".\"catalogue_eval_run\".\"finished_at\" is null) and (\"jobs\".\"catalogue_eval_run\".\"status\" in ('passed', 'failed')) = (\"jobs\".\"catalogue_eval_run\".\"result\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_job_type": {
+      "name": "catalogue_job_type",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starter_competencies": {
+          "name": "starter_competencies",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalogue_job_type_version_catalogue_version_version_fk": {
+          "name": "catalogue_job_type_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_job_type",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalogue_job_type_pkey": {
+          "name": "catalogue_job_type_pkey",
+          "columns": [
+            "version",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_job_type_key_check": {
+          "name": "catalogue_job_type_key_check",
+          "value": "\"jobs\".\"catalogue_job_type\".\"key\" ~ '^[a-z][a-z0-9_]{2,47}$' and \"jobs\".\"catalogue_job_type\".\"key\" not in ('none', 'several', 'other')"
+        },
+        "catalogue_job_type_label_check": {
+          "name": "catalogue_job_type_label_check",
+          "value": "coalesce(jsonb_typeof(\"jobs\".\"catalogue_job_type\".\"label\"->'en') = 'string' and btrim(\"jobs\".\"catalogue_job_type\".\"label\"->>'en') <> '', false) and coalesce(jsonb_typeof(\"jobs\".\"catalogue_job_type\".\"evidence\"->'en') = 'string' and btrim(\"jobs\".\"catalogue_job_type\".\"evidence\"->>'en') <> '', false)"
+        },
+        "catalogue_job_type_starters_check": {
+          "name": "catalogue_job_type_starters_check",
+          "value": "cardinality(\"jobs\".\"catalogue_job_type\".\"starter_competencies\") = 4"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_pack": {
+      "name": "catalogue_pack",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalogue_pack_version_catalogue_version_version_fk": {
+          "name": "catalogue_pack_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_pack",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalogue_pack_pkey": {
+          "name": "catalogue_pack_pkey",
+          "columns": [
+            "version",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_pack_key_check": {
+          "name": "catalogue_pack_key_check",
+          "value": "\"jobs\".\"catalogue_pack\".\"key\" ~ '^[a-z][a-z0-9_]{2,47}$' and \"jobs\".\"catalogue_pack\".\"key\" not in ('none', 'several', 'other')"
+        },
+        "catalogue_pack_label_check": {
+          "name": "catalogue_pack_label_check",
+          "value": "coalesce(jsonb_typeof(\"jobs\".\"catalogue_pack\".\"label\"->'en') = 'string' and btrim(\"jobs\".\"catalogue_pack\".\"label\"->>'en') <> '', false)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_pack_competency": {
+      "name": "catalogue_pack_competency",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pack_key": {
+          "name": "pack_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meaning": {
+          "name": "meaning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_1": {
+          "name": "level_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_3": {
+          "name": "level_3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_5": {
+          "name": "level_5",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applies_to": {
+          "name": "applies_to",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_needed": {
+          "name": "level_needed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "core": {
+          "name": "core",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalogue_pack_competency_version_catalogue_version_version_fk": {
+          "name": "catalogue_pack_competency_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_pack_competency",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "catalogue_pack_competency_pack_fk": {
+          "name": "catalogue_pack_competency_pack_fk",
+          "tableFrom": "catalogue_pack_competency",
+          "tableTo": "catalogue_pack",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version",
+            "pack_key"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalogue_pack_competency_pkey": {
+          "name": "catalogue_pack_competency_pkey",
+          "columns": [
+            "version",
+            "pack_key",
+            "position"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_pack_competency_text_check": {
+          "name": "catalogue_pack_competency_text_check",
+          "value": "btrim(\"jobs\".\"catalogue_pack_competency\".\"name\") <> '' and btrim(\"jobs\".\"catalogue_pack_competency\".\"meaning\") <> '' and btrim(\"jobs\".\"catalogue_pack_competency\".\"evidence\") <> ''"
+        },
+        "catalogue_pack_competency_level_check": {
+          "name": "catalogue_pack_competency_level_check",
+          "value": "\"jobs\".\"catalogue_pack_competency\".\"level_needed\" in (2, 3)"
+        },
+        "catalogue_pack_competency_type_check": {
+          "name": "catalogue_pack_competency_type_check",
+          "value": "\"jobs\".\"catalogue_pack_competency\".\"type\" = 'desirable'"
+        },
+        "catalogue_pack_competency_core_check": {
+          "name": "catalogue_pack_competency_core_check",
+          "value": "\"jobs\".\"catalogue_pack_competency\".\"core\" <@ \"jobs\".\"catalogue_pack_competency\".\"applies_to\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_region": {
+      "name": "catalogue_region",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalogue_region_version_catalogue_version_version_fk": {
+          "name": "catalogue_region_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_region",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalogue_region_pkey": {
+          "name": "catalogue_region_pkey",
+          "columns": [
+            "version",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_region_key_check": {
+          "name": "catalogue_region_key_check",
+          "value": "\"jobs\".\"catalogue_region\".\"key\" ~ '^[a-z][a-z0-9_]{2,47}$' and \"jobs\".\"catalogue_region\".\"key\" not in ('none', 'several', 'other')"
+        },
+        "catalogue_region_label_check": {
+          "name": "catalogue_region_label_check",
+          "value": "coalesce(jsonb_typeof(\"jobs\".\"catalogue_region\".\"label\"->'en') = 'string' and btrim(\"jobs\".\"catalogue_region\".\"label\"->>'en') <> '', false)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_regional_hint": {
+      "name": "catalogue_regional_hint",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pack_key": {
+          "name": "pack_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meaning": {
+          "name": "meaning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_1": {
+          "name": "level_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_3": {
+          "name": "level_3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_5": {
+          "name": "level_5",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applies_to": {
+          "name": "applies_to",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_needed": {
+          "name": "level_needed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalogue_regional_hint_version_catalogue_version_version_fk": {
+          "name": "catalogue_regional_hint_version_catalogue_version_version_fk",
+          "tableFrom": "catalogue_regional_hint",
+          "tableTo": "catalogue_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version"
+          ],
+          "columnsTo": [
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "catalogue_regional_hint_pack_fk": {
+          "name": "catalogue_regional_hint_pack_fk",
+          "tableFrom": "catalogue_regional_hint",
+          "tableTo": "catalogue_pack",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version",
+            "pack_key"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "catalogue_regional_hint_region_fk": {
+          "name": "catalogue_regional_hint_region_fk",
+          "tableFrom": "catalogue_regional_hint",
+          "tableTo": "catalogue_region",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "version",
+            "region"
+          ],
+          "columnsTo": [
+            "version",
+            "key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalogue_regional_hint_pkey": {
+          "name": "catalogue_regional_hint_pkey",
+          "columns": [
+            "version",
+            "pack_key",
+            "region",
+            "position"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_regional_hint_text_check": {
+          "name": "catalogue_regional_hint_text_check",
+          "value": "btrim(\"jobs\".\"catalogue_regional_hint\".\"name\") <> '' and btrim(\"jobs\".\"catalogue_regional_hint\".\"meaning\") <> '' and btrim(\"jobs\".\"catalogue_regional_hint\".\"evidence\") <> ''"
+        },
+        "catalogue_regional_hint_level_check": {
+          "name": "catalogue_regional_hint_level_check",
+          "value": "\"jobs\".\"catalogue_regional_hint\".\"level_needed\" in (2, 3)"
+        },
+        "catalogue_regional_hint_type_check": {
+          "name": "catalogue_regional_hint_type_check",
+          "value": "\"jobs\".\"catalogue_regional_hint\".\"type\" = 'desirable'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.catalogue_version": {
+      "name": "catalogue_version",
+      "schema": "jobs",
+      "columns": {
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_by": {
+          "name": "published_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "revised_by": {
+          "name": "revised_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revised_at": {
+          "name": "revised_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "catalogue_version_one_draft_idx": {
+          "name": "catalogue_version_one_draft_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"catalogue_version\".\"status\" = 'draft'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "catalogue_version_version_check": {
+          "name": "catalogue_version_version_check",
+          "value": "\"jobs\".\"catalogue_version\".\"version\" >= 1"
+        },
+        "catalogue_version_status_check": {
+          "name": "catalogue_version_status_check",
+          "value": "\"jobs\".\"catalogue_version\".\"status\" in ('draft', 'published')"
+        },
+        "catalogue_version_published_check": {
+          "name": "catalogue_version_published_check",
+          "value": "(\"jobs\".\"catalogue_version\".\"status\" = 'published') = (\"jobs\".\"catalogue_version\".\"published_by\" is not null and \"jobs\".\"catalogue_version\".\"published_at\" is not null and \"jobs\".\"catalogue_version\".\"reason\" is not null)"
+        },
+        "catalogue_version_reason_check": {
+          "name": "catalogue_version_reason_check",
+          "value": "char_length(btrim(\"jobs\".\"catalogue_version\".\"reason\")) >= 10"
+        },
+        "catalogue_version_actor_check": {
+          "name": "catalogue_version_actor_check",
+          "value": "(\"jobs\".\"catalogue_version\".\"created_by\" = 'system:seed' or \"jobs\".\"catalogue_version\".\"created_by\" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') and (\"jobs\".\"catalogue_version\".\"published_by\" is null or (\"jobs\".\"catalogue_version\".\"published_by\" = 'system:seed' or \"jobs\".\"catalogue_version\".\"published_by\" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))"
+        },
+        "catalogue_version_revised_by_check": {
+          "name": "catalogue_version_revised_by_check",
+          "value": "\"jobs\".\"catalogue_version\".\"revised_by\" is null or (\"jobs\".\"catalogue_version\".\"revised_by\" = 'system:seed' or \"jobs\".\"catalogue_version\".\"revised_by\" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "jobs.competency": {
+      "name": "competency",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_expected": {
+          "name": "evidence_expected",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weight_percent": {
+          "name": "weight_percent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_needed": {
+          "name": "level_needed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pack_key": {
+          "name": "pack_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pack_version": {
+          "name": "pack_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "competency_rubric_version_fk": {
+          "name": "competency_rubric_version_fk",
+          "tableFrom": "competency",
+          "tableTo": "rubric_version",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "rubric_version_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "competency_version_position_key": {
+          "name": "competency_version_position_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "rubric_version_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {
+        "competency_tenant_isolation": {
+          "name": "competency_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"competency\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "competency_job_scope": {
+          "name": "competency_job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")",
+          "withCheck": "exists (select 1 from \"jobs\".\"rubric_version\" where \"jobs\".\"rubric_version\".\"id\" = \"jobs\".\"competency\".\"rubric_version_id\")"
+        }
+      },
+      "checkConstraints": {
+        "competency_weight_check": {
+          "name": "competency_weight_check",
+          "value": "\"jobs\".\"competency\".\"weight_percent\" between 1 and 100"
+        },
+        "competency_level_check": {
+          "name": "competency_level_check",
+          "value": "\"jobs\".\"competency\".\"level_needed\" between 1 and 5"
+        },
+        "competency_type_check": {
+          "name": "competency_type_check",
+          "value": "\"jobs\".\"competency\".\"type\" in ('mandatory', 'desirable')"
+        },
+        "competency_origin_check": {
+          "name": "competency_origin_check",
+          "value": "\"jobs\".\"competency\".\"origin\" in ('from_description', 'suggested_by_aivera', 'added_by_recruiter', 'domain_pack')"
+        },
+        "competency_domain_pack_check": {
+          "name": "competency_domain_pack_check",
+          "value": "(\"jobs\".\"competency\".\"origin\" = 'domain_pack') = (\"jobs\".\"competency\".\"pack_key\" is not null and \"jobs\".\"competency\".\"pack_version\" is not null)"
+        },
+        "competency_pack_format_check": {
+          "name": "competency_pack_format_check",
+          "value": "\"jobs\".\"competency\".\"pack_key\" ~ '^[a-z][a-z0-9_]{2,47}$' and \"jobs\".\"competency\".\"pack_key\" not in ('none', 'several', 'other') and \"jobs\".\"competency\".\"pack_version\" >= 1"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "jobs.inbox": {
+      "name": "inbox",
+      "schema": "jobs",
+      "columns": {
+        "consumer": {
+          "name": "consumer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "handled_at": {
+          "name": "handled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inbox_consumer_message_id_pk": {
+          "name": "inbox_consumer_message_id_pk",
+          "columns": [
+            "consumer",
+            "message_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "inbox_tenant_isolation": {
+          "name": "inbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "jobs.job": {
+      "name": "job",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team": {
+          "name": "team",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hiring_owner_user_id": {
+          "name": "hiring_owner_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_descriptor": {
+          "name": "public_descriptor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_min_minor": {
+          "name": "pay_min_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_max_minor": {
+          "name": "pay_max_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_currency": {
+          "name": "pay_currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synthetic": {
+          "name": "synthetic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "job_workspace_created_idx": {
+          "name": "job_workspace_created_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "job_workspace_id_key": {
+          "name": "job_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {
+        "job_tenant_isolation": {
+          "name": "job_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "job_scope": {
+          "name": "job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))",
+          "withCheck": "(nullif(current_setting('app.job_scope', true), '') = 'all' or \"jobs\".\"job\".\"id\" = any(nullif(current_setting('app.job_ids', true), '')::uuid[]) or \"jobs\".\"job\".\"client_id\" = any(nullif(current_setting('app.client_ids', true), '')::uuid[]))"
+        }
+      },
+      "checkConstraints": {
+        "job_title_check": {
+          "name": "job_title_check",
+          "value": "btrim(\"jobs\".\"job\".\"title\") <> ''"
+        },
+        "job_type_key_check": {
+          "name": "job_type_key_check",
+          "value": "\"jobs\".\"job\".\"job_type\" ~ '^[a-z][a-z0-9_]{2,47}$' and \"jobs\".\"job\".\"job_type\" not in ('none', 'several', 'other')"
+        },
+        "job_stage_check": {
+          "name": "job_stage_check",
+          "value": "\"jobs\".\"job\".\"stage\" in ('defining_rubric', 'collecting_evidence', 'round_1', 'decision', 'closed')"
+        },
+        "job_pay_band_check": {
+          "name": "job_pay_band_check",
+          "value": "(\"jobs\".\"job\".\"pay_min_minor\" is null and \"jobs\".\"job\".\"pay_max_minor\" is null and \"jobs\".\"job\".\"pay_currency\" is null) or (0 <= \"jobs\".\"job\".\"pay_min_minor\" and \"jobs\".\"job\".\"pay_min_minor\" <= \"jobs\".\"job\".\"pay_max_minor\" and \"jobs\".\"job\".\"pay_currency\" ~ '^[A-Z]{3}$')"
+        },
+        "job_publication_check": {
+          "name": "job_publication_check",
+          "value": "not \"jobs\".\"job\".\"published\" or (coalesce(btrim(\"jobs\".\"job\".\"public_descriptor\"), '') <> '' and char_length(\"jobs\".\"job\".\"public_descriptor\") <= 80 and \"jobs\".\"job\".\"published_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "jobs.outbox": {
+      "name": "outbox",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correlation_id": {
+          "name": "correlation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "outbox_unsent_idx": {
+          "name": "outbox_unsent_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"jobs\".\"outbox\".\"sent_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "outbox_workspace_dedupe_key": {
+          "name": "outbox_workspace_dedupe_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ]
+        }
+      },
+      "policies": {
+        "outbox_tenant_isolation": {
+          "name": "outbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "outbox_relay_read": {
+          "name": "outbox_relay_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true"
+        },
+        "outbox_relay_mark": {
+          "name": "outbox_relay_mark",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "jobs.public_job": {
+      "name": "public_job",
+      "schema": "jobs",
+      "columns": {
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descriptor": {
+          "name": "descriptor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_min_minor": {
+          "name": "pay_min_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_max_minor": {
+          "name": "pay_max_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_currency": {
+          "name": "pay_currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "competencies": {
+          "name": "competencies",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "posted_at": {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "open": {
+          "name": "open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paused": {
+          "name": "paused",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "public_job_open_posted_idx": {
+          "name": "public_job_open_posted_idx",
+          "columns": [
+            {
+              "expression": "open",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "posted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "public_job_job_fk": {
+          "name": "public_job_job_fk",
+          "tableFrom": "public_job",
+          "tableTo": "job",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "public_job_slug_key": {
+          "name": "public_job_slug_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {
+        "public_job_tenant_isolation": {
+          "name": "public_job_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"public_job\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "public_job_public_read": {
+          "name": "public_job_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "current_user = 'aivera_public'"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "jobs.rubric_version": {
+      "name": "rubric_version",
+      "schema": "jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "success_statement": {
+          "name": "success_statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "change_note": {
+          "name": "change_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_by": {
+          "name": "submitted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "return_note": {
+          "name": "return_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "rubric_version_one_approved_idx": {
+          "name": "rubric_version_one_approved_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"rubric_version\".\"status\" = 'approved'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rubric_version_one_open_idx": {
+          "name": "rubric_version_one_open_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"jobs\".\"rubric_version\".\"status\" in ('draft', 'awaiting_approval', 'returned')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rubric_version_job_fk": {
+          "name": "rubric_version_job_fk",
+          "tableFrom": "rubric_version",
+          "tableTo": "job",
+          "schemaTo": "jobs",
+          "columnsFrom": [
+            "workspace_id",
+            "job_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rubric_version_workspace_id_key": {
+          "name": "rubric_version_workspace_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
+        },
+        "rubric_version_job_version_key": {
+          "name": "rubric_version_job_version_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspace_id",
+            "job_id",
+            "version"
+          ]
+        }
+      },
+      "policies": {
+        "rubric_version_tenant_isolation": {
+          "name": "rubric_version_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"jobs\".\"rubric_version\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "rubric_version_job_scope": {
+          "name": "rubric_version_job_scope",
+          "as": "RESTRICTIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")",
+          "withCheck": "exists (select 1 from \"jobs\".\"job\" where \"jobs\".\"job\".\"id\" = \"jobs\".\"rubric_version\".\"job_id\")"
+        }
+      },
+      "checkConstraints": {
+        "rubric_version_version_check": {
+          "name": "rubric_version_version_check",
+          "value": "\"jobs\".\"rubric_version\".\"version\" >= 1"
+        },
+        "rubric_version_status_check": {
+          "name": "rubric_version_status_check",
+          "value": "\"jobs\".\"rubric_version\".\"status\" in ('draft', 'awaiting_approval', 'approved', 'superseded', 'returned')"
+        },
+        "rubric_version_approval_check": {
+          "name": "rubric_version_approval_check",
+          "value": "(\"jobs\".\"rubric_version\".\"status\" in ('approved', 'superseded')) = (\"jobs\".\"rubric_version\".\"approved_by\" is not null and \"jobs\".\"rubric_version\".\"approved_at\" is not null)"
+        },
+        "rubric_version_return_note_check": {
+          "name": "rubric_version_return_note_check",
+          "value": "char_length(\"jobs\".\"rubric_version\".\"return_note\") between 1 and 1000"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "jobs": "jobs"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

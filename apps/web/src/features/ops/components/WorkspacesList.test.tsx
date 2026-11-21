@@ -34,7 +34,15 @@ const row = (name: string, extra: Partial<WorkspaceRow> = {}): WorkspaceRow => (
   ...extra,
 });
 const ready = (rows: WorkspaceRow[], searched = '', onPage = () => {}, page = 1, total = rows.length) =>
-  ({ status: 'ready', rows, searched, page, pageCount: Math.max(1, Math.ceil(total / 50)), onPage }) as const;
+  ({
+    status: 'ready',
+    rows,
+    searched,
+    filter: {},
+    page,
+    pageCount: Math.max(1, Math.ceil(total / 50)),
+    onPage,
+  }) as const;
 
 describe('Scenario: Listing workspaces', () => {
   it('shows name, type, created date in its stated time zone, members, jobs, AI tokens today, status "Active", plan "No plan yet"', () => {
@@ -85,6 +93,20 @@ describe('Scenario: Listing workspaces', () => {
   it('one page needs no pager', () => {
     list(ready([row('Demo Hiring Co')]));
     expect(screen.queryByRole('button', { name: 'Next page' })).toBeNull();
+  });
+});
+
+describe('the console home links (AIV-P2-051)', () => {
+  it('says which status or sort the list shows, with a link back to every workspace', () => {
+    list({ ...ready([row('Nadia Freelance', { status: 'suspended' })]), filter: { status: 'suspended', sort: 'ai' } });
+    expect(screen.getByText('Showing only: Suspended.')).toBeTruthy();
+    expect(screen.getByText('Sorted by AI tokens today, most first.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Show all workspaces' }).getAttribute('href')).toBe('/ops/workspaces');
+  });
+
+  it('the plain list has no filter line', () => {
+    list(ready([row('Demo Hiring Co')]));
+    expect(screen.queryByRole('link', { name: 'Show all workspaces' })).toBeNull();
   });
 });
 

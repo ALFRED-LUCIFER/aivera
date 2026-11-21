@@ -31,6 +31,7 @@ import { createAiBudgetConsole, createWorkspaceDirectory } from '@credalent/work
 import { forbidden, redirect } from 'next/navigation';
 import type { VersionRow } from '@/features/ops/domain/catalogueHistory.ts';
 import { cache } from 'react';
+import type { DashboardReads } from '@/features/ops/domain/dashboard.ts';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
@@ -118,8 +119,24 @@ const withFacts = async (summary: WorkspaceSummary, aiDays: number): Promise<Wor
 };
 
 /** One page of the workspaces list, with today's AI tokens. Checks the policy itself too, so no caller can skip it. */
-export async function listWorkspaceFacts(search: DirectorySearch): Promise<{ total: number; rows: WorkspaceFacts[] }> {
+export async function listWorkspaceFacts(
+  search: DirectorySearch,
+  sort?: 'ai',
+): Promise<{ total: number; rows: WorkspaceFacts[] }> {
   await platformOperator();
+  if (sort === 'ai') {
+    // shortcut: sorting by today's AI tokens reads every matching workspace's usage before paging (ADR-012 point 6);
+    // fine up to a few hundred workspaces, upgrade with aivera_ops.
+    const { total, summaries } = await opsReads().workspaces.listSummaries({
+      ...search,
+      offset: 0,
+      limit: Number.MAX_SAFE_INTEGER,
+    });
+    const rows = await Promise.all(summaries.map((summary) => withFacts(summary, 1)));
+    const tokens = (row: WorkspaceFacts) => row.ai?.days[0]?.tokens ?? -1;
+    const sorted = rows.toSorted((a, b) => tokens(b) - tokens(a));
+    return { total, rows: sorted.slice(search.offset, search.offset + search.limit) };
+  }
   const { total, summaries } = await opsReads().workspaces.listSummaries(search);
   return { total, rows: await Promise.all(summaries.map((summary) => withFacts(summary, 1))) };
 }
@@ -204,6 +221,37 @@ export async function listPendingApprovals(): Promise<PendingApprovalFacts[]> {
       creatorEmail: creatorUserId ? ((await getIdentity().getUser(creatorUserId))?.email ?? null) : null,
     })),
   );
+}
+
+const failed = (read: string) => (error: unknown) => {
+  // The error type only: a database error can quote parameters (AGENTS.md 1.2).
+  log.warn(
+    { area: 'ops', read, 'error.type': error instanceof Error ? error.name : 'unknown' },
+    'dashboard read failed',
+  );
+  return null;
+};
+
+/**
+ * The console home's reads (AIV-P2-051): each workspace's status and today's AI tokens, each in its own
+ * withWorkspace(<it>) through the named contracts (ADR-012 point 6), and the catalogue version with its open draft's
+ * last save and eval state. Only ids, numbers, times and states come back; a failed read is null so only its tile shows the error. Checks the policy itself too.
+ */
+export async function dashboardReads(): Promise<DashboardReads> {
+  await platformOperator();
+  const statuses = opsReads().workspaces.listStatuses();
+  const today = utcToday();
+  const [workspaces, ai, catalogue] = await Promise.all([
+    statuses.catch(failed('workspaces')),
+    statuses.then((all) => Promise.all(all.map(({ id }) => opsReads().ai.usage(id, today, 1)))).catch(failed('ai')),
+    Promise.all([catalogueEditor().getEditor(), catalogueEditor().getDraftEval()])
+      .then(([{ published, draft }, state]) => ({
+        version: published.version,
+        draft: draft && { editedAt: draft.revisedAt, eval: state?.status ?? 'not_run' },
+      }))
+      .catch(failed('catalogue')),
+  ]);
+  return { workspaces, ai, catalogue };
 }
 
 let editor: CatalogueEditor | undefined;

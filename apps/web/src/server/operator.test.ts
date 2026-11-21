@@ -2,6 +2,7 @@ import type { User } from '@credalent/identity';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyStatusChange,
+  dashboardReads,
   getCatalogueVersion,
   getWorkspaceFacts,
   listCatalogueVersions,
@@ -56,18 +57,26 @@ const summary = {
   activeMembers: 3,
 };
 const ai = vi.hoisted(() => ({ usage: vi.fn(), setDailyBudget: vi.fn(async (_input: unknown) => undefined) }));
+const listStatuses = vi.hoisted(() => vi.fn());
+const listSummaries = vi.hoisted(() => vi.fn(async (_search: unknown) => ({ total: 1, summaries: [summary] })));
+// The dashboard's reads (AIV-P2-051) and the catalogue history's (AIV-P2-050).
+const catalogue = vi.hoisted(() => ({
+  getEditor: vi.fn(),
+  getDraftEval: vi.fn(),
+  listVersions: vi.fn(),
+  getVersion: vi.fn(),
+}));
 vi.mock('@credalent/workspaces/composition', () => ({
   createWorkspaceDirectory: () => ({
     getSummary: async () => summary,
-    listSummaries: async () => ({ total: 1, summaries: [summary] }),
+    listSummaries: (search: unknown) => listSummaries(search),
+    listStatuses: () => listStatuses(),
   }),
   createAiBudgetConsole: () => ai,
 }));
-// AIV-P2-050: the catalogue history's reads.
-const history = vi.hoisted(() => ({ listVersions: vi.fn(), getVersion: vi.fn() }));
 vi.mock('@credalent/jobs/composition', () => ({
   createJobCounts: () => ({ countJobs: async () => 2 }),
-  createCatalogueEditor: () => history,
+  createCatalogueEditor: () => catalogue,
 }));
 // The list is parsed on every env() call here, so changing `config.list` is "the app reloads its configuration".
 vi.mock('./env', async (actual) => {
@@ -82,7 +91,9 @@ vi.mock('@credalent/audit/composition', () => ({ createAudit: () => ({ listOpera
 const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
 const pausePublicListings = vi.fn(async () => {});
 vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));
-vi.mock('./jobs', () => ({ getJobs: () => ({ pausePublicListings }) }));
+vi.mock('./jobs', () => ({
+  getJobs: () => ({ pausePublicListings }),
+}));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');
@@ -191,6 +202,75 @@ describe('AI token use and the daily budget (AIV-P2-038)', () => {
       'NEXT_HTTP_ERROR_FALLBACK;403',
     );
     expect(ai.setDailyBudget).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-051: the console home's reads, each failing on its own, ids and numbers only.
+describe('dashboardReads (AIV-P2-051)', () => {
+  const use = { dailyBudget: 2_000_000, overridden: false, days: [{ day: '2026-11-25', tokens: 1_500 }] };
+  const statuses = [{ id: DEMO, status: 'active', createdAt: new Date('2026-11-19T00:00:00Z') }];
+  const EDITED = new Date('2026-11-25T07:00:00Z');
+  const live = { version: 1, draft: { editedAt: EDITED, eval: 'not_run' } };
+  beforeEach(() => {
+    session.mockResolvedValue(PIA);
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-25T09:00:00Z') });
+    listStatuses.mockResolvedValue(statuses);
+    ai.usage.mockResolvedValue(use);
+    catalogue.getEditor.mockResolvedValue({ published: { version: 1 }, draft: { revisedAt: EDITED } });
+    catalogue.getDraftEval.mockResolvedValue({ status: 'not_run' });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("reads each workspace's status and today's UTC tokens, and the catalogue version", async () => {
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: [use], catalogue: live });
+    expect(ai.usage).toHaveBeenCalledExactlyOnceWith(DEMO, '2026-11-25', 1);
+  });
+
+  // SAFETY: mutation check: dropped the `.catch(failed('ai'))` on the AI read -> this test failed (rejected)
+  it('Scenario: A read fails: the AI read failing leaves the other tiles, and the log holds no error text', async () => {
+    ai.usage.mockRejectedValue(new Error('relation workspaces.ai_token_usage: Demo Hiring Co'));
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: null, catalogue: live });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Demo Hiring Co');
+  });
+
+  it('the catalogue read failing leaves the workspace and AI tiles', async () => {
+    catalogue.getDraftEval.mockRejectedValue(new Error('down'));
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: [use], catalogue: null });
+  });
+
+  it('no open draft: the version alone', async () => {
+    catalogue.getEditor.mockResolvedValue({ published: { version: 3 }, draft: null });
+    catalogue.getDraftEval.mockResolvedValue(null);
+    expect((await dashboardReads()).catalogue).toEqual({ version: 3, draft: null });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from dashboardReads -> this test failed (statuses read)
+  it('Scenario: Only operators see the dashboard: Riya gets 403 and nothing is read', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(dashboardReads()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
+    expect(listStatuses).not.toHaveBeenCalled();
+  });
+});
+
+describe('listWorkspaceFacts sorted by AI (AIV-P2-051)', () => {
+  beforeEach(() => session.mockResolvedValue(PIA));
+
+  it("reads every match, then pages the rows by today's tokens, most first, unreadable usage last", async () => {
+    const tokens: Record<string, number | null> = { a: 10, b: null, c: 900, d: 0 };
+    listSummaries.mockResolvedValueOnce({ total: 4, summaries: Object.keys(tokens).map((id) => ({ ...summary, id })) });
+    ai.usage.mockImplementation(async (id: string) => {
+      const used = tokens[id];
+      if (used === null || used === undefined) throw new Error('unreadable');
+      return { dailyBudget: 1000, overridden: false, days: [{ day: '2026-11-25', tokens: used }] };
+    });
+    const { total, rows } = await listWorkspaceFacts({ query: '', offset: 1, limit: 2, status: 'active' }, 'ai');
+    expect([total, rows.map((r) => r.id)]).toEqual([4, ['a', 'd']]);
+    expect(listSummaries).toHaveBeenCalledWith({
+      query: '',
+      offset: 0,
+      limit: Number.MAX_SAFE_INTEGER,
+      status: 'active',
+    });
   });
 });
 
@@ -328,12 +408,12 @@ describe('the catalogue version history (AIV-P2-050)', () => {
   it('names each publisher by display name, the seed as none, and an unknown id as none', async () => {
     session.mockResolvedValue(THEO);
     const UNKNOWN = '0190d4a2-0000-7000-8000-00000000a0ff';
-    history.listVersions.mockResolvedValue({
+    catalogue.listVersions.mockResolvedValue({
       total: 3,
       rows: [versionRow(3, UNKNOWN), versionRow(2, PIA), versionRow(1, 'system:seed')],
     });
     const result = await listCatalogueVersions(1);
-    expect(history.listVersions).toHaveBeenCalledWith(1);
+    expect(catalogue.listVersions).toHaveBeenCalledWith(1);
     expect(result.rows.map((r) => r.publisherName)).toEqual([null, 'Pia Platform', null]);
     // The seed is never looked up as a user.
     expect(getUser).not.toHaveBeenCalledWith('system:seed');
@@ -341,7 +421,7 @@ describe('the catalogue version history (AIV-P2-050)', () => {
 
   it('a missing version is null', async () => {
     session.mockResolvedValue(THEO);
-    history.getVersion.mockResolvedValue(null);
+    catalogue.getVersion.mockResolvedValue(null);
     expect(await getCatalogueVersion(99)).toBeNull();
   });
 
@@ -350,7 +430,7 @@ describe('the catalogue version history (AIV-P2-050)', () => {
     session.mockResolvedValue(ALEX);
     await expect(listCatalogueVersions(1)).rejects.toThrow('403');
     await expect(getCatalogueVersion(2)).rejects.toThrow('403');
-    expect(history.listVersions).not.toHaveBeenCalled();
-    expect(history.getVersion).not.toHaveBeenCalled();
+    expect(catalogue.listVersions).not.toHaveBeenCalled();
+    expect(catalogue.getVersion).not.toHaveBeenCalled();
   });
 });

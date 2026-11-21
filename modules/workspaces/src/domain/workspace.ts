@@ -60,6 +60,9 @@ export type WorkspaceSummary = {
   activeMembers: number;
 };
 
+/** A workspace's status and created date, the console home's counts (AIV-P2-051): an opaque id, never a name. */
+export type WorkspaceStatusFact = Pick<WorkspaceSummary, 'id' | 'status' | 'createdAt'>;
+
 /**
  * Input plus output AI tokens a workspace may spend per UTC day (AIV-P0-033, AIV-P2-038): the platform default, and the
  * bounds of an operator's per-workspace override. Mirrored by `workspace_ai_daily_token_budget_check`.

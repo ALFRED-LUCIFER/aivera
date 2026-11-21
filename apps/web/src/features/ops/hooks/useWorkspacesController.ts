@@ -32,10 +32,11 @@ export function useWorkspacesController(initial: WorkspacePage): WorkspacesListV
       status: 'ready',
       rows: page.rows,
       searched: page.search.query,
+      filter: page.search,
       page: page.search.page,
       pageCount: pageCount(page.total),
-      onPage: (next) => run({ query: page.search.query, page: next }),
+      onPage: (next) => run({ ...page.search, page: next }),
     };
 
-  return { search: { query, onQueryChange: setQuery, onSearch: () => run({ query, page: 1 }) }, table };
+  return { search: { query, onQueryChange: setQuery, onSearch: () => run({ ...page.search, query, page: 1 }) }, table };
 }

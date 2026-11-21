@@ -53,6 +53,12 @@ const pack = (page: Page, name: string) =>
 const competency = (page: Page, name: string) =>
   page.locator('main details li').filter({ has: page.getByRole('heading', { level: 3, name, exact: true }) });
 
+const catalogueTile = (page: Page) =>
+  page
+    .getByRole('region', { name: 'Platform counts' })
+    .locator('div.rounded-card')
+    .filter({ has: page.getByText('Catalogue version', { exact: true }) });
+
 async function openCatalogue(page: Page) {
   await signIn(page, { email: PIA });
   const response = await page.goto('/ops/catalogue');
@@ -117,6 +123,13 @@ test.describe('no draft: the published version', () => {
     await expect(page.getByRole('button', { name: 'Start a draft' })).toBeVisible();
   });
 
+  // AIV-P2-051. Here, not in ops-dashboard.spec.ts: only this serial file opens drafts in the shared database.
+  test('AIV-P2-051: with no draft, the console home says "No draft"', async ({ page }) => {
+    await signIn(page, { email: PIA });
+    await page.goto('/ops');
+    await expect(catalogueTile(page)).toContainText('Version 1 live · No draft');
+  });
+
   // SAFETY: mutation check: removed `await platformOperator()` from the /ops layout and the catalogue page -> this test failed (200)
   test('Scenario: Non-operators are refused', async ({ page }) => {
     await signIn(page, { email: 'alex@example.com' });
@@ -167,6 +180,18 @@ test.describe('the draft', () => {
     await expect(page.getByRole('row').filter({ hasText: 'Catalogue draft opened' }).first()).toContainText(
       'pia.platform',
     );
+  });
+
+  test('AIV-P2-051 Scenario: A catalogue draft is waiting: the console home shows it with its eval state', async ({
+    page,
+  }) => {
+    await signIn(page, { email: PIA });
+    await page.goto('/ops');
+    await expect(catalogueTile(page)).toContainText(
+      /Version 1 live · 1 draft waiting · last edited (just now|\d+ minutes? ago)Eval not run/,
+    );
+    await page.getByRole('link', { name: 'Open the catalogue' }).click();
+    await expect(page.getByText('Draft — not live. Recruiters see version 1.')).toBeVisible();
   });
 
   test('Scenario: Adding a pack and a competency, by keyboard', async ({ page }) => {
