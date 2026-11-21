@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: pr-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull requests: every commit on main gets a full run, so deploy-dev can trust it (AIV-P1-093).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:

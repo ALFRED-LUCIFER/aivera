@@ -1,15 +1,14 @@
 name: ai-eval
-# AIV-P0-029: the AI golden set gates every change to packages/ai, which holds the client, every prompt and the evals
+# AIV-P0-029, AIV-P1-093: the AI golden set runs on every pull request (no path filter, so it can be a required check: a
+# filtered required check never reports on other PRs) and gates every change to packages/ai, which holds the client, every prompt and the evals
 # (ADR-006 point 8) or to the dev model deployment. "ai-eval" scores the recorded answers: deterministic, free, no model
 # call. "ai-eval-live" asks the dev AI deployment (synthetic data only, ADR-011) on main and on a manual run only, so no
 # pull request can spend tokens or hold the eval identity; it waits for the owner to set AI_EVAL_CLIENT_ID (infra/README.md).
 # Never weaken a step or lower a threshold to get green (AGENTS.md 2.7).
 on:
   pull_request:
-    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
   push:
     branches: [main]
-    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
   workflow_dispatch:
 
 permissions:
@@ -17,7 +16,7 @@ permissions:
 
 concurrency:
   group: ai-eval-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ai-eval:
