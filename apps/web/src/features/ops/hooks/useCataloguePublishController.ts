@@ -29,8 +29,9 @@ export function useCataloguePublishController(
     close: () => void,
   ) => {
     const result = await action().catch((): CatalogueSaveResult => ({ ok: false, error: 'failed' }));
-    router.refresh();
+    // A success already carries the new page (the action revalidates it); a second render only delays it.
     if (!result.ok) {
+      router.refresh();
       setError(result);
       throw new Error(result.error);
     }
