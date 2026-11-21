@@ -1,7 +1,13 @@
 import type { Tx } from '@credalent/db';
 import type { FindOrCreatePersonInput } from '@credalent/candidates';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
-import { IntakeError, type Application, type ApplicationSource, type Source } from '../domain/application.ts';
+import {
+  IntakeError,
+  type Application,
+  type ApplicationSource,
+  type Source,
+  type Stage,
+} from '../domain/application.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type IntakeStore = {
@@ -14,6 +20,11 @@ export type IntakeStore = {
     workspaceId: string,
     sourceId: string,
   ): Promise<{ personId: string; links: string[]; githubLogin: string | null; fileIds: string[] } | null>;
+  /** The job's applications, newest first, each with the source of its first arrival. */
+  listForJob(
+    workspaceId: string,
+    jobId: string,
+  ): Promise<{ applicationId: string; personId: string; stage: Stage; receivedAt: Date; source: Source }[]>;
 };
 
 export type Ports = {
@@ -23,6 +34,11 @@ export type Ports = {
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** The candidates contract's `findOrCreatePerson`. */
   findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<{ personId: string }>;
+  /**
+   * The candidates composition's `displayNamesInWorkspace`: unauthorised, so only `listApplicationsForJob` calls it,
+   * after it authorised the job, with that job's applicants alone.
+   */
+  displayNames(tx: Tx, workspaceId: string, personIds: string[]): Promise<{ id: string; displayName: string }[]>;
   /** The job and its client, or null when the context cannot see it (the jobs contract's `getJob`, under RLS). */
   jobResource(ctx: WorkspaceContext, jobId: string): Promise<JobResource | null>;
   newId(): string;
@@ -43,11 +59,21 @@ export type ReceiveApplicationInput = {
 
 export type ReceiveApplicationResult = { applicationId: string; personId: string; sourceId: string; created: boolean };
 
+/** One row of a job's applicant list (AIV-P1-086). `displayName` is null only if the person record is gone. */
+export type ApplicationListItem = {
+  applicationId: string;
+  displayName: string | null;
+  stage: Stage;
+  receivedAt: Date;
+  source: Source;
+};
+
 export function applicationUseCases({
   storeFor,
   publishApplicationReceived,
   authorize,
   findOrCreatePerson,
+  displayNames,
   jobResource,
   newId,
   now,
@@ -84,6 +110,18 @@ export function applicationUseCases({
       // Every arrival can bring new files, so every arrival triggers ingestion.
       await publishApplicationReceived(ctx.tx, source);
       return { applicationId: application.id, personId, sourceId: source.id, created: application.id === id };
+    },
+
+    // shortcut: no paging; the ranked candidates table (AIV-P1-034) replaces this list and adds it.
+    async listApplicationsForJob(ctx: WorkspaceContext, jobId: string): Promise<ApplicationListItem[]> {
+      // An ungranted job is hidden by the jobs module's row-level security: not found, so nothing says it exists.
+      const job = await jobResource(ctx, jobId);
+      if (!job) throw new IntakeError('job_not_found');
+      await authorize(ctx, 'candidate.view', job);
+      const rows = await storeFor(ctx.tx).listForJob(ctx.workspaceId, jobId);
+      const people = await displayNames(ctx.tx, ctx.workspaceId, [...new Set(rows.map((r) => r.personId))]);
+      const names = new Map(people.map((p) => [p.id, p.displayName]));
+      return rows.map(({ personId, ...r }) => ({ ...r, displayName: names.get(personId) ?? null }));
     },
 
     async addLink(ctx: WorkspaceContext, applicationId: string, url: string): Promise<{ sourceId: string }> {

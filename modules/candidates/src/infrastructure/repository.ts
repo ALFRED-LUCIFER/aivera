@@ -1,5 +1,5 @@
 import { DbQueryError, type Tx } from '@credalent/db/client';
-import { and, asc, eq, isNull, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { CandidateStore } from '../application/people.ts';
 import { person, personIdentifier } from './schema.ts';
 
@@ -81,6 +81,20 @@ export function candidateStore(tx: Tx): CandidateStore {
         .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId)));
       return row ?? null;
     },
+    async identifierEmails(workspaceId, personId) {
+      const rows = await tx
+        .select({ value: personIdentifier.value })
+        .from(personIdentifier)
+        .where(
+          and(
+            eq(personIdentifier.workspaceId, workspaceId),
+            eq(personIdentifier.personId, personId),
+            eq(personIdentifier.type, 'email'),
+          ),
+        )
+        .orderBy(asc(personIdentifier.value));
+      return rows.map((r) => r.value);
+    },
     async deleteSyntheticPeople(workspaceId) {
       const [real] = await tx
         .select({ id: person.id })
@@ -98,6 +112,12 @@ export function candidateStore(tx: Tx): CandidateStore {
         .from(person)
         .where(and(eq(person.workspaceId, workspaceId), isNull(person.mergedIntoId)))
         .orderBy(asc(person.createdAt), asc(person.id));
+    },
+    displayNames(workspaceId, personIds) {
+      return tx
+        .select({ id: person.id, displayName: person.displayName })
+        .from(person)
+        .where(and(eq(person.workspaceId, workspaceId), inArray(person.id, personIds)));
     },
   };
 }

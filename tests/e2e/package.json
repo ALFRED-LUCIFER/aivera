@@ -11,9 +11,11 @@
   "devDependencies": {
     "@credalent/audit": "workspace:*",
     "@credalent/candidate-accounts": "workspace:*",
+    "@credalent/candidates": "workspace:*",
     "@credalent/config": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/identity": "workspace:*",
+    "@credalent/intake": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "@auth/core": "0.41.3",

@@ -5,7 +5,12 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { createAiClient, fakeProvider } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
+import {
+  createCandidates,
+  createContactRecorder,
+  readPersonAsSystem,
+  displayNamesInWorkspace,
+} from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery, type Handler } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -252,6 +257,7 @@ beforeAll(async () => {
     workspaces,
     createCandidates(workspaces, () => NOW),
     jobs,
+    displayNamesInWorkspace,
     () => NOW,
   );
   evidence = createEvidence(workspaces, audit, () => NOW);
