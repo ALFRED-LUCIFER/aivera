@@ -29,6 +29,9 @@ importers:
       '@credalent/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@credalent/assessment':
+        specifier: workspace:*
+        version: link:../../modules/assessment
       '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
@@ -147,6 +150,12 @@ importers:
       '@credalent/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@credalent/assessment':
+        specifier: workspace:*
+        version: link:../../modules/assessment
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../../modules/audit
       '@credalent/candidates':
         specifier: workspace:*
         version: link:../../modules/candidates
@@ -208,6 +217,9 @@ importers:
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../evidence
+      '@credalent/jobs':
+        specifier: workspace:*
+        version: link:../jobs
       '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces

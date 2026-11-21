@@ -26,6 +26,7 @@ import type {
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
 import type {
+  Competency,
   DeskJob,
   Job,
   JobHeader,
@@ -448,9 +449,11 @@ export interface JobCounts {
 }
 
 /**
- * A job's approved rubric version for the worker (AIV-P1-072), in the consumer's workspace-scoped transaction `tx`:
- * the version id and its competencies in order, or null when none is approved. Server-side only; never called with a
- * workspace id from client input.
+ * A job's approved rubric version for the worker (AIV-P1-072, AIV-P1-031), in the consumer's workspace-scoped
+ * transaction `tx`: the version id and its competencies in order, or null when none is approved (never a draft).
+ * The ranked candidates page (AIV-P1-034) reads competency names with it too, only in the member's transaction and
+ * only after assessment's `listRanking` authorised the job. Server-side only; never called with a workspace id from
+ * client input.
  */
 export interface ApprovedRubricReads {
   approvedRubric(
@@ -459,6 +462,8 @@ export interface ApprovedRubricReads {
     jobId: string,
   ): Promise<{
     id: string;
-    competencies: { id: string; name: string; evidenceExpected: string; weightPercent: number }[];
+    competencies: (Pick<Competency, 'name' | 'evidenceExpected' | 'weightPercent' | 'levelNeeded' | 'type'> & {
+      id: string;
+    })[];
   } | null>;
 }

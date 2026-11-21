@@ -141,6 +141,8 @@ export const sample = {
     [3, '3 of 5'],
     [1, '1 of 5'],
   ],
+  // The ranking's "Meets the job's need": a count of the rubric's competencies (AIV-P1-034).
+  meetsNeed: { level: 4, of: 6, label: '4 of 6' },
   scoreStates: { open: 'Open claims', closed: 'No open claims', compact: 'Compact, in a table cell' },
   needNames: ['Cost and reliability', 'Retrieval and evaluation', 'Arabic NLP', 'Production ML'],
   markLabel: 'cited evidence',

@@ -15,6 +15,7 @@ import { newEnvelope } from '@credalent/db/outbox';
 import type { Handler } from '@credalent/db/consumer';
 import { EvidenceMappingRequestedV1, type EvidenceContract, type SourceKind } from '@credalent/evidence';
 import { createEvidence, createEvidenceMappingHandlers } from '@credalent/evidence/composition';
+import { createJobs } from '@credalent/jobs/composition';
 import { log } from '@credalent/observability';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
@@ -197,7 +198,12 @@ beforeAll(async () => {
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
   evidence = createEvidence(workspaces, audit, () => NOW);
-  assessment = createAssessment(workspaces, audit, () => NOW);
+  assessment = createAssessment(
+    workspaces,
+    audit,
+    createJobs(workspaces, audit, () => NOW),
+    () => NOW,
+  );
   const fake = fakeProvider();
   handlers = createEvidenceMappingHandlers({
     ai: createAiClient({

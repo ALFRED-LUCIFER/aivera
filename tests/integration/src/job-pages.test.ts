@@ -128,7 +128,7 @@ describe('Feature: Job header with its five stages (AIV-P1-011)', () => {
       job: { title: 'Senior AI Engineer', team: 'Engineering', location: 'DIFC, Dubai', hiringOwnerUserId: HEAD },
       approved: { version: 2, status: 'approved' },
       latest: { version: 2, status: 'approved' },
-      // Assessment (AIV-P1-031) does not report yet: not yet available, never an invented count.
+      // Assessment's count reaches the jobs header with AIV-P1-099: not yet available, never an invented count.
       assessed: null,
     });
   });

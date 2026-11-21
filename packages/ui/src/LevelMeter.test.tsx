@@ -14,6 +14,12 @@ describe('LevelMeter', () => {
     expect(segments(container).filter((s) => s.classList.contains('bg-text-2'))).toHaveLength(level);
   });
 
+  it('a count of six (the ranking\'s "4 of 6") draws six segments, four filled', () => {
+    const { container } = render(<LevelMeter level={4} of={6} label="4 of 6" />);
+    expect(segments(container)).toHaveLength(6);
+    expect(segments(container).filter((s) => s.classList.contains('bg-text-2'))).toHaveLength(4);
+  });
+
   it.each(['light', 'dark'] as const)('%s: a filled segment keeps at least 3:1 on the surface', (theme) => {
     expect(
       contrast(resolveColour('bg-text-2', theme) ?? '', resolveColour('bg-surface', theme) ?? ''),

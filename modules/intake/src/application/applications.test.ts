@@ -43,8 +43,15 @@ describe('listApplicationsForJob', () => {
     const authorize = vi.fn<Ports['authorize']>(async () => undefined);
     const { useCases, displayNames } = setup(authorize);
     expect(await useCases.listApplicationsForJob(ctx, JOB.jobId)).toEqual([
-      { applicationId: 'a2', displayName: null, stage: 'new', receivedAt: at, source: 'email' },
-      { applicationId: 'a1', displayName: 'Sara Al Qahtani', stage: 'new', receivedAt: at, source: 'linkedin' },
+      { applicationId: 'a2', personId: 'p2', displayName: null, stage: 'new', receivedAt: at, source: 'email' },
+      {
+        applicationId: 'a1',
+        personId: 'p1',
+        displayName: 'Sara Al Qahtani',
+        stage: 'new',
+        receivedAt: at,
+        source: 'linkedin',
+      },
     ]);
     expect(authorize).toHaveBeenCalledWith(ctx, 'candidate.view', JOB);
     expect(displayNames).toHaveBeenCalledWith(ctx.tx, 'w1', ['p2', 'p1']);
