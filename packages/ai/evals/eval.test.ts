@@ -560,10 +560,12 @@ describe('Feature: AI eval harness with a golden set', () => {
   });
 
   it(
-    'Scenario: CI runs only when AI code changes, and posts the summary',
+    'Scenario: CI runs on every pull request and on pushes that change AI code, and posts the summary',
     () => {
       const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));
-      const paths: string[] = workflow.on.pull_request.paths;
+      // Pull requests always run it (AIV-P1-093: a required check must report); pushes to main only for AI code.
+      expect(workflow.on.pull_request).toBeNull();
+      const paths: string[] = workflow.on.push.paths;
       const runs = (file: string) => paths.some((glob) => matchesGlob(file, glob));
       expect(runs('apps/web/src/features/jobs/components/RoleNew.tsx')).toBe(false);
       expect(runs('packages/ai/src/prompts/jobs.draftCompetencies.ts')).toBe(true);
@@ -700,7 +702,7 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
 
   it('Scenario: CI runs on prompt changes', () => {
     const workflow = parse(readFileSync(join(import.meta.dirname, '../../../.github/workflows/ai-eval.yml'), 'utf8'));
-    const paths: string[] = workflow.on.pull_request.paths;
+    const paths: string[] = workflow.on.push.paths;
     expect(paths.some((glob) => matchesGlob('packages/ai/src/prompts/jobs.detectDomain.ts', glob))).toBe(true);
     expect(paths.some((glob) => matchesGlob('packages/ai/evals/jobs.detectDomain/payments-difc.yaml', glob))).toBe(
       true,
