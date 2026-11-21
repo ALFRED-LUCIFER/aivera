@@ -141,7 +141,23 @@ test("Scenario: Changing a member's jobs: Edit jobs uses the same picker", async
   await expect(row(page, 'rami@example.com').getByRole('cell').nth(2)).toHaveText('Senior Product Manager, Payments');
 });
 
-test('removing a member asks first, then takes them off the list', async ({ page }) => {
+// AIV-P2-060 Scenario: The active-workspace pointer follows membership. Lina's active workspace was Gulf Talent Partners
+// until she was removed from it (seed.ts), so she lands on her other workspace, Harbour Talent; removed from that too,
+// she has none and gets the no-workspace page, never the 403 page. The mutation-checked proof is workspaces.test.ts.
+test('removing a member asks first, then takes them off the list and out of the workspace', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const lina = await browser.newPage({ baseURL: baseURL ?? '' });
+  await signIn(lina, { email: 'lina@example.com' });
+  await lina.goto('/app/jobs');
+  await expect(lina.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+  // Harbour Talent's jobs, not Gulf's: the shell names no workspace yet (AIV-P1-055), but only Harbour's carry clients.
+  await expect(
+    lina.getByRole('row').filter({ hasText: 'Senior Product Manager, Payments' }).filter({ hasText: 'Falcon Pay' }),
+  ).toHaveCount(1);
+
   await openMembers(page);
   await page.getByRole('button', { name: 'Remove lina@example.com' }).click();
   const dialog = page.getByRole('dialog', { name: 'Remove lina@example.com?' });
@@ -149,6 +165,11 @@ test('removing a member asks first, then takes them off the list', async ({ page
   await dialog.getByRole('button', { name: 'Remove member' }).click();
   await expect(dialog).toBeHidden();
   await expect(row(page, 'lina@example.com', 'Active')).toHaveCount(0);
+
+  await lina.goto('/app/jobs');
+  await expect(lina.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+  await expect(lina.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
+  await lina.close();
 });
 
 test('revoking an invitation takes it off the list', async ({ page }) => {

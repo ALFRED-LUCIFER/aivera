@@ -8,7 +8,12 @@ import { authConfig, tokenMaxAge } from './auth';
 const upsert = vi.fn();
 vi.mock('@credalent/identity/composition', () => ({ createIdentity: () => ({ upsertUserFromIdToken: upsert }) }));
 vi.mock('./db', () => ({ getDb: () => ({}) }));
-vi.mock('./env', () => ({ env: () => ({ auth: { issuer: 'https://tenant.credalent.example/v2.0' } }) }));
+vi.mock('./env', () => ({
+  env: () => ({
+    auth: { issuer: 'https://tenant.credalent.example/v2.0' },
+    platformOperators: new Set(['theo.platform@example.com']),
+  }),
+}));
 
 const settings = {
   secret: 'x'.repeat(32),
@@ -283,17 +288,52 @@ describe('session length follows "Keep me signed in"', () => {
     expect(reissued.payload).toMatchObject({ sub: 'user-1', remember });
   });
 
+  const HOUR = 60 * 60;
+  const signedInAt = 1_000_000;
+
   // SAFETY: mutation check: returned THIRTY_DAYS for every remembered token (rolling 30 days) -> this test failed
-  it('ticked ends 30 days after sign-in however often it is used; unticked restarts its 8 hours on each request', () => {
-    const signedIn = 1_000_000;
-    const exp = signedIn + 30 * 24 * 60 * 60;
-    const day29 = signedIn + 29 * 24 * 60 * 60;
-    expect(tokenMaxAge({ remember: true, exp }, day29)).toBe(24 * 60 * 60);
-    expect(tokenMaxAge({ remember: false, exp: signedIn + 8 * 60 * 60 }, signedIn + 7 * 60 * 60)).toBe(8 * 60 * 60);
+  it('ticked ends 30 days after sign-in however often it is used', () => {
+    expect(tokenMaxAge({ remember: true, signedInAt }, signedInAt + 29 * 24 * HOUR)).toBe(24 * HOUR);
   });
 
-  it('the token holds only the user id and the choice: no email, name or provider token', async () => {
+  // Scenario: A session without "Keep me signed in" ends after 8 hours (AIV-P2-060).
+  // SAFETY: mutation check: restarted 8 hours on every request (no absolute limit) -> this test failed
+  it('unticked ends 8 hours after sign-in however often it is used: at 9 hours the token is already expired', () => {
+    expect(tokenMaxAge({ remember: false, signedInAt }, signedInAt + 7 * HOUR)).toBe(HOUR);
+    expect(tokenMaxAge({ remember: false, signedInAt }, signedInAt + 9 * HOUR)).toBeLessThanOrEqual(0);
+  });
+
+  // Scenario: Operator sessions are short (AIV-P2-060, ADR-012).
+  // SAFETY: mutation check: ignored the operator flag in tokenMaxAge -> this test failed
+  it('an operator token lives one hour from each request, never past the end of its session', () => {
+    expect(tokenMaxAge({ remember: true, signedInAt, operator: true }, signedInAt + 5 * 24 * HOUR)).toBe(HOUR);
+    expect(tokenMaxAge({ remember: false, signedInAt, operator: true }, signedInAt + 7.5 * HOUR)).toBe(HOUR / 2);
+  });
+
+  it('a request after the session ended gets no session: the re-issued token is expired', async () => {
+    const stale = { sub: 'user-1', remember: false, signedInAt: Math.floor(Date.now() / 1000) - 9 * HOUR };
+    const { jwt } = authConfig(settings);
+    const encoded = await jwt?.encode?.({ token: stale, secret: settings.secret, salt, maxAge: 1 });
+    // Auth.js treats a decode failure as no session and clears the cookie.
+    await expect(decode({ token: encoded ?? '', secret: settings.secret, salt })).rejects.toThrow('"exp" claim');
+  });
+
+  it('a token from before the sign-in time was kept is dropped, so it cannot slide forever', async () => {
+    const { callbacks } = authConfig(settings);
+    expect(await callbacks?.jwt?.({ token: { sub: 'user-1', remember: false } } as never)).toBeNull();
+  });
+
+  it.each([
+    ['an operator', 'theo.platform@example.com', true],
+    ['a recruiter', 'nadia@example.com', false],
+  ])('signing in as %s marks the token operator: %s', async (_who, email, operator) => {
+    const { callbacks } = authConfig(settings);
+    const token = await callbacks?.jwt?.({ token: {}, user: { id: 'user-1', email }, account: null } as never);
+    expect(token).toMatchObject({ operator });
+  });
+
+  it('the token holds only the user id, the choice, the sign-in time and the operator flag: no email or name', async () => {
     const { payload } = await issue(true);
-    expect(Object.keys(payload).toSorted()).toEqual(['exp', 'iat', 'jti', 'remember', 'sub']);
+    expect(Object.keys(payload).toSorted()).toEqual(['exp', 'iat', 'jti', 'operator', 'remember', 'signedInAt', 'sub']);
   });
 });

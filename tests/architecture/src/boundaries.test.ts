@@ -86,6 +86,16 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ).toEqual(['apps/web/src/features/jobs/domain/x.ts', 'modules/jobs/src/domain/y.ts']);
   });
 
+  // SAFETY: mutation check: removed the own-membership-read check -> this test failed
+  it('app.user_id set, or resolveActiveWorkspace called, outside its repository and composition is reported (AIV-P2-060)', () => {
+    expect(
+      findViolations(fixture('own-membership'))
+        .filter((v) => v.rule === 'own-membership-read')
+        .map((v) => v.file)
+        .toSorted(),
+    ).toEqual(['apps/web/src/server/y.ts', 'modules/workspaces/src/application/x.ts']);
+  });
+
   // SAFETY: mutation check: removed the job-owner-from-jobs check -> this test failed
   it('a call to setJobOwner outside the jobs module is reported (AIV-P1-056)', () => {
     expect(

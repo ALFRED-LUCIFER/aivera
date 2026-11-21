@@ -22,6 +22,7 @@ import {
 import { createAudit } from '@credalent/audit/composition';
 import { createNotifications } from '@credalent/notifications/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
+import { resolveActiveWorkspace } from '../../../modules/workspaces/src/infrastructure/repository.ts';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -88,9 +89,9 @@ const applied = async () =>
 
 describe('Scenario: Migrations are forward-only and per schema', () => {
   it('the workspaces schema has its own migrations table and a second pnpm db:migrate applies nothing', async () => {
-    expect(await applied()).toBe(16);
+    expect(await applied()).toBe(17);
     dbMigrate();
-    expect(await applied()).toBe(16);
+    expect(await applied()).toBe(17);
   });
 
   it('the tables are owned by aivera_migrator; the workspace-owned ones have row-level security enabled and forced', async () => {
@@ -400,6 +401,99 @@ describe('Scenario: Switching workspace re-checks membership', () => {
 
   it('a user who never chose a workspace has none', async () => {
     expect(await workspaces.activeWorkspace(user(62))).toBeNull();
+  });
+});
+
+// AIV-P2-060: the active-workspace pointer follows membership, through the named read of a person's own memberships.
+const pointer = async (userId: string) =>
+  (
+    await admin.execute<{ id: string }>(
+      sql`select workspace_id as id from workspaces.active_workspace where user_id = ${userId}`,
+    )
+  )[0]?.id ?? null;
+const removeAs = (adminId: string, workspaceId: string, userId: string) =>
+  workspaces.withWorkspace({ userId: adminId }, workspaceId, (ctx) => workspaces.removeMember(ctx, userId));
+const asUser = <T>(userId: string, work: (tx: Parameters<Parameters<typeof app.transaction>[0]>[0]) => Promise<T>) =>
+  app.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.user_id', ${userId}, true)`);
+    return work(tx);
+  });
+
+describe('Scenario: The active-workspace pointer follows membership', () => {
+  // SAFETY: mutation check: removed clearActiveWorkspace from removeMember -> this test failed (the pointer stayed on Gulf)
+  it('removed from "Gulf Talent Partners", Nadia lands on her other workspace', async () => {
+    const nadia = { userId: user(63) };
+    const own = (await newWorkspace('Nadia Freelance P2-060', nadia.userId)).id;
+    const gulf = (await newWorkspace('Gulf Talent Partners P2-060')).id;
+    await addMember(gulf, nadia.userId, 'recruiter');
+    await workspaces.switchWorkspace(nadia, gulf);
+
+    await removeAs(ALEX, gulf, nadia.userId);
+
+    expect(await pointer(nadia.userId)).toBeNull(); // cleared with the removal, in its transaction
+    expect(await workspaces.activeWorkspace(nadia.userId)).toBe(own);
+    expect(await pointer(nadia.userId)).toBe(own);
+  });
+
+  it('removed from her only workspace, she has none: the no-workspace page', async () => {
+    const only = (await newWorkspace('Only workspace P2-060')).id;
+    await addMember(only, user(64), 'recruiter');
+    await workspaces.switchWorkspace({ userId: user(64) }, only);
+    await removeAs(ALEX, only, user(64));
+    expect(await workspaces.activeWorkspace(user(64))).toBeNull();
+  });
+
+  // Carried from the e2e "A removed member loses access immediately" (AIV-P0-010), which now lands elsewhere.
+  // SAFETY: mutation check: made withWorkspace skip the membership status check -> this test failed (the handler ran)
+  it('a removed member who still names the workspace is refused, and the handler never runs', async () => {
+    const gulf = (await newWorkspace('Gulf removed P2-060')).id;
+    await addMember(gulf, user(68), 'interviewer');
+    await removeAs(ALEX, gulf, user(68));
+    const handler = vi.fn(async () => 'ran');
+    await expect(workspaces.withWorkspace({ userId: user(68) }, gulf, handler)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: made pickActiveWorkspace keep any stored pointer -> this test failed (it stayed on Gulf)
+  it('a pointer left on a workspace she no longer belongs to moves on the next read', async () => {
+    const own = (await newWorkspace('Nadia Freelance stale', user(65))).id;
+    const gulf = (await newWorkspace('Gulf stale')).id;
+    await addMember(gulf, user(65), 'recruiter');
+    await workspaces.switchWorkspace({ userId: user(65) }, gulf);
+    // Removed before this fix existed: the status changed and the pointer stayed.
+    await withWorkspace(app, gulf, (tx) =>
+      tx.execute(sql`update workspaces.member set status = 'removed' where user_id = ${user(65)}`),
+    );
+    expect(await workspaces.activeWorkspace(user(65))).toBe(own);
+  });
+
+  // The database, not convention, keeps app.user_id out of workspace transactions. A deep import: no contract can call
+  // the resolver inside a workspace transaction, which is the misuse this proves impossible.
+  // SAFETY: mutation check: dropped the `where ... app.workspace_id ... = ''` guard from resolveActiveWorkspace -> this test failed
+  it('resolving the active workspace inside a workspace transaction throws, and nothing is widened', async () => {
+    const w = (await newWorkspace('Own read guard', user(69))).id;
+    await expect(withWorkspace(app, w, (tx) => resolveActiveWorkspace(tx, user(69)))).rejects.toThrow(
+      'resolveActiveWorkspace needs a transaction with no workspace open',
+    );
+  });
+
+  // SAFETY: mutation check: replaced policy member_own_read with USING (true) -> this test failed (saw every member)
+  it("the named read shows only the user's own memberships, with no repository filter, and writes nothing", async () => {
+    const w1 = (await newWorkspace('Own read W1', user(66))).id;
+    const w3 = (await newWorkspace('Own read W3')).id; // W3 has no membership for user(66)
+    await addMember(w1, user(67), 'recruiter');
+    const rows = await asUser(user(66), async (tx) => [
+      ...(await tx.execute<{ user_id: string; workspace_id: string }>(
+        sql`select user_id, workspace_id from workspaces.member`,
+      )),
+    ]);
+    expect(rows).toEqual([{ user_id: user(66), workspace_id: w1 }]);
+    expect(rows.some((r) => r.workspace_id === w3)).toBe(false);
+    // Read-only: no write reaches the user's own row in a workspace that is not open.
+    const updated = await asUser(user(66), (tx) =>
+      tx.execute(sql`update workspaces.member set role = 'recruiter' where user_id = ${user(66)} returning 1`),
+    );
+    expect([...updated]).toEqual([]);
   });
 });
 

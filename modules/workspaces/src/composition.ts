@@ -18,6 +18,7 @@ import { AI_DAILY_TOKEN_BUDGET, WorkspaceError } from './domain/workspace.ts';
 import {
   activeWorkspaceStore,
   aiTokenUsageStore,
+  resolveActiveWorkspace,
   listDirectory,
   readCreator,
   readStatus,
@@ -42,7 +43,8 @@ export function createWorkspaces(db: Db, audit: AuditContract, now: () => Date =
     storeFor,
     grants,
     active: {
-      get: (userId) => db.transaction((tx) => activeWorkspaceStore(tx).get(userId)),
+      // Its own transaction: the user setting it makes must never reach a workspace-scoped one.
+      resolve: (userId) => db.transaction((tx) => resolveActiveWorkspace(tx, userId)),
       set: (userId, workspaceId) => db.transaction((tx) => activeWorkspaceStore(tx).set(userId, workspaceId)),
     },
   });

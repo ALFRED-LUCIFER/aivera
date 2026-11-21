@@ -1,0 +1,1 @@
+CREATE POLICY "member_own_read" ON "workspaces"."member" AS PERMISSIVE FOR SELECT TO "aivera_app" USING ("workspaces"."member"."user_id" = nullif(current_setting('app.user_id', true), '')::uuid);
