@@ -31,16 +31,14 @@ describe('CandidateSite', () => {
     renderSite(false);
     expect(header().getByRole('link', { name: /^Credalent for candidates/ })).toHaveProperty('pathname', '/candidates');
     const nav = within(screen.getByRole('navigation', { name: 'Candidate site' }));
-    for (const name of ['Jobs', 'Free CV check', 'Plans', 'Portfolio'])
-      expect(nav.getByRole('link', { name })).toBeDefined();
-    expect(nav.getByRole('link', { name: 'Create account' })).toBeDefined();
+    expect(nav.getAllByRole('link').map((link) => link.textContent)).toEqual(['Jobs', 'Create account']);
     expect(screen.queryByRole('link', { name: 'My applications' })).toBeNull();
   });
 
   // mutation check: swapped the signedIn branch in CandidateShell -> both header tests failed
-  it('shows My applications instead of Create account when signed in', () => {
+  it('shows no Create account and no unbuilt My applications link when signed in', () => {
     renderSite(true);
-    expect(header().getByRole('link', { name: 'My applications' })).toHaveProperty('pathname', '/candidates/me');
+    expect(screen.queryByRole('link', { name: 'My applications' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Create account' })).toBeNull();
     expect(header().getByRole('button', { name: 'Sign out' })).toBeDefined();
   });
@@ -50,11 +48,11 @@ describe('CandidateSite', () => {
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 
-  it('states the ranking rule and links Jobs, Plans and For recruiters in the footer', () => {
+  it('states the ranking rule and links Jobs and For recruiters in the footer', () => {
     renderSite(false);
     const footer = within(screen.getByRole('contentinfo'));
     expect(footer.getByText('© 2026 Credalent. Paying never changes how recruiters rank you.')).toBeDefined();
-    expect(footer.getAllByRole('link').map((link) => link.textContent)).toEqual(['Jobs', 'Plans', 'For recruiters']);
+    expect(footer.getAllByRole('link').map((link) => link.textContent)).toEqual(['Jobs', 'For recruiters']);
   });
 
   it('marks the current section, including the pages under it', () => {
@@ -62,7 +60,6 @@ describe('CandidateSite', () => {
     renderSite(false);
     const nav = within(screen.getByRole('navigation', { name: 'Candidate site' }));
     expect(nav.getByRole('link', { name: 'Jobs' }).getAttribute('aria-current')).toBe('page');
-    expect(nav.getByRole('link', { name: 'Plans' }).getAttribute('aria-current')).toBeNull();
   });
 
   it('carries none of the recruiter chrome', () => {

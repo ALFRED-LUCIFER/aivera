@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyHref, isCurrent, placeholderKey, sitePages } from './links.ts';
+import { accountLink, footerLinks, headerLinks, isCurrent } from './links.ts';
 
 describe('isCurrent', () => {
   it('matches the page and the pages under it, not a sibling that shares a prefix', () => {
@@ -10,24 +10,9 @@ describe('isCurrent', () => {
   });
 });
 
-describe('sitePages', () => {
-  it('names every page the frame links to, and nothing outside the candidate site', () => {
-    expect([...sitePages.keys()].toSorted()).toEqual([
-      '/candidates/cv-check',
-      '/candidates/jobs',
-      '/candidates/me',
-      '/candidates/plans',
-      '/candidates/plus/address',
-      '/candidates/signup',
-    ]);
-  });
-});
-
-describe('placeholderKey', () => {
-  it("a job's apply address shows the Apply placeholder until AIV-P3-008; other job paths are not placeholders", () => {
-    expect(placeholderKey(applyHref('senior-ai-engineer-3f9a1c0b2d4e'))).toBe('applyPlaceholder');
-    expect(placeholderKey('/candidates/plans')).toBe('nav.plans');
-    expect(placeholderKey('/candidates/jobs/x/apply/more')).toBeUndefined();
-    expect(placeholderKey('/candidates/jobs/-x-/apply')).toBeUndefined();
+describe('the frame links', () => {
+  it('lead only to pages that exist (AIV-P1-095)', () => {
+    const hrefs = [...headerLinks, accountLink, ...footerLinks].map(({ href }) => href).toSorted();
+    expect(hrefs).toEqual(['/', '/candidates/jobs', '/candidates/jobs', '/candidates/signup']);
   });
 });

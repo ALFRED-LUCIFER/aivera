@@ -81,12 +81,9 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
               </button>
             </form>
           </search>
-          <div className="mk-rise flex flex-wrap items-center gap-x-4 gap-y-2" style={step(3)}>
-            <Link href="/candidates/cv-check" className={buttonClassName('secondary')}>
-              {t('candidate.home.checkCv')}
-            </Link>
-            <p className="text-text-2">{t('candidate.home.free')}</p>
-          </div>
+          <p className="mk-rise text-text-2" style={step(3)}>
+            {t('candidate.home.free')}
+          </p>
         </div>
         <div className="mk-rise min-w-0 flex-[5_1_360px]" style={step(4)}>
           <section
@@ -210,16 +207,7 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
             {t('candidate.home.plusBody', { price: plusPrice })}
           </p>
         </div>
-        {/* The highlighter call to action the CHome artboard draws (DESIGN.md). Light tokens on the ink panel keep it
-            the bright highlighter with ink text, and its focus ring in highlighter so it shows on the dark panel. */}
-        <Link
-          href="/candidates/plans"
-          data-theme="light"
-          className="group inline-flex h-11 items-center justify-center gap-2 rounded-control border border-hl bg-hl px-4 font-semibold whitespace-nowrap text-hl-text transition-[filter] duration-120 ease-case hover:brightness-95 focus-visible:outline-hl motion-reduce:transition-none pointer-coarse:min-h-11"
-        >
-          {t('candidate.home.plusLink')}
-          {arrow}
-        </Link>
+        {/* Deviation from the CHome artboard: no "See what Plus adds" call to action until Plans is built (AIV-P1-095). */}
       </section>
     </div>
   );

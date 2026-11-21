@@ -12,24 +12,25 @@ test('a signed-out visitor sees the candidate navigation and footer, and no recr
   await page.goto(home);
   const header = page.getByRole('banner');
   await expect(header.getByRole('link', { name: /^Credalent for candidates/ })).toBeVisible();
-  for (const name of ['Jobs', 'Free CV check', 'Plans', 'Portfolio', 'Create account'])
-    await expect(siteNav(page).getByRole('link', { name })).toBeVisible();
+  // Only built pages are linked (AIV-P1-095): no CV check, Plans, Portfolio or Apply.
+  await expect(siteNav(page).getByRole('link')).toHaveText(['Jobs', 'Create account']);
   await expect(page.getByRole('link', { name: 'My applications' })).toHaveCount(0);
 
   const footer = page.getByRole('contentinfo');
   await expect(footer).toContainText('© 2026 Credalent. Paying never changes how recruiters rank you.');
-  await expect(footer.getByRole('link')).toHaveText(['Jobs', 'Plans', 'For recruiters']);
+  await expect(footer.getByRole('link')).toHaveText(['Jobs', 'For recruiters']);
 
   await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0);
 });
 
-// Each page has its own title (WCAG 2.4.2); unknown candidate paths are not served.
-test('placeholder pages carry their own title, and unknown paths 404', async ({ page }) => {
-  await page.goto('/candidates/plans');
-  await expect(page).toHaveTitle('Plans · Credalent for candidates');
-  await expect(page.getByRole('heading', { level: 1, name: 'Plans' })).toBeVisible();
-  expect((await page.goto('/candidates/nowhere'))?.status()).toBe(404);
+// AIV-P1-095: a page that is not built is not served, and none says "arrives with its own ticket".
+test('pages that are not built answer 404', async ({ page }) => {
+  for (const path of ['/candidates/plans', '/candidates/cv-check', '/candidates/plus/address', '/candidates/nowhere']) {
+    expect((await page.goto(path))?.status(), path).toBe(404);
+    await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' })).toBeVisible();
+    await expect(page.getByText('arrives with its own ticket')).toHaveCount(0);
+  }
 });
 
 test('Skip to content is the first focusable element and moves focus to main', async ({ page }) => {

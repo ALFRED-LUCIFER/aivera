@@ -13,16 +13,17 @@ export type Screen = {
   foot?: true;
 };
 
-// Every section is a placeholder page until its screen ticket replaces it (docs/01-design/screens.md).
+// A section whose screen is not built carries its own flag, off until that ticket ships: it leaves the sidebar and its
+// route answers 404 (AIV-P1-095, docs/01-design/screens.md). The screen's ticket removes its flag.
 export const navigation = [
   { id: 'desk', path: '/app', capability: 'recruiter', flag: null },
-  { id: 'inbox', path: '/app/inbox', capability: 'recruiter', flag: null },
+  { id: 'inbox', path: '/app/inbox', capability: 'recruiter', flag: 'inbox' },
   { id: 'jobs', path: '/app/jobs', capability: 'recruiter', flag: null },
-  { id: 'candidates', path: '/app/candidates', capability: 'recruiter', flag: null },
-  { id: 'pool', path: '/app/pool', capability: 'recruiter', flag: null },
-  { id: 'interviews', path: '/app/interviews', capability: 'recruiter', flag: null },
-  { id: 'packs', path: '/app/packs', capability: 'recruiter', flag: null },
-  { id: 'value', path: '/app/value', capability: 'recruiter', flag: null },
+  { id: 'candidates', path: '/app/candidates', capability: 'recruiter', flag: 'candidates' },
+  { id: 'pool', path: '/app/pool', capability: 'recruiter', flag: 'pool' },
+  { id: 'interviews', path: '/app/interviews', capability: 'recruiter', flag: 'interviews' },
+  { id: 'packs', path: '/app/packs', capability: 'recruiter', flag: 'packs' },
+  { id: 'value', path: '/app/value', capability: 'recruiter', flag: 'value' },
   // AIV-P1-052: every recruiter reads; only an admin saves.
   { id: 'settings', path: '/app/settings', capability: 'recruiter', flag: null, foot: true },
 ] as const satisfies readonly Screen[];

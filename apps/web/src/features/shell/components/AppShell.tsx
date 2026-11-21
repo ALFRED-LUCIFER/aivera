@@ -1,6 +1,6 @@
 // Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
 import { useTranslations } from '@credalent/i18n/react';
-import { AssistantDrawer, Button, Input, Label } from '@credalent/ui';
+import { Button } from '@credalent/ui';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
@@ -46,7 +46,6 @@ export function AppShell({
 }: AppShellProps) {
   const t = useTranslations('shell');
   const navId = useId();
-  const searchId = useId();
   const menuRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   // The opened menu takes focus, so keyboard users land in it rather than behind it.
@@ -66,7 +65,6 @@ export function AppShell({
   }, [navOpen, onCloseNav]);
   const foot = screens.filter((screen) => 'foot' in screen);
   const sections = screens.filter((screen) => !('foot' in screen));
-  const activeLabel = activeId ? t(`nav.${activeId}`) : t('nav.label');
   return (
     // Under 1024px the grid falls away: header, then the opened menu, then the page stack in one column.
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
@@ -91,13 +89,8 @@ export function AppShell({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </Button>
-        <search className="min-w-0 flex-1 basis-64 sm:max-w-md">
-          <Label htmlFor={searchId} className="sr-only">
-            {t('search')}
-          </Label>
-          {/* shortcut: the field searches nothing yet; results arrive with AIV-P1-049. */}
-          <Input id={searchId} type="search" placeholder={t('search')} />
-        </search>
+        {/* Deviation from the Main artboard: no search field and no "Ask Credalent" until they work (AIV-P1-049,
+            AIV-P2-E06); AIV-P1-095. */}
         <div className="ms-auto flex flex-wrap items-center gap-2">
           {member.workspace.synthetic && (
             <span className="inline-flex h-7 items-center gap-1.5 rounded-tag border border-info-border bg-info-bg px-2 text-meta font-semibold text-info-text">
@@ -118,17 +111,6 @@ export function AppShell({
               <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
             </svg>
           </Button>
-          <AssistantDrawer
-            title={t('assistant.title')}
-            context={t('assistant.context', { screen: activeLabel })}
-            inputLabel={t('assistant.input')}
-            askLabel={t('assistant.ask')}
-            footer={t('assistant.footer')}
-            closeLabel={t('assistant.close')}
-            // shortcut: questions go nowhere yet; answers arrive with AIV-P2-028.
-            onAsk={() => {}}
-            trigger={<Button>{t('assistant.open')}</Button>}
-          />
           <span className="grid size-9 place-items-center rounded-full border border-border bg-surface-subtle text-meta font-semibold text-text-2">
             <span aria-hidden="true">{member.initials}</span>
             <span className="sr-only">{t('account', { name: member.name })}</span>
