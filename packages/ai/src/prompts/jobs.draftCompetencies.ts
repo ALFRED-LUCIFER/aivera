@@ -38,7 +38,8 @@ const competency = z.object({
 
 // Azure strict mode needs every property present: .nullable(), never .optional() (client.ts generateStructured). Azure
 // documents maxItems, maxLength, minimum and maximum as unsupported there, so the model is not held to them: the prompt
-// states each limit and zod rejects a breach. No weight total is asked for, as a model cannot reliably keep a sum
+// states each limit and zod rejects a breach. Source: "Unsupported type-specific keywords",
+// https://learn.microsoft.com/azure/foundry/openai/how-to/structured-outputs#unsupported-type-specific-keywords No weight total is asked for, as a model cannot reliably keep a sum
 // across a list (AIV-P1-082): the jobs module scales the weights to 100 with the rule the save applies
 // (rebalanceWeights), so the recruiter still sees a draft totalling exactly 100.
 export const draftCompetenciesSchema = z.object({

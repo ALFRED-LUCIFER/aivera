@@ -253,6 +253,7 @@ describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
     expect(prompts).toHaveLength(2);
   });
 
+  // SAFETY: mutation check: removed .max(400) on why in draftCompetenciesSchema -> this test failed
   it('refuses more than two suggestions, or a why over 400 characters, rather than trimming', () => {
     const three = { ...answer, suggestions: [...answer.suggestions, { ...answer.suggestions[0], name: 'Third' }] };
     expect(draftCompetenciesSchema.safeParse(three).success).toBe(false);
@@ -274,17 +275,30 @@ describe('Scenario: The drafted weights total 100 (AIV-P1-082)', () => {
     };
     const scaled = await setup(heavy).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(total(scaled)).toBe(100);
+    // Six equal weights end within 1 of each other (largest remainder, earlier first on a tie).
     expect([...scaled.competencies, ...scaled.suggestions].map((c) => c.weightPercent)).toEqual([
-      20, 16, 16, 16, 16, 16,
+      17, 17, 17, 17, 16, 16,
     ]);
-    // 10, 20 and 30 of 60: rounded down to 16, 33 and 50, the remainder to the heaviest.
+    // 10, 20 and 30 of 60: 16.67, 33.33 and 50 round down to 99; the largest remainder (.67) gets the point.
     const light = answer.competencies.slice(0, 3).map((c, i) => ({ ...c, weight: 10 * (i + 1) }));
     const raised = await setup({ ...answer, competencies: light, suggestions: [] }).drafting.draftCompetencies(
       workspaceId,
       input,
       CATALOGUE_V1,
     );
-    expect(raised.competencies.map((c) => c.weightPercent)).toEqual([16, 33, 51]);
+    expect(raised.competencies.map((c) => c.weightPercent)).toEqual([17, 33, 50]);
+  });
+
+  it('a draft with no stated competency and only suggestions scales the suggestions to 100', async () => {
+    // A description of nothing but a refused line still gets the suggestions it implies, for the recruiter to judge.
+    const onlySuggestions = { ...answer, competencies: [], refused: true, reason: 'Age is not a skill.' };
+    const draft = await setup(onlySuggestions).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
+    expect(draft.competencies).toEqual([]);
+    expect(draft.suggestions.map((s) => [s.name, s.weightPercent])).toEqual([
+      ['Arabic and bilingual NLP', 40],
+      ['Product judgement', 60],
+    ]);
+    expect(draft.leftOutNonSkill).toBe(true);
   });
 
   it('keeps weights that already total 100, and counts only the suggestions it keeps', async () => {

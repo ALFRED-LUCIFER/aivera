@@ -150,21 +150,36 @@ export function assertValidCompetencies(
 }
 
 /**
- * Weights scaled proportionally to total 100 (AIV-P1-010): each rounded down to a whole percent and at least 1, and the
- * rounding remainder given to the heaviest competency. Rounded down, so the heaviest only gains and stays the heaviest.
- * Weights that already total 100 are kept as they are.
+ * Weights scaled proportionally to total 100 (AIV-P1-010, AIV-P1-082) by largest remainder: a weight whose share is
+ * under 1% gets 1%, the rest share what is left, each rounded down, and the points still missing go one each to the
+ * largest remainders (earlier first on a tie). So the total is exactly 100, a heavier weight never ends lighter, and equal
+ * weights end within 1 of each other. Weights that already total 100 are kept as they are. Needs at most 100 weights.
  */
 export function rebalanceWeights<C extends Pick<Competency, 'weightPercent'>>(competencies: C[]): C[] {
-  const total = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
-  if (total === 100) return competencies;
-  const scaled = competencies.map((c) => ({
-    ...c,
-    weightPercent: Math.max(1, Math.floor((c.weightPercent * 100) / total)),
-  }));
-  const weights = competencies.map((c) => c.weightPercent);
-  const heaviest = weights.indexOf(Math.max(...weights));
-  const remainder = 100 - scaled.reduce((sum, c) => sum + c.weightPercent, 0);
-  return scaled.map((c, i) => (i === heaviest ? { ...c, weightPercent: c.weightPercent + remainder } : c));
+  let free = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
+  if (free === 100) return competencies;
+  // Pinning a weight to 1% lowers the others' shares, which can pin more: repeat until none changes.
+  const pinned = new Set<number>();
+  let left = 100;
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const [i, c] of competencies.entries())
+      if (!pinned.has(i) && c.weightPercent * left < free) {
+        pinned.add(i);
+        free -= c.weightPercent;
+        left -= 1;
+        changed = true;
+      }
+  }
+  // Integer arithmetic only: a free weight's share, weight * left / free, as a whole part and a remainder.
+  const parts = competencies.map((c, i) => {
+    const scaled = c.weightPercent * left;
+    return pinned.has(i) ? { c, whole: 1, rest: -1 } : { c, whole: Math.floor(scaled / free), rest: scaled % free };
+  });
+  const missing = 100 - parts.reduce((sum, p) => sum + p.whole, 0);
+  // toSorted is stable, so on equal remainders the earlier competency gets the point.
+  const extra = new Set(parts.toSorted((a, b) => b.rest - a.rest).slice(0, missing));
+  return parts.map((p) => ({ ...p.c, weightPercent: p.whole + (extra.has(p) ? 1 : 0) }));
 }
 
 /**
