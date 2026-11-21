@@ -10,7 +10,8 @@ import type { ToApproveItem } from '../domain/desk.ts';
  * recruiter's own approval, linking to its rubric page. The Desk artboard draws it as the rubric row of its "Waiting on
  * you" card, beside "Waiting on others" (ported: the wrapping side-by-side row). Deviations, each with its reason:
  * - Title "Rubrics to approve", row "{job}, version N." (ticket AIV-P1-084's wording), not "Waiting on you" with the
- *   action "Approve the rubric" and "Assessment cannot start.": this card holds rubrics only.
+ *   artboard's "Send rubric for approval" row (renamed by ADR-014) and "Assessment cannot start.": this card holds
+ *   rubrics only.
  * - No "Oldest first…" subtitle, waiting time or other item kinds: the full queue and its times are desk queues
  *   (AIV-P2-017). Rows are oldest job first already.
  * - "Open" is a text link, as in "Waiting on others" here, not a small button: one style for both cards' rows.

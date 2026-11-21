@@ -1125,7 +1125,7 @@ describe("My desk: the rubrics waiting for the recruiter's approval", () => {
     });
   });
 
-  it('a version sent to the hiring owner but approved by the recruiter is not done "with the hiring owner"', async () => {
+  it('a version sent for approval but approved by a recruiter, not a hiring owner, is not done', async () => {
     const v2 = await as(RANA, demo, (ctx) =>
       jobs.saveRubric(ctx, deskJob, { successStatement: 'Ships more.', competencies: competencies([50, 50]) }),
     );
