@@ -245,6 +245,98 @@ test.describe('the draft', () => {
   }
 });
 
+// AIV-P2-046: a pack's regional hints in the draft. Runs after "the draft" above, on the draft it opened.
+const LOGISTICS = 'Logistics and mobility';
+const FREE_ZONE = 'UAE customs and free-zone procedures';
+const region = (page: Page, heading: string) =>
+  pack(page, LOGISTICS)
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { level: 3, name: heading }) });
+const hint = (page: Page, name: string) =>
+  page.locator('main details section li').filter({ has: page.getByRole('heading', { level: 3, name, exact: true }) });
+
+/** Fills the hint form; the name too when given. */
+async function fillHint(page: Page, name?: string) {
+  const dialog = page.getByRole('dialog', { name: 'Add a regional hint' });
+  if (name) await dialog.getByLabel('Name').fill(name);
+  await dialog.getByLabel('What it means').fill('Integrates customs clearance with the FASAH platform.');
+  await dialog.getByLabel('Evidence that counts').fill('Integration code and tests against FASAH documents');
+  for (const level of [1, 3, 5])
+    await dialog.getByRole('textbox', { name: `Level ${level}` }).fill(`Customs work at level ${level}`);
+  await dialog.getByRole('group', { name: 'Applies to job types' }).getByLabel('Software engineering').check();
+  await dialog.getByRole('radio', { name: 'Level 2' }).check();
+  return dialog;
+}
+
+test.describe('regional hints in the draft', () => {
+  test('Scenario: Adding a hint, by keyboard', async ({ page }) => {
+    await openCatalogue(page);
+    await packSummary(page, LOGISTICS).click();
+    await expect(region(page, 'Regional hints for the UAE')).toBeVisible();
+    await expect(region(page, 'Regional hints for India')).toBeVisible();
+    await page.getByRole('button', { name: `Add a regional hint to ${LOGISTICS} for KSA` }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Add a regional hint' });
+    await expect(dialog.getByLabel('Name')).toBeFocused();
+    await page.keyboard.type('FASAH customs integration');
+    await expect(dialog.getByLabel('Name')).toHaveValue('FASAH customs integration');
+    await fillHint(page);
+    // Always Desirable: no Mandatory option and no default suggestions.
+    await expect(dialog).toContainText('Desirable');
+    for (const role of ['radio', 'checkbox', 'option', 'combobox'] as const)
+      await expect(dialog.getByRole(role, { name: /mandatory/i })).toHaveCount(0);
+    await expect(dialog.getByRole('group', { name: 'Default suggestion for' })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Save' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    const added = hint(page, 'FASAH customs integration');
+    await expect(added).toContainText('New in draft');
+    await expect(added).toContainText('Desirable');
+    await expect(region(page, 'Regional hints for KSA')).toContainText('FASAH customs integration');
+    // Newest first: the hint's own entry is the top row.
+    await page.goto('/ops/audit');
+    const newest = page.getByRole('row').nth(1);
+    await expect(newest).toContainText('Catalogue entry added');
+    await expect(newest).toContainText('pia.platform');
+  });
+
+  test('Scenario Outline: A hint is a skill, never a residency rule', async ({ page }) => {
+    await openCatalogue(page);
+    await packSummary(page, LOGISTICS).click();
+    await page.getByRole('button', { name: `Add a regional hint to ${LOGISTICS} for KSA` }).click();
+    const dialog = await fillHint(page, 'Must hold a UAE residence visa');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog.getByRole('alert')).toHaveText(
+      'A regional hint is market knowledge shown with evidence, never where someone lives or is from.',
+    );
+    await expect(dialog.getByLabel('Name')).toHaveAttribute('aria-invalid', 'true');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(hint(page, 'Must hold a UAE residence visa')).toHaveCount(0);
+  });
+
+  test('Scenario: A published hint is retired, not deleted', async ({ page }) => {
+    await openCatalogue(page);
+    await packSummary(page, LOGISTICS).click();
+    await expect(page.getByRole('button', { name: `Remove ${FREE_ZONE}` })).toHaveCount(0);
+    await page.getByRole('button', { name: `Retire ${FREE_ZONE}` }).click();
+    await expect(hint(page, FREE_ZONE)).toContainText('Retired');
+    await expect(hint(page, FREE_ZONE).getByRole('button')).toHaveCount(0);
+  });
+
+  for (const theme of themes) {
+    test(`axe passes on a pack's hints and the hint form (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+      await openCatalogue(page);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await packSummary(page, LOGISTICS).click();
+      await expectAccessible(page);
+      await page.getByRole('button', { name: 'Edit FASAH customs integration' }).click();
+      await expect(page.getByRole('dialog', { name: 'Edit regional hint' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+});
+
 // AIV-P2-047: job types in the draft. Runs after "the draft" above, on the draft it opened.
 const rows = (page: Page) => page.getByRole('list', { name: 'Job types in the draft' }).getByRole('listitem');
 const row = (page: Page, name: string) =>

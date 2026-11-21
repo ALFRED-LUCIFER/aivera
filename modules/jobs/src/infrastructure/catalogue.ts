@@ -103,7 +103,7 @@ export async function readCatalogueVersion(tx: Tx, where: SQL): Promise<Catalogu
       hints: hints
         .map((r) => r.hint)
         .filter((h) => h.packKey === key)
-        .map((h) => ({ ...skill(h), region: h.region })),
+        .map((h) => ({ ...skill(h), region: h.region, position: h.position })),
     })),
   };
 }
@@ -116,6 +116,10 @@ export async function readPublishedCatalogue(tx: Tx): Promise<CatalogueVersion> 
   const { revision: _revision, revisedBy: _revisedBy, ...published } = catalogue;
   return {
     ...published,
-    packs: published.packs.map((p) => ({ ...p, competencies: p.competencies.map(({ position: _p, ...c }) => c) })),
+    packs: published.packs.map((p) => ({
+      ...p,
+      competencies: p.competencies.map(({ position: _p, ...c }) => c),
+      hints: p.hints.map(({ position: _p, ...h }) => h),
+    })),
   };
 }

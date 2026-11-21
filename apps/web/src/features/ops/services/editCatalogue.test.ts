@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   retireDraftEntryAction,
   saveDraftCompetencyAction,
+  saveDraftHintAction,
   saveDraftJobTypeAction,
   saveDraftPackAction,
   startCatalogueDraft,
@@ -14,6 +15,7 @@ const THEO = '0190d4a2-0000-7000-8000-00000000a002';
 const operator = vi.fn<() => Promise<{ userId: string }>>();
 const saveCatalogueCompetency = vi.fn(async (..._args: unknown[]) => {});
 const saveCataloguePack = vi.fn(async (..._args: unknown[]) => {});
+const saveCatalogueHint = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueJobType = vi.fn(async (..._args: unknown[]) => {});
 const revalidatePath = vi.fn();
 
@@ -23,6 +25,7 @@ vi.mock('@/server/operator', () => ({
   openCatalogueDraft: async () => {},
   saveCataloguePack: (...args: unknown[]) => saveCataloguePack(...args),
   saveCatalogueCompetency: (...args: unknown[]) => saveCatalogueCompetency(...args),
+  saveCatalogueHint: (...args: unknown[]) => saveCatalogueHint(...args),
   saveCatalogueJobType: (...args: unknown[]) => saveCatalogueJobType(...args),
   retireCatalogueEntry: async () => 'retired',
   operatorName: async (id: string) => (id === THEO ? 'Theo Platform' : null),
@@ -149,5 +152,51 @@ describe('the job type save action', () => {
     saveCatalogueJobType.mockRejectedValueOnce(new Error('insert failed: Security engineering'));
     expect(await saveDraftJobTypeAction(security)).toEqual({ ok: false, error: 'failed' });
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-046: the save-hint server action.
+describe('the save-hint server action', () => {
+  const { core: _core, ...fields } = claims;
+  const fasah = {
+    ...fields,
+    packKey: 'logistics_mobility',
+    region: 'ksa',
+    name: 'FASAH customs integration',
+    evidence: 'Integration code and tests against FASAH documents',
+    levelNeeded: 2,
+  };
+
+  it('a hint goes to the module; a type "mandatory" is refused before it', async () => {
+    expect(await saveDraftHintAction(fasah)).toEqual({ ok: true });
+    expect(saveCatalogueHint).toHaveBeenCalledWith(fasah);
+    expect(await saveDraftHintAction({ ...fasah, type: 'mandatory' })).toEqual({ ok: false, error: 'failed' });
+    expect(saveCatalogueHint).toHaveBeenCalledOnce();
+  });
+
+  it('the residency refusal comes back under the name', async () => {
+    saveCatalogueHint.mockRejectedValueOnce(new CatalogueError('fairness_residency', { field: 'name' }));
+    expect(await saveDraftHintAction({ ...fasah, name: 'Must hold a UAE residence visa' })).toEqual({
+      ok: false,
+      error: 'fairness_residency',
+      field: 'name',
+    });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from saveDraftHintAction -> this test failed (ok: true)
+  it('Scenario: Only operators can edit hints: a non-operator gets 403', async () => {
+    operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
+    await expect(saveDraftHintAction(fasah)).rejects.toThrow('403');
+    await expect(
+      retireDraftEntryAction({
+        version: 2,
+        revision: 0,
+        entry: 'regionalHint',
+        packKey: 'logistics_mobility',
+        region: 'ksa',
+        position: 0,
+      }),
+    ).rejects.toThrow('403');
+    expect(saveCatalogueHint).not.toHaveBeenCalled();
   });
 });

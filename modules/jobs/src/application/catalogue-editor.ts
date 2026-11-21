@@ -2,16 +2,20 @@ import type { NewPlatformEntry } from '@credalent/audit';
 import {
   assertCompetencyFits,
   assertFairCompetency,
+  assertFairHint,
   assertFairStarters,
   CatalogueError,
   draftCompetencySchema,
+  draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  isHintNewInDraft,
   isNewInDraft,
   placeJobType,
   retireEntrySchema,
   type CatalogueEditorView,
   type DraftCompetencyInput,
+  type DraftHintInput,
   type DraftJobTypeInput,
   type DraftPackInput,
   type RetireEntryInput,
@@ -31,6 +35,8 @@ export type DraftStore = {
   putPack(version: number, previousKey: string | null, pack: { key: string; label: string }): Promise<void>;
   /** Inserts the competency at the pack's end (`position` null) or updates it; returns its position. */
   putCompetency(version: number, input: Omit<DraftCompetencyInput, 'revision' | 'version'>): Promise<number>;
+  /** Inserts the hint at the end of its pack's region (`position` null) or updates it; returns its position. */
+  putHint(version: number, input: Omit<DraftHintInput, 'revision' | 'version'>): Promise<number>;
   /** Whether any catalogue version, the draft included, holds this job type key. */
   jobTypeKeyUsed(key: string): Promise<boolean>;
   /** Inserts (`adding`) or updates the job type's English texts and starters, then orders the job types as `order`. */
@@ -50,6 +56,7 @@ export type DraftStore = {
 export type DraftEntry =
   | { entry: 'pack'; packKey: string }
   | { entry: 'competency'; packKey: string; position: number }
+  | { entry: 'regionalHint'; packKey: string; region: string; position: number }
   | { entry: 'jobType'; jobTypeKey: string };
 
 export type CatalogueEditorPorts = {
@@ -142,7 +149,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         if (!pack || (input.position !== null && !before)) throw new CatalogueError('not_found');
         if (pack.retired) throw new CatalogueError('pack_retired');
         if (before?.retired) throw new CatalogueError('entry_retired');
-        assertCompetencyFits(draft, pack, parsed);
+        assertCompetencyFits(draft, pack, parsed, before?.appliesTo ?? []);
         await store.touch(version, operatorId);
         const position = await store.putCompetency(version, input);
         await store.recordPlatform(
@@ -151,6 +158,40 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
             revision: next,
             entry: 'competency',
             packKey: pack.key,
+            position,
+          }),
+        );
+      });
+    },
+
+    /**
+     * Adds or edits a pack's regional hint (AIV-P2-046) after the residency and fairness checks: always desirable, for
+     * a region of the draft that is not retired, on job types the draft offers.
+     */
+    saveDraftHint: async (operatorId: string, raw: DraftHintInput): Promise<void> => {
+      const parsed = draftHintSchema.parse(raw);
+      const { revision: _revision, version: _version, ...input } = parsed;
+      assertFairHint(input);
+      return inTransaction(async (store) => {
+        const { draft, version, next } = await begin(store, parsed);
+        const pack = draft.packs.find((p) => p.key === input.packKey);
+        const region = draft.regions.find((r) => r.key === input.region);
+        const before = pack?.hints.find((h) => h.region === input.region && h.position === input.position);
+        if (!pack || !region || region.retired || (input.position !== null && !before))
+          throw new CatalogueError('not_found');
+        if (pack.retired) throw new CatalogueError('pack_retired');
+        if (before?.retired) throw new CatalogueError('entry_retired');
+        // A hint has no core, so this checks its job types only; a retired one it already had stays on it.
+        assertCompetencyFits(draft, pack, { ...parsed, core: [] }, before?.appliesTo ?? []);
+        await store.touch(version, operatorId);
+        const position = await store.putHint(version, input);
+        await store.recordPlatform(
+          audit(operatorId, input.position === null ? 'catalogue.entry_added' : 'catalogue.entry_edited', {
+            catalogueVersion: version,
+            revision: next,
+            entry: 'regionalHint',
+            packKey: pack.key,
+            region: region.key,
             position,
           }),
         );
@@ -187,7 +228,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
     },
 
     /**
-     * Retires a pack, competency or job type a published version holds, or removes one new in this draft (ADR-013
+     * Retires a pack, competency, job type or regional hint a published version holds, or removes one new in this draft (ADR-013
      * point 6). Returns which it did.
      */
     retireDraftEntry: async (operatorId: string, raw: RetireEntryInput): Promise<'retired' | 'removed'> => {
@@ -209,11 +250,19 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         } else {
           const position = entry.entry === 'competency' ? entry.position : undefined;
           const pack = draft.packs.find((p) => p.key === entry.packKey);
-          const target = position === undefined ? pack : pack?.competencies.find((c) => c.position === position);
+          const target =
+            entry.entry === 'regionalHint'
+              ? pack?.hints.find((h) => h.region === entry.region && h.position === entry.position)
+              : position === undefined
+                ? pack
+                : pack?.competencies.find((c) => c.position === position);
           if (!target) throw new CatalogueError('not_found');
           if (target.retired) throw new CatalogueError('entry_retired');
-          if (position !== undefined && pack?.retired) throw new CatalogueError('pack_retired');
-          removed = isNewInDraft(published, entry.packKey, position);
+          if (entry.entry !== 'pack' && pack?.retired) throw new CatalogueError('pack_retired');
+          removed =
+            entry.entry === 'regionalHint'
+              ? isHintNewInDraft(published, entry.packKey, entry.region, entry.position)
+              : isNewInDraft(published, entry.packKey, position);
         }
         await store.touch(version, operatorId);
         await (removed ? store.remove(version, entry) : store.retire(version, entry));

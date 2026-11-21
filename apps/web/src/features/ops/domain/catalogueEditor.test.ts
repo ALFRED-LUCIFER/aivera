@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  competencyFormFor,
   draftPackSchema,
   invalidResult,
   jobTypeFormFor,
@@ -34,6 +35,27 @@ describe('invalidResult', () => {
   });
 });
 
+// AIV-P2-046: a regional hint's form is the competency form with a region; its row has no core.
+describe('hint forms', () => {
+  it('a hint form keeps its region; a competency form has none', () => {
+    expect(newCompetencyForm('telecom', 'india')).toMatchObject({ packKey: 'telecom', region: 'india', core: [] });
+    expect(newCompetencyForm('telecom').region).toBeNull();
+    const row = {
+      region: 'ksa',
+      position: 0,
+      name: 'FASAH customs platform',
+      meaning: 'Customs clearance.',
+      evidence: 'Integration code',
+      levels: { 1: 'a', 3: 'b', 5: 'c' },
+      appliesTo: ['software_engineering'],
+      levelNeeded: 2,
+      status: 'live' as const,
+      removable: false,
+    };
+    expect(competencyFormFor('logistics_mobility', row)).toMatchObject({ region: 'ksa', position: 0, core: [] });
+  });
+});
+
 // AIV-P2-047: the job type form counts positions from 1 in the Add a job list; the save sends them from 0.
 const row = (key: string): JobTypeRow => ({
   key,
@@ -52,6 +74,7 @@ describe('the job type form', () => {
       { key: 'product_design', label: 'Product design' },
     ],
     jobTypeEntries: [row('sales'), row('product_design')],
+    regions: [],
     packs: [],
   };
 

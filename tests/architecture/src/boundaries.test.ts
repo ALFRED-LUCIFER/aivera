@@ -40,6 +40,7 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
   // AIV-P2-037: the operator-only workspace changes are called from server/operator.ts and nowhere else in an app.
   // SAFETY: mutation check: removed the operator-only-writes check -> this test failed
   // SAFETY: mutation check: dropped saveDraftCompetency from OPERATOR_ONLY_CALL -> this test failed (features/job-new missing)
+  // SAFETY: mutation check: dropped saveDraftHint from OPERATOR_ONLY_CALL -> this test failed (job-new/services/hint.ts missing)
   // SAFETY: mutation check: dropped saveDraftJobType from OPERATOR_ONLY_CALL -> this test failed (features/job-types missing)
   it('a call to changeStatus, pausePublicListings, setApprovalRequired or a catalogue draft write outside server/operator.ts is reported', () => {
     expect(
@@ -47,6 +48,7 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
         .filter((v) => v.rule === 'operator-only-writes')
         .map((v) => v.file),
     ).toEqual([
+      'apps/web/src/features/job-new/services/hint.ts',
       'apps/web/src/features/job-new/services/z.ts',
       'apps/web/src/features/job-types/services/w.ts',
       'apps/web/src/features/jobs/services/x.ts',

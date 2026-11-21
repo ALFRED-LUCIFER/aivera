@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   CATALOGUE_KEY,
   type CatalogueCompetency,
+  type CatalogueHint,
   type CatalogueJobType,
   type CataloguePack,
   type CatalogueVersion,
@@ -14,7 +15,12 @@ import {
  * shortcut: position is both order and identity; a reorder feature must add a stable entry id first.
  */
 export type EditorCompetency = CatalogueCompetency & { readonly position: number };
-export type EditorPack = Omit<CataloguePack, 'competencies'> & { readonly competencies: readonly EditorCompetency[] };
+/** A regional hint with its position among the pack's hints for its region (the same shortcut as competencies). */
+export type EditorHint = CatalogueHint & { readonly position: number };
+export type EditorPack = Omit<CataloguePack, 'competencies' | 'hints'> & {
+  readonly competencies: readonly EditorCompetency[];
+  readonly hints: readonly EditorHint[];
+};
 export type EditorVersion = Omit<CatalogueVersion, 'packs'> & { readonly packs: readonly EditorPack[] };
 /** The open draft: its entries, its revision and who saved it last (an operator's opaque id). */
 export type CatalogueDraft = EditorVersion & { readonly revision: number; readonly revisedBy: string | null };
@@ -48,6 +54,15 @@ export const competencyStatus = (published: EditorVersion, packKey: string, c: E
     published.packs.find((p) => p.key === packKey)?.competencies.find((b) => b.position === c.position),
   );
 
+const publishedHint = (published: EditorVersion, packKey: string, region: string, position: number) =>
+  published.packs.find((p) => p.key === packKey)?.hints.find((h) => h.region === region && h.position === position);
+
+export const hintStatus = (published: EditorVersion, packKey: string, h: EditorHint): EntryStatus =>
+  status(h, publishedHint(published, packKey, h.region, h.position));
+
+/** Whether a regional hint is new in this draft, so it is removed rather than retired. */
+export const isHintNewInDraft = (published: EditorVersion, packKey: string, region: string, position: number) =>
+  !publishedHint(published, packKey, region, position);
 /** A job type's status: by key, its position not compared (order is not content). */
 export const jobTypeStatus = (published: EditorVersion, jobType: CatalogueJobType): EntryStatus =>
   status(
@@ -128,12 +143,17 @@ export const draftJobTypeSchema = z.strictObject({
 export type DraftJobTypeInput = z.infer<typeof draftJobTypeSchema>;
 
 /**
- * Retire an entry, or remove it when it is new in the draft. One shape per entry kind; regional hints (AIV-P2-046) add
- * theirs.
+ * Add a regional hint to a pack's region (`position` null) or edit one (AIV-P2-046): the competency's fields without
+ * core. Strict, so a request that sends `type` (say "mandatory") is refused (ADR-013 point 11).
  */
+export const draftHintSchema = draftCompetencySchema.omit({ core: true }).extend({ region: key });
+export type DraftHintInput = z.infer<typeof draftHintSchema>;
+
+/** Retire an entry, or remove it when it is new in the draft. One shape per entry kind. */
 export const retireEntrySchema = z.discriminatedUnion('entry', [
   z.strictObject({ ...base, entry: z.literal('pack'), packKey: key }),
   z.strictObject({ ...base, entry: z.literal('competency'), packKey: key, position: z.int().min(0) }),
+  z.strictObject({ ...base, entry: z.literal('regionalHint'), packKey: key, region: key, position: z.int().min(0) }),
   z.strictObject({ ...base, entry: z.literal('jobType'), jobTypeKey: key }),
 ]);
 export type RetireEntryInput = z.infer<typeof retireEntrySchema>;
@@ -155,6 +175,7 @@ export const CATALOGUE_ERROR_CODES = [
   'evidence_required',
   'fairness_employer',
   'fairness_origin',
+  'fairness_residency',
 ] as const;
 export type CatalogueErrorCode = (typeof CATALOGUE_ERROR_CODES)[number];
 export type CatalogueField = 'key' | 'name' | 'meaning' | 'evidence' | 'appliesTo' | 'core' | 'starters';
@@ -288,9 +309,14 @@ export function assertFairStarters(starters: readonly string[]) {
  * already had: a retired job type stays on it, AIV-P2-047), its core ones are among them, and no job type gets more
  * than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
  */
-export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, input: DraftCompetencyInput) {
+export function assertCompetencyFits(
+  draft: EditorVersion,
+  pack: EditorPack,
+  input: DraftCompetencyInput,
+  // The edited entry's own job types before this save ([] when adding); required so a hint never borrows a competency's.
+  kept: readonly string[],
+) {
   // shortcut: the form does not list a retired job type, so it can be kept but not unticked; list it when operators ask.
-  const kept = pack.competencies.find((c) => c.position === input.position)?.appliesTo ?? [];
   const offered = new Set([...draft.jobTypes.filter((t) => !t.retired).map((t) => t.key), ...kept]);
   if (input.appliesTo.some((t) => !offered.has(t))) throw new CatalogueError('job_type', { field: 'appliesTo' });
   if (input.core.some((t) => !input.appliesTo.includes(t)))
@@ -298,4 +324,35 @@ export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, inp
   const others = pack.competencies.filter((c) => !c.retired && c.position !== input.position);
   if (input.core.some((t) => others.filter((c) => c.core.includes(t)).length >= CORE_LIMIT))
     throw new CatalogueError('core_limit', { field: 'core' });
+}
+
+/*
+ * A regional hint is market knowledge shown with evidence, never where someone lives, is from or holds papers for
+ * (AIV-P2-046, ADR-013 points 11 and 16). These rules run before the competency rules, on the name and the meaning.
+ * Whole words only: "Emirates ID", "Visa card payments" and "data residency rules" stay skills.
+ * shortcut: a short list like COUNTRIES; extend it when an operator finds a gap (each addition must keep version 1 passing).
+ */
+const RESIDENCY: readonly RegExp[] = [
+  // "Data residency rules" and "tax residency certificates" are market knowledge; a person's residence is not.
+  /\b(?<!(?:data|tax)[ -])residen(?:ce|cy|ts?)\b/i,
+  /\b(?:work|employment|entry) (?:visas?|permits?)\b/i,
+  /\b(?:visa|iqama|aadhaar|emirates id|national id) (?:holders?|status|sponsorship)\b/i,
+  /\b(?:holds?|holding|has|have|having|possess(?:es)?) (?:an? |the |valid )*(?:[\w-]+ )?(?:visa|iqama|aadhaar|emirates id|national id|id card)\b/i,
+  /\bvalid (?:[\w-]+ )?(?:id|visa|iqama)\b/i,
+  /\b(?:transferable sponsorship|kafala)\b/i,
+  /\biqama\b/i,
+  /\bpassports?\b/i,
+  /\bnationality\b/i,
+  /\b(?:lives?|living|located|based|reside[sd]?) in\b/i,
+  /\b(?:candidates?|people|someone|engineers?|applicants?) (?:who (?:are|is) )?from\b/i,
+];
+
+/** Whether `text` asks for a residency, an origin or papers rather than market knowledge. */
+export const residencyRule = (text: string): boolean => RESIDENCY.some((pattern) => pattern.test(text));
+
+/** Throws the refusal the hint form shows: the residency rule first, then every competency rule. */
+export function assertFairHint(input: Pick<DraftHintInput, 'name' | 'meaning' | 'evidence'>) {
+  for (const field of ['name', 'meaning'] as const)
+    if (residencyRule(input[field])) throw new CatalogueError('fairness_residency', { field });
+  assertFairCompetency(input);
 }

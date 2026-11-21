@@ -20,6 +20,7 @@ import {
 import {
   retireDraftEntryAction,
   saveDraftCompetencyAction,
+  saveDraftHintAction,
   saveDraftJobTypeAction,
   saveDraftPackAction,
   startCatalogueDraft,
@@ -71,6 +72,8 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
     onPackChange: (patch) => setPackForm((form) => form && { ...form, ...patch }),
     onAddCompetency: (packKey) => open(null, newCompetencyForm(packKey)),
     onEditCompetency: (packKey, row) => open(null, competencyFormFor(packKey, row)),
+    onAddHint: (packKey, region) => open(null, newCompetencyForm(packKey, region)),
+    onEditHint: (packKey, row) => open(null, competencyFormFor(packKey, row)),
     onCompetencyChange: (patch) => setCompetencyForm((form) => form && { ...form, ...patch }),
     onToggleJobType: (list, key) => setCompetencyForm((form) => form && toggleJobType(form, list, key)),
     onAddJobType: () => open(null, null, newJobTypeForm(draft)),
@@ -85,7 +88,11 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
           const { previousKey, key, label } = packForm;
           return saveDraftPackAction({ version, revision, previousKey, key: key.trim(), label });
         }
-        return saveDraftCompetencyAction({ version, revision, ...competencyForm });
+        if (!competencyForm) return Promise.resolve<CatalogueSaveResult>({ ok: false, error: 'failed' });
+        const { region, core, ...fields } = competencyForm;
+        return region === null
+          ? saveDraftCompetencyAction({ version, revision, ...fields, core })
+          : saveDraftHintAction({ version, revision, ...fields, region });
       }),
     onClose: () => open(null, null),
     onReload: () => {
@@ -100,6 +107,8 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
             : { version, revision, entry: 'competency', packKey, position },
         ),
       ),
+    onRetireHint: (packKey, { region, position }) =>
+      send(() => retireDraftEntryAction({ version, revision, entry: 'regionalHint', packKey, region, position })),
   };
 }
 
