@@ -74,10 +74,16 @@ const draft = {
     { key: 'insurance', label: { en: 'Insurance and insurtech' }, retired: false, hints: [], competencies: [] },
   ],
 };
-const model = draftModel({ published: v1, draft });
+const model = draftModel({ published: v1, draft }) as DraftModel;
+// The whole draft renders ~1,900 nodes, which took over 5 s a test on a busy CI runner: a test renders only the packs
+// it reads (none by default; the forms and the job type and region lists need none).
+const withPacks = (from: DraftModel, ...keys: string[]): DraftModel => ({
+  ...from,
+  packs: from.packs.filter((p) => keys.includes(p.key)),
+});
 
 const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
-  draft: model ?? { version: 2, revision: 0, jobTypes: [], jobTypeEntries: [], regions: [], packs: [], changes: [] },
+  draft: withPacks(model),
   packForm: null,
   competencyForm: null,
   jobTypeForm: null,
@@ -119,7 +125,7 @@ describe('Scenario Outline: Page states', () => {
 
 describe('the draft', () => {
   it('Scenario: Starting a draft: the banner and the 8 published packs "Live", a new pack "New in draft"', () => {
-    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: model })} />);
     expect(screen.getByText('Draft — not live. Recruiters see version 1.')).toBeTruthy();
     const summaries = [...document.querySelectorAll('summary')];
     expect(summaries).toHaveLength(9);
@@ -129,7 +135,12 @@ describe('the draft', () => {
   });
 
   it('Scenario: A published competency is retired: "Retired" and no delete control for it', () => {
-    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ draft: withPacks(model, 'payments_fintech', 'insurance') })}
+      />,
+    );
     const name = payments.competencies[0]?.name ?? '';
     const row = screen.getByText(name, { selector: 'h3' }).closest('li') as HTMLElement;
     expect(within(row).getByText('Retired')).toBeTruthy();
@@ -196,7 +207,7 @@ const regionSection = (pack: HTMLElement, heading: string) =>
 
 describe('Feature: Edit regional hints in a catalogue draft', () => {
   it('Scenario: Empty state: "No regional hints for India yet." with a way to add one', async () => {
-    const view = viewModel();
+    const view = viewModel({ draft: withPacks(model, 'telecom') });
     show(<CatalogueEditor publishedVersion={1} view={view} />);
     const india = regionSection(packDetails('Telecom'), 'Regional hints for India');
     expect(within(india).getByText('No regional hints for India yet.')).toBeTruthy();
@@ -205,7 +216,7 @@ describe('Feature: Edit regional hints in a catalogue draft', () => {
   });
 
   it('Scenario: A published hint is retired: "Retired" with no controls; a live one is retired, not removed', () => {
-    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: withPacks(model, 'logistics_mobility') })} />);
     const uae = regionSection(packDetails('Logistics and mobility'), 'Regional hints for the UAE');
     const retired = within(uae).getByRole('listitem');
     expect(within(retired).getByText('Retired')).toBeTruthy();
@@ -280,7 +291,7 @@ describe('job types in the draft (AIV-P2-047)', () => {
   });
 
   it('Scenario: A job type needs exactly four starters: the refusal shows under the starters', () => {
-    const form = { ...newJobTypeForm(model as DraftModel), starters: ['a', 'b', 'c', ''] };
+    const form = { ...newJobTypeForm(model), starters: ['a', 'b', 'c', ''] };
     show(
       <CatalogueEditor
         publishedVersion={1}
@@ -297,7 +308,7 @@ describe('job types in the draft (AIV-P2-047)', () => {
     show(
       <CatalogueEditor
         publishedVersion={1}
-        view={viewModel({ jobTypeForm: newJobTypeForm(model as DraftModel), error: { ok: false, error: 'failed' } })}
+        view={viewModel({ jobTypeForm: newJobTypeForm(model), error: { ok: false, error: 'failed' } })}
       />,
     );
     expect(screen.getByRole('dialog').querySelector('[role="alert"]')?.textContent).toBe(
@@ -326,7 +337,7 @@ const refusedRegion = (error: Refusal) => {
   show(
     <CatalogueEditor
       publishedVersion={1}
-      view={viewModel({ draft: regionsModel, packForm: newPackForm('region'), error })}
+      view={viewModel({ draft: withPacks(regionsModel), packForm: newPackForm('region'), error })}
     />,
   );
   return within(screen.getByRole('dialog', { name: 'Add a region' })).getByRole('alert').textContent;
@@ -335,7 +346,12 @@ const refusedRegion = (error: Refusal) => {
 describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', () => {
   it('Scenario: Adding a region: "EU" shows "New in draft" and each pack shows its empty hint section', async () => {
     const onAddRegion = vi.fn();
-    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel, onAddRegion })} />);
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ draft: withPacks(regionsModel, 'payments_fintech'), onAddRegion })}
+      />,
+    );
     expect(within(regionRow('EU')).getByText('New in draft')).toBeTruthy();
     expect(within(regionRow('EU')).getByRole('button', { name: 'Remove EU' })).toBeTruthy();
     const paymentsPack = document.querySelector('details') as HTMLElement;
@@ -347,7 +363,9 @@ describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', ()
   });
 
   it('Scenario: Retiring a region keeps its hints visible as retired, with no edit, delete or add control', () => {
-    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel })} />);
+    show(
+      <CatalogueEditor publishedVersion={1} view={viewModel({ draft: withPacks(regionsModel, 'payments_fintech') })} />,
+    );
     const india = regionRow('India');
     expect(within(india).getByText('Retired')).toBeTruthy();
     expect(within(india).queryByRole('button')).toBeNull();
@@ -362,13 +380,13 @@ describe('Feature: Add and retire regions in a catalogue draft (AIV-P2-059)', ()
     const ksa = regionsModel.regions.find((r) => r.key === 'ksa');
     if (!ksa) throw new Error('no ksa');
     // A published region is retired, never removed.
-    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: regionsModel })} />);
+    show(<CatalogueEditor publishedVersion={1} view={viewModel({ draft: withPacks(regionsModel) })} />);
     expect(within(regionRow('KSA')).getByRole('button', { name: 'Retire KSA' })).toBeTruthy();
     cleanup();
     show(
       <CatalogueEditor
         publishedVersion={1}
-        view={viewModel({ draft: regionsModel, packForm: packFormFor(ksa, 'region') })}
+        view={viewModel({ draft: withPacks(regionsModel), packForm: packFormFor(ksa, 'region') })}
       />,
     );
     const dialog = screen.getByRole('dialog', { name: 'Edit region' });

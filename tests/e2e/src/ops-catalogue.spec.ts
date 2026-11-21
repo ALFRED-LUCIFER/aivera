@@ -2,7 +2,7 @@ import { createDb } from '@credalent/db/client';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from 'drizzle-orm';
 import { databaseUrl } from '../playwright.config.ts';
-import { signIn } from './auth.ts';
+import { signIn, signInOperator } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P5-015 (ADR-012): the catalogue at /ops/catalogue. AIV-P2-045 (ADR-013): with no draft it is read-only with
@@ -59,8 +59,9 @@ const catalogueTile = (page: Page) =>
     .locator('div.rounded-card')
     .filter({ has: page.getByText('Catalogue version', { exact: true }) });
 
-async function openCatalogue(page: Page) {
-  await signIn(page, { email: PIA });
+/** `settled`: the page stays as it loaded, with no console-opened re-render (signInOperator). */
+async function openCatalogue(page: Page, { settled = false } = {}) {
+  await (settled ? signInOperator(page, PIA) : signIn(page, { email: PIA }));
   const response = await page.goto('/ops/catalogue');
   expect(response?.status()).toBe(200);
   await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
@@ -668,7 +669,7 @@ test.describe('the draft eval', () => {
   });
 
   test('Scenario: Runs do not overlap', async ({ page }) => {
-    await openCatalogue(page);
+    await openCatalogue(page, { settled: true });
     // Another operator's run starts after this page loaded.
     const db = createDb(databaseUrl, { max: 1 });
     const runs = async () =>
