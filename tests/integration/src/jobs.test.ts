@@ -823,7 +823,8 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     expect(rubricVersion).toMatchObject({ jobId: saved.id, version: 1, status: 'draft', createdBy: RANA });
     const list = await stored(rubricVersion.id);
     expect(list.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
-    expect(list.map((c) => c.weight)).toEqual([29, 21, 15, 15, 10, 10]);
+    // 25 20 15 15 10 10 of 95, by largest remainder (AIV-P1-082): 26.32 21.05 15.79 15.79 10.53 10.53.
+    expect(list.map((c) => c.weight)).toEqual([26, 21, 16, 16, 11, 10]);
     // Scenario: Edit a level and type.
     expect(list[3]).toMatchObject({ name: 'Cost and reliability', level: 3, type: 'mandatory' });
     // Scenario: Kept suggestions are marked (AIV-P1-009), and a recruiter's own competency says so.

@@ -103,7 +103,11 @@ describe('Scenario: A task resolves to its configured deployment', () => {
     expect(request?.headers.get('api-key')).toBeNull();
     expect(await request?.json()).toMatchObject({
       model: 'gpt-main',
-      response_format: { type: 'json_schema', json_schema: { schema: { properties: { ready: { type: 'boolean' } } } } },
+      // Strict mode (AIV-P1-082): the model must answer in the schema's shape; zod still checks what strict cannot.
+      response_format: {
+        type: 'json_schema',
+        json_schema: { strict: true, schema: { properties: { ready: { type: 'boolean' } } } },
+      },
     });
     expect(lastSpan()?.attributes).toMatchObject({
       'credalent.ai.deployment': 'gpt-main',
