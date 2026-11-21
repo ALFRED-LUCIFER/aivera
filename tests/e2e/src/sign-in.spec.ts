@@ -149,7 +149,9 @@ async function sessionToken(context: BrowserContext) {
   const salt = '__Host-credalent-session';
   const token = (await context.cookies()).find((c) => c.name === salt)?.value ?? '';
   const payload = await decode({ token, secret: e2eAuthSecret, salt });
-  return { sub: payload?.sub, exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - (payload?.iat ?? 0) };
+  // The session's length from sign-in: every re-issue keeps the sign-in time (AIV-P2-060).
+  const signedInAt = typeof payload?.['signedInAt'] === 'number' ? payload['signedInAt'] : 0;
+  return { sub: payload?.sub, exp: payload?.exp ?? 0, lifetime: (payload?.exp ?? 0) - signedInAt };
 }
 
 // SAFETY: mutation check: read the remember cookie under another name in auth.ts's NextAuth(request) -> the ticked row
@@ -164,14 +166,13 @@ for (const [choice, ticked, length] of [
     await signIn(page);
     await desk(page);
     const first = await sessionToken(context);
-    expect(first.lifetime).toBe(length);
-    // The next request re-issues the token: ticked keeps its end 30 days after sign-in, unticked restarts its 8 hours.
+    // Within a second here and below: the encode clock may tick between computing the max age and stamping the token.
+    expect(Math.abs(first.lifetime - length)).toBeLessThanOrEqual(1);
+    // The next request re-issues the token, which keeps its end: 30 days or 8 hours after sign-in (AIV-P2-060).
     await page.goto('/app/jobs');
     await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
     const reissued = await sessionToken(context);
-    // Within a second: the encode clock may tick between computing the max age and stamping the token.
-    if (ticked) expect(Math.abs(reissued.exp - first.exp)).toBeLessThanOrEqual(1);
-    else expect(reissued.lifetime).toBe(length);
+    expect(Math.abs(reissued.exp - first.exp)).toBeLessThanOrEqual(1);
   });
 }
 
@@ -187,7 +188,7 @@ test('a sign-up right after a kept sign-in and sign-out gets the 8-hour session'
   await page.getByLabel('Email', { exact: true }).fill(`nadia+kept-${Date.now()}@example.com`);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL(/\/app$/);
-  expect((await sessionToken(context)).lifetime).toBe(8 * 60 * 60);
+  expect(Math.abs((await sessionToken(context)).lifetime - 8 * 60 * 60)).toBeLessThanOrEqual(1);
 });
 
 test('Scenario: Sign out', async ({ page, context }) => {

@@ -202,7 +202,11 @@ export interface WorkspacesContract {
   acceptInvitation(user: { userId: string; email: string }, token: string): Promise<{ workspaceId: string }>;
   /** Admins. The member's grants become exactly `access` (each change audited); next request onwards. */
   changeJobAccess(ctx: WorkspaceContext, userId: string, access: JobAccess): Promise<void>;
-  /** Admins. Removes the member, their grants and their active-workspace pointer here; refuses the last admin (`last_admin`). */
+  /**
+   * Admins. Removes the member, their grants and their active-workspace pointer here; refuses the last admin
+   * (`last_admin`). Callers first clear the jobs the member owns (jobs `changeHiringOwner(ctx, job, null)`, as the
+   * members page does), since this module does not know jobs.
+   */
   removeMember(ctx: WorkspaceContext, userId: string): Promise<void>;
 
   /**
