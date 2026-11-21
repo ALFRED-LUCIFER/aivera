@@ -202,7 +202,7 @@ export const retireEntrySchema = z.discriminatedUnion('entry', [
     position: z.int().min(0),
   }),
   z.strictObject({ ...base, entry: z.literal('jobType'), jobTypeKey: key }),
-  z.strictObject({ ...base, entry: z.literal('region'), regionKey }),
+  z.strictObject({ ...base, entry: z.literal('region'), region: regionKey }),
 ]);
 export type RetireEntryInput = z.infer<typeof retireEntrySchema>;
 

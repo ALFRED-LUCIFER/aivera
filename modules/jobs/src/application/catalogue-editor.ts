@@ -64,7 +64,7 @@ export type DraftEntry =
   | { entry: 'competency'; packKey: string; position: number }
   | { entry: 'regionalHint'; packKey: string; region: string; position: number }
   | { entry: 'jobType'; jobTypeKey: string }
-  | { entry: 'region'; regionKey: string };
+  | { entry: 'region'; region: string };
 
 export type CatalogueEditorPorts = {
   inTransaction<T>(work: (store: DraftStore) => Promise<T>): Promise<T>;
@@ -222,7 +222,6 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         if (before === undefined) throw new CatalogueError('not_found');
         if (before?.retired) throw new CatalogueError('entry_retired');
         if (previousKey !== key) {
-          // SAFETY: mutation check: dropped the key_fixed check -> "a published region key never changes" failed
           if (previousKey !== null && !isRegionNewInDraft(published, previousKey))
             throw new CatalogueError('key_fixed', { field: 'key' });
           // The draft holds every region ever published (retired, never deleted), so this also refuses reuse.
@@ -235,7 +234,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
             catalogueVersion: version,
             revision: next,
             entry: 'region',
-            regionKey: key,
+            region: key,
           }),
         );
       });
@@ -291,11 +290,11 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
           );
           if (removed && used) throw new CatalogueError('job_type_in_use');
         } else if (entry.entry === 'region') {
-          const target = draft.regions.find((r) => r.key === entry.regionKey);
+          const target = draft.regions.find((r) => r.key === entry.region);
           if (!target) throw new CatalogueError('not_found');
           if (target.retired) throw new CatalogueError('entry_retired');
           // A retired region keeps its row and hints; recruiters keep it until publish (ADR-013 point 16).
-          removed = isRegionNewInDraft(published, entry.regionKey);
+          removed = isRegionNewInDraft(published, entry.region);
         } else {
           const position = entry.entry === 'competency' ? entry.position : undefined;
           const pack = draft.packs.find((p) => p.key === entry.packKey);

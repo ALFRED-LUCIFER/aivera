@@ -417,9 +417,7 @@ describe('Feature: Add and retire regions in a catalogue draft', () => {
   });
 
   it('a region is retired or removed through the retire schema; a hint may name a two-letter region', () => {
-    expect(retireEntrySchema.safeParse({ version: 2, revision: 4, entry: 'region', regionKey: 'eu' }).success).toBe(
-      true,
-    );
+    expect(retireEntrySchema.safeParse({ version: 2, revision: 4, entry: 'region', region: 'eu' }).success).toBe(true);
     expect(draftHintSchema.shape.region.safeParse('eu').success).toBe(true);
   });
 

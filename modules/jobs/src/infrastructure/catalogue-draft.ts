@@ -244,7 +244,7 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       }
       if (entry.entry === 'region') {
         // Its hints are not touched: they read back as retired through their region (ADR-013 point 16).
-        await tx.update(catalogueRegion).set({ retired: true }).where(regionRow(version, entry.regionKey));
+        await tx.update(catalogueRegion).set({ retired: true }).where(regionRow(version, entry.region));
         return;
       }
       await (entry.entry === 'pack'
@@ -261,8 +261,8 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
         return;
       }
       if (entry.entry === 'region') {
-        await tx.delete(catalogueRegionalHint).where(regionHints(version, entry.regionKey));
-        await tx.delete(catalogueRegion).where(regionRow(version, entry.regionKey));
+        await tx.delete(catalogueRegionalHint).where(regionHints(version, entry.region));
+        await tx.delete(catalogueRegion).where(regionRow(version, entry.region));
         return;
       }
       const { packKey } = entry;
