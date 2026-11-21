@@ -19,10 +19,10 @@ const input = z.object({
 });
 
 /**
- * "Approve version N" and "Return with a note" (AIV-P1-014), each in one transaction with the email to the recruiter
- * who sent it. The jobs module allows only the job's hiring owner or an admin acting as owner (anyone else gets the 403
- * page), refuses a decision on an older copy (`stale`), and on approval writes RubricApproved.v1, which starts
- * assessment.
+ * "Approve version N" and "Return with a note" (AIV-P1-014, ADR-014), each in one transaction with the email to
+ * whoever sent the version (none for a draft approved directly). The jobs module allows an admin or recruiter on the job
+ * to approve, and the job's hiring owner to approve or return a version sent to them (anyone else gets the 403 page),
+ * refuses a decision on an older copy (`stale`), and on approval writes RubricApproved.v1, which starts assessment.
  */
 export async function decideRubric(raw: z.input<typeof input>): Promise<DecisionResult> {
   const parsed = input.safeParse(raw);
