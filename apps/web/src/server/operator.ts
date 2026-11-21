@@ -3,6 +3,7 @@ import { createAudit } from '@credalent/audit/composition';
 import type {
   CatalogueEditor,
   CatalogueEditorView,
+  CatalogueVersionDetail,
   DiscardDraftInput,
   DraftCompetencyInput,
   DraftEval,
@@ -15,6 +16,7 @@ import type {
   RetireEntryInput,
 } from '@credalent/jobs';
 import { log } from '@credalent/observability';
+import { SEED_ACTOR } from '@credalent/jobs';
 import { createCatalogueEditor, createJobCounts } from '@credalent/jobs/composition';
 import {
   STATUS_CHANGES,
@@ -27,6 +29,7 @@ import {
 } from '@credalent/workspaces';
 import { createAiBudgetConsole, createWorkspaceDirectory } from '@credalent/workspaces/composition';
 import { forbidden, redirect } from 'next/navigation';
+import type { VersionRow } from '@/features/ops/domain/catalogueHistory.ts';
 import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
@@ -273,6 +276,40 @@ export async function publishCatalogueDraft(input: PublishDraftInput): Promise<v
 export async function discardCatalogueDraft(input: DiscardDraftInput): Promise<void> {
   const { userId } = await platformOperator();
   await catalogueEditor().discardDraft(userId, input);
+}
+
+/** A version's publisher by display name, or email when they have none; null for the seed or an unknown id. */
+const publisherName = async (publishedBy: string) => {
+  if (publishedBy === SEED_ACTOR) return null;
+  const user = await getIdentity().getUser(publishedBy);
+  return user ? user.displayName?.trim() || user.email : null;
+};
+
+/**
+ * One page of published catalogue versions, newest first, with each publisher's name (AIV-P2-050). Platform metadata
+ * only; read-only. Checks the policy itself too. A `ZodError` for a page that is not a positive integer.
+ */
+export async function listCatalogueVersions(page: number): Promise<{ total: number; rows: VersionRow[] }> {
+  await platformOperator();
+  const { total, rows } = await catalogueEditor().listVersions(page);
+  return {
+    total,
+    rows: await Promise.all(rows.map(async (row) => ({ ...row, publisherName: await publisherName(row.publishedBy) }))),
+  };
+}
+
+/** Published catalogue version `version` with its diff, or null when none has it (AIV-P2-050). Checks the policy too. */
+export async function getCatalogueVersion(
+  version: number,
+): Promise<(Omit<CatalogueVersionDetail, 'summary'> & { summary: VersionRow }) | null> {
+  await platformOperator();
+  const detail = await catalogueEditor().getVersion(version);
+  return (
+    detail && {
+      ...detail,
+      summary: { ...detail.summary, publisherName: await publisherName(detail.summary.publishedBy) },
+    }
+  );
 }
 
 /**

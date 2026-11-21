@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import type { Handler } from '@credalent/db/consumer';
 import { log } from '@credalent/observability';
 import { catalogueEditor } from './application/catalogue-editor.ts';
+import { catalogueHistory } from './application/catalogue-history.ts';
 import { cataloguePublish } from './application/catalogue-publish.ts';
 import { catalogueEval, runDraftEval, type EvalKeys, type EvalOutcome } from './application/catalogue-eval.ts';
 import { domainDetection } from './application/detect-domain.ts';
@@ -31,6 +32,7 @@ import {
 } from './contracts/index.ts';
 import { readPublishedCatalogue } from './infrastructure/catalogue.ts';
 import { draftStore } from './infrastructure/catalogue-draft.ts';
+import { historyStore } from './infrastructure/catalogue-history.ts';
 import { CATALOGUE_EVAL_SCOPE, evalStore, runStore } from './infrastructure/catalogue-eval.ts';
 import { publishStore } from './infrastructure/catalogue-publish.ts';
 import { findBySlug, listOpen } from './infrastructure/public-reads.ts';
@@ -133,6 +135,7 @@ export function createCatalogueEditor(
       now,
     }),
     ...cataloguePublish({ inTransaction: (work) => db.transaction((tx) => work(publishStore(tx, audit))), now }),
+    ...catalogueHistory({ inSnapshot: (work) => db.transaction((tx) => work(historyStore(tx)), snapshot) }),
   };
 }
 

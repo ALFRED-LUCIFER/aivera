@@ -3,6 +3,7 @@ import type { Tx } from '@credalent/db';
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
+import type { CatalogueVersionDetail, CatalogueVersionSummary } from '../application/catalogue-history.ts';
 import type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
 import type { CompetencyDraft, DraftInput } from '../application/draft-competencies.ts';
 import type {
@@ -129,6 +130,8 @@ export type {
   SuggestedCompetency,
 } from '../application/draft-competencies.ts';
 export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
+export { HISTORY_PAGE_SIZE, SEED_ACTOR } from '../application/catalogue-history.ts';
+export type { CatalogueVersionDetail, CatalogueVersionSummary } from '../application/catalogue-history.ts';
 export { evalAllowsPublish, evalRequestSchema } from '../domain/catalogue-eval.ts';
 export type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
@@ -402,6 +405,14 @@ export interface CatalogueEditor {
    * `catalogue.draft_discarded`.
    */
   discardDraft(operatorId: string, input: DiscardDraftInput): Promise<void>;
+  /**
+   * Page `page` (from 1, `HISTORY_PAGE_SIZE` a page) of the published versions, newest first, each with its publisher,
+   * reason, change counts against the version before (null for the first) and its last eval run's status (AIV-P2-050).
+   * Platform metadata only. A `ZodError` for a page that is not a positive integer.
+   */
+  listVersions(page: number): Promise<{ total: number; rows: CatalogueVersionSummary[] }>;
+  /** Published version `version` with its entries and its diff against the version before; null when none has it. */
+  getVersion(version: number): Promise<CatalogueVersionDetail | null>;
 }
 
 /**
