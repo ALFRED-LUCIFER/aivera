@@ -20,6 +20,12 @@ import type {
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
 import type {
+  CatalogueEditorView,
+  DraftCompetencyInput,
+  DraftPackInput,
+  RetireEntryInput,
+} from '../domain/catalogue-draft.ts';
+import type {
   DeskJob,
   Job,
   JobHeader,
