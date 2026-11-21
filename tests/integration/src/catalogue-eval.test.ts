@@ -239,10 +239,13 @@ describe('Feature: Run the eval set on a catalogue draft', () => {
     await later.requestEval(PIA, { version, revision });
     // A worker holds the run's row in its transaction while the request comes in after the timeout.
     const { promise: held, resolve: release } = Promise.withResolvers<void>();
+    const { promise: locked, resolve: lockTaken } = Promise.withResolvers<void>();
     const worker = admin.transaction(async (tx) => {
       await tx.execute(sql`select id from jobs.catalogue_eval_run where status = 'running' for update`);
+      lockTaken();
       await held;
     });
+    await locked;
     const muchLater = createCatalogueEditor(app, audit, () => new Date(NOW.getTime() + 93 * 60_000));
     expect(await outcome(muchLater.requestEval(PIA, { version, revision }))).toBe('eval_running');
     release();
