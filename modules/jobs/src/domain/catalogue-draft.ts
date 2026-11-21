@@ -289,6 +289,7 @@ export function assertFairStarters(starters: readonly string[]) {
  * than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
  */
 export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, input: DraftCompetencyInput) {
+  // shortcut: the form does not list a retired job type, so it can be kept but not unticked; list it when operators ask.
   const kept = pack.competencies.find((c) => c.position === input.position)?.appliesTo ?? [];
   const offered = new Set([...draft.jobTypes.filter((t) => !t.retired).map((t) => t.key), ...kept]);
   if (input.appliesTo.some((t) => !offered.has(t))) throw new CatalogueError('job_type', { field: 'appliesTo' });
