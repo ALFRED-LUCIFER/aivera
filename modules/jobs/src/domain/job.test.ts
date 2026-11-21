@@ -208,23 +208,23 @@ describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)
     // Every other rubric mixes heavy weights with many of 1 to 3, the shape that pushes weights onto the 1% floor.
     const weight = (skewed: boolean) =>
       skewed && random() < 0.5 ? 1 + Math.floor(random() * 3) : 1 + Math.floor(random() * 100);
+    // Violations are collected and asserted once: an expect per pair (~800k) timed the test out on CI.
+    const failures: string[] = [];
     for (let run = 0; run < 2_000; run++) {
       const list = Array.from({ length: 1 + Math.floor(random() * 20) }, () => weight(run % 2 === 1));
       const result = weights(rebalanceWeights(rubric(list)));
       const label = list.join(' ');
-      expect(
-        result.reduce((a, b) => a + b, 0),
-        label,
-      ).toBe(100);
+      if (result.reduce((a, b) => a + b, 0) !== 100) failures.push(`${label}: total is not 100`);
       for (const [i, w] of result.entries()) {
-        expect(Number.isInteger(w) && w >= 1 && w <= 100, label).toBe(true);
+        if (!(Number.isInteger(w) && w >= 1 && w <= 100)) failures.push(`${label}: weight ${w} out of 1 to 100`);
         for (const [j, v] of result.entries()) {
           const [a, b] = [list[i] ?? 0, list[j] ?? 0];
-          if (a > b) expect(w, `${label}: ${a} ended lighter than ${b}`).toBeGreaterThanOrEqual(v);
-          if (a === b) expect(Math.abs(w - v), `${label}: equal weights ${a}`).toBeLessThanOrEqual(1);
+          if (a > b && w < v) failures.push(`${label}: ${a} ended lighter than ${b}`);
+          if (a === b && Math.abs(w - v) > 1) failures.push(`${label}: equal weights ${a} differ by more than 1`);
         }
       }
     }
+    expect(failures.slice(0, 5)).toEqual([]);
   });
 });
 

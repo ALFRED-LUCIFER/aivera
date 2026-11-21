@@ -18,6 +18,9 @@ export async function openGallery(page: Page, theme: Theme) {
  * names each rule, its impact and the selectors. The Next.js dev-tools badge is not ours.
  */
 export async function expectAccessible(page: Page) {
+  // Next streams an async generateMetadata title in after the content, so after router.refresh() the page can be
+  // briefly untitled; audit the settled page. A page that never gets a title still fails here.
+  await expect(page).toHaveTitle(/\S/);
   const { violations } = await new AxeBuilder({ page }).exclude('nextjs-portal').analyze();
   expect(violations.map(({ id, impact, nodes }) => ({ id, impact, targets: nodes.map((n) => n.target) }))).toEqual([]);
 }
