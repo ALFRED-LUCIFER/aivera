@@ -100,10 +100,9 @@ test('the shell shows built sections only, and no search field or Ask button', a
   await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
 });
 
-// SAFETY: mutation check: removed the canOpen check from requireScreen -> navigation.test.ts "answer 404 on their own route" failed
 test('a section that is not built answers 404 by direct address, not only by hiding the link', async ({ page }) => {
   for (const section of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
-    await page.goto(`/app/${section}`);
+    expect((await page.goto(`/app/${section}`))?.status(), section).toBe(404);
     await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' }), section).toBeVisible();
   }
 });

@@ -79,13 +79,11 @@ describe('unbuilt sections (AIV-P1-095)', () => {
     expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'settings']);
   });
 
-  // SAFETY: mutation check: removed the canOpen check from requireScreen -> this test failed (source guard; the e2e direct-URL test covers the render)
-  it('answer 404 on their own route, not only hide from the nav', () => {
-    const guard = readFileSync(new URL('../services/request.ts', import.meta.url), 'utf8');
-    expect(guard).toMatch(/!canOpen\(screen, member\.capabilities, enabledFlags\)\) notFound\(\)/);
+  // The route half (404 while off, opens when on) is tested against requireScreen in services/request.test.ts.
+  it('every unbuilt section page guards itself with its own entry', () => {
     for (const id of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
       const source = readFileSync(join(appDir, '(recruiter)/app', id, 'page.tsx'), 'utf8');
-      expect(source, id).toMatch(/screen="/);
+      expect(source, id).toContain(`screen="${id}"`);
     }
   });
 });

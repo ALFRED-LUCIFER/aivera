@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { accountLink, footerLinks, headerLinks, isCurrent } from '../domain/links.ts';
 
+// Deviation from the artboards: no Free CV check, Plans, Portfolio or My applications links until those pages exist (AIV-P1-095).
 export type CandidateShellProps = {
   signedIn: boolean;
   pathname: string;
