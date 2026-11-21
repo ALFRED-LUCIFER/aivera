@@ -887,6 +887,10 @@
         "packs": "Domain packs in the draft",
         "addPack": "Add a pack",
         "editPack": "Edit pack",
+        "regions": "Regions in the draft",
+        "regionsHint": "A region is a market whose rules a candidate can show skill in. It is never where someone lives or is from.",
+        "addRegion": "Add a region",
+        "editRegion": "Edit region",
         "addJobType": "Add a job type",
         "editJobType": "Edit job type",
         "addCompetency": "Add a competency",
@@ -946,7 +950,7 @@
           "no_draft": "There is no open draft. Reload to see the latest.",
           "draft_open": "A draft is already open. Reload to see it.",
           "not_found": "This entry is no longer in the draft. Reload to see the latest.",
-          "key_taken": "This key is already used.",
+          "key_taken": "That key is already in the catalogue.",
           "key_fixed": "Published keys never change.",
           "pack_retired": "This pack is retired. Add competencies to a live pack.",
           "job_type": "Choose job types the catalogue offers.",
@@ -957,7 +961,8 @@
           "fairness_origin": "A competency is a skill with evidence, never a nationality or where someone is from.",
           "fairness_residency": "A regional hint is market knowledge shown with evidence, never where someone lives or is from.",
           "invalid": {
-            "key": "Use lower-case letters, digits and underscores.",
+            "key": "Use lower-case letters, digits and underscores for the key.",
+            "label": "Add an English label.",
             "other": "Fill in this field.",
             "starters": "Add exactly four starter competencies."
           },
@@ -966,7 +971,8 @@
           "job_type_in_use": "A pack competency or regional hint applies to this job type. Take it off there first.",
           "eval_running": "An eval run is already in progress.",
           "eval_required": "Run the eval before publishing.",
-          "no_changes": "This draft changes nothing yet."
+          "no_changes": "This draft changes nothing yet.",
+          "fairness_region": "A region is a market whose rules a candidate can show skill in, never where someone lives or is from."
         },
         "eval": {
           "title": "AI eval",
@@ -1037,6 +1043,7 @@
           "retired": "Retired: {name}",
           "groups": {
             "jobTypes": "Job types",
+            "regions": "Regions",
             "packs": "Packs",
             "competencies": "Competencies",
             "hints": "Regional hints"

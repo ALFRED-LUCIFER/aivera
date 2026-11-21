@@ -16,6 +16,7 @@ import {
   saveCatalogueHint,
   saveCatalogueJobType,
   saveCataloguePack,
+  saveCatalogueRegion,
 } from '@/server/operator';
 import {
   discardDraftSchema,
@@ -23,6 +24,7 @@ import {
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   invalidResult,
   publishDraftSchema,
   retireEntrySchema,
@@ -81,6 +83,13 @@ export async function saveDraftHintAction(input: unknown): Promise<CatalogueSave
   return parsed.success ? attempt(() => saveCatalogueHint(parsed.data)) : invalidResult(parsed.error);
 }
 
+/** Adds a region, or edits its label (and its key while it is new in the draft) (AIV-P2-059). */
+export async function saveDraftRegionAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = draftRegionSchema.safeParse(input);
+  return parsed.success ? attempt(() => saveCatalogueRegion(parsed.data)) : invalidResult(parsed.error);
+}
+
 /** Adds a job type, or edits its texts, starters and place in the Add a job list (AIV-P2-047). */
 export async function saveDraftJobTypeAction(input: unknown): Promise<CatalogueSaveResult> {
   await platformOperator();
@@ -88,7 +97,7 @@ export async function saveDraftJobTypeAction(input: unknown): Promise<CatalogueS
   return parsed.success ? attempt(() => saveCatalogueJobType(parsed.data)) : invalidResult(parsed.error);
 }
 
-/** Retires a published pack, competency, job type or regional hint, or removes one new in the draft. */
+/** Retires a published pack, competency, job type, region or regional hint, or removes one new in the draft. */
 export async function retireDraftEntryAction(input: unknown): Promise<CatalogueSaveResult> {
   await platformOperator();
   const parsed = retireEntrySchema.safeParse(input);

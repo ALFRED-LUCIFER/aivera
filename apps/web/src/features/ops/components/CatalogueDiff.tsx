@@ -5,7 +5,7 @@ import type { CatalogueChange, DiffGroup } from '@credalent/jobs';
 
 // The grouped catalogue diff (AIV-P2-049): the publish preview's list, and a published version's changes (AIV-P2-050).
 
-const GROUPS: readonly DiffGroup[] = ['jobTypes', 'packs', 'competencies', 'hints'];
+const GROUPS: readonly DiffGroup[] = ['jobTypes', 'regions', 'packs', 'competencies', 'hints'];
 
 function ChangeLines({ change }: { change: CatalogueChange }) {
   const t = useTranslations('ops.catalogue.editor.diff');

@@ -10,7 +10,11 @@ export function RefusalText({ error }: { error: Refusal }) {
   const t = useTranslations('ops.catalogue.editor.errors');
   if (error.error === 'stale') return error.by ? t('stale', { name: error.by }) : t('staleUnknown');
   if (error.error === 'invalid')
-    return t(error.field === 'key' || error.field === 'starters' ? `invalid.${error.field}` : 'invalid.other');
+    return t(
+      error.field === 'key' || error.field === 'label' || error.field === 'starters'
+        ? `invalid.${error.field}`
+        : 'invalid.other',
+    );
   return t(error.error);
 }
 
@@ -87,7 +91,7 @@ const submit = (view: EditorViewModel) => (event: FormEvent) => {
   void view.onSave();
 };
 
-/** Add a pack, or edit its label (and its key while it is new in the draft). */
+/** Add a pack or a region (AIV-P2-059), or edit its label (and its key while it is new in the draft). */
 export function PackFormDialog({ view }: { view: EditorViewModel }) {
   const t = useTranslations('ops.catalogue.editor');
   const form = view.packForm;
@@ -95,7 +99,15 @@ export function PackFormDialog({ view }: { view: EditorViewModel }) {
     <Dialog
       open={form !== null}
       onOpenChange={(open) => !open && view.onClose()}
-      title={form?.previousKey ? t('editPack') : t('addPack')}
+      title={t(
+        form?.entry === 'region'
+          ? form.previousKey
+            ? 'editRegion'
+            : 'addRegion'
+          : form?.previousKey
+            ? 'editPack'
+            : 'addPack',
+      )}
       closeLabel={t('close')}
     >
       {form && (

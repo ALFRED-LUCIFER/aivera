@@ -11,12 +11,13 @@ import type {
   JobTypeRow,
   PackRow,
   Refusal,
+  RegionRow,
 } from '../domain/catalogueEditor.ts';
 import { CompetencyFormDialog, JobTypeFormDialog, PackFormDialog, RefusalText } from './CatalogueForms.tsx';
 
 /*
  * The catalogue editor (AIV-P2-045), from the console spec's catalogue editor layout (operator-console.md); there is no
- * artboard for it. Deviations: job types are one list and entries are grouped by pack,
+ * artboard for it. Deviations: job types are one list, then the regions (AIV-P2-059), and entries are grouped by pack,
  * a pack's regional hints (AIV-P2-046) following its competencies, one section per region; the entry form opens in a
  * dialog rather than in the main column, so the long pack list keeps its place.
  */
@@ -139,15 +140,7 @@ function Competency({
 }
 
 /** A pack's regional hints for one region (AIV-P2-046): never a residency rule, always Desirable. */
-function RegionHints({
-  region,
-  pack,
-  view,
-}: {
-  region: { key: string; label: string };
-  pack: PackRow;
-  view: EditorViewModel;
-}) {
+function RegionHints({ region, pack, view }: { region: RegionRow; pack: PackRow; view: EditorViewModel }) {
   const t = useTranslations('ops.catalogue');
   const hints = pack.hints.filter((h) => h.region === region.key);
   const names = { region: region.key, label: region.label };
@@ -155,7 +148,7 @@ function RegionHints({
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-3">
       <h3 className="text-body font-semibold text-text">{heading}</h3>
-      {pack.status !== 'retired' && (
+      {pack.status !== 'retired' && region.status !== 'retired' && (
         <div>
           <Button
             aria-label={t('editor.addHintTo', { ...names, name: pack.label })}
@@ -182,6 +175,26 @@ function RegionHints({
         </ul>
       )}
     </section>
+  );
+}
+
+/** A region in the draft (AIV-P2-059): a market, never a residency; a retired one keeps its row with no controls. */
+function Region({ row, view }: { row: RegionRow; view: EditorViewModel }) {
+  const t = useTranslations('ops.catalogue.editor');
+  return (
+    <li className="flex flex-wrap items-center gap-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <h3 className="text-body font-semibold text-text">{row.label}</h3>
+      <span className="font-mono text-meta text-text-2">{row.key}</span>
+      <EntryStatusBadge status={row.status} />
+      {row.status !== 'retired' && (
+        <div className="ms-auto flex flex-wrap gap-2">
+          <Button aria-label={t('editNamed', { name: row.label })} onClick={() => view.onEditRegion(row)}>
+            {t('edit')}
+          </Button>
+          <RetireButton name={row.label} removable={row.removable} onRetire={() => void view.onRetireRegion(row.key)} />
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -247,6 +260,17 @@ export function CatalogueEditor({
             <JobType key={row.key} row={row} view={view} />
           ))}
         </ol>
+      </Card>
+      <Card title={t('editor.regions')} level={2}>
+        <p className="mb-3 text-meta text-text-2">{t('editor.regionsHint')}</p>
+        <div className="mb-3">
+          <Button onClick={view.onAddRegion}>{t('editor.addRegion')}</Button>
+        </div>
+        <ul aria-label={t('editor.regions')} className="flex flex-col gap-3">
+          {view.draft.regions.map((row) => (
+            <Region key={row.key} row={row} view={view} />
+          ))}
+        </ul>
       </Card>
       <Card title={t('editor.packs')} level={2}>
         <div className="mb-3">

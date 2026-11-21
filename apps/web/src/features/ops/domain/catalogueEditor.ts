@@ -8,12 +8,15 @@ import {
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   hintStatus,
   isHintNewInDraft,
   isNewInDraft,
+  isRegionNewInDraft,
   jobTypeStatus,
   packStatus,
   publishDraftSchema,
+  regionStatus,
   retireEntrySchema,
   type CatalogueChange,
   type CatalogueEditorView,
@@ -31,6 +34,7 @@ export {
   draftHintSchema,
   draftJobTypeSchema,
   draftPackSchema,
+  draftRegionSchema,
   publishDraftSchema,
   retireEntrySchema,
 };
@@ -50,6 +54,8 @@ export type PackRow = {
   competencies: CompetencyRow[];
   hints: HintRow[];
 };
+/** A region in the draft (AIV-P2-059), retired ones too: they stay listed, with their hints, never deleted. */
+export type RegionRow = { key: string; label: string; status: EntryStatus; removable: boolean };
 /** A job type in the draft, retired ones too (they stay listed, never deleted). */
 export type JobTypeRow = {
   key: string;
@@ -65,8 +71,8 @@ export type DraftModel = {
   revision: number;
   /** The job types a competency may apply to: the draft's, not retired. */
   jobTypes: { key: string; label: string }[];
-  /** The regions a hint may be added for: those of the draft that are not retired, in catalogue order. */
-  regions: { key: string; label: string }[];
+  /** Every region of the draft in catalogue order; a hint may be added only for one that is not retired. */
+  regions: RegionRow[];
   /** Every job type of the draft in Add a job order, for the job type list (AIV-P2-047). */
   jobTypeEntries: JobTypeRow[];
   packs: PackRow[];
@@ -81,11 +87,17 @@ export type DraftModel = {
  */
 export function draftModel({ published, draft }: CatalogueEditorView): DraftModel | null {
   if (!draft) return null;
+  const retiredRegions = new Set(draft.regions.filter((r) => r.retired).map((r) => r.key));
   return {
     version: draft.version,
     revision: draft.revision,
     jobTypes: draft.jobTypes.filter((t) => !t.retired).map((t) => ({ key: t.key, label: t.label.en })),
-    regions: draft.regions.filter((r) => !r.retired).map((r) => ({ key: r.key, label: r.label.en })),
+    regions: draft.regions.map((r) => ({
+      key: r.key,
+      label: r.label.en,
+      status: regionStatus(published, r),
+      removable: isRegionNewInDraft(published, r.key),
+    })),
     jobTypeEntries: draft.jobTypes.map((t) => ({
       key: t.key,
       label: t.label.en,
@@ -119,7 +131,8 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
         levels: h.levels,
         appliesTo: h.appliesTo,
         levelNeeded: h.levelNeeded,
-        status: hintStatus(published, pack.key, h),
+        // A retired region's hints read as retired: they can no longer be edited (AIV-P2-059).
+        status: retiredRegions.has(h.region) ? 'retired' : hintStatus(published, pack.key, h),
         removable: isHintNewInDraft(published, pack.key, h.region, h.position),
       })),
     })),
@@ -127,14 +140,27 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
   };
 }
 
-/** The pack form: `previousKey` null adds a pack. */
-export type PackForm = { previousKey: string | null; key: string; label: string; keyEditable: boolean };
-export const newPackForm = (): PackForm => ({ previousKey: null, key: '', label: '', keyEditable: true });
-export const packFormFor = (pack: PackRow): PackForm => ({
-  previousKey: pack.key,
-  key: pack.key,
-  label: pack.label,
-  keyEditable: pack.removable,
+/** The pack form, or the region form (AIV-P2-059): the same key and label. `previousKey` null adds one. */
+export type PackForm = {
+  entry: 'pack' | 'region';
+  previousKey: string | null;
+  key: string;
+  label: string;
+  keyEditable: boolean;
+};
+export const newPackForm = (entry: PackForm['entry'] = 'pack'): PackForm => ({
+  entry,
+  previousKey: null,
+  key: '',
+  label: '',
+  keyEditable: true,
+});
+export const packFormFor = (row: PackRow | RegionRow, entry: PackForm['entry'] = 'pack'): PackForm => ({
+  entry,
+  previousKey: row.key,
+  key: row.key,
+  label: row.label,
+  keyEditable: row.removable,
 });
 
 /**
@@ -262,6 +288,9 @@ export type EditorViewModel = {
   onAddPack: () => void;
   onEditPack: (pack: PackRow) => void;
   onPackChange: (patch: Partial<Pick<PackForm, 'key' | 'label'>>) => void;
+  onAddRegion: () => void;
+  onEditRegion: (row: RegionRow) => void;
+  onRetireRegion: (key: string) => Promise<void>;
   onAddCompetency: (packKey: string) => void;
   onEditCompetency: (packKey: string, row: CompetencyRow) => void;
   onAddHint: (packKey: string, region: string) => void;

@@ -9,6 +9,7 @@ import {
   saveDraftHintAction,
   saveDraftJobTypeAction,
   saveDraftPackAction,
+  saveDraftRegionAction,
   startCatalogueDraft,
 } from './editCatalogue.ts';
 
@@ -21,6 +22,7 @@ const saveCataloguePack = vi.fn(async (..._args: unknown[]) => {});
 const requestCatalogueEval = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueHint = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueJobType = vi.fn(async (..._args: unknown[]) => {});
+const saveCatalogueRegion = vi.fn(async (..._args: unknown[]) => {});
 const publishCatalogueDraft = vi.fn(async (..._args: unknown[]) => {});
 const discardCatalogueDraft = vi.fn(async (..._args: unknown[]) => {});
 const revalidatePath = vi.fn();
@@ -33,6 +35,7 @@ vi.mock('@/server/operator', () => ({
   saveCatalogueCompetency: (...args: unknown[]) => saveCatalogueCompetency(...args),
   saveCatalogueHint: (...args: unknown[]) => saveCatalogueHint(...args),
   saveCatalogueJobType: (...args: unknown[]) => saveCatalogueJobType(...args),
+  saveCatalogueRegion: (...args: unknown[]) => saveCatalogueRegion(...args),
   retireCatalogueEntry: async () => 'retired',
   requestCatalogueEval: (...args: unknown[]) => requestCatalogueEval(...args),
   publishCatalogueDraft: (...args: unknown[]) => publishCatalogueDraft(...args),
@@ -231,6 +234,39 @@ describe('the save-hint server action', () => {
       }),
     ).rejects.toThrow('403');
     expect(saveCatalogueHint).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-059: the save-region server action.
+describe('the save-region server action', () => {
+  const eu = { version: 2, revision: 4, previousKey: null, key: 'eu', label: 'EU' };
+
+  it('a region goes to the module and the page reloads; a malformed key or empty label is refused before it', async () => {
+    expect(await saveDraftRegionAction(eu)).toEqual({ ok: true });
+    expect(saveCatalogueRegion).toHaveBeenCalledWith(eu);
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/catalogue');
+    expect(await saveDraftRegionAction({ ...eu, key: 'EU' })).toEqual({ ok: false, error: 'invalid', field: 'key' });
+    expect(await saveDraftRegionAction({ ...eu, label: ' ' })).toEqual({ ok: false, error: 'invalid', field: 'label' });
+    expect(saveCatalogueRegion).toHaveBeenCalledOnce();
+  });
+
+  it('the region fairness refusal comes back under the label', async () => {
+    saveCatalogueRegion.mockRejectedValueOnce(new CatalogueError('fairness_region', { field: 'label' }));
+    expect(await saveDraftRegionAction({ ...eu, key: 'uae_r', label: 'UAE residents' })).toEqual({
+      ok: false,
+      error: 'fairness_region',
+      field: 'label',
+    });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from saveDraftRegionAction -> this test failed (ok: true)
+  it('Scenario: Only operators can add or retire regions: a non-operator gets 403 and the draft is unchanged', async () => {
+    operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
+    await expect(saveDraftRegionAction(eu)).rejects.toThrow('403');
+    await expect(retireDraftEntryAction({ version: 2, revision: 0, entry: 'region', region: 'india' })).rejects.toThrow(
+      '403',
+    );
+    expect(saveCatalogueRegion).not.toHaveBeenCalled();
   });
 });
 

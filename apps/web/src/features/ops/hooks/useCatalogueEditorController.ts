@@ -23,6 +23,7 @@ import {
   saveDraftHintAction,
   saveDraftJobTypeAction,
   saveDraftPackAction,
+  saveDraftRegionAction,
   startCatalogueDraft,
 } from '../services/editCatalogue.ts';
 
@@ -70,6 +71,9 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
     onAddPack: () => open(newPackForm(), null),
     onEditPack: (pack) => open(packFormFor(pack), null),
     onPackChange: (patch) => setPackForm((form) => form && { ...form, ...patch }),
+    onAddRegion: () => open(newPackForm('region'), null),
+    onEditRegion: (row) => open(packFormFor(row, 'region'), null),
+    onRetireRegion: (region) => send(() => retireDraftEntryAction({ version, revision, entry: 'region', region })),
     onAddCompetency: (packKey) => open(null, newCompetencyForm(packKey)),
     onEditCompetency: (packKey, row) => open(null, competencyFormFor(packKey, row)),
     onAddHint: (packKey, region) => open(null, newCompetencyForm(packKey, region)),
@@ -85,8 +89,9 @@ export function useCatalogueEditorController(draft: DraftModel): EditorViewModel
       send(() => {
         if (jobTypeForm) return saveDraftJobTypeAction(jobTypeInput(draft, jobTypeForm));
         if (packForm) {
-          const { previousKey, key, label } = packForm;
-          return saveDraftPackAction({ version, revision, previousKey, key: key.trim(), label });
+          const { entry, previousKey, key, label } = packForm;
+          const save = entry === 'region' ? saveDraftRegionAction : saveDraftPackAction;
+          return save({ version, revision, previousKey, key: key.trim(), label });
         }
         if (!competencyForm) return Promise.resolve<CatalogueSaveResult>({ ok: false, error: 'failed' });
         const { region, core, ...fields } = competencyForm;
