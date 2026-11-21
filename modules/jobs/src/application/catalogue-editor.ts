@@ -70,7 +70,10 @@ export type CatalogueEditorPorts = {
  * Locks the draft and refuses a save made on another draft or an older revision; returns the draft and what to audit
  * with it.
  */
-const begin = async (store: DraftStore, { version, revision }: { version: number; revision: number }) => {
+export const begin = async (
+  store: Pick<DraftStore, 'lockDraft' | 'read'>,
+  { version, revision }: { version: number; revision: number },
+) => {
   const draft = await store.lockDraft();
   if (!draft) throw new CatalogueError('no_draft');
   if (draft.version !== version || draft.revision !== revision)

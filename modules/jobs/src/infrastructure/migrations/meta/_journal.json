@@ -134,6 +134,20 @@
       "when": 1795227447739,
       "tag": "0018_catalogue_draft_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795230627441,
+      "tag": "0019_catalogue_eval_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795230642015,
+      "tag": "0020_force_rls_jobs_inbox",
+      "breakpoints": true
     }
   ]
 }

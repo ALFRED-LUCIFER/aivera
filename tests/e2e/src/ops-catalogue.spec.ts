@@ -17,6 +17,8 @@ test.beforeAll(async () => {
   const db = createDb(databaseUrl, { max: 1 });
   try {
     await db.transaction(async (tx) => {
+      await tx.execute(sql`delete from jobs.catalogue_eval_run where version in
+        (select version from jobs.catalogue_version where status = 'draft')`);
       for (const table of ['regional_hint', 'pack_competency', 'pack', 'region', 'job_type'])
         await tx.execute(
           sql`delete from ${sql.identifier('jobs')}.${sql.identifier(`catalogue_${table}`)} where version in
@@ -437,6 +439,122 @@ test.describe('job types in the draft', () => {
       await expectAccessible(page);
       await page.getByRole('button', { name: 'Edit Security engineering' }).click();
       await expect(page.getByRole('dialog', { name: 'Edit job type' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+});
+
+// AIV-P2-048: the eval on the draft. No worker runs here, so each run's result is written as the worker would
+// (the stubbed worker result); the worker job itself is tested in tests/integration (catalogue-eval.test.ts).
+const finish = async (status: 'passed' | 'failed', result: object) => {
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    await db.execute(sql`update jobs.catalogue_eval_run set status = ${status}, finished_at = now(), tokens = 1200,
+      result = ${JSON.stringify(result)}::jsonb where status = 'running'`);
+  } finally {
+    await db.$client.end();
+  }
+};
+const detectDomain = (passed: boolean) => ({
+  task: 'jobs.detectDomain',
+  passed,
+  fieldMatch: 0.97,
+  groups: [
+    { group: 'domain', n: passed ? 18 : 15, total: 18 },
+    { group: 'none', n: 6, total: 6 },
+    { group: 'fairness', n: 4, total: 4 },
+  ],
+  failedCases: passed ? [] : ['telecom-prepaid-gurugram', 'banking-sme-mumbai', 'payments-difc'],
+});
+const panel = (page: Page) =>
+  page
+    .locator('section, div')
+    .filter({ has: page.getByRole('heading', { name: 'AI eval' }) })
+    .last();
+const runEval = async (page: Page) => {
+  // Keyboard path: the button is reached and pressed without a pointer.
+  await page.getByRole('button', { name: 'Run the eval' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: 'Eval running…' })).toBeVisible();
+};
+
+test.describe('the draft eval', () => {
+  test('Scenario: A new pack without golden cases cannot pass, and its run lists what failed', async ({ page }) => {
+    await openCatalogue(page);
+    await expect(panel(page)).toContainText('The eval has not run on this draft.');
+    await runEval(page);
+    await expect(page.getByRole('button', { name: 'Run the eval' })).toBeDisabled();
+    await finish('failed', { uncovered: ['insurance'], tasks: [] });
+    await page.reload();
+    await expect(page.getByRole('status').filter({ hasText: 'Eval failed' })).toBeVisible();
+    await expect(panel(page)).toContainText('Add golden cases for insurance in packages/ai/evals before publishing.');
+  });
+
+  test('Scenario: A failing run lists the failed case ids', async ({ page }) => {
+    await openCatalogue(page);
+    await runEval(page);
+    await finish('failed', { uncovered: [], tasks: [detectDomain(false)] });
+    await page.reload();
+    await expect(page.getByRole('status').filter({ hasText: 'Eval failed' })).toBeVisible();
+    for (const id of ['telecom-prepaid-gurugram', 'banking-sme-mumbai', 'payments-difc'])
+      await expect(panel(page).getByText(id, { exact: true })).toBeVisible();
+  });
+
+  test('Scenario: A passing run is recorded against the draft content, then an edit invalidates it', async ({
+    page,
+  }) => {
+    await openCatalogue(page);
+    await runEval(page);
+    await finish('passed', { uncovered: [], tasks: [detectDomain(true)] });
+    // The page polls while a run is running, so the result appears without a reload.
+    await expect(page.getByRole('status').filter({ hasText: 'Eval passed' })).toBeVisible({ timeout: 15_000 });
+    await expect(panel(page)).toContainText(/Ran on .+ at \d{2}:\d{2} \(Asia\/Dubai\)/);
+    for (const metric of ['Domain accuracy', 'No clear domain', 'Fairness'])
+      await expect(panel(page).getByText(metric, { exact: true })).toBeVisible();
+    await expect(panel(page).getByText('Observed')).toHaveCount(3);
+
+    await packSummary(page, 'Telecom').click();
+    await page.getByRole('button', { name: 'Edit Telecom' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Edit pack' });
+    await dialog.getByLabel('English label').fill('Telecoms');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(panel(page)).toContainText('The draft changed after the last eval run. Run it again.');
+  });
+
+  test('Scenario: Runs do not overlap', async ({ page }) => {
+    await openCatalogue(page);
+    // Another operator's run starts after this page loaded.
+    const db = createDb(databaseUrl, { max: 1 });
+    const runs = async () =>
+      (await db.execute<{ n: number }>(sql`select count(*)::int as n from jobs.catalogue_eval_run`))[0]?.n;
+    try {
+      await db.execute(sql`insert into jobs.catalogue_eval_run (id, version, content_hash, keys, status, requested_by,
+        requested_at) select gen_random_uuid(), version, repeat('0', 64), '{"domains":[],"regions":[]}', 'running',
+        '0190d4a2-0000-7000-8000-00000000a002', now() from jobs.catalogue_version where status = 'draft'`);
+      const before = await runs();
+      await page.getByRole('button', { name: 'Run the eval' }).focus();
+      await page.keyboard.press('Enter');
+      // The request is refused and the page reloads to the run in progress: no second run starts.
+      await expect(panel(page).getByRole('alert')).toHaveText('An eval run is already in progress.');
+      await expect(page.getByRole('button', { name: 'Run the eval' })).toBeDisabled();
+      expect(await runs()).toBe(before);
+    } finally {
+      await db.$client.end();
+    }
+    await finish('passed', { uncovered: [], tasks: [detectDomain(true)] });
+  });
+
+  for (const theme of themes) {
+    test(`axe passes on the eval result (${theme})`, async ({ page, context, baseURL }) => {
+      await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+      await openCatalogue(page);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await runEval(page);
+      await expectAccessible(page);
+      await finish('failed', { uncovered: [], tasks: [detectDomain(false)] });
+      await page.reload();
+      await expect(page.getByRole('status').filter({ hasText: 'Eval failed' })).toBeVisible();
       await expectAccessible(page);
     });
   }

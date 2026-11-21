@@ -12,6 +12,7 @@ import type {
   SaveRubricInput,
 } from '../application/jobs.ts';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
+import type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 import type {
   CatalogueEditorView,
   DraftCompetencyInput,
@@ -120,6 +121,8 @@ export type {
   SuggestedCompetency,
 } from '../application/draft-competencies.ts';
 export type { DetectDomainInput, DomainDetection } from '../application/detect-domain.ts';
+export { evalAllowsPublish, evalRequestSchema } from '../domain/catalogue-eval.ts';
+export type { DraftEval, EvalRequestInput } from '../domain/catalogue-eval.ts';
 export { SLUG, toPublicJobJson } from '../domain/public-job.ts';
 export type { PublicJob, PublicJobLookup } from '../domain/public-job.ts';
 
@@ -144,6 +147,16 @@ export const JobUnpublishedV1 = {
   type: 'JobUnpublished.v1',
   payload: z.strictObject({ jobId: z.uuid() }),
 } satisfies EventDefinition<{ jobId: string }>;
+
+/**
+ * Written to `jobs.outbox` when an operator asks for an eval run on the catalogue draft (AIV-P2-048), and sent to the
+ * `jobs` queue, whose worker job runs it. The run's id only; the envelope's workspace is the fixed eval scope, no real
+ * workspace's.
+ */
+export const CatalogueEvalRequestedV1 = {
+  type: 'CatalogueEvalRequested.v1',
+  payload: z.strictObject({ runId: z.uuid() }),
+} satisfies EventDefinition<{ runId: string }>;
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction,
@@ -356,6 +369,18 @@ export interface CatalogueEditor {
    * Returns which.
    */
   retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;
+  /**
+   * "Run the eval" (AIV-P2-048, ADR-013 point 12): starts a run on the draft's current content and queues its worker
+   * job (`CatalogueEvalRequested.v1`). `eval_running` while another run on the draft is running.
+   * `catalogue.eval_requested`.
+   */
+  requestEval(operatorId: string, input: EvalRequestInput): Promise<void>;
+  /**
+   * The open draft's eval state (null when no draft is open): `passed` only when the latest run passed on the draft's
+   * current content hash; an edit since makes it `stale`. The console home reads it too (AIV-P2-051); publish requires
+   * `evalAllowsPublish` (AIV-P2-049).
+   */
+  getDraftEval(): Promise<DraftEval | null>;
 }
 
 /**

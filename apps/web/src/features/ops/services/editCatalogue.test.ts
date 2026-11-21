@@ -2,6 +2,7 @@ import { CatalogueError } from '@credalent/jobs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   retireDraftEntryAction,
+  runCatalogueEvalAction,
   saveDraftCompetencyAction,
   saveDraftHintAction,
   saveDraftJobTypeAction,
@@ -15,6 +16,7 @@ const THEO = '0190d4a2-0000-7000-8000-00000000a002';
 const operator = vi.fn<() => Promise<{ userId: string }>>();
 const saveCatalogueCompetency = vi.fn(async (..._args: unknown[]) => {});
 const saveCataloguePack = vi.fn(async (..._args: unknown[]) => {});
+const requestCatalogueEval = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueHint = vi.fn(async (..._args: unknown[]) => {});
 const saveCatalogueJobType = vi.fn(async (..._args: unknown[]) => {});
 const revalidatePath = vi.fn();
@@ -28,6 +30,7 @@ vi.mock('@/server/operator', () => ({
   saveCatalogueHint: (...args: unknown[]) => saveCatalogueHint(...args),
   saveCatalogueJobType: (...args: unknown[]) => saveCatalogueJobType(...args),
   retireCatalogueEntry: async () => 'retired',
+  requestCatalogueEval: (...args: unknown[]) => requestCatalogueEval(...args),
   operatorName: async (id: string) => (id === THEO ? 'Theo Platform' : null),
 }));
 
@@ -92,6 +95,7 @@ describe('the catalogue draft server actions', () => {
   });
 
   // SAFETY: mutation check: removed `await platformOperator()` from saveDraftCompetencyAction -> this test failed
+  // SAFETY: mutation check: removed `await platformOperator()` from runCatalogueEvalAction -> this test failed
   it('Scenario: Only operators can edit: a non-operator gets 403 and the draft is unchanged', async () => {
     operator.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;403'));
     for (const action of [
@@ -99,13 +103,36 @@ describe('the catalogue draft server actions', () => {
       () => saveDraftPackAction({ version: 2, revision: 0, previousKey: null, key: 'insurance', label: 'Insurance' }),
       () => retireDraftEntryAction({ version: 2, revision: 0, entry: 'pack', packKey: 'insurance' }),
       () => startCatalogueDraft(),
+      () => runCatalogueEvalAction({ version: 2, revision: 0 }),
       () => saveDraftJobTypeAction(security),
       () => retireDraftEntryAction({ version: 2, revision: 0, entry: 'jobType', jobTypeKey: 'sales' }),
     ])
       await expect(action()).rejects.toThrow('403');
     expect(saveCatalogueCompetency).not.toHaveBeenCalled();
     expect(saveCataloguePack).not.toHaveBeenCalled();
+    expect(requestCatalogueEval).not.toHaveBeenCalled();
     expect(saveCatalogueJobType).not.toHaveBeenCalled();
+  });
+});
+
+describe('Run the eval (AIV-P2-048)', () => {
+  it('asks the module for a run on the draft the page showed, and reloads the page', async () => {
+    expect(await runCatalogueEvalAction({ version: 2, revision: 4 })).toEqual({ ok: true });
+    expect(requestCatalogueEval).toHaveBeenCalledWith({ version: 2, revision: 4 });
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/catalogue');
+  });
+
+  it('Scenario: Runs do not overlap: a run in progress is refused with its message code', async () => {
+    requestCatalogueEval.mockRejectedValueOnce(new CatalogueError('eval_running'));
+    expect(await runCatalogueEvalAction({ version: 2, revision: 4 })).toEqual({ ok: false, error: 'eval_running' });
+  });
+
+  it('input outside the schema never reaches the module', async () => {
+    expect(await runCatalogueEvalAction({ version: 2, revision: 4, operatorId: 'x' })).toEqual({
+      ok: false,
+      error: 'failed',
+    });
+    expect(requestCatalogueEval).not.toHaveBeenCalled();
   });
 });
 

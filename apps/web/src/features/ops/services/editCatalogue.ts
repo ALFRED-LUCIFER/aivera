@@ -8,6 +8,7 @@ import {
   openCatalogueDraft,
   operatorName,
   platformOperator,
+  requestCatalogueEval,
   retireCatalogueEntry,
   saveCatalogueCompetency,
   saveCatalogueHint,
@@ -23,6 +24,7 @@ import {
   retireEntrySchema,
   type CatalogueSaveResult,
 } from '../domain/catalogueEditor.ts';
+import { evalRequestSchema } from '../domain/catalogueEval.ts';
 
 // The catalogue draft's server actions (AIV-P2-045). Operators only: anyone else gets a 403 and the draft is unchanged.
 // Input is parsed here against the jobs module's schemas (and again by the module); a refusal comes back as a value, so
@@ -87,4 +89,11 @@ export async function retireDraftEntryAction(input: unknown): Promise<CatalogueS
   await platformOperator();
   const parsed = retireEntrySchema.safeParse(input);
   return parsed.success ? attempt(() => retireCatalogueEntry(parsed.data)) : { ok: false, error: 'failed' };
+}
+
+/** "Run the eval" on the draft as the page showed it (AIV-P2-048): queues a worker run; one at a time per draft. */
+export async function runCatalogueEvalAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = evalRequestSchema.safeParse(input);
+  return parsed.success ? attempt(() => requestCatalogueEval(parsed.data)) : { ok: false, error: 'failed' };
 }
