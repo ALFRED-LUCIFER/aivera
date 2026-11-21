@@ -22,7 +22,8 @@ export type WorkspaceStore = {
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
   /**
    * The workspace row under FOR KEY SHARE until commit: every request context holds it, so an operator's status change
-   * (which locks FOR UPDATE) waits for work in flight to finish, and work that starts later reads the new status.
+   * (which locks FOR UPDATE) waits for work in flight to finish, up to the lock timeout (then a 55P03 DbQueryError and
+   * the operator retries), and work that starts later reads the new status.
    */
   shareWorkspace(workspaceId: string): Promise<Workspace | null>;
   /** Points the user's active workspace here (not workspace-owned; see the schema). */
@@ -38,7 +39,10 @@ export type WorkspaceStore = {
    * deadlock.
    */
   lockWorkspace(workspaceId: string): Promise<Workspace | null>;
-  /** The workspace row under FOR UPDATE until commit, for a status change: it waits for every request in flight. */
+  /**
+   * The workspace row under FOR UPDATE until commit, for a status change: it waits for the requests in flight, up to the
+   * lock timeout (a 55P03 DbQueryError; the operator retries).
+   */
   lockWorkspaceStatus(workspaceId: string): Promise<Workspace | null>;
   updateType(workspaceId: string, type: WorkspaceType): Promise<void>;
   updateStatus(workspaceId: string, status: WorkspaceStatus): Promise<void>;

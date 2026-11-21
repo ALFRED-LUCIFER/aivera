@@ -480,7 +480,8 @@ describe('Scenario: A document read completes without calling embed', () => {
   });
 });
 
-describe('Scenario: A transient AI failure does not deadlock', () => {
+describe('Scenario: A Document Intelligence outage does not deadlock', () => {
+  // SAFETY: mutation check: locked the read row before the call (.for('update') in documentReadStore.find) -> this test failed (each own-connection write hit the lock timeout: 'pending', not 'failed')
   it('20 reads during a Document Intelligence outage each fail, back off, and leave the pool idle', async () => {
     const pool = createDb(urlFor('aivera_app'), { max: 10 });
     docintel.use(
