@@ -121,7 +121,11 @@ test.describe('no draft: the published version', () => {
       1,
     );
     await expect(page.getByRole('button', { name: 'Start a draft' })).toBeVisible();
-    // AIV-P2-051: the console home says so too. Here, not in ops-dashboard.spec.ts: only this serial file opens drafts.
+  });
+
+  // AIV-P2-051. Here, not in ops-dashboard.spec.ts: only this serial file opens drafts in the shared database.
+  test('AIV-P2-051: with no draft, the console home says "No draft"', async ({ page }) => {
+    await signIn(page, { email: PIA });
     await page.goto('/ops');
     await expect(catalogueTile(page)).toContainText('Version 1 live · No draft');
   });
