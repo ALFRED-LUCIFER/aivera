@@ -28,8 +28,6 @@ const props: JobDetailProps = {
     },
     { name: 'Product judgement', evidenceExpected: 'A decision they made and why', levelNeeded: 3 },
   ],
-  cvCheckHref: '/candidates/cv-check?job=senior-ai-engineer-3f9a1c0b2d4e',
-  applyHref: '/candidates/jobs/senior-ai-engineer-3f9a1c0b2d4e/apply',
 };
 const renderDetail = () =>
   render(
@@ -62,18 +60,9 @@ describe('JobDetail (AIV-P3-005)', () => {
       expect(judged.getByText(line)).toBeDefined();
   });
 
-  it('links Apply and the free CV check for this job, and shows the gap report as Plus with no fit numbers', () => {
+  it('links to no page that is not built: no Apply, CV check or Plans', () => {
     renderDetail();
-    expect(screen.getByRole('link', { name: 'Apply' })).toHaveProperty('pathname', props.applyHref);
-    const cv = screen.getByRole('link', { name: 'Check my CV against this job, free' });
-    expect(cv).toHaveProperty('search', '?job=senior-ai-engineer-3f9a1c0b2d4e');
-    const gap = screen.getByRole('heading', { level: 2, name: /Your gap report/ }).closest('div') as HTMLElement;
-    expect(within(gap).getByText('Plus')).toBeDefined();
-    expect(within(gap).getByRole('link', { name: 'See what Plus adds' })).toHaveProperty(
-      'pathname',
-      '/candidates/plans',
-    );
-    expect(gap.textContent).not.toMatch(/\d+ of \d+|you meet/i);
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
   it('shows no weight, client name, candidate or score', () => {

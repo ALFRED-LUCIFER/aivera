@@ -49,18 +49,4 @@ for (const theme of themes) {
     await expect(page.getByRole('region', { name: 'New this week' }).getByRole('heading', { level: 3 })).toHaveCount(3);
     await expectAccessible(page);
   });
-
-  test(`the Plus call to action stays the bright highlighter with a visible focus ring (${theme})`, async ({
-    page,
-    context,
-  }) => {
-    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/candidates');
-    const plus = page.getByRole('link', { name: 'See what Plus adds' });
-    await plus.focus();
-    // #FFE873 in both themes: light tokens on the dark ink panel, and the ring in highlighter, never ink on ink.
-    await expect(plus).toHaveCSS('background-color', 'rgb(255, 232, 115)');
-    await expect(plus).toHaveCSS('outline-color', 'rgb(255, 232, 115)');
-  });
 }

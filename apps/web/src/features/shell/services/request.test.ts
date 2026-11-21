@@ -11,6 +11,9 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
+const flags = vi.hoisted(() => new Set<string>());
+vi.mock('@/server/flags', () => ({ enabledFlags: flags }));
+
 const membership = vi.fn();
 vi.mock('@/server/workspace', () => ({ currentMembership: () => membership() }));
 
@@ -24,7 +27,7 @@ const member = (synthetic: boolean): Member => ({
 describe('Scenario: Counts fail softly', () => {
   it('a failed counts read gives null, so the sidebar shows names without numbers', async () => {
     expect(await loadShellCounts(member(true), () => Promise.reject(new Error('down')))).toBeNull();
-    expect(await loadShellCounts(member(true))).toEqual({ desk: 4, inbox: 20, jobs: 5, interviews: 5, packs: 1 });
+    expect(await loadShellCounts(member(true))).toEqual({ desk: 4, jobs: 5 });
   });
 
   // SAFETY: mutation check: removed the synthetic check in loadShellCounts -> this test failed
@@ -47,6 +50,20 @@ describe('requireScreen', () => {
       membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
       await expect(requireScreen('desk')).rejects.toThrow('NEXT_NOT_FOUND');
     }
+  });
+});
+
+describe('Scenario: A flag turns a section on (AIV-P1-095)', () => {
+  const recruiter = { name: 'Alex Recruiter', role: 'recruiter', synthetic: true };
+
+  // SAFETY: mutation check: removed the canOpen check from requireScreen -> this test failed
+  it('a section with its flag off is a 404 by direct address, and opens once the flag is on', async () => {
+    membership.mockResolvedValueOnce(recruiter);
+    await expect(requireScreen('pool')).rejects.toThrow('NEXT_NOT_FOUND');
+    flags.add('pool');
+    membership.mockResolvedValueOnce(recruiter);
+    expect(await requireScreen('pool')).toMatchObject({ initials: 'AR' });
+    flags.delete('pool');
   });
 });
 

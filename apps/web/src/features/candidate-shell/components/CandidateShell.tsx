@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { accountLink, footerLinks, headerLinks, isCurrent } from '../domain/links.ts';
 
+// Deviation from the artboards: no Free CV check, Plans, Portfolio or My applications links until those pages exist (AIV-P1-095).
 export type CandidateShellProps = {
   signedIn: boolean;
   pathname: string;
@@ -54,7 +55,6 @@ export function CandidateShell({
     document.addEventListener('keydown', close);
     return () => document.removeEventListener('keydown', close);
   }, [menuOpen, onCloseMenu]);
-  const account = signedIn ? accountLink.signedIn : accountLink.signedOut;
   const current = (href: string) => (isCurrent(pathname, href) ? 'page' : undefined);
   return (
     <div className="flex min-h-screen flex-col">
@@ -106,14 +106,16 @@ export function CandidateShell({
               ))}
             </ul>
             {/* Secondary, not primary: the page below owns the one primary action (DESIGN.md). */}
-            <Link
-              href={account.href}
-              onClick={onCloseMenu}
-              aria-current={current(account.href)}
-              className={`${buttonClassName('secondary')} self-start md:self-auto`}
-            >
-              {t(account.key)}
-            </Link>
+            {!signedIn && (
+              <Link
+                href={accountLink.href}
+                onClick={onCloseMenu}
+                aria-current={current(accountLink.href)}
+                className={`${buttonClassName('secondary')} self-start md:self-auto`}
+              >
+                {t(accountLink.key)}
+              </Link>
+            )}
             {signedIn && (
               <form action={signOutAction} className="self-start md:self-auto">
                 <Button type="submit" variant="ghost">

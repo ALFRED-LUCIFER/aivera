@@ -3,7 +3,6 @@ import { jobTypeLabel, SLUG } from '@credalent/jobs';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { applyHref, cvCheckHref } from '@/features/candidate-shell/domain/links.ts';
 import { postedDaysAgo } from '@/features/public-jobs/domain/jobs-list.ts';
 import { getCatalogue } from '@/server/jobs';
 import { getPublicJobs } from '@/server/publicJobs';
@@ -51,8 +50,6 @@ export default async function JobPage({ params }: Props) {
       // has one.
       postedDays={postedDaysAgo(job.postedAt, new Date())}
       competencies={job.competencies}
-      cvCheckHref={cvCheckHref(job.slug)}
-      applyHref={applyHref(job.slug)}
     />
   );
 }

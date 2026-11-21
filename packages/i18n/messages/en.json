@@ -117,10 +117,7 @@
       "nav": {
         "label": "Candidate site",
         "menu": "Menu",
-        "jobs": "Jobs",
-        "cvCheck": "Free CV check",
-        "plans": "Plans",
-        "portfolio": "Portfolio"
+        "jobs": "Jobs"
       },
       "createAccount": "Create account",
       "myApplications": "My applications",
@@ -128,11 +125,9 @@
         "label": "Site links",
         "rule": "© 2026 Credalent. Paying never changes how recruiters rank you.",
         "jobs": "Jobs",
-        "plans": "Plans",
         "forRecruiters": "For recruiters"
       },
-      "placeholder": "This page arrives with its own ticket.",
-      "applyPlaceholder": "Apply",
+      "placeholder": "This page is not available yet.",
       "signOut": "Sign out",
       "failed": "This page could not load. Try again.",
       "retry": "Try again"
@@ -178,14 +173,6 @@
       "judgedWork": "On work you can show. There is no test.",
       "judgedClaims": "What you state without evidence is treated as a claim, and you may be asked for more.",
       "judgedPerson": "A person makes every decision. Nobody is rejected automatically.",
-      "beforeTitle": "Before you apply",
-      "beforeBody": "See how your CV reads against these competencies before you send it.",
-      "checkCv": "Check my CV against this job, free",
-      "apply": "Apply",
-      "gapTitle": "Your gap report",
-      "plus": "Plus",
-      "gapBody": "See which of these needs your evidence already covers, and what to add.",
-      "gapLink": "See what Plus adds",
       "closedTitle": "This job is no longer open",
       "closedBody": "The employer is not taking applications for it, or the link is wrong.",
       "allJobs": "See all jobs",
@@ -196,7 +183,6 @@
       "title": "Get hired for <mark>what you have done</mark>.",
       "lead": "On Credalent, every job shows what it needs before you apply, and recruiters judge your work, not your keywords. No tests to sit.",
       "findJobs": "Find jobs",
-      "checkCv": "Check my CV, free",
       "free": "Free to browse and apply. Always.",
       "sampleExample": "Example:",
       "sampleTitle": "Senior AI Engineer",
@@ -226,8 +212,7 @@
       "noNew": "No new jobs this week. Check back soon.",
       "allJobs": "All jobs",
       "plusTitle": "Want an edge that is still honest?",
-      "plusBody": "Credalent Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}.",
-      "plusLink": "See what Plus adds"
+      "plusBody": "Credalent Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}."
     },
     "signup": {
       "title": "Create your free account",
@@ -374,7 +359,6 @@
       "value": "Value dashboard",
       "settings": "Settings"
     },
-    "search": "Search roles, candidates and evidence",
     "synthetic": "Synthetic demo data",
     "theme": {
       "toDark": "Switch to dark theme",
@@ -382,16 +366,7 @@
     },
     "account": "Signed in as {name}",
     "signOut": "Sign out",
-    "assistant": {
-      "open": "Ask Credalent",
-      "title": "Credalent assistant",
-      "context": "Context: {screen}",
-      "input": "Ask about what is on this page",
-      "ask": "Ask",
-      "close": "Close assistant",
-      "footer": "Answers cite the evidence they use. Any change is shown as a preview and waits for your confirmation."
-    },
-    "placeholder": "This screen arrives with its own ticket.",
+    "placeholder": "This page is not available yet.",
     "paused": "This workspace is paused by Credalent. You can read everything; new work is paused."
   },
   "signIn": {
@@ -429,7 +404,11 @@
     "waiting": "Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.",
     "rejectedTitle": "Your workspace was not approved",
     "rejected": "Your workspace was not approved. Reason: {reason}",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "errorTitle": "Something went wrong. Try again.",
+    "retry": "Try again",
+    "notFoundTitle": "We could not find that page.",
+    "home": "Go to the home page"
   },
   "signup": {
     "points": {

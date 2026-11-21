@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { css, expectAccessible, focusInDrawer, focusInView, themes } from './gallery.ts';
+import { css, expectAccessible, focusInView, themes } from './gallery.ts';
 
 // Browser checks handed over from AIV-P0-020 (#52, PR #220) on #57. `/app` needs a session (AIV-P0-009) and runs in
 // the signed-in user's active workspace (AIV-P0-010): Alex Recruiter in the synthetic "Demo Hiring Co" (seed.ts).
@@ -19,7 +19,6 @@ for (const [path, heading, link] of [
       'aria-current',
       'page',
     );
-    await expect(page.getByRole('button', { name: 'Ask Credalent' })).toBeVisible();
   });
 }
 
@@ -88,42 +87,22 @@ for (const theme of themes) {
   });
 }
 
-// AIV-P0-920: from lg up the assistant drawer sits beside the page; "Ask Credalent" is top right, where the drawer is.
-for (const theme of themes) {
-  // mutation check: removed the onKeyDown edge handler in AssistantDrawer -> this test failed (Tab looped inside)
-  // mutation check: removed the open-drawer padding in styles.css -> this test failed (Ask Credalent under the drawer)
-  test(`the assistant drawer at 1280 px lets Tab leave for the page and come back (${theme})`, async ({
-    page,
-    context,
-  }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
-    await page.goto('/app');
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    const ask = page.getByRole('button', { name: 'Ask Credalent' });
-    await ask.click();
-    const drawer = page.getByRole('dialog', { name: 'Credalent assistant' });
-    const question = drawer.getByRole('textbox', { name: 'Ask about what is on this page' });
-    await expect(question).toBeFocused();
-    await expectAccessible(page);
-    await page.keyboard.press('Tab');
-    await expect(drawer.getByRole('button', { name: 'Ask', exact: true })).toBeFocused();
-    // Tab off the drawer's last control: out to the opener on the page, in view, and the drawer stays open.
-    await page.keyboard.press('Tab');
-    await expect(ask).toBeFocused();
-    expect(await focusInView(page)).toBe('visible');
-    await expect(drawer).toBeVisible();
-    // Tab carries on through the page, not back into the drawer.
-    await page.keyboard.press('Tab');
-    expect(await focusInDrawer(page)).toBe(false);
-    expect(await focusInView(page)).toBe('visible');
-    // The documented way back: Shift+Tab to "Ask Credalent" and press it.
-    await page.keyboard.press('Shift+Tab');
-    await expect(ask).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect(question).toBeFocused();
-    await page.keyboard.press('Escape');
-    await expect(drawer).toBeHidden();
-    await expect(ask).toBeFocused();
-  });
-}
+// AIV-P1-095: the search field and the assistant return with their tickets (AIV-P1-049, AIV-P2-E06).
+test('the shell shows built sections only, and no search field or Ask button', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link')).toHaveText([
+    'Credalent',
+    /^My desk/,
+    /^Jobs/,
+    'Settings',
+  ]);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
+});
+
+test('a section that is not built answers 404 by direct address, not only by hiding the link', async ({ page }) => {
+  for (const section of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
+    expect((await page.goto(`/app/${section}`))?.status(), section).toBe(404);
+    await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' }), section).toBeVisible();
+  }
+});

@@ -70,6 +70,24 @@ describe('navigation map (ADR-002 item 4)', () => {
   });
 });
 
+const ids = (flags: string[]) =>
+  navigation.filter((entry) => canOpen(entry, ['recruiter'], new Set(flags))).map(({ id }) => id);
+
+describe('unbuilt sections (AIV-P1-095)', () => {
+  it('stay out of the sidebar until their flag is on', () => {
+    expect(ids([])).toEqual(['desk', 'jobs', 'settings']);
+    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'settings']);
+  });
+
+  // The route half (404 while off, opens when on) is tested against requireScreen in services/request.test.ts.
+  it('every unbuilt section page guards itself with its own entry', () => {
+    for (const id of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
+      const source = readFileSync(join(appDir, '(recruiter)/app', id, 'page.tsx'), 'utf8');
+      expect(source, id).toContain(`screen="${id}"`);
+    }
+  });
+});
+
 describe('parseTheme', () => {
   it('accepts dark and turns anything else into light', () => {
     expect(parseTheme('dark')).toBe('dark');
