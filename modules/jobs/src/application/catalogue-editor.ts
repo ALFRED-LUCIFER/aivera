@@ -149,7 +149,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         if (!pack || (input.position !== null && !before)) throw new CatalogueError('not_found');
         if (pack.retired) throw new CatalogueError('pack_retired');
         if (before?.retired) throw new CatalogueError('entry_retired');
-        assertCompetencyFits(draft, pack, parsed);
+        assertCompetencyFits(draft, pack, parsed, before?.appliesTo ?? []);
         await store.touch(version, operatorId);
         const position = await store.putCompetency(version, input);
         await store.recordPlatform(

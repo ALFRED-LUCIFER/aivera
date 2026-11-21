@@ -313,8 +313,8 @@ export function assertCompetencyFits(
   draft: EditorVersion,
   pack: EditorPack,
   input: DraftCompetencyInput,
-  // The entry's own job types before this save; a regional hint passes its own (AIV-P2-046).
-  kept: readonly string[] = pack.competencies.find((c) => c.position === input.position)?.appliesTo ?? [],
+  // The edited entry's own job types before this save ([] when adding); required so a hint never borrows a competency's.
+  kept: readonly string[],
 ) {
   // shortcut: the form does not list a retired job type, so it can be kept but not unticked; list it when operators ask.
   const offered = new Set([...draft.jobTypes.filter((t) => !t.retired).map((t) => t.key), ...kept]);

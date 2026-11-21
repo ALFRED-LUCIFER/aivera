@@ -138,28 +138,30 @@ const insurance = (core: number): EditorPack => ({
 describe('Scenario: More than four core competencies per job type are refused', () => {
   // SAFETY: mutation check: compared `> CORE_LIMIT` instead of `>= CORE_LIMIT` -> this test failed (saved)
   it('a fifth core for "Software engineering" is refused; a fourth is saved', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), competency))).toEqual({
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), competency, []))).toEqual({
       code: 'core_limit',
       field: 'core',
     });
-    expect(refusal(() => assertCompetencyFits(v1, insurance(3), competency))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(3), competency, []))).toBe('saved');
   });
 
   it('editing one of the four keeps it core; a retired one does not count; a non-core fifth is saved', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, position: 2 }))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, position: 2 }, []))).toBe('saved');
     const retiredOne = insurance(4);
     const pack = { ...retiredOne, competencies: retiredOne.competencies.map((c, i) => ({ ...c, retired: i === 0 })) };
-    expect(refusal(() => assertCompetencyFits(v1, pack, competency))).toBe('saved');
-    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, core: [] }))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, pack, competency, []))).toBe('saved');
+    expect(refusal(() => assertCompetencyFits(v1, insurance(4), { ...competency, core: [] }, []))).toBe('saved');
   });
 
   it('refuses a job type the draft does not offer, and core outside applies-to', () => {
-    expect(refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, appliesTo: ['astronaut'] }))).toEqual({
+    expect(
+      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, appliesTo: ['astronaut'] }, [])),
+    ).toEqual({
       code: 'job_type',
       field: 'appliesTo',
     });
     expect(
-      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, core: ['qa_test_automation'] })),
+      refusal(() => assertCompetencyFits(v1, insurance(0), { ...competency, core: ['qa_test_automation'] }, [])),
     ).toEqual({ code: 'core_not_applied', field: 'core' });
   });
 });
