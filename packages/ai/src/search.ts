@@ -43,6 +43,8 @@ export async function removeModuleVectors(tx: Tx, workspaceId: string, ownerModu
 }
 
 export function createSearchIndex({ db, ai, now }: { db: Db; ai: AiClient; now: () => Date }) {
+  // shortcut: the text reaches the embeddings deployment unredacted (ADR-006 point 7), so nothing in production indexes
+  // (AIV-P1-088); search (AIV-P1-049) redacts the candidate's identifiers (identifiers.ts) first and indexes after commit.
   const embed = async (workspaceId: string, value: string) =>
     (await ai.embed({ task: 'search.embed', workspaceId, value })).embedding;
 

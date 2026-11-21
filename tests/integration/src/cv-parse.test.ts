@@ -197,7 +197,6 @@ async function consume(envelopes: Envelope[], completion: string, deliveryCount 
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
     readPerson: readPersonAsSystem,
-    index: async () => undefined,
     now: () => NOW,
   });
   const consumer = createConsumer({ db: app, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
