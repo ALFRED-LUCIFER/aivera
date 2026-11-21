@@ -76,6 +76,8 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_STORAGE_BLOB_URL', value: blobUrl }
             { name: 'MALWARE_SCANNING', value: malwareScanning ? 'on' : 'off' }
             { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
+            // The catalogue draft eval (AIV-P2-048): on with the `jobs` queue this same apply creates (modules/messaging.bicep).
+            { name: 'CATALOGUE_EVAL', value: 'on' }
           ]
           resources: { cpu: json('0.25'), memory: '0.5Gi' }
           probes: [

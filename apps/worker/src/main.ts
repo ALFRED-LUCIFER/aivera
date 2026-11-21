@@ -29,6 +29,10 @@ const env = z
     // Without either it never settles one, so uploads stay pending: fail closed (the worker never skips the scan).
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
     MALWARE_SCANNING: z.enum(['on', 'off']).default('on'),
+    // The catalogue draft eval (AIV-P2-048): `on` only where the `jobs` queue exists (infra/modules/messaging.bicep sets
+    // it with the queue). Off, its requests stay unmapped in jobs.outbox, where an unmapped type fails alone: mapped to a
+    // missing queue, every refused send would hold back the rest of the batch, RubricApproved.v1 included.
+    CATALOGUE_EVAL: z.enum(['on', 'off']).default('off'),
     AZURE_STORAGE_BLOB_URL: z.url({ protocol: /^https$/ }).optional(),
     // CV parsing and document reads (AIV-P1-025, AIV-P1-028): Document Intelligence on the AI resource, signed in with
     // AZURE_CLIENT_ID's identity. Set, with AZURE_STORAGE_BLOB_URL, the worker reads clean CVs and documents; the model
@@ -109,6 +113,7 @@ const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', .
 // receives an event nothing handles.
 const model = env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake';
 const mapping = !!githubApp && model;
+const catalogueEval = model && env.CATALOGUE_EVAL === 'on';
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
   // shortcut: nothing consumes `assessment` until AIV-P1-031, so EvidenceMapped.v1 (and, without a model,
@@ -123,9 +128,9 @@ const QUEUES: Record<string, string> = {
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
-  // The catalogue draft eval (AIV-P2-048) runs only with a model; without one its requests wait in jobs.outbox, and the
-  // page shows a run that could not run once it times out.
-  ...(model && { [CatalogueEvalRequestedV1.type]: CATALOGUE_EVAL_QUEUE }),
+  // The catalogue draft eval (AIV-P2-048) runs only with a model and CATALOGUE_EVAL=on; otherwise its requests wait in
+  // jobs.outbox, and the page says the run could not run once it times out.
+  ...(catalogueEval && { [CatalogueEvalRequestedV1.type]: CATALOGUE_EVAL_QUEUE }),
   ...(githubApp && {
     [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
     [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
@@ -196,7 +201,7 @@ const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']
 };
 // The catalogue draft eval (AIV-P2-048, ADR-013 point 12): the golden sets live against this environment's deployment,
 // each run within liveTokenCap and the platform eval budget's tokens left today, never a workspace's budget.
-if (model)
+if (catalogueEval)
   CONSUMERS[CATALOGUE_EVAL_QUEUE] = [
     createCatalogueEvalHandler({
       now,

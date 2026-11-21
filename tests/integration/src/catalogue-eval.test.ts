@@ -8,7 +8,8 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, type Db } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
-import { CatalogueError, type CatalogueEditor } from '@credalent/jobs';
+import { createRelay } from '@credalent/db/relay';
+import { CatalogueError, CatalogueEvalRequestedV1, RubricApprovedV1, type CatalogueEditor } from '@credalent/jobs';
 import { createCatalogueEditor, createCatalogueEvalHandler } from '@credalent/jobs/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -250,5 +251,31 @@ describe('Feature: Run the eval set on a catalogue draft', () => {
     expect(await outcome(muchLater.requestEval(PIA, { version, revision }))).toBe('eval_running');
     release();
     await worker;
+  });
+
+  // B1 on dev: until the `jobs` queue exists the worker leaves the eval event unmapped (CATALOGUE_EVAL=off), so the
+  // relay fails it alone and still sends the rest of jobs.outbox.
+  // SAFETY: mutation check: made an unmapped type stop the pass like a refused send (relay.ts `if (queue)`) -> this test failed
+  it('eval requests with no queue never hold back RubricApproved.v1 in jobs.outbox', async () => {
+    const jobId = crypto.randomUUID();
+    await admin.execute(sql`insert into jobs.outbox (id, workspace_id, type, payload, dedupe_key, occurred_at,
+      next_attempt_at) values (${crypto.randomUUID()}, ${crypto.randomUUID()}, ${RubricApprovedV1.type},
+      ${JSON.stringify({ jobId, rubricVersionId: crypto.randomUUID(), supersededVersionId: null })}::jsonb,
+      ${`rubric-approved:${jobId}`}, ${NOW.toISOString()}, ${new Date(NOW.getTime() + 60_000).toISOString()})`);
+    const sent: string[] = [];
+    const relay = createRelay({
+      db: admin,
+      schemas: ['jobs'],
+      queueFor: (type) => (type === RubricApprovedV1.type ? 'assessment' : undefined),
+      send: async (_queue, envelope) => void sent.push(envelope.type),
+      now: () => new Date(NOW.getTime() + 3 * 3_600_000),
+    });
+    const { failed } = await relay();
+    expect(sent).toEqual([RubricApprovedV1.type]);
+    expect(failed).toBeGreaterThan(0);
+    const [unsent] = await admin.execute<{ n: number }>(
+      sql`select count(*)::int as n from jobs.outbox where type = ${CatalogueEvalRequestedV1.type} and sent_at is null`,
+    );
+    expect(unsent?.n).toBe(failed);
   });
 });
