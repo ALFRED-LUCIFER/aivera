@@ -62,20 +62,18 @@ export function competencyDrafting(ai: Pick<AiClient, 'generateStructured'>) {
       });
       // The model weighs each competency on its own (jobs.draftCompetencies@3). Drafted and suggested ones are scaled
       // together to total 100 by the save's rule, so the draft shows the weights the recruiter would save.
-      const drafted = competencies.map((c) => ({ ...fields(c), origin: 'from_description' as const }));
-      const suggested = newSuggestions(competencies, suggestions).map((s) => ({
-        ...fields(s),
-        origin: 'suggested_by_aivera' as const,
-        why: s.why,
-      }));
-      const weights = rebalanceWeights([...drafted, ...suggested]).map((c) => c.weightPercent);
-      const weigh = <C extends { weightPercent: number }>(c: C, i: number) => ({
-        ...c,
-        weightPercent: weights[i] ?? 0,
-      });
+      // A draft with no stated competency and only suggestions is scaled the same way: the suggestions total 100.
+      const weighed = rebalanceWeights<DraftedCompetency | SuggestedCompetency>([
+        ...competencies.map((c) => ({ ...fields(c), origin: 'from_description' as const })),
+        ...newSuggestions(competencies, suggestions).map((s) => ({
+          ...fields(s),
+          origin: 'suggested_by_aivera' as const,
+          why: s.why,
+        })),
+      ]);
       return {
-        competencies: drafted.map(weigh),
-        suggestions: suggested.map((s, i) => weigh(s, drafted.length + i)),
+        competencies: weighed.filter((c): c is DraftedCompetency => c.origin === 'from_description'),
+        suggestions: weighed.filter((c): c is SuggestedCompetency => c.origin === 'suggested_by_aivera'),
         leftOutNonSkill: refused,
       };
     },
