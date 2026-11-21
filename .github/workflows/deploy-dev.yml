@@ -1,6 +1,6 @@
 name: deploy-dev
 # AIV-P0-006: a manual run from main (Actions > deploy-dev > Run workflow, or `gh workflow run deploy-dev --ref main`)
-# builds the images to ghcr.io, migrates, deploys the web app to Azure dev and smoke-tests its public URL; a failed or cancelled smoke test rolls the web app back. OIDC only:
+# builds the images to ghcr.io, migrates, deploys the web app to Azure dev and smoke-tests its public URL; a failed or cancelled smoke test rolls the web app and the worker back. OIDC only:
 # no Azure secret in GitHub. Every action is pinned to a commit SHA because this workflow can mint Azure tokens.
 # The deploy job waits for the owner to set repository variables AZURE_CLIENT_ID (id-aivera-cicd-dev), AZURE_TENANT_ID
 # and AZURE_SUBSCRIPTION_ID after the first Bicep apply (infra/README.md); until then only the images are built.
@@ -23,7 +23,27 @@ env:
   JOB: job-aivera-migrate-dev
 
 jobs:
+  # AIV-P1-093: only a commit whose pr run (the required checks) succeeded is deployed. Stops before building.
+  gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - name: pr run is green for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          green=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr --commit "$GITHUB_SHA" --event push \
+            --json conclusion --jq 'map(select(.conclusion == "success")) | length')
+          if [ "$green" -lt 1 ]; then
+            echo "pr run not green: not deployed ($GITHUB_SHA)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
   images:
+    needs: gate
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -75,8 +95,10 @@ jobs:
       # After web: the worker runs no migrations and serves no traffic. Skipped until the owner's apply creates it
       # (infra/modules/worker.bicep), so a deploy before that apply does not fail and roll web back.
       - name: deploy worker
+        id: worker
         run: |
           if az containerapp show -g "$RG" -n "$WORKER" -o none 2>/dev/null; then
+            echo "previous=$(az containerapp show -g "$RG" -n "$WORKER" --query 'properties.template.containers[0].image' -o tsv)" >> "$GITHUB_OUTPUT"
             az containerapp update -g "$RG" -n "$WORKER" --image "$IMAGES/worker:$GITHUB_SHA" -o none
           else
             echo "Skipped $WORKER: not created yet (owner's Bicep apply)" >> "$GITHUB_STEP_SUMMARY"
@@ -87,14 +109,20 @@ jobs:
           fqdn=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
           SMOKE_URL="https://$fqdn" COMMIT="$GITHUB_SHA" node infra/scripts/smoke.mjs
 
-      # Rolls back the image only: migrations stay applied, so they must be expand-only (ADR-004).
-      - name: roll back web
+      # Rolls back the images only, web and worker together: migrations stay applied, so they must be expand-only
+      # (ADR-004). The worker is rolled back only when it existed (its previous image was recorded).
+      - name: roll back web and worker
         if: (failure() || cancelled()) && steps.web.outcome == 'success'
         env:
           PREVIOUS: ${{ steps.web.outputs.previous }}
+          PREVIOUS_WORKER: ${{ steps.worker.outputs.previous }}
         run: |
           az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none
-          echo "Rolled $WEB back to $PREVIOUS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$PREVIOUS_WORKER" ]; then
+            az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none
+            echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: summary
         run: |
