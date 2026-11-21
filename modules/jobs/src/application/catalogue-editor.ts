@@ -169,7 +169,7 @@ export function catalogueEditor({ inTransaction, inSnapshot, now }: CatalogueEdi
         const { draft, version, next } = await begin(store, input);
         const before = draft.jobTypes.find((t) => t.key === input.key);
         if (input.adding) {
-          // Every version, not only the draft: a key once used is never reused, even if a draft lost its row.
+          // Every version, not only the draft: a key any version still holds is never reused, retired ones included.
           if (await store.jobTypeKeyUsed(input.key)) throw new CatalogueError('key_taken', { field: 'key' });
         } else if (!before) throw new CatalogueError('not_found');
         else if (before.retired) throw new CatalogueError('entry_retired');

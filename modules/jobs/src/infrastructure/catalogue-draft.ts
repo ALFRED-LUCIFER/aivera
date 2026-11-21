@@ -144,7 +144,8 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
         await tx.insert(catalogueJobType).values({
           version,
           key,
-          position: order.indexOf(key),
+          // Set by the reorder below.
+          position: 0,
           label: { en: label },
           evidence: { en: evidence },
           starterCompetencies: [...starters],

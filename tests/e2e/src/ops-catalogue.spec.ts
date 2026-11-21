@@ -287,7 +287,7 @@ test.describe('job types in the draft', () => {
     await expect(rows(page).nth(2)).toContainText('Security engineering');
     await expect(rows(page).nth(2)).toContainText('New in draft');
 
-    // Recruiters read the published version: still the ten job types.
+    // Recruiters read the published version: still the ten job types (Alex, the e2e seed's recruiter, for Riya).
     await signIn(page, { email: 'alex@example.com' });
     await page.goto('/app/jobs/new');
     const jobType = page.getByLabel('Job type');

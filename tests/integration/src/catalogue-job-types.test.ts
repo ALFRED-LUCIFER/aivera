@@ -191,6 +191,30 @@ describe('Feature: Edit job types in a catalogue draft', () => {
     ).toBe('entry_retired');
   });
 
+  // SAFETY: mutation check: dropped the edited entry's kept job types from assertCompetencyFits -> this test failed
+  it('a competency that applies to a retired job type can still be edited; a new one cannot apply to it', async () => {
+    const pack = (await editor.getEditor()).draft?.packs.find((p) => p.key === 'payments_fintech');
+    const disputes = pack?.competencies.find((c) => c.name === 'Disputes and chargebacks');
+    if (!disputes) throw new Error('version 1 has "Disputes and chargebacks"');
+    expect(disputes.appliesTo).toContain('technical_writing_support');
+    const { position, name, meaning, evidence, levels, appliesTo, core } = disputes;
+    const edit = async (patch: { position: number | null; name: string }) =>
+      editor.saveDraftCompetency(PIA, {
+        version: 2,
+        revision: await revision(),
+        packKey: 'payments_fintech',
+        meaning: `${meaning} Edited.`,
+        evidence,
+        levels,
+        appliesTo: [...appliesTo],
+        core: [...core],
+        levelNeeded: 3,
+        ...patch,
+      });
+    expect(await outcome(edit({ position, name }))).toBe('saved');
+    expect(await outcome(edit({ position: null, name: 'Chargeback analytics' }))).toBe('job_type');
+  });
+
   it('a new job type is removed; not while a pack competency applies to it', async () => {
     const opened = await revision();
     await editor.saveDraftCompetency(PIA, {

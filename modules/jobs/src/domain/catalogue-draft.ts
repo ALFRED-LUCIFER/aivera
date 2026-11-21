@@ -284,11 +284,13 @@ export function assertFairStarters(starters: readonly string[]) {
 }
 
 /**
- * Throws unless the competency's job types are job types of the draft that are not retired, its core ones are among
- * them, and no job type gets more than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
+ * Throws unless the competency's job types are job types of the draft that are not retired (or ones the edited entry
+ * already had: a retired job type stays on it, AIV-P2-047), its core ones are among them, and no job type gets more
+ * than `CORE_LIMIT` core competencies in the pack (retired ones not counted).
  */
 export function assertCompetencyFits(draft: EditorVersion, pack: EditorPack, input: DraftCompetencyInput) {
-  const offered = new Set(draft.jobTypes.filter((t) => !t.retired).map((t) => t.key));
+  const kept = pack.competencies.find((c) => c.position === input.position)?.appliesTo ?? [];
+  const offered = new Set([...draft.jobTypes.filter((t) => !t.retired).map((t) => t.key), ...kept]);
   if (input.appliesTo.some((t) => !offered.has(t))) throw new CatalogueError('job_type', { field: 'appliesTo' });
   if (input.core.some((t) => !input.appliesTo.includes(t)))
     throw new CatalogueError('core_not_applied', { field: 'core' });

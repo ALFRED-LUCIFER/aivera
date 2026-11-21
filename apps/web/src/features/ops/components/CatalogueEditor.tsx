@@ -95,7 +95,7 @@ function RetireButton({ name, removable, onRetire }: { name: string; removable: 
 function Competency({ row, pack, view }: { row: CompetencyRow; pack: PackRow; view: EditorViewModel }) {
   const t = useTranslations('ops.catalogue');
   const labels = (keys: readonly string[]) =>
-    keys.map((key) => view.draft.jobTypes.find((j) => j.key === key)?.label ?? key).join(', ');
+    keys.map((key) => view.draft.jobTypeEntries.find((j) => j.key === key)?.label ?? key).join(', ');
   return (
     <li className="flex flex-col gap-2 border-t border-border pt-3">
       <div className="flex flex-wrap items-center gap-2">
