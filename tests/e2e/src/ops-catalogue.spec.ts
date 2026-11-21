@@ -59,9 +59,8 @@ const catalogueTile = (page: Page) =>
     .locator('div.rounded-card')
     .filter({ has: page.getByText('Catalogue version', { exact: true }) });
 
-/** `settled`: the page stays as it loaded, with no console-opened re-render (signInOperator). */
-async function openCatalogue(page: Page, { settled = false } = {}) {
-  await (settled ? signInOperator(page, PIA) : signIn(page, { email: PIA }));
+async function openCatalogue(page: Page) {
+  await signIn(page, { email: PIA });
   const response = await page.goto('/ops/catalogue');
   expect(response?.status()).toBe(200);
   await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
@@ -669,7 +668,10 @@ test.describe('the draft eval', () => {
   });
 
   test('Scenario: Runs do not overlap', async ({ page }) => {
-    await openCatalogue(page, { settled: true });
+    // The page stays as it loaded: no console-opened re-render shows the run written below (signInOperator).
+    await signInOperator(page, PIA);
+    await page.goto('/ops/catalogue');
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
     // Another operator's run starts after this page loaded.
     const db = createDb(databaseUrl, { max: 1 });
     const runs = async () =>

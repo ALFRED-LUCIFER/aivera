@@ -10,7 +10,8 @@ import { openConsole } from '../services/openConsole.ts';
  * sign-out) in the same browser session is not recorded again. Operator reads of workspace data (AIV-P2-036) and every
  * operator action are recorded on the server; record this on the server too if the owner wants every session counted.
  * shortcut: the server action's cookie write re-renders the session's first console page, so a link pressed meanwhile
- * waits for that re-render; set the cookie from a route handler instead if operators notice it.
+ * waits for that re-render; set the cookie from a route handler instead before the pilot gate (AIV-P2-034, #148), or
+ * when an operator reports a slow first navigation.
  */
 export function useConsoleOpened(): void {
   const sent = useRef(false);
