@@ -24,6 +24,7 @@ const v1: EditorVersion = {
   packs: CATALOGUE_V1.packs.map((p) => ({
     ...p,
     competencies: p.competencies.map((c, position) => ({ ...c, position })),
+    hints: p.hints.map((h, i) => ({ ...h, position: p.hints.slice(0, i).filter((o) => o.region === h.region).length })),
   })),
 };
 const payments = v1.packs[0] as EditorVersion['packs'][number];
@@ -38,14 +39,23 @@ const draft = {
       ...payments,
       competencies: payments.competencies.map((c, i) => ({ ...c, retired: i === 0 })),
     },
-    ...v1.packs.slice(1),
+    // Logistics: its first hint retired. Telecom: no hints for India in the draft (AIV-P2-046).
+    ...v1.packs
+      .slice(1)
+      .map((p) =>
+        p.key === 'logistics_mobility'
+          ? { ...p, hints: p.hints.map((h, i) => ({ ...h, retired: i === 0 })) }
+          : p.key === 'telecom'
+            ? { ...p, hints: p.hints.filter((h) => h.region !== 'india') }
+            : p,
+      ),
     { key: 'insurance', label: { en: 'Insurance and insurtech' }, retired: false, hints: [], competencies: [] },
   ],
 };
 const model = draftModel({ published: v1, draft });
 
 const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
-  draft: model ?? { version: 2, revision: 0, jobTypes: [], packs: [] },
+  draft: model ?? { version: 2, revision: 0, jobTypes: [], regions: [], packs: [] },
   packForm: null,
   competencyForm: null,
   error: null,
@@ -55,6 +65,9 @@ const viewModel = (patch: Partial<EditorViewModel> = {}): EditorViewModel => ({
   onPackChange: vi.fn(),
   onAddCompetency: vi.fn(),
   onEditCompetency: vi.fn(),
+  onAddHint: vi.fn(),
+  onEditHint: vi.fn(),
+  onRetireHint: vi.fn(async () => {}),
   onCompetencyChange: vi.fn(),
   onToggleJobType: vi.fn(),
   onSave: vi.fn(async () => {}),
@@ -140,5 +153,73 @@ describe('the draft', () => {
     );
     const group = screen.getByRole('group', { name: 'Default suggestion for' });
     expect(within(group).getByRole('alert').textContent).toBe('At most 4 default suggestions per job type in a pack.');
+  });
+});
+
+// AIV-P2-046: regional hints in the draft.
+const packDetails = (label: string) =>
+  [...document.querySelectorAll('details')].find((d) =>
+    d.querySelector('summary')?.textContent?.includes(label),
+  ) as HTMLElement;
+const regionSection = (pack: HTMLElement, heading: string) =>
+  within(pack).getByRole('heading', { level: 3, name: heading }).closest('section') as HTMLElement;
+
+describe('Feature: Edit regional hints in a catalogue draft', () => {
+  it('Scenario: Empty state: "No regional hints for India yet." with a way to add one', async () => {
+    const view = viewModel();
+    show(<CatalogueEditor publishedVersion={1} view={view} />);
+    const india = regionSection(packDetails('Telecom'), 'Regional hints for India');
+    expect(within(india).getByText('No regional hints for India yet.')).toBeTruthy();
+    await userEvent.click(within(india).getByRole('button', { name: 'Add a regional hint to Telecom for India' }));
+    expect(view.onAddHint).toHaveBeenCalledWith('telecom', 'india');
+  });
+
+  it('Scenario: A published hint is retired: "Retired" with no controls; a live one is retired, not removed', () => {
+    show(<CatalogueEditor publishedVersion={1} view={viewModel()} />);
+    const uae = regionSection(packDetails('Logistics and mobility'), 'Regional hints for the UAE');
+    const retired = within(uae).getByRole('listitem');
+    expect(within(retired).getByText('Retired')).toBeTruthy();
+    expect(within(retired).queryAllByRole('button')).toEqual([]);
+    const ksa = regionSection(packDetails('Logistics and mobility'), 'Regional hints for KSA');
+    expect(within(ksa).getByText('Live')).toBeTruthy();
+    expect(within(ksa).getByText('Desirable')).toBeTruthy();
+    expect(within(ksa).getByRole('button', { name: 'Retire FASAH customs platform' })).toBeTruthy();
+    expect(within(ksa).queryByRole('button', { name: 'Remove FASAH customs platform' })).toBeNull();
+  });
+
+  it('Scenario: A hint cannot be made mandatory: Desirable, no Mandatory option, no default suggestions', () => {
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ competencyForm: newCompetencyForm('logistics_mobility', 'ksa') })}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add a regional hint' });
+    expect(within(dialog).getByText('Desirable', { selector: 'dd' })).toBeTruthy();
+    expect(within(dialog).queryByText(/mandatory/i, { selector: 'label, option, button' })).toBeNull();
+    expect(within(dialog).queryByRole('group', { name: 'Default suggestion for' })).toBeNull();
+    expect(within(dialog).getByRole('group', { name: 'Applies to job types' })).toBeTruthy();
+  });
+
+  it('the residency refusal shows under the name; a failed save says nothing was changed', () => {
+    const form = { ...newCompetencyForm('logistics_mobility', 'ksa'), name: 'Must hold a UAE residence visa' };
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ competencyForm: form, error: { ok: false, error: 'fairness_residency', field: 'name' } })}
+      />,
+    );
+    const name = screen.getByLabelText('Name');
+    expect(document.getElementById(name.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'A regional hint is market knowledge shown with evidence, never where someone lives or is from.',
+    );
+    cleanup();
+    show(
+      <CatalogueEditor
+        publishedVersion={1}
+        view={viewModel({ competencyForm: form, error: { ok: false, error: 'failed' } })}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toBe('That did not go through. Nothing was changed.');
   });
 });

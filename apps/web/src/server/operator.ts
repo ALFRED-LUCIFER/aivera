@@ -4,6 +4,7 @@ import type {
   CatalogueEditor,
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftHintInput,
   DraftPackInput,
   JobCounts,
   RetireEntryInput,
@@ -225,6 +226,11 @@ export async function saveCataloguePack(input: DraftPackInput): Promise<void> {
 export async function saveCatalogueCompetency(input: DraftCompetencyInput): Promise<void> {
   const { userId } = await platformOperator();
   await catalogueEditor().saveDraftCompetency(userId, input);
+}
+
+export async function saveCatalogueHint(input: DraftHintInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftHint(userId, input);
 }
 
 export async function retireCatalogueEntry(input: RetireEntryInput): Promise<'retired' | 'removed'> {

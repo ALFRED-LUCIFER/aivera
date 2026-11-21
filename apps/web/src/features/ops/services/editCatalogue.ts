@@ -10,10 +10,12 @@ import {
   platformOperator,
   retireCatalogueEntry,
   saveCatalogueCompetency,
+  saveCatalogueHint,
   saveCataloguePack,
 } from '@/server/operator';
 import {
   draftCompetencySchema,
+  draftHintSchema,
   draftPackSchema,
   invalidResult,
   retireEntrySchema,
@@ -64,7 +66,14 @@ export async function saveDraftCompetencyAction(input: unknown): Promise<Catalog
   return parsed.success ? attempt(() => saveCatalogueCompetency(parsed.data)) : invalidResult(parsed.error);
 }
 
-/** Retires a published pack or competency, or removes one new in the draft. */
+/** Adds or edits a regional hint (AIV-P2-046), after the residency and fairness checks; never mandatory. */
+export async function saveDraftHintAction(input: unknown): Promise<CatalogueSaveResult> {
+  await platformOperator();
+  const parsed = draftHintSchema.safeParse(input);
+  return parsed.success ? attempt(() => saveCatalogueHint(parsed.data)) : invalidResult(parsed.error);
+}
+
+/** Retires a published pack, competency or regional hint, or removes one new in the draft. */
 export async function retireDraftEntryAction(input: unknown): Promise<CatalogueSaveResult> {
   await platformOperator();
   const parsed = retireEntrySchema.safeParse(input);

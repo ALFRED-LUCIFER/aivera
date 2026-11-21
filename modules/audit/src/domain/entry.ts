@@ -83,6 +83,8 @@ export const PLATFORM_VALUE_KEYS: readonly string[] = [
   'entry',
   'packKey',
   'position',
+  // AIV-P2-046: a regional hint's region key.
+  'region',
 ];
 
 /** Actions where a person changes an outcome, so the reason must be written down. */

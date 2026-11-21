@@ -15,6 +15,7 @@ import type { CatalogueVersion } from '../domain/catalogue.ts';
 import type {
   CatalogueEditorView,
   DraftCompetencyInput,
+  DraftHintInput,
   DraftPackInput,
   RetireEntryInput,
 } from '../domain/catalogue-draft.ts';
@@ -53,7 +54,10 @@ export {
   CatalogueError,
   competencyStatus,
   draftCompetencySchema,
+  draftHintSchema,
   draftPackSchema,
+  hintStatus,
+  isHintNewInDraft,
   isNewInDraft,
   packStatus,
   retireEntrySchema,
@@ -63,8 +67,10 @@ export type {
   CatalogueErrorCode,
   CatalogueField,
   DraftCompetencyInput,
+  DraftHintInput,
   DraftPackInput,
   EditorCompetency,
+  EditorHint,
   EditorVersion,
   EntryStatus,
   RetireEntryInput,
@@ -320,7 +326,13 @@ export interface CatalogueEditor {
    */
   saveDraftCompetency(operatorId: string, input: DraftCompetencyInput): Promise<void>;
   /**
-   * Retires a pack or competency a published version holds (`catalogue.entry_retired`), or removes one new in this
+   * Adds (`position` null) or edits a pack's regional hint for one region (AIV-P2-046), always desirable: the
+   * competency's rules without core, after a residency rule (`fairness_residency`: never where someone lives, is from
+   * or holds papers for). An unknown or retired region is `not_found`.
+   */
+  saveDraftHint(operatorId: string, input: DraftHintInput): Promise<void>;
+  /**
+   * Retires a pack, competency or regional hint a published version holds (`catalogue.entry_retired`), or removes one new in this
    * draft (`catalogue.entry_removed`). Returns which.
    */
   retireDraftEntry(operatorId: string, input: RetireEntryInput): Promise<'retired' | 'removed'>;

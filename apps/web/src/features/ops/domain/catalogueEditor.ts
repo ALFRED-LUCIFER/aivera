@@ -3,7 +3,10 @@
 import {
   competencyStatus,
   draftCompetencySchema,
+  draftHintSchema,
   draftPackSchema,
+  hintStatus,
+  isHintNewInDraft,
   isNewInDraft,
   packStatus,
   retireEntrySchema,
@@ -16,25 +19,30 @@ import {
 } from '@credalent/jobs';
 import type { ZodError } from 'zod';
 
-export { draftCompetencySchema, draftPackSchema, retireEntrySchema };
+export { draftCompetencySchema, draftHintSchema, draftPackSchema, retireEntrySchema };
 export type { EntryStatus } from '@credalent/jobs';
 
 export type CompetencyRow = Pick<
   EditorCompetency,
   'position' | 'name' | 'meaning' | 'evidence' | 'levels' | 'appliesTo' | 'core' | 'levelNeeded'
 > & { status: EntryStatus; removable: boolean };
+/** A regional hint (AIV-P2-046): a competency row without core, for one region. */
+export type HintRow = Omit<CompetencyRow, 'core'> & { region: string };
 export type PackRow = {
   key: string;
   label: string;
   status: EntryStatus;
   removable: boolean;
   competencies: CompetencyRow[];
+  hints: HintRow[];
 };
 /** The draft's version and revision name it in every save, so a save on another draft or an older copy is stale. */
 export type DraftModel = {
   version: number;
   revision: number;
   jobTypes: { key: string; label: string }[];
+  /** The regions a hint may be added for: those of the draft that are not retired, in catalogue order. */
+  regions: { key: string; label: string }[];
   packs: PackRow[];
 };
 
@@ -49,6 +57,7 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
     version: draft.version,
     revision: draft.revision,
     jobTypes: draft.jobTypes.filter((t) => !t.retired).map((t) => ({ key: t.key, label: t.label.en })),
+    regions: draft.regions.filter((r) => !r.retired).map((r) => ({ key: r.key, label: r.label.en })),
     packs: draft.packs.map((pack) => ({
       key: pack.key,
       label: pack.label.en,
@@ -66,6 +75,18 @@ export function draftModel({ published, draft }: CatalogueEditorView): DraftMode
         status: competencyStatus(published, pack.key, c),
         removable: isNewInDraft(published, pack.key, c.position),
       })),
+      hints: pack.hints.map((h) => ({
+        region: h.region,
+        position: h.position,
+        name: h.name,
+        meaning: h.meaning,
+        evidence: h.evidence,
+        levels: h.levels,
+        appliesTo: h.appliesTo,
+        levelNeeded: h.levelNeeded,
+        status: hintStatus(published, pack.key, h),
+        removable: isHintNewInDraft(published, pack.key, h.region, h.position),
+      })),
     })),
   };
 }
@@ -80,12 +101,17 @@ export const packFormFor = (pack: PackRow): PackForm => ({
   keyEditable: pack.removable,
 });
 
-/** The competency form: `position` null adds one to `packKey`. Type is always Desirable, so it is not a field. */
+/**
+ * The competency form: `position` null adds one to `packKey`. Type is always Desirable, so it is not a field. With a
+ * `region` it is a regional hint's form (AIV-P2-046), and `core` is not sent.
+ */
 export type CompetencyForm = Omit<DraftCompetencyInput, 'version' | 'revision' | 'levelNeeded'> & {
   levelNeeded: 2 | 3;
+  region: string | null;
 };
-export const newCompetencyForm = (packKey: string): CompetencyForm => ({
+export const newCompetencyForm = (packKey: string, region: string | null = null): CompetencyForm => ({
   packKey,
+  region,
   position: null,
   name: '',
   meaning: '',
@@ -95,15 +121,16 @@ export const newCompetencyForm = (packKey: string): CompetencyForm => ({
   core: [],
   levelNeeded: 3,
 });
-export const competencyFormFor = (packKey: string, row: CompetencyRow): CompetencyForm => ({
+export const competencyFormFor = (packKey: string, row: CompetencyRow | HintRow): CompetencyForm => ({
   packKey,
+  region: 'region' in row ? row.region : null,
   position: row.position,
   name: row.name,
   meaning: row.meaning,
   evidence: row.evidence,
   levels: { ...row.levels },
   appliesTo: [...row.appliesTo],
-  core: [...row.core],
+  core: 'core' in row ? [...row.core] : [],
   levelNeeded: row.levelNeeded === 2 ? 2 : 3,
 });
 
@@ -151,6 +178,8 @@ export type EditorViewModel = {
   onPackChange: (patch: Partial<Pick<PackForm, 'key' | 'label'>>) => void;
   onAddCompetency: (packKey: string) => void;
   onEditCompetency: (packKey: string, row: CompetencyRow) => void;
+  onAddHint: (packKey: string, region: string) => void;
+  onEditHint: (packKey: string, row: HintRow) => void;
   onCompetencyChange: (patch: Partial<CompetencyForm>) => void;
   onToggleJobType: (list: 'appliesTo' | 'core', key: string) => void;
   onSave: () => Promise<void>;
@@ -158,4 +187,5 @@ export type EditorViewModel = {
   /** After a stale save: closes the form and loads the latest draft. */
   onReload: () => void;
   onRetire: (packKey: string, position?: number) => Promise<void>;
+  onRetireHint: (packKey: string, row: HintRow) => Promise<void>;
 };

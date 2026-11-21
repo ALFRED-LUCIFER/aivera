@@ -137,10 +137,19 @@ export function PackFormDialog({ view }: { view: EditorViewModel }) {
 const LEVELS = [1, 3, 5] as const;
 const COMPETENCY_FIELDS: readonly (EditorField | undefined)[] = [...FORM_FIELDS, 'appliesTo', 'core'];
 
-/** Add or edit a pack competency: always Desirable; the fairness check's message goes under the field it names. */
+const TITLES = {
+  competency: { add: 'addCompetency', edit: 'editCompetency' },
+  hint: { add: 'addHint', edit: 'editHint' },
+} as const;
+
+/**
+ * Add or edit a pack competency, or a regional hint (a form with a region: no core): always Desirable; the fairness
+ * check's message goes under the field it names.
+ */
 export function CompetencyFormDialog({ view }: { view: EditorViewModel }) {
   const t = useTranslations('ops.catalogue.editor');
   const form = view.competencyForm;
+  const isHint = typeof form?.region === 'string';
   const jobTypeGroup = (list: 'appliesTo' | 'core', legend: string, hint?: string) => (
     <fieldset className="flex flex-col" aria-describedby={view.error?.field === list ? errorId(list) : undefined}>
       <legend className="mb-1 text-body font-semibold text-text">{legend}</legend>
@@ -166,7 +175,7 @@ export function CompetencyFormDialog({ view }: { view: EditorViewModel }) {
     <Dialog
       open={form !== null}
       onOpenChange={(open) => !open && view.onClose()}
-      title={form?.position === null ? t('addCompetency') : t('editCompetency')}
+      title={t(TITLES[isHint ? 'hint' : 'competency'][form?.position === null ? 'add' : 'edit'])}
       closeLabel={t('close')}
       className="max-w-2xl"
     >
@@ -217,7 +226,7 @@ export function CompetencyFormDialog({ view }: { view: EditorViewModel }) {
             </p>
           )}
           {jobTypeGroup('appliesTo', t('fields.appliesTo'))}
-          {jobTypeGroup('core', t('fields.core'), t('fields.coreHint'))}
+          {!isHint && jobTypeGroup('core', t('fields.core'), t('fields.coreHint'))}
           <RadioGroup
             legend={t('fields.levelNeeded')}
             options={[2, 3].map((level) => ({ value: String(level), label: t('fields.level', { level }) }))}
@@ -227,7 +236,7 @@ export function CompetencyFormDialog({ view }: { view: EditorViewModel }) {
           <dl className="flex flex-col gap-1">
             <dt className="text-body font-semibold text-text">{t('fields.type')}</dt>
             <dd className="text-body text-text">{t('fields.desirable')}</dd>
-            <dd className="text-meta text-text-2">{t('fields.typeHint')}</dd>
+            <dd className="text-meta text-text-2">{t(isHint ? 'fields.hintTypeHint' : 'fields.typeHint')}</dd>
           </dl>
           <FormRefusal view={view} shown={COMPETENCY_FIELDS} />
           <Actions view={view} />

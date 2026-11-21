@@ -27,6 +27,13 @@ const competency = (version: number, packKey: string, position: number) =>
     eq(cataloguePackCompetency.packKey, packKey),
     eq(cataloguePackCompetency.position, position),
   );
+const hint = (version: number, packKey: string, region: string, position: number) =>
+  and(
+    eq(catalogueRegionalHint.version, version),
+    eq(catalogueRegionalHint.packKey, packKey),
+    eq(catalogueRegionalHint.region, region),
+    eq(catalogueRegionalHint.position, position),
+  );
 const pack = (version: number, key: string) => and(eq(cataloguePack.version, version), eq(cataloguePack.key, key));
 
 /** The draft store over one transaction on the app's pool; the platform audit write joins it. */
@@ -127,7 +134,39 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
       return row.position;
     },
 
+    async putHint(version, { packKey, region, position, levels, ...fields }) {
+      const values = { ...fields, level1: levels[1], level3: levels[3], level5: levels[5] };
+      if (position !== null) {
+        await tx
+          .update(catalogueRegionalHint)
+          .set(values)
+          .where(hint(version, packKey, region, position));
+        return position;
+      }
+      const [row] = await tx
+        .insert(catalogueRegionalHint)
+        .values({
+          ...values,
+          version,
+          packKey,
+          region,
+          type: 'desirable',
+          position: sql`(select coalesce(max(position), -1) + 1 from jobs.catalogue_regional_hint
+            where version = ${version} and pack_key = ${packKey} and region = ${region})`,
+        })
+        .returning({ position: catalogueRegionalHint.position });
+      if (!row) throw new Error('hint not inserted');
+      return row.position;
+    },
+
     async retire(version, entry) {
+      if (entry.entry === 'regionalHint') {
+        await tx
+          .update(catalogueRegionalHint)
+          .set({ retired: true })
+          .where(hint(version, entry.packKey, entry.region, entry.position));
+        return;
+      }
       await (entry.entry === 'pack'
         ? tx.update(cataloguePack).set({ retired: true }).where(pack(version, entry.packKey))
         : tx
@@ -138,6 +177,10 @@ export function draftStore(tx: Tx, audit: Pick<AuditContract, 'recordPlatform'>)
 
     async remove(version, entry) {
       const { packKey } = entry;
+      if (entry.entry === 'regionalHint') {
+        await tx.delete(catalogueRegionalHint).where(hint(version, packKey, entry.region, entry.position));
+        return;
+      }
       if (entry.entry === 'competency') {
         await tx.delete(cataloguePackCompetency).where(competency(version, packKey, entry.position));
         return;

@@ -825,6 +825,10 @@
         "removeNamed": "Remove {name}",
         "addCompetencyTo": "Add a competency to {name}",
         "noCompetencies": "No competencies yet.",
+        "addHint": "Add a regional hint",
+        "editHint": "Edit regional hint",
+        "addHintTo": "Add a regional hint to {name} {region, select, uae {for the UAE} ksa {for KSA} india {for India} other {for {label}}}",
+        "noHints": "No regional hints {region, select, uae {for the UAE} ksa {for KSA} india {for India} other {for {label}}} yet.",
         "status": {
           "live": "Live",
           "changed": "Changed in draft",
@@ -846,6 +850,7 @@
           "levelNeeded": "Level needed",
           "type": "Type",
           "typeHint": "The catalogue never makes a competency mandatory.",
+          "hintTypeHint": "A regional hint is market knowledge, never mandatory and never a residency requirement.",
           "desirable": "Desirable"
         },
         "appliesTo": "Applies to {jobTypes}",
@@ -870,11 +875,12 @@
           "evidence_required": "Say what evidence shows this skill.",
           "fairness_employer": "A competency is a skill with evidence, never an employer.",
           "fairness_origin": "A competency is a skill with evidence, never a nationality or where someone is from.",
+          "fairness_residency": "A regional hint is market knowledge shown with evidence, never where someone lives or is from.",
           "invalid": {
             "key": "Use 3 to 48 lower-case letters, digits or underscores, starting with a letter.",
             "other": "Fill in this field."
           },
-          "failed": "We could not save this change. Try again.",
+          "failed": "That did not go through. Nothing was changed.",
           "entry_retired": "This entry is retired, so it cannot change. Reload to see the latest."
         }
       }
