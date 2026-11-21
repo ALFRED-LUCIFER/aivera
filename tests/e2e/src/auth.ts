@@ -24,6 +24,9 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   await page.getByRole('button', { name: tenantButton }).click();
 }
 
+/** The console's "opened" marker cookie (AIV-P2-035, openConsole.ts). */
+export const OPENED_COOKIE = '__Host-credalent-ops-opened';
+
 /**
  * Signs an operator in and waits on the console home until it has recorded its opening (AIV-P2-035). That server action
  * sets a cookie, and a cookie set by a server action re-renders the page: on the page under test the re-render could
@@ -33,9 +36,7 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
 export async function signInOperator(page: Page, email: string) {
   await signIn(page, { email });
   await expect(page).toHaveURL(/\/ops$/);
-  await expect
-    .poll(async () => (await page.context().cookies()).some((c) => c.name === '__Host-credalent-ops-opened'))
-    .toBe(true);
+  await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === OPENED_COOKIE)).toBe(true);
 }
 
 const signedIn =

@@ -9,6 +9,8 @@ import { openConsole } from '../services/openConsole.ts';
  * unrecorded; and the marker is a browser-session cookie, so a sign-in after the auth session expired (no explicit
  * sign-out) in the same browser session is not recorded again. Operator reads of workspace data (AIV-P2-036) and every
  * operator action are recorded on the server; record this on the server too if the owner wants every session counted.
+ * shortcut: the server action's cookie write re-renders the session's first console page, so a link pressed meanwhile
+ * waits for that re-render; set the cookie from a route handler instead if operators notice it.
  */
 export function useConsoleOpened(): void {
   const sent = useRef(false);
