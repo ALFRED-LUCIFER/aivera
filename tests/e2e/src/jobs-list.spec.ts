@@ -42,7 +42,7 @@ test('Scenario: A job without an approved rubric is not assessed', async ({ page
     '0Observed',
     'Starts after rubric approval',
     'Draft, needs approval',
-    'Send rubric for approval',
+    'Approve the rubric',
   ]);
   await expect(row(page, 'Senior Product Designer').getByRole('link')).toHaveAttribute('href', /\/rubric$/);
 });

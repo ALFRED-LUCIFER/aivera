@@ -1,6 +1,6 @@
 import type { Tx } from '@credalent/db/client';
 import { uuidv7 } from '@credalent/db/uuidv7';
-import { and, asc, count, desc, eq, gte, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { JobStore } from '../application/jobs.ts';
 import type { Competency, Job, RubricStatus } from '../domain/job.ts';
 import { competency, job, jobInScope, publicJob, rubricVersion } from './schema.ts';
@@ -143,6 +143,7 @@ export function jobStore(tx: Tx): JobStore {
           version: rubricVersion.version,
           status: rubricVersion.status,
           approvedAt: rubricVersion.approvedAt,
+          submittedBy: rubricVersion.submittedBy,
         })
         .from(rubricVersion)
         .innerJoin(job, and(eq(job.workspaceId, rubricVersion.workspaceId), eq(job.id, rubricVersion.jobId)))
@@ -156,6 +157,23 @@ export function jobStore(tx: Tx): JobStore {
           ),
         )
         .orderBy(asc(job.createdAt), asc(job.id), asc(rubricVersion.version));
+    },
+    async openRubrics(workspaceId) {
+      const rows = await tx
+        .select({
+          jobId: job.id,
+          title: job.title,
+          versionId: rubricVersion.id,
+          version: rubricVersion.version,
+          status: rubricVersion.status,
+        })
+        .from(rubricVersion)
+        .innerJoin(job, and(eq(job.workspaceId, rubricVersion.workspaceId), eq(job.id, rubricVersion.jobId)))
+        .where(and(jobWhere(workspaceId), inArray(rubricVersion.status, ['draft', 'returned'])))
+        .orderBy(asc(job.createdAt), asc(job.id));
+      return rows.flatMap(({ status, ...row }) =>
+        status === 'draft' || status === 'returned' ? [{ ...row, status }] : [],
+      );
     },
     async setHiringOwner(workspaceId, jobId, hiringOwnerUserId) {
       await tx

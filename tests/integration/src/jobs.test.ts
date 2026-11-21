@@ -719,7 +719,7 @@ describe('The Jobs list (AIV-P1-006)', () => {
       rubric: { approved: false, latest: 'draft' },
       assessed: 0,
       coveragePercent: null,
-      nextAction: { kind: 'send_rubric' },
+      nextAction: { kind: 'approve_rubric' },
     });
     // Version 2 is in force and version 3 waits for the hiring owner.
     expect(list.find((j) => j.title === 'Senior AI Engineer')).toMatchObject({
@@ -1047,5 +1047,80 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
       'Dune Logistics',
       'Falcon Pay',
     ]);
+  });
+});
+
+// AIV-P1-084 (ADR-014): My desk's "Rubrics to approve": each job's open draft or returned version, for the admins and
+// recruiters who approve it; never another workspace's, even with the repository's workspace filter removed.
+
+const toApprove = (userId: string, workspaceId: string) =>
+  as(userId, workspaceId, (ctx) => jobs.listRubricsToApprove(ctx));
+
+describe("My desk: the rubrics waiting for the recruiter's approval", () => {
+  let deskJob: string;
+  let owned: string;
+  let elsewhere: string;
+
+  beforeAll(async () => {
+    deskJob = (await as(RANA, demo, (ctx) => jobs.createJob(ctx, job('Desk Backend Engineer')))).id;
+    owned = (await as(RANA, demo, (ctx) => jobs.createJob(ctx, job('Desk Platform Engineer')))).id;
+    await as(ALEX, demo, (ctx) => jobs.changeHiringOwner(ctx, owned, HEAD));
+    elsewhere = (await as(ALEX, gulf, (ctx) => jobs.createJob(ctx, job('Desk Gulf Engineer')))).id;
+    for (const [jobId, workspaceId] of [
+      [deskJob, demo],
+      [owned, demo],
+      [elsewhere, gulf],
+    ] as const)
+      await as(ALEX, workspaceId, (ctx) =>
+        jobs.saveRubric(ctx, jobId, { successStatement: 'Ships.', competencies: competencies([100]) }),
+      );
+  });
+
+  it('a recruiter sees each draft as version 1; nothing from another workspace', async () => {
+    const listed = await toApprove(RANA, demo);
+    expect(listed.filter((r) => r.jobId === deskJob || r.jobId === owned)).toEqual([
+      expect.objectContaining({ jobId: deskJob, title: 'Desk Backend Engineer', version: 1, status: 'draft' }),
+      expect.objectContaining({ jobId: owned, title: 'Desk Platform Engineer', version: 1, status: 'draft' }),
+    ]);
+    expect(listed.map((r) => r.jobId)).not.toContain(elsewhere);
+  });
+
+  // SAFETY: mutation check: listed every role's open rubrics (dropped the admin/recruiter role check) -> this test failed
+  it('a hiring owner and an interviewer have nothing waiting for them here', async () => {
+    expect(await toApprove(HEAD, demo)).toEqual([]);
+    expect(await toApprove(LINA, gulf)).toEqual([]);
+  });
+
+  // Raw SQL in Rana's Demo context: row-level security alone, no repository workspace filter.
+  // SAFETY: mutation check: replaced the rubric_version and the job tenant policies with USING (true) -> this test
+  // failed (saw Gulf's draft); loosening either one alone still isolates, as each table has its own policy
+  it('with no repository filter, a Demo transaction sees no Gulf draft', async () => {
+    const open = await rows<{ workspace_id: string }>(
+      RANA,
+      demo,
+      sql`select workspace_id from jobs.rubric_version where status in ('draft', 'returned')`,
+    );
+    expect(open.length).toBeGreaterThan(0);
+    expect(new Set(open.map((r) => r.workspace_id))).toEqual(new Set([demo]));
+  });
+
+  // SAFETY: mutation check: kept directly approved versions in listRubricApprovals (dropped the submittedBy check) -> this
+  // test failed (Desk Backend Engineer was "waiting on others")
+  it('an approved draft leaves the list, and was never waiting on others', async () => {
+    const [v1] = (await as(RANA, demo, (ctx) => jobs.listRubricVersions(ctx, deskJob))) ?? [];
+    await as(RANA, demo, (ctx) => jobs.approveRubric(ctx, v1?.id ?? '', v1?.revision));
+    expect((await toApprove(RANA, demo)).map((r) => r.jobId)).not.toContain(deskJob);
+    expect((await as(RANA, demo, (ctx) => jobs.listRubricApprovals(ctx))).map((r) => r.jobId)).not.toContain(deskJob);
+  });
+
+  it('a version the hiring owner returned is listed again, as returned', async () => {
+    const [v1] = (await as(RANA, demo, (ctx) => jobs.listRubricVersions(ctx, owned))) ?? [];
+    await as(RANA, demo, (ctx) => jobs.submitRubric(ctx, v1?.id ?? ''));
+    expect((await toApprove(RANA, demo)).map((r) => r.jobId)).not.toContain(owned);
+    await as(HEAD, demo, (ctx) => jobs.returnRubric(ctx, v1?.id ?? '', 'Raise Python'));
+    expect((await toApprove(RANA, demo)).find((r) => r.jobId === owned)).toMatchObject({
+      version: 1,
+      status: 'returned',
+    });
   });
 });

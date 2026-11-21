@@ -30,6 +30,7 @@ import {
   type PublicListing,
   type Rubric,
   type RubricApproval,
+  type RubricToApprove,
   type RubricVersion,
 } from '../domain/job.ts';
 import { slugFor } from '../domain/public-job.ts';
@@ -83,7 +84,9 @@ export type JobStore = {
   rubricApprovals(
     workspaceId: string,
     approvedSince: Date,
-  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status'] })[]>;
+  ): Promise<(Omit<RubricApproval, 'status'> & { status: RubricVersion['status']; submittedBy: string | null })[]>;
+  /** Each job's open draft or returned version, oldest job first (AIV-P1-084). */
+  openRubrics(workspaceId: string): Promise<RubricToApprove[]>;
   /** Deletes every job of the workspace and its rubrics and listings; false, deleting nothing, if any is not synthetic. */
   deleteSyntheticJobs(workspaceId: string): Promise<boolean>;
 };
@@ -602,9 +605,17 @@ export function jobsUseCases({
       await authorize(ctx, 'job.list');
       const since = new Date(now().getTime() - DONE_ON_DESK_MS);
       const rows = await storeFor(ctx.tx).rubricApprovals(ctx.workspaceId, since);
-      return rows.flatMap(({ status, ...row }) =>
-        status === 'awaiting_approval' || status === 'approved' ? [{ ...row, status }] : [],
+      // A version a recruiter approved directly was never sent, so it never waited on anyone (ADR-014).
+      return rows.flatMap(({ status, submittedBy, ...row }) =>
+        status === 'awaiting_approval' || (status === 'approved' && submittedBy !== null) ? [{ ...row, status }] : [],
       );
+    },
+
+    async listRubricsToApprove(ctx: WorkspaceContext): Promise<RubricToApprove[]> {
+      // Only admins and recruiters approve a draft (ADR-014); anyone else has nothing waiting for them here.
+      if (ctx.role !== 'admin' && ctx.role !== 'recruiter') return [];
+      await authorize(ctx, 'rubric.edit');
+      return storeFor(ctx.tx).openRubrics(ctx.workspaceId);
     },
 
     /**

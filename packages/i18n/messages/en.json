@@ -580,7 +580,7 @@
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
-    "intro": "Every job runs on an approved rubric. Candidates are assessed only after the hiring manager agrees it.",
+    "intro": "Every job runs on an approved rubric. Candidates are assessed only after its recruiter approves it.",
     "add": "Add a job",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
@@ -612,7 +612,7 @@
       "returned": "Returned, needs changes"
     },
     "nextAction": {
-      "send_rubric": "Send rubric for approval",
+      "approve_rubric": "Approve the rubric",
       "rubric_approval_pending": "Rubric approval pending",
       "decide_shortlist": "Decide on the Round 2 shortlist",
       "chase_evidence": "Chase {count, plural, one {# evidence request} other {# evidence requests}}"
@@ -1355,6 +1355,9 @@
     }
   },
   "desk": {
+    "toApprove": "Rubrics to approve",
+    "nothingToApprove": "No rubrics are waiting for you",
+    "returned": "Returned with a note",
     "waitingOnOthers": "Waiting on others",
     "nothingWaiting": "Nothing is waiting on others.",
     "rubricApproval": "Rubric approval",
