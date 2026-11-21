@@ -511,8 +511,9 @@ const tracedRead =
       } catch (error) {
         if (!isTransient(error)) throw error;
         // The transient failure comes before the read's row is written, so this never waits on the delivery's locks.
-        // shortcut: a second pooled connection while the delivery holds one: safe while the deliveries doing this (4 per
-        // receiver) stay under the pool's 10; give the worker a pool of its own if more consumers take a second one.
+        // shortcut: a second pooled connection while the delivery holds one. Four receivers share the worker's pool of 10
+        // (up to 16 deliveries), but only the evidence receiver's take a second connection (this write, the AI budget):
+        // 4 x 2 = 8. Give the worker a pool of its own if another receiver ever takes a second one.
         await withWorkspace(db, workspaceId, fail);
         log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed, will retry`);
         throw error;
@@ -630,9 +631,10 @@ export function createFileReadHandlers(config: {
  * page text (AGENTS.md 1.2). Nothing here is transient (an unreachable link is `not_reachable`), so a failure rolls the
  * delivery back and the consumer retries it.
  */
-export function createLinkReadHandler(
-  config: { fetchPage?: FetchPage; now?: () => Date } = {},
-): Handler<{ candidateId: string; sourceId: string }> {
+export function createLinkReadHandler(config: {
+  fetchPage?: FetchPage;
+  now?: () => Date;
+}): Handler<{ candidateId: string; sourceId: string }> {
   const ports = {
     storeFor: evidenceStore,
     cvStoreFor: cvParseStore,

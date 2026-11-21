@@ -57,7 +57,6 @@ redactErrors(PgPreparedQuery.prototype, 'queryWithCache');
 redactErrors(PostgresJsSession.prototype, 'transaction');
 redactErrors(PostgresJsTransaction.prototype, 'transaction');
 
-// shortcut: $client (raw postgres-js) is not redacted; use it only for role setup and end(); add a lint restriction once app code needs raw SQL
 /**
  * Sent at connection start (milliseconds): a lock wait ends with 55P03 and a runaway statement with 57014, a
  * DbQueryError without the bound values, instead of holding a pooled connection for ever (AIV-P1-088). Neither counts
@@ -65,6 +64,7 @@ redactErrors(PostgresJsTransaction.prototype, 'transaction');
  */
 const APP_TIMEOUTS = { lock_timeout: 10_000, statement_timeout: 60_000 };
 
+// shortcut: $client (raw postgres-js) is not redacted; use it only for role setup and end(); add a lint restriction once app code needs raw SQL
 /**
  * A Drizzle client over postgres-js. The caller owns the connection and closes it with `$client.end()`.
  * A URL without a password signs in with the managed identity's Entra token (Azure, ADR-008), always over verified

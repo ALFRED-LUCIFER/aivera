@@ -143,3 +143,21 @@ describe('Scenario: A lock wait ends with an error', () => {
     }
   }, 20_000);
 });
+
+const timeouts = async (db: Db) => [
+  ...(await db.execute(
+    sql`select current_setting('lock_timeout') as lock, current_setting('statement_timeout') as statement`,
+  )),
+];
+
+describe('Application connections carry the timeouts; the migrator does not', () => {
+  it('createDb sets lock_timeout 10s and statement_timeout 1min, and timeouts: false leaves both off', async () => {
+    expect(await timeouts(app)).toEqual([{ lock: '10s', statement: '1min' }]);
+    const migrator = createDb(urlFor('aivera_migrator'), { max: 1, timeouts: false });
+    try {
+      expect(await timeouts(migrator)).toEqual([{ lock: '0', statement: '0' }]);
+    } finally {
+      await migrator.$client.end();
+    }
+  });
+});
