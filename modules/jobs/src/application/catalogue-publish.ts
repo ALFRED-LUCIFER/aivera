@@ -16,7 +16,7 @@ import type { EvalStore } from './catalogue-eval.ts';
 export type PublishStore = Pick<EvalStore, 'lockDraft' | 'read' | 'recordPlatform' | 'latestRun'> & {
   /** Makes the draft published version `version`: one row update, so readers switch to it at commit. */
   publish(version: number, by: { operatorId: string; at: Date; reason: string }): Promise<void>;
-  /** Deletes the draft version's eval runs and rows. */
+  /** Deletes the draft version's rows; its eval runs stay, with no version, so their tokens still count. */
   discard(version: number): Promise<void>;
 };
 

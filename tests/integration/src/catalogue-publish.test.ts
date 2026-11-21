@@ -58,7 +58,7 @@ const recruiters = () => createCatalogueReads(app).getPublishedCatalogue();
 async function evalRun(status: 'passed' | 'failed') {
   await editor.requestEval(PIA, await at());
   await admin.execute(sql`update jobs.catalogue_eval_run set status = ${status}, finished_at = ${NOW.toISOString()},
-    result = '{"uncovered":[],"tasks":[]}'::jsonb where status = 'running'`);
+    tokens = 100, result = '{"uncovered":[],"tasks":[]}'::jsonb where status = 'running'`);
 }
 const versions = () =>
   admin.execute<{ version: number; status: string; published_by: string | null; reason: string | null }>(
@@ -83,6 +83,7 @@ afterAll(async () => {
 });
 
 describe('Feature: Publish or discard a catalogue draft', () => {
+  // SAFETY: mutation check: discard deleted the draft's eval runs (catalogueEvalRun in DRAFT_ROWS) -> this test failed
   it('Scenario: Discarding a draft', async () => {
     await editor.openDraft(THEO);
     await editor.saveDraftPack(THEO, { ...(await at()), previousKey: null, key: 'insurance', label: 'Insurance' });
@@ -94,12 +95,16 @@ describe('Feature: Publish or discard a catalogue draft', () => {
     expect((await editor.getEditor()).draft).toBeNull();
     expect(await versions()).toEqual([expect.objectContaining({ version: 1, status: 'published' })]);
     const [left] = await admin.execute<{ n: number }>(sql`select
-      (select count(*) from jobs.catalogue_eval_run) + (select count(*) from jobs.catalogue_pack where version = 2)
+      (select count(*) from jobs.catalogue_pack where version = 2)
       + (select count(*) from jobs.catalogue_job_type where version = 2)
       + (select count(*) from jobs.catalogue_pack_competency where version = 2)
       + (select count(*) from jobs.catalogue_regional_hint where version = 2)
       + (select count(*) from jobs.catalogue_region where version = 2) as n`);
     expect(Number(left?.n)).toBe(0);
+    // The run stays without its draft, so a discard never lowers the day's eval token spend.
+    expect(await admin.execute(sql`select version, status, tokens from jobs.catalogue_eval_run`)).toEqual([
+      { version: null, status: 'failed', tokens: 100 },
+    ]);
     expect((await recruiters()).version).toBe(1);
     expect((await entries())[0]).toMatchObject({
       action: 'catalogue.draft_discarded',
@@ -111,9 +116,12 @@ describe('Feature: Publish or discard a catalogue draft', () => {
 
   it('a discard is refused while an eval run on the draft is running', async () => {
     await editor.openDraft(PIA);
+    // The new draft reuses number 2 but not the discarded draft's run.
+    expect(await editor.getDraftEval()).toEqual({ status: 'not_run' });
     await editor.requestEval(PIA, await at());
     expect(await outcome(editor.discardDraft(PIA, await at()))).toBe('eval_running');
-    await admin.execute(sql`update jobs.catalogue_eval_run set status = 'error', finished_at = now()`);
+    await admin.execute(sql`update jobs.catalogue_eval_run set status = 'error', finished_at = now()
+      where status = 'running'`);
   });
 
   // SAFETY: mutation check: removed the eval_required throw from publishDraft -> this test failed (published)

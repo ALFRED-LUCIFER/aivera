@@ -397,7 +397,7 @@ export interface CatalogueEditor {
    */
   publishDraft(operatorId: string, input: PublishDraftInput): Promise<void>;
   /**
-   * "Discard draft" (AIV-P2-049): deletes the draft as the page showed it, with its eval runs. Refused: `stale`,
+   * "Discard draft" (AIV-P2-049): deletes the draft as the page showed it; its eval runs stay with no version, so their tokens still count against the day's eval budget. Refused: `stale`,
    * `no_draft`, `eval_running`. `catalogue.draft_discarded`.
    */
   discardDraft(operatorId: string, input: DiscardDraftInput): Promise<void>;

@@ -7,7 +7,8 @@ import { expectAccessible } from './gallery.ts';
 
 // AIV-P2-049 J0: Pia Platform reviews a catalogue draft's diff, meets the publish gate and publishes version 2; Mira then
 // gets the new pack in Add a job. A published version is permanent and every recruiter spec reads the catalogue, so this
-// is its own project (playwright.config.ts): after the gallery locally, on its own database in CI. Locally it publishes
+// is its own project (playwright.config.ts): after the gallery locally; in CI in the publish-unconfigured shard, whose
+// database has no gallery run. Locally it publishes
 // only with E2E_PUBLISH_CATALOGUE=1, so a shared local database keeps version 1. The preview, the eval copy that the
 // gallery's draft reaches and Discard are ops-catalogue.spec.ts; the gate, the race and the audit are
 // tests/integration catalogue-publish.test.ts. Synthetic people and catalogue text only.
@@ -15,6 +16,23 @@ import { expectAccessible } from './gallery.ts';
 test.skip(!process.env['CI'] && !process.env['E2E_PUBLISH_CATALOGUE'], 'publishes a permanent catalogue version');
 
 const REASON = 'Add insurance pack for the pilot client';
+
+// A retry starts clean: a draft an earlier attempt left before publishing is deleted (its eval runs stay, version null).
+test.beforeAll(async () => {
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    await db.transaction(async (tx) => {
+      for (const table of ['regional_hint', 'pack_competency', 'pack', 'region', 'job_type'])
+        await tx.execute(
+          sql`delete from ${sql.identifier('jobs')}.${sql.identifier(`catalogue_${table}`)} where version in
+            (select version from jobs.catalogue_version where status = 'draft')`,
+        );
+      await tx.execute(sql`delete from jobs.catalogue_version where status = 'draft'`);
+    });
+  } finally {
+    await db.$client.end();
+  }
+});
 
 /** Ends the running eval run as the worker would (no worker runs in e2e; it is tested in tests/integration). */
 const finish = async (status: 'passed' | 'failed') => {

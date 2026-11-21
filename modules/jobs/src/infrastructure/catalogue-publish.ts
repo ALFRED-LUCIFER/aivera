@@ -4,7 +4,6 @@ import { and, eq } from 'drizzle-orm';
 import type { PublishStore } from '../application/catalogue-publish.ts';
 import { evalStore } from './catalogue-eval.ts';
 import {
-  catalogueEvalRun,
   catalogueJobType,
   cataloguePack,
   cataloguePackCompetency,
@@ -13,9 +12,9 @@ import {
   catalogueVersion,
 } from './schema.ts';
 
-// Children before parents (foreign keys): the reverse of the order a draft is copied in.
+// Children before parents (foreign keys): the reverse of the order a draft is copied in. Eval runs stay: deleting the
+// version sets their version to null (migration 0021), so their tokens still count against the day's eval budget.
 const DRAFT_ROWS = [
-  catalogueEvalRun,
   catalogueRegionalHint,
   cataloguePackCompetency,
   cataloguePack,

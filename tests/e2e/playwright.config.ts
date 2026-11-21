@@ -54,8 +54,9 @@ export default defineConfig({
       dependencies: ['gallery'],
       use: { ...devices['Desktop Chrome'] },
     },
-    // AIV-P2-049: publishing a catalogue version is permanent and every recruiter spec reads the catalogue, so it runs
-    // after them locally, and in CI with --no-deps on its own database, like "publish".
+    // AIV-P2-049: publishing a catalogue version is permanent and gallery specs read the catalogue (job-industry checks
+    // the whole pack list), so it runs after them locally, and in CI with --no-deps in the publish-unconfigured shard,
+    // whose database it shares with "publish" and "unconfigured": a spec added there must not depend on the pack list.
     {
       name: 'catalogue-publish',
       testMatch: /ops-catalogue-publish\.spec\.ts$/,

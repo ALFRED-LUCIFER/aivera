@@ -53,8 +53,12 @@ function Diff({ changes }: { changes: readonly CatalogueChange[] }) {
 export function CataloguePublish({ model }: { model: CataloguePublishViewModel }) {
   const t = useTranslations('ops.catalogue.editor');
   const { version, publishedVersion, publish, discard } = model;
-  const failed = (error: CataloguePublishViewModel['publish']['error']) =>
-    t(error?.error === 'stale' || error?.error === 'no_draft' ? 'publish.stale' : 'errors.failed');
+  // A stale card names what to do; any other refusal says which rule refused it (the server re-checks every one).
+  const failed = (error: CataloguePublishViewModel['publish']['error']) => {
+    if (!error) return t('errors.failed');
+    if (error.error === 'stale' || error.error === 'no_draft') return t('publish.stale');
+    return error.error === 'invalid' ? t('errors.invalid.other') : t(`errors.${error.error}`);
+  };
   const common = { cancel: t('cancel'), close: t('close'), footer: t('publish.footer') };
   return (
     <div className="flex flex-wrap items-start gap-2">
@@ -66,7 +70,7 @@ export function CataloguePublish({ model }: { model: CataloguePublishViewModel }
           body: t('discard.body', { version: publishedVersion }),
           confirm: t('discard.confirm'),
           pending: t('discard.pending'),
-          failed: discard.error?.error === 'eval_running' ? t('errors.eval_running') : failed(discard.error),
+          failed: failed(discard.error),
           reason: '',
         }}
         open={discard.open}
