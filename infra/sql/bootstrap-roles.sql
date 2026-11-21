@@ -1,6 +1,7 @@
 -- One-off, owner only (AIV-P0-004, ADR-008): Credalent's database roles on the shared Medvya dev server.
 -- infra/scripts/bootstrap-db.sh runs it as a server Entra admin, connected to the "postgres" database (at the end to
--- "aivera", for pgvector), from inside the VNet, with psql variables app_oid, cicd_oid and relay_oid. The Azure
+-- Credalent's database, for pgvector), from inside the VNet, with psql variables app_oid, cicd_oid, relay_oid and db
+-- (the database: aivera on dev, credalent on the pilot, modules/database.bicep). The Azure
 -- counterpart of packages/db/sql/roles.sql: the roles map to managed identities (password sign-in is off on this
 -- server), so no password exists. Safe to rerun.
 -- aivera_migrator (id-aivera-cicd-dev) owns Credalent's schemas and runs migrations.
@@ -25,10 +26,10 @@ WHERE NOT pg_has_role('aivera_app', 'aivera_public', 'MEMBER')
 \gexec
 
 -- Isolation from Medvya: only Credalent's roles may connect to the aivera database.
-REVOKE ALL ON DATABASE aivera FROM PUBLIC;
-GRANT CREATE, CONNECT, TEMPORARY ON DATABASE aivera TO aivera_migrator;
-GRANT CONNECT ON DATABASE aivera TO aivera_app;
-GRANT CONNECT ON DATABASE aivera TO aivera_relay;
+REVOKE ALL ON DATABASE :"db" FROM PUBLIC;
+GRANT CREATE, CONNECT, TEMPORARY ON DATABASE :"db" TO aivera_migrator;
+GRANT CONNECT ON DATABASE :"db" TO aivera_app;
+GRANT CONNECT ON DATABASE :"db" TO aivera_relay;
 
 -- Evidence for the PR and ADR-008: no superuser, no BYPASSRLS, no CREATEROLE, and which databases each role can
 -- connect to. A Medvya database listed here means it still grants CONNECT to PUBLIC: agree with Medvya to revoke it.
@@ -42,5 +43,5 @@ GROUP BY r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole;
 -- pgvector (AIV-P0-030), in the aivera database: allow-listed in azure.extensions, but not a trusted extension, so
 -- only a member of azure_pg_admin (the Entra admin running this) may create it; the search migration's
 -- CREATE EXTENSION IF NOT EXISTS then finds it. Needs the allow-list first (infra/README.md, pgvector).
-\connect aivera
+\connect :db
 CREATE EXTENSION IF NOT EXISTS vector;
