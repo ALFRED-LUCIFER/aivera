@@ -1,6 +1,6 @@
 # Credalent infrastructure (Bicep)
 
-The dev environment lives inside Medvya's dev resource group `rg-medvya-dev-in` (Subscription 1, Central India) and holds synthetic data only ([ADR-008](../docs/adr/ADR-008-dev-environment-shares-medvya-dev.md)). The one exception is the AI resource, which sits in Credalent's own group `rg-aivera-ai-dev` in UAE North ([ADR-011](../docs/adr/ADR-011-dev-ai-in-uae-north-global.md)). Pilot and production are separate, in UAE North, and come with the launch epic AIV-P5-E03 (#34).
+The dev environment lives inside Medvya's dev resource group `rg-medvya-dev-in` (Subscription 1, Central India) and holds synthetic data only ([ADR-008](../docs/adr/ADR-008-dev-environment-shares-medvya-dev.md)). The one exception is the AI resource, which sits in Credalent's own group `rg-aivera-ai-dev` in UAE North ([ADR-011](../docs/adr/ADR-011-dev-ai-in-uae-north-global.md)). The pilot is the same template with `pilot.bicepparam`, in its own resource group in UAE North with its own Log Analytics, VNet and PostgreSQL server (`modules/network.bicep`); every name ends in `-pilot` instead of `-dev`. Its steps: [pilot environment runbook](../docs/runbooks/pilot-environment.md) (AIV-P1-096). Production comes with the launch epic AIV-P5-E03 (#34).
 
 `main.bicep` is deployed at resource-group scope. Modules live in `modules/`, one per ticket.
 
@@ -38,7 +38,7 @@ The dev environment lives inside Medvya's dev resource group `rg-medvya-dev-in` 
 | Custom role and role assignments                    | `Credalent dev deployer`, Contributor                                                                                                      | AIV-P0-006 | CI/CD identity only: Contributor on `ca-aivera-web-dev`, `ca-aivera-worker-dev` and `job-aivera-migrate-dev`; join on Credalent's own `cae-aivera-dev`; assign on Credalent's app and CI/CD identities and the relay identity (AIV-P0-015). Nothing on a Medvya resource or at resource-group scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Azure AI resource (2 deployments)                   | `ai-aivera-dev-<6 chars>`, `gpt-main`, `embedding-main` in **`rg-aivera-ai-dev`**                                                          | AIV-P0-034 | **UAE North, in Credalent's own resource group** ([ADR-011](../docs/adr/ADR-011-dev-ai-in-uae-north-global.md)): Medvya's group allows Indian regions only. AIServices S0, no keys. `gpt-main` is gpt-4.1-mini on Global Standard, `embedding-main` is text-embedding-3-large on Standard, 100k tokens a minute each (free; tokens are billed). `id-aivera-dev` has Cognitive Services OpenAI User on this account only. A deleted account stays soft-deleted for 48 hours under its name: `az cognitiveservices account purge` before re-creating                                                                                                                                                                                                                                                                                                          |
 
-Every Credalent resource is tagged `product=aivera`, `env=dev`, `data=synthetic`.
+Every Credalent resource is tagged `product=aivera`, `env=dev`, `data=synthetic` (the pilot: `env=pilot`, `data=personal`).
 
 **Own Key Vault rather than an `aivera-` prefix in `kv-medvya-dev-3afs7i`:** a vault boundary keeps Credalent's identity scoped to Credalent's secrets with one role assignment, and a vault costs about $0 at dev volumes.
 
@@ -82,7 +82,7 @@ az deployment group what-if -g rg-medvya-dev-in -n aivera-dev --mode Incremental
 az deployment group create  -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha> alertEmail=<team address>
 ```
 
-`malwareScanning` defaults to `false` (dev, AIV-P0-016): leave it out here. The pilot's deployment passes `-p malwareScanning=true`, which adds Defender for Storage malware scanning and its Event Grid and Service Bus path, and sets `MALWARE_SCANNING=on` on both apps. The first apply that includes the uploads storage account also needs `az provider register -n Microsoft.Storage --wait` if the subscription has not used storage before (and `Microsoft.Security` and `Microsoft.EventGrid` before turning scanning on).
+`malwareScanning` defaults to `false` (dev, AIV-P0-016): leave it out here. The pilot's parameter file sets `malwareScanning = true`, which adds Defender for Storage malware scanning and its Event Grid and Service Bus path, and sets `MALWARE_SCANNING=on` on both apps. The first apply that includes the uploads storage account also needs `az provider register -n Microsoft.Storage --wait` if the subscription has not used storage before (and `Microsoft.Security` and `Microsoft.EventGrid` before turning scanning on).
 
 Always `--mode Incremental` (the default, written out on purpose): the resource group is Medvya's, and Complete mode would delete every Medvya resource the template does not declare.
 
@@ -95,7 +95,7 @@ The `aivera` database already exists: it was created on 18 Nov 2026 with charset
 1. Merge the stack, then run `deploy-dev` by hand (`gh workflow run deploy-dev.yml --ref main`; it no longer runs on every push to `main`, and it needs `main` HEAD's `pr` push run green: wait for it or re-run it). It pushes `ghcr.io/alfred-lucifer/aivera/web:<sha>` and `…/migrate:<sha>`; its deploy job is skipped because the repository variables are not set yet.
 2. Make both packages public, once (GitHub, Packages, each package's settings, Change visibility). The repository is public, so the images reveal nothing new, and the apps then pull without a registry secret.
 3. `az deployment group create -g rg-medvya-dev-in -n aivera-dev --mode Incremental -f infra/main.bicep -p imageTag=<sha from step 1> alertEmail=<team address>` (also creates the subnet `snet-aivera-dev` and the environment `cae-aivera-dev`). The `aivera` database was already created on 18 Nov 2026; the deployment leaves it unchanged.
-4. `sh infra/scripts/bootstrap-db.sh` (below).
+4. `sh infra/scripts/bootstrap-db.sh rg-medvya-dev-in dev psql-medvya-dev-3afs7i` (below).
 5. Set the repository variables from the deployment outputs and the account (`gh variable set AZURE_CLIENT_ID -b <cicdIdentityClientId>`, the same for `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`).
 6. Re-run `deploy-dev` (`gh workflow run deploy-dev.yml`). It migrates, deploys web, smoke-tests the public URL from the runner and rolls web and the worker back to their previous images on failure or cancellation. It deploys only when the `pr` push run of `main` HEAD is green (otherwise it stops with "pr run not green: not deployed"), so wait for that run or re-run it first.
 7. Optional, for the live AI eval (AIV-P0-029): create the GitHub environment `ai-eval` and limit its deployment branches to `main` (the identity trusts the environment, so this is what keeps other branches out; the workflow also runs the live job only on `main` and manual runs), then `gh variable set AI_EVAL_CLIENT_ID -b <aiEvalIdentityClientId>` and `gh variable set AI_EVAL_RESOURCE_NAME -b <aiResourceName>`. Until `AI_EVAL_CLIENT_ID` is set, `ai-eval.yml` scores the recorded answers only. Spend is bounded twice: `liveTokenCap` per run in code, and the `gpt-main` deployment's 100k tokens per minute in `ai.bicep`, which no workflow can raise.
@@ -107,7 +107,7 @@ The `aivera` database already exists: it was created on 18 Nov 2026 with charset
 The server has password sign-in off and no public access, so the roles are created from inside the VNet by a server Entra admin (the owner):
 
 ```sh
-sh infra/scripts/bootstrap-db.sh
+sh infra/scripts/bootstrap-db.sh rg-medvya-dev-in dev psql-medvya-dev-3afs7i
 ```
 
 It borrows one execution of `job-aivera-migrate-dev` with a `postgres:16-alpine` container and the owner's own short-lived Entra token (held in a job secret for the length of the execution and removed when it ends, never in the execution template), connects with `sslmode=verify-full`, runs `infra/sql/bootstrap-roles.sql`, and prints each role's flags and the databases it can connect to. Expect `rolsuper`, `rolbypassrls` and `rolcreaterole` false for all four roles. Rerun it after the apply that adds `id-aivera-relay-dev` (AIV-P0-014) and before the next deploy: the candidates outbox migration names `aivera_relay`, so the migrate job fails until the role exists. If `can_connect_to` lists `medvya`, Medvya's database still grants `CONNECT` to `PUBLIC`: agree with Medvya to revoke it (ADR-008). Rerunning is safe.
@@ -115,7 +115,7 @@ It borrows one execution of `job-aivera-migrate-dev` with a `postgres:16-alpine`
 **AIV-P3-002 added `aivera_public`** (no login, entered by `aivera_app` with `SET LOCAL ROLE` for the candidate site's public job reads). On a server bootstrapped before it, rerun the script once, then run the migration job so the migrator grants the role its columns (`modules/jobs/src/infrastructure/grants.sql`, re-applied on every migrate):
 
 ```sh
-sh infra/scripts/bootstrap-db.sh
+sh infra/scripts/bootstrap-db.sh rg-medvya-dev-in dev psql-medvya-dev-3afs7i
 az containerapp job start -g rg-medvya-dev-in -n job-aivera-migrate-dev
 ```
 
@@ -134,10 +134,10 @@ The `search` schema's migrations (`packages/ai`, workspace-scoped embeddings) ne
      -n azure.extensions -v PGCRYPTO,PG_STAT_STATEMENTS,PGAUDIT,PG_TRGM,VECTOR
    ```
 
-2. **Create it in the `aivera` database: rerun `sh infra/scripts/bootstrap-db.sh`** before the deploy that carries the `search` migrations. `vector` is not a trusted extension, so on Flexible Server only a member of `azure_pg_admin` may create it; `aivera_migrator` has `CREATE` on the database but is not an admin, so its migration only finds what the bootstrap made. Azure refuses `CREATE EXTENSION` to a non-admin even with `IF NOT EXISTS` and the extension present (error 42501, deploy 20 Nov 2026), so the migration checks `pg_extension` and runs `CREATE EXTENSION` only when `vector` is missing (AIV-P0-932). The file was edited in place, a recorded exception to AGENTS.md 3.3: Drizzle skips an applied migration by its timestamp, not its content, and it never applied on dev. Without this step the migrate job fails on the `search` module and applies none of it; the other modules are already migrated by then.
+2. **Create it in the `aivera` database: rerun `sh infra/scripts/bootstrap-db.sh rg-medvya-dev-in dev psql-medvya-dev-3afs7i`** before the deploy that carries the `search` migrations. `vector` is not a trusted extension, so on Flexible Server only a member of `azure_pg_admin` may create it; `aivera_migrator` has `CREATE` on the database but is not an admin, so its migration only finds what the bootstrap made. Azure refuses `CREATE EXTENSION` to a non-admin even with `IF NOT EXISTS` and the extension present (error 42501, deploy 20 Nov 2026), so the migration checks `pg_extension` and runs `CREATE EXTENSION` only when `vector` is missing (AIV-P0-932). The file was edited in place, a recorded exception to AGENTS.md 3.3: Drizzle skips an applied migration by its timestamp, not its content, and it never applied on dev. Without this step the migrate job fails on the `search` module and applies none of it; the other modules are already migrated by then.
 
 ### Medvya's VNet and the new subnet
 
 The subnet is the only change inside a Medvya resource. If Medvya's own infrastructure code ever redeploys `vnet-medvya-dev-3afs7i` with its subnets declared inline, that deployment would try to remove `snet-aivera-dev` (and fail while the environment uses it). Tell Medvya to declare its subnets as child resources, or to add `snet-aivera-dev` to its template.
 
-CI builds and lints the Bicep on every pull request (`pr.yml`, step `bicep`); any linter warning fails it.
+CI builds and lints the Bicep on every pull request (`pr.yml`, step `bicep`), builds `pilot.bicepparam`, and checks that nothing in the pilot leaves UAE North (`scripts/pilot-params.test.mjs`); any linter warning fails it.

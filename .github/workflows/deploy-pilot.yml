@@ -1,0 +1,126 @@
+name: deploy-pilot
+# AIV-P1-096: a manual run from main (Actions > deploy-pilot > Run workflow, or `gh workflow run deploy-pilot --ref main`)
+# deploys a commit that deploy-dev already built and shipped to the pilot in UAE North: the same gate, migration, smoke test
+# and rollback as deploy-dev.yml, with the pilot's names. The deploy job runs in the protected "pilot" environment, so it
+# waits for the owner's approval, and the pilot's CI/CD identity trusts that environment only (modules/foundation.bicep).
+# AZURE_CLIENT_ID (id-aivera-cicd-pilot), AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID are variables of the "pilot"
+# environment (docs/runbooks/pilot-environment.md). Every action is pinned to a commit SHA because this workflow can mint
+# Azure tokens.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-pilot
+  cancel-in-progress: false
+
+env:
+  IMAGES: ghcr.io/alfred-lucifer/aivera
+  RG: rg-aivera-pilot
+  WEB: ca-aivera-web-pilot
+  WORKER: ca-aivera-worker-pilot
+  JOB: job-aivera-migrate-pilot
+
+jobs:
+  # Before the approval is asked for: only a commit whose pr run succeeded, and whose images deploy-dev pushed, is deployed.
+  gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - name: pr run is green for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          green=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr --commit "$GITHUB_SHA" --event push \
+            --json conclusion --jq 'map(select(.conclusion == "success")) | length')
+          if ! [ "$green" -ge 1 ]; then
+            echo "pr run not green: not deployed ($GITHUB_SHA; failed, cancelled or still running)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      # The pilot runs exactly the images dev ran; it never builds its own.
+      - name: images exist for this commit
+        run: |
+          for target in web migrate worker; do
+            if ! docker manifest inspect "$IMAGES/$target:$GITHUB_SHA" > /dev/null; then
+              echo "no $target image for $GITHUB_SHA: run deploy-dev for this commit first" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          done
+
+  deploy:
+    needs: gate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Required reviewer: the owner; deployment branches: main only (owner's settings, runbook).
+    environment: pilot
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Forward-only migrations (ADR-004) as aivera_migrator, inside the VNet. A failure stops here: web is untouched.
+      - name: migrate
+        run: |
+          az containerapp job update -g "$RG" -n "$JOB" --image "$IMAGES/migrate:$GITHUB_SHA" -o none
+          sh infra/scripts/run-job.sh "$JOB"
+
+      - name: deploy web
+        id: web
+        run: |
+          prev=$(az containerapp show -g "$RG" -n "$WEB" --query 'properties.template.containers[0].image' -o tsv)
+          echo "previous=$prev" >> "$GITHUB_OUTPUT"
+          az containerapp update -g "$RG" -n "$WEB" --image "$IMAGES/web:$GITHUB_SHA" --set-env-vars "COMMIT_SHA=$GITHUB_SHA" -o none
+
+      # The pilot's apply creates the worker with everything else, so unlike dev it is never skipped.
+      - name: deploy worker
+        id: worker
+        run: |
+          prev=$(az containerapp show -g "$RG" -n "$WORKER" --query 'properties.template.containers[0].image' -o tsv)
+          echo "previous=$prev" >> "$GITHUB_OUTPUT"
+          az containerapp update -g "$RG" -n "$WORKER" --image "$IMAGES/worker:$GITHUB_SHA" -o none
+
+      - name: smoke test
+        run: |
+          fqdn=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
+          SMOKE_URL="https://$fqdn" COMMIT="$GITHUB_SHA" node infra/scripts/smoke.mjs
+
+      # Rolls back the images only, web and worker together: migrations stay applied, so they must be expand-only
+      # (ADR-004). The worker is rolled back only when its previous image was recorded.
+      - name: roll back web and worker
+        if: (failure() || cancelled()) && steps.web.outcome == 'success'
+        env:
+          PREVIOUS: ${{ steps.web.outputs.previous }}
+          PREVIOUS_WORKER: ${{ steps.worker.outputs.previous }}
+        # Both updates run even if one fails; the step fails at the end if either did.
+        run: |
+          rc=0
+          if [ -n "$PREVIOUS_WORKER" ]; then
+            if az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none; then
+              echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+            else rc=1; fi
+          fi
+          if az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none; then
+            echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+          else rc=1; fi
+          exit $rc
+
+      - name: summary
+        run: |
+          {
+            echo "Deployed commit $GITHUB_SHA to the pilot (UAE North)"
+            echo "- web: $IMAGES/web:$GITHUB_SHA"
+            echo "- worker: $IMAGES/worker:$GITHUB_SHA"
+            echo "- migrate: $IMAGES/migrate:$GITHUB_SHA (job $JOB succeeded)"
+          } >> "$GITHUB_STEP_SUMMARY"

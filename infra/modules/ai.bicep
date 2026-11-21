@@ -1,13 +1,15 @@
 // AIV-P0-034: the dev AI resource that @credalent/ai calls (ADR-006, ADR-011). Deployed into Credalent's own resource group
 // in UAE North (rg-aivera-ai-dev): Central India offers these models only as provisioned throughput, and Medvya's group
-// allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity.
+// allows only Indian regions. Pay per token; no keys: the web app signs in with its managed identity. The pilot's sits in
+// the pilot's own resource group (AIV-P1-096).
+param env string
 param tags object
 param appIdentityPrincipalId string
 param aiEvalIdentityPrincipalId string
 
 var location = 'uaenorth' // ADR-011: explicit, so a group created elsewhere cannot move the account.
 // The subdomain must equal the name: @ai-sdk/azure builds <AZURE_OPENAI_RESOURCE_NAME>.openai.azure.com.
-var name = 'ai-aivera-dev-${take(uniqueString(resourceGroup().id), 6)}'
+var name = 'ai-aivera-${env}-${take(uniqueString(resourceGroup().id), 6)}'
 
 resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: name
@@ -28,8 +30,9 @@ resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 resource gptMain 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: account
   name: 'gpt-main'
-  // ADR-011: GlobalStandard may run inference outside UAE North. Dev holds synthetic data only.
-  sku: { name: 'GlobalStandard', capacity: 100 }
+  // ADR-011: GlobalStandard may run inference outside UAE North, so dev only (synthetic data). The pilot asks for regional
+  // Standard, in UAE North; until Azure offers this model there, its apply stops here (docs/runbooks/pilot-environment.md).
+  sku: { name: env == 'dev' ? 'GlobalStandard' : 'Standard', capacity: 100 }
   properties: {
     model: { format: 'OpenAI', name: 'gpt-4.1-mini', version: '2025-04-14' }
     versionUpgradeOption: 'NoAutoUpgrade'
@@ -60,8 +63,8 @@ resource appCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// The eval harness's live run (AIV-P0-029), with the same role: call deployments, nothing else.
-resource evalCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+// The eval harness's live run (AIV-P0-029), with the same role: call deployments, nothing else. Dev only (foundation.bicep).
+resource evalCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiEvalIdentityPrincipalId)) {
   scope: account
   name: guid(account.id, aiEvalIdentityPrincipalId, openAiUser)
   properties: {

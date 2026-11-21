@@ -1,6 +1,7 @@
 // AIV-P0-004: Credalent's database on Medvya's shared dev PostgreSQL server, and the migration job in Credalent's VNet-joined
 // environment (ADR-008).
 // The server, its network and its parameters are Medvya's: referenced, never changed. Roles: infra/sql/bootstrap-roles.sql.
+param env string
 param location string
 param tags object
 param postgresServerName string
@@ -27,7 +28,7 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
 // Runs `pnpm db:migrate` as aivera_migrator from inside the VNet (the server has no public access). Started by the
 // deploy workflow before a new web revision (AIV-P0-006); a failed execution stops the deploy.
 resource migrateJob 'Microsoft.App/jobs@2024-03-01' = {
-  name: 'job-aivera-migrate-dev'
+  name: 'job-aivera-migrate-${env}'
   location: location
   tags: tags
   identity: {

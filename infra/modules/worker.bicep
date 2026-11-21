@@ -3,6 +3,7 @@
 // and id-aivera-relay-dev (aivera_relay, Service Bus send).
 // shortcut: one replica always on, because the relay polls the outbox every second (smallest size, about $5 to $10 a
 // month beyond the free grant); move the relay to PostgreSQL LISTEN/NOTIFY or a KEDA-scaled job if cost matters (AIV-P5-E03, #34)
+param env string
 param location string
 param tags object
 param containerAppsEnvName string
@@ -34,7 +35,7 @@ var probe = { port: 8080, scheme: 'HTTP' }
 var database = '${databaseHost}:5432/${databaseName}?sslmode=verify-full'
 
 resource worker 'Microsoft.App/containerApps@2024-03-01' = {
-  name: 'ca-aivera-worker-dev'
+  name: 'ca-aivera-worker-${env}'
   location: location
   tags: tags
   identity: {
