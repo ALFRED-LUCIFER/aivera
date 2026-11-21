@@ -289,6 +289,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
   Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> &
   Pick<LinkPorts, 'linkStoreFor' | 'publishLinkReadRequested'> & {
     readArrival(tx: Tx, workspaceId: string, sourceId: string): Promise<Arrival | null>;
+    // shortcut: identifier emails are what the applicant supplied, not proven to be theirs; require proof of control
+    // when email verification exists.
     /**
      * The candidate's email identifiers: commits by these count as theirs. Never the record's CV contact, which anyone
      * can write into a CV (AIV-P1-087).
