@@ -12,7 +12,6 @@ describe('Scenario: A stat tile always states its basis', () => {
     expect(screen.getByText('Observed')).toBeTruthy();
   });
 
-  // SAFETY: mutation check: rendered `{value ?? '0'}` in place of the figure -> 'no figure reads "Not yet available"…' failed
   it('a failed read says so in words, with neither a figure nor a basis marker', () => {
     const { container } = render(
       <StatTile
@@ -27,6 +26,7 @@ describe('Scenario: A stat tile always states its basis', () => {
     expect(container.textContent).not.toMatch(/5|Observed|Not yet available/);
   });
 
+  // SAFETY: mutation check: rendered `{value ?? '0'}` in place of the figure -> 'no figure reads "Not yet available"…' failed
   it('no figure reads "Not yet available" with its marker, never 0', () => {
     const { container } = render(<StatTile label="AI tokens today" value={null} basis="observed" {...labels} />);
     expect(screen.queryByText('0')).toBeNull();

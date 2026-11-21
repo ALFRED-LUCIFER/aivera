@@ -21,7 +21,7 @@ export const workspaceSearchSchema = z.object({
   query: z.string().trim().max(100),
   page: z.int().min(1).max(10_000),
   status: z.enum(WORKSPACE_STATUSES).optional(),
-  sort: z.enum(['newest', 'ai']).optional(),
+  sort: z.literal('ai').optional(),
 });
 export type WorkspaceSearch = z.infer<typeof workspaceSearchSchema>;
 

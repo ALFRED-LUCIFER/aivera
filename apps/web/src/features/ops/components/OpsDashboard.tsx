@@ -12,7 +12,8 @@ const link = 'text-text underline underline-offset-2';
  * version, each with its basis marker and a link to act. Platform counts only, never a name or candidate value; a
  * failed read shows its error in its own tile and the others still show.
  * Deviations from operator-console.md Home: no "Needs an operator" rows and no approval-mode tile (not in the ticket);
- * no catalogue draft line yet (waits on AIV-P2-045 and AIV-P2-048).
+ * no catalogue draft line yet (waits on AIV-P2-045 and AIV-P2-048). A failed tile's "Try again" is a link to /ops,
+ * not the States table's button: the page is a server render, so reloading it re-runs the reads with no client code.
  */
 export function OpsDashboard({ statuses, oldestWaitingDays, ai, catalogue }: DashboardView) {
   const t = useTranslations('ops');

@@ -32,7 +32,7 @@ export const STATUS_TILES = [
 ] as const satisfies WorkspaceStatus[];
 
 /** A workspace at or above this share of its daily budget counts as near it (below 100%). */
-export const NEAR_BUDGET = 0.8;
+const NEAR_BUDGET = 0.8;
 
 export const statusHref = (status: WorkspaceStatus) =>
   status === 'pending_approval' ? ('/ops/approvals' as const) : (`/ops/workspaces?status=${status}` as const);

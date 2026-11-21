@@ -21,7 +21,11 @@ export default async function WorkspacesPage({ searchParams }: PageProps<'/ops/w
   return (
     <>
       <PageHeader title={t('ops.workspaces.title')} description={t('ops.workspaces.description')} />
-      <WorkspacesClient initial={await searchWorkspaces({ query: '', page: 1, ...filter })} />
+      {/* Keyed on the URL filter: a soft navigation between ?status= / ?sort= keeps the page mounted. */}
+      <WorkspacesClient
+        key={`${filter.status ?? ''}:${filter.sort ?? ''}`}
+        initial={await searchWorkspaces({ query: '', page: 1, ...filter })}
+      />
     </>
   );
 }

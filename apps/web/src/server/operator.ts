@@ -105,7 +105,7 @@ const withFacts = async (summary: WorkspaceSummary, aiDays: number): Promise<Wor
 /** One page of the workspaces list, with today's AI tokens. Checks the policy itself too, so no caller can skip it. */
 export async function listWorkspaceFacts(
   search: DirectorySearch,
-  sort: 'newest' | 'ai' = 'newest',
+  sort?: 'ai',
 ): Promise<{ total: number; rows: WorkspaceFacts[] }> {
   await platformOperator();
   if (sort === 'ai') {

@@ -40,6 +40,7 @@ test('Scenario: The dashboard shows observed counts with links', async ({ page }
   for (const text of await statuses.allTextContents()) expect(text).toBe('Suspended');
   await page.getByRole('link', { name: 'Show all workspaces' }).click();
   await expect(page).toHaveURL(/\/ops\/workspaces$/);
+  await expect(page.getByText('Showing only: Suspended.')).toHaveCount(0);
 });
 
 test('Scenario: AI tokens today against budgets: the tile links to the list sorted by AI tokens today', async ({
