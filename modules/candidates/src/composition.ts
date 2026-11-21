@@ -25,7 +25,7 @@ export function createCandidates(
         dedupeKey: `person:${person.id}`,
         occurredAt: person.createdAt,
       }),
-    authorize: (ctx, action) => workspaces.authorize(ctx, action),
+    authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),
     now,

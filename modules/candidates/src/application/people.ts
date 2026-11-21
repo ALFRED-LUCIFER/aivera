@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db';
-import type { Action, WorkspaceContext } from '@credalent/workspaces';
+import type { Action, JobResource, WorkspaceContext } from '@credalent/workspaces';
 import {
   CandidateError,
   normaliseIdentifier,
@@ -20,6 +20,8 @@ export type CandidateStore = {
   /** Adds emails and phones the record does not list yet to the person's record only: no identifier, no matching. */
   appendContact(workspaceId: string, personId: string, contact: { emails: string[]; phones: string[] }): Promise<void>;
   listPeople(workspaceId: string): Promise<Person[]>;
+  /** Each listed person's id and display name; ids the workspace does not have are left out. */
+  displayNames(workspaceId: string, personIds: string[]): Promise<{ id: string; displayName: string }[]>;
   /** Deletes every person and identifier in the workspace; false, with nothing deleted, if any person is not synthetic. */
   deleteSyntheticPeople(workspaceId: string): Promise<boolean>;
 };
@@ -29,7 +31,7 @@ export type Ports = {
   /** Writes `PersonCreated.v1` to the outbox in `tx`, so it commits only with the person (AIV-P0-014). */
   publishPersonCreated(tx: Tx, person: Person): Promise<void>;
   /** The workspaces contract's `authorize`: role, and for job-scoped roles a job grant (ADR-005 point 6). */
-  authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
+  authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** Whether the context's workspace is flagged synthetic (the workspaces contract's `getWorkspace`). */
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   newId(): string;
@@ -99,6 +101,14 @@ export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSy
       await authorize(ctx, 'workspace.settings');
       if (!(await isSyntheticWorkspace(ctx))) throw new CandidateError('not_synthetic');
       if (!(await storeFor(ctx.tx).deleteSyntheticPeople(ctx.workspaceId))) throw new CandidateError('not_synthetic');
+    },
+
+    // The caller names only `job`'s applicants: the grant is checked on that job, not per person.
+    async displayNames(ctx: WorkspaceContext, job: JobResource, personIds: string[]): Promise<Map<string, string>> {
+      await authorize(ctx, 'candidate.view', job);
+      if (personIds.length === 0) return new Map();
+      const rows = await storeFor(ctx.tx).displayNames(ctx.workspaceId, personIds);
+      return new Map(rows.map((r) => [r.id, r.displayName]));
     },
 
     // shortcut: no paging; the people page (AIV-P1-048) adds it.

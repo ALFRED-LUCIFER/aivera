@@ -1655,7 +1655,8 @@
       "referral": "Referral",
       "email": "Email",
       "whatsapp": "WhatsApp",
-      "careers_page": "Careers page"
+      "careers_page": "Careers page",
+      "recruiter": "Recruiter"
     },
     "checking": "Checking the file",
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
@@ -1666,6 +1667,21 @@
     "received": "Unnamed applicant · CV received",
     "sourceAdded": "Same CV as an existing application · source added",
     "added": "{count, plural, =0 {No new applications: each CV was already filed for this job.} one {# application added.} other {# applications added.}}",
-    "jobNotFound": "This job does not exist or you do not have access."
+    "jobNotFound": "This job does not exist or you do not have access.",
+    "list": {
+      "caption": "Applicants",
+      "columns": {
+        "candidate": "Candidate",
+        "received": "Received ({timeZone})",
+        "source": "Source",
+        "score": "Backed score"
+      },
+      "receivedOn": "{value, date, ::d MMM}",
+      "notScored": "Not yet scored",
+      "notYetAvailable": "Not yet available",
+      "loading": "Loading applicants",
+      "error": "We could not load applicants. Try again.",
+      "retry": "Try again"
+    }
   }
 }

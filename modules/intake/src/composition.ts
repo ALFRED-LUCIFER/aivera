@@ -13,7 +13,7 @@ import { outbox } from './infrastructure/schema.ts';
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createIntake(
   workspaces: Pick<WorkspacesContract, 'authorize'>,
-  candidates: Pick<CandidatesContract, 'findOrCreatePerson'>,
+  candidates: Pick<CandidatesContract, 'findOrCreatePerson' | 'displayNames'>,
   jobs: Pick<JobsContract, 'getJob'>,
   now: () => Date = () => new Date(),
 ): IntakeContract {
@@ -28,6 +28,7 @@ export function createIntake(
       }),
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),
+    displayNames: (ctx, job, personIds) => candidates.displayNames(ctx, job, personIds),
     jobResource: async (ctx, jobId) => {
       const job = await jobs.getJob(ctx, jobId);
       return job && { jobId: job.id, clientId: job.clientId };

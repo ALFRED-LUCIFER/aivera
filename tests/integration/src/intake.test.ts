@@ -29,6 +29,7 @@ const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src
 
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
 const LINA = '0190d4a2-0000-7000-8000-0000000011aa';
+const HUDA = '0190d4a2-0000-7000-8000-00000000d0da';
 const NOW = new Date('2026-11-20T09:00:00.000Z');
 const cvHash = (n: number) => n.toString(16).padStart(64, '0');
 
@@ -101,7 +102,8 @@ beforeAll(async () => {
   w2 = await newWorkspace('Gulf Talent Partners');
   await withWorkspace(app, w1, (tx) =>
     tx.execute(
-      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${LINA}, 'interviewer', 'active')`,
+      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${LINA}, 'interviewer', 'active'),
+        (${w1}, ${HUDA}, 'hiring_owner', 'active')`,
     ),
   );
 });
@@ -301,5 +303,61 @@ describe('Authorisation (ADR-005 point 6)', () => {
     await expect(
       as(LINA, w1, (ctx) => intake.receiveApplication(ctx, arrival(jobId, 'Mark Reyes', 7, 'email'))),
     ).rejects.toThrow(ForbiddenError);
+  });
+});
+
+describe('AIV-P1-086: listApplicationsForJob', () => {
+  it('Scenario: Applicants appear right after adding them: one row each, with name, received date and first source', async () => {
+    const jobId = await newJob(w1, 'Senior Backend Engineer');
+    const cast: [string, Source][] = [
+      ['Sara Al Qahtani', 'linkedin'],
+      ['Arjun Menon', 'referral'],
+      ['Layla Haddad', 'email'],
+    ];
+    const expected = [];
+    for (const [i, [name, source]] of cast.entries()) {
+      const { applicationId, personId } = await as(ALEX, w1, (ctx) =>
+        intake.receiveApplication(ctx, arrival(jobId, name, 200 + i, source)),
+      );
+      expected.unshift({ applicationId, personId, displayName: name, receivedAt: NOW, source });
+    }
+    // A second arrival of Sara's CV adds a source, not a row, and her row keeps the first source.
+    await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(jobId, 'Sara Al Qahtani', 200, 'whatsapp')));
+    // Newest first.
+    expect(await as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, jobId))).toEqual(expected);
+  });
+
+  it('a job with no applicants lists none', async () => {
+    const jobId = await newJob(w1, 'Empty job');
+    expect(await as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, jobId))).toEqual([]);
+  });
+
+  // SAFETY: mutation check: job-scope check removed -> this test failed (jobResource lookup and authorize dropped from listApplicationsForJob: no IntakeError, the candidates read refused with ForbiddenError instead)
+  it('Scenario: A hiring owner not granted this job is refused: Huda, granted only "Data Analyst"', async () => {
+    const analyst = await newJob(w1, 'Data Analyst');
+    const backend = await newJob(w1, 'Senior Backend Engineer');
+    await as(ALEX, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: HUDA, jobId: analyst }));
+    await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(analyst, 'Arjun Menon', 210, 'email')));
+    await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(backend, 'Layla Haddad', 211, 'email')));
+    const refused = as(HUDA, w1, (ctx) => intake.listApplicationsForJob(ctx, backend));
+    await expect(refused).rejects.toThrow(IntakeError);
+    await expect(refused).rejects.toThrow('Job not found');
+    const own = await as(HUDA, w1, (ctx) => intake.listApplicationsForJob(ctx, analyst));
+    expect(own.map((r) => r.displayName)).toEqual(['Arjun Menon']);
+  });
+
+  // SAFETY: mutation check: ALTER POLICY application_tenant_isolation ON intake.application USING (true) WITH CHECK (true) -> this test failed (W1 read W2's application); the job-scope mutation above also failed it (no "Job not found")
+  it("Scenario: Another workspace cannot read the list, with the repository's workspace filter removed as well", async () => {
+    const w2Job = await newJob(w2, 'Gulf job');
+    await as(ALEX, w2, (ctx) => intake.receiveApplication(ctx, arrival(w2Job, 'Sara Al Qahtani', 220, 'linkedin')));
+    await expect(as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, w2Job))).rejects.toThrow('Job not found');
+    const seen = await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`select id from intake.application where job_id = ${w2Job}`),
+    );
+    expect([...seen]).toEqual([]);
+    const [all] = await admin.execute<{ n: number }>(
+      sql`select count(*)::int as n from intake.application where job_id = ${w2Job}`,
+    );
+    expect(all?.n).toBe(1); // the row exists, so the empty read above is row-level security
   });
 });

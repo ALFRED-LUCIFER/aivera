@@ -1,3 +1,4 @@
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useDirectUpload } from '@/features/files';
 import type { AddApplicantsResult, UploadSource } from '../domain/addApplicants.ts';
@@ -11,6 +12,7 @@ export type UploadedCv = { fileId: string; name: string };
  */
 export function useAddApplicantsController(jobId: string, services = { addApplicants }) {
   const upload = useDirectUpload('cv');
+  const router = useRouter();
   const selected = useRef('');
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<UploadSource>('linkedin');
@@ -54,7 +56,10 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       startTransition(async () => {
         const outcome = await services.addApplicants({ jobId, source, fileIds: cvs.map((cv) => cv.fileId) });
         setResult(outcome);
-        if (outcome.ok) setCvs([]);
+        if (!outcome.ok) return;
+        setCvs([]);
+        // The Candidates tab lists the new applicants behind the dialog (AIV-P1-086).
+        router.refresh();
       });
     },
   };
