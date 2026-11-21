@@ -37,7 +37,7 @@ jobs:
         run: |
           green=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr --commit "$GITHUB_SHA" --event push \
             --json conclusion --jq 'map(select(.conclusion == "success")) | length')
-          if [ "$green" -lt 1 ]; then
+          if ! [ "$green" -ge 1 ]; then
             echo "pr run not green: not deployed ($GITHUB_SHA; failed, cancelled or still running)" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -89,7 +89,8 @@ jobs:
       - name: deploy web
         id: web
         run: |
-          echo "previous=$(az containerapp show -g "$RG" -n "$WEB" --query 'properties.template.containers[0].image' -o tsv)" >> "$GITHUB_OUTPUT"
+          prev=$(az containerapp show -g "$RG" -n "$WEB" --query 'properties.template.containers[0].image' -o tsv)
+          echo "previous=$prev" >> "$GITHUB_OUTPUT"
           az containerapp update -g "$RG" -n "$WEB" --image "$IMAGES/web:$GITHUB_SHA" --set-env-vars "COMMIT_SHA=$GITHUB_SHA" -o none
 
       # After web: the worker runs no migrations and serves no traffic. Skipped until the owner's apply creates it
@@ -98,7 +99,8 @@ jobs:
         id: worker
         run: |
           if az containerapp show -g "$RG" -n "$WORKER" -o none 2>/dev/null; then
-            echo "previous=$(az containerapp show -g "$RG" -n "$WORKER" --query 'properties.template.containers[0].image' -o tsv)" >> "$GITHUB_OUTPUT"
+            prev=$(az containerapp show -g "$RG" -n "$WORKER" --query 'properties.template.containers[0].image' -o tsv)
+            echo "previous=$prev" >> "$GITHUB_OUTPUT"
             az containerapp update -g "$RG" -n "$WORKER" --image "$IMAGES/worker:$GITHUB_SHA" -o none
           else
             echo "Skipped $WORKER: not created yet (owner's Bicep apply)" >> "$GITHUB_STEP_SUMMARY"
@@ -116,13 +118,18 @@ jobs:
         env:
           PREVIOUS: ${{ steps.web.outputs.previous }}
           PREVIOUS_WORKER: ${{ steps.worker.outputs.previous }}
+        # Both updates run even if one fails; the step fails at the end if either did.
         run: |
+          rc=0
           if [ -n "$PREVIOUS_WORKER" ]; then
-            az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none
-            echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+            if az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none; then
+              echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+            else rc=1; fi
           fi
-          az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none
-          echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+          if az containerapp update -g "$RG" -n "$WEB" --image "$PREVIOUS" --set-env-vars "COMMIT_SHA=${PREVIOUS##*:}" -o none; then
+            echo "Rolled $WEB back to $PREVIOUS (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+          else rc=1; fi
+          exit $rc
 
       - name: summary
         run: |
