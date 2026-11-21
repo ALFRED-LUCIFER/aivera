@@ -154,7 +154,7 @@ export function assertValidCompetencies(
  * rounding remainder given to the heaviest competency. Rounded down, so the heaviest only gains and stays the heaviest.
  * Weights that already total 100 are kept as they are.
  */
-export function rebalanceWeights(competencies: Competency[]): Competency[] {
+export function rebalanceWeights<C extends Pick<Competency, 'weightPercent'>>(competencies: C[]): C[] {
   const total = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
   if (total === 100) return competencies;
   const scaled = competencies.map((c) => ({

@@ -1,0 +1,101 @@
+# AIV-P1-082: a full-length platform description in paragraphs, the shape that failed on Azure dev (synthetic). Six
+# stated competencies and two suggestions, each weighed on its own (relative weights over 100 in total; the jobs module
+# scales them to 100).
+id: platform-engineer-long
+input:
+  jobType: devops_sre
+  title: 'Platform Engineer, Kubernetes'
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      You will run the Kubernetes clusters that host every service of our logistics platform. You manage the clusters
+      and their networking with Terraform and keep upgrades routine. You build the deployment pipelines that teams use
+      to ship many times a day, with safe rollbacks. You define the metrics, logs and alerts that tell us a service is
+      unhealthy, and you write the runbooks for them. You take part in the on-call rota and lead incident reviews
+      without blame. You keep the monthly cloud bill in check and show teams what their services cost. The platform
+      tracks delivery drivers across three countries, and drivers and dispatchers depend on it around the clock.
+expected:
+  match:
+    competencies[*].name:
+      - Kubernetes operations
+      - Infrastructure as code
+      - Deployment pipelines
+      - Observability and alerting
+      - Incident response
+      - Cloud cost management
+    suggestions[*].name:
+      - Platform security
+      - Location data at scale
+recorded:
+  output:
+    competencies:
+      - name: Kubernetes operations
+        evidenceExpected: Clusters they ran in production, and upgrades they carried out without downtime
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will run the Kubernetes clusters that host every service of our logistics platform.
+      - name: Infrastructure as code
+        evidenceExpected: Terraform they wrote for clusters and networking, and how they kept changes reviewable
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You manage the clusters and their networking with Terraform and keep upgrades routine.
+      - name: Deployment pipelines
+        evidenceExpected: Pipelines they built that teams ship through daily, including the rollback path
+        weight: 25
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You build the deployment pipelines that teams use to ship many times a day, with safe rollbacks.
+      - name: Observability and alerting
+        evidenceExpected: Metrics, alerts and runbooks they defined, and incidents those alerts caught early
+        weight: 20
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You define the metrics, logs and alerts that tell us a service is unhealthy
+      - name: Incident response
+        evidenceExpected: Incidents they handled on call, and blameless reviews they led with the changes that followed
+        weight: 20
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You take part in the on-call rota and lead incident reviews without blame.
+      - name: Cloud cost management
+        evidenceExpected: Cloud costs they measured per service and the savings they made
+        weight: 10
+        level: 2
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: You keep the monthly cloud bill in check and show teams what their services cost.
+    refused: false
+    reason: null
+    suggestions:
+      - name: Platform security
+        evidenceExpected: Access controls, secret handling or patching they put in place on a shared platform
+        weight: 15
+        level: 3
+        type: desirable
+        why: Every service runs on these clusters, but the description asks for no security work on them.
+        citations:
+          - sourceId: S1
+            quote: host every service of our logistics platform
+      - name: Location data at scale
+        evidenceExpected: Systems they ran that took in a steady stream of location updates from devices
+        weight: 10
+        level: 2
+        type: desirable
+        why: The platform tracks drivers in real time, but the description does not ask for experience with that load.
+        citations:
+          - sourceId: S1
+            quote: The platform tracks delivery drivers across three countries

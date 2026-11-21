@@ -9,7 +9,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { JobError } from '../domain/job.ts';
 import { CATALOGUE_V1 } from '../infrastructure/catalogue-v1.fixture.ts';
-import { competencyDrafting } from './draft-competencies.ts';
+import { competencyDrafting, type CompetencyDraft } from './draft-competencies.ts';
 
 // Feature: Draft competencies from the job description (AIV-P1-008). The Senior AI Engineer demo job (personas.md).
 
@@ -151,17 +151,21 @@ describe('Scenario: Every drafted competency cites the description', () => {
     expect(prompts).toHaveLength(2);
   });
 
-  it('refuses a weight, a level or a weight total out of range rather than patching it', () => {
-    const bad = { ...answer, competencies: [{ ...answer.competencies[0], level: 6 }] };
+  // SAFETY: mutation check: removed .max(8) on competencies and .max(400) on evidenceExpected in draftCompetenciesSchema
+  // -> this test failed
+  it('refuses a weight, a level, a list or a text out of range rather than patching it', () => {
+    const first = answer.competencies[0];
     expect(draftCompetenciesSchema.safeParse(answer).success).toBe(true);
-    expect(draftCompetenciesSchema.safeParse(bad).success).toBe(false);
-    expect(
-      draftCompetenciesSchema.safeParse({ ...answer, competencies: [{ ...answer.competencies[0], weight: 0 }] })
-        .success,
-    ).toBe(false);
-    // Weights totalling over 100, as the prompt forbids.
-    const heavy = answer.competencies.map((c) => ({ ...c, weight: 30 }));
-    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: heavy }).success).toBe(false);
+    for (const broken of [
+      { ...first, level: 6 },
+      { ...first, weight: 0 },
+      { ...first, weight: 101 },
+      { ...first, name: 'n'.repeat(121) },
+      { ...first, evidenceExpected: 'e'.repeat(401) },
+    ])
+      expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: [broken] }).success).toBe(false);
+    const nine = Array.from({ length: 9 }, (_, i) => ({ ...first, name: `Competency ${i}` }));
+    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: nine }).success).toBe(false);
   });
 });
 
@@ -249,11 +253,47 @@ describe('Scenario: A suggestion explains itself (AIV-P1-009)', () => {
     expect(prompts).toHaveLength(2);
   });
 
-  it('refuses more than two suggestions, or weights over 100 with the suggestions, rather than trimming', () => {
+  it('refuses more than two suggestions, or a why over 400 characters, rather than trimming', () => {
     const three = { ...answer, suggestions: [...answer.suggestions, { ...answer.suggestions[0], name: 'Third' }] };
     expect(draftCompetenciesSchema.safeParse(three).success).toBe(false);
-    const heavy = { ...answer, suggestions: answer.suggestions.map((s) => ({ ...s, weight: 20 })) };
-    expect(draftCompetenciesSchema.safeParse(heavy).success).toBe(false);
+    const long = { ...answer, suggestions: [{ ...answer.suggestions[0], why: 'w'.repeat(401) }] };
+    expect(draftCompetenciesSchema.safeParse(long).success).toBe(false);
+  });
+});
+
+const total = (draft: CompetencyDraft) =>
+  [...draft.competencies, ...draft.suggestions].reduce((sum, c) => sum + c.weightPercent, 0);
+
+describe('Scenario: The drafted weights total 100 (AIV-P1-082)', () => {
+  // SAFETY: mutation check: removed rebalanceWeights from draftCompetencies -> both tests here failed (180, 75)
+  it('scales relative weights over or under 100 to total 100, in proportion, competencies and suggestions together', async () => {
+    const heavy = {
+      ...answer,
+      competencies: answer.competencies.map((c) => ({ ...c, weight: 30 })),
+      suggestions: answer.suggestions.map((s) => ({ ...s, weight: 30 })),
+    };
+    const scaled = await setup(heavy).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
+    expect(total(scaled)).toBe(100);
+    expect([...scaled.competencies, ...scaled.suggestions].map((c) => c.weightPercent)).toEqual([
+      20, 16, 16, 16, 16, 16,
+    ]);
+    // 10, 20 and 30 of 60: rounded down to 16, 33 and 50, the remainder to the heaviest.
+    const light = answer.competencies.slice(0, 3).map((c, i) => ({ ...c, weight: 10 * (i + 1) }));
+    const raised = await setup({ ...answer, competencies: light, suggestions: [] }).drafting.draftCompetencies(
+      workspaceId,
+      input,
+      CATALOGUE_V1,
+    );
+    expect(raised.competencies.map((c) => c.weightPercent)).toEqual([16, 33, 51]);
+  });
+
+  it('keeps weights that already total 100, and counts only the suggestions it keeps', async () => {
+    const kept = await setup(answer).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
+    expect(total(kept)).toBe(100);
+    const duplicate = { ...answer, suggestions: [{ ...answer.suggestions[1], name: 'Cost and reliability' }] };
+    const deduped = await setup(duplicate).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
+    expect(deduped.suggestions).toEqual([]);
+    expect(total(deduped)).toBe(100);
   });
 });
 
