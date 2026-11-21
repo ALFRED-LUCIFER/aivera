@@ -4,7 +4,9 @@ import {
   findGaps,
   guardLinks,
   MAX_CHANGES,
+  OWN_ACCOUNT_LIMIT,
   rankChanges,
+  settleProvenance,
   sourceText,
   type MapGrade,
   type MapSource,
@@ -26,10 +28,11 @@ const repo = (over: Partial<MapSource> = {}): MapSource => ({
   id: 'repo',
   kind: 'repository',
   authorship: 'clear',
+  hasLogin: true,
   declarationSpans: [],
   ...over,
 });
-const cv: MapSource = { id: 'cv', kind: 'cv', authorship: null, declarationSpans: [] };
+const cv: MapSource = { id: 'cv', kind: 'cv', authorship: null, hasLogin: false, declarationSpans: [] };
 
 const link = (over: Partial<ModelLink> & { quote?: string; sourceId?: string; start?: number } = {}): ModelLink => {
   const { quote = 'authored 412 of 460 commits', sourceId = 'repo', start = 0, ...rest } = over;
@@ -225,6 +228,71 @@ describe('Feature: Evidence mapped to competencies with cited excerpts (AIV-P1-0
       ['repo', 'submitted'],
       ['cv', 'claim'],
     ]);
+  });
+});
+
+const own = (kind: MapSource['kind'], id: string = kind): MapSource => ({
+  id,
+  kind,
+  authorship: null,
+  hasLogin: false,
+  declarationSpans: [],
+});
+// A cover letter asserting expert skill; the model rates it Strong at level 5.
+const expert = (sourceId: string) =>
+  link({ competencyId: LLM, sourceId, quote: 'I am an expert in production LLM systems', level: 5 });
+
+describe("Feature: Candidate-written sources cannot be proven on the model's word (AIV-P1-087)", () => {
+  // SAFETY: mutation check: removed the non-repository cap (KIND_CAP push) -> "A source kind is capped whatever the model says" failed
+  describe('Scenario Outline: A source kind is capped whatever the model says', () => {
+    it.each([
+      ['document', 'medium', 4],
+      ['shipped_product', 'medium', 4],
+      ['portal_submission', 'medium', 4],
+      ['reference_call', 'supporting', 2],
+      ['interview_note', 'supporting', 2],
+    ] as const)('%s -> strength %s, level at most %i', (kind, cap, level) => {
+      const [stored] = guard([expert(kind)], [own(kind)]).links;
+      expect(stored).toMatchObject({ strength: cap, ceiling: cap, level, provenance: 'submitted' });
+    });
+
+    it('caps a repository link’s level by its ceiling, and leaves a CV claim’s level as it claims', () => {
+      expect(guard([link({ level: 5 })], [repo({ authorship: 'shared' })]).links[0]?.level).toBe(4);
+      expect(guard([link({ level: 5 })], [repo()]).links[0]?.level).toBe(5);
+      const cvClaim = link({ sourceId: 'cv', quote: 'expert in Python', strength: 'supporting', level: 5 });
+      expect(guard([cvClaim]).links[0]).toMatchObject({ strength: 'supporting', provenance: 'claim', level: 5 });
+    });
+  });
+
+  // SAFETY: mutation check: settleProvenance left a lone candidate-written link "submitted" -> "A candidate-written source alone is a claim" failed
+  it('Scenario: A candidate-written source alone is a claim', () => {
+    for (const kind of ['document', 'shipped_product', 'portal_submission'] as const) {
+      const { links } = guard([expert(kind)], [own(kind)]);
+      expect(settleProvenance(links, [own(kind)], new Set())).toEqual([
+        expect.objectContaining({ provenance: 'claim', strength: 'supporting', limit: OWN_ACCOUNT_LIMIT, level: 4 }),
+      ]);
+    }
+    // Not the candidate's own account: a reference call alone stays submitted (Supporting counts only corroborated).
+    const call = guard([expert('reference_call')], [own('reference_call')]).links;
+    expect(settleProvenance(call, [own('reference_call')], new Set())[0]?.provenance).toBe('submitted');
+  });
+
+  it('Scenario: A second independent source can still raise strength', () => {
+    const sources = [own('document', 'letter'), repo()];
+    const { links } = guard([expert('letter'), link({ competencyId: LLM })], sources);
+    expect(settleProvenance(links, sources, new Set([LLM])).map((l) => [l.sourceId, l.provenance, l.strength])).toEqual(
+      [
+        ['letter', 'corroborated', 'medium'],
+        ['repo', 'corroborated', 'strong'],
+      ],
+    );
+  });
+
+  // SAFETY: mutation check: called STRENGTH_CAP[authorship] directly instead of strengthCapOf -> "The GitHub login limit applies in mapping" failed
+  it('Scenario: The GitHub login limit applies in mapping', () => {
+    const noLogin = guard([link({ level: 5 })], [repo({ hasLogin: false })]).links[0];
+    expect(noLogin).toMatchObject({ strength: 'medium', ceiling: 'medium', level: 4 });
+    expect(guard([link()], [repo({ hasLogin: true })]).links[0]?.strength).toBe('strong');
   });
 });
 

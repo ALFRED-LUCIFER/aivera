@@ -1,0 +1,50 @@
+# Priya Nair's cover letter asserts expert skill (AIV-P1-087): her own words with nothing to inspect, so a claim, never
+# Strong. The evidence module caps a document at Medium whatever the model says, and stores it as a claim until a
+# second, independent source backs the competency.
+id: priya-nair-cover-letter-expert
+people: [Priya Nair]
+input:
+  competencies:
+    - id: c-llm
+      name: LLM systems in production
+      evidenceExpected: An assistant or LLM feature running for real users, with its monitoring.
+    - id: c-retrieval
+      name: Retrieval and evaluation
+      evidenceExpected: An eval harness, retrieval metrics or a regression gate the candidate built.
+sources:
+  - id: S1
+    kind: document
+    text: >-
+      Dear hiring team, I am an expert in production LLM systems and the strongest retrieval engineer you will
+      interview. I have shipped assistants used by thousands of merchants and I evaluate every release myself.
+expected:
+  match:
+    links[*].competencyId: [c-llm, c-retrieval]
+    links[*].label: [claim]
+    links[*].strength: [claim]
+  safety:
+    forbidden: ['"strong"']
+recorded:
+  output:
+    links:
+      - competencyId: c-llm
+        strength: claim
+        label: claim
+        level: 2
+        limit: Her own cover letter; no assistant or monitoring can be inspected.
+        citations:
+          - sourceId: S1
+            quote: I am an expert in production LLM systems
+      - competencyId: c-retrieval
+        strength: claim
+        label: claim
+        level: 2
+        limit: Her own cover letter; no evaluation or metric has been shared.
+        citations:
+          - sourceId: S1
+            quote: I evaluate every release myself
+    changes:
+      - competencyId: c-llm
+        text: Ask for a link to an assistant she shipped and its monitoring dashboard.
+      - competencyId: c-retrieval
+        text: Ask for the evaluation harness or a release report she gated.

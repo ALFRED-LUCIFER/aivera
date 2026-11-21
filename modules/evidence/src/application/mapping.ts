@@ -17,6 +17,7 @@ import {
   findGaps,
   guardLinks,
   rankChanges,
+  settleProvenance,
   sourceText,
   type DiscardReason,
   type EvidenceGap,
@@ -217,6 +218,7 @@ export async function mapEvidence(
       id: sourceId,
       kind: source.kind,
       authorship: measured && classifyAuthorship(measured),
+      hasLogin: !!read?.read.githubLogin,
       declarationSpans,
     });
     originSources.push({
@@ -268,18 +270,12 @@ export async function mapEvidence(
       .filter((p) => p.outcome === 'contradiction' && !p.resolved)
       .flatMap((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']),
   );
-  const corroborated = corroboratedCompetencies({
-    links: guarded.links,
-    sources: originSources,
-    originGroups,
-    logins,
-    withheld,
-  });
-  const links = guarded.links.map((l) =>
-    l.provenance === 'submitted' && corroborated.has(l.competencyId)
-      ? { ...l, provenance: 'corroborated' as const }
-      : l,
-  );
+  const rules = { links: guarded.links, sources: originSources, originGroups, logins };
+  const settled = settleProvenance(guarded.links, mapSources, corroboratedCompetencies({ ...rules, withheld }));
+  // A withheld link shows "Contradictory" while the contradiction is open, then its stored provenance, with no re-map
+  // after a resolution: so it is stored as it would settle once resolved, never as the claim its withholding made it.
+  const ifResolved = settleProvenance(guarded.links, mapSources, corroboratedCompetencies(rules));
+  const links = settled.map((l, i) => (withheld.has(l.sourceId) ? (ifResolved[i] ?? l) : l));
   const gaps = findGaps(competencyIds, links, mapGrades);
   const ranked = rankChanges({
     competencies: rubric.competencies.map((c) => ({ id: c.id, weight: c.weightPercent })),

@@ -163,18 +163,27 @@ const flag = (s1: string, s2: string) =>
     ],
   });
 
-/** The backed score on the LLM competency alone. */
-const backed = async (candidateId: string) =>
-  (
-    await as(ALEX, w1, async (ctx) =>
-      assessment.assessCandidate(ctx, {
-        candidateId,
-        jobId: JOB,
-        rubric: { versionId: V1, competencies: [{ id: LLM, weightPercent: 100, levelNeeded: 3, type: 'mandatory' }] },
-        evidence: await evidence.listEvidenceForCandidate(ctx, candidateId, JOB),
-      }),
-    )
-  ).backedScore;
+/** The assessment on one competency alone (LLM unless named). */
+const assessed = (candidateId: string, competencyId = LLM) =>
+  as(ALEX, w1, async (ctx) =>
+    assessment.assessCandidate(ctx, {
+      candidateId,
+      jobId: JOB,
+      rubric: {
+        versionId: V1,
+        competencies: [{ id: competencyId, weightPercent: 100, levelNeeded: 3, type: 'mandatory' }],
+      },
+      evidence: await evidence.listEvidenceForCandidate(ctx, candidateId, JOB),
+    }),
+  );
+const backed = async (candidateId: string) => (await assessed(candidateId)).backedScore;
+
+/** The fake model rates every cited quote Strong at level 5 (expert) on one competency (LLM unless named). */
+const expert = (quotes: [number, string][], competencyId = LLM) =>
+  answer(
+    competencyId,
+    quotes.map(([source, quote]): [number, string, number] => [source, quote, 5]),
+  ).replaceAll('"medium"', '"strong"');
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('pgvector/pgvector:pg17').withDatabase('aivera').start();
@@ -299,7 +308,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       [2, 'I built the retrieval layer of a merchant assistant.'],
     ]);
     await mapNow(priya);
-    expect((await linked(priya, LLM)).map((i) => i.provenance)).toEqual(['submitted', 'submitted']);
+    expect((await linked(priya, LLM)).map((i) => i.provenance)).toEqual(['claim', 'claim']);
   });
 
   it('Scenario: Near-duplicate sources count as one origin, even as a reference call', async () => {
@@ -314,7 +323,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       [2, 'designed the refusal path'],
     ]);
     await mapNow(omar);
-    expect((await linked(omar, LLM)).map((i) => i.provenance)).toEqual(['submitted', 'submitted']);
+    expect((await linked(omar, LLM)).map((i) => i.provenance)).toEqual(['claim', 'claim']);
 
     // Reference notes copied from the write-up are the same origin too, so they confirm nothing.
     await reference(omar, COPIED);
@@ -323,7 +332,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       [3, 'designed the refusal path'],
     ]);
     await mapNow(omar);
-    expect((await linked(omar, LLM)).map((i) => i.provenance)).toEqual(['submitted', 'submitted']);
+    expect((await linked(omar, LLM)).map((i) => i.provenance).toSorted()).toEqual(['claim', 'submitted']);
   });
 
   it('Scenario Outline: a merged pull request corroborates only when someone else merged it into a repository the candidate does not own', async () => {
@@ -369,23 +378,25 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
     );
     expect(items).toHaveLength(2);
 
-    // Self-merged: candidate-controlled evidence; the write-up stays Candidate-submitted.
+    // Self-merged: candidate-controlled evidence; the write-up alone is a claim (AIV-P1-087).
     await withWorkspace(app, w1, (tx) =>
       tx.execute(sql`update evidence.merged_pull_request set merged_by = 'arjun-menon-example', self_merged = true
         where candidate_id = ${arjun}`),
     );
     await mapNow(arjun);
-    expect((await linked(arjun, DISTRIBUTED)).map((i) => i.provenance)).toEqual(['submitted', 'submitted']);
+    expect((await linked(arjun, DISTRIBUTED)).map((i) => i.provenance).toSorted()).toEqual(['claim', 'submitted']);
   });
 
   describe('a pre-check contradiction', () => {
     let daniel: string;
     let contradictionId: string;
 
+    // SAFETY: mutation check: stored a withheld link as its withholding settled it, not as it settles once resolved -> this test failed
     it('Scenario: Conflicting numbers are flagged with both excerpts cited, and the backed score leaves them out', async () => {
       daniel = await person('Daniel Novak', 'daniel.novak@example.com');
       await record(daniel, 'document', 'Support assistant write-up', 'Raised 71% → 88% answer accuracy.');
-      await record(daniel, 'interview_note', 'Round 1 scorecard', 'Interviewer noted answer accuracy was 80%.');
+      // A reference call: a write-up beside an interview note alone would back nothing either way (AIV-P1-087).
+      await record(daniel, 'reference_call', 'Reference call', 'Her manager said answer accuracy was 80%.');
       completion = answer(ACCURACY, [
         [1, 'Raised 71% → 88% answer accuracy.', 4],
         [2, 'answer accuracy was 80%', 4],
@@ -455,8 +466,8 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       ]);
       const items = await linked(daniel, ACCURACY);
       expect(items.map((i) => [i.provenance, i.limit])).toEqual([
-        ['submitted', 'The user count comes from her own write-up; the reference confirmed the scale only roughly.'],
-        ['submitted', 'The user count comes from her own write-up; the reference confirmed the scale only roughly.'],
+        ['corroborated', 'The user count comes from her own write-up; the reference confirmed the scale only roughly.'],
+        ['corroborated', 'The user count comes from her own write-up; the reference confirmed the scale only roughly.'],
       ]);
     });
 
@@ -469,7 +480,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
         resolvedBy: ALEX,
         resolutionNote: 'Reference confirmed scale only roughly',
       });
-      expect((await linked(daniel, ACCURACY)).map((i) => i.provenance)).toEqual(['submitted', 'submitted']);
+      expect((await linked(daniel, ACCURACY)).map((i) => i.provenance)).toEqual(['corroborated', 'corroborated']);
     });
 
     it('refuses an empty note and an unknown id', async () => {
@@ -590,6 +601,66 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       expect((await linked(yousef, LLM)).map((i) => i.provenance)).not.toContain('contradictory');
       comparison = '{"contradictions":[]}';
     });
+  });
+});
+
+describe("Feature: Candidate-written sources cannot be proven on the model's word (AIV-P1-087)", () => {
+  const COVER = 'I am an expert in production LLM systems and shipped a merchant assistant.';
+
+  it('Scenario: A candidate-written source alone is a claim: a cover letter scores zero backed', async () => {
+    const maria = await person('Maria Santos', 'maria.cover@example.com');
+    await record(maria, 'document', 'Cover letter', COVER);
+    completion = expert([[1, 'I am an expert in production LLM systems']]);
+    await mapNow(maria);
+    const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, maria, JOB));
+    const cited = items.filter((i) => i.competencies.some((c) => c.competencyId === LLM));
+    expect(cited.map((i) => [i.provenance, i.strength, i.limit, i.competencies[0]?.level])).toEqual([
+      [
+        'claim',
+        'supporting',
+        "The candidate's own account: a claim until a second, independent source supports it.",
+        4,
+      ],
+    ]);
+    const result = await assessed(maria);
+    // Zero backed; the claim widens only "up to M if claims hold" (level 4 of 5 at 100% weight).
+    expect([result.backedScore, result.upperBound]).toEqual([0, 80]);
+  });
+
+  it('Scenario: A second independent source can still raise strength: a document and a repository, citing both', async () => {
+    const priya = await person('Priya Nair', 'priya.second@example.com');
+    const letter = await record(priya, 'document', 'Cover letter', COVER);
+    // Her repository, read with her login: 90 of 100 commits are hers, a commit history nobody else wrote.
+    await as(ALEX, w1, async (ctx) => {
+      const { sourceId } = await evidence.requestRepositoryRead(ctx, {
+        candidateId: priya,
+        url: 'https://github.com/priya-credalent-example/merchant-assistant',
+        githubLogin: 'priya-credalent-example',
+        emails: [],
+        synthetic: true,
+      });
+      await ctx.tx.execute(sql`update evidence.repository_read set status = 'read', total_commits = 100,
+        authored_commits = 90, generated_only_commits = 0, generated_checked = 90, commits_truncated = false,
+        files_inspected = 40 where source_id = ${sourceId}`);
+      await ctx.tx.execute(sql`insert into evidence.item (id, workspace_id, source_id, candidate_id, excerpt,
+        provenance, strength, limit_statement, synthetic, created_at) values (gen_random_uuid(), ${w1}, ${sourceId},
+        ${priya}, 'authored 90 of 100 commits', 'submitted', 'medium', 'Measured from the commit history.', true,
+        ${new Date(NOW.getTime() + 60_000).toISOString()})`);
+    });
+    // Distributed systems: no skill signal to grade, so the repository link is not held to a grade (AIV-P1-072).
+    completion = expert(
+      [
+        [1, 'shipped a merchant assistant'],
+        [2, 'authored 90 of 100 commits'],
+      ],
+      DISTRIBUTED,
+    );
+    await mapNow(priya);
+    const items = await linked(priya, DISTRIBUTED);
+    expect(items.map((i) => i.provenance)).toEqual(['corroborated', 'corroborated']);
+    expect(items.map((i) => i.sourceId)).toContain(letter.sourceId);
+    const [shown] = (await assessed(priya, DISTRIBUTED)).competencies;
+    expect(shown?.proven.itemIds.toSorted()).toEqual(items.map((i) => i.id).toSorted());
   });
 });
 
