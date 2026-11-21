@@ -65,6 +65,7 @@ export function intakeStore(tx: Tx): IntakeStore {
         .selectDistinctOn([application.receivedAt, application.id], {
           applicationId: application.id,
           personId: application.personId,
+          stage: application.stage,
           receivedAt: application.receivedAt,
           source: applicationSource.source,
         })

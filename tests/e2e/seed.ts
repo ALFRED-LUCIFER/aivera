@@ -1,7 +1,7 @@
 import { createAudit } from '@credalent/audit/composition';
 import { CandidateAccountError } from '@credalent/candidate-accounts';
 import { createCandidateAccounts } from '@credalent/candidate-accounts/composition';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
@@ -318,8 +318,14 @@ export default async function seed() {
     await as((ctx) => jobs.changeStage(ctx, sae, 'round_1'));
     // AIV-P1-086: three applicants received 14 Nov, a minute apart, as "Add applicants" files them (this harness has no
     // Blob storage, so not through the dialog), for the Candidates tab's list. Not assessed, so none has a score.
-    let received = new Date();
-    const intake = createIntake(workspaces, createCandidates(workspaces), jobs, () => received);
+    let received: Date;
+    const intake = createIntake(
+      workspaces,
+      createCandidates(workspaces),
+      jobs,
+      displayNamesInWorkspace,
+      () => received,
+    );
     for (const [i, [name, source]] of (
       [
         ['Sara Al Qahtani', 'linkedin'],

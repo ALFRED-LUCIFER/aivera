@@ -5,7 +5,7 @@ import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
-import { applicationUseCases } from './application/applications.ts';
+import { applicationUseCases, type Ports } from './application/applications.ts';
 import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
 import { candidatesForJob, intakeStore, jobsForCandidate } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
@@ -13,8 +13,10 @@ import { outbox } from './infrastructure/schema.ts';
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createIntake(
   workspaces: Pick<WorkspacesContract, 'authorize'>,
-  candidates: Pick<CandidatesContract, 'findOrCreatePerson' | 'displayNames'>,
+  candidates: Pick<CandidatesContract, 'findOrCreatePerson'>,
   jobs: Pick<JobsContract, 'getJob'>,
+  /** The candidates composition's `displayNamesInWorkspace` (AIV-P1-086). */
+  displayNames: Ports['displayNames'],
   now: () => Date = () => new Date(),
 ): IntakeContract {
   return applicationUseCases({
@@ -28,7 +30,7 @@ export function createIntake(
       }),
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),
-    displayNames: (ctx, job, personIds) => candidates.displayNames(ctx, job, personIds),
+    displayNames,
     jobResource: async (ctx, jobId) => {
       const job = await jobs.getJob(ctx, jobId);
       return job && { jobId: job.id, clientId: job.clientId };
