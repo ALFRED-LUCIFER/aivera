@@ -117,6 +117,9 @@ export const sample = {
     oldest: 'Oldest waiting 2 days',
     view: 'View approvals',
     ai: 'AI tokens today',
+    catalogue: 'Catalogue version',
+    error: 'We could not load the catalogue. Try again.',
+    retry: 'Try again',
   },
   provenance: {
     corroborated: 'Independently corroborated',

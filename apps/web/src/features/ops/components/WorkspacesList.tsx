@@ -4,8 +4,15 @@ import type { Messages } from '@credalent/i18n';
 import { useTimeZone, useTranslations } from '@credalent/i18n/react';
 import { Button, DataTable, Input, Label, ValueBasis, type DataTableColumn } from '@credalent/ui';
 import Link from 'next/link';
-import { workspaceHref, type WorkspaceRow, type WorkspacesListView } from '../domain/workspaces.ts';
+import {
+  workspaceHref,
+  type WorkspaceRow,
+  type WorkspaceSearch,
+  type WorkspacesListView,
+} from '../domain/workspaces.ts';
 import { SyntheticBadge, WorkspaceStatus } from './WorkspaceBadges.tsx';
+
+type WorkspacesFilter = Pick<WorkspaceSearch, 'status' | 'sort'>;
 
 type ColumnId = keyof Messages['ops']['workspaces']['columns'];
 
@@ -59,6 +66,7 @@ export function WorkspacesList({ search, table }: WorkspacesListView) {
           </form>
         </search>
       )}
+      {ready && (ready.filter.status || ready.filter.sort === 'ai') && <FilterLine {...ready.filter} />}
       <DataTable
         caption={t('caption')}
         columns={columns}
@@ -73,6 +81,20 @@ export function WorkspacesList({ search, table }: WorkspacesListView) {
         footer={ready && ready.pageCount > 1 && <Pager {...ready} />}
       />
     </div>
+  );
+}
+
+// The console home's filter or sort (AIV-P2-051), said in words with the way back to the full list.
+function FilterLine({ status, sort }: WorkspacesFilter) {
+  const t = useTranslations('ops.workspaces');
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-text-2">
+      {status && <span>{t('filteredBy', { status: t(`status.${status}`) })}</span>}
+      {sort === 'ai' && <span>{t('sortedByAi')}</span>}
+      <Link href="/ops/workspaces" className="font-medium text-text underline underline-offset-2">
+        {t('showAll')}
+      </Link>
+    </p>
   );
 }
 

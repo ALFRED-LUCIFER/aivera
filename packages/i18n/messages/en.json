@@ -637,6 +637,33 @@
     "signedIn": "Signed in as a Credalent operator.",
     "operator": "Operator",
     "metadataOnly": "Platform metadata only. Candidate data never appears here.",
+    "home": {
+      "tiles": "Platform counts",
+      "observed": "Observed",
+      "notAvailable": "Not yet available",
+      "count": "{count, number}",
+      "retry": "Try again",
+      "workspacesError": "We could not load workspace counts. Try again.",
+      "oldest": "{days, plural, =0 {oldest waiting since today} one {oldest # day} other {oldest # days}}",
+      "view": {
+        "active": "View active workspaces",
+        "pending_approval": "View approvals",
+        "suspended": "View suspended workspaces",
+        "rejected": "View workspaces not approved"
+      },
+      "ai": {
+        "label": "AI tokens today (UTC)",
+        "budgets": "{near, number} at 80% or more · {at, number} at the budget",
+        "view": "View workspaces by AI use",
+        "error": "We could not load AI use. Try again."
+      },
+      "catalogue": {
+        "label": "Catalogue version",
+        "live": "Version {version, number} live",
+        "view": "Open the catalogue",
+        "error": "We could not load the catalogue. Try again."
+      }
+    },
     "nav": {
       "label": "Operations",
       "soon": "Coming soon",
@@ -688,6 +715,9 @@
       "pages": "Page {page, number} of {count, number}",
       "previous": "Previous page",
       "next": "Next page",
+      "filteredBy": "Showing only: {status}.",
+      "sortedByAi": "Sorted by AI tokens today, most first.",
+      "showAll": "Show all workspaces",
       "detail": {
         "breadcrumb": "Breadcrumb",
         "facts": "Platform facts",

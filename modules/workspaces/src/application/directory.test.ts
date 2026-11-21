@@ -29,6 +29,10 @@ const directory = (gone: string[] = []) => {
       listIds: async () => stored.map((s) => s.id),
       readSummary,
       readCreator: async (id) => `creator of ${id}`,
+      readStatus: async (id) => {
+        const s = gone.includes(id) ? undefined : stored.find((f) => f.id === id);
+        return s ? { id: s.id, status: s.status, createdAt: s.createdAt } : null;
+      },
     }),
   };
 };
@@ -63,6 +67,12 @@ describe('listSummaries', () => {
     });
   });
 
+  it('AIV-P2-051: filters by status after the name match, so total counts only that status', async () => {
+    const { total, summaries } = await directory().listSummaries({ query: '', offset: 0, limit: 50, status: 'active' });
+    expect(total).toBe(2);
+    expect(summaries.map((s) => s.id)).toEqual(['w2', 'w1']);
+  });
+
   it('skips a workspace deleted between the directory read and its own read', async () => {
     const { total, summaries } = await directory(['w2']).listSummaries({ query: '', offset: 0, limit: 50 });
     expect(total).toBe(2);
@@ -91,10 +101,20 @@ describe('listPending (AIV-P2-039)', () => {
       listIds: async () => all.map((s) => s.id),
       readSummary: async (id) => all.find((s) => s.id === id) ?? null,
       readCreator: async (id) => `creator of ${id}`,
+      readStatus: async () => null,
     });
     expect((await d.listPending()).map((p) => [p.summary.name, p.creatorUserId])).toEqual([
       ['Early Sign-up', 'creator of w4'],
       ['Late Sign-up', 'creator of w5'],
+    ]);
+  });
+});
+
+describe('listStatuses (AIV-P2-051)', () => {
+  it('returns only id, status and created date for each workspace, skipping one deleted meanwhile', async () => {
+    expect(await directory(['w2']).listStatuses()).toEqual([
+      { id: 'w3', status: 'suspended', createdAt: at(3) },
+      { id: 'w1', status: 'active', createdAt: at(1) },
     ]);
   });
 });

@@ -20,6 +20,7 @@ import {
   aiTokenUsageStore,
   listDirectory,
   readCreator,
+  readStatus,
   readSummary,
   workspaceStore,
 } from './infrastructure/repository.ts';
@@ -104,5 +105,6 @@ export function createWorkspaceDirectory(db: Db): WorkspaceDirectory {
     listIds: () => db.transaction(listDirectory),
     readSummary: (workspaceId) => withWorkspace(db, workspaceId, (tx) => readSummary(tx, workspaceId)),
     readCreator: (workspaceId) => withWorkspace(db, workspaceId, (tx) => readCreator(tx, workspaceId)),
+    readStatus: (workspaceId) => withWorkspace(db, workspaceId, (tx) => readStatus(tx, workspaceId)),
   });
 }

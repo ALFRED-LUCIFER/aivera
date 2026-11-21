@@ -80,6 +80,15 @@ export function EvidenceSections() {
             basisLabel={sample.basis.observed}
             notAvailableLabel={sample.basis.notAvailable}
           />
+          <StatTile
+            label={sample.stat.catalogue}
+            value={null}
+            basis="observed"
+            basisLabel={sample.basis.observed}
+            notAvailableLabel={sample.basis.notAvailable}
+            error={sample.stat.error}
+            action={<a href="#stat">{sample.stat.retry}</a>}
+          />
         </div>
       </Section>
 

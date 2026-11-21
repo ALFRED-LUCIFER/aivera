@@ -10,6 +10,8 @@ The console at `/ops` is for the people who run Credalent. It is not for workspa
 2. Signing in opens `/ops` when you belong to no workspace (AIV-P2-058); otherwise open `/ops`. If you were not signed in, `/ops` sends you to sign in and brings you back.
 3. You see "Credalent operations" and "Signed in as a Credalent operator." Anyone else gets the 403 page.
 
+The home page (AIV-P2-051) shows platform counts, each marked "Observed" or "Not yet available": workspaces by status (Active, Waiting for approval with the oldest waiting age, Suspended, Not approved), AI tokens today (UTC) across workspaces with how many are at 80% or more of their daily budget and how many at it, and the live catalogue version. Each tile links to the page to act on: approvals, the workspaces list filtered by status (`?status=`) or sorted by today's AI tokens (`?sort=ai`), or the catalogue. A tile whose read fails says so and the others still show. The counts read every workspace in its own scope, like the list.
+
 Your email must be the one the identity module stored for you: your verified sign-in email, lower-case. The list is compared case-insensitively.
 
 ## Setting the list on Azure dev (owner)

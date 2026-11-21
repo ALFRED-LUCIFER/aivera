@@ -2,6 +2,7 @@ import type { User } from '@credalent/identity';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyStatusChange,
+  dashboardReads,
   getWorkspaceFacts,
   isPlatformOperator,
   listOperatorActions,
@@ -54,10 +55,14 @@ const summary = {
   activeMembers: 3,
 };
 const ai = vi.hoisted(() => ({ usage: vi.fn(), setDailyBudget: vi.fn(async (_input: unknown) => undefined) }));
+const listStatuses = vi.hoisted(() => vi.fn());
+const listSummaries = vi.hoisted(() => vi.fn(async (_search: unknown) => ({ total: 1, summaries: [summary] })));
+const getPublishedCatalogue = vi.hoisted(() => vi.fn());
 vi.mock('@credalent/workspaces/composition', () => ({
   createWorkspaceDirectory: () => ({
     getSummary: async () => summary,
-    listSummaries: async () => ({ total: 1, summaries: [summary] }),
+    listSummaries: (search: unknown) => listSummaries(search),
+    listStatuses: () => listStatuses(),
   }),
   createAiBudgetConsole: () => ai,
 }));
@@ -75,7 +80,10 @@ vi.mock('@credalent/audit/composition', () => ({ createAudit: () => ({ listOpera
 const changeStatus = vi.fn(async (_input: unknown, alongside: (tx: string) => Promise<void>) => alongside('tx'));
 const pausePublicListings = vi.fn(async () => {});
 vi.mock('./workspace', () => ({ getWorkspaces: () => ({ changeStatus }) }));
-vi.mock('./jobs', () => ({ getJobs: () => ({ pausePublicListings }) }));
+vi.mock('./jobs', () => ({
+  getJobs: () => ({ pausePublicListings }),
+  getCatalogue: () => ({ getPublishedCatalogue }),
+}));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');
@@ -184,6 +192,66 @@ describe('AI token use and the daily budget (AIV-P2-038)', () => {
       'NEXT_HTTP_ERROR_FALLBACK;403',
     );
     expect(ai.setDailyBudget).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-051: the console home's reads, each failing on its own, ids and numbers only.
+describe('dashboardReads (AIV-P2-051)', () => {
+  const use = { dailyBudget: 2_000_000, overridden: false, days: [{ day: '2026-11-25', tokens: 1_500 }] };
+  const statuses = [{ id: DEMO, status: 'active', createdAt: new Date('2026-11-19T00:00:00Z') }];
+  beforeEach(() => {
+    session.mockResolvedValue(PIA);
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-25T09:00:00Z') });
+    listStatuses.mockResolvedValue(statuses);
+    ai.usage.mockResolvedValue(use);
+    getPublishedCatalogue.mockResolvedValue({ version: 1 });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("reads each workspace's status and today's UTC tokens, and the catalogue version", async () => {
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: [use], catalogueVersion: 1 });
+    expect(ai.usage).toHaveBeenCalledExactlyOnceWith(DEMO, '2026-11-25', 1);
+  });
+
+  // SAFETY: mutation check: dropped the `.catch(failed('ai'))` on the AI read -> this test failed (rejected)
+  it('Scenario: A read fails: the AI read failing leaves the other tiles, and the log holds no error text', async () => {
+    ai.usage.mockRejectedValue(new Error('relation workspaces.ai_token_usage: Demo Hiring Co'));
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: null, catalogueVersion: 1 });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Demo Hiring Co');
+  });
+
+  it('the catalogue read failing leaves the workspace and AI tiles', async () => {
+    getPublishedCatalogue.mockRejectedValue(new Error('down'));
+    expect(await dashboardReads()).toEqual({ workspaces: statuses, ai: [use], catalogueVersion: null });
+  });
+
+  // SAFETY: mutation check: removed `await platformOperator()` from dashboardReads -> this test failed (statuses read)
+  it('Scenario: Only operators see the dashboard: Riya gets 403 and nothing is read', async () => {
+    session.mockResolvedValue(ALEX);
+    await expect(dashboardReads()).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
+    expect(listStatuses).not.toHaveBeenCalled();
+  });
+});
+
+describe('listWorkspaceFacts sorted by AI (AIV-P2-051)', () => {
+  beforeEach(() => session.mockResolvedValue(PIA));
+
+  it("reads every match, then pages the rows by today's tokens, most first, unreadable usage last", async () => {
+    const tokens: Record<string, number | null> = { a: 10, b: null, c: 900, d: 0 };
+    listSummaries.mockResolvedValueOnce({ total: 4, summaries: Object.keys(tokens).map((id) => ({ ...summary, id })) });
+    ai.usage.mockImplementation(async (id: string) => {
+      const used = tokens[id];
+      if (used === null || used === undefined) throw new Error('unreadable');
+      return { dailyBudget: 1000, overridden: false, days: [{ day: '2026-11-25', tokens: used }] };
+    });
+    const { total, rows } = await listWorkspaceFacts({ query: '', offset: 1, limit: 2, status: 'active' }, 'ai');
+    expect([total, rows.map((r) => r.id)]).toEqual([4, ['a', 'd']]);
+    expect(listSummaries).toHaveBeenCalledWith({
+      query: '',
+      offset: 0,
+      limit: Number.MAX_SAFE_INTEGER,
+      status: 'active',
+    });
   });
 });
 
