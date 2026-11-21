@@ -70,6 +70,7 @@ async function queueInvitationEmail(ctx: WorkspaceContext, invitation: Invitatio
  * removal's audit entry is the last write.
  */
 async function removeMember(ctx: WorkspaceContext, userId: string): Promise<void> {
+  await getWorkspaces().authorize(ctx, 'member.invite');
   for (const job of await getJobs().listJobs(ctx))
     if (job.hiringOwnerUserId === userId) await getJobs().changeHiringOwner(ctx, job.id, null);
   await getWorkspaces().removeMember(ctx, userId);

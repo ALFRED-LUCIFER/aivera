@@ -19,6 +19,9 @@ const jobs = {
   }),
 };
 const workspaces = {
+  authorize: vi.fn(async (_ctx: unknown, action: string) => {
+    calls.push(`authorize ${action}`);
+  }),
   removeMember: vi.fn(async (_ctx: unknown, userId: string) => {
     calls.push(`remove ${userId}`);
   }),
@@ -46,8 +49,8 @@ beforeEach(() => {
 
 describe('Scenario: A removed hiring owner is not emailed', () => {
   // SAFETY: mutation check: dropped the changeHiringOwner loop from removeMember -> this test failed
-  it('the jobs he owns lose their hiring owner before he is removed, and no other job changes', async () => {
+  it('only an admin goes on; the jobs he owns lose their hiring owner before he is removed, and no other job changes', async () => {
     expect(await remove(HEAD)).toEqual({ error: null, done: 1 });
-    expect(calls).toEqual([`owner sae null`, `remove ${HEAD}`]);
+    expect(calls).toEqual(['authorize member.invite', 'owner sae null', `remove ${HEAD}`]);
   });
 });

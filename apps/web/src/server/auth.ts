@@ -230,6 +230,8 @@ export function authConfig(
       // Only the identity user id, the "Keep me signed in" choice, the sign-in time and whether an operator signed in
       // go into the cookie: no name, email or token. A token from before signedInAt existed is dropped (sign in again),
       // or it would slide forever. The operator flag sets the session length only; operator.ts checks the list per request.
+      // shortcut: the flag is fixed at sign-in, so a person added to PLATFORM_OPERATOR_EMAILS keeps their longer session
+      // until they sign in again; refuse /ops to an unflagged token in platformOperator() if operators join mid-pilot.
       jwt: ({ token, user }) =>
         user?.id
           ? {
