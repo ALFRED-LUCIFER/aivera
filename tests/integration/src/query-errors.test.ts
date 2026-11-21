@@ -115,3 +115,31 @@ describe('Scenario Outline: Every failure kind is redacted', () => {
     expect(error).toMatchObject({ code: '23514', constraint: 'entry_action_check' });
   });
 });
+
+// AIV-P1-088: a lock wait on an application connection ends with an error instead of holding a pooled connection.
+describe('Scenario: A lock wait ends with an error', () => {
+  // SAFETY: mutation check: lock_timeout removed -> this test failed (Test timed out in 20000ms: the update kept waiting)
+  it('an update of a row another transaction holds fails with 55P03 after the lock timeout, without its parameters', async () => {
+    await admin.execute(sql`create table public.contended (id int primary key, note text)`);
+    await admin.execute(sql`insert into public.contended values (1, null)`);
+    await admin.execute(sql`grant select, update on public.contended to aivera_app`);
+    const held = Promise.withResolvers<void>();
+    const locked = Promise.withResolvers<void>();
+    const holder = admin.transaction(async (tx) => {
+      await tx.execute(sql`select id from public.contended where id = 1 for update`);
+      locked.resolve();
+      await held.promise;
+    });
+    await locked.promise;
+    const started = Date.now();
+    try {
+      const error = await failure(() => app.execute(sql`update public.contended set note = ${NOTE} where id = 1`));
+      expectNoNote(error);
+      expect(error.code).toBe('55P03');
+      expect(Date.now() - started).toBeGreaterThanOrEqual(9_000);
+    } finally {
+      held.resolve();
+      await holder;
+    }
+  }, 20_000);
+});

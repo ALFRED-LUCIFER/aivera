@@ -152,8 +152,7 @@ export type LinkWorkerPorts = Pick<ParsePorts, 'cvStoreFor' | 'publishRecorded'>
  * Candidate-submitted item with the page text, the "Unusual content in this source" notes and the text's fingerprint
  * (flagging another applicant's near-duplicate), all in `tx`. No model reads the text here. A link the guard refuses
  * or that cannot be fetched is `not_reachable`, with nothing scored. A `failed` read runs again on a redelivery and a
- * finished one is never read twice. Returns the status, the number of notes and the item for the search index, or null
- * when there was nothing to do.
+ * finished one is never read twice. Returns the status and the number of notes, or null when there was nothing to do.
  */
 // shortcut: the fetch (at most 10 s) runs inside the consumer's workspace transaction, as Document Intelligence does.
 export async function readLink(
@@ -161,14 +160,14 @@ export async function readLink(
   tx: Tx,
   workspaceId: string,
   sourceId: string,
-): Promise<{ status: LinkReadStatus; notes: number; items: Pick<EvidenceItem, 'id' | 'excerpt'>[] } | null> {
+): Promise<{ status: LinkReadStatus; notes: number } | null> {
   const store = ports.linkStoreFor(tx);
   const found = await store.find(workspaceId, sourceId);
   if (found?.read.status !== 'pending' && found?.read.status !== 'failed') return null;
   const { source, read } = found;
   const unreachable = async () =>
     (await store.finish(workspaceId, sourceId, 'not_reachable'))
-      ? { status: 'not_reachable' as const, notes: 0, items: [] }
+      ? { status: 'not_reachable' as const, notes: 0 }
       : null;
 
   const page = await ports.fetchPage(read.url);
@@ -197,5 +196,5 @@ export async function readLink(
   await store.setFingerprint(workspaceId, sourceId, textFingerprint);
   await flagCrossApplicantCopies(ports, tx, { ...source, textFingerprint });
   await ports.publishRecorded(tx, source, [item.id]);
-  return { status: 'read', notes: notes.length, items: [item] };
+  return { status: 'read', notes: notes.length };
 }

@@ -32,8 +32,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-077 acceptance scenarios for links: the worker job that reads them against real PostgreSQL (as aivera_app),
-// Node's real HTTPS client answered by msw on synthetic hosts behind a stubbed resolver, and embeddings from the fake
-// provider. The fetch guard's every rule has its own test in link-fetch.test.ts. Synthetic cast only.
+// Node's real HTTPS client answered by msw on synthetic hosts behind a stubbed resolver; no model is called. The fetch guard's every rule has its own test in link-fetch.test.ts. Synthetic cast only.
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
@@ -132,8 +131,6 @@ let evidence: EvidenceContract;
 let w1: string;
 let w2: string;
 const spans = new InMemorySpanExporter();
-/** Every item handed to the search index, by item id. */
-const indexed: string[] = [];
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -166,14 +163,7 @@ async function relayAndConsume(timeoutMs?: number): Promise<string[]> {
 }
 
 async function consume(envelopes: Envelope[], deliveryCount = 1, timeoutMs?: number): Promise<string[]> {
-  const ai = createAiClient({ provider: fakeProvider(), budget: createAiTokenBudget(app) });
-  const search = createSearchIndex({ db: app, ai, now: () => NOW });
   const handler = createLinkReadHandler({
-    db: app,
-    index: async (workspaceId, itemId, text) => {
-      indexed.push(itemId);
-      await search.indexDocument(workspaceId, 'evidence', itemId, text);
-    },
     fetchPage: createLinkFetcher({
       resolve,
       ...(timeoutMs ? { limits: { timeoutMs, maxBytes: 2 * 1024 * 1024, maxRedirects: 3 } } : {}),
@@ -242,7 +232,6 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  indexed.length = 0;
   spans.reset();
 });
 
@@ -262,7 +251,6 @@ const notReachable = (doc: Awaited<ReturnType<typeof ingest>>, url: string) => {
   expect(en.evidence.linkStatus['not_reachable']).toBe('We could not open this link');
   // Nothing is scored from it: no item to map.
   expect(doc.items).toEqual([]);
-  expect(indexed).toEqual([]);
 };
 
 // --- Scenarios ------------------------------------------------------------------------------------------------------
@@ -374,36 +362,33 @@ describe('Scenario: The note cites the link’s source label', () => {
   });
 
   // SAFETY: mutation check: disabled row level security on evidence.link_read -> this test failed (w2 read the read)
-  it('the read, the note and the embeddings are stored under row-level security', async () => {
+  it('the read and the note are stored under row-level security, and nothing is embedded', async () => {
     const own = await withWorkspace(app, w1, (tx) =>
       tx.execute(sql`select
         (select count(*) from evidence.link_read where source_id = ${sara.sourceId})::int as reads,
         (select count(*) from evidence.source_note where source_id = ${sara.sourceId})::int as notes,
-        (select count(*) from search.chunk where owner_module = 'evidence'
-          and owner_id = ${sara.items[0]?.id ?? randomUUID()})::int as chunks`),
+        (select count(*) from search.chunk)::int as chunks`),
     );
-    expect([...own]).toEqual([{ reads: 1, notes: 1, chunks: 1 }]);
+    expect([...own]).toEqual([{ reads: 1, notes: 1, chunks: 0 }]);
     // No workspace filter: row-level security alone keeps w1's rows out.
     const other = await withWorkspace(app, w2, (tx) =>
       tx.execute(sql`select
         (select count(*) from evidence.link_read)::int as reads,
-        (select count(*) from evidence.source_note)::int as notes,
-        (select count(*) from search.chunk)::int as chunks`),
+        (select count(*) from evidence.source_note)::int as notes`),
     );
-    expect([...other]).toEqual([{ reads: 0, notes: 0, chunks: 0 }]);
+    expect([...other]).toEqual([{ reads: 0, notes: 0 }]);
     expect(await as(w2, (ctx) => evidence.getLinkRead(ctx, sara.sourceId))).toBeNull();
   });
 });
 
-describe('Scenario: Fetched link text is fingerprinted and indexed once', () => {
+describe('Scenario: Fetched link text is fingerprinted once', () => {
   // SAFETY: mutation check: removed the setFingerprint call from readLink -> this test failed (no fingerprint)
-  it('hands the text over once, embeds it once, and a redelivery fetches, hands over and embeds nothing again', async () => {
+  it('hands the text over once, and a redelivery fetches and hands over nothing again', async () => {
     const sara = await ingest({ name: 'Sara Al Qahtani', url: `https://${SHOP}/essay`, label: 'Evaluation write-up' });
     const [row] = await withWorkspace(app, w1, (tx) =>
       tx.execute(sql`select text_fingerprint from evidence.source where id = ${sara.sourceId}`),
     );
     expect(String(row?.['text_fingerprint'])).toMatch(/^[0-9a-f]{16}$/);
-    expect(indexed).toEqual(sara.items.map((i) => i.id));
 
     // The same link again for her is the same read; a new delivery of the request finds it finished.
     const again = await as(w1, (ctx) =>
@@ -419,7 +404,6 @@ describe('Scenario: Fetched link text is fingerprinted and indexed once', () => 
     sent.length = 0;
     expect(await consume(redelivered, 2)).toEqual(['complete']);
     expect(sent).toEqual([]);
-    expect(indexed).toEqual(sara.items.map((i) => i.id));
   });
 });
 
@@ -431,6 +415,9 @@ describe('The synthetic purge', () => {
         tx.execute(sql`select (select count(*) from search.chunk)::int as chunks,
           (select count(*) from evidence.link_read)::int as reads`),
       );
+    // Nothing indexes evidence in production (AIV-P1-088); a vector the search ticket would write stands in.
+    const ai = createAiClient({ provider: fakeProvider(), budget: createAiTokenBudget(app) });
+    await createSearchIndex({ db: app, ai, now: () => NOW }).indexDocument(w1, 'evidence', randomUUID(), LABEL);
     const [before] = [...(await count())];
     expect(Number(before?.['chunks'])).toBeGreaterThan(0);
     await as(w1, (ctx) => evidence.purgeSyntheticEvidence(ctx));

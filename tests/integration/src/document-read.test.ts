@@ -3,8 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { BudgetExceeded, createAiClient, fakeProvider } from '@credalent/ai';
-import { createSearchIndex } from '@credalent/ai/search';
+import { createAiClient, type AiProvider } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
@@ -29,7 +28,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 // AIV-P1-028 acceptance scenarios for documents: the worker job that reads them, against real PostgreSQL (as
 // aivera_app), the files module's malware-scan results, Document Intelligence answered by msw in its recorded response
-// shape on a synthetic host, and embeddings from the fake provider. Synthetic cast only (docs/00-product/personas.md).
+// shape on a synthetic host, and a model that refuses every call (none should be made). Synthetic cast only
+// (docs/00-product/personas.md).
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
@@ -117,8 +117,18 @@ const blobs: BlobStore = {
   stream: async () => new ReadableStream(),
 };
 const spans = new InMemorySpanExporter();
-/** Every page item handed to the search index, by item id. */
-const indexed: string[] = [];
+/** Every model the worker asks for, language or embeddings; each refuses, as during an AI outage (AIV-P1-088). */
+let modelCalls = 0;
+const unavailable: AiProvider = {
+  languageModel: () => {
+    modelCalls++;
+    throw new Error('model unavailable');
+  },
+  embeddingModel: () => {
+    modelCalls++;
+    throw new Error('model unavailable');
+  },
+};
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -177,27 +187,17 @@ async function relayAndConsume(): Promise<string[]> {
   return consume(sent);
 }
 
-/** When set, the search index refuses as a spent daily AI budget would. */
-let budgetSpent = false;
-
-async function consume(envelopes: Envelope[], deliveryCount = 1): Promise<string[]> {
-  const ai = createAiClient({ provider: fakeProvider(), budget: createAiTokenBudget(app) });
-  const search = createSearchIndex({ db: app, ai, now: () => NOW });
+async function consume(envelopes: Envelope[], deliveryCount = 1, db = app): Promise<string[]> {
   const handlers = createFileReadHandlers({
-    db: app,
+    db,
     documentIntelligence: { endpoint: DI, token: async () => 'synthetic-entra-token', wait: async () => undefined },
-    ai,
+    ai: createAiClient({ provider: unavailable, budget: createAiTokenBudget(db) }),
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
     readPerson: readPersonAsSystem,
-    index: async (workspaceId, itemId, text) => {
-      if (budgetSpent) throw new BudgetExceeded('search.embed', workspaceId);
-      indexed.push(itemId);
-      await search.indexDocument(workspaceId, 'evidence', itemId, text);
-    },
     now: () => NOW,
   });
-  const consumer = createConsumer({ db: app, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
+  const consumer = createConsumer({ db, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
   const settled: string[] = [];
   for (const envelope of envelopes)
     await consumer.handle({
@@ -244,7 +244,7 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  // Several: the search index and the AI budget use their own connections while the consumer's transaction holds one.
+  // Several: a failed read is written on its own connection while the consumer's transaction holds one.
   app = createDb(urlFor('aivera_app'), { max: 4 });
   relayDb = createDb(urlFor('aivera_relay'), { max: 1 });
   const audit = createAudit(app);
@@ -262,7 +262,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   analyzeCalls = 0;
-  indexed.length = 0;
+  modelCalls = 0;
   spans.reset();
 });
 
@@ -421,22 +421,19 @@ describe('Scenario Outline: Hidden text in a document is flagged for a person', 
   });
 
   // SAFETY: mutation check: disabled row level security on evidence.document_read -> this test failed (w2 read the read)
-  it('the read, the note and the embeddings are stored under row-level security', async () => {
+  it('the read and the note are stored under row-level security', async () => {
     const own = await withWorkspace(app, w1, (tx) =>
       tx.execute(sql`select
         (select count(*) from evidence.document_read where source_id = ${anna.sourceId})::int as reads,
-        (select count(*) from evidence.source_note where source_id = ${anna.sourceId})::int as notes,
-        (select count(*) from search.chunk where owner_module = 'evidence'
-          and owner_id::text = any(string_to_array(${anna.items.map((i) => i.id).join(',')}, ',')))::int as chunks`),
+        (select count(*) from evidence.source_note where source_id = ${anna.sourceId})::int as notes`),
     );
-    expect([...own]).toEqual([{ reads: 1, notes: 1, chunks: 3 }]);
+    expect([...own]).toEqual([{ reads: 1, notes: 1 }]);
     const other = await withWorkspace(app, w2, (tx) =>
       tx.execute(sql`select
         (select count(*) from evidence.document_read)::int as reads,
-        (select count(*) from evidence.source_note)::int as notes,
-        (select count(*) from search.chunk)::int as chunks`),
+        (select count(*) from evidence.source_note)::int as notes`),
     );
-    expect([...other]).toEqual([{ reads: 0, notes: 0, chunks: 0 }]);
+    expect([...other]).toEqual([{ reads: 0, notes: 0 }]);
     expect(await as(w2, (ctx) => evidence.getDocumentRead(ctx, anna.sourceId))).toBeNull();
   });
 });
@@ -468,23 +465,67 @@ describe('Scenario: Every ingested text is handed to fingerprinting', () => {
     analyzeCalls = 0;
     expect(await consume(again, 2)).toEqual(['complete']);
     expect(analyzeCalls).toBe(0);
-    for (const item of [...first.items, ...copy.items]) expect(indexed.filter((id) => id === item.id)).toHaveLength(1);
     expect(await flags()).toHaveLength(1);
   });
 });
 
-describe('A spent daily AI budget while indexing', () => {
-  // SAFETY: mutation check: removed the BudgetExceeded catch around the index call -> this test failed (read rolled back)
-  it('keeps the read, its items and notes; only the search index waits', async () => {
-    budgetSpent = true;
-    try {
-      const doc = await ingest({ name: 'Hala Saleh', label: 'Claims triage write-up', pages: WRITE_UP });
-      expect(doc.settled.every((s) => s === 'complete')).toBe(true);
-      expect(doc.view?.status).toBe('read');
-      expect(doc.items).toHaveLength(1);
-      expect(indexed).toEqual([]);
-    } finally {
-      budgetSpent = false;
-    }
+describe('Scenario: A document read completes without calling embed', () => {
+  // SAFETY: mutation check: called the AI client's embed after each read in createFileReadHandlers -> this test failed (the read rolled back, not complete)
+  it('saves the read row and its items while every model refuses, and asks for no model', async () => {
+    const doc = await ingest({ name: 'Hala Saleh', label: 'Claims triage write-up', pages: WRITE_UP });
+    expect(doc.settled.every((s) => s === 'complete')).toBe(true);
+    expect(doc.view?.status).toBe('read');
+    expect(doc.items).toHaveLength(1);
+    expect(modelCalls).toBe(0);
   });
+});
+
+describe('Scenario: A transient AI failure does not deadlock', () => {
+  it('20 reads during a Document Intelligence outage each fail, back off, and leave the pool idle', async () => {
+    const pool = createDb(urlFor('aivera_app'), { max: 10 });
+    docintel.use(
+      http.post(`${DI}/documentintelligence/documentModels/prebuilt-layout:analyze`, () =>
+        HttpResponse.json({ error: { code: 'ServiceUnavailable' } }, { status: 503 }),
+      ),
+    );
+    try {
+      const candidateId = await person('Noura Al Ketbi');
+      const sources: string[] = [];
+      for (let n = 0; n < 20; n++) {
+        const fileId = await upload(Buffer.from(`%PDF-1.7 outage-${n} synthetic`));
+        const { sourceId } = await as(w1, (ctx) =>
+          evidence.requestDocumentRead(ctx, { candidateId, fileId, label: 'Outage write-up', synthetic: true }),
+        );
+        await scan(fileId, 'No threats found');
+        sources.push(sourceId);
+      }
+      // Relay only: the 20 requests are consumed below, four at a time as the Service Bus receiver does.
+      const toEvidence = new Set([DocumentReadRequestedV1.type, FileCleanV1.type, FileRejectedV1.type]);
+      const requests: Envelope[] = [];
+      await createRelay({
+        db: relayDb,
+        schemas: ['evidence', 'files'],
+        queueFor: (type) => (toEvidence.has(type) ? EVIDENCE_QUEUE : 'assessment'),
+        send: async (_queue, envelope) =>
+          void (envelope.type === DocumentReadRequestedV1.type && requests.push(envelope)),
+        now: () => NOW,
+      })();
+      expect(requests).toHaveLength(20);
+      const settled: string[] = [];
+      await Promise.all(
+        Array.from({ length: 4 }, async () => {
+          for (let next = requests.shift(); next; next = requests.shift())
+            settled.push(...(await consume([next], 1, pool)));
+        }),
+      );
+      expect(settled).toEqual(Array.from({ length: 20 }, () => 'abandon'));
+      for (const sourceId of sources) expect((await read(candidateId, sourceId)).view?.status).toBe('failed');
+      expect(modelCalls).toBe(0);
+      const { connections, idle, leased, waiting } = pool.$client.stats;
+      expect({ idle, leased, waiting }).toEqual({ idle: connections, leased: 0, waiting: 0 });
+    } finally {
+      docintel.resetHandlers();
+      await pool.$client.end();
+    }
+  }, 60_000);
 });
