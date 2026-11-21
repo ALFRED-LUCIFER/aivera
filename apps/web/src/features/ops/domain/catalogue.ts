@@ -1,10 +1,6 @@
 // The read-only catalogue view (AIV-P5-015): the published catalogue's job types and domain packs. Pure (ADR-003).
 import { packForJobType, type CatalogueVersion } from '@credalent/jobs';
 
-/** Where the catalogue changes until the editor ships (AIV-P2-045): a reviewed migration. */
-export const CATALOGUE_SOURCE =
-  'https://github.com/ALFRED-LUCIFER/aivera/tree/main/modules/jobs/src/infrastructure/migrations';
-
 /**
  * Every job type, and every pack split by the job types it covers (a job type with no competency and no hint is left
  * out), each pack's hints grouped by region in catalogue order.

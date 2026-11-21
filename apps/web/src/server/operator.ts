@@ -1,8 +1,15 @@
 import type { AuditContract, PlatformEntry, PlatformEntryQuery } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
-import type { CatalogueVersion, JobCounts } from '@credalent/jobs';
+import type {
+  CatalogueEditor,
+  CatalogueEditorView,
+  DraftCompetencyInput,
+  DraftPackInput,
+  JobCounts,
+  RetireEntryInput,
+} from '@credalent/jobs';
 import { log } from '@credalent/observability';
-import { createJobCounts } from '@credalent/jobs/composition';
+import { createCatalogueEditor, createJobCounts } from '@credalent/jobs/composition';
 import {
   STATUS_CHANGES,
   type AiBudgetConsole,
@@ -18,7 +25,7 @@ import { cache } from 'react';
 import { getIdentity, getSessionUserId } from './auth';
 import { getDb } from './db';
 import { env } from './env';
-import { getCatalogue, getJobs } from './jobs';
+import { getJobs } from './jobs';
 import { getPlatformSettings } from './platformSettings';
 import { getWorkspaces } from './workspace';
 
@@ -190,10 +197,49 @@ export async function listPendingApprovals(): Promise<PendingApprovalFacts[]> {
   );
 }
 
-/** The latest published catalogue (ADR-013), for the read-only catalogue page. Checks the policy itself too. */
-export async function publishedCatalogue(): Promise<CatalogueVersion> {
+let editor: CatalogueEditor | undefined;
+// The catalogue editor (AIV-P2-045, ADR-013 point 15): only this file calls its writes (operator-only-writes).
+const catalogueEditor = () => (editor ??= createCatalogueEditor(getDb(), getAudit()));
+
+/** The latest published catalogue and the open draft, for /ops/catalogue. Checks the policy itself too. */
+export async function catalogueEditorView(): Promise<CatalogueEditorView> {
   await platformOperator();
-  return getCatalogue().getPublishedCatalogue();
+  return catalogueEditor().getEditor();
+}
+
+/**
+ * The catalogue draft's writes as the signed-in operator (AIV-P2-045): the operator id comes from the session, the
+ * input is validated again by the jobs module, and each is audited in the platform log. Each checks the policy too.
+ * Throws `CatalogueError` from the contract.
+ */
+export async function openCatalogueDraft(): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().openDraft(userId);
+}
+
+export async function saveCataloguePack(input: DraftPackInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftPack(userId, input);
+}
+
+export async function saveCatalogueCompetency(input: DraftCompetencyInput): Promise<void> {
+  const { userId } = await platformOperator();
+  await catalogueEditor().saveDraftCompetency(userId, input);
+}
+
+export async function retireCatalogueEntry(input: RetireEntryInput): Promise<'retired' | 'removed'> {
+  const { userId } = await platformOperator();
+  return catalogueEditor().retireDraftEntry(userId, input);
+}
+
+/**
+ * Another operator's display name, or their email when they have none, for "Theo Platform changed this draft."; null
+ * for an unknown id. Only ever one operator, never a list (ADR-012 point 1). Checks the policy too.
+ */
+export async function operatorName(userId: string): Promise<string | null> {
+  await platformOperator();
+  const user = await getIdentity().getUser(userId);
+  return user ? user.displayName?.trim() || user.email : null;
 }
 
 /** Whether new sign-ups wait for approval, for the approvals page. Checks the policy itself too. */

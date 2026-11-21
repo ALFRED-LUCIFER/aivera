@@ -1,0 +1,3 @@
+ALTER TABLE "jobs"."catalogue_version" ADD COLUMN "revision" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "jobs"."catalogue_version" ADD COLUMN "revised_by" text;--> statement-breakpoint
+ALTER TABLE "jobs"."catalogue_version" ADD CONSTRAINT "catalogue_version_revised_by_check" CHECK ("jobs"."catalogue_version"."revised_by" is null or ("jobs"."catalogue_version"."revised_by" = 'system:seed' or "jobs"."catalogue_version"."revised_by" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'));

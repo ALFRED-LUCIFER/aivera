@@ -277,6 +277,10 @@ export const catalogueVersion = jobs.table(
     publishedBy: text('published_by'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     reason: text(),
+    // A draft's edit count and its last editor: each save names the revision it read, so a stale one is refused
+    // (ADR-013 point 3).
+    revision: integer().notNull().default(0),
+    revisedBy: text('revised_by'),
   },
   (t) => [
     uniqueIndex('catalogue_version_one_draft_idx')
@@ -293,6 +297,7 @@ export const catalogueVersion = jobs.table(
       'catalogue_version_actor_check',
       sql`${isActor(t.createdBy)} and (${t.publishedBy} is null or ${isActor(t.publishedBy)})`,
     ),
+    check('catalogue_version_revised_by_check', sql`${t.revisedBy} is null or ${isActor(t.revisedBy)}`),
   ],
 );
 
