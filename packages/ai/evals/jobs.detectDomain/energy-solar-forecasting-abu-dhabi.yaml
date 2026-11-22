@@ -16,6 +16,8 @@ expected:
     industry.domain: energy_utilities
     regions[*].region: ['uae']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '31831b97d5d6'
   output:
     industry:
       domain: energy_utilities

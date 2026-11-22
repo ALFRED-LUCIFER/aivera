@@ -16,6 +16,8 @@ expected:
     industry.domain: government_public_sector
     regions[*].region: ['india']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '25a91be196fa'
   output:
     industry:
       domain: government_public_sector

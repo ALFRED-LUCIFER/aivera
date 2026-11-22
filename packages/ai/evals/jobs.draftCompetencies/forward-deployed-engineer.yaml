@@ -18,6 +18,8 @@ expected:
       - Logistics operations
       - Customer communication
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: '8d51084aec57'
   output:
     {
       'competencies':

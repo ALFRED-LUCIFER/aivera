@@ -22,6 +22,8 @@ expected:
     links: []
     changes[*].competencyId: [c-python]
 recorded:
+  promptVersion: evidence.mapToCompetency@2
+  promptHash: 'a954d8b74359'
   output:
     links: []
     changes:

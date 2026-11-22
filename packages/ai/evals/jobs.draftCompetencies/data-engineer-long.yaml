@@ -32,6 +32,8 @@ expected:
     suggestions[*].name:
       - Retail data knowledge
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'b417334d2a04'
   output:
     competencies:
       - name: Batch data pipelines

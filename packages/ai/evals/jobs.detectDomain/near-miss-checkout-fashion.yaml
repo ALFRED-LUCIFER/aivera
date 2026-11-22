@@ -18,6 +18,8 @@ expected:
     industry.domain: ecommerce_marketplaces
     regions[*].region: ['ksa']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '33c1183aba0b'
   output:
     industry:
       domain: ecommerce_marketplaces

@@ -33,6 +33,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Prints every case, writes the summary table to the run's summary page, exits 1 below a threshold.
+      # AIV-P1-085: also exits 1 when a case was recorded with another prompt version or prompt text than the code's.
       - run: pnpm ai:eval --out "$RUNNER_TEMP/ai-eval.json"
       # The gate must fail on a bad case, or a green run proves nothing.
       - name: the gate fails on an invalid citation

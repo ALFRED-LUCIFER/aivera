@@ -18,6 +18,8 @@ expected:
       - Retail industry knowledge
       - CRM and forecasting
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'a98d77c81b4a'
   output:
     {
       'competencies':

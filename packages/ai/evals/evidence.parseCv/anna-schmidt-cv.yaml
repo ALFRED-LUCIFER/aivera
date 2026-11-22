@@ -9,6 +9,8 @@ expected:
   { 'match': { 'workHistory[*].dates': ['2019 - 2023'], 'skills[*].skill': ['Playwright', 'TypeScript', 'k6'] } }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': '4523bdad2b1d',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

@@ -53,7 +53,7 @@ const outcome = (value: string, extra: Record<string, string | number> = {}) =>
 
 // Appended to every structured task's system prompt; bump the version with any change (it is on telemetry).
 const CITATION_RULES_VERSION = 'citations@2';
-const CITATION_RULES = [
+export const CITATION_RULES = [
   'Answer only from the sources in the prompt, each marked <source id="S1" kind="..." trust="untrusted">.',
   'Every item that has a citations field must cite at least one source: its id (such as S1) and a quote copied',
   'word for word from that source. Never cite a source that is not listed and never reword a quote.',

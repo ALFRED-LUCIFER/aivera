@@ -18,6 +18,8 @@ expected:
     industry.domain: healthcare
     regions[*].region: ['india']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '2a42ffe941c3'
   output:
     industry:
       domain: healthcare

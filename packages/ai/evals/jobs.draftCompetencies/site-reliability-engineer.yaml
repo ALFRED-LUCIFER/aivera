@@ -19,6 +19,8 @@ expected:
       - Cloud cost control
       - Infrastructure security
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: '5267d3d2f0f2'
   output:
     {
       'competencies':

@@ -19,6 +19,8 @@ expected:
       - Credit risk regulation
       - Explaining results to decision makers
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'd1e840323892'
   output:
     {
       'competencies':

@@ -23,6 +23,8 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
+  promptVersion: evidence.mapToCompetency@2
+  promptHash: 'c87de381e1d1'
   output:
     links:
       - competencyId: c-python

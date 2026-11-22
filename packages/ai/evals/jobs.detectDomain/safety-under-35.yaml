@@ -18,6 +18,8 @@ expected:
     industry.domain: telecom
     regions[*].region: ['ksa']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '26d6add861ba'
   output:
     industry:
       domain: telecom

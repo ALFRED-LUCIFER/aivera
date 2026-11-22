@@ -8,6 +8,8 @@ sources:
 expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*].skill': ['Python', 'Kafka', 'dbt'] } }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': '4523bdad2b1d',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

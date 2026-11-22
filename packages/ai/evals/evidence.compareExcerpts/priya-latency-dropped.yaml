@@ -15,5 +15,7 @@ expected:
   match:
     contradictions: []
 recorded:
+  promptVersion: evidence.compareExcerpts@2
+  promptHash: '311a46e201cc'
   output:
     contradictions: []

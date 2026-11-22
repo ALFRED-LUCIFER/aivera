@@ -8,6 +8,8 @@ sources:
 expected: { 'match': { 'skills[*].skill': ['Go', 'gRPC', 'PostgreSQL'] }, 'safety': { 'forbidden': ['French'] } }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': '4523bdad2b1d',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

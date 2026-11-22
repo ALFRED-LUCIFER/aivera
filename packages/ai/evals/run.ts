@@ -1,5 +1,7 @@
-import type { AiClient } from '../src/client.ts';
-import { hardGates, taskThresholds } from './config.ts';
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
+import { CITATION_RULES, UNTRUSTED_CONTENT_RULES, type AiClient } from '../src/client.ts';
+import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
 
@@ -25,7 +27,63 @@ export type TaskReport = {
   groups: (Ratio & { group: string; label: string; min: number })[];
 };
 
-export const recordedAnswer: Answer = async (_task, golden) => golden.recorded.output;
+// A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
+export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
+
+/** A recorded answer whose prompt has changed since: the message holds prompt ids and hashes only. */
+export class StaleRecording extends Error {
+  override name = 'StaleRecording';
+}
+
+/**
+ * The prompt a case's answer comes from (AIV-P1-085): the version in code, and a hash of what the task's runner sends
+ * for this case (system text with the shared rules, the prompt and the schema), so an edit without a version bump
+ * shows too. Null for a task with no runner yet. No model is called: the request is captured and the call stopped.
+ * shortcut: a rule JSON Schema cannot hold (a .refine) is not in the hash, upgrade if a prompt schema gains one;
+ * bump the version with it (the prompt files say so).
+ */
+export async function promptOf(
+  task: string,
+  golden: GoldenCase,
+  runner: Runner | undefined = runners[task],
+): Promise<{ version: string; hash: string } | null> {
+  if (!runner) return null;
+  const captured = new Error('captured');
+  let found: { version: string; hash: string } | undefined;
+  const capture = async (request: { promptVersion: string; system: string; prompt: string; schema: z.ZodType }) => {
+    const sent = [
+      request.system,
+      CITATION_RULES,
+      UNTRUSTED_CONTENT_RULES,
+      request.prompt,
+      z.toJSONSchema(request.schema),
+    ];
+    const hash = createHash('sha256').update(JSON.stringify(sent)).digest('hex').slice(0, 12);
+    found = { version: request.promptVersion, hash };
+    throw captured;
+  };
+  try {
+    await runner({ generateStructured: capture as AiClient['generateStructured'] }, golden, evalWorkspaceId);
+  } catch (error) {
+    if (error !== captured) throw error;
+  }
+  if (!found) throw new Error(`the ${task} runner sent no request`);
+  return found;
+}
+
+/**
+ * The case's recorded output, refused when the prompt in code is not the one it was recorded with: an edited prompt
+ * never passes on answers it did not produce (AGENTS.md 3.12).
+ */
+export const recordedAnswer: Answer = async (task, golden) => {
+  const prompt = await promptOf(task, golden);
+  const { promptVersion = 'no prompt version', promptHash = 'none' } = golden.recorded;
+  if (prompt && promptVersion !== prompt.version)
+    throw new StaleRecording(`recorded with ${promptVersion}, code is ${prompt.version}: re-record`);
+  if (prompt && promptHash !== prompt.hash)
+    throw new StaleRecording(`recorded with prompt hash ${promptHash}, code is ${prompt.hash}: re-record`);
+  return golden.recorded.output;
+};
 export const recordedJudge: Judge = async (_rubric, golden) => {
   if (!golden.recorded.judge) throw new Error('no recorded verdict');
   return golden.recorded.judge;
@@ -39,9 +97,6 @@ export const judgePrompt = {
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
     'point it fails or confirms in one sentence.',
 };
-
-// A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
-export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
 
 /**
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
@@ -87,8 +142,10 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
     });
     return { id: golden.id, passed, scores };
   } catch (error) {
-    // The error's name and message only: a provider's error can repeat the prompt (AGENTS.md 1.2).
-    return { id: golden.id, passed: false, error: error instanceof Error ? error.name : 'error', scores: {} };
+    // The error's name only: a provider's error can repeat the prompt (AGENTS.md 1.2). A stale recording's message is
+    // prompt ids and hashes, and tells the developer what to do.
+    const name = error instanceof Error ? error.name : 'error';
+    return { id: golden.id, passed: false, error: error instanceof StaleRecording ? error.message : name, scores: {} };
   }
 }
 

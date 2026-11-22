@@ -19,6 +19,8 @@ expected:
       - Banking and payments domain
       - Working under regulation
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'cb236b0eb58e'
   output:
     {
       'competencies':

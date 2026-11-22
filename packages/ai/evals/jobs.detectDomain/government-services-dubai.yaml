@@ -16,6 +16,8 @@ expected:
     industry.domain: government_public_sector
     regions[*].region: ['uae']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '8643f8828b25'
   output:
     industry:
       domain: government_public_sector

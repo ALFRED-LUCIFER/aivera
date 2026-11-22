@@ -19,6 +19,8 @@ expected:
       - Arabic and right-to-left design
       - Accessibility
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'f27f5ee4344e'
   output:
     {
       'competencies':

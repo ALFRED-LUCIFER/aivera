@@ -24,6 +24,8 @@ expected:
       - Arabic and bilingual NLP
       - Product judgement
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: '667a178b147e'
   output:
     competencies:
       - name: LLM systems in production

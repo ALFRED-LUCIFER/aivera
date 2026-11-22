@@ -24,6 +24,8 @@ expected:
     links[*].competencyId: [c-retrieval, c-python]
     links[*].strength: [medium]
 recorded:
+  promptVersion: evidence.mapToCompetency@2
+  promptHash: '53f035e001df'
   output:
     links:
       - competencyId: c-retrieval
