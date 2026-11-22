@@ -24,7 +24,7 @@ test('Scenario: The seeded workspace shows five jobs', async ({ page }) => {
     'Senior AI EngineerEngineering · DIFC, Dubai',
     'Head of Engineering',
     'Round 1 interviews',
-    'Not yet available',
+    /^\d+Observed$/,
     'Not yet available',
     'Approved',
     'Not yet available',

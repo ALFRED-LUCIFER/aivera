@@ -13,7 +13,9 @@ const MEMBERS = '/app/settings/members' as Route;
  * The admin's control in the job header's meta line (AIV-P1-097): "Assign one" while the job has no hiring owner,
  * "Change hiring owner" otherwise. It opens the shared preview-confirm card with the active hiring-owner members, a
  * required reason, and the access that will be granted and revoked.
- * Deviation from the ticket's "loading state": the members arrive with the page, so the dialog never waits on a load.
+ * Deviations: no loading state (the members arrive with the page); no artboard draws this button, so it sits under the
+ * meta line as a secondary button; the dialog assigns or changes but cannot clear an owner; the 22 Nov "client: …" line
+ * is not in the header yet.
  */
 export function ChangeHiringOwner({
   view,

@@ -316,20 +316,6 @@ describe('Scenario: New evidence updates the ranking', () => {
   });
 });
 
-describe('Scenario: Resolving a contradiction re-scores the candidate (AIV-P1-098)', () => {
-  it("a ContradictionResolved message scores that candidate on the event's approved version and stores the change", async () => {
-    const [first] = await competencyIds(versions['sae2'] as string);
-    // Evidence that a contradiction had withheld now counts: the stored 30 becomes 50, audited as the system.
-    await work(w1, DANIEL, sae, first as string, 5);
-    expect(await deliver(resolved(w1, DANIEL, sae, versions['sae2'] as string))).toEqual(['complete']);
-    expect((await results(sae)).at(-1)).toEqual({
-      candidate_id: DANIEL,
-      rubric_version_id: versions['sae2'],
-      backed_score: 50,
-    });
-  });
-});
-
 describe('Scenario: Duplicate messages do not duplicate snapshots', () => {
   it('the same evidence.mapped message delivered twice stores exactly one result', async () => {
     const [, second] = await competencyIds(versions['sae2'] as string);
@@ -505,5 +491,30 @@ describe('Concurrent runs for one candidate and job', () => {
     // SAFETY: mutation check: AssessmentStore.lock made a no-op, and separately the lock moved back after the evidence read -> this test failed (stored [70, 28]: the older read last)
     const omar = (await results(sae)).filter((r) => r.candidate_id === OMAR);
     expect(omar.map((r) => r.backed_score)).toEqual([28, 70]);
+  });
+});
+
+// Last, so the evidence it adds changes no earlier scenario's numbers.
+describe('Scenario: Resolving a contradiction re-scores the candidate (AIV-P1-098)', () => {
+  it("a ContradictionResolved message scores that candidate on the event's version, stores the change once, and skips a stale version", async () => {
+    const v3 = versions['sae3'] as string;
+    const [first] = await competencyIds(v3);
+    // Evidence a contradiction had withheld now counts.
+    await work(w1, DANIEL, sae, first as string, 5);
+    const before = (await results(sae)).length;
+    // A resolution that names a version no longer approved is skipped, like a stale mapping.
+    expect(await deliver(resolved(w1, DANIEL, sae, versions['sae2'] as string))).toEqual(['complete']);
+    expect(await results(sae)).toHaveLength(before);
+
+    const message = resolved(w1, DANIEL, sae, v3);
+    expect(await deliver(message)).toEqual(['complete']);
+    expect(await results(sae)).toHaveLength(before + 1);
+    expect((await results(sae)).at(-1)).toMatchObject({ candidate_id: DANIEL, rubric_version_id: v3 });
+    // Redelivery stores nothing more.
+    expect(await deliver(message)).toEqual(['complete']);
+    expect(await results(sae)).toHaveLength(before + 1);
+    // Another workspace's message naming this job stores nothing.
+    expect(await deliver(resolved(w2, DANIEL, sae, v3))).toEqual(['complete']);
+    expect(await results(sae)).toHaveLength(before + 1);
   });
 });

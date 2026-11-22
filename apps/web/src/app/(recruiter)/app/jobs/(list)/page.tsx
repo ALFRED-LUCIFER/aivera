@@ -21,17 +21,19 @@ export default async function JobsPage() {
   const result = await inActiveWorkspace(async (ctx) => {
     const agency = (await getWorkspaces().getWorkspace(ctx))?.type === 'agency';
     // Archived clients too: their existing jobs keep showing the client's name (AIV-P1-056).
-    const clients = agency ? await getWorkspaces().listClients(ctx) : [];
+    // Only admins and recruiters may list clients (`client.manage`); hiring owners and interviewers see no client names.
+    const clients =
+      agency && (ctx.role === 'admin' || ctx.role === 'recruiter') ? await getWorkspaces().listClients(ctx) : [];
     const jobs = await getJobs().listJobsForDesk(ctx);
     // jobs cannot import assessment (it reads jobs), so the count is composed here, in the same transaction (AIV-P1-099).
     const assessed = await getAssessment().countAssessed(
       ctx,
       jobs.map((job) => job.id),
     );
-    return { jobs, assessed, agency, clients };
+    return { jobs, assessed, agency, clients, canAdd: ctx.role === 'admin' || ctx.role === 'recruiter' };
   });
   if (!result) notFound();
-  const { jobs, assessed, agency, clients } = result.value;
+  const { jobs, assessed, agency, clients, canAdd } = result.value;
   const clientName = new Map(clients.map((c) => [c.id, c.name]));
   // shortcut: one identity read per distinct hiring owner; batch it if agency workspaces list hundreds of jobs.
   const ownerIds = [...new Set(jobs.flatMap((job) => job.hiringOwnerUserId ?? []))];
@@ -53,7 +55,7 @@ export default async function JobsPage() {
   );
   return (
     <>
-      <JobsHeader title={t('shell.nav.jobs')} intro={t('jobsList.intro')} add={t('jobsList.add')} />
+      <JobsHeader title={t('shell.nav.jobs')} intro={t('jobsList.intro')} add={canAdd ? t('jobsList.add') : null} />
       <JobsListClient rows={rows} agency={agency} />
     </>
   );

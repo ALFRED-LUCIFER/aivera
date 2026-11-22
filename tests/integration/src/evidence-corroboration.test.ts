@@ -197,7 +197,13 @@ beforeAll(async () => {
   audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
-  evidence = createEvidence(workspaces, audit, () => NOW);
+  evidence = // These suites record evidence without applications, so the job resolver is a fake naming the requested job.
+    createEvidence(
+      workspaces,
+      audit,
+      () => NOW,
+      async (_ctx, _candidateId, jobId) => ({ jobId }),
+    );
   assessment = createAssessment(
     workspaces,
     audit,

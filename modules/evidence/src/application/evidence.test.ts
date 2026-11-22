@@ -3,6 +3,7 @@ import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
 import type { DuplicateFlag, FingerprintedSource } from '../domain/fingerprint.ts';
+import { ContradictionResolvedV1 } from '../contracts/index.ts';
 import { evidenceUseCases, type EvidenceStore, type Ports, type RecordEvidenceInput } from './evidence.ts';
 
 // AIV-P1-071: the flag path records a flag and nothing else, and resolving it is audited last. Synthetic text only.
@@ -144,5 +145,21 @@ describe('job-named reads authorise against the stored application, not the requ
     const { authorized, useCases } = harness();
     await useCases.listEvidenceForCandidate(ctx, 'maria', 'job-b');
     expect(authorized).toEqual([undefined]);
+  });
+});
+
+describe('ContradictionResolved.v1 carries opaque ids only (AGENTS.md 1.2, AIV-P1-098)', () => {
+  const ids = {
+    candidateId: '0190d4a2-0000-7000-8000-000000000001',
+    jobId: '0190d4a2-0000-7000-8000-000000000002',
+    rubricVersionId: '0190d4a2-0000-7000-8000-000000000003',
+    comparisonId: '0190d4a2-0000-7000-8000-000000000004',
+  };
+  // SAFETY: mutation check: z.strictObject -> z.object in ContradictionResolvedV1 -> this test failed (a note was accepted)
+  it('rejects a note, a limit or a name', () => {
+    expect(ContradictionResolvedV1.payload.safeParse(ids).success).toBe(true);
+    expect(ContradictionResolvedV1.payload.safeParse({ ...ids, note: 'The CV overstates the team' }).success).toBe(
+      false,
+    );
   });
 });
