@@ -1,4 +1,5 @@
 import type { JobHeader, RubricState } from '@credalent/jobs';
+import type { OwnerChange } from './hiringOwner.ts';
 
 /** The five stages of a job, in order; each is a page under /app/jobs/[jobId] (AIV-P1-011). */
 export const JOB_PAGES = ['description', 'rubric', 'candidates', 'interviews', 'pack'] as const;
@@ -24,6 +25,8 @@ export type JobHeaderView = {
   location: string | null;
   hiringOwner: string | null;
   assessed: number;
+  /** The admin's hiring-owner picker; null for every other role (AIV-P1-097). */
+  ownerChange: OwnerChange | null;
   rubric: RubricState;
   stages: { page: JobPage; line: StageLine; done: boolean }[];
 };
@@ -32,6 +35,7 @@ export function jobHeaderView(
   { job, approved, latest }: JobHeader,
   hiringOwner: string | null,
   assessed: number,
+  ownerChange: OwnerChange | null = null,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -59,6 +63,7 @@ export function jobHeaderView(
     location: job.location,
     hiringOwner,
     assessed,
+    ownerChange,
     rubric: { approved: approved !== null, latest: latest?.status ?? null },
     // Reached: the description always, the rubric once a version is approved.
     stages: JOB_PAGES.map((page) => ({

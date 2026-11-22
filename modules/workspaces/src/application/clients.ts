@@ -13,7 +13,13 @@ export type GrantJobAccessInput = { userId: string } & (
 );
 
 /** A job's hiring owner changing from `previousOwnerId` to `ownerId` (null: none). */
-export type SetJobOwnerInput = { jobId: string; previousOwnerId: string | null; ownerId: string | null };
+export type SetJobOwnerInput = {
+  jobId: string;
+  previousOwnerId: string | null;
+  ownerId: string | null;
+  /** Why the owner changed; carried into the grant and revoke audit entries (AIV-P1-097). */
+  reason?: string;
+};
 
 export type ClientsPorts<Tx> = {
   storeFor(tx: Tx): WorkspaceStore;
@@ -154,12 +160,14 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
         await store.audit(ctx.workspaceId, ctx.userId, {
           action: 'job_access.revoked',
           subject: { type: 'member', id: removed.userId },
+          ...(input.reason && { note: input.reason }),
           before: target(removed),
         });
       if (added)
         await store.audit(ctx.workspaceId, ctx.userId, {
           action: 'job_access.granted',
           subject: { type: 'member', id: added.userId },
+          ...(input.reason && { note: input.reason }),
           after: target(added),
         });
     },

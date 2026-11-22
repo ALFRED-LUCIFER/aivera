@@ -1006,7 +1006,7 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
 
   // SAFETY: mutation check: skipped the revoke in setJobOwner -> this test failed (the previous owner kept the job)
   it('changing the hiring owner revokes the previous owner’s grant for that job', async () => {
-    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_B));
+    await as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_B));
     expect(await grantsOf(OWNER_A)).toEqual([]);
     expect(await grantsOf(OWNER_B)).toEqual([backend]);
     expect(await canOpen(OWNER_A, backend, dune)).toBe('403');
@@ -1015,8 +1015,8 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
 
   it('a previous owner who holds a client grant keeps the client’s jobs', async () => {
     await as(ALEX, w, (ctx) => workspaces.grantJobAccess(ctx, { userId: OWNER_A, clientId: dune }));
-    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_A));
-    await as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, null));
+    await as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_A));
+    await as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, backend, null));
     expect(await grantsOf(OWNER_A)).toEqual([`client:${dune}`]);
     expect(await canOpen(OWNER_A, backend, dune)).toBe('allowed');
   });
@@ -1034,6 +1034,26 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
       as(RANA, w, (ctx) => jobs.createJob(ctx, job('Data Engineer', { hiringOwnerUserId: PANEL }))),
     ).rejects.toThrow(new WorkspaceError('owner_role'));
     expect(await as(ALEX, w, (ctx) => jobs.listJobs(ctx))).toHaveLength(before);
+  });
+
+  // SAFETY: mutation check: authorised changeHiringOwner with job.assign_owner (admins and recruiters) -> the recruiter refusal failed (AIV-P1-097)
+  it('only an admin changes a job’s hiring owner from the header; the reason and both sides are audited last', async () => {
+    await expect(as(RANA, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_A))).rejects.toThrow(ForbiddenError);
+    await as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, backend, OWNER_B, { reason: 'Faisal moved to Finance' }));
+    const entries = await audit.listFor(w, { type: 'job', id: backend });
+    expect(entries.at(-1)).toMatchObject({
+      action: 'job.hiring_owner_changed',
+      actor: { type: 'user', id: ALEX },
+      note: 'Faisal moved to Finance',
+      after: { hiringOwnerUserId: OWNER_B },
+    });
+    // The grant and the revoke carry the same reason.
+    expect((await audit.listFor(w, { type: 'member', id: OWNER_B })).at(-1)).toMatchObject({
+      action: 'job_access.granted',
+      note: 'Faisal moved to Finance',
+    });
+    // Leave the job as the next tests expect it: no owner.
+    await as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, backend, null));
   });
 
   it('a hiring owner cannot change who owns a job, nor add a client', async () => {

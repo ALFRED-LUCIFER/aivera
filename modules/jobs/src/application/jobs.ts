@@ -343,15 +343,33 @@ export function jobsUseCases({
     },
 
     /**
-     * Admins and recruiters (AIV-P1-056): the job's hiring owner becomes `ownerId` (null: none). The new owner gets a
-     * grant on the job and the previous one loses theirs, audited by the workspaces module as the last writes. No screen
-     * calls it yet: the job edit page (AIV-P1-012 job header) will; the ticket's revoke test exercises it now.
+     * Admins (AIV-P1-056, AIV-P1-097): the job's hiring owner becomes `ownerId` (null: none). The new owner gets a grant
+     * on the job and the previous one loses theirs (audited by the workspaces module), `alongside` runs next (the
+     * rubric email), and `job.hiring_owner_changed` with the reason is the last write.
      */
-    async changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void> {
-      const job = await visibleJob(ctx, jobId, 'job.assign_owner', true);
+    async changeHiringOwner(
+      ctx: WorkspaceContext,
+      jobId: string,
+      ownerId: string | null,
+      options: { reason?: string; alongside?: (changed: Job) => Promise<void> } = {},
+    ): Promise<void> {
+      const job = await visibleJob(ctx, jobId, 'job.change_owner', true);
       if (job.hiringOwnerUserId === ownerId) return;
       await storeFor(ctx.tx).setHiringOwner(ctx.workspaceId, job.id, ownerId);
-      await setJobOwner(ctx, { jobId: job.id, previousOwnerId: job.hiringOwnerUserId, ownerId });
+      await setJobOwner(ctx, {
+        jobId: job.id,
+        previousOwnerId: job.hiringOwnerUserId,
+        ownerId,
+        ...(options.reason && { reason: options.reason }),
+      });
+      await options.alongside?.({ ...job, hiringOwnerUserId: ownerId });
+      await audit(ctx, {
+        action: 'job.hiring_owner_changed',
+        subject: { type: 'job', id: job.id },
+        ...(options.reason && { note: options.reason }),
+        before: { hiringOwnerUserId: job.hiringOwnerUserId },
+        after: { hiringOwnerUserId: ownerId },
+      });
     },
 
     /** Moves the job to `stage` (AIV-P1-067); past "defining rubric" only with an approved rubric. Audited. */

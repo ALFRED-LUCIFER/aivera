@@ -17,6 +17,9 @@ export const PERMISSIONS = {
   'job_access.view': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
   // The job's hiring owner gets that job's grant with it (AIV-P1-056); whoever adds or edits the job sets it.
   'job.assign_owner': { scope: 'workspace', roles: ['admin', 'recruiter'] },
+  // Assigning or changing a job's hiring owner from the job header is the admin's alone (AIV-P1-097); adding a job
+  // still sets its owner under job.assign_owner.
+  'job.change_owner': { scope: 'job', roles: ['admin'] },
   // Inviting, revoking invitations and removing members (AIV-P1-003).
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   // Recruiters approve their jobs' rubrics; the hiring owner only what was sent to them (ADR-014, AIV-P1-083).

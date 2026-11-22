@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
 import { getJobs } from '@/server/jobs';
-import { inActiveWorkspace } from '@/server/workspace';
+import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
 
 const jobId = z.uuid();
 
@@ -18,11 +18,26 @@ export async function loadJobHeader(id: string) {
     const header = await getJobs().getJobHeader(ctx, id);
     // Composed here, not in jobs, which cannot import assessment; the same transaction (AIV-P1-099).
     const assessed = header ? ((await getAssessment().countAssessed(ctx, [id]))[id] ?? 0) : 0;
-    return { header, assessed, jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter' };
+    // The picker is the admin's alone (`job.change_owner`); their members are read here, in the same transaction.
+    const members =
+      header && ctx.role === 'admin'
+        ? (await getWorkspaces().listMembers(ctx)).filter((m) => m.status === 'active' && m.role === 'hiring_owner')
+        : null;
+    return { header, assessed, members, jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter' };
   });
   if (!result) return null;
-  const { header, assessed, jobScoped } = result.value;
+  const { header, assessed, members, jobScoped } = result.value;
   if (!header) return { missing: jobScoped ? ('forbidden' as const) : ('notFound' as const) };
   const owner = header.job.hiringOwnerUserId && (await getIdentity().getUser(header.job.hiringOwnerUserId));
-  return { header, assessed, hiringOwner: owner ? (owner.displayName ?? owner.email) : null };
+  // shortcut: one identity read per hiring-owner member, as the members screen does; batch it with identity.
+  const options =
+    members &&
+    (await Promise.all(
+      members.map(async (m) => {
+        const user = await getIdentity().getUser(m.userId);
+        return { userId: m.userId, name: m.title || user?.displayName || user?.email || '' };
+      }),
+    ));
+  const ownerChange = options && { currentUserId: header.job.hiringOwnerUserId, options };
+  return { header, assessed, ownerChange, hiringOwner: owner ? (owner.displayName ?? owner.email) : null };
 }

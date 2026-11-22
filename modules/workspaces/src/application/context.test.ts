@@ -60,6 +60,8 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'client.manage': ['YYY', 'YYY', '---', '---'],
   'job_access.manage': ['YYY', '---', '---', '---'],
   'job_access.view': ['YYY', 'YYY', '---', '---'],
+  // SAFETY: mutation check: added recruiter to job.change_owner -> this matrix failed (AIV-P1-097)
+  'job.change_owner': ['YYY', '---', '---', '---'],
   'job.assign_owner': ['YYY', 'YYY', '---', '---'],
   'member.invite': ['YYY', '---', '---', '---'],
   'rubric.approve': ['YYY', 'YYY', 'Y--', '---'],

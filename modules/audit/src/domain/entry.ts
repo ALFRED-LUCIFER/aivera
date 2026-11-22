@@ -40,6 +40,7 @@ export const ACTIONS = [
   'evidence_request.sent',
   'evidence_request.closed',
   'evidence.contradiction_resolved',
+  'job.hiring_owner_changed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

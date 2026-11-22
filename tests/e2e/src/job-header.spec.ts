@@ -88,3 +88,26 @@ for (const theme of themes) {
     await expectAccessible(page);
   });
 }
+
+// AIV-P1-097: AP is the admin of "Demo". Confirming would change the shared seed, so this opens, checks and cancels;
+// the change itself is proven against PostgreSQL in jobs.test.ts.
+for (const theme of themes) {
+  test(`Scenario: An admin opens "Change hiring owner" and nothing changes until they confirm (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: AP });
+    await openJob(page, 'Senior AI Engineer');
+    await page.getByRole('button', { name: 'Change hiring owner' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Change hiring owner' });
+    await expect(dialog.getByText('Nothing changes until you confirm.')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Confirm change' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await expectAccessible(page);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Change hiring owner' })).toBeFocused();
+  });
+}

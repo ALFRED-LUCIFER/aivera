@@ -198,11 +198,18 @@ export interface JobsContract {
     input: CreateJobWithDraftRubricInput,
   ): Promise<{ job: Job; rubricVersion: RubricVersion }>;
   /**
-   * Admins and recruiters (AIV-P1-056): sets the job's hiring owner (null: none). The new owner gets a grant on the job,
-   * the previous one loses theirs (a client grant stays). Throws `ForbiddenError`, `JobError('not_found')`, or the
-   * workspaces module's `WorkspaceError('owner_role')` when the owner is not an active hiring owner.
+   * Admins (AIV-P1-056, AIV-P1-097): sets the job's hiring owner (null: none). The new owner gets a grant on the job,
+   * the previous one loses theirs (a client grant stays). `reason` goes into the audit entries; `alongside` runs in the
+   * transaction before the final `job.hiring_owner_changed` audit write and receives the job with its new owner. Throws
+   * `ForbiddenError`, `JobError('not_found')`, or the workspaces module's `WorkspaceError('owner_role')` when the owner
+   * is not an active hiring owner.
    */
-  changeHiringOwner(ctx: WorkspaceContext, jobId: string, ownerId: string | null): Promise<void>;
+  changeHiringOwner(
+    ctx: WorkspaceContext,
+    jobId: string,
+    ownerId: string | null,
+    options?: { reason?: string; alongside?: (changed: Job) => Promise<void> },
+  ): Promise<void>;
   /**
    * Admins and recruiters (AIV-P1-067): moves the job to `stage`; the same stage does nothing. Any stage past "defining
    * rubric" needs an approved rubric (`JobError('stage_needs_rubric')`). Audited as `job.stage_changed`.
