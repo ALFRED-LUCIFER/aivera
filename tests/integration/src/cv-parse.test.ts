@@ -5,8 +5,13 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { createAiClient, fakeProvider } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
-import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
+import { UNNAMED_APPLICANT, type CandidatesContract } from '@credalent/candidates';
+import {
+  createCandidates,
+  createContactRecorder,
+  nameUnnamedPerson,
+  readPersonAsSystem,
+} from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, MAX_DELIVERIES, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -141,9 +146,9 @@ const urlFor = (role: string) =>
 const as = <T>(workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>) =>
   workspaces.withWorkspace({ userId: ALEX }, workspaceId, fn);
 
-const person = (displayName: string) =>
+const person = (displayName: string, address?: string) =>
   as(w1, async (ctx) => {
-    const email = `${displayName.toLowerCase().replaceAll(' ', '.')}.applicant@example.com`;
+    const email = address ?? `${displayName.toLowerCase().replaceAll(' ', '.')}.applicant@example.com`;
     const created = await candidates.findOrCreatePerson(ctx, {
       displayName,
       identifiers: [{ type: 'email', value: email }],
@@ -178,6 +183,16 @@ async function relayAndConsume(completion: string): Promise<string[]> {
   return consume(sent, completion);
 }
 
+let budgetSpent = false;
+const scheduled: { queue: string; envelope: Envelope; at: Date }[] = [];
+const scheduler = {
+  schedule: async (queue: string, envelope: Envelope, at: Date) => (
+    scheduled.push({ queue, envelope, at }),
+    String(scheduled.length)
+  ),
+  cancel: async () => undefined,
+};
+
 /** Delivers the envelopes to the worker's CV handlers, as Service Bus would on delivery `deliveryCount`. */
 async function consume(envelopes: Envelope[], completion: string, deliveryCount = 1): Promise<string[]> {
   const handlers = createFileReadHandlers({
@@ -192,11 +207,16 @@ async function consume(envelopes: Envelope[], completion: string, deliveryCount 
           return model;
         },
       },
-      budget: createAiTokenBudget(app),
+      budget: budgetSpent
+        ? { spentToday: async () => ({ spent: 1, limit: 1 }), add: async () => {} }
+        : createAiTokenBudget(app),
     }),
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
     readPerson: readPersonAsSystem,
+    namePerson: nameUnnamedPerson,
+    audit: createAudit(app),
+    scheduler,
     now: () => NOW,
   });
   const consumer = createConsumer({ db: app, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
@@ -217,9 +237,9 @@ async function parse(
   name: string,
   layout: string[][] | object | 'unavailable',
   completion: string,
-  opts: { clean?: boolean; bytes?: string } = {},
+  opts: { clean?: boolean; bytes?: string; candidateId?: string } = {},
 ) {
-  const candidateId = await person(name);
+  const candidateId = opts.candidateId ?? (await person(name));
   const marker = randomUUID();
   layouts.set(marker, Array.isArray(layout) ? layoutOf(layout) : layout);
   const fileId = await upload(Buffer.from(opts.bytes ?? `%PDF-1.7 ${marker} synthetic`), opts.clean ?? true);
@@ -448,10 +468,10 @@ describe('Scenario: Extraction that cites text not in the CV is rejected', () =>
 });
 
 describe('Scenario: An unreadable CV is reported, not guessed', () => {
-  it('a scanned image with no readable text is marked "We could not read this CV", with no item', async () => {
+  it('a scanned image with no readable text is marked "Could not be read automatically", with no item', async () => {
     const { view, items } = await parse('Sneha Iyer', [[''], ['']], answer({}));
     expect(view).toEqual({ status: 'unreadable', notes: [] });
-    expect(en.evidence.cvStatus[view?.status ?? '']).toBe('We could not read this CV');
+    expect(en.evidence.cvStatus[view?.status ?? '']).toBe('Could not be read automatically');
     expect(items).toEqual([]);
   });
 
@@ -649,5 +669,122 @@ describe('Scenario Outline: Hidden text in a PDF CV is flagged from the layout (
     const other = await withWorkspace(app, w2, (tx) => tx.execute(sql`select excerpt from evidence.source_note`));
     expect([...other]).toEqual([]);
     expect(await as(w2, (ctx) => evidence.getCvParse(ctx, maria.sourceId))).toBeNull();
+  });
+});
+
+const WAITING = [['Rania Haddad', 'Built the claims triage model.']];
+
+describe('Feature: Spent AI budget delays CV parsing instead of failing it (AIV-P1-089)', () => {
+  it('Scenario: the parse waits for 00:05 UTC the next day, shows the waiting label, then completes once', async () => {
+    budgetSpent = true;
+    scheduled.length = 0;
+    let first: Awaited<ReturnType<typeof parse>>;
+    try {
+      first = await parse('Rania Haddad', WAITING, answer({ statements: ['Built the claims triage model'] }));
+    } finally {
+      budgetSpent = false;
+    }
+    expect(new Set(first.settled)).toEqual(new Set(['complete']));
+    expect(first.view?.status).toBe('waiting');
+    expect(en.evidence.cvStatus['waiting']).toBe("Waiting for tomorrow's AI allowance");
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]).toMatchObject({ queue: EVIDENCE_QUEUE, at: new Date('2026-11-21T00:05:00.000Z') });
+    expect(scheduled[0]?.envelope.type).toBe(CvParseRequestedV1.type);
+
+    // The clock passes the scheduled time and the budget has room: the same envelope is delivered, twice.
+    const envelope = scheduled[0]?.envelope as Envelope;
+    const completion = answer({ statements: ['Built the claims triage model'] });
+    expect(await consume([envelope], completion)).toEqual(['complete']);
+    expect(await consume([envelope], completion)).toEqual(['complete']);
+    const after = await read(first.candidateId, first.sourceId);
+    expect(after.view?.status).toBe('parsed');
+    expect(after.items.map((i) => i.excerpt)).toEqual(['Built the claims triage model']);
+  });
+
+  it.each([
+    ['a schema mismatch', '{}'],
+    [
+      'an uncited statement',
+      JSON.stringify({
+        contact: { emails: [], phones: [] },
+        workHistory: [],
+        skills: [],
+        statements: [{ text: 'x', citations: [] }],
+      }),
+    ],
+  ])(
+    'Scenario: %s is a permanent rejection: "Could not be read automatically", complete, no redelivery',
+    async (_, completion) => {
+      const { settled, view, items } = await parse(
+        'Tariq Nasser',
+        [['Tariq Nasser', 'Led the fraud model.']],
+        completion,
+      );
+      expect(new Set(settled)).toEqual(new Set(['complete']));
+      expect(view?.status).toBe('unreadable');
+      expect(en.evidence.cvStatus['unreadable']).toBe('Could not be read automatically');
+      expect(items).toEqual([]);
+    },
+  );
+});
+
+const nameOf = async (personId: string) => (await as(w1, (ctx) => candidates.getPerson(ctx, personId)))?.displayName;
+const renames = (personId: string) =>
+  admin.$client.unsafe(
+    `select actor_type, note from audit.entry where action = 'candidate.renamed' and subject_id = '${personId}'`,
+  );
+const promptText = () => JSON.stringify(models.map((m) => m.doGenerateCalls.map((c) => c.prompt)));
+
+describe('Feature: Applicants carry their real name, and the model never sees it (AIV-P1-090)', () => {
+  const OKOYE = [['Sara Okoye', 'sara.okoye@example.com | +971 50 000 0099', 'Built the claims triage model.']];
+  const okoyeAnswer = answer({
+    contact: { emails: ['sara.okoye@example.com'], phones: ['+971 50 000 0099'] },
+    statements: ['Built the claims triage model'],
+  });
+
+  it('Scenario: the placeholder is replaced after the parse, audited as the system, and the name never reaches the model', async () => {
+    const candidateId = await person(UNNAMED_APPLICANT, 'okoye.applicant@example.com');
+    models.length = 0;
+    const { view } = await parse('unused', OKOYE, okoyeAnswer, { candidateId });
+    expect(view?.status).toBe('parsed');
+    expect(await nameOf(candidateId)).toBe('Sara Okoye');
+    expect([...(await renames(candidateId))]).toEqual([{ actor_type: 'system', note: 'Named from the CV' }]);
+    const prompt = promptText();
+    expect(prompt).not.toContain('Sara Okoye');
+    // Emails and phones go as written to parseCv by design (ADR-006 point 7, CONTACT_EXTRACTION_TASKS).
+  });
+
+  it('Scenario: a CV with no name keeps the placeholder and sends nothing to the model', async () => {
+    const candidateId = await person(UNNAMED_APPLICANT, 'nameless.applicant@example.com');
+    models.length = 0;
+    const { view, items } = await parse(
+      'unused',
+      [['Curriculum Vitae', 'Built the claims triage model.']],
+      okoyeAnswer,
+      {
+        candidateId,
+      },
+    );
+    expect(view?.status).toBe('unreadable');
+    expect(items).toEqual([]);
+    expect(await nameOf(candidateId)).toBe(UNNAMED_APPLICANT);
+    expect(models).toEqual([]);
+  });
+
+  it('Scenario: a name a person typed is never overwritten', async () => {
+    const candidateId = await person('Sara O.', 'typed.applicant@example.com');
+    models.length = 0;
+    await parse('unused', OKOYE, okoyeAnswer, { candidateId });
+    expect(await nameOf(candidateId)).toBe('Sara O.');
+    expect(promptText()).not.toMatch(/okoye/i);
+    expect([...(await renames(candidateId))]).toEqual([]);
+  });
+
+  it('Scenario: another workspace cannot rename', async () => {
+    const candidateId = await person(UNNAMED_APPLICANT, 'other.applicant@example.com');
+    // Workspace B's transaction asked about workspace A's person, with and without the repository filter's workspace id.
+    expect(await withWorkspace(app, w2, (tx) => nameUnnamedPerson(tx, w2, candidateId, 'Mallory Name'))).toBe(false);
+    expect(await withWorkspace(app, w2, (tx) => nameUnnamedPerson(tx, w1, candidateId, 'Mallory Name'))).toBe(false);
+    expect(await nameOf(candidateId)).toBe(UNNAMED_APPLICANT);
   });
 });

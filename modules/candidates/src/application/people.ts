@@ -22,6 +22,8 @@ export type CandidateStore = {
   /** Adds emails and phones the record does not list yet to the person's record only: no identifier, no matching. */
   appendContact(workspaceId: string, personId: string, contact: { emails: string[]; phones: string[] }): Promise<void>;
   listPeople(workspaceId: string): Promise<Person[]>;
+  /** Sets the name only while it is still `UNNAMED_APPLICANT`; false when the person is named, merged away or missing. */
+  nameUnnamed(workspaceId: string, personId: string, name: string): Promise<boolean>;
   /** Each listed person's id and display name; ids the workspace does not have are left out. */
   displayNames(workspaceId: string, personIds: string[]): Promise<{ id: string; displayName: string }[]>;
   /** Deletes every person and identifier in the workspace; false, with nothing deleted, if any person is not synthetic. */

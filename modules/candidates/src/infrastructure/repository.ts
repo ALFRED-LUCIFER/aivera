@@ -1,6 +1,7 @@
 import { DbQueryError, type Tx } from '@credalent/db/client';
 import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { CandidateStore } from '../application/people.ts';
+import { UNNAMED_APPLICANT } from '../domain/person.ts';
 import { person, personIdentifier } from './schema.ts';
 
 /**
@@ -105,6 +106,21 @@ export function candidateStore(tx: Tx): CandidateStore {
       await tx.delete(personIdentifier).where(eq(personIdentifier.workspaceId, workspaceId));
       await tx.delete(person).where(eq(person.workspaceId, workspaceId));
       return true;
+    },
+    async nameUnnamed(workspaceId, personId, name) {
+      const updated = await tx
+        .update(person)
+        .set({ displayName: name })
+        .where(
+          and(
+            eq(person.workspaceId, workspaceId),
+            eq(person.id, personId),
+            eq(person.displayName, UNNAMED_APPLICANT),
+            isNull(person.mergedIntoId),
+          ),
+        )
+        .returning({ id: person.id });
+      return updated.length > 0;
     },
     listPeople(workspaceId) {
       return tx

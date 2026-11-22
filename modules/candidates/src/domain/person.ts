@@ -7,6 +7,9 @@ export type IdentifierType = (typeof IDENTIFIER_TYPES)[number];
 /** A way to recognise the same person again. Stored normalised, unique per workspace. */
 export type Identifier = { type: IdentifierType; value: string };
 
+/** What intake stores until the CV names the applicant (AIV-P1-090); only a person with this name is renamed from a CV. */
+export const UNNAMED_APPLICANT = 'Unnamed applicant';
+
 export type Person = {
   id: string;
   workspaceId: string;

@@ -1,0 +1,2 @@
+ALTER TABLE "evidence"."cv_parse" DROP CONSTRAINT "cv_parse_status_check";--> statement-breakpoint
+ALTER TABLE "evidence"."cv_parse" ADD CONSTRAINT "cv_parse_status_check" CHECK ("evidence"."cv_parse"."status" in ('pending', 'waiting', 'parsed', 'unreadable', 'failed'));

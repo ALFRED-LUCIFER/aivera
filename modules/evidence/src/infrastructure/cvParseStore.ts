@@ -68,7 +68,7 @@ export function cvParseStore(tx: Tx): CvParseStore {
           and(
             eq(cvParse.workspaceId, workspaceId),
             eq(cvParse.sourceId, sourceId),
-            inArray(cvParse.status, ['pending', 'failed']),
+            inArray(cvParse.status, ['pending', 'waiting', 'failed']),
           ),
         )
         .returning({ sourceId: cvParse.sourceId });

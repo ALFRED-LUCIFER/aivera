@@ -9,7 +9,7 @@ import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import { newEnvelope } from '@credalent/db/outbox';
-import type { Handler } from '@credalent/db/consumer';
+import { PermanentFailure, type Handler } from '@credalent/db/consumer';
 import {
   CLAIM_LIMIT,
   EvidenceMappingRequestedV1,
@@ -70,6 +70,8 @@ let repositorySource: string;
 let approved: Record<string, string | null> = {};
 let completion = '{}';
 let failures: number[] = [];
+let budgetSpent = false;
+const scheduled: { queue: string; type: string; at: Date }[] = [];
 const applications = new Map<string, string[]>();
 
 const urlFor = (role: string) =>
@@ -122,7 +124,10 @@ beforeAll(async () => {
     ai: createAiClient({
       // Read per call, so each test's answer and failures apply.
       provider: { ...fake, languageModel: (d) => fakeProvider({ completion, failures }).languageModel(d) },
-      budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
+      budget: {
+        spentToday: async () => ({ spent: budgetSpent ? 10_000_000 : 0, limit: 10_000_000 }),
+        add: async () => {},
+      },
       sleep: async () => {},
     }),
     approvedRubric: async (_tx, _workspaceId, jobId) => {
@@ -135,6 +140,10 @@ beforeAll(async () => {
         [...applications].filter(([, j]) => j.includes(jobId)).map(([c]) => c),
     },
     readPerson: readPersonAsSystem,
+    scheduler: {
+      schedule: async (queue, envelope, at) => (scheduled.push({ queue, type: envelope.type, at }), '1'),
+      cancel: async () => undefined,
+    },
     now: () => NOW,
   });
 
@@ -378,6 +387,36 @@ describe('Feature: Evidence mapped to competencies with cited excerpts (AIV-P1-0
     await expect(mapNow(w1, sara, JOB)).rejects.toThrow(AiUnavailable);
     failures = [];
     expect(await rows(w1, sql`select id from evidence.mapping`)).toHaveLength(3);
+  });
+
+  it('Scenario: Mapping out of budget reschedules for 00:05 UTC the next day and stores nothing (AIV-P1-089)', async () => {
+    const before = await rows(w1, sql`select id from evidence.mapping`);
+    budgetSpent = true;
+    scheduled.length = 0;
+    try {
+      await mapNow(w1, sara, JOB);
+    } finally {
+      budgetSpent = false;
+    }
+    expect(scheduled).toEqual([
+      { queue: 'evidence', type: 'EvidenceMappingRequested.v1', at: new Date('2026-11-21T00:05:00.000Z') },
+    ]);
+    expect(await rows(w1, sql`select id from evidence.mapping`)).toHaveLength(before.length);
+  });
+
+  it.each([
+    '{}',
+    JSON.stringify({
+      links: [{ competencyId: RETRIEVAL, strength: 'strong', label: 'submitted', level: 4, limit: 'x', citations: [] }],
+      changes: [],
+    }),
+  ])('Scenario: A permanent rejection is dead-lettered on the first delivery, not retried (%#)', async (bad) => {
+    completion = bad;
+    try {
+      await expect(mapNow(w1, sara, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    } finally {
+      completion = '{}';
+    }
   });
 
   it('evidence and rubric changes fan out to one mapping request per candidate and job', async () => {

@@ -252,7 +252,7 @@ export interface EvidenceContract {
    */
   requestCvParse(ctx: WorkspaceContext, input: RequestCvParseInput): Promise<{ sourceId: string }>;
   /**
-   * The parse's status (`pending` "Reading the CV", `unreadable` "We could not read this CV", `failed` "Parsing failed,
+   * The parse's status (`pending` "Reading the CV", `unreadable` "Could not be read automatically", `waiting` "Waiting for tomorrow's AI allowance", `failed` "Parsing failed,
    * retry", `parsed`) and the CV's "Unusual content in this source" notes, each quoting the CV with "page N", for the
    * Candidate screen (AIV-P1-045). Null when the workspace has no such parse. Admins and recruiters.
    */
