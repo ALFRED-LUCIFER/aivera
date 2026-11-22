@@ -2,6 +2,7 @@
 
 - **Status:** Accepted, 18 Nov 2026
 - **Ticket:** AIV-P0-001
+- **Amended by:** [ADR-015](ADR-015-python-ai-service.md): the worker moved to `apps/backend/worker` and a Python AI service (`apps/ai-service`, AIV-P2-068) joins the apps
 
 ## Context
 
@@ -13,7 +14,7 @@ The Medvya blueprint (a .NET modular monolith with DDD module boundaries, a feat
 apps/web/                 Next.js app: marketing, recruiter app, candidate site, portal, client view
   src/app/                routing and composition only
   src/features/<f>/{domain,services,hooks,components}
-apps/worker/              queue consumers and scheduled jobs; composition only
+apps/backend/worker/      queue consumers and scheduled jobs; composition only (moved from apps/worker, ADR-015)
 modules/<m>/              one bounded context, package @credalent/<m>, one PostgreSQL schema
   src/domain/             entities, value objects, invariants; pure
   src/application/        use cases over narrow ports

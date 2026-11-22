@@ -2,7 +2,7 @@
 
 - **Status:** Accepted, 18 Nov 2026
 - **Ticket:** AIV-P0-001
-- **Amended by:** [ADR-013](ADR-013-catalogue-in-the-database.md) (proposed): a worker job may run the live eval for a catalogue draft (point 8)
+- **Amended by:** [ADR-013](ADR-013-catalogue-in-the-database.md) (proposed): a worker job may run the live eval for a catalogue draft (point 8); [ADR-015](ADR-015-python-ai-service.md): a Python AI service may do prompting and orchestration behind `@credalent/ai`, which keeps redaction, the token budget and the citation check (point 2)
 
 ## Context
 

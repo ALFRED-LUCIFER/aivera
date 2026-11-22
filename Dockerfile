@@ -1,7 +1,7 @@
 # Images for Azure dev (AIV-P0-006), built by .github/workflows/deploy-dev.yml:
 #   docker build --target web .       Next.js standalone server, non-root, port 3000
 #   docker build --target migrate .   `pnpm db:migrate` (node packages/db/src/cli.ts migrate), non-root
-#   docker build --target worker .    the worker host (node apps/worker/src/main.ts), non-root, probes on 8080
+#   docker build --target worker .    the worker host (node apps/backend/worker/src/main.ts), non-root, probes on 8080
 FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS source
 WORKDIR /repo
 RUN corepack enable
@@ -32,4 +32,4 @@ FROM source AS worker
 ENV NODE_ENV=production
 USER node
 EXPOSE 8080
-CMD ["node", "apps/worker/src/main.ts"]
+CMD ["node", "apps/backend/worker/src/main.ts"]

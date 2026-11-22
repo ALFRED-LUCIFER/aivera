@@ -74,7 +74,7 @@ resource rules 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = [
 // AIV-P0-015: any message in a queue's dead-letter queue, from the platform metric (it also counts TTL expiry, which the
 // worker's own `credalent.worker.dead_lettered` counter cannot see). One rule, split per queue; about $0.10 a month each.
 // The metric counts messages sitting in the dead-letter queue, so it stays fired until someone drains it. Nothing
-// consumes `candidates` yet, so it fires 14 days after the first PersonCreated.v1 (shortcut in apps/worker/src/main.ts).
+// consumes `candidates` yet, so it fires 14 days after the first PersonCreated.v1 (shortcut in apps/backend/worker/src/main.ts).
 resource deadLetters 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: 'alert-${brand}-dead-letters-${env}'
   location: 'global'

@@ -102,16 +102,24 @@ export function* walk(dir: string): Generator<string> {
 const dirsIn = (dir: string) =>
   existsSync(dir) ? readdirSync(dir).filter((n) => statSync(join(dir, n)).isDirectory()) : [];
 
-/** The unit a path belongs to, e.g. "modules/jobs", "packages/ui", "apps/web". */
+/** apps/backend groups the back-end apps (ADR-015): each of its folders is an app of its own. */
+const APP_GROUP = 'backend';
+
+/** The unit a path belongs to, e.g. "modules/jobs", "packages/ui", "apps/web", "apps/backend/worker". */
 function unitOf(root: string, path: string): string | undefined {
-  const [top, name] = relative(root, path).split(sep);
+  const [top, name, app] = relative(root, path).split(sep);
+  if (top === 'apps' && name === APP_GROUP) return app ? `apps/${APP_GROUP}/${app}` : undefined;
   return top && name && ['apps', 'modules', 'packages'].includes(top) ? `${top}/${name}` : undefined;
 }
 
 export function findViolations(root: string): Violation[] {
   const modules = new Set(dirsIn(join(root, 'modules')));
+  const apps = [
+    ...dirsIn(join(root, 'apps')).filter((app) => app !== APP_GROUP),
+    ...dirsIn(join(root, 'apps', APP_GROUP)).map((app) => `${APP_GROUP}/${app}`),
+  ];
   const appPackages = new Set(
-    dirsIn(join(root, 'apps')).flatMap((app) => {
+    apps.flatMap((app) => {
       const pkg = join(root, 'apps', app, 'package.json');
       return existsSync(pkg) ? [(JSON.parse(readFileSync(pkg, 'utf8')) as { name: string }).name] : [];
     }),

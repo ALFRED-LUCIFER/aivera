@@ -202,7 +202,7 @@ export function findUndeclaredEntryPoints(root: string): Violation[] {
   const found: Violation[] = [];
   for (const [app, check] of [
     ['web', webViolations],
-    ['worker', workerViolations],
+    ['backend/worker', workerViolations],
   ] as const) {
     for (const path of walk(join(root, 'apps', app, 'src'))) {
       if (!SOURCE.test(path) || TEST.test(path)) continue;

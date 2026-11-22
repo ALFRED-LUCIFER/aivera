@@ -18,7 +18,7 @@ import { z } from 'zod';
 // AIV-P0-015 acceptance scenarios for the consumer wrapper against real PostgreSQL as aivera_app (row-level security
 // applies). Service Bus is a fake delivery that records how each message was settled.
 // shortcut: no Service Bus emulator (it needs a SQL Server container); settlement and scheduling are faked at the SDK
-// boundary here and in apps/worker/src/serviceBus.test.ts. Add the emulator when a consumer depends on broker behaviour.
+// boundary here and in apps/backend/worker/src/serviceBus.test.ts. Add the emulator when a consumer depends on broker behaviour.
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
