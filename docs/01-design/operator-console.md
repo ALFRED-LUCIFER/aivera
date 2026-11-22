@@ -1,6 +1,6 @@
 # Operator console: design spec
 
-The operator console (`/ops/**`, [ADR-012](../adr/ADR-012-operator-console.md)) has no artboard in the claude.ai canvas. This file is its spec until one is drawn; when the canvas gains an operator artboard, it replaces this file in the same PR (AGENTS.md section 4). It applies the Case file ([DESIGN.md](../../DESIGN.md)) to an Operate surface: the people who run Credalent scan, compare and act, so the console borrows the recruiter app's vocabulary and adds nothing decorative. Ticket: AIV-P2-040.
+The operator console (`/ops/**`, [ADR-012](../adr/ADR-012-operator-console.md)) now has fifteen artboards in the claude.ai canvas (`A*.dc.html`, listed under "Platform admin" in [`screens.md`](screens.md)); they are the layout and copy spec for those screens. This file still governs the tokens, density and states below, and any screen the artboards do not draw, until the operator tickets (paused, epic AIV-P1-E09) re-port each screen from its artboard. It applies the Case file ([DESIGN.md](../../DESIGN.md)) to an Operate surface: the people who run Credalent scan, compare and act, so the console borrows the recruiter app's vocabulary and adds nothing decorative. Ticket: AIV-P2-040.
 
 Every colour, size and radius below is a Case file token (`--text`, `text-meta`, `rounded-card`), never a raw value.
 

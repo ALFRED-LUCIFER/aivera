@@ -75,3 +75,9 @@ Candidate-site listings also include Real Estate Sales Consultant (a property br
 | Talent pool       | various                          | —            | Hala Saleh, Imran Qureshi, Kristine Dela Cruz, Lukas Schmidt, Noura Al Ketbi                                                                                                    |
 
 Sneha Iyer and Lukas Schmidt are fixture-only people: tests, evals and artboards use them, and `pnpm db:seed` loads Sneha Kulkarni and Lukas Brandt in their place so the seeded cast has no shared surname.
+
+The canvas of 22 Nov 2026 adds people the cast above does not yet hold. They are synthetic and artboard-only until the persona-sync ticket moves them into [`tools/seed/src/cast.ts`](../../tools/seed/src/cast.ts):
+
+- **Huda Al Mansoori**: the candidate the canvas calls Huda where this table says Layla Haddad (the "only inspected Arabic work" candidate; her copy is sent in Arabic). She shares a first name with Huda Client (Falcon Pay), a different person.
+- **Layla Haddad** becomes the recruiter and workspace admin of Gulf Talent Partners in the canvas (emails sent "via Gulf Talent Partners"); `Omar Agency` above is that agency's admin in the seed. Until the sync, do not rename the candidate in fixtures without renaming the recruiter references.
+- **Rana Malik** (Calibrate screen) and **Omar Farouk** and **Daniel Reyes** (Settings screen, `@example.com` members): screen-only names; do not add them to fixtures without adding them here.
