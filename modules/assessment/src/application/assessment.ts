@@ -70,6 +70,11 @@ export type Ports = {
   storeFor(tx: Tx): AssessmentStore;
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /**
+   * The job the candidate applied to as the context may see it, or null: a job-named read is authorised against this
+   * stored record, never the request's job id (AIV-P1-091).
+   */
+  candidateJob(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<JobResource | null>;
+  /**
    * The job as the context may see it (null: no such job, or outside the context's job scope) and its approved rubric
    * version id (null: none approved yet).
    */
@@ -203,7 +208,7 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
 }
 
 export function assessmentUseCases(ports: Ports) {
-  const { storeFor, authorize, rankingJob } = ports;
+  const { storeFor, authorize, rankingJob, candidateJob } = ports;
   return {
     /**
      * Assesses the candidate and stores the result when it differs from the latest one; every stored result is
@@ -217,7 +222,7 @@ export function assessmentUseCases(ports: Ports) {
 
     /** The latest assessment of the candidate for the job, or null. Admins and recruiters. */
     async getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string) {
-      await authorize(ctx, 'candidate.view');
+      await authorize(ctx, 'candidate.view', (await candidateJob(ctx, candidateId, jobId)) ?? undefined);
       return storeFor(ctx.tx).latest(ctx.workspaceId, candidateId, jobId);
     },
 

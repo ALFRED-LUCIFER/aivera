@@ -1,7 +1,8 @@
 import type { EvidenceItemView } from '@credalent/evidence';
 import { describe, expect, it } from 'vitest';
 import { assess, type RubricInput } from '../domain/assess.ts';
-import { rank, toLinks, type StoredAssessment } from './assessment.ts';
+import type { WorkspaceContext } from '@credalent/workspaces';
+import { assessmentUseCases, rank, toLinks, type Ports, type StoredAssessment } from './assessment.ts';
 
 const JOB = 'job-sae';
 const RUBRIC: RubricInput = {
@@ -129,5 +130,29 @@ describe('The ranking of a job', () => {
       [2, 'maria', 55, 70],
       [3, 'sara', 55, 70],
     ]);
+  });
+});
+
+describe("getLatestAssessment authorises against the candidate's stored application (AIV-P1-091)", () => {
+  const ctx = { userId: 'head', workspaceId: 'w1', role: 'hiring_owner', tx: {} } as unknown as WorkspaceContext;
+  const read = async (candidateJob: Ports['candidateJob']) => {
+    const authorized: unknown[] = [];
+    const useCases = assessmentUseCases({
+      storeFor: () => ({ latest: async () => null }) as never,
+      authorize: async (_ctx: unknown, _action: unknown, resource: unknown) => void authorized.push(resource),
+      candidateJob,
+    } as unknown as Ports);
+    await useCases.getLatestAssessment(ctx, 'maria', JOB);
+    return authorized;
+  };
+
+  // SAFETY: mutation check: authorised with no resource (the old call) -> this test failed (a hiring owner's read was refused)
+  it('passes the resolved job and its client', async () => {
+    const job = { jobId: JOB, clientId: 'client-1' };
+    expect(await read(async () => job)).toEqual([job]);
+  });
+
+  it('names no job when the candidate has not applied to it', async () => {
+    expect(await read(async () => null)).toEqual([undefined]);
   });
 });

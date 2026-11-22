@@ -3,7 +3,7 @@ import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
 import type { DuplicateFlag, FingerprintedSource } from '../domain/fingerprint.ts';
-import { evidenceUseCases, type EvidenceStore, type RecordEvidenceInput } from './evidence.ts';
+import { evidenceUseCases, type EvidenceStore, type Ports, type RecordEvidenceInput } from './evidence.ts';
 
 // AIV-P1-071: the flag path records a flag and nothing else, and resolving it is audited last. Synthetic text only.
 const writeUp = Array.from(
@@ -13,8 +13,9 @@ const writeUp = Array.from(
 ).join(' ');
 
 /** Fakes that log every port call in order; the store keeps sources and flags in memory. */
-function harness() {
+function harness(candidateJob: Ports['candidateJob'] = async () => null) {
   const calls: string[] = [];
+  const authorized: unknown[] = [];
   const sources: FingerprintedSource[] = [];
   const flags: DuplicateFlag[] = [];
   const inserted: unknown[] = [];
@@ -42,12 +43,19 @@ function harness() {
       Object.assign(flag, resolution);
       return before;
     },
+    async list() {
+      return [];
+    },
+    async comparisons() {
+      return [];
+    },
   } as Partial<EvidenceStore> as EvidenceStore;
   const useCases = evidenceUseCases({
     storeFor: () => store,
     publishRecorded: async () => void calls.push('publishRecorded'),
     publishContradictionResolved: async () => void calls.push('publishContradictionResolved'),
-    authorize: async () => void calls.push('authorize'),
+    candidateJob,
+    authorize: async (_ctx, _action, resource) => void (calls.push('authorize'), authorized.push(resource)),
     isSyntheticWorkspace: async () => true,
     audit: async () => void calls.push('audit'),
     logFlagged: (fields) => void (calls.push('logFlagged'), logged.push(fields)),
@@ -55,7 +63,7 @@ function harness() {
     newId: () => `0190d4a2-0000-7000-8000-${String(++id).padStart(12, '0')}`,
     now: () => new Date('2026-11-18T09:00:00.000Z'),
   });
-  return { calls, flags, inserted, logged, useCases };
+  return { calls, authorized, flags, inserted, logged, useCases };
 }
 
 const ctx = { userId: 'alex', workspaceId: 'demo', role: 'recruiter', tx: {} as Tx } as WorkspaceContext;
@@ -117,5 +125,24 @@ describe('the near-duplicate flag never acts (AGENTS.md 1.5)', () => {
     await expect(useCases.resolveDuplicateFlag(ctx, flags[0]?.id ?? '', 'cheating' as never)).rejects.toThrow(
       'Choose a reason from the list',
     );
+  });
+});
+
+describe('job-named reads authorise against the stored application, not the request (AIV-P1-091)', () => {
+  const job = { jobId: 'job-a', clientId: 'client-1' };
+  // SAFETY: mutation check: authorised with the request's { jobId } instead of the resolved record -> this test failed (no clientId)
+  it('listEvidenceForCandidate and listComparisons pass the resolved job and its client to authorize', async () => {
+    const { authorized, useCases } = harness(async (_ctx, candidateId, jobId) =>
+      candidateId === 'maria' && jobId === 'job-a' ? job : null,
+    );
+    await useCases.listEvidenceForCandidate(ctx, 'maria', 'job-a');
+    await useCases.listComparisons(ctx, 'maria', 'job-a');
+    expect(authorized).toEqual([job, job]);
+  });
+
+  it('a candidate with no application on the job names no job, so a job-scoped role is refused', async () => {
+    const { authorized, useCases } = harness();
+    await useCases.listEvidenceForCandidate(ctx, 'maria', 'job-b');
+    expect(authorized).toEqual([undefined]);
   });
 });

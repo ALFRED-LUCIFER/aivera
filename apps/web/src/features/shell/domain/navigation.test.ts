@@ -63,15 +63,20 @@ describe('navigation map (ADR-002 item 4)', () => {
 
   it('opens a screen only with its capability and, when it has one, its flag', () => {
     const flagged = { ...navigation[0], flag: 'beta' };
-    expect(canOpen(navigation[0], ['recruiter'], new Set())).toBe(true);
+    expect(canOpen(navigation[0], ['member', 'recruiter'], new Set())).toBe(true);
     expect(canOpen(navigation[0], [], new Set())).toBe(false);
-    expect(canOpen(flagged, ['recruiter'], new Set())).toBe(false);
-    expect(canOpen(flagged, ['recruiter'], new Set(['beta']))).toBe(true);
+    // Hiring owners and interviewers hold `member` only: the desk and jobs, nothing else (AIV-P1-091).
+    const opened = navigation
+      .filter((entry) => canOpen(entry, ['member'], new Set(['inbox', 'candidates'])))
+      .map((e) => e.id);
+    expect(opened).toEqual(['desk', 'jobs']);
+    expect(canOpen(flagged, ['member', 'recruiter'], new Set())).toBe(false);
+    expect(canOpen(flagged, ['member', 'recruiter'], new Set(['beta']))).toBe(true);
   });
 });
 
 const ids = (flags: string[]) =>
-  navigation.filter((entry) => canOpen(entry, ['recruiter'], new Set(flags))).map(({ id }) => id);
+  navigation.filter((entry) => canOpen(entry, ['member', 'recruiter'], new Set(flags))).map(({ id }) => id);
 
 describe('unbuilt sections (AIV-P1-095)', () => {
   it('stay out of the sidebar until their flag is on', () => {

@@ -70,7 +70,8 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'decision.record': ['YYY', 'YYY', 'Y--', '---'],
   'application.add_link': ['YYY', 'YYY', 'Y--', 'Y--'],
   'file.upload': ['YYY', 'YYY', '---', '---'],
-  'file.download': ['YYY', 'YYY', 'Y--', 'Y--'],
+  // SAFETY: mutation check: re-added hiring_owner and interviewer to file.download -> this matrix failed (AIV-P1-091)
+  'file.download': ['YYY', 'YYY', '---', '---'],
 };
 
 describe('authorize: the permission map', () => {

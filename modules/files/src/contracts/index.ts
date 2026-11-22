@@ -25,8 +25,8 @@ export const FileRejectedV1 = {
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace`, so the workspace never comes from
  * client input (ADR-005). Uploading and reading one's own upload status is `file.upload` (admins and recruiters);
- * downloading is `file.download`, a job-scoped action with no job, so hiring owners and interviewers are refused until
- * files are reached through a candidate's job (ADR-005 point 6).
+ * downloading is `file.download`, for admins and recruiters only: hiring owners and interviewers see summaries and
+ * sources, not raw candidate files (AGENTS.md 1.9).
  */
 export interface FilesContract {
   /**

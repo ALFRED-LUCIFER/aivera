@@ -27,11 +27,11 @@ beforeAll(async () => {
 const member: Member = {
   name: 'AP',
   initials: 'AP',
-  capabilities: ['recruiter'],
+  capabilities: ['member', 'recruiter'],
   workspace: { synthetic: true, status: 'active' },
 };
 // What the layout passes: no flag is on, so only built sections.
-const built = navigation.filter((entry) => canOpen(entry, ['recruiter'], new Set()));
+const built = navigation.filter((entry) => canOpen(entry, ['member', 'recruiter'], new Set()));
 
 const renderShell = ({ synthetic = true, status = 'active' as Member['workspace']['status'] } = {}) =>
   render(

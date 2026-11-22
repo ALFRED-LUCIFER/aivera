@@ -27,7 +27,7 @@ export interface AssessmentContract {
    * nothing (AGENTS.md 1.5). Admins and recruiters. Throws `RangeError` for a link level outside 0–5.
    */
   assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment>;
-  /** The latest assessment of the candidate for the job, or null. Admins and recruiters. */
+  /** The latest assessment of the candidate for the job, or null. Admins and recruiters; hiring owners and interviewers on a granted job the candidate applied to. */
   getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
   /**
    * The job's ranking (AIV-P1-031): `awaiting_rubric` until a rubric version is approved; then each candidate's latest

@@ -362,14 +362,16 @@ export async function mapEvidence(
   return run;
 }
 
-export function mappingUseCases(ports: Pick<Ports, 'authorize'> & { mappingStoreFor(tx: Tx): MappingStore }) {
+export function mappingUseCases(
+  ports: Pick<Ports, 'authorize' | 'candidateJob'> & { mappingStoreFor(tx: Tx): MappingStore },
+) {
   return {
     async getEvidenceMapping(
       ctx: WorkspaceContext,
       candidateId: string,
       jobId: string,
     ): Promise<EvidenceMappingView | null> {
-      await ports.authorize(ctx, 'candidate.view', { jobId });
+      await ports.authorize(ctx, 'candidate.view', (await ports.candidateJob(ctx, candidateId, jobId)) ?? undefined);
       return ports.mappingStoreFor(ctx.tx).newest(ctx.workspaceId, candidateId, jobId);
     },
   };

@@ -164,11 +164,14 @@ export function createEvidence(
   workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace'>,
   audit: Pick<AuditContract, 'record'>,
   now: () => Date = () => new Date(),
+  // Fails closed: with no resolver a hiring owner or interviewer reads nothing (the intake module's resolver, AIV-P1-091).
+  candidateJob: Ports['candidateJob'] = async () => null,
 ): EvidenceContract {
   const ports: Ports = {
     storeFor: evidenceStore,
     publishRecorded,
     publishContradictionResolved,
+    candidateJob,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     audit: (ctx, entry) =>

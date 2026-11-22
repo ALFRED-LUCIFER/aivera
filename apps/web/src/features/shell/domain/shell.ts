@@ -9,8 +9,8 @@ export type Member = {
 };
 
 /**
- * The shell's view of a member. Admins and recruiters get the recruiter screens; hiring owners and interviewers get
- * none yet (their job-scoped screens come with their tickets). The server still authorises every action.
+ * The shell's view of a member. Everyone opens the desk and the jobs they are granted; only admins and recruiters get
+ * the other recruiter screens. The server still authorises every action (job.view and the job grants decide).
  */
 export function shellMember({
   name,
@@ -23,7 +23,7 @@ export function shellMember({
   synthetic: boolean;
   status: WorkspaceStatus;
 }): Member {
-  const capabilities: Capability[] = role === 'admin' || role === 'recruiter' ? ['recruiter'] : [];
+  const capabilities: Capability[] = role === 'admin' || role === 'recruiter' ? ['member', 'recruiter'] : ['member'];
   return { name, initials: initials(name), capabilities, workspace: { synthetic, status } };
 }
 

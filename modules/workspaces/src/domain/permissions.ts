@@ -31,9 +31,9 @@ export const PERMISSIONS = {
   'application.add_link': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   // Uploading a CV or evidence file, and reading one's own upload's status (AIV-P0-016).
   'file.upload': { scope: 'workspace', roles: ['admin', 'recruiter'] },
-  // Downloading a clean file. Job-scoped with no job yet, so hiring owners and interviewers are refused until a file is
-  // reached through a candidate's job (AIV-P1-025).
-  'file.download': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  // Downloading a clean file: raw candidate files are for admins and recruiters; hiring owners and interviewers see
+  // summaries and sources (AGENTS.md 1.9, AIV-P1-091).
+  'file.download': { reads: true, scope: 'job', roles: ['admin', 'recruiter'] },
 } as const satisfies Record<string, { scope: 'workspace' | 'job'; roles: readonly Role[]; reads?: true }>;
 
 export type Action = keyof typeof PERMISSIONS;
