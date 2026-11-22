@@ -35,6 +35,16 @@ export type Scheduler = {
 
 export const MAX_DELIVERIES = 10;
 
+/** A handler's answer a redelivery cannot change (an uncited or malformed AI output): dead-lettered on the first delivery. */
+export class PermanentFailure extends Error {
+  override name = 'PermanentFailure';
+  readonly reason: string;
+  constructor(reason: string) {
+    super(`permanent failure: ${reason}`);
+    this.reason = reason;
+  }
+}
+
 type Outcome = 'handled' | 'failed' | { invalid: string };
 type Settlement =
   { action: 'complete' } | { action: 'abandon'; delayMs: number } | { action: 'deadLetter'; reason: string };
@@ -101,6 +111,10 @@ export function createConsumer(opts: {
           return 'handled';
         } catch (error) {
           span.setStatus({ code: SpanStatusCode.ERROR });
+          if (error instanceof PermanentFailure) {
+            log.warn({ 'error.type': error.reason, 'outbox.event_id': message.id }, 'message handler rejected');
+            return { invalid: error.reason };
+          }
           log.warn({ err: error, 'outbox.event_id': message.id }, 'message handler failed');
           return 'failed';
         } finally {

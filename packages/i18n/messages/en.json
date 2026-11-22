@@ -303,8 +303,9 @@
     },
     "cvStatus": {
       "pending": "Reading the CV",
-      "unreadable": "We could not read this CV",
-      "failed": "Parsing failed, retry"
+      "unreadable": "Could not be read automatically",
+      "failed": "Parsing failed, retry",
+      "waiting": "Waiting for tomorrow's AI allowance"
     },
     "linkStatus": {
       "pending": "Reading the link",

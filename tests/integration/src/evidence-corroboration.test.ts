@@ -224,6 +224,7 @@ beforeAll(async () => {
     approvedRubric: async (_tx, _workspaceId, jobId) => (jobId === JOB ? { id: V1, competencies } : null),
     applications: { jobsForCandidate: async () => [JOB], candidatesForJob: async () => [] },
     readPerson: readPersonAsSystem,
+    scheduler: { schedule: async () => '1', cancel: async () => undefined },
     now: () => NOW,
   });
   const newWorkspace = async (name: string) =>

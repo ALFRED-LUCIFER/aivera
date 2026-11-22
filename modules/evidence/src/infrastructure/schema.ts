@@ -538,7 +538,7 @@ export const cvParse = evidence
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
       }),
       // Must list exactly CV_PARSE_STATUSES (domain/cv.ts); changing it needs a new migration.
-      check('cv_parse_status_check', sql`${t.status} in ('pending', 'parsed', 'unreadable', 'failed')`),
+      check('cv_parse_status_check', sql`${t.status} in ('pending', 'waiting', 'parsed', 'unreadable', 'failed')`),
       tenantPolicy('cv_parse_tenant_isolation', t.workspaceId),
     ],
   )

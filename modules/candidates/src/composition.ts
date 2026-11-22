@@ -5,6 +5,7 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { peopleUseCases, recordCvContact } from './application/people.ts';
 import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
+import { UNNAMED_APPLICANT } from './domain/person.ts';
 import { candidateStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
@@ -39,8 +40,21 @@ export function createCandidates(
 export const readPersonAsSystem = async (tx: Tx, workspaceId: string, personId: string) => {
   const store = candidateStore(tx);
   const person = await store.getPerson(workspaceId, personId);
-  return person && { ...person, identifierEmails: await store.identifierEmails(workspaceId, personId) };
+  return (
+    person && {
+      ...person,
+      unnamed: person.displayName === UNNAMED_APPLICANT,
+      identifierEmails: await store.identifierEmails(workspaceId, personId),
+    }
+  );
 };
+
+/**
+ * Names a still-unnamed person from their CV, as the system, in the worker's transaction (AIV-P1-090). Never overwrites a
+ * name: false when the person is already named. The caller audits it.
+ */
+export const nameUnnamedPerson = (tx: Tx, workspaceId: string, personId: string, name: string) =>
+  candidateStore(tx).nameUnnamed(workspaceId, personId, name);
 
 /** `recordCvContact` over the worker's transaction (AIV-P1-025): the CV's contact on the record, never as identifiers. */
 export function createContactRecorder() {

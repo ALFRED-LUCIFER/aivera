@@ -13,6 +13,7 @@ import {
   cvClaims,
   hiddenText,
   looksLike,
+  nameFromCv,
   mergeNotes,
   pageSpan,
   repositoryLinks,
@@ -161,7 +162,19 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
      * `parseCvRequest` of @credalent/ai on the CV text as the one `cv` source, checked by the citation contract, with
      * the candidate's identifiers read in `tx` (AIV-P1-080).
      */
-    extract(tx: Tx, workspaceId: string, candidateId: string, sourceId: string, text: string): Promise<CvExtraction>;
+    extract(
+      tx: Tx,
+      workspaceId: string,
+      candidateId: string,
+      sourceId: string,
+      text: string,
+      /** The name read from the CV when the applicant is still unnamed: redacted along with the record's own. */
+      names: string[],
+    ): Promise<CvExtraction>;
+    /** Whether the candidate still carries the intake placeholder name (the candidates module, in `tx`). */
+    readPerson(tx: Tx, workspaceId: string, candidateId: string): Promise<{ unnamed: boolean } | null>;
+    /** Names an unnamed applicant from the CV and audits it, as the system, in `tx`; never overwrites a name. */
+    nameApplicant(tx: Tx, workspaceId: string, candidateId: string, name: string): Promise<void>;
     /** `queueRepositoryRead` (AIV-P1-076): one pending read per candidate and link, as the system, in `tx`. */
     queueRead(tx: Tx, workspaceId: string, input: RequestRepositoryReadInput): Promise<unknown>;
     /** Adds the CV's emails and phones to the candidate record (the candidates module, in `tx`). */
@@ -173,8 +186,8 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
     ): Promise<void>;
   };
 
-/** Answers that will not change on a redelivery: the source shows "Parsing failed, retry" and the message completes. */
-const AI_FAILURES = [BudgetExceeded, SchemaMismatch, UncitedOutput, InvalidCitation];
+/** Answers a redelivery cannot change: the source shows "Could not be read automatically" and the message completes. */
+const PERMANENT_AI_FAILURES = [SchemaMismatch, UncitedOutput, InvalidCitation];
 
 /**
  * A failure worth another delivery (a timeout, throttling, an outage): the worker records "Parsing failed, retry" in its
@@ -187,7 +200,7 @@ export const isTransient = (error: unknown) =>
  * The worker job `evidence.cv.parse`: reads the clean CV, extracts its text and layout with Document Intelligence,
  * asks the model for its statements under the citation contract, and stores every statement as a claim with the CV's
  * "Unusual content in this source" notes, all in `tx`. A file still in quarantine leaves the parse pending (FileClean.v1
- * runs it again). A `failed` parse runs again on a redelivery. Throws the transient errors (`isTransient`). Returns the
+ * runs it again). A `failed` parse runs again on a redelivery, and a `waiting` one when its scheduled time comes. Throws the transient errors (`isTransient`). Returns the
  * status and the number of notes, or null when there was nothing to do.
  */
 // shortcut: Document Intelligence and the model run inside the consumer's workspace transaction and message lock, as the
@@ -205,6 +218,8 @@ export async function parseCv(
     readCleanFile,
     documentIntelligence,
     extract,
+    readPerson,
+    nameApplicant,
     recordContact,
     queueRead,
     newId,
@@ -212,7 +227,7 @@ export async function parseCv(
   } = ports;
   const store = cvStoreFor(tx);
   const found = await store.find(workspaceId, sourceId);
-  const open = found?.parse.status === 'pending' || found?.parse.status === 'failed';
+  const open = ['pending', 'waiting', 'failed'].includes(found?.parse.status ?? '');
   if (!found || !open || !found.source.blobFileId) return null;
   const { source } = found;
   const file = await readCleanFile(tx, workspaceId, found.source.blobFileId);
@@ -233,11 +248,18 @@ export async function parseCv(
   if (!layout.content.trim()) return end('unreadable');
 
   const instructions = detectUnusualContent(layout.content);
+  const applicant = await readPerson(tx, workspaceId, source.candidateId);
+  if (!applicant) throw new Error('applicant not found for the CV parse');
+  // The placeholder redacts nothing, so an unnamed applicant's CV goes to the model only once its name is known (AIV-P1-090).
+  const name = applicant.unnamed ? nameFromCv(layout.content) : null;
+  if (applicant.unnamed && !name) return end('unreadable');
   let extraction: CvExtraction;
   try {
-    extraction = await extract(tx, workspaceId, source.candidateId, sourceId, layout.content);
+    extraction = await extract(tx, workspaceId, source.candidateId, sourceId, layout.content, name ? [name] : []);
   } catch (error) {
-    if (AI_FAILURES.some((kind) => error instanceof kind)) return end('failed');
+    // The daily budget is spent: the handler schedules the parse for the next UTC day (AIV-P1-089).
+    if (error instanceof BudgetExceeded) return end('waiting');
+    if (PERMANENT_AI_FAILURES.some((kind) => error instanceof kind)) return end('unreadable');
     throw error;
   }
   const { claims, contact } = cvClaims(extraction, layout, instructions);
@@ -278,5 +300,7 @@ export async function parseCv(
       source,
       items.map((i) => i.id),
     );
+  // The audit write is the last statement before commit (AGENTS.md 3.6).
+  if (name) await nameApplicant(tx, workspaceId, source.candidateId, name);
   return { status: 'parsed', notes: notes.length };
 }

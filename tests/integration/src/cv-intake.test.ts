@@ -8,6 +8,7 @@ import { createAudit } from '@credalent/audit/composition';
 import {
   createCandidates,
   createContactRecorder,
+  nameUnnamedPerson,
   readPersonAsSystem,
   displayNamesInWorkspace,
 } from '@credalent/candidates/composition';
@@ -276,6 +277,9 @@ beforeAll(async () => {
       readCleanFile: createCleanFileReader(blobs),
       recordContact: createContactRecorder(),
       readPerson: readPersonAsSystem,
+      namePerson: nameUnnamedPerson,
+      audit,
+      scheduler: { schedule: async () => '1', cancel: async () => undefined },
       now: () => NOW,
     }),
   ];
@@ -377,14 +381,17 @@ describe('Scenario Outline: Files that are not a readable CV are not parsed as o
   it.each([
     ['a CV over the 10 MB limit, rejected by scan', 'oversized'],
     ['a CV the malware scan rejected', 'infected'],
-  ] as const)('%s: its CV source shows "We could not read this CV" and no parsing job runs', async (_, settle) => {
-    const fileId = await upload({ settle });
-    const calls = analyzeCalls;
-    await apply('Maria Santos', [fileId]);
-    await drain();
-    expect((await cvSources(fileId)).map((s) => s.status)).toEqual(['unreadable']);
-    expect(analyzeCalls).toBe(calls);
-  });
+  ] as const)(
+    '%s: its CV source shows "Could not be read automatically" and no parsing job runs',
+    async (_, settle) => {
+      const fileId = await upload({ settle });
+      const calls = analyzeCalls;
+      await apply('Maria Santos', [fileId]);
+      await drain();
+      expect((await cvSources(fileId)).map((s) => s.status)).toEqual(['unreadable']);
+      expect(analyzeCalls).toBe(calls);
+    },
+  );
 });
 
 describe("Scenario: A file on another candidate's application is never parsed for this one", () => {

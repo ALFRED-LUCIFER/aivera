@@ -1,6 +1,6 @@
 'use server';
 
-import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
+import { UNNAMED_APPLICANT } from '@credalent/candidates';
 import { IntakeError } from '@credalent/intake';
 import { getFiles } from '@/server/files';
 import { getIntake } from '@/server/intake';
@@ -18,8 +18,8 @@ const add = workspaceAction(
   async (ctx, input: AddApplicantsInput): Promise<AddApplicantsResult> => {
     const files = getFiles()?.files;
     if (!files) return { ok: false, error: 'failed' };
-    // shortcut: the placeholder name is stored in English; CV parsing (AIV-P1-025) replaces it with the person's name.
-    const displayName = (await getTranslations(defaultLocale, defaultTimeZone))('addApplicants.unnamed');
+    // The placeholder is stored in English; the CV parse names the applicant from the CV (AIV-P1-090).
+    const displayName = UNNAMED_APPLICANT;
     const synthetic = (await getWorkspaces().getWorkspace(ctx))?.synthetic ?? false;
     return linkCleanCvs({ files, intake: getIntake() }, ctx, input, { displayName, synthetic });
   },
