@@ -19,7 +19,7 @@ expected:
     regions[*].region: ['india']
 recorded:
   promptVersion: jobs.detectDomain@2
-  promptHash: '500d181aa97e'
+  promptHash: '9af2eece3b46'
   output:
     industry:
       domain: ecommerce_marketplaces

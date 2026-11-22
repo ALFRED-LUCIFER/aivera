@@ -20,7 +20,7 @@ expected:
       - Explaining results to decision makers
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: 'd1e840323892'
+  promptHash: '693a71ba84c2'
   output:
     {
       'competencies':

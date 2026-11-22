@@ -19,7 +19,7 @@ expected:
       ['ليلى', 'حداد', 'Egyptian', '14 March', '1990', 'Married', 'Female', 'مصرية', '١٩٩٠', 'متزوجة', 'attached']
 recorded:
   promptVersion: evidence.parseCv@3
-  promptHash: '4523bdad2b1d'
+  promptHash: '159774375a25'
   output:
     contact: { emails: ['layla.haddad@example.com'], phones: [] }
     workHistory:

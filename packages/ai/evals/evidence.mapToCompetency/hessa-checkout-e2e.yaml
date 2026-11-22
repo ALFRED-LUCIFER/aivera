@@ -23,7 +23,7 @@ expected:
     links[*].strength: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@2
-  promptHash: '01ccc63efaaa'
+  promptHash: 'df2b9de6b8e0'
   output:
     links:
       - competencyId: c-test

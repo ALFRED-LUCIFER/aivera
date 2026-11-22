@@ -20,7 +20,7 @@ expected:
       - Accessibility
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: 'f27f5ee4344e'
+  promptHash: '85f1c205ca3f'
   output:
     {
       'competencies':

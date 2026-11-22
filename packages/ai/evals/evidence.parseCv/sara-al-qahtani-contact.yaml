@@ -15,7 +15,7 @@ expected:
     statements[*].text: ['[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech']
 recorded:
   promptVersion: evidence.parseCv@3
-  promptHash: '4523bdad2b1d'
+  promptHash: 'fde4f4a164b1'
   output:
     contact: { emails: ['sara.al.qahtani@example.com'], phones: ['+44 7700 900123'] }
     workHistory:

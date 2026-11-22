@@ -43,7 +43,7 @@ expected:
     decisions, or that a CV line has nothing to inspect.
 recorded:
   promptVersion: evidence.mapToCompetency@2
-  promptHash: '0a57c8a332ed'
+  promptHash: 'f3f12b45fd01'
   output:
     links:
       - competencyId: c-retrieval

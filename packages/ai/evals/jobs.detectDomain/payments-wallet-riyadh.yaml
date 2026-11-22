@@ -18,7 +18,7 @@ expected:
     regions[*].region: ['ksa']
 recorded:
   promptVersion: jobs.detectDomain@2
-  promptHash: '3cca70cb174d'
+  promptHash: 'c17165ee7649'
   output:
     industry:
       domain: payments_fintech

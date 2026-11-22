@@ -36,7 +36,7 @@ expected:
       - Payments domain testing
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: 'af3b52c5d01e'
+  promptHash: '034f4ba73abc'
   output:
     competencies:
       - name: End-to-end test automation

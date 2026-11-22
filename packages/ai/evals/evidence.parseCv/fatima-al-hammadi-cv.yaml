@@ -9,7 +9,7 @@ expected: { 'match': { 'contact.emails': ['fatima.alhammadi@example.com'], 'cont
 recorded:
   {
     'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '4523bdad2b1d',
+    'promptHash': 'a1372f9d86f5',
     'output':
       {
         'contact': { 'emails': ['fatima.alhammadi@example.com'], 'phones': ['+971 50 000 0002'] },

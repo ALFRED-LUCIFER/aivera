@@ -25,7 +25,7 @@ expected:
       - Product judgement
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: '667a178b147e'
+  promptHash: '76912f13bfed'
   output:
     competencies:
       - name: LLM systems in production

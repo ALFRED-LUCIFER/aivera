@@ -19,7 +19,7 @@ expected:
     suggestions[*].name: [Arabic and right-to-left design]
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: 'a32d1014d1f4'
+  promptHash: '8974737186a4'
   output:
     competencies:
       - name: Onboarding flow design

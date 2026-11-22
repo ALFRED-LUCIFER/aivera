@@ -29,7 +29,7 @@ expected:
       - Location data at scale
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: 'ea5110c8fb0c'
+  promptHash: '5795872dd105'
   output:
     competencies:
       - name: Kubernetes operations

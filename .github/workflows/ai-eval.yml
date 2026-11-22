@@ -36,7 +36,7 @@ jobs:
       # AIV-P1-085: also exits 1 when a case was recorded with another prompt version or prompt text than the code's.
       - run: pnpm ai:eval --out "$RUNNER_TEMP/ai-eval.json"
       # The gate must fail on a bad case, or a green run proves nothing.
-      - name: the gate fails on an invalid citation
+      - name: the gate fails on its failing fixtures
         # Exactly 1 (a failed threshold); 2 would be a broken fixture, not the gate.
         run: |
           code=0; pnpm ai:eval --dir evals/fixtures/failing || code=$?

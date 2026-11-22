@@ -9,7 +9,7 @@ expected: { 'match': { 'skills[*].skill': ['Kubernetes', 'Prometheus', 'Terrafor
 recorded:
   {
     'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '4523bdad2b1d',
+    'promptHash': 'f7c542322a7a',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

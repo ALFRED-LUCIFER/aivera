@@ -25,7 +25,7 @@ expected:
     forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
 recorded:
   promptVersion: evidence.mapToCompetency@2
-  promptHash: '90b15bf0c12c'
+  promptHash: 'bed268b228b9'
   output:
     links:
       - competencyId: c-retrieval

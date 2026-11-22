@@ -20,7 +20,7 @@ expected:
       - CRM and forecasting
 recorded:
   promptVersion: jobs.draftCompetencies@2
-  promptHash: 'a98d77c81b4a'
+  promptHash: '12afe722b038'
   output:
     {
       'competencies':

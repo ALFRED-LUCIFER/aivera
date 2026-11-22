@@ -9,7 +9,7 @@ expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*
 recorded:
   {
     'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '4523bdad2b1d',
+    'promptHash': '886389b03e9c',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

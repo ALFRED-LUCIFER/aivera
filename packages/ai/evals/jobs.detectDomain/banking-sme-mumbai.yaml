@@ -17,7 +17,7 @@ expected:
     regions[*].region: ['india']
 recorded:
   promptVersion: jobs.detectDomain@2
-  promptHash: 'b6ee3c42ec54'
+  promptHash: 'e17f72e0c79e'
   output:
     industry:
       domain: banking_islamic_finance

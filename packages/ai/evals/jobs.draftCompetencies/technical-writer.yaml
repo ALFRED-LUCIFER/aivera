@@ -20,7 +20,7 @@ expected:
       - Docs tooling
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: '15fc7f37651b'
+  promptHash: '488a355db6ea'
   output:
     {
       'competencies':

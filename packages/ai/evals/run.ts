@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { z } from 'zod';
-import { CITATION_RULES, UNTRUSTED_CONTENT_RULES, type AiClient } from '../src/client.ts';
+import { MockLanguageModelV4 } from 'ai/test';
+import { createAiClient, memoryTokenBudget, type AiClient } from '../src/client.ts';
+import { fakeProvider } from '../src/providers.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
@@ -31,16 +32,15 @@ export type TaskReport = {
 export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
 
 /** A recorded answer whose prompt has changed since: the message holds prompt ids and hashes only. */
-export class StaleRecording extends Error {
+class StaleRecording extends Error {
   override name = 'StaleRecording';
 }
 
 /**
- * The prompt a case's answer comes from (AIV-P1-085): the version in code, and a hash of what the task's runner sends
- * for this case (system text with the shared rules, the prompt and the schema), so an edit without a version bump
- * shows too. Null for a task with no runner yet. No model is called: the request is captured and the call stopped.
- * shortcut: a rule JSON Schema cannot hold (a .refine) is not in the hash, upgrade if a prompt schema gains one;
- * bump the version with it (the prompt files say so).
+ * The prompt a case's answer comes from (AIV-P1-085): the version in code, and a hash of the request the client hands
+ * the model for this case (deployment, messages with the shared rules and the sources as the model reads them, output
+ * schema, temperature, token limit), so an edit without a version bump shows too. Null for a task with no runner yet.
+ * No model is called and nothing is spent: the request is captured and the call stopped.
  */
 export async function promptOf(
   task: string,
@@ -48,27 +48,36 @@ export async function promptOf(
   runner: Runner | undefined = runners[task],
 ): Promise<{ version: string; hash: string } | null> {
   if (!runner) return null;
-  const captured = new Error('captured');
-  let found: { version: string; hash: string } | undefined;
-  const capture = async (request: { promptVersion: string; system: string; prompt: string; schema: z.ZodType }) => {
-    const sent = [
-      request.system,
-      CITATION_RULES,
-      UNTRUSTED_CONTENT_RULES,
-      request.prompt,
-      z.toJSONSchema(request.schema),
-    ];
-    const hash = createHash('sha256').update(JSON.stringify(sent)).digest('hex').slice(0, 12);
-    found = { version: request.promptVersion, hash };
-    throw captured;
+  let version: string | undefined;
+  let hash: string | undefined;
+  const ai = createAiClient({
+    budget: memoryTokenBudget(),
+    provider: {
+      ...fakeProvider(),
+      languageModel: (deployment) =>
+        new MockLanguageModelV4({
+          provider: 'capture',
+          modelId: deployment,
+          doGenerate: async ({ prompt, responseFormat, temperature, maxOutputTokens }) => {
+            const sent = JSON.stringify([deployment, prompt, responseFormat, temperature, maxOutputTokens]);
+            hash = createHash('sha256').update(sent).digest('hex').slice(0, 12);
+            throw new Error('captured');
+          },
+        }),
+    },
+  });
+  const capture: Pick<AiClient, 'generateStructured'> = {
+    generateStructured: (request) => {
+      version = request.promptVersion;
+      return ai.generateStructured(request);
+    },
   };
-  try {
-    await runner({ generateStructured: capture as AiClient['generateStructured'] }, golden, evalWorkspaceId);
-  } catch (error) {
-    if (error !== captured) throw error;
-  }
-  if (!found) throw new Error(`the ${task} runner sent no request`);
-  return found;
+  // The stopped call surfaces as AiUnavailable; anything thrown before a request was captured is a real error.
+  await runner(capture, golden, evalWorkspaceId).catch((error: unknown) => {
+    if (!hash) throw error;
+  });
+  if (!version || !hash) throw new Error(`the ${task} runner sent no request`);
+  return { version, hash };
 }
 
 /**
@@ -79,7 +88,9 @@ export const recordedAnswer: Answer = async (task, golden) => {
   const prompt = await promptOf(task, golden);
   const { promptVersion = 'no prompt version', promptHash = 'none' } = golden.recorded;
   if (prompt && promptVersion !== prompt.version)
-    throw new StaleRecording(`recorded with ${promptVersion}, code is ${prompt.version}: re-record`);
+    throw new StaleRecording(
+      `recorded with ${promptVersion}, code is ${prompt.version}: re-record (prompt hash ${prompt.hash})`,
+    );
   if (prompt && promptHash !== prompt.hash)
     throw new StaleRecording(`recorded with prompt hash ${promptHash}, code is ${prompt.hash}: re-record`);
   return golden.recorded.output;

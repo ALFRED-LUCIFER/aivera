@@ -20,7 +20,7 @@ expected:
       - Infrastructure security
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: '5267d3d2f0f2'
+  promptHash: '760ad5c47e65'
   output:
     {
       'competencies':

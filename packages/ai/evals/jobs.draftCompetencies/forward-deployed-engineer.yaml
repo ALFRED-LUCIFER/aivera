@@ -19,7 +19,7 @@ expected:
       - Customer communication
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: '8d51084aec57'
+  promptHash: '13620ef316f1'
   output:
     {
       'competencies':

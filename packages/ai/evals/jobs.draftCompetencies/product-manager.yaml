@@ -20,7 +20,7 @@ expected:
       - Working under regulation
 recorded:
   promptVersion: jobs.draftCompetencies@3
-  promptHash: '8cb87b762977'
+  promptHash: 'ae48e35695f8'
   output:
     {
       'competencies':

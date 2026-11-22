@@ -636,8 +636,9 @@ describe('Feature: The AI eval catches a changed prompt (AIV-P1-085)', () => {
   // SAFETY: mutation check: version comparison removed from recordedAnswer in run.ts -> this test failed
   it('Scenario: A prompt version bump with stale golden cases fails', async () => {
     const report = await run('jobs.draftCompetencies', [recordedWith({ promptVersion: 'jobs.draftCompetencies@2' })]);
+    // Both stamps to set are named at once: the code's version and its hash.
     expect(report.cases[0]?.error).toBe(
-      `recorded with jobs.draftCompetencies@2, code is ${DRAFT_COMPETENCIES_VERSION}: re-record`,
+      `recorded with jobs.draftCompetencies@2, code is ${DRAFT_COMPETENCIES_VERSION}: re-record (prompt hash ${good.recorded.promptHash})`,
     );
     expect(report.passed).toBe(false);
   });
