@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { MockLanguageModelV4 } from 'ai/test';
-import { createAiClient, memoryTokenBudget, type AiClient } from '../src/client.ts';
+import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
@@ -72,9 +72,10 @@ export async function promptOf(
       return ai.generateStructured(request);
     },
   };
-  // The stopped call surfaces as AiUnavailable; anything thrown before a request was captured is a real error.
+  // The stopped call surfaces as AiUnavailable; anything else, or anything before a request was captured, is a real
+  // error. A runner sends one request per case: a second one would not be reached, so not hashed.
   await runner(capture, golden, evalWorkspaceId).catch((error: unknown) => {
-    if (!hash) throw error;
+    if (!hash || !(error instanceof AiUnavailable)) throw error;
   });
   if (!version || !hash) throw new Error(`the ${task} runner sent no request`);
   return { version, hash };

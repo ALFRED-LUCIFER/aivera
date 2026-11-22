@@ -656,6 +656,11 @@ describe('Feature: The AI eval catches a changed prompt (AIV-P1-085)', () => {
     expect(afterEdit?.version).toBe(inCode?.version);
     expect(afterEdit?.hash).not.toBe(inCode?.hash);
     expect(good.recorded.promptHash).toBe(inCode?.hash);
+    // The sources are part of what the model reads: an edited case is stale too.
+    const [source, ...rest] = good.sources;
+    if (!source) throw new Error('the case has no source');
+    const edited = { ...good, sources: [{ ...source, text: `${source.text} More.` }, ...rest] };
+    expect((await promptOf('jobs.draftCompetencies', edited))?.hash).not.toBe(inCode?.hash);
 
     // The cases keep the hash of the prompt that answered them, so the run fails once the code's hash moves.
     const report = await run('jobs.draftCompetencies', [recordedWith({ promptHash: afterEdit?.hash })]);
