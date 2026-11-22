@@ -17,7 +17,7 @@ const row = (title: string, more: Partial<JobRow>): JobRow => ({
   location: null,
   stage: 'collecting_evidence',
   rubric: { approved: true, latest: 'approved' },
-  assessed: null,
+  assessed: 0,
   coveragePercent: null,
   nextAction: null,
   hiringOwner: null,

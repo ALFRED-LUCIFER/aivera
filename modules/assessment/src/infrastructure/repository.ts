@@ -35,5 +35,20 @@ export function assessmentStore(tx: Tx): AssessmentStore {
         .where(and(eq(result.workspaceId, workspaceId), eq(result.jobId, jobId)))
         .orderBy(asc(result.assessedAt), asc(result.id));
     },
+    async countOnVersions(workspaceId, versions) {
+      if (versions.length === 0) return new Map();
+      const pairs = sql.join(
+        versions.map((v) => sql`(${v.jobId}::uuid, ${v.rubricVersionId}::uuid)`),
+        sql`, `,
+      );
+      const rows = await tx
+        .select({ jobId: result.jobId, assessed: sql<number>`count(distinct ${result.candidateId})::int` })
+        .from(result)
+        .where(
+          and(eq(result.workspaceId, workspaceId), sql`(${result.jobId}, ${result.rubricVersionId}) in (${pairs})`),
+        )
+        .groupBy(result.jobId);
+      return new Map(rows.map((r) => [r.jobId, r.assessed]));
+    },
   };
 }

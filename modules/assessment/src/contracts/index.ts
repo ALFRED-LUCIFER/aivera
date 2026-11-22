@@ -27,7 +27,7 @@ export interface AssessmentContract {
    * nothing (AGENTS.md 1.5). Admins and recruiters. Throws `RangeError` for a link level outside 0–5.
    */
   assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment>;
-  /** The latest assessment of the candidate for the job, or null. Admins and recruiters. */
+  /** The latest assessment of the candidate for the job, or null. Admins and recruiters; hiring owners and interviewers on a granted job the candidate applied to. */
   getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
   /**
    * The job's ranking (AIV-P1-031): `awaiting_rubric` until a rubric version is approved; then each candidate's latest
@@ -37,4 +37,10 @@ export interface AssessmentContract {
    * only; a job the context cannot see throws `ForbiddenError`.
    */
   listRanking(ctx: WorkspaceContext, jobId: string): Promise<JobRanking>;
+  /**
+   * How many candidates `listRanking` lists for each job (AIV-P1-099): the candidates with a result on the job's approved
+   * rubric version, 0 while none is approved. Job ids and counts only, from one grouped read. `candidate.view` on every
+   * job; a job the context cannot see throws `ForbiddenError`.
+   */
+  countAssessed(ctx: WorkspaceContext, jobIds: readonly string[]): Promise<Record<string, number>>;
 }

@@ -17,6 +17,9 @@ export const PERMISSIONS = {
   'job_access.view': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
   // The job's hiring owner gets that job's grant with it (AIV-P1-056); whoever adds or edits the job sets it.
   'job.assign_owner': { scope: 'workspace', roles: ['admin', 'recruiter'] },
+  // Assigning or changing a job's hiring owner from the job header is the admin's alone (AIV-P1-097); adding a job
+  // still sets its owner under job.assign_owner.
+  'job.change_owner': { scope: 'job', roles: ['admin'] },
   // Inviting, revoking invitations and removing members (AIV-P1-003).
   'member.invite': { scope: 'workspace', roles: ['admin'] },
   // Recruiters approve their jobs' rubrics; the hiring owner only what was sent to them (ADR-014, AIV-P1-083).
@@ -31,9 +34,9 @@ export const PERMISSIONS = {
   'application.add_link': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   // Uploading a CV or evidence file, and reading one's own upload's status (AIV-P0-016).
   'file.upload': { scope: 'workspace', roles: ['admin', 'recruiter'] },
-  // Downloading a clean file. Job-scoped with no job yet, so hiring owners and interviewers are refused until a file is
-  // reached through a candidate's job (AIV-P1-025).
-  'file.download': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  // Downloading a clean file: raw candidate files are for admins and recruiters; hiring owners and interviewers see
+  // summaries and sources (AGENTS.md 1.9, AIV-P1-091).
+  'file.download': { reads: true, scope: 'job', roles: ['admin', 'recruiter'] },
 } as const satisfies Record<string, { scope: 'workspace' | 'job'; roles: readonly Role[]; reads?: true }>;
 
 export type Action = keyof typeof PERMISSIONS;

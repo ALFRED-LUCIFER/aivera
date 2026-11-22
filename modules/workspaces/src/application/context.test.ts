@@ -60,6 +60,8 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'client.manage': ['YYY', 'YYY', '---', '---'],
   'job_access.manage': ['YYY', '---', '---', '---'],
   'job_access.view': ['YYY', 'YYY', '---', '---'],
+  // SAFETY: mutation check: added recruiter to job.change_owner -> this matrix failed (AIV-P1-097)
+  'job.change_owner': ['YYY', '---', '---', '---'],
   'job.assign_owner': ['YYY', 'YYY', '---', '---'],
   'member.invite': ['YYY', '---', '---', '---'],
   'rubric.approve': ['YYY', 'YYY', 'Y--', '---'],
@@ -70,7 +72,8 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'decision.record': ['YYY', 'YYY', 'Y--', '---'],
   'application.add_link': ['YYY', 'YYY', 'Y--', 'Y--'],
   'file.upload': ['YYY', 'YYY', '---', '---'],
-  'file.download': ['YYY', 'YYY', 'Y--', 'Y--'],
+  // SAFETY: mutation check: re-added hiring_owner and interviewer to file.download -> this matrix failed (AIV-P1-091)
+  'file.download': ['YYY', 'YYY', '---', '---'],
 };
 
 describe('authorize: the permission map', () => {

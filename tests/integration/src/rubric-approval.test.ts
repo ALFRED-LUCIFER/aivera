@@ -234,7 +234,6 @@ describe('Scenario: Nothing is assessed before approval', () => {
     await expect(as(DESIGN, (ctx) => jobs.approveRubric(ctx, draft.id))).rejects.toThrow(ForbiddenError);
     expect(await approvedEvents(spd)).toEqual([]);
     expect(await as(RANA, (ctx) => jobs.getApprovedRubric(ctx, spd))).toBeNull();
-    expect((await as(RANA, (ctx) => jobs.getJobHeader(ctx, spd)))?.assessed).toBe(0);
   });
 });
 

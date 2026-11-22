@@ -22,13 +22,20 @@ describe('requireScreen', () => {
     expect(await requireScreen('desk')).toMatchObject({ initials: 'AR', workspace: { synthetic: true } });
   });
 
-  // SAFETY: mutation check: gave every role the recruiter capability in shellMember -> this test failed
-  it('is a 404 with no workspace, and for roles without the recruiter screens', async () => {
+  it('is a 404 with no workspace', async () => {
     membership.mockResolvedValueOnce(null);
     await expect(requireScreen('desk')).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  // SAFETY: mutation check: gave every role the recruiter capability in shellMember -> this test failed (settings opened)
+  it('hiring owners and interviewers open the desk and jobs, and 404 on the recruiter-only screens (AIV-P1-091)', async () => {
     for (const role of ['hiring_owner', 'interviewer'] as const) {
+      for (const screen of ['desk', 'jobs'] as const) {
+        membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
+        expect(await requireScreen(screen)).toMatchObject({ initials: 'LP' });
+      }
       membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
-      await expect(requireScreen('desk')).rejects.toThrow('NEXT_NOT_FOUND');
+      await expect(requireScreen('settings')).rejects.toThrow('NEXT_NOT_FOUND');
     }
   });
 });

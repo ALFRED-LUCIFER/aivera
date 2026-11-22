@@ -9,7 +9,12 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, newEnvelope, uuidv7, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
-import { EvidenceMappedV1, EvidenceRecordedV1, type EvidenceContract } from '@credalent/evidence';
+import {
+  ContradictionResolvedV1,
+  EvidenceMappedV1,
+  EvidenceRecordedV1,
+  type EvidenceContract,
+} from '@credalent/evidence';
 import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import { RubricApprovedV1, type Competency, type JobsContract } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -128,6 +133,13 @@ const mapped = (workspaceId: string, candidateId: string, jobId: string, rubricV
   newEnvelope(EvidenceMappedV1, {
     workspaceId,
     payload: { candidateId, jobId, rubricVersionId, mappingId: uuidv7() },
+    occurredAt: NOW,
+  });
+
+const resolved = (workspaceId: string, candidateId: string, jobId: string, rubricVersionId: string) =>
+  newEnvelope(ContradictionResolvedV1, {
+    workspaceId,
+    payload: { candidateId, jobId, rubricVersionId, comparisonId: uuidv7() },
     occurredAt: NOW,
   });
 
@@ -416,6 +428,17 @@ describe('Who sees the ranking', () => {
     await expect(ranking(DESIGN, w1, sae)).rejects.toBeInstanceOf(ForbiddenError);
     expect(await ranking(DESIGN, w1, spd)).toEqual({ status: 'awaiting_rubric' });
   });
+
+  it('the assessed count equals the ranked rows, is 0 before approval, and refuses a job the caller cannot see (AIV-P1-099)', async () => {
+    const count = (userId: string, jobIds: string[]) => as(userId, w1, (ctx) => assessment.countAssessed(ctx, jobIds));
+    const ranked = await ranking(RANA, w1, sae);
+    const rows = ranked.status === 'ranked' ? ranked.rows.length : -1;
+    expect(rows).toBeGreaterThan(0);
+    expect(await count(RANA, [sae, spd])).toEqual({ [sae]: rows, [spd]: 0 });
+    expect(await count(HEAD, [sae])).toEqual({ [sae]: rows });
+    // SAFETY: mutation check: dropped the `if (!job) throw new ForbiddenError()` and authorize in countAssessed -> this test failed
+    await expect(count(DESIGN, [sae])).rejects.toBeInstanceOf(ForbiddenError);
+  });
 });
 
 describe('Concurrent runs for one candidate and job', () => {
@@ -468,5 +491,34 @@ describe('Concurrent runs for one candidate and job', () => {
     // SAFETY: mutation check: AssessmentStore.lock made a no-op, and separately the lock moved back after the evidence read -> this test failed (stored [70, 28]: the older read last)
     const omar = (await results(sae)).filter((r) => r.candidate_id === OMAR);
     expect(omar.map((r) => r.backed_score)).toEqual([28, 70]);
+  });
+});
+
+// Last, so the evidence it adds changes no earlier scenario's numbers.
+describe('Scenario: Resolving a contradiction re-scores the candidate (AIV-P1-098)', () => {
+  it("a ContradictionResolved message scores that candidate on the event's version, stores the change once, and skips a stale version", async () => {
+    const v3 = versions['sae3'] as string;
+    const [first] = await competencyIds(v3);
+    // Evidence a contradiction had withheld now counts.
+    await work(w1, DANIEL, sae, first as string, 5);
+    const all = async () => (await results(sae)).length;
+    const onV3 = async () =>
+      (await results(sae)).filter((r) => r.candidate_id === DANIEL && r.rubric_version_id === v3).length;
+    const before = await all();
+    const daniel = await onV3();
+    // A resolution that names a version no longer approved is skipped, like a stale mapping.
+    expect(await deliver(resolved(w1, DANIEL, sae, versions['sae2'] as string))).toEqual(['complete']);
+    expect(await all()).toBe(before);
+
+    const message = resolved(w1, DANIEL, sae, v3);
+    expect(await deliver(message)).toEqual(['complete']);
+    expect(await all()).toBe(before + 1);
+    expect(await onV3()).toBe(daniel + 1);
+    // Redelivery stores nothing more.
+    expect(await deliver(message)).toEqual(['complete']);
+    expect(await all()).toBe(before + 1);
+    // Another workspace's message naming this job stores nothing.
+    expect(await deliver(resolved(w2, DANIEL, sae, v3))).toEqual(['complete']);
+    expect(await all()).toBe(before + 1);
   });
 });

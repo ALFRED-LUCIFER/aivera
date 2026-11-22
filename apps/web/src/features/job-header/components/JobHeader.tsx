@@ -2,6 +2,7 @@ import { useTranslations } from '@credalent/i18n/react';
 import { StatusBadge } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { rubricLabel } from '@/features/jobs-list/domain/jobsList.ts';
 import { jobPageHref, type JobHeaderView, type JobPage } from '../domain/jobHeader.ts';
 
@@ -12,13 +13,22 @@ const check = (
 );
 
 /** Every job page's header (AIV-P1-011): breadcrumb, title, where the job stands, and its five stages as links. */
-export function JobHeader({ view, current }: { view: JobHeaderView; current: JobPage | null }) {
+export function JobHeader({
+  view,
+  current,
+  ownerAction,
+}: {
+  view: JobHeaderView;
+  current: JobPage | null;
+  /** The admin's "Change hiring owner" control, shown beside the meta line (AIV-P1-097). */
+  ownerAction?: ReactNode;
+}) {
   const t = useTranslations();
   const meta = [
     view.team,
     view.location,
     view.hiringOwner ? t('jobHeader.hiringOwner', { name: view.hiringOwner }) : t('jobHeader.noHiringOwner'),
-    view.assessed === null ? null : t('jobHeader.assessed', { count: view.assessed }),
+    t('jobHeader.assessed', { count: view.assessed }),
   ].filter(Boolean);
   return (
     <div className="mb-6 flex flex-col gap-6">
@@ -34,6 +44,7 @@ export function JobHeader({ view, current }: { view: JobHeaderView; current: Job
           <div className="flex min-w-0 flex-col gap-1.5">
             <h1 className="font-display text-title tracking-tight">{view.title}</h1>
             <p className="max-w-[72ch] text-body text-text-2">{meta.join(' · ')}</p>
+            {ownerAction}
           </div>
           <StatusBadge
             status={view.rubric.approved ? 'supported' : 'needsValidation'}

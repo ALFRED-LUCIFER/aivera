@@ -4,7 +4,7 @@ import { enqueue } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
-import type { WorkspacesContract } from '@credalent/workspaces';
+import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases, type Ports } from './application/applications.ts';
 import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
 import { candidatesForJob, intakeStore, jobsForCandidate } from './infrastructure/repository.ts';
@@ -49,3 +49,16 @@ export const readApplicationSourceAsSystem = (tx: Tx, workspaceId: string, sourc
 
 /** The worker's application reads (AIV-P1-027). */
 export const createApplicationReads = (): ApplicationReads => ({ jobsForCandidate, candidatesForJob });
+
+/**
+ * The job a candidate applied to, as the context may see it (AIV-P1-091): null when the candidate has no application on
+ * it or the context cannot see the job. Other modules authorise a job-scoped read against this stored record, never
+ * against the job id in the request.
+ */
+export const createCandidateJobResolver =
+  (jobs: Pick<JobsContract, 'getJob'>) =>
+  async (ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<JobResource | null> => {
+    if (!(await jobsForCandidate(ctx.tx, ctx.workspaceId, candidateId)).includes(jobId)) return null;
+    const job = await jobs.getJob(ctx, jobId);
+    return job && { jobId: job.id, clientId: job.clientId };
+  };

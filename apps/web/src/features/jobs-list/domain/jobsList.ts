@@ -3,21 +3,28 @@ import type { DeskJob, RubricState } from '@credalent/jobs';
 /** A Jobs list row as the page hands it to the browser: plain data, only what the table shows. */
 export type JobRow = Pick<
   DeskJob,
-  'id' | 'title' | 'team' | 'location' | 'stage' | 'rubric' | 'assessed' | 'coveragePercent' | 'nextAction'
+  'id' | 'title' | 'team' | 'location' | 'stage' | 'rubric' | 'coveragePercent' | 'nextAction'
 > & {
   hiringOwner: string | null;
+  /** Candidates assessed on the approved rubric version; 0 before one is approved (AIV-P1-099). */
+  assessed: number;
   /** The agency client's name; null for the team's own job (AIV-P1-056). */
   client: string | null;
 };
 
-export const toJobRow = (job: DeskJob, hiringOwner: string | null, client: string | null): JobRow => ({
+export const toJobRow = (
+  job: DeskJob,
+  assessed: number,
+  hiringOwner: string | null,
+  client: string | null,
+): JobRow => ({
   id: job.id,
   title: job.title,
   team: job.team,
   location: job.location,
   stage: job.stage,
   rubric: job.rubric,
-  assessed: job.assessed,
+  assessed,
   coveragePercent: job.coveragePercent,
   nextAction: job.nextAction,
   hiringOwner,

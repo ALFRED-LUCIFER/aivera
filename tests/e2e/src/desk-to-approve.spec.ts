@@ -68,9 +68,8 @@ for (const theme of themes) {
 test('Scenario Outline: Only members who may approve see the section (hiring owner)', async ({ page }) => {
   await signIn(page, { email: 'hana.owner@example.com' });
   await page.waitForURL(/\/app/);
-  // My desk needs the recruiter capability (navigation.ts), so a hiring owner never reaches the section at all.
+  // A hiring owner opens the desk (AIV-P1-091) but never sees the recruiters' section.
   await page.goto('/app');
-  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Rubrics to approve' })).toHaveCount(0);
 });

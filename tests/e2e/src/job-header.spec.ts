@@ -20,13 +20,15 @@ test('Scenario: Senior AI Engineer header', async ({ page }) => {
   await signIn(page, { email: AP });
   await openJob(page, 'Senior AI Engineer');
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveText('Jobs/Senior AI Engineer');
-  // Not yet "· 64 candidates assessed": the count comes with AIV-P1-099, and none is invented.
-  await expect(page.getByText('Engineering · DIFC, Dubai · Hiring owner: Head of Engineering')).toBeVisible();
+  // The count is assessment's (AIV-P1-099); other specs on this database may have assessed candidates, so any number.
+  await expect(
+    page.getByText(/^Engineering · DIFC, Dubai · Hiring owner: Head of Engineering · \d+ candidates? assessed$/),
+  ).toBeVisible();
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();
   await expect(stages(page)).toHaveText([
     'Job descriptionSaved 3 Nov',
     'Competencies and rubricApproved, version 2',
-    'Evidence and rankingNot started',
+    /^Evidence and ranking(Not started|\d+ assessed)$/,
     'InterviewsNot started',
     'DecisionNot started',
   ]);
@@ -84,5 +86,28 @@ for (const theme of themes) {
     // The title streams in after the heading; axe reads it (document-title), as in add-applicants.spec.ts.
     await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
     await expectAccessible(page);
+  });
+}
+
+// AIV-P1-097: AP is the admin of "Demo". Confirming would change the shared seed, so this opens, checks and cancels;
+// the change itself is proven against PostgreSQL in jobs.test.ts.
+for (const theme of themes) {
+  test(`Scenario: An admin opens "Change hiring owner" and nothing changes until they confirm (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: AP });
+    await openJob(page, 'Senior AI Engineer');
+    await page.getByRole('button', { name: 'Change hiring owner' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Change hiring owner' });
+    await expect(dialog.getByText('Nothing changes until you confirm.')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Confirm change' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await expectAccessible(page);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Change hiring owner' })).toBeFocused();
   });
 }

@@ -37,7 +37,7 @@ describe('Scenario: Loading and error', () => {
 });
 
 describe('Rows', () => {
-  it('an approved job shows "Not yet available" with its marker where no source exists yet (AGENTS.md 1.7)', () => {
+  it('an approved job shows its assessed count as observed and coverage as "Not yet available" (AGENTS.md 1.7)', () => {
     show({
       status: 'ready',
       total: 1,
@@ -52,7 +52,7 @@ describe('Rows', () => {
           location: 'Dubai, hybrid',
           stage: 'collecting_evidence',
           rubric: { approved: true, latest: 'approved' },
-          assessed: null,
+          assessed: 64,
           coveragePercent: null,
           nextAction: { kind: 'chase_evidence', count: 2 },
           hiringOwner: null,
@@ -69,7 +69,7 @@ describe('Rows', () => {
       'QA Automation EngineerQuality · Dubai, hybrid',
       'Not assigned',
       'Collecting evidence',
-      'Not yet available',
+      '64Observed',
       'Not yet available',
       'Approved',
       'Chase 2 evidence requests',
@@ -86,7 +86,7 @@ describe("AIV-P1-056: an agency sees each job's client", () => {
       location: null,
       stage: 'defining_rubric',
       rubric: { approved: false, latest: 'draft' },
-      assessed: null,
+      assessed: 0,
       coveragePercent: null,
       nextAction: null,
       hiringOwner: 'Faisal Client',
