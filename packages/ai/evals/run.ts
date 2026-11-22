@@ -1,5 +1,8 @@
-import type { AiClient } from '../src/client.ts';
-import { hardGates, taskThresholds } from './config.ts';
+import { createHash } from 'node:crypto';
+import { MockLanguageModelV4 } from 'ai/test';
+import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from '../src/client.ts';
+import { fakeProvider } from '../src/providers.ts';
+import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
 
@@ -25,7 +28,74 @@ export type TaskReport = {
   groups: (Ratio & { group: string; label: string; min: number })[];
 };
 
-export const recordedAnswer: Answer = async (_task, golden) => golden.recorded.output;
+// A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
+export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
+
+/** A recorded answer whose prompt has changed since: the message holds prompt ids and hashes only. */
+class StaleRecording extends Error {
+  override name = 'StaleRecording';
+}
+
+/**
+ * The prompt a case's answer comes from (AIV-P1-085): the version in code, and a hash of the request the client hands
+ * the model for this case (deployment, messages with the shared rules and the sources as the model reads them, output
+ * schema, temperature, token limit), so an edit without a version bump shows too. Null for a task with no runner yet.
+ * No model is called and nothing is spent: the request is captured and the call stopped.
+ */
+export async function promptOf(
+  task: string,
+  golden: GoldenCase,
+  runner: Runner | undefined = runners[task],
+): Promise<{ version: string; hash: string } | null> {
+  if (!runner) return null;
+  let version: string | undefined;
+  let hash: string | undefined;
+  const ai = createAiClient({
+    budget: memoryTokenBudget(),
+    provider: {
+      ...fakeProvider(),
+      languageModel: (deployment) =>
+        new MockLanguageModelV4({
+          provider: 'capture',
+          modelId: deployment,
+          doGenerate: async ({ prompt, responseFormat, temperature, maxOutputTokens }) => {
+            const sent = JSON.stringify([deployment, prompt, responseFormat, temperature, maxOutputTokens]);
+            hash = createHash('sha256').update(sent).digest('hex').slice(0, 12);
+            throw new Error('captured');
+          },
+        }),
+    },
+  });
+  const capture: Pick<AiClient, 'generateStructured'> = {
+    generateStructured: (request) => {
+      version = request.promptVersion;
+      return ai.generateStructured(request);
+    },
+  };
+  // The stopped call surfaces as AiUnavailable; anything else, or anything before a request was captured, is a real
+  // error. A runner sends one request per case: a second one would not be reached, so not hashed.
+  await runner(capture, golden, evalWorkspaceId).catch((error: unknown) => {
+    if (!hash || !(error instanceof AiUnavailable)) throw error;
+  });
+  if (!version || !hash) throw new Error(`the ${task} runner sent no request`);
+  return { version, hash };
+}
+
+/**
+ * The case's recorded output, refused when the prompt in code is not the one it was recorded with: an edited prompt
+ * never passes on answers it did not produce (AGENTS.md 3.12).
+ */
+export const recordedAnswer: Answer = async (task, golden) => {
+  const prompt = await promptOf(task, golden);
+  const { promptVersion = 'no prompt version', promptHash = 'none' } = golden.recorded;
+  if (prompt && promptVersion !== prompt.version)
+    throw new StaleRecording(
+      `recorded with ${promptVersion}, code is ${prompt.version}: re-record (prompt hash ${prompt.hash})`,
+    );
+  if (prompt && promptHash !== prompt.hash)
+    throw new StaleRecording(`recorded with prompt hash ${promptHash}, code is ${prompt.hash}: re-record`);
+  return golden.recorded.output;
+};
 export const recordedJudge: Judge = async (_rubric, golden) => {
   if (!golden.recorded.judge) throw new Error('no recorded verdict');
   return golden.recorded.judge;
@@ -39,9 +109,6 @@ export const judgePrompt = {
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
     'point it fails or confirms in one sentence.',
 };
-
-// A fixed synthetic workspace: the live run's budget is counted apart from any real workspace.
-export const evalWorkspaceId = '0190d4a2-0000-7000-8000-0000000e7a1e';
 
 /**
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
@@ -87,8 +154,10 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
     });
     return { id: golden.id, passed, scores };
   } catch (error) {
-    // The error's name and message only: a provider's error can repeat the prompt (AGENTS.md 1.2).
-    return { id: golden.id, passed: false, error: error instanceof Error ? error.name : 'error', scores: {} };
+    // The error's name only: a provider's error can repeat the prompt (AGENTS.md 1.2). A stale recording's message is
+    // prompt ids and hashes, and tells the developer what to do.
+    const name = error instanceof Error ? error.name : 'error';
+    return { id: golden.id, passed: false, error: error instanceof StaleRecording ? error.message : name, scores: {} };
   }
 }
 

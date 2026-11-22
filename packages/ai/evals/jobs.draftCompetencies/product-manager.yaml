@@ -19,6 +19,8 @@ expected:
       - Payments domain
       - Working under regulation
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'ae48e35695f8'
   output:
     {
       'competencies':

@@ -58,7 +58,15 @@ export const goldenCase = z
       })
       .strict(),
     /** The answer a model gave, scored when the run is not live, and the judge's verdict on it. */
-    recorded: z.object({ output: z.unknown(), judge: verdict.optional() }).strict(),
+    recorded: z
+      .object({
+        /** The prompt the answer came from (run.ts promptOf): a recorded run fails a case whose prompt has changed since. */
+        promptVersion: z.string().min(1).optional(),
+        promptHash: z.string().min(1).optional(),
+        output: z.unknown(),
+        judge: verdict.optional(),
+      })
+      .strict(),
   })
   .strict()
   .refine((c) => !c.expected.judge || c.recorded.judge, 'recorded.judge is required when expected.judge is set');

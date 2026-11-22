@@ -1,0 +1,76 @@
+# The stale-recording gate's own failing case (AIV-P1-085): a good answer recorded with an older prompt version. A run
+# over this directory must fail it with "recorded with jobs.draftCompetencies@2, code is ...: re-record".
+id: stale-prompt-version
+input:
+  jobType: sales
+  title: 'Account Executive'
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will close new business with mid-size retailers. You build your own pipeline of prospects. You negotiate
+      contracts with procurement teams.'
+expected:
+  match:
+    competencies[*].name:
+      - 'Closing sales'
+      - 'Prospecting and pipeline'
+      - 'Negotiation'
+    suggestions[*].name:
+      - Retail industry knowledge
+      - CRM and forecasting
+recorded:
+  promptVersion: jobs.draftCompetencies@2
+  promptHash: '12afe722b038'
+  output:
+    {
+      'competencies':
+        [
+          {
+            'name': 'Closing sales',
+            'evidenceExpected': 'Deals they closed, with size and cycle',
+            'weight': 30,
+            'level': 4,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'close new business with mid-size retailers' }],
+          },
+          {
+            'name': 'Prospecting and pipeline',
+            'evidenceExpected': 'Pipeline they built and how it converted',
+            'weight': 25,
+            'level': 3,
+            'type': 'mandatory',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You build your own pipeline of prospects' }],
+          },
+          {
+            'name': 'Negotiation',
+            'evidenceExpected': 'Contracts they negotiated and the terms they held',
+            'weight': 20,
+            'level': 3,
+            'type': 'desirable',
+            'citations': [{ 'sourceId': 'S1', 'quote': 'You negotiate contracts with procurement teams' }],
+          },
+        ],
+      'refused': false,
+      'reason': null,
+      suggestions:
+        [
+          {
+            name: Retail industry knowledge,
+            evidenceExpected: 'Deals closed with retailers, and what they learned about how retailers buy',
+            weight: 15,
+            level: 2,
+            type: desirable,
+            why: 'You sell to mid-size retailers, but the description asks for no knowledge of how retailers buy.',
+            citations: [{ sourceId: S1, quote: close new business with mid-size retailers }],
+          },
+          {
+            name: CRM and forecasting,
+            evidenceExpected: 'A pipeline they kept in a CRM, and how close their forecasts came',
+            weight: 10,
+            level: 2,
+            type: desirable,
+            why: 'You build your own pipeline, but the description does not say how it is tracked or forecast.',
+            citations: [{ sourceId: S1, quote: You build your own pipeline of prospects }],
+          },
+        ],
+    }

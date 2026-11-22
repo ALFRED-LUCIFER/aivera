@@ -10,7 +10,12 @@ import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from '../s
 import { fakeProvider } from '../src/providers.ts';
 import { parseCvSchema } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainSchema } from '../src/prompts/jobs.detectDomain.ts';
-import { draftCompetenciesSchema } from '../src/prompts/jobs.draftCompetencies.ts';
+import {
+  DRAFT_COMPETENCIES_SYSTEM,
+  DRAFT_COMPETENCIES_VERSION,
+  draftCompetenciesRequest,
+  draftCompetenciesSchema,
+} from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
@@ -18,7 +23,7 @@ import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
 import { identifiersOf, loadGolden, type GoldenCase } from './golden.ts';
-import { evaluateTask, liveJudge, recordedAnswer, recordedJudge, summaryTable, type Answer } from './run.ts';
+import { evaluateTask, liveJudge, promptOf, recordedAnswer, recordedJudge, summaryTable, type Answer } from './run.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, safety } from './scorers.ts';
 
 // Feature: AI eval harness with a golden set (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
@@ -172,7 +177,8 @@ describe('the golden set', () => {
           expect(c.people, `${task}/${c.id}`).not.toEqual([]);
         for (const person of c.people)
           expect(personas, `${task}/${c.id}: ${person}`).toMatch(new RegExp(`\\b${person}\\b`));
-        const text = JSON.stringify(c);
+        // The prompt version is an id from code (`task@3`), not an address.
+        const text = JSON.stringify({ ...c, recorded: { ...c.recorded, promptVersion: undefined } });
         for (const email of text.match(/[\w.+-]+@[\w.-]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
         for (const host of text.match(/https?:\/\/[^/\s"]+/g) ?? []) expect(host).toMatch(/\.credalent\.example$/);
         // Employers are described generically or come from the cast (personas.md), never a registered company name.
@@ -505,6 +511,10 @@ describe('Feature: AI eval harness with a golden set', () => {
       const { status, stdout } = cli(['--dir', 'evals/fixtures/failing']);
       expect(stdout).toContain('unknown source S9');
       expect(stdout).toContain('contract: InvalidCitation');
+      // AIV-P1-085: the failing fixtures hold a case recorded with an older prompt version.
+      expect(stdout).toContain(
+        `FAIL jobs.draftCompetencies stale-prompt-version: error recorded with jobs.draftCompetencies@2, code is ${DRAFT_COMPETENCIES_VERSION}: re-record`,
+      );
       expect(status).toBe(1);
     },
     cliTimeout,
@@ -613,6 +623,57 @@ describe('Feature: AI eval harness with a golden set', () => {
     const garbled = await judged('{"pass":"yes"}');
     expect(garbled.cases[0]?.error).toBe('SchemaMismatch');
     expect(garbled.passed).toBe(false);
+  });
+});
+
+describe('Feature: The AI eval catches a changed prompt (AIV-P1-085)', () => {
+  const good = caseOf('jobs.draftCompetencies', 'account-executive');
+  const recordedWith = (recorded: Partial<GoldenCase['recorded']>): GoldenCase => ({
+    ...good,
+    recorded: { ...good.recorded, ...recorded },
+  });
+
+  // SAFETY: mutation check: version comparison removed from recordedAnswer in run.ts -> this test failed
+  it('Scenario: A prompt version bump with stale golden cases fails', async () => {
+    const report = await run('jobs.draftCompetencies', [recordedWith({ promptVersion: 'jobs.draftCompetencies@2' })]);
+    // Both stamps to set are named at once: the code's version and its hash.
+    expect(report.cases[0]?.error).toBe(
+      `recorded with jobs.draftCompetencies@2, code is ${DRAFT_COMPETENCIES_VERSION}: re-record (prompt hash ${good.recorded.promptHash})`,
+    );
+    expect(report.passed).toBe(false);
+  });
+
+  // SAFETY: mutation check: hash comparison removed from recordedAnswer in run.ts -> this test failed
+  it('Scenario: A prompt text edit without a version bump is still caught', async () => {
+    const inCode = await promptOf('jobs.draftCompetencies', good);
+    const afterEdit = await promptOf('jobs.draftCompetencies', good, (ai, c, workspaceId) =>
+      ai.generateStructured({
+        ...draftCompetenciesRequest({ jobType: 'sales', title: 'Account Executive' }, c.sources),
+        system: `${DRAFT_COMPETENCIES_SYSTEM} Be brief.`,
+        workspaceId,
+      }),
+    );
+    expect(afterEdit?.version).toBe(inCode?.version);
+    expect(afterEdit?.hash).not.toBe(inCode?.hash);
+    expect(good.recorded.promptHash).toBe(inCode?.hash);
+    // The sources are part of what the model reads: an edited case is stale too.
+    const [source, ...rest] = good.sources;
+    if (!source) throw new Error('the case has no source');
+    const edited = { ...good, sources: [{ ...source, text: `${source.text} More.` }, ...rest] };
+    expect((await promptOf('jobs.draftCompetencies', edited))?.hash).not.toBe(inCode?.hash);
+
+    // The cases keep the hash of the prompt that answered them, so the run fails once the code's hash moves.
+    const report = await run('jobs.draftCompetencies', [recordedWith({ promptHash: afterEdit?.hash })]);
+    expect(report.cases[0]?.error).toBe(
+      `recorded with prompt hash ${afterEdit?.hash}, code is ${inCode?.hash}: re-record`,
+    );
+    expect(report.passed).toBe(false);
+  });
+
+  it('a case recorded before prompts were stamped fails, and a task with no prompt yet is not checked', async () => {
+    const unstamped = recordedWith({ promptVersion: undefined, promptHash: undefined });
+    expect((await run('jobs.draftCompetencies', [unstamped])).cases[0]?.error).toContain('no prompt version');
+    expect(await promptOf('evidence.firstPass', good)).toBeNull();
   });
 });
 

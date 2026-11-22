@@ -16,6 +16,8 @@ expected:
     industry.domain: banking_islamic_finance
     regions[*].region: ['uae']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: 'a706d5803507'
   output:
     industry:
       domain: banking_islamic_finance

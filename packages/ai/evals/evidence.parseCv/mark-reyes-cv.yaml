@@ -8,6 +8,8 @@ sources:
 expected: { 'match': { 'skills[*].skill': ['Kubernetes', 'Prometheus', 'Terraform', 'Grafana'] } }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': 'f7c542322a7a',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

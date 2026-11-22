@@ -29,6 +29,8 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
+  promptVersion: evidence.mapToCompetency@2
+  promptHash: '447bf6288e76'
   output:
     links:
       - competencyId: c-retrieval

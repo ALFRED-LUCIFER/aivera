@@ -8,6 +8,8 @@ sources:
 expected: { 'match': { 'contact.emails': ['fatima.alhammadi@example.com'], 'contact.phones': ['+971 50 000 0002'] } }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': 'a1372f9d86f5',
     'output':
       {
         'contact': { 'emails': ['fatima.alhammadi@example.com'], 'phones': ['+971 50 000 0002'] },

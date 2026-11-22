@@ -19,6 +19,8 @@ expected:
       - Editing other writers
       - Docs tooling
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: '488a355db6ea'
   output:
     {
       'competencies':

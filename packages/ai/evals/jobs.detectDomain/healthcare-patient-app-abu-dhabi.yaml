@@ -16,6 +16,8 @@ expected:
     industry.domain: healthcare
     regions[*].region: ['uae']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: 'f1eb6b24261c'
   output:
     industry:
       domain: healthcare

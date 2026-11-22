@@ -16,6 +16,8 @@ expected:
   match:
     contradictions[*].citations[*].sourceId: [S1, S2]
 recorded:
+  promptVersion: evidence.compareExcerpts@2
+  promptHash: 'bc7b8d5223ab'
   output:
     contradictions:
       - citations:

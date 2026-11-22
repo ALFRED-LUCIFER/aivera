@@ -18,6 +18,8 @@ expected:
   }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': '39762f63b195',
     'output':
       {
         'contact': { 'emails': ['sara.alqahtani@example.com'], 'phones': ['+971 50 000 0001'] },

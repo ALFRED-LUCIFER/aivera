@@ -17,6 +17,8 @@ expected:
   }
 recorded:
   {
+    'promptVersion': 'evidence.parseCv@3',
+    'promptHash': 'a8145e634f9e',
     'output':
       {
         'contact': { 'emails': [], 'phones': [] },

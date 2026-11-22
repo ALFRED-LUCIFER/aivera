@@ -21,6 +21,8 @@ expected:
       - Payments testing
       - Accessibility testing
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: 'af673231879a'
   output:
     refused: true
     reason: >-

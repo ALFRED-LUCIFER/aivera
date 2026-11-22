@@ -18,6 +18,8 @@ expected:
     industry.domain: logistics_mobility
     regions[*].region: ['uae']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: 'bebcb4b34085'
   output:
     industry:
       domain: logistics_mobility

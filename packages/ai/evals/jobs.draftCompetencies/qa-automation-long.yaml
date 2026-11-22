@@ -35,6 +35,8 @@ expected:
     suggestions[*].name:
       - Payments domain testing
 recorded:
+  promptVersion: jobs.draftCompetencies@3
+  promptHash: '034f4ba73abc'
   output:
     competencies:
       - name: End-to-end test automation

@@ -16,6 +16,8 @@ expected:
     industry.domain: none
     regions[*].region: ['india']
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: '87db0db96eb6'
   output:
     industry:
       domain: none

@@ -42,6 +42,8 @@ expected:
     Every link's limit names what its evidence does not show, such as who reviewed the work, its effect on product
     decisions, or that a CV line has nothing to inspect.
 recorded:
+  promptVersion: evidence.mapToCompetency@2
+  promptHash: 'f3f12b45fd01'
   output:
     links:
       - competencyId: c-retrieval

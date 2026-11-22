@@ -13,6 +13,8 @@ expected:
     industry.domain: none
     regions: []
 recorded:
+  promptVersion: jobs.detectDomain@2
+  promptHash: 'b77fca427eea'
   output:
     industry:
       domain: none
