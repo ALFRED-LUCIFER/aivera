@@ -46,6 +46,7 @@ function harness() {
   const useCases = evidenceUseCases({
     storeFor: () => store,
     publishRecorded: async () => void calls.push('publishRecorded'),
+    publishContradictionResolved: async () => void calls.push('publishContradictionResolved'),
     authorize: async () => void calls.push('authorize'),
     isSyntheticWorkspace: async () => true,
     audit: async () => void calls.push('audit'),

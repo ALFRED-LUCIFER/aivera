@@ -3,7 +3,7 @@ import type { AuditContract } from '@credalent/audit';
 import type { Tx } from '@credalent/db';
 import type { Handler } from '@credalent/db/consumer';
 import { uuidv7 } from '@credalent/db/uuidv7';
-import { EvidenceMappedV1, EvidenceRecordedV1 } from '@credalent/evidence';
+import { ContradictionResolvedV1, EvidenceMappedV1, EvidenceRecordedV1 } from '@credalent/evidence';
 import { RubricApprovedV1, type JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { assessmentUseCases, type Ports } from './application/assessment.ts';
@@ -80,8 +80,6 @@ export function createAssessmentHandlers(config: {
     now: config.now ?? (() => new Date()),
   };
   // shortcut: scorecard.submitted is not consumed: interview scores (AIV-P2-005, AIV-P2-006) add their handler here.
-  // shortcut: resolving a contradiction (evidence's resolveContradiction) writes no event, so it re-scores nobody until
-  // the candidate's next mapping; AIV-P1-098 (#497) adds that event and its handler here.
   return [
     {
       event: EvidenceMappedV1,
@@ -90,6 +88,13 @@ export function createAssessmentHandlers(config: {
       handle: (tx, { candidateId, jobId, rubricVersionId }, envelope) =>
         assessForJob(ports, tx, envelope.workspaceId, jobId, [candidateId], rubricVersionId),
     } satisfies Handler<{ candidateId: string; jobId: string; rubricVersionId: string; mappingId: string }>,
+    {
+      event: ContradictionResolvedV1,
+      inbox,
+      consumer: 'assessment.contradiction-resolved',
+      handle: (tx, { candidateId, jobId, rubricVersionId }, envelope) =>
+        assessForJob(ports, tx, envelope.workspaceId, jobId, [candidateId], rubricVersionId),
+    } satisfies Handler<{ candidateId: string; jobId: string; rubricVersionId: string; comparisonId: string }>,
     {
       event: RubricApprovedV1,
       inbox,

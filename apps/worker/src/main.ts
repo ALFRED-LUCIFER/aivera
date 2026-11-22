@@ -64,6 +64,7 @@ const { createContactRecorder, readPersonAsSystem } = await import('@credalent/c
 const {
   CvParseRequestedV1,
   DocumentReadRequestedV1,
+  ContradictionResolvedV1,
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
@@ -122,6 +123,7 @@ const QUEUES: Record<string, string> = {
   [EvidenceRecordedV1.type]: mapping ? EVIDENCE_QUEUE : ASSESSMENT_QUEUE,
   [EvidenceMappingRequestedV1.type]: EVIDENCE_QUEUE,
   [EvidenceMappedV1.type]: ASSESSMENT_QUEUE,
+  [ContradictionResolvedV1.type]: ASSESSMENT_QUEUE,
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',

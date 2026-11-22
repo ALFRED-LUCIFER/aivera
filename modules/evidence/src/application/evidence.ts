@@ -60,7 +60,11 @@ export type EvidenceStore = {
    * Resolves an open or resolved contradiction (never an agreement) and returns it as it was before, or null when the
    * workspace has no such contradiction.
    */
-  resolveComparison(workspaceId: string, comparisonId: string, resolution: Resolution): Promise<Comparison | null>;
+  resolveComparison(
+    workspaceId: string,
+    comparisonId: string,
+    resolution: Resolution,
+  ): Promise<(Comparison & { rubricVersionId: string }) | null>;
   /** The comparisons of the candidate's newest mapping run for the job, oldest first. */
   comparisons(workspaceId: string, candidateId: string, jobId: string): Promise<Comparison[]>;
   /** Deletes all the workspace's evidence; false, with nothing deleted, if any source is not synthetic. */
@@ -72,6 +76,18 @@ export type Ports = {
   /** Writes `EvidenceRecorded.v1` to the outbox in `tx`, so it commits only with the evidence. */
   /** `dedupeKey` defaults to the source id; a re-read of the source passes its own. */
   publishRecorded(tx: Tx, source: EvidenceSource, itemIds: string[], dedupeKey?: string): Promise<void>;
+  /** Asks the assessment queue to score the comparison's candidate for its job again (AIV-P1-098). */
+  publishContradictionResolved(
+    tx: Tx,
+    resolved: {
+      workspaceId: string;
+      candidateId: string;
+      jobId: string;
+      rubricVersionId: string;
+      comparisonId: string;
+    },
+    occurredAt: Date,
+  ): Promise<void>;
   /** Job-scoped roles also need a grant on `resource` (ADR-005 point 6). */
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
@@ -156,6 +172,7 @@ export const REFERENCE_LIMIT = "One person's account, noted by the recruiter; it
 export function evidenceUseCases({
   storeFor,
   publishRecorded,
+  publishContradictionResolved,
   authorize,
   isSyntheticWorkspace,
   audit,
@@ -264,6 +281,17 @@ export function evidenceUseCases({
         resolutionLimit: limit,
       });
       if (!before) throw new EvidenceError('comparison_not_found');
+      await publishContradictionResolved(
+        ctx.tx,
+        {
+          workspaceId: ctx.workspaceId,
+          candidateId: before.candidateId,
+          jobId: before.jobId,
+          rubricVersionId: before.rubricVersionId,
+          comparisonId,
+        },
+        now(),
+      );
       await audit(ctx, {
         action: 'evidence.contradiction_resolved',
         subject: { type: 'comparison', id: comparisonId },

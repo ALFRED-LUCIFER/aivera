@@ -131,6 +131,21 @@ export const EvidenceMappedV1 = {
 } satisfies EventDefinition<{ candidateId: string; jobId: string; rubricVersionId: string; mappingId: string }>;
 
 /**
+ * Written to `evidence.outbox` in the transaction in which a person resolves a contradiction, and sent to the
+ * `assessment` queue, whose consumer scores that candidate for that job again (AIV-P1-098). `rubricVersionId` is the
+ * version the comparison's mapping run was made against. Opaque ids only: no note, limit, excerpt or name.
+ */
+export const ContradictionResolvedV1 = {
+  type: 'ContradictionResolved.v1',
+  payload: z.strictObject({
+    candidateId: z.uuid(),
+    jobId: z.uuid(),
+    rubricVersionId: z.uuid(),
+    comparisonId: z.uuid(),
+  }),
+} satisfies EventDefinition<{ candidateId: string; jobId: string; rubricVersionId: string; comparisonId: string }>;
+
+/**
  * Written to `evidence.outbox` with a pending `cv` source and sent to the `evidence` queue, whose worker job
  * `evidence.cv.parse` parses the CV once its file is clean (AIV-P1-025). Strict, opaque ids only.
  */

@@ -9,7 +9,12 @@ import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
 import { createDb, newEnvelope, uuidv7, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
-import { EvidenceMappedV1, EvidenceRecordedV1, type EvidenceContract } from '@credalent/evidence';
+import {
+  ContradictionResolvedV1,
+  EvidenceMappedV1,
+  EvidenceRecordedV1,
+  type EvidenceContract,
+} from '@credalent/evidence';
 import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import { RubricApprovedV1, type Competency, type JobsContract } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -128,6 +133,13 @@ const mapped = (workspaceId: string, candidateId: string, jobId: string, rubricV
   newEnvelope(EvidenceMappedV1, {
     workspaceId,
     payload: { candidateId, jobId, rubricVersionId, mappingId: uuidv7() },
+    occurredAt: NOW,
+  });
+
+const resolved = (workspaceId: string, candidateId: string, jobId: string, rubricVersionId: string) =>
+  newEnvelope(ContradictionResolvedV1, {
+    workspaceId,
+    payload: { candidateId, jobId, rubricVersionId, comparisonId: uuidv7() },
     occurredAt: NOW,
   });
 
@@ -301,6 +313,20 @@ describe('Scenario: New evidence updates the ranking', () => {
     ]);
     const [entry] = await audit.listFor(w1, { type: 'candidate', id: SARA });
     expect([entry?.action, entry?.actor]).toEqual(['score.changed', { type: 'system' }]);
+  });
+});
+
+describe('Scenario: Resolving a contradiction re-scores the candidate (AIV-P1-098)', () => {
+  it("a ContradictionResolved message scores that candidate on the event's approved version and stores the change", async () => {
+    const [first] = await competencyIds(versions['sae2'] as string);
+    // Evidence that a contradiction had withheld now counts: the stored 30 becomes 50, audited as the system.
+    await work(w1, DANIEL, sae, first as string, 5);
+    expect(await deliver(resolved(w1, DANIEL, sae, versions['sae2'] as string))).toEqual(['complete']);
+    expect((await results(sae)).at(-1)).toEqual({
+      candidate_id: DANIEL,
+      rubric_version_id: versions['sae2'],
+      backed_score: 50,
+    });
   });
 });
 

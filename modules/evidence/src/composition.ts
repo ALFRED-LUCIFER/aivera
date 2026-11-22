@@ -48,6 +48,7 @@ import {
   type RequestOutcome,
 } from './application/requests.ts';
 import {
+  ContradictionResolvedV1,
   CvParseRequestedV1,
   DocumentReadRequestedV1,
   EvidenceMappedV1,
@@ -111,6 +112,18 @@ const publishRecorded: Ports['publishRecorded'] = (tx, source, itemIds, dedupeKe
     occurredAt: source.createdAt,
   });
 
+const publishContradictionResolved: Ports['publishContradictionResolved'] = (
+  tx,
+  { workspaceId, ...payload },
+  occurredAt,
+) =>
+  enqueue(tx, outbox, ContradictionResolvedV1, {
+    workspaceId,
+    payload,
+    dedupeKey: `contradiction-resolved:${payload.comparisonId}`,
+    occurredAt,
+  });
+
 const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
   log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
 const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
@@ -155,6 +168,7 @@ export function createEvidence(
   const ports: Ports = {
     storeFor: evidenceStore,
     publishRecorded,
+    publishContradictionResolved,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     audit: (ctx, entry) =>

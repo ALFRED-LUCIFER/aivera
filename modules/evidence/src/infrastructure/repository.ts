@@ -163,7 +163,13 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       const [before] = await tx.select().from(comparison).where(where).for('update');
       if (!before) return null;
       await tx.update(comparison).set(resolution).where(where);
-      return before;
+      const [run] = await tx
+        .select({ rubricVersionId: mapping.rubricVersionId })
+        .from(mapping)
+        .where(and(eq(mapping.workspaceId, workspaceId), eq(mapping.id, before.mappingId)));
+      // A comparison always has its mapping run (foreign key); a missing row would be a broken database.
+      if (!run) throw new Error('comparison without a mapping run');
+      return { ...before, rubricVersionId: run.rubricVersionId };
     },
     comparisons(workspaceId, candidateId, jobId) {
       const newest = tx

@@ -457,8 +457,15 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
         }),
       );
       expect(await score()).toBeGreaterThan(0);
-      // Resolving changes the comparison only: no event is written.
-      expect(await outbox()).toEqual(mapped);
+      // The resolution writes one event, for the assessment, and nothing that moves a stage (AIV-P1-098).
+      expect(await outbox()).toEqual({ ...mapped, 'ContradictionResolved.v1': 1 });
+      const [event] = await rows(w1, sql`select payload from evidence.outbox where type = 'ContradictionResolved.v1'`);
+      expect(event?.['payload']).toEqual({
+        candidateId: daniel,
+        jobId: JOB,
+        rubricVersionId: V1,
+        comparisonId: contradictionId,
+      });
     });
 
     it('Scenario: Resolving a contradiction is logged with my name, the time and the note, and the limit reads it', async () => {
@@ -583,7 +590,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
           note: 'Reference confirmed scale only roughly',
         },
       ]);
-      expect(await events()).toBe(before);
+      expect(await events()).toBe(Number(before) + 1);
       expect(await backed(sara)).toBeGreaterThan(0);
     });
 
