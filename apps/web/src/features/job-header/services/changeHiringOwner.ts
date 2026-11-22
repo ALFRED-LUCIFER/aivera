@@ -5,7 +5,7 @@ import { log } from '@credalent/observability';
 import { ForbiddenError, WorkspaceError } from '@credalent/workspaces';
 import { revalidatePath } from 'next/cache';
 import { forbidden, notFound, unstable_rethrow } from 'next/navigation';
-import { queueApprovalRequest } from '@/features/rubric';
+import { queueApprovalRequest } from '@/features/rubric/server.ts';
 import { getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import { changeOwnerSchema, type ChangeOwnerResult } from '../domain/hiringOwner.ts';
