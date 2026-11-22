@@ -501,20 +501,24 @@ describe('Scenario: Resolving a contradiction re-scores the candidate (AIV-P1-09
     const [first] = await competencyIds(v3);
     // Evidence a contradiction had withheld now counts.
     await work(w1, DANIEL, sae, first as string, 5);
-    const before = (await results(sae)).length;
+    const all = async () => (await results(sae)).length;
+    const onV3 = async () =>
+      (await results(sae)).filter((r) => r.candidate_id === DANIEL && r.rubric_version_id === v3).length;
+    const before = await all();
+    const daniel = await onV3();
     // A resolution that names a version no longer approved is skipped, like a stale mapping.
     expect(await deliver(resolved(w1, DANIEL, sae, versions['sae2'] as string))).toEqual(['complete']);
-    expect(await results(sae)).toHaveLength(before);
+    expect(await all()).toBe(before);
 
     const message = resolved(w1, DANIEL, sae, v3);
     expect(await deliver(message)).toEqual(['complete']);
-    expect(await results(sae)).toHaveLength(before + 1);
-    expect((await results(sae)).at(-1)).toMatchObject({ candidate_id: DANIEL, rubric_version_id: v3 });
+    expect(await all()).toBe(before + 1);
+    expect(await onV3()).toBe(daniel + 1);
     // Redelivery stores nothing more.
     expect(await deliver(message)).toEqual(['complete']);
-    expect(await results(sae)).toHaveLength(before + 1);
+    expect(await all()).toBe(before + 1);
     // Another workspace's message naming this job stores nothing.
     expect(await deliver(resolved(w2, DANIEL, sae, v3))).toEqual(['complete']);
-    expect(await results(sae)).toHaveLength(before + 1);
+    expect(await all()).toBe(before + 1);
   });
 });

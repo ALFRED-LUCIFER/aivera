@@ -224,7 +224,11 @@ describe('Creating a job', () => {
       Object.keys(demoJobs).map((title) => [title, 'defining_rubric', false, true, NOW]),
     );
     const entries = await audit.listFor(demo, { type: 'job', id: demoJobs['Senior AI Engineer'] ?? '' });
-    expect(entries).toMatchObject([{ action: 'job.created', actor: { type: 'user', id: RANA } }]);
+    // The demo setup then gave it its hiring owner (AIV-P1-097 audits that change).
+    expect(entries).toMatchObject([
+      { action: 'job.created', actor: { type: 'user', id: RANA } },
+      { action: 'job.hiring_owner_changed', actor: { type: 'user', id: ALEX } },
+    ]);
   });
 
   it('a client from another workspace is refused, and a pay band is kept in minor units', async () => {
