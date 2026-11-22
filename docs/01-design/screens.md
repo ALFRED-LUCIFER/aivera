@@ -22,6 +22,11 @@ Every screen is an artboard in the claude.ai Design canvas "Credalent — Eviden
 | [`Interview.dc.html`](artboards/Interview.dc.html)               | Interview scorecard                                     | J3      | `/app/interviews/[interviewId]`                                         |
 | [`Pack.dc.html`](artboards/Pack.dc.html)                         | Job: decision pack                                      | J3      | `/app/jobs/[jobId]/pack`                                                |
 | [`ClientPack.dc.html`](artboards/ClientPack.dc.html)             | Client view of the shortlist                            | J3      | `/share/[token]`                                                        |
+| [`Settings.dc.html`](artboards/Settings.dc.html)                 | Workspace settings (seven sections)                     | J1      | `/app/settings` (built, AIV-P1-052; to re-port)                         |
+| [`Import.dc.html`](artboards/Import.dc.html)                     | Job: bring in candidates                                | J2      | `/app/jobs/[jobId]/import` (planned)                                    |
+| [`Evidence.dc.html`](artboards/Evidence.dc.html)                 | Job: evidence by competency                             | J2      | `/app/jobs/[jobId]/evidence` (planned)                                  |
+| [`Calibrate.dc.html`](artboards/Calibrate.dc.html)               | Job: calibrate the ranking                              | J2/J3   | `/app/jobs/[jobId]/calibrate` (planned)                                 |
+| [`Message.dc.html`](artboards/Message.dc.html)                   | Job: message candidates                                 | J3      | `/app/jobs/[jobId]/message` (planned)                                   |
 | [`Desk.dc.html`](artboards/Desk.dc.html)                         | My desk                                                 | J4      | `/app`                                                                  |
 | [`Pool.dc.html`](artboards/Pool.dc.html)                         | Talent pool                                             | J4      | `/app/pool`                                                             |
 | [`Main.dc.html`](artboards/Main.dc.html)                         | Value dashboard                                         | J4      | `/app/value`                                                            |
@@ -41,7 +46,31 @@ Every screen is an artboard in the claude.ai Design canvas "Credalent — Eviden
 | [`CTailor.dc.html`](artboards/CTailor.dc.html)                   | Candidate site: tailored CV                             | J6      | `/candidates/me/cv/[jobSlug]`                                           |
 | [`operator-console.md`](operator-console.md) (no artboard)       | Operator console                                        | J0      | `/ops/**`                                                               |
 
+**The job has seven stages** in the canvas: Job and rubric, Bring in candidates, Evidence, Ranking, Calibrate, Interviews, Decision (`Rubric`, `Import`, `Evidence`, `Candidates`, `Calibrate`, `Interviews`, `Pack`). The code still has five (`jobHeader.stages` in `packages/i18n`); the ticket that adds the stages updates the header, routes and this table. Emails sent from a workspace carry its logo, accent colour and name with "Powered by Credalent" (`ELayout.dc.html`).
+
 Routes are planned; the ticket that builds a screen confirms its route and updates this table.
+
+### Platform admin (canvas page "Platform admin journey")
+
+The operator console, drawn for the first time in the canvas (it had only `operator-console.md`). Operator work is paused until the pilot flow works (epic AIV-P1-E09); routes marked "built" exist today under `/ops` and are checked against these artboards by the ticket that next touches them.
+
+| Artboard file                                          | Title                         | Journey | Route (planned)                  |
+| ------------------------------------------------------ | ----------------------------- | ------- | -------------------------------- |
+| [`AOverview.dc.html`](artboards/AOverview.dc.html)     | Platform overview             | J0      | `/ops`                           |
+| [`AHealth.dc.html`](artboards/AHealth.dc.html)         | System health                 | J0      | `/ops/health`                    |
+| [`AAudit.dc.html`](artboards/AAudit.dc.html)           | Audit log                     | J0      | `/ops/audit` (built, AIV-P2-054) |
+| [`AWorkspaces.dc.html`](artboards/AWorkspaces.dc.html) | Workspaces                    | J0      | `/ops/workspaces` (built)        |
+| [`AWorkspace.dc.html`](artboards/AWorkspace.dc.html)   | Workspace detail              | J0      | `/ops/workspaces/[id]` (built)   |
+| [`ABilling.dc.html`](artboards/ABilling.dc.html)       | Billing                       | J0      | `/ops/billing`                   |
+| [`APlans.dc.html`](artboards/APlans.dc.html)           | Plans and pricing             | J0      | `/ops/plans`                     |
+| [`ASubNew.dc.html`](artboards/ASubNew.dc.html)         | Create a subscription         | J0      | `/ops/billing/new`               |
+| [`APlanNew.dc.html`](artboards/APlanNew.dc.html)       | Create a plan                 | J0      | `/ops/plans/new`                 |
+| [`AModeration.dc.html`](artboards/AModeration.dc.html) | Moderation                    | J0      | `/ops/moderation`                |
+| [`APrivacy.dc.html`](artboards/APrivacy.dc.html)       | Privacy requests              | J0      | `/ops/privacy`                   |
+| [`ALibrary.dc.html`](artboards/ALibrary.dc.html)       | Competency library            | J0      | `/ops/catalogue` (built)         |
+| [`AJobTypeNew.dc.html`](artboards/AJobTypeNew.dc.html) | Add a job type                | J0      | `/ops/catalogue/job-types/new`   |
+| [`AJobType.dc.html`](artboards/AJobType.dc.html)       | Job type and its competencies | J0      | `/ops/catalogue/job-types/[id]`  |
+| [`AQuality.dc.html`](artboards/AQuality.dc.html)       | Scoring quality               | J0      | `/ops/quality`                   |
 
 ### Emails (canvas page "Emails and print")
 
@@ -52,6 +81,7 @@ Every email is a React Email template in `modules/notifications/src/infrastructu
 | [`EEvidence.dc.html`](artboards/EEvidence.dc.html)                                                                                                                           | Evidence request                             | `evidence-request` (built, AIV-P0-017)   |
 | [`EEvRemind.dc.html`](artboards/EEvRemind.dc.html)                                                                                                                           | Evidence request reminder                    | Planned (AIV-P1-040)                     |
 | [`EInvite.dc.html`](artboards/EInvite.dc.html), [`ERoles.dc.html`](artboards/ERoles.dc.html)                                                                                 | Workspace invitation and its role variants   | Planned (AIV-P1-003)                     |
+| [`EMessage.dc.html`](artboards/EMessage.dc.html)                                                                                                                             | Message from the recruiter                   | Planned (with Message candidates)        |
 | `ERubric`, `EApproved`, `EReturned`, `ENewer`, `EIntro`, `EPack`, `EScore`, `EApplied`, `EForward`, `EClosed`, `EPlus`, `EFailed`, `ECancel`, `ESignIn`, `ERtl` (`.dc.html`) | The other emails and the right-to-left proof | Planned, with the ticket that sends each |
 
 Every route under `/app` is listed in `apps/web/src/features/shell/domain/navigation.ts` with its capability and flag; a test fails when the two drift (ADR-002 item 4). The sidebar sections (`/app`, `/app/inbox`, `/app/jobs`, `/app/candidates`, `/app/pool`, `/app/interviews`, `/app/packs`, `/app/value`) other than `/app` and `/app/jobs` are placeholder pages behind a flag that is off (AIV-P1-095): hidden from the sidebar, 404 by address, until their screen tickets land. "Decision packs" in the sidebar lists open packs at `/app/packs`; each job's own pack stays at `/app/jobs/[jobId]/pack`.

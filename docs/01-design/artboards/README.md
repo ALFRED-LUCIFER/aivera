@@ -1,6 +1,6 @@
 # Screen artboards
 
-Verbatim copies of the artboards in the claude.ai Design canvas "Credalent — Evidence Intelligence" (owner's canvas, read 20 Nov 2026, after the rename from Aivera), with `canvas.json`, the canvas layout. Each `.dc.html` is the spec for its screen ([`screens.md`](../screens.md) maps them to routes); `Foundations.dc.html` is the design system sheet that `packages/tokens/src/tokens.json` matches.
+Verbatim copies of the artboards in the claude.ai Design canvas "Credalent — Evidence Intelligence" (owner's canvas, read 22 Nov 2026: 86 artboards, adding the platform-admin, Import, Evidence, Calibrate, Message and Settings screens), with `canvas.json`, the canvas layout. Each `.dc.html` is the spec for its screen ([`screens.md`](../screens.md) maps them to routes); `Foundations.dc.html` is the design system sheet that `packages/tokens/src/tokens.json` matches.
 
 - **Build and review from these files** (AGENTS.md section 4): port what the artboard draws, and list every deviation with its reason in the component and the PR.
 - **Do not edit them here.** Change the canvas, then copy the files again in the same PR as the screens that follow. They are excluded from Prettier.
