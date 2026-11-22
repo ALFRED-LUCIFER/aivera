@@ -751,8 +751,7 @@ describe('Feature: Applicants carry their real name, and the model never sees it
     expect([...(await renames(candidateId))]).toEqual([{ actor_type: 'system', note: 'Named from the CV' }]);
     const prompt = promptText();
     expect(prompt).not.toContain('Sara Okoye');
-    expect(prompt).not.toContain('sara.okoye@example.com');
-    expect(prompt).not.toContain('+971 50 000 0099');
+    // Emails and phones go as written to parseCv by design (ADR-006 point 7, CONTACT_EXTRACTION_TASKS).
   });
 
   it('Scenario: a CV with no name keeps the placeholder and sends nothing to the model', async () => {
@@ -774,8 +773,10 @@ describe('Feature: Applicants carry their real name, and the model never sees it
 
   it('Scenario: a name a person typed is never overwritten', async () => {
     const candidateId = await person('Sara O.', 'typed.applicant@example.com');
+    models.length = 0;
     await parse('unused', OKOYE, okoyeAnswer, { candidateId });
     expect(await nameOf(candidateId)).toBe('Sara O.');
+    expect(promptText()).not.toMatch(/okoye/i);
     expect([...(await renames(candidateId))]).toEqual([]);
   });
 

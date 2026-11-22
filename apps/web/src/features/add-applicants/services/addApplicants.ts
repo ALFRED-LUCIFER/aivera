@@ -18,7 +18,7 @@ const add = workspaceAction(
   async (ctx, input: AddApplicantsInput): Promise<AddApplicantsResult> => {
     const files = getFiles()?.files;
     if (!files) return { ok: false, error: 'failed' };
-    // The placeholder is stored in English; the CV parse names the applicant from the CV (AIV-P1-090).
+    // shortcut: the placeholder is stored in English and shown untranslated; the CV parse names the applicant from the CV (AIV-P1-090).
     const displayName = UNNAMED_APPLICANT;
     const synthetic = (await getWorkspaces().getWorkspace(ctx))?.synthetic ?? false;
     return linkCleanCvs({ files, intake: getIntake() }, ctx, input, { displayName, synthetic });

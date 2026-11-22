@@ -139,6 +139,8 @@ async function candidateOf(
 ) {
   const person = await readPerson(tx, workspaceId, candidateId);
   // The intake placeholder is no name: redacting it would hide nothing (AIV-P1-090).
+  // shortcut: an unnamed applicant's non-CV sources (links, documents) go out with no name to redact, since none is known
+  // until a CV parse finds one; fail closed here if pilot links or documents show names.
   const identifiers: Identifiers | undefined = person
     ? {
         names: [...(person.unnamed ? [] : [person.displayName]), ...extraNames],
@@ -287,6 +289,8 @@ async function rescheduleForBudget<P>(
   now: () => Date,
 ) {
   const at = now();
+  // shortcut: every request lands at 00:05 exactly and per-source duplicates are not coalesced; add jitter and a
+  // deterministic message id per candidate, job and day if a spent budget fans out many calls.
   await scheduler.schedule(
     EVIDENCE_QUEUE,
     newEnvelope(event, { workspaceId, payload, occurredAt: at }),

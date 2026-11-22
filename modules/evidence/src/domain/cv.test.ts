@@ -327,6 +327,7 @@ describe('nameFromCv (AIV-P1-090)', () => {
     [['Curriculum Vitae', 'Tariq bin Nasser', 'Engineer'], 'Tariq bin Nasser'],
     [['Curriculum Vitae', 'Layla Al Mansoori', 'Senior engineer, 2020 to 2023'], 'Layla Al Mansoori'],
     [['Resume', 'built a claims model', '+971 50 000 0001'], null],
+    [['Senior Software Engineer', 'Professional Summary', 'Work Experience', 'Dubai United Arab Emirates'], null],
   ])('%j -> %j', (lines, expected) => {
     expect(nameFromCv(lines.join('\n'))).toBe(expected);
   });

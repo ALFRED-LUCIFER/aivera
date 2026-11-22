@@ -11,7 +11,8 @@ import { parseRepositoryUrl } from './repository.ts';
 export const CV_PARSE_STATUSES = ['pending', 'waiting', 'parsed', 'unreadable', 'failed'] as const;
 export type CvParseStatus = (typeof CV_PARSE_STATUSES)[number];
 
-const NOT_A_NAME = /^(curriculum|resume|résumé|cv\b|profile|summary|contact|about|personal)/iu;
+const NOT_A_NAME =
+  /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|united|emirates|arab|saudi|kingdom|dubai|riyadh|abu|dhabi)\b/iu;
 const PARTICLE = /^(?:bin|bint|ben|ibn|van|von|de|del|da|di|al|el)$/u;
 const NAME_WORD = /^(?!\p{Ll})\p{L}[\p{L}\p{M}'’.-]*$/u;
 
@@ -19,8 +20,10 @@ const NAME_WORD = /^(?!\p{Ll})\p{L}[\p{L}\p{M}'’.-]*$/u;
  * The applicant's name, read locally from the first lines of the CV (two to four words of letters, none starting in
  * lower case), so it is known before any text goes to the model (AIV-P1-090). Null when no line looks like a name.
  */
-// shortcut: a name that is not alone on one of the first six lines (a header table, a name after a title) is not found,
-// and the parse then fails closed; upgrade to a name-only pass if pilot CVs show it often.
+// shortcut: a name that is not alone on one of the first six lines is not found (the parse then fails closed), and a
+// non-name line of two to four capitalised words that avoids the deny list above can be taken for one (it then renames the
+// applicant and redacts the wrong words); upgrade to corroborating the name with the CV's email address, or a name-only
+// pass, if pilot CVs show either.
 export function nameFromCv(text: string): string | null {
   const lines = text
     .split('\n')

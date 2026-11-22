@@ -7,6 +7,7 @@ import {
   UncitedOutput,
 } from '@credalent/ai';
 import type { Tx } from '@credalent/db';
+import { log } from '@credalent/observability';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import {
   CV_LABEL,
@@ -58,9 +59,9 @@ export type CvParseStore = {
    */
   insertOrGet(source: EvidenceSource): Promise<string | null>;
   find(workspaceId: string, sourceId: string): Promise<{ parse: CvParse; source: EvidenceSource } | null>;
-  /** The parses of a CV file still to run (pending, or failed and waiting for a redelivery), by source id. */
+  /** The parses of a CV file still to run (pending, or failed and waiting for a redelivery; not `waiting`, which its schedule runs), by source id. */
   pendingForFile(workspaceId: string, fileId: string): Promise<string[]>;
-  /** Sets the status only while pending or failed; false when another delivery finished it first. */
+  /** Sets the status only while pending, waiting or failed; false when another delivery finished it first. */
   finish(workspaceId: string, sourceId: string, status: Exclude<CvParseStatus, 'pending'>): Promise<boolean>;
   insertItems(items: EvidenceItem[], notes: SourceNote[]): Promise<void>;
   notes(workspaceId: string, sourceId: string): Promise<SourceNote[]>;
@@ -251,8 +252,12 @@ export async function parseCv(
   const applicant = await readPerson(tx, workspaceId, source.candidateId);
   if (!applicant) throw new Error('applicant not found for the CV parse');
   // The placeholder redacts nothing, so an unnamed applicant's CV goes to the model only once its name is known (AIV-P1-090).
-  const name = applicant.unnamed ? nameFromCv(layout.content) : null;
-  if (applicant.unnamed && !name) return end('unreadable');
+  // The CV's name is redacted whether or not the record already has one (a typed "Sara O." must not leak "Okoye").
+  const name = nameFromCv(layout.content);
+  if (applicant.unnamed && !name) {
+    log.info({ 'evidence.source_id': sourceId, reason: 'name_not_found' }, 'cv parse ended: no name in the CV');
+    return end('unreadable');
+  }
   let extraction: CvExtraction;
   try {
     extraction = await extract(tx, workspaceId, source.candidateId, sourceId, layout.content, name ? [name] : []);
@@ -301,6 +306,6 @@ export async function parseCv(
       items.map((i) => i.id),
     );
   // The audit write is the last statement before commit (AGENTS.md 3.6).
-  if (name) await nameApplicant(tx, workspaceId, source.candidateId, name);
+  if (name && applicant.unnamed) await nameApplicant(tx, workspaceId, source.candidateId, name);
   return { status: 'parsed', notes: notes.length };
 }
