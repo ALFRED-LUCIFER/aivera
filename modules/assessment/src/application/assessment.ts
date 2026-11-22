@@ -19,6 +19,11 @@ export type AssessmentStore = {
   insert(row: StoredAssessment): Promise<void>;
   /** Every result of the job, any rubric version, oldest first. */
   listForJob(workspaceId: string, jobId: string): Promise<StoredAssessment[]>;
+  /** Per job, how many candidates have a result on that job's rubric version: one grouped read; jobs with none are absent. */
+  countOnVersions(
+    workspaceId: string,
+    versions: readonly { jobId: string; rubricVersionId: string }[],
+  ): Promise<Map<string, number>>;
 };
 
 /** One candidate in a job's ranking: their latest result on the job's approved rubric version. */
@@ -225,6 +230,19 @@ export function assessmentUseCases(ports: Ports) {
       if (!job.approvedVersionId) return { status: 'awaiting_rubric' };
       const results = await storeFor(ctx.tx).listForJob(ctx.workspaceId, jobId);
       return { status: 'ranked', rubricVersionId: job.approvedVersionId, rows: rank(results, job.approvedVersionId) };
+    },
+
+    async countAssessed(ctx: WorkspaceContext, jobIds: readonly string[]): Promise<Record<string, number>> {
+      const versions: { jobId: string; rubricVersionId: string }[] = [];
+      // shortcut: one job read per job; a workspace lists tens of jobs. Batch the jobs read if the Jobs list outgrows that.
+      for (const jobId of jobIds) {
+        const job = await rankingJob(ctx, jobId);
+        if (!job) throw new ForbiddenError();
+        await authorize(ctx, 'candidate.view', job.resource);
+        if (job.approvedVersionId) versions.push({ jobId, rubricVersionId: job.approvedVersionId });
+      }
+      const counts = await storeFor(ctx.tx).countOnVersions(ctx.workspaceId, versions);
+      return Object.fromEntries(jobIds.map((jobId) => [jobId, counts.get(jobId) ?? 0]));
     },
   };
 }

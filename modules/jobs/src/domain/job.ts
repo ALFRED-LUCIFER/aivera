@@ -364,8 +364,6 @@ export function nextAction(rubric: RubricState, progress: JobProgress): NextActi
 /** A row of the recruiter's Jobs list. */
 export type DeskJob = Job & {
   rubric: RubricState;
-  /** Null is not yet available. Zero, observed by rule, while no rubric is approved: assessment reads only that. */
-  assessed: number | null;
   /** Evidence coverage in whole percent; null is not yet available. */
   coveragePercent: number | null;
   nextAction: NextAction | null;
@@ -373,13 +371,12 @@ export type DeskJob = Job & {
 
 /**
  * What every job page's header shows (AIV-P1-011): the job, its approved version and its latest version (the same one
- * when nothing newer is open), and how many candidates are assessed. `assessed` follows `DeskJob.assessed`.
+ * when nothing newer is open). The assessed count is the assessment module's; the web app composes it (AIV-P1-099).
  */
 export type JobHeader = {
   job: Job;
   approved: RubricVersion | null;
   latest: RubricVersion | null;
-  assessed: number | null;
   /** The candidate site's slug while the job is published (AIV-P1-015, "View public listing"); null otherwise. */
   publicSlug: string | null;
 };

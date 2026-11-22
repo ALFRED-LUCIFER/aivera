@@ -20,13 +20,15 @@ test('Scenario: Senior AI Engineer header', async ({ page }) => {
   await signIn(page, { email: AP });
   await openJob(page, 'Senior AI Engineer');
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveText('Jobs/Senior AI Engineer');
-  // Not yet "· 64 candidates assessed": the count comes with AIV-P1-099, and none is invented.
-  await expect(page.getByText('Engineering · DIFC, Dubai · Hiring owner: Head of Engineering')).toBeVisible();
+  // The count is assessment's (AIV-P1-099); other specs on this database may have assessed candidates, so any number.
+  await expect(
+    page.getByText(/^Engineering · DIFC, Dubai · Hiring owner: Head of Engineering · \d+ candidates? assessed$/),
+  ).toBeVisible();
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();
   await expect(stages(page)).toHaveText([
     'Job descriptionSaved 3 Nov',
     'Competencies and rubricApproved, version 2',
-    'Evidence and rankingNot started',
+    /^Evidence and ranking(Not started|\d+ assessed)$/,
     'InterviewsNot started',
     'DecisionNot started',
   ]);

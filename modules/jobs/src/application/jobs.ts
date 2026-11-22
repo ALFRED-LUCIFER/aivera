@@ -393,13 +393,11 @@ export function jobsUseCases({
       return list.map((job) => {
         const state = states.get(job.id);
         const rubric = { approved: state?.approved ?? false, latest: state?.latest ?? null };
-        // shortcut: assessed and coverage come from assessment (stored since AIV-P1-031; AIV-P1-099 wires them in, since
-        // jobs cannot import assessment, which reads jobs), open evidence requests from evidence
-        // requests (AIV-P1-037) and pack readiness from decision packs (AIV-P2-010); until then not yet available.
+        // shortcut: coverage comes from assessment, open evidence requests from evidence requests (AIV-P1-037) and pack
+        // readiness from decision packs (AIV-P2-010); until then not yet available. The assessed count is composed in apps/web.
         return {
           ...job,
           rubric,
-          assessed: rubric.approved ? null : 0,
           coveragePercent: null,
           nextAction: nextAction(rubric, { packReady: null, openEvidenceRequests: null }),
         };
@@ -415,9 +413,9 @@ export function jobsUseCases({
       const approved = await store.approvedVersion(ctx.workspaceId, jobId);
       const latest = await store.latestVersion(ctx.workspaceId, jobId);
       const publicSlug = job.published ? await store.publicSlug(ctx.workspaceId, jobId) : null;
-      // shortcut: assessed comes from assessment as in listJobsForDesk (AIV-P1-099); interviews (AIV-P2-001) and the
-      // decision pack (AIV-P2-010) report nothing yet, so the header shows them as not started.
-      return { job, approved, latest, assessed: approved ? null : 0, publicSlug };
+      // shortcut: interviews (AIV-P2-001) and the decision pack (AIV-P2-010) report nothing yet, so the header shows
+      // them as not started.
+      return { job, approved, latest, publicSlug };
     },
 
     /** The rubric page (AIV-P1-012): every version with its competencies, newest first; null as `getJob`. */

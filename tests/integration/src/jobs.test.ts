@@ -714,18 +714,16 @@ const desk = (userId: string, workspaceId: string) => as(userId, workspaceId, (c
 // Builds on the scenarios above: Senior Product Designer has only a draft; Senior AI Engineer has version 2 approved and
 // version 3 awaiting approval.
 describe('The Jobs list (AIV-P1-006)', () => {
-  it('Senior Product Designer has a draft: assessed 0, coverage not yet available, "Approve the rubric"', async () => {
+  it('Senior Product Designer has a draft: coverage not yet available, "Approve the rubric"', async () => {
     const list = await desk(ALEX, demo);
     expect(list.find((j) => j.title === 'Senior Product Designer')).toMatchObject({
       rubric: { approved: false, latest: 'draft' },
-      assessed: 0,
       coveragePercent: null,
       nextAction: { kind: 'approve_rubric' },
     });
     // Version 2 is in force and version 3 waits for the hiring owner.
     expect(list.find((j) => j.title === 'Senior AI Engineer')).toMatchObject({
       rubric: { approved: true, latest: 'awaiting_approval' },
-      assessed: null,
       nextAction: { kind: 'rubric_approval_pending' },
     });
   });
@@ -844,7 +842,6 @@ describe('Feature: Save the job with rubric version 1 as a draft (AIV-P1-010)', 
     expect(await as(RANA, w, (ctx) => jobs.getApprovedRubric(ctx, saved.id))).toBeNull();
     expect((await desk(RANA, w)).find((j) => j.id === saved.id)).toMatchObject({
       rubric: { approved: false, latest: 'draft' },
-      assessed: 0,
     });
   });
 

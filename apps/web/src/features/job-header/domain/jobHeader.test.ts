@@ -9,17 +9,18 @@ const header = (more: Partial<JobHeader>): JobHeader => ({
   job: { ...job, createdAt: saved },
   approved: null,
   latest: null,
-  assessed: 0,
   publicSlug: null,
   ...more,
 });
-const lines = (h: JobHeader) => Object.fromEntries(jobHeaderView(h, null).stages.map((s) => [s.page, s.line]));
+const lines = (h: JobHeader, assessed = 0) =>
+  Object.fromEntries(jobHeaderView(h, null, assessed).stages.map((s) => [s.page, s.line]));
 
 describe('Job header stage lines (AIV-P1-011)', () => {
   it('Senior AI Engineer, version 2 approved with 64 assessed', () => {
     const view = jobHeaderView(
-      header({ approved: version(2, 'approved'), latest: version(2, 'approved'), assessed: 64 }),
+      header({ approved: version(2, 'approved'), latest: version(2, 'approved') }),
       'Head of Engineering',
+      64,
     );
     expect(view).toMatchObject({ hiringOwner: 'Head of Engineering', assessed: 64, rubric: { approved: true } });
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toEqual({
@@ -33,7 +34,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   });
 
   it('an approved version stays the rubric line while a newer one waits for approval', () => {
-    const h = header({ approved: version(2, 'approved'), latest: version(3, 'awaiting_approval'), assessed: null });
+    const h = header({ approved: version(2, 'approved'), latest: version(3, 'awaiting_approval') });
     expect(lines(h)).toMatchObject({
       rubric: { key: 'approved', values: { version: 2 } },
       candidates: { key: 'notStarted' },
@@ -41,7 +42,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   });
 
   it('a draft rubric: evidence and ranking starts after approval, and the rubric is not done', () => {
-    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null);
+    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0);
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toMatchObject({
       rubric: { key: 'draft', values: { version: 1 } },
       candidates: { key: 'afterApproval' },

@@ -442,6 +442,17 @@ describe('Who sees the ranking', () => {
     await expect(ranking(DESIGN, w1, sae)).rejects.toBeInstanceOf(ForbiddenError);
     expect(await ranking(DESIGN, w1, spd)).toEqual({ status: 'awaiting_rubric' });
   });
+
+  it('the assessed count equals the ranked rows, is 0 before approval, and refuses a job the caller cannot see (AIV-P1-099)', async () => {
+    const count = (userId: string, jobIds: string[]) => as(userId, w1, (ctx) => assessment.countAssessed(ctx, jobIds));
+    const ranked = await ranking(RANA, w1, sae);
+    const rows = ranked.status === 'ranked' ? ranked.rows.length : -1;
+    expect(rows).toBeGreaterThan(0);
+    expect(await count(RANA, [sae, spd])).toEqual({ [sae]: rows, [spd]: 0 });
+    expect(await count(HEAD, [sae])).toEqual({ [sae]: rows });
+    // SAFETY: mutation check: dropped the `if (!job) throw new ForbiddenError()` and authorize in countAssessed -> this test failed
+    await expect(count(DESIGN, [sae])).rejects.toBeInstanceOf(ForbiddenError);
+  });
 });
 
 describe('Concurrent runs for one candidate and job', () => {

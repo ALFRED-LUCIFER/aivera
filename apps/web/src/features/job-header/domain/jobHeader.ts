@@ -23,14 +23,15 @@ export type JobHeaderView = {
   team: string | null;
   location: string | null;
   hiringOwner: string | null;
-  assessed: number | null;
+  assessed: number;
   rubric: RubricState;
   stages: { page: JobPage; line: StageLine; done: boolean }[];
 };
 
 export function jobHeaderView(
-  { job, approved, latest, assessed }: JobHeader,
+  { job, approved, latest }: JobHeader,
   hiringOwner: string | null,
+  assessed: number,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -44,7 +45,7 @@ export function jobHeaderView(
     // Nothing is assessed before the rubric is approved (by a recruiter, or the hiring owner it was sent to).
     candidates: !approved
       ? { key: 'afterApproval' }
-      : assessed === null
+      : assessed === 0
         ? { key: 'notStarted' }
         : { key: 'assessed', values: { count: assessed } },
     // shortcut: interviews (AIV-P2-001) and decision packs (AIV-P2-010) do not exist yet; they report these two.

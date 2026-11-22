@@ -18,7 +18,7 @@ export function JobHeader({ view, current }: { view: JobHeaderView; current: Job
     view.team,
     view.location,
     view.hiringOwner ? t('jobHeader.hiringOwner', { name: view.hiringOwner }) : t('jobHeader.noHiringOwner'),
-    view.assessed === null ? null : t('jobHeader.assessed', { count: view.assessed }),
+    t('jobHeader.assessed', { count: view.assessed }),
   ].filter(Boolean);
   return (
     <div className="mb-6 flex flex-col gap-6">
