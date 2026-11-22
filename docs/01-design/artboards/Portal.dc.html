@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Credalent — Evidence request</title>
+<title>Evidence request · Credalent</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -81,7 +81,7 @@ body{margin:0}
 .ico{flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface-subtle);color:var(--text-2)}
 .note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-subtle);color:var(--text-2);font-size:13px;line-height:18px}
 .note-ok{background:var(--ok-bg);border-color:var(--ok-border);color:var(--ok-text)}
-.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media (prefers-reduced-motion:no-preference){.btn,.nav a,.tabs a{transition:background-color .14s cubic-bezier(.16,1,.3,1),color .14s cubic-bezier(.16,1,.3,1)}}
 
 .av .wlink{color:var(--text-2);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
@@ -127,7 +127,7 @@ body{margin:0}
 <header style="border-bottom: 1px solid var(--border); background: var(--surface)"><div style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); max-width: 760px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; padding-bottom: 14px"><a href="Landing.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit"><img src="/_blob/6674631ff1e9bf16755d4ac9145faf12" alt="" width="34" height="34" style="border-radius: 9px; box-shadow: 0 0 0 1px var(--border-strong); display: block"><span style="font-family: Bricolage Grotesque, Hanken Grotesk, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em">Credalent</span></a><span class="sub">Evidence request · Senior AI Engineer</span></div></header>
 <main style="width: 100%; max-width: 1200px; margin: 0 auto; padding-left: clamp(20px, 4vw, 40px); padding-right: clamp(20px, 4vw, 40px); max-width: 760px; padding-top: clamp(28px, 5vw, 56px); padding-bottom: 64px; display: flex; flex-direction: column; gap: 24px">
 <div style="display: flex; flex-direction: column; gap: 10px"><h1 style="font-size: clamp(28px, 4vw, 36px); line-height: 1.15">Sara, show us the work behind two things you told us</h1>
-<p style="font-size: 16px; line-height: 24px; color: var(--text-2); max-width: 62ch">This takes about two minutes. Anything you share is weighed as evidence for the Senior AI Engineer role. Sharing nothing does not remove you from consideration; those points are simply discussed in the interview.</p></div>
+<p style="font-size: 16px; line-height: 24px; color: var(--text-2); max-width: 62ch">This takes about two minutes. Anything you share is weighed as evidence for the Senior AI Engineer role. Sharing nothing does not remove you from consideration. Those points are simply discussed in the interview.</p></div>
 <sc-if value="{{not_done}}" hint-placeholder-val="{{true}}"><div style="display: flex; flex-direction: column; gap: 24px">
 <section class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px"><h2>1. Your Gulf Arabic evaluation set</h2>
 <p><span style="color: var(--text-2)">What you told us:</span> <mark class="hl">I built a Gulf Arabic evaluation set for our assistant.</mark></p>
@@ -147,7 +147,7 @@ body{margin:0}
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1280}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1260}}'>
 class Component extends DCLogic {
   renderVals() {
     const s = this.state || {};
