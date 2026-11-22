@@ -6,7 +6,12 @@ import { join } from 'node:path';
 import { createAiClient, type AiProvider } from '@credalent/ai';
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
-import { createCandidates, createContactRecorder, readPersonAsSystem } from '@credalent/candidates/composition';
+import {
+  createCandidates,
+  createContactRecorder,
+  nameUnnamedPerson,
+  readPersonAsSystem,
+} from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
@@ -195,6 +200,9 @@ async function consume(envelopes: Envelope[], deliveryCount = 1, db = app): Prom
     readCleanFile: createCleanFileReader(blobs),
     recordContact: createContactRecorder(),
     readPerson: readPersonAsSystem,
+    namePerson: nameUnnamedPerson,
+    audit: createAudit(app),
+    scheduler: { schedule: async () => '1', cancel: async () => undefined },
     now: () => NOW,
   });
   const consumer = createConsumer({ db, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });

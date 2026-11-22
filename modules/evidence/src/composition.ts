@@ -1,6 +1,7 @@
 // Builds the evidence module for an app (ADR-002: only apps import this).
 import { createHash, randomBytes } from 'node:crypto';
 import {
+  BudgetExceeded,
   MAP_TO_COMPETENCY_VERSION,
   mapToCompetencyRequest,
   CANDIDATE_PLACEHOLDER,
@@ -15,7 +16,7 @@ import {
   type Identifiers,
 } from '@credalent/ai';
 import type { AuditContract } from '@credalent/audit';
-import type { Handler, Scheduler } from '@credalent/db/consumer';
+import { PermanentFailure, type Handler, type Scheduler } from '@credalent/db/consumer';
 import type { Db, Tx } from '@credalent/db';
 import { enqueue, newEnvelope, type Envelope, type EventDefinition } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
@@ -24,6 +25,7 @@ import { RubricApprovedV1 } from '@credalent/jobs';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { FileCleanV1, FileRejectedV1 } from '@credalent/files';
 import { annotateSpan, log, withSpan } from '@credalent/observability';
+import { budgetResetAt } from './domain/budget.ts';
 import { cvParseUseCases, isTransient, parseCv, type CvPorts, type ParsePorts } from './application/cvParse.ts';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
@@ -133,17 +135,31 @@ export type ReadPerson = (
   tx: Tx,
   workspaceId: string,
   personId: string,
-) => Promise<{ displayName: string; emails: string[]; phones: string[] } | null>;
+) => Promise<{ displayName: string; unnamed: boolean; emails: string[]; phones: string[] } | null>;
 
 /**
  * The identifiers `@credalent/ai` replaces in every evidence prompt (ADR-006 point 7, AIV-P1-080), and the name it puts
  * back where model text shown to a recruiter carries the placeholder. No person means no identifiers: the call then
  * fails closed (`MissingIdentifiers`) and the delivery retries.
  */
-async function candidateOf(readPerson: ReadPerson, tx: Tx, workspaceId: string, candidateId: string) {
+async function candidateOf(
+  readPerson: ReadPerson,
+  tx: Tx,
+  workspaceId: string,
+  candidateId: string,
+  /** A name read from the CV, not yet on the record (AIV-P1-090). */
+  extraNames: string[] = [],
+) {
   const person = await readPerson(tx, workspaceId, candidateId);
+  // The intake placeholder is no name: redacting it would hide nothing (AIV-P1-090).
+  // shortcut: an unnamed applicant's non-CV sources (links, documents) go out with no name to redact, since none is known
+  // until a CV parse finds one; fail closed here if pilot links or documents show names.
   const identifiers: Identifiers | undefined = person
-    ? { names: [person.displayName], emails: person.emails, phones: person.phones }
+    ? {
+        names: [...(person.unnamed ? [] : [person.displayName]), ...extraNames],
+        emails: person.emails,
+        phones: person.phones,
+      }
     : undefined;
   const named = <T>(value: T): T => {
     if (!person) return value;
@@ -281,6 +297,32 @@ async function reschedule<P>(
   log.info({ 'outbox.event_id': envelope.id }, 'github read rescheduled after its rate limit');
 }
 
+/** The same request on the evidence queue after the daily AI budget resets (AIV-P1-089); nothing is marked failed. */
+async function rescheduleForBudget<P>(
+  scheduler: Scheduler,
+  event: EventDefinition<P>,
+  workspaceId: string,
+  payload: P,
+  now: () => Date,
+) {
+  const at = now();
+  // shortcut: every request lands at 00:05 exactly and per-source duplicates are not coalesced; add jitter and a
+  // deterministic message id per candidate, job and day if a spent budget fans out many calls.
+  await scheduler.schedule(
+    EVIDENCE_QUEUE,
+    newEnvelope(event, { workspaceId, payload, occurredAt: at }),
+    budgetResetAt(at),
+  );
+  log.info(
+    { 'workspace.id': workspaceId, 'event.type': event.type },
+    'ai work rescheduled after the daily token budget',
+  );
+}
+
+/** An answer a retry cannot fix is dead-lettered on the first delivery (AIV-P1-089). */
+const permanent = (error: unknown): error is Error =>
+  error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput;
+
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request
  * is scheduled on Service Bus for just after `x-ratelimit-reset` and this delivery completes: before anything is
@@ -409,6 +451,7 @@ export function createEvidenceMappingHandlers(config: {
   approvedRubric: MappingPorts['approvedRubric'];
   applications: ApplicationsPort;
   readPerson: ReadPerson;
+  scheduler: Scheduler;
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
@@ -508,7 +551,21 @@ export function createEvidenceMappingHandlers(config: {
       consumer: 'evidence.mapping',
       async handle(tx, { candidateId, jobId }, envelope) {
         const candidate = await candidateOf(config.readPerson, tx, envelope.workspaceId, candidateId);
-        const run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
+        let run;
+        try {
+          run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
+        } catch (error) {
+          if (error instanceof BudgetExceeded)
+            return rescheduleForBudget(
+              config.scheduler,
+              EvidenceMappingRequestedV1,
+              envelope.workspaceId,
+              { candidateId, jobId },
+              now,
+            );
+          if (permanent(error)) throw new PermanentFailure(error.name);
+          throw error;
+        }
         if (!run) log.info({ 'outbox.event_id': envelope.id }, 'evidence not mapped: the job has no approved rubric');
       },
     } satisfies Handler<{ candidateId: string; jobId: string }>,
@@ -561,6 +618,11 @@ export function createFileReadHandlers(config: {
   readCleanFile: ParsePorts['readCleanFile'];
   recordContact: ParsePorts['recordContact'];
   readPerson: ReadPerson;
+  /** The candidates module's `nameUnnamedPerson`: false when the person already has a name. */
+  namePerson(tx: Tx, workspaceId: string, personId: string, name: string): Promise<boolean>;
+  audit: Pick<AuditContract, 'record'>;
+  /** A parse that hits the daily AI budget is scheduled for 00:05 UTC the next day. */
+  scheduler: Scheduler;
   now?: () => Date;
 }): Handler<unknown>[] {
   const now = config.now ?? (() => new Date());
@@ -580,12 +642,23 @@ export function createFileReadHandlers(config: {
       ),
     documentIntelligence: createDocumentIntelligence(config.documentIntelligence),
     // Every stored CV claim is a slice of the CV text at its citation's offsets, so no placeholder reaches a recruiter.
-    extract: async (tx, workspaceId, candidateId, sourceId, text) =>
+    extract: async (tx, workspaceId, candidateId, sourceId, text, names) =>
       config.ai.generateStructured({
         ...parseCvRequest([{ id: sourceId, kind: 'cv', text }]),
         workspaceId,
-        identifiers: (await candidateOf(config.readPerson, tx, workspaceId, candidateId)).identifiers,
+        identifiers: (await candidateOf(config.readPerson, tx, workspaceId, candidateId, names)).identifiers,
       }),
+    readPerson: async (tx, workspaceId, candidateId) => {
+      const person = await config.readPerson(tx, workspaceId, candidateId);
+      return person && { unnamed: person.unnamed };
+    },
+    nameApplicant: async (tx, workspaceId, candidateId, name) => {
+      if (!(await config.namePerson(tx, workspaceId, candidateId, name))) return;
+      await config.audit.record(
+        { tx, workspaceId, actor: { type: 'system' } },
+        { action: 'candidate.renamed', subject: { type: 'candidate', id: candidateId }, note: 'Named from the CV' },
+      );
+    },
     logFlagged,
     sha1,
     newId: uuidv7,
@@ -597,7 +670,21 @@ export function createFileReadHandlers(config: {
       'evidence cv parse',
       workspaceId,
       sourceId,
-      () => parseCv(ports, tx, workspaceId, sourceId),
+      async () => {
+        const result = await parseCv(ports, tx, workspaceId, sourceId);
+        if (result?.status === 'waiting') {
+          const found = await cvParseStore(tx).find(workspaceId, sourceId);
+          if (found)
+            await rescheduleForBudget(
+              config.scheduler,
+              CvParseRequestedV1,
+              workspaceId,
+              { candidateId: found.source.candidateId, sourceId },
+              now,
+            );
+        }
+        return result;
+      },
       (own) => cvParseStore(own).finish(workspaceId, sourceId, 'failed'),
     );
   const read = (tx: Tx, workspaceId: string, sourceId: string) =>

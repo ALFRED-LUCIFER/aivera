@@ -1,5 +1,5 @@
 {
-  "id": "3177d5ed-e475-4a73-abca-f5ee8a9e8319",
+  "id": "91f884b2-dea0-49d1-bb28-f27b2625b7a7",
   "prevId": "2e66bf5c-9c69-43fc-a513-d4b3fe42bc7f",
   "version": "7",
   "dialect": "postgresql",
@@ -165,7 +165,7 @@
         },
         "entry_action_check": {
           "name": "entry_action_check",
-          "value": "\"audit\".\"entry\".\"action\" in ('rubric.approved', 'rubric.submitted', 'rubric.saved', 'rubric.returned', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'workspace.settings_changed', 'member.invited', 'invitation.revoked', 'invitation.accepted', 'member.removed', 'job.stage_changed', 'evidence.flag_resolved', 'evidence_request.created', 'evidence_request.sent', 'evidence_request.closed', 'evidence.contradiction_resolved', 'job.hiring_owner_changed')"
+          "value": "\"audit\".\"entry\".\"action\" in ('rubric.approved', 'rubric.submitted', 'rubric.saved', 'rubric.returned', 'score.changed', 'candidate.merged', 'decision.recorded', 'assistant.confirmed', 'member.role_changed', 'workspace.created', 'workspace.type_changed', 'client.added', 'client.renamed', 'client.archived', 'job_access.granted', 'job_access.revoked', 'job.created', 'member.added', 'workspace.purged', 'job.published', 'job.unpublished', 'ai_budget.changed', 'workspace.suspended', 'workspace.reactivated', 'workspace.approved', 'workspace.rejected', 'workspace.settings_changed', 'member.invited', 'invitation.revoked', 'invitation.accepted', 'member.removed', 'job.stage_changed', 'evidence.flag_resolved', 'evidence_request.created', 'evidence_request.sent', 'evidence_request.closed', 'evidence.contradiction_resolved', 'candidate.renamed')"
         },
         "entry_note_check": {
           "name": "entry_note_check",

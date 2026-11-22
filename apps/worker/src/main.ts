@@ -60,7 +60,8 @@ const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
 const { ASSESSMENT_QUEUE, createAssessmentHandlers } = await import('@credalent/assessment/composition');
 const { createAudit } = await import('@credalent/audit/composition');
-const { createContactRecorder, readPersonAsSystem } = await import('@credalent/candidates/composition');
+const { createContactRecorder, nameUnnamedPerson, readPersonAsSystem } =
+  await import('@credalent/candidates/composition');
 const {
   CvParseRequestedV1,
   DocumentReadRequestedV1,
@@ -223,6 +224,9 @@ if (catalogueEval)
   ];
 // The evidence handlers share the queue, so all wait for the GitHub App: an unknown event type is dead-lettered.
 const evidenceHandlers: NonNullable<(typeof CONSUMERS)[string]> = [];
+// Rate-limited reads and AI work held back by the daily budget are scheduled with the relay's sender: the worker-only
+// identity holding Data Sender (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
+const scheduler = createScheduler(senderFor);
 if (mapping)
   evidenceHandlers.push(
     ...createEvidenceMappingHandlers({
@@ -230,6 +234,7 @@ if (mapping)
       ...createApprovedRubricReads(),
       applications: createApplicationReads(),
       readPerson: readPersonAsSystem,
+      scheduler,
       now,
     }),
   );
@@ -249,9 +254,6 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
     privateKey: env.GITHUB_APP_PRIVATE_KEY,
     installationId: env.GITHUB_APP_INSTALLATION_ID,
   };
-  // A rate-limited read is scheduled with the relay's sender: the worker-only identity holding Data Sender
-  // (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
-  const scheduler = createScheduler(senderFor);
   evidenceHandlers.push(
     createRepositoryReadHandler({ github, scheduler, now }),
     createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
@@ -280,6 +282,9 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
       ),
       recordContact: createContactRecorder(),
       readPerson: readPersonAsSystem,
+      namePerson: nameUnnamedPerson,
+      audit: createAudit(appDb, now),
+      scheduler,
       now,
     }),
     createLinkReadHandler({ now }),

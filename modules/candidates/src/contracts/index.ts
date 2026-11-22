@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 import type { Person } from '../domain/person.ts';
 
-export { CandidateError, IDENTIFIER_TYPES, PERSONAL_DATA_FIELDS } from '../domain/person.ts';
+export { CandidateError, IDENTIFIER_TYPES, PERSONAL_DATA_FIELDS, UNNAMED_APPLICANT } from '../domain/person.ts';
 export type { CandidateErrorCode, Identifier, IdentifierType, Person } from '../domain/person.ts';
 export type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 
