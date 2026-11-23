@@ -101,6 +101,11 @@ export const mapping = evidence
       model: text().notNull(),
       // Up to three checks, each closing a gap or a capped item of this run; the text is candidate data (never logged).
       changes: jsonb().$type<StoredChange[]>().notNull(),
+      // Sources left out of the model call as too long to read automatically (AIV-P2-062).
+      tooLongSourceIds: uuid('too_long_source_ids')
+        .array()
+        .notNull()
+        .default(sql`'{}'`),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [

@@ -1,3 +1,4 @@
+import { MAX_CALL_SOURCE_CHARS, MAX_SOURCE_CHARS } from '@credalent/ai';
 import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import {
@@ -41,6 +42,9 @@ export type MappingRun = {
   promptVersion: string;
   model: string;
   changes: StoredChange[];
+  /** Sources not sent to the model, too long to read automatically (AIV-P2-062): the profile says so. */
+  tooLongSourceIds: string[];
+  /** When the run was claimed (under its lock), so the run claimed last is the newest. */
   createdAt: Date;
 };
 
@@ -51,6 +55,8 @@ export type EvidenceMappingView = MappingRun & { gaps: EvidenceGapRow[] };
 
 /** Over one workspace-scoped transaction; every method filters by `workspaceId`. */
 export type MappingStore = {
+  /** Holds the candidate's mapping for the job until commit, so runs for them follow one another (AIV-P2-062). */
+  lock(workspaceId: string, candidateId: string, jobId: string): Promise<void>;
   insert(
     run: MappingRun,
     items: (EvidenceItem & { mappingId: string })[],
@@ -107,6 +113,8 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
     contradictions: number;
     discarded: Partial<Record<DiscardReason, number>>;
     uncitedChanges: number;
+    /** Sources left out as too long to read automatically. */
+    tooLong: number;
     /** Pairs sent to the AI comparison, flagged by it, and left uncompared because its answer was rejected. */
     compared: { sent: number; flagged: number; rejected: number };
   }): void;
@@ -164,6 +172,28 @@ export async function comparePairs(
   };
 }
 
+/**
+ * The sources one mapping call sends, in order, and the ids of those it leaves out (AIV-P2-062): a source over
+ * MAX_SOURCE_CHARS, or one that would take the call past MAX_CALL_SOURCE_CHARS. Never truncated, so no citation can
+ * point past what the model saw.
+ */
+// shortcut: a source past the call's total waits for a re-map with fewer sources; split a candidate's sources over
+// several calls if pilot candidates hit the total.
+export function fitSources<S extends { id: string; text: string }>(sources: readonly S[]) {
+  const sent: S[] = [];
+  const tooLong: string[] = [];
+  let total = 0;
+  for (const s of sources) {
+    if (s.text.length > MAX_SOURCE_CHARS || total + s.text.length > MAX_CALL_SOURCE_CHARS) {
+      tooLong.push(s.id);
+      continue;
+    }
+    sent.push(s);
+    total += s.text.length;
+  }
+  return { sent, tooLong };
+}
+
 const idOf = (rows: readonly { id: string }[], i: number) => {
   const row = rows[i];
   if (!row) throw new Error('mapping row index out of range');
@@ -187,6 +217,10 @@ export async function mapEvidence(
   candidateId: string,
   jobId: string,
 ): Promise<MappingRun | null> {
+  // SAFETY: a run claimed while another for the candidate and job is in flight waits for it, so it reads that run's
+  // flags and resolutions and, stamped after the wait, stays the newest even if it finishes first.
+  await ports.mappingStoreFor(tx).lock(workspaceId, candidateId, jobId);
+  const createdAt = ports.now();
   const rubric = await ports.approvedRubric(tx, workspaceId, jobId);
   if (!rubric) return null;
   const reads = ports.readStoreFor(tx);
@@ -231,14 +265,16 @@ export async function mapEvidence(
     synthetic.set(sourceId, source.synthetic);
   }
 
-  const answer = aiSources.length
-    ? await ports.mapToCompetencies(workspaceId, rubric.competencies, aiSources)
+  const { sent, tooLong } = fitSources(aiSources);
+  const answer = sent.length
+    ? await ports.mapToCompetencies(workspaceId, rubric.competencies, sent)
     : { links: [], changes: [] };
   const competencyIds = rubric.competencies.map((c) => c.id);
   const mapGrades: MapGrade[] = grades.map((g) => ({ ...g, sourceId: g.repositorySourceId }));
   const guarded = guardLinks({
     competencyIds,
-    sources: mapSources,
+    // A link citing a source that was not sent is discarded (`unknown_source`).
+    sources: mapSources.filter((s) => !tooLong.includes(s.id)),
     grades: mapGrades,
     links: answer.links,
   });
@@ -287,7 +323,6 @@ export async function mapEvidence(
     suggested: answer.changes,
   });
 
-  const createdAt = ports.now();
   const mappingId = ports.newId();
   const items = links.map((l) => ({
     id: ports.newId(),
@@ -338,6 +373,7 @@ export async function mapEvidence(
       closes: 'gap' in closes ? { gapId: idOf(gapRows, closes.gap) } : { itemId: idOf(items, closes.link) },
       text,
     })),
+    tooLongSourceIds: tooLong,
     createdAt,
   };
   await ports.mappingStoreFor(tx).insert(
@@ -357,6 +393,7 @@ export async function mapEvidence(
     contradictions: comparisons.filter((c) => c.outcome === 'contradiction').length,
     discarded: counts,
     uncitedChanges: ranked.uncited,
+    tooLong: tooLong.length,
     compared: comparedCounts,
   });
   return run;

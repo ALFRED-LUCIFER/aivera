@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { initTelemetry } from '@credalent/observability/init';
 import { z } from 'zod';
+import { mapsEvidence } from './mapping.ts';
 
 const env = z
   .object({
@@ -113,10 +114,10 @@ const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZUR
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
 const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
-// has its consumer (the GitHub App, below), and its EvidenceMapped.v1 is scored on `assessment`; otherwise they go to
-// `assessment` directly (AIV-P1-031), so the evidence queue never receives an event nothing handles.
+// has its consumer (the GitHub App or file reading, below), and its EvidenceMapped.v1 is scored on `assessment`;
+// otherwise they go to `assessment` directly (AIV-P1-031), so the evidence queue never receives an event nothing handles.
 const model = env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER === 'fake';
-const mapping = !!githubApp && model;
+const mapping = mapsEvidence({ model, githubApp: !!githubApp, fileReading });
 const catalogueEval = model && env.CATALOGUE_EVAL === 'on';
 const QUEUES: Record<string, string> = {
   [PersonCreatedV1.type]: 'candidates',
@@ -222,7 +223,7 @@ if (catalogueEval)
       },
     }),
   ];
-// The evidence handlers share the queue, so all wait for the GitHub App: an unknown event type is dead-lettered.
+// The evidence handlers share the queue, each registered with its reader: an unknown event type is dead-lettered.
 const evidenceHandlers: NonNullable<(typeof CONSUMERS)[string]> = [];
 // Rate-limited reads and AI work held back by the daily budget are scheduled with the relay's sender: the worker-only
 // identity holding Data Sender (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
@@ -238,7 +239,10 @@ if (mapping)
       now,
     }),
   );
-else log.warn('Evidence mapping off: it needs an AI model and the GitHub App; evidence is recorded but not mapped');
+else
+  log.warn(
+    'Evidence mapping off: it needs an AI model and the GitHub App or file reading; evidence is recorded but not mapped',
+  );
 if (githubApp || fileReading)
   evidenceHandlers.push(
     createApplicationReceivedHandler({

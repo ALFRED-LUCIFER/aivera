@@ -9,6 +9,7 @@ import {
   flaggedPairs,
   InvalidCitation,
   SchemaMismatch,
+  SourceTooLong,
   UncitedOutput,
   modelOf,
   parseCvRequest,
@@ -321,7 +322,10 @@ async function rescheduleForBudget<P>(
 
 /** An answer a retry cannot fix is dead-lettered on the first delivery (AIV-P1-089). */
 const permanent = (error: unknown): error is Error =>
-  error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput;
+  error instanceof InvalidCitation ||
+  error instanceof SchemaMismatch ||
+  error instanceof UncitedOutput ||
+  error instanceof SourceTooLong;
 
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request
@@ -516,6 +520,7 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.gaps': counts.gaps,
           'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          'credalent.evidence.too_long': counts.tooLong,
           'credalent.evidence.compared.sent': compared.sent,
           'credalent.evidence.compared.flagged': compared.flagged,
           'credalent.evidence.compared.rejected': compared.rejected,

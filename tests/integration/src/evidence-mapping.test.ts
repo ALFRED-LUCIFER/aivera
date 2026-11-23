@@ -20,6 +20,7 @@ import { createEvidence, createEvidenceMappingHandlers } from '@credalent/eviden
 import { RubricApprovedV1 } from '@credalent/jobs';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
+import type { MockLanguageModelV4 } from 'ai/test';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -468,5 +469,154 @@ describe('Feature: Evidence mapped to competencies with cited excerpts (AIV-P1-0
         values (gen_random_uuid(), ${w1}, ${LINA}, ${JOB}, ${ALEX})`),
     );
     expect((await as(LINA, w1, (ctx) => evidence.getEvidenceMapping(ctx, sara, JOB)))?.rubricVersionId).toBe(V2);
+  });
+});
+
+// AIV-P2-062: each scenario has its own candidate, so it reads only its own runs. Synthetic cast (personas.md).
+const claim = 'built a retrieval eval harness for 3 products';
+const answerAt = (level: number) =>
+  JSON.stringify({
+    links: [
+      {
+        competencyId: RETRIEVAL,
+        strength: 'supporting',
+        label: 'claim',
+        level,
+        limit: 'On the CV only.',
+        citations: cite('S1', claim),
+      },
+    ],
+    changes: [],
+  });
+const recordCv = (candidateId: string, excerpt: string, label = 'CV') =>
+  as(ALEX, w1, (ctx) =>
+    evidence.recordEvidence(ctx, {
+      candidateId,
+      source: { kind: 'cv', label, url: null, blobFileId: null, capturedAt: NOW, checkedAt: null, checkMethod: null },
+      items: [{ excerpt, excerptSpan: null, provenance: 'claim', strength: 'supporting', limit: CLAIM_LIMIT }],
+      synthetic: true,
+    }),
+  );
+const newCandidate = (displayName: string, email: string) =>
+  as(ALEX, w1, async (ctx) => {
+    const created = await candidates.findOrCreatePerson(ctx, {
+      displayName,
+      identifiers: [{ type: 'email', value: email }],
+      synthetic: true,
+    });
+    return created.personId;
+  });
+
+describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)', () => {
+  // SAFETY: mutation check: removed the advisory lock from mapEvidence -> this test failed
+  // SAFETY: mutation check: left the workspace id out of the lock key -> this test failed
+  it('Scenario: Concurrent runs keep the newest, and the lock key names the workspace', async () => {
+    approved = { [JOB]: V2 };
+    const omar = await newCandidate('Omar Al Suwaidi', 'omar.al.suwaidi@example.com');
+    await recordCv(omar, claim);
+
+    const { promise: held, resolve: release } = Promise.withResolvers<void>();
+    const { promise: started, resolve: firstStarted } = Promise.withResolvers<void>();
+    let calls = 0;
+    let inFlight = 0;
+    let most = 0;
+    // The first run's model call waits until released and answers level 2; every later call answers level 3.
+    const fake = fakeProvider();
+    const gated: typeof fake = {
+      ...fake,
+      languageModel: (deployment) => {
+        const n = calls++;
+        // The fake's model is a MockLanguageModelV4 (packages/ai providers.ts).
+        const model = fakeProvider({ completion: answerAt(n === 0 ? 2 : 3) }).languageModel(
+          deployment,
+        ) as MockLanguageModelV4;
+        const generate = model.doGenerate.bind(model);
+        return Object.assign(model, {
+          doGenerate: async (options: Parameters<typeof generate>[0]) => {
+            most = Math.max(most, ++inFlight);
+            try {
+              if (n === 0) {
+                firstStarted();
+                await held;
+              }
+              return await generate(options);
+            } finally {
+              inFlight--;
+            }
+          },
+        });
+      },
+    };
+    let tick = NOW.getTime();
+    const ordered = createEvidenceMappingHandlers({
+      ai: createAiClient({
+        provider: gated,
+        budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
+        sleep: async () => {},
+      }),
+      approvedRubric: async (_tx, _workspaceId, jobId) => (approved[jobId] ? { id: V2, competencies } : null),
+      applications: { jobsForCandidate: async () => [], candidatesForJob: async () => [] },
+      readPerson: readPersonAsSystem,
+      scheduler: { schedule: async () => '1', cancel: async () => undefined },
+      // Each call a second later, so the order the runs were claimed in shows in createdAt.
+      now: () => new Date((tick += 1000)),
+    }).find((h) => h.event.type === EvidenceMappingRequestedV1.type);
+    if (!ordered) throw new Error('no mapping handler');
+    // Three connections: the two runs and the lock probe.
+    const pool = createDb(urlFor('aivera_app'), { max: 3 });
+    const run = () => {
+      const envelope = newEnvelope(EvidenceMappingRequestedV1, {
+        workspaceId: w1,
+        payload: { candidateId: omar, jobId: JOB },
+        occurredAt: NOW,
+      });
+      return withWorkspace(pool, w1, (tx) => ordered.handle(tx, envelope.payload, envelope));
+    };
+    const tryLock = (workspaceId: string) =>
+      withWorkspace(pool, workspaceId, async (tx) => {
+        const key = `evidence.mapping:${workspaceId}:${omar}:${JOB}`;
+        const [row] = await tx.execute<{ got: boolean }>(
+          sql`select pg_try_advisory_xact_lock(hashtextextended(${key}, 0)) as got`,
+        );
+        return row?.got;
+      });
+    try {
+      const older = run();
+      await started;
+      const newer = run();
+      // Time for the newer run to reach the model if nothing holds it back.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(await tryLock(w1)).toBe(false);
+      expect(await tryLock(w2)).toBe(true);
+      release();
+      await Promise.all([older, newer]);
+    } finally {
+      release();
+      await pool.$client.end();
+    }
+
+    expect(most).toBe(1);
+    const listed = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, omar, JOB));
+    expect(listed.flatMap((i) => i.competencies)).toEqual([{ jobId: JOB, competencyId: RETRIEVAL, level: 3 }]);
+  });
+
+  it('Scenario: An oversized source is not truncated silently', async () => {
+    approved = { [JOB]: V2 };
+    const karim = await newCandidate('Karim Nasser', 'karim.nasser@example.com');
+    await recordCv(karim, claim);
+    const text = `${claim} `.repeat(11_000);
+    expect(text.length).toBeGreaterThan(500_000);
+    const { sourceId: long } = await recordCv(karim, text, 'Write-up');
+    // Only the CV is sent (as S1); the citation contract rejects any quote of a source that was not.
+    completion = answerAt(3);
+    await mapNow(w1, karim, JOB);
+
+    const mapping = await as(ALEX, w1, (ctx) => evidence.getEvidenceMapping(ctx, karim, JOB));
+    expect(mapping?.tooLongSourceIds).toEqual([long]);
+    const cited = (await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, karim, JOB))).filter(
+      (i) => i.competencies.length,
+    );
+    expect(cited.map((i) => i.sourceId)).not.toContain(long);
+    expect(cited).toHaveLength(1);
   });
 });

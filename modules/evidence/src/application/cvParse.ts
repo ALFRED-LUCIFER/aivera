@@ -4,6 +4,7 @@ import {
   detectUnusualContent,
   InvalidCitation,
   SchemaMismatch,
+  SourceTooLong,
   UncitedOutput,
 } from '@credalent/ai';
 import type { Tx } from '@credalent/db';
@@ -188,7 +189,8 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
   };
 
 /** Answers a redelivery cannot change: the source shows "Could not be read automatically" and the message completes. */
-const PERMANENT_AI_FAILURES = [SchemaMismatch, UncitedOutput, InvalidCitation];
+// A CV over the source cap (AIV-P2-062) is one: never truncated, it is not read automatically.
+const PERMANENT_AI_FAILURES = [SchemaMismatch, UncitedOutput, InvalidCitation, SourceTooLong];
 
 /**
  * A failure worth another delivery (a timeout, throttling, an outage): the worker records "Parsing failed, retry" in its
