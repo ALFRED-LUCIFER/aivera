@@ -127,6 +127,15 @@ const publishContradictionResolved: Ports['publishContradictionResolved'] = (
     occurredAt,
   });
 
+const publishMappingRequested: Ports['publishMappingRequested'] = (tx, { workspaceId, ...payload }, occurredAt) =>
+  enqueue(tx, outbox, EvidenceMappingRequestedV1, {
+    workspaceId,
+    payload,
+    // Every resolution asks once; a later one must not be dropped as a duplicate.
+    dedupeKey: `mapping:resolution:${uuidv7()}`,
+    occurredAt,
+  });
+
 const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
   log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
 const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
@@ -188,6 +197,7 @@ export function createEvidence(
     storeFor: evidenceStore,
     publishRecorded,
     publishContradictionResolved,
+    publishMappingRequested,
     candidateJob,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,

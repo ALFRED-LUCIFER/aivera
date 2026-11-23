@@ -39,6 +39,7 @@ export function mappingStore(tx: Tx): MappingStore {
           resolvedAt: comparison.resolvedAt,
           resolutionNote: comparison.resolutionNote,
           resolutionLimit: comparison.resolutionLimit,
+          resolutionStandingSourceId: comparison.resolutionStandingSourceId,
         })
         .from(comparison)
         .innerJoin(item, and(eq(item.workspaceId, comparison.workspaceId), eq(item.id, comparison.itemId)))

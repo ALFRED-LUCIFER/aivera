@@ -55,6 +55,7 @@ function harness(candidateJob: Ports['candidateJob'] = async () => null) {
     storeFor: () => store,
     publishRecorded: async () => void calls.push('publishRecorded'),
     publishContradictionResolved: async () => void calls.push('publishContradictionResolved'),
+    publishMappingRequested: async () => void calls.push('publishMappingRequested'),
     candidateJob,
     authorize: async (_ctx, _action, resource) => void (calls.push('authorize'), authorized.push(resource)),
     isSyntheticWorkspace: async () => true,

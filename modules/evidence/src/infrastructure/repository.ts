@@ -3,6 +3,7 @@ import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { EvidenceStore } from '../application/evidence.ts';
 import { shownAs } from '../domain/corroboration.ts';
+import { EvidenceError } from '../domain/evidence.ts';
 import {
   comparison,
   competencyLink,
@@ -42,7 +43,19 @@ export function evidenceStore(tx: Tx): EvidenceStore {
         .select({ id: item.id })
         .from(item)
         .where(and(eq(item.workspaceId, workspaceId), eq(item.id, itemId)));
-      if (!found) return false;
+      if (!found) return null;
+      // Locked, so two people changing one level are audited in the order they changed it.
+      const [before] = await tx
+        .select({ level: competencyLink.level })
+        .from(competencyLink)
+        .where(
+          and(
+            eq(competencyLink.workspaceId, workspaceId),
+            eq(competencyLink.itemId, itemId),
+            eq(competencyLink.competencyId, competencyId),
+          ),
+        )
+        .for('update');
       await tx
         .insert(competencyLink)
         .values({ workspaceId, itemId, jobId, competencyId, level })
@@ -50,7 +63,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
           target: [competencyLink.workspaceId, competencyLink.itemId, competencyLink.competencyId],
           set: { level },
         });
-      return true;
+      return { level: before?.level ?? null };
     },
     async list(workspaceId, { candidateId, itemId, unmapped }, jobId) {
       // For a job, a mapped item counts only from the candidate's newest mapping run for it (AIV-P1-027).
@@ -153,7 +166,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.update(duplicateFlag).set(resolution).where(where);
       return before;
     },
-    async resolveComparison(workspaceId, comparisonId, resolution) {
+    async resolveComparison(workspaceId, comparisonId, resolution, standingItemId) {
       const where = and(
         eq(comparison.workspaceId, workspaceId),
         eq(comparison.id, comparisonId),
@@ -162,7 +175,22 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       // Locked, so two people resolving at once are audited in the order they changed it.
       const [before] = await tx.select().from(comparison).where(where).for('update');
       if (!before) return null;
-      await tx.update(comparison).set(resolution).where(where);
+      let resolutionStandingSourceId: string | null = null;
+      if (standingItemId !== null) {
+        if (standingItemId !== before.itemId && standingItemId !== before.otherItemId)
+          throw new EvidenceError('standing');
+        const [standing] = await tx
+          .select({ sourceId: item.sourceId })
+          .from(item)
+          .where(and(eq(item.workspaceId, workspaceId), eq(item.id, standingItemId)));
+        // The pair's items always exist (foreign keys); a missing row would be a broken database.
+        if (!standing) throw new Error('comparison item missing');
+        resolutionStandingSourceId = standing.sourceId;
+      }
+      await tx
+        .update(comparison)
+        .set({ ...resolution, resolutionStandingSourceId })
+        .where(where);
       const [run] = await tx
         .select({ rubricVersionId: mapping.rubricVersionId })
         .from(mapping)

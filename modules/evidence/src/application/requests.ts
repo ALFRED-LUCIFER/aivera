@@ -120,12 +120,14 @@ export function requestUseCases(ports: RequestPorts) {
 
     /**
      * A person sends the draft: it becomes "sent", a portal token is issued (stored hashed, valid 30 days) and
-     * returned once, and `EvidenceRequestSent.v1` is written. Throws `EvidenceError('request_status')` for anything
-     * but a draft.
+     * returned once, `EvidenceRequestSent.v1` is written, and `queueEmail` queues the candidate's email in `ctx.tx`.
+     * They commit together: when queuing throws, nothing is saved and the request stays a draft, "Not sent", to send
+     * again (AIV-P2-063). Throws `EvidenceError('request_status')` for anything but a draft.
      */
     async sendRequest(
       ctx: WorkspaceContext,
       requestId: string,
+      queueEmail: (sent: { request: EvidenceRequestView; portalToken: string }) => Promise<unknown>,
     ): Promise<{ request: EvidenceRequestView; portalToken: string }> {
       await authorize(ctx, 'candidate.create');
       const found = await load(ctx, requestId);
@@ -144,6 +146,8 @@ export function requestUseCases(ports: RequestPorts) {
       );
       const request = { ...found, status: 'sent' as const, sentAt };
       await publishRequestEvent(ctx.tx, request, 'sent');
+      // SAFETY: "sent" only with its email queued in the same transaction; a failure here rolls the send back.
+      await queueEmail({ request, portalToken: token });
       await audit(ctx, {
         action: 'evidence_request.sent',
         subject: { type: 'evidence_request', id: requestId },

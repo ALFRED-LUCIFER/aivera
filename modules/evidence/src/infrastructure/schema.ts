@@ -658,6 +658,8 @@ export const comparison = evidence
       resolvedAt: timestamp('resolved_at', tz),
       resolutionNote: text('resolution_note'),
       resolutionLimit: text('resolution_limit'),
+      // The source the person let stand (AIV-P2-063), one of the pair's; null while open or when both stand.
+      resolutionStandingSourceId: uuid('resolution_standing_source_id'),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [
@@ -694,7 +696,8 @@ export const comparison = evidence
         sql`(${t.resolvedAt} is null) = (${t.resolvedBy} is null)
           and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionNote}), '') = '')
           and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionLimit}), '') = '')
-          and (${t.resolvedAt} is null or ${t.outcome} = 'contradiction')`,
+          and (${t.resolvedAt} is null or ${t.outcome} = 'contradiction')
+          and (${t.resolvedAt} is not null or ${t.resolutionStandingSourceId} is null)`,
       ),
       tenantPolicy('comparison_tenant_isolation', t.workspaceId),
     ],

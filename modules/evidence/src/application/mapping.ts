@@ -5,6 +5,7 @@ import {
   comparablePairs,
   corroboratedCompetencies,
   pairKey,
+  setAside,
   type Comparison,
   type ComparisonMethod,
   type ComparisonOutcome,
@@ -300,10 +301,13 @@ export async function mapEvidence(
         ? resolutions.get(pairKey(guarded.links[pair.a] as MappedLink, guarded.links[pair.b] as MappedLink))
         : undefined,
   }));
-  // A source in an open contradiction vouches for nothing until a person resolves it.
-  const open = pairs
-    .filter((p) => p.outcome === 'contradiction' && !p.resolved)
-    .map((p) => [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? '']);
+  // A source in an open contradiction vouches for nothing until a person resolves it, nor does one a person's
+  // resolution set aside (AIV-P2-063).
+  const open = pairs.flatMap((p) => {
+    if (p.outcome !== 'contradiction') return [];
+    const sourceIds = [guarded.links[p.a]?.sourceId ?? '', guarded.links[p.b]?.sourceId ?? ''];
+    return p.resolved ? [setAside(p.resolved, sourceIds)] : [sourceIds];
+  });
   const withheld = new Set(open.flat());
   const rules = { links: guarded.links, sources: originSources, originGroups, logins };
   const corroborated = corroboratedCompetencies({ ...rules, withheld });
@@ -357,6 +361,7 @@ export async function mapEvidence(
       resolvedAt: resolved?.resolvedAt ?? null,
       resolutionNote: resolved?.resolutionNote ?? null,
       resolutionLimit: resolved?.resolutionLimit ?? null,
+      resolutionStandingSourceId: resolved?.resolutionStandingSourceId ?? null,
       createdAt,
     };
   });
