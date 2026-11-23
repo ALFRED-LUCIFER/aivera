@@ -92,6 +92,34 @@ test('Add and remove a competency, by keyboard', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Edit rubric' })).toBeVisible();
 });
 
+// AIV-P2-064: the save's server action never reaches the server, so the browser's fetch rejects.
+for (const theme of themes) {
+  test(`Scenario: A rejected save keeps the form, by keyboard, axe clean (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page);
+    await openRubric(page);
+    await page.getByRole('button', { name: 'Edit rubric' }).click();
+    await weight(page, 'Product judgement').fill('10');
+    await weight(page, 'Cost and reliability').fill('20');
+    await page.route('**/*', (route) =>
+      route.request().method() === 'POST' && route.request().headers()['next-action']
+        ? route.abort()
+        : route.fallback(),
+    );
+    await page.getByRole('button', { name: 'Save draft' }).press('Enter');
+    await expect(page.getByRole('alert').filter({ hasText: 'We could not' })).toHaveText(
+      'We could not save your changes. Try again.',
+    );
+    await expect(weight(page, 'Cost and reliability')).toHaveValue('20');
+    await expect(page.getByRole('button', { name: 'Save draft' })).toBeEnabled();
+    await expectAccessible(page);
+  });
+}
+
 for (const theme of themes) {
   test(`axe passes on the rubric in edit mode (${theme})`, async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);

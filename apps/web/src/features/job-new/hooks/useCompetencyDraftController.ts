@@ -1,5 +1,6 @@
 import { useState, useTransition } from 'react';
 import type { CatalogueContent } from '@credalent/jobs';
+import { saveFailure } from '@/features/shell/domain/saveFailure.ts';
 import {
   blankCompetency,
   catalogueChoices,
@@ -40,6 +41,27 @@ export function useCompetencyDraftController(catalogue: CatalogueContent) {
   const [removedId, setRemovedId] = useState<string | null>(null);
   // Field errors show once a save was tried, and follow the edits from then on.
   const [checked, setChecked] = useState(false);
+  // The form read by "Draft competencies" while the preview asks before replacing the rows on the page.
+  const [redraft, setRedraft] = useState<FormData | null>(null);
+  const runDraft = (data: FormData) =>
+    startDrafting(async () => {
+      let next: DraftResult;
+      try {
+        next = await draftCompetencies(data);
+      } catch (error) {
+        // A throw would reach the error boundary and take the rows with it.
+        next = { status: saveFailure(error) };
+      }
+      setResult(next);
+      if (next.status === 'drafted') {
+        const key = next.industry?.key ?? null;
+        const suggested = key ? packCompetencies(catalogue, key, next.jobType, next.regions).map(withId) : [];
+        setRows(withPack(next.competencies.map(withId), suggested));
+        setIndustry(key);
+        setEditingId(null);
+        setRefusedId(null);
+      }
+    });
   return {
     result,
     rows,
@@ -57,22 +79,22 @@ export function useCompetencyDraftController(catalogue: CatalogueContent) {
     emptyRubric: checked && rows.every((row) => row.removed),
     /** The kept competencies as the save posts them. */
     rubric: rubricJson(rows),
-    /** A new draft replaces the rows; a failed one keeps what the recruiter already has. */
+    /**
+     * A new draft replaces the rows; a failed one keeps what the recruiter already has. With rows on the page it asks
+     * first (AGENTS.md 1.5): the preview lists what would be replaced.
+     */
     onDraft: (form: HTMLFormElement) => {
       const data = new FormData(form);
-      startDrafting(async () => {
-        const next = await draftCompetencies(data);
-        setResult(next);
-        if (next.status === 'drafted') {
-          const key = next.industry?.key ?? null;
-          const suggested = key ? packCompetencies(catalogue, key, next.jobType, next.regions).map(withId) : [];
-          setRows(withPack(next.competencies.map(withId), suggested));
-          setIndustry(key);
-          setEditingId(null);
-          setRefusedId(null);
-        }
-      });
+      if (rows.length) setRedraft(data);
+      else runDraft(data);
     },
+    /** The names of the kept competencies a re-draft would replace, while its preview is open; null otherwise. */
+    replacing: redraft ? rows.filter((row) => !row.removed).map((row) => row.name) : null,
+    onConfirmRedraft: () => {
+      if (redraft) runDraft(redraft);
+      setRedraft(null);
+    },
+    onCancelRedraft: () => setRedraft(null),
     /**
      * Save was chosen: false blocks it while a kept competency needs a name or a weight, or none is kept, and opens the
      * first row to fix. A save shows its own field errors, not the last draft's.

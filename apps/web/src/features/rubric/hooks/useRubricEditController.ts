@@ -1,6 +1,7 @@
 import type { Competency } from '@credalent/jobs';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { saveFailure } from '@/features/shell/domain/saveFailure.ts';
 import { canSave, newCompetency, weightsTotal, type RubricEditorView, type RubricView } from '../domain/rubric.ts';
 import { saveRubricDraft } from '../services/saveRubricDraft.ts';
 
@@ -25,7 +26,13 @@ export function useRubricEditController(jobId: string, edit: RubricView['edit'])
   const save = (submit: boolean) =>
     startTransition(async () => {
       if (!base) return;
-      const result = await saveRubricDraft({ jobId, base, successStatement, competencies, submit });
+      let result;
+      try {
+        result = await saveRubricDraft({ jobId, base, successStatement, competencies, submit });
+      } catch (error) {
+        // A throw would reach the error boundary and take the edits with it; keep them and say so.
+        return setStatus(saveFailure(error));
+      }
       if ('error' in result) return setStatus(result.error);
       setBase(result.base);
       setStatus(submit ? 'sent' : 'saved');

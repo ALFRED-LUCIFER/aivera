@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button, Dialog, DialogClose, Input, Label, Select, Textarea } from '@credalent/ui';
+import { Button, Dialog, DialogClose, Input, Label, PreviewConfirmCard, Select, Textarea } from '@credalent/ui';
 import {
   DESCRIPTION_MAX,
   descriptionPlaceholder,
@@ -39,7 +39,8 @@ type NewJobLabels = {
   discard: string;
   keepEditing: string;
   close: string;
-  errors: { title: string; jobType: string; failed: string };
+  errors: { title: string; jobType: string; failed: string; saveFailed: string; saveForbidden: string };
+  redraft: { title: string; body: string; confirm: string; cancel: string; footer: string; unnamed: string };
 };
 
 type Option = { value: string; label: string };
@@ -53,6 +54,10 @@ type NewJobFormProps = {
   errors: NewJobState['errors'];
   /** "Draft competencies" reads the form without posting it, so nothing is saved. */
   onDraft: (form: HTMLFormElement) => void;
+  /** The competencies a re-draft would replace, while its preview asks; null when no preview is open. */
+  replacing: readonly string[] | null;
+  onConfirmRedraft: () => void;
+  onCancelRedraft: () => void;
   /** Save was chosen: false blocks it (a competency to fix). The errors shown are now the save's. */
   onSaving: () => boolean;
   /** The kept competencies, posted with the job as `rubric`. */
@@ -104,7 +109,7 @@ export function NewJobForm(props: NewJobFormProps) {
       </nav>
       {state.error && (
         <p role="alert" className="mb-4 text-body text-text">
-          {labels.errors.failed}
+          {labels.errors[state.error]}
         </p>
       )}
       {/* Keyed on the result, so a refused submit shows the fields again with what was typed. */}
@@ -260,6 +265,26 @@ export function NewJobForm(props: NewJobFormProps) {
         </Button>
         <Button onClick={props.onCancel}>{labels.cancel}</Button>
       </div>
+      <PreviewConfirmCard
+        open={props.replacing !== null}
+        onOpenChange={(open) => !open && props.onCancelRedraft()}
+        title={labels.redraft.title}
+        confirmLabel={labels.redraft.confirm}
+        pendingLabel={labels.drafting}
+        cancelLabel={labels.redraft.cancel}
+        footer={labels.redraft.footer}
+        errorMessage={labels.errors.saveFailed}
+        closeLabel={labels.close}
+        onConfirm={props.onConfirmRedraft}
+        onCancel={props.onCancelRedraft}
+      >
+        <p>{labels.redraft.body}</p>
+        <ul className="mt-2 list-disc ps-5">
+          {props.replacing?.map((name, i) => (
+            <li key={i}>{name || labels.redraft.unnamed}</li>
+          ))}
+        </ul>
+      </PreviewConfirmCard>
       <Dialog
         open={props.discardOpen}
         onOpenChange={props.onDiscardOpenChange}

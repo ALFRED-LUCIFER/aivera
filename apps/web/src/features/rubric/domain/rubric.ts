@@ -1,5 +1,6 @@
 import type { Competency, Rubric, RubricStatus } from '@credalent/jobs';
 import { z } from 'zod';
+import type { SaveFailure } from '@/features/shell/domain/saveFailure.ts';
 
 /** One line of the approval history: who approved and when, or the change that made the next version. */
 type HistoryEntry = {
@@ -52,7 +53,8 @@ export type RubricEditorView = {
   total: number;
   canSave: boolean;
   pending: boolean;
-  status: 'idle' | 'saved' | 'sent' | 'stale' | 'failed';
+  /** `saveFailed`, `saveForbidden`: the save threw; the edits stay (AIV-P2-064). */
+  status: 'idle' | 'saved' | 'sent' | 'stale' | 'failed' | SaveFailure;
   onStart: () => void;
   onCancel: () => void;
   onChange: (index: number, patch: Partial<Competency>) => void;
@@ -68,7 +70,7 @@ export type RubricDecisionView = {
   returning: boolean;
   note: string;
   pending: boolean;
-  status: 'idle' | 'approved' | 'returned' | 'sent' | 'stale' | 'failed';
+  status: 'idle' | 'approved' | 'returned' | 'sent' | 'stale' | 'failed' | SaveFailure;
   /** The version the last decision was about, and whether an approved one stays in force, for its message after the
    * page reloads without it. */
   decided: { version: number; inForce: boolean } | null;

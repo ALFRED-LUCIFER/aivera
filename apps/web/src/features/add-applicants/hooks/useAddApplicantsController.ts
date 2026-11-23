@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useDirectUpload } from '@/features/files';
+import { saveFailure, type SaveFailure } from '@/features/shell/domain/saveFailure.ts';
 import type { AddApplicantsResult, UploadSource } from '../domain/addApplicants.ts';
 import { addApplicants } from '../services/addApplicants.ts';
 
@@ -18,6 +19,8 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
   const [source, setSource] = useState<UploadSource>('linkedin');
   const [cvs, setCvs] = useState<UploadedCv[]>([]);
   const [result, setResult] = useState<AddApplicantsResult | null>(null);
+  // The save threw (a 403, the network): the CVs and source stay chosen (AIV-P2-064).
+  const [failure, setFailure] = useState<SaveFailure | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Runs once per settled upload: the upload state is a new object on every change.
@@ -37,6 +40,8 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
         setSource('linkedin');
         setCvs([]);
         setResult(null);
+        setFailure(null);
+        upload.reset();
       }
     },
     source,
@@ -46,15 +51,23 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
     onSelectCv(file: File) {
       selected.current = file.name;
       setResult(null);
+      setFailure(null);
       void upload.onSelect(file);
     },
     cvs,
     canSubmit: cvs.length > 0 && !busy && !pending,
     pending,
     result,
+    failure,
     onSubmit() {
       startTransition(async () => {
-        const outcome = await services.addApplicants({ jobId, source, fileIds: cvs.map((cv) => cv.fileId) });
+        setFailure(null);
+        let outcome;
+        try {
+          outcome = await services.addApplicants({ jobId, source, fileIds: cvs.map((cv) => cv.fileId) });
+        } catch (error) {
+          return setFailure(saveFailure(error));
+        }
         setResult(outcome);
         if (!outcome.ok) return;
         setCvs([]);
