@@ -32,7 +32,7 @@ import type { WorkspacesContract } from '@credalent/workspaces';
 import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { linkReadUseCases, readLink, type FetchPage, type LinkPorts } from './application/linkRead.ts';
-import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
+import { MappingBusy, mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
 import {
   type ApprovedRubricPort,
   GitHubRateLimited,
@@ -330,6 +330,9 @@ async function rescheduleForBudget<P>(
   );
 }
 
+/** How long a mapping request waits behind a run in flight for the same candidate and job. */
+const MAPPING_BUSY_DELAY_MS = 60_000;
+
 /** An answer a retry cannot fix is dead-lettered on the first delivery (AIV-P1-089). */
 const permanent = (error: unknown): error is Error =>
   error instanceof InvalidCitation ||
@@ -503,7 +506,12 @@ export function createEvidenceMappingHandlers(config: {
         return flaggedPairs(answer, pairs);
       } catch (error) {
         // A rejected answer stores no contradiction and is counted (logMapped); an outage still throws and retries.
-        if (error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput)
+        if (
+          error instanceof InvalidCitation ||
+          error instanceof SchemaMismatch ||
+          error instanceof UncitedOutput ||
+          error instanceof SourceTooLong
+        )
           return null;
         throw error;
       }
@@ -570,6 +578,20 @@ export function createEvidenceMappingHandlers(config: {
         try {
           run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
         } catch (error) {
+          if (error instanceof MappingBusy) {
+            // Not a retry: the delivery budget would dead-letter the newest run behind a long model call.
+            await config.scheduler.schedule(
+              EVIDENCE_QUEUE,
+              newEnvelope(EvidenceMappingRequestedV1, {
+                workspaceId: envelope.workspaceId,
+                payload: { candidateId, jobId },
+                occurredAt: now(),
+              }),
+              new Date(now().getTime() + MAPPING_BUSY_DELAY_MS),
+            );
+            log.info({ 'outbox.event_id': envelope.id }, 'evidence mapping rescheduled behind a run in flight');
+            return;
+          }
           if (error instanceof BudgetExceeded)
             return rescheduleForBudget(
               config.scheduler,

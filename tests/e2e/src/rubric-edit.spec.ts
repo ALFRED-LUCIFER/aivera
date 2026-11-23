@@ -47,7 +47,7 @@ test('Scenarios: edit as version 3, weights must total 100, send for approval, r
   await expect(history(page)).toHaveText([
     `Version 3, awaiting approval · ${NOTE}`,
     'Version 2, approved · Head of Engineering · 12 Nov 2026',
-    'Version 1, superseded · Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
+    'Version 1, replaced by a newer version · Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
   ]);
   // The table shows the version in force, still 15% for Cost and reliability.
   await expect(page.getByRole('row').filter({ hasText: 'Cost and reliability' })).toContainText('15%');

@@ -44,7 +44,7 @@ describe('useDirectUpload', () => {
     expect(s.uploadStatus).toHaveBeenCalledTimes(2);
   });
 
-  it('Scenario: An infected file never becomes evidence: the uploader sees "We cannot use this file. Upload a PDF, image or document within the size limit."', async () => {
+  it('Scenario: An infected file never becomes evidence: the uploader sees "We cannot use this file. Try a different file."', async () => {
     expect(await run(pdf(2048), services(['pending', 'infected']))).toEqual({ phase: 'error', message: 'notAccepted' });
   });
 

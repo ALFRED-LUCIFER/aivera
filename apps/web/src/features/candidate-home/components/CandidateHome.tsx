@@ -5,6 +5,7 @@ import { useId, type CSSProperties, type ReactNode } from 'react';
 import type { JobCardData } from '@/features/public-jobs/index.ts';
 
 // Deviation from the CHome artboard: no "Check my CV, free" button until the CV check is built (AIV-P1-095).
+// Deviation: the sample card shows a visible "Example:" label, so sighted users see it is a sample (AIV-P2-066).
 export type CandidateHomeProps = {
   /** Up to three newest open jobs; null when the jobs could not be read (the rest of the page still renders). */
   newJobs: JobCardData[] | null;

@@ -65,9 +65,7 @@ for (const theme of themes) {
 // tenant, so this checks the page it lands on.
 test('the not-set-up page shows its message, not an error page', async ({ page }) => {
   await page.goto('/sign-in?error=unavailable');
-  await expect(
-    page.getByRole('alert').filter({ hasText: 'Sign-in is not available right now. Try again later.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Sign-in is not available here.' })).toBeVisible();
 });
 
 test('Scenario Outline: A signed-in user not in any workspace opening /signup sees the create form', async ({

@@ -55,7 +55,7 @@ for (const theme of themes) {
       /Approve/,
     ]);
     await expectAccessible(page);
-    const approve = row.getByRole('button', { name: `Approve ${name}` });
+    const approve = row.getByRole('button', { name: `Approve ${name}`, exact: true });
     await approve.focus();
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: `Approve ${name}?` });

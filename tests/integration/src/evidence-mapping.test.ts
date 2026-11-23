@@ -8,7 +8,7 @@ import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
-import { newEnvelope } from '@credalent/db/outbox';
+import { newEnvelope, type Envelope } from '@credalent/db/outbox';
 import { PermanentFailure, type Handler } from '@credalent/db/consumer';
 import {
   CLAIM_LIMIT,
@@ -510,6 +510,7 @@ const newCandidate = (displayName: string, email: string) =>
 describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)', () => {
   // SAFETY: mutation check: removed the advisory lock from mapEvidence -> this test failed
   // SAFETY: mutation check: left the workspace id out of the lock key -> this test failed
+  // SAFETY: mutation check: waited on the lock (pg_advisory_xact_lock) instead of rescheduling -> this test failed
   it('Scenario: Concurrent runs keep the newest, and the lock key names the workspace', async () => {
     approved = { [JOB]: V2 };
     const omar = await newCandidate('Omar Al Suwaidi', 'omar.al.suwaidi@example.com');
@@ -548,6 +549,7 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
       },
     };
     let tick = NOW.getTime();
+    const rescheduled: Envelope[] = [];
     const ordered = createEvidenceMappingHandlers({
       ai: createAiClient({
         provider: gated,
@@ -557,21 +559,26 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
       approvedRubric: async (_tx, _workspaceId, jobId) => (approved[jobId] ? { id: V2, competencies } : null),
       applications: { jobsForCandidate: async () => [], candidatesForJob: async () => [] },
       readPerson: readPersonAsSystem,
-      scheduler: { schedule: async () => '1', cancel: async () => undefined },
+      scheduler: {
+        schedule: async (_queue, envelope) => {
+          rescheduled.push(envelope);
+          return '1';
+        },
+        cancel: async () => undefined,
+      },
       // Each call a second later, so the order the runs were claimed in shows in createdAt.
       now: () => new Date((tick += 1000)),
     }).find((h) => h.event.type === EvidenceMappingRequestedV1.type);
     if (!ordered) throw new Error('no mapping handler');
     // Three connections: the two runs and the lock probe.
     const pool = createDb(urlFor('aivera_app'), { max: 3 });
-    const run = () => {
-      const envelope = newEnvelope(EvidenceMappingRequestedV1, {
+    const run = (
+      envelope: Envelope = newEnvelope(EvidenceMappingRequestedV1, {
         workspaceId: w1,
         payload: { candidateId: omar, jobId: JOB },
         occurredAt: NOW,
-      });
-      return withWorkspace(pool, w1, (tx) => ordered.handle(tx, envelope.payload, envelope));
-    };
+      }),
+    ) => withWorkspace(pool, w1, (tx) => ordered.handle(tx, envelope.payload, envelope));
     const tryLock = (workspaceId: string) =>
       withWorkspace(pool, workspaceId, async (tx) => {
         const key = `evidence.mapping:${workspaceId}:${omar}:${JOB}`;
@@ -583,13 +590,16 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     try {
       const older = run();
       await started;
-      const newer = run();
-      // Time for the newer run to reach the model if nothing holds it back.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // The newer run does not wait on the lock (it would outlast lock_timeout behind a model call): it is rescheduled.
+      await run();
+      expect(rescheduled).toHaveLength(1);
       expect(await tryLock(w1)).toBe(false);
       expect(await tryLock(w2)).toBe(true);
       release();
-      await Promise.all([older, newer]);
+      await older;
+      const [again] = rescheduled;
+      if (!again) throw new Error('not rescheduled');
+      await run(again);
     } finally {
       release();
       await pool.$client.end();

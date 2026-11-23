@@ -1,3 +1,5 @@
+// Deviation from the RoleNew artboard: re-drafting over edited competencies first shows the shared preview-confirm
+// card listing what will be replaced (AIV-P2-064, AGENTS.md 1.5).
 import type { ReactNode } from 'react';
 import { Button, Dialog, DialogClose, Input, Label, PreviewConfirmCard, Select, Textarea } from '@credalent/ui';
 import {

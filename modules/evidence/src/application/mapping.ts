@@ -56,8 +56,11 @@ export type EvidenceMappingView = MappingRun & { gaps: EvidenceGapRow[] };
 
 /** Over one workspace-scoped transaction; every method filters by `workspaceId`. */
 export type MappingStore = {
-  /** Holds the candidate's mapping for the job until commit, so runs for them follow one another (AIV-P2-062). */
-  lock(workspaceId: string, candidateId: string, jobId: string): Promise<void>;
+  /**
+   * Takes the candidate's mapping for the job until commit, so runs for them follow one another (AIV-P2-062); false
+   * when another run holds it. Never waits: the holder is in a model call that can outlast the connection's lock_timeout.
+   */
+  tryLock(workspaceId: string, candidateId: string, jobId: string): Promise<boolean>;
   insert(
     run: MappingRun,
     items: (EvidenceItem & { mappingId: string })[],
@@ -178,8 +181,9 @@ export async function comparePairs(
  * MAX_SOURCE_CHARS, or one that would take the call past MAX_CALL_SOURCE_CHARS. Never truncated, so no citation can
  * point past what the model saw.
  */
-// shortcut: a source past the call's total waits for a re-map with fewer sources; split a candidate's sources over
-// several calls if pilot candidates hit the total.
+// shortcut: a source left out only because the call's total was full is marked "too long" like an oversized one, and
+// stays out while the candidate's earlier sources fill the total; split sources over several calls and record the two
+// reasons apart if pilot candidates hit the total.
 export function fitSources<S extends { id: string; text: string }>(sources: readonly S[]) {
   const sent: S[] = [];
   const tooLong: string[] = [];
@@ -211,6 +215,11 @@ const idOf = (rows: readonly { id: string }[], i: number) => {
 // candidate's mapping; drop only that link if pilot telemetry shows it happening.
 // shortcut: the model call runs inside the consumer's workspace transaction, as the GitHub reads do; call it before
 // opening the write transaction if pilot mappings hold connections too long.
+/** Another mapping run for the candidate and job is in flight; the request runs again after it (AIV-P2-062). */
+export class MappingBusy extends Error {
+  override name = 'MappingBusy';
+}
+
 export async function mapEvidence(
   ports: MappingPorts,
   tx: Tx,
@@ -218,9 +227,9 @@ export async function mapEvidence(
   candidateId: string,
   jobId: string,
 ): Promise<MappingRun | null> {
-  // SAFETY: a run claimed while another for the candidate and job is in flight waits for it, so it reads that run's
-  // flags and resolutions and, stamped after the wait, stays the newest even if it finishes first.
-  await ports.mappingStoreFor(tx).lock(workspaceId, candidateId, jobId);
+  // SAFETY: a run claimed while another for the candidate and job is in flight is refused and rescheduled by the
+  // handler, so it runs after that one, reads its flags and resolutions, and is stamped newest.
+  if (!(await ports.mappingStoreFor(tx).tryLock(workspaceId, candidateId, jobId))) throw new MappingBusy();
   const createdAt = ports.now();
   const rubric = await ports.approvedRubric(tx, workspaceId, jobId);
   if (!rubric) return null;

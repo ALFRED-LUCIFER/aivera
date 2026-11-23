@@ -44,7 +44,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
         .from(item)
         .where(and(eq(item.workspaceId, workspaceId), eq(item.id, itemId)));
       if (!found) return null;
-      // Locked, so two people changing one level are audited in the order they changed it.
+      // Locked, so two people changing an existing level are audited in order; two first links both audit no "before".
       const [before] = await tx
         .select({ level: competencyLink.level })
         .from(competencyLink)

@@ -8,11 +8,12 @@ import { comparison, competencyLink, evidenceGap, item, mapping } from './schema
 /** Mapping runs over a workspace-scoped transaction: the workspace filter here, row-level security below it. */
 export function mappingStore(tx: Tx): MappingStore {
   return {
-    async lock(workspaceId, candidateId, jobId) {
+    async tryLock(workspaceId, candidateId, jobId) {
       // The key names the workspace too, so another workspace's runs never wait on this one.
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`evidence.mapping:${workspaceId}:${candidateId}:${jobId}`}, 0))`,
+      const [row] = await tx.execute<{ got: boolean }>(
+        sql`select pg_try_advisory_xact_lock(hashtextextended(${`evidence.mapping:${workspaceId}:${candidateId}:${jobId}`}, 0)) as got`,
       );
+      return row?.got === true;
     },
     async insert(run, items, links, gaps, comparisons) {
       await tx.insert(mapping).values(run);

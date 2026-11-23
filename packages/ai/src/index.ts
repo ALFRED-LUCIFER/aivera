@@ -7,7 +7,6 @@ export {
   MAX_SOURCE_CHARS,
   SourceTooLong,
   UnknownAiTask,
-  withinSourceCaps,
   type AiClient,
   type TokenBudgetStore,
 } from './client.ts';
