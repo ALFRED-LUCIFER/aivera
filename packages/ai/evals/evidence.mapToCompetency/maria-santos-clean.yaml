@@ -27,36 +27,38 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@2
-  promptHash: 'a27d5ec0b2dd'
+  promptVersion: evidence.mapToCompetency@3
+  promptHash: 1edf22165874
   output:
     links:
       - competencyId: c-retrieval
         strength: supporting
         label: claim
-        level: 2
-        limit: A CV line; the notebook and its results have not been shared.
+        level: 3
+        limit: This evidence does not show the scale or impact of the evaluation harness or metrics used.
         citations:
           - sourceId: S1
             quote: Wrote the retrieval evaluation notebook the team ran before each release
       - competencyId: c-llm
         strength: supporting
         label: claim
-        level: 2
-        limit: A CV line; nothing about the assistant can be inspected yet.
+        level: 3
+        limit: This evidence does not show monitoring details or user scale of the assistant.
         citations:
           - sourceId: S1
             quote: Built a document question-answering assistant for an insurance claims team
       - competencyId: c-python
         strength: supporting
         label: claim
-        level: 2
-        limit: A CV line; no code has been submitted.
+        level: 3
+        limit: This evidence does not show the extent of tests or maintenance practices.
         citations:
           - sourceId: S1
             quote: Maintained the Python services that index policy documents
     changes:
       - competencyId: c-retrieval
-        text: Ask for the retrieval evaluation notebook and the release results it gated.
+        text: Provide retrieval metrics or a regression gate used in production to show evaluation rigor.
+      - competencyId: c-llm
+        text: Show monitoring data or user feedback for the LLM assistant in production.
       - competencyId: c-python
-        text: Ask for a repository with the indexing services she maintained.
+        text: Include evidence of tests and code maintenance practices for the Python services.

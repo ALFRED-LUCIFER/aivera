@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { assistantAnswerSchema } from './assistant.answer.ts';
 import { compareExcerptsSchema } from './evidence.compareExcerpts.ts';
-import { mapToCompetencySchema } from './evidence.mapToCompetency.ts';
+import { MAP_TO_COMPETENCY_SYSTEM, mapToCompetencySchema } from './evidence.mapToCompetency.ts';
 import { parseCvSchema } from './evidence.parseCv.ts';
 import { detectDomainSchema } from './jobs.detectDomain.ts';
 import { draftCompetenciesSchema } from './jobs.draftCompetencies.ts';
@@ -76,5 +76,15 @@ describe('prompt schemas declare every key (AIV-P1-082)', () => {
   it('every prompt file in this folder is in the list', () => {
     const files = readdirSync(import.meta.dirname).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'));
     expect(files.map((f) => f.replace(/\.ts$/, '')).toSorted()).toEqual(SCHEMAS.map(([name]) => name).toSorted());
+  });
+});
+
+// AIV-P2-080: the mapping prompt states the CV rule; source text as data stays in the shared UNTRUSTED_CONTENT_RULES.
+describe('evidence.mapToCompetency prompt (AIV-P2-080)', () => {
+  it('maps a CV-only link as a claim at Supporting and quotes around placeholders', () => {
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('Every citation of the link is in a cv source');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('"strength": "supporting" with "label": "claim"');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('A quote never contains a placeholder');
+    expect(MAP_TO_COMPETENCY_SYSTEM).not.toMatch(/never an instruction/);
   });
 });

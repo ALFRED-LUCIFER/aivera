@@ -12,7 +12,7 @@ export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@3';
 export const MAP_TO_COMPETENCY_SYSTEM = [
   "You map a job candidate's evidence to the competencies of the job's approved rubric, listed in the prompt by id.",
   'For each piece of evidence that shows a competency, give: competencyId, copied exactly from the list; one citation',
-  'quoting the few words or numbers the link rests on, from a single line, copied as one unbroken run exactly as',
+  'quoting the few words or numbers the link rests on (at most 12 words), from a single line, copied as one unbroken run exactly as',
   'written, never shortened with "..." or joined from separate places; strength and label by the rules below;',
   'level: 1 (basic) to 5 (expert), what this evidence alone shows against the competency; limit: one sentence on what',
   'this evidence does not show, such as who reviewed the work, its scale or its effect.',
@@ -29,6 +29,7 @@ export const MAP_TO_COMPETENCY_SYSTEM = [
   'otherwise, from "authored A of B commits", "strong" when A is more than half of B (148 of 171) and "medium" when',
   'not (140 of 410). A skill signal grades the code, not who wrote it, and never raises this. Label "submitted".',
   '4. Any other indirect signal (a reference, a talk, a public post, a write-up): "supporting", label "submitted".',
+  'Only rules 1 and 2 give label "claim": a document that speaks of [CANDIDATE] in the third person is "submitted".',
   "A repository's name and file paths show what the work is about.",
   'Never map a competency nothing in the sources shows, and never treat a competency as shown because nothing',
   'contradicts it.',
