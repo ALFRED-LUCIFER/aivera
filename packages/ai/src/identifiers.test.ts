@@ -151,6 +151,12 @@ describe('the replacer', () => {
   });
 
   // SAFETY: mutation check: an ASCII-only email local part ([\w.%+-]) again -> this test failed ("Zoë@acme.com" whole)
+  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test and 13 others failed
+  it('never sends a name that sits in an email beside a phone (AIV-P2-081)', () => {
+    expect(redact('Call 050 123 4567-qahtani@example.com')).not.toMatch(/qahtani/i);
+    expect(redact('Call +971 50 123 4567.sara.qahtani@example.com')).not.toMatch(/sara|qahtani/i);
+  });
+
   it('treats a non-ASCII local part as an email, so the name never reaches the model inside it', () => {
     const zoe = { names: ['Zoë Müller'], emails: [], phones: [] };
     const text = 'Write to Zoë@acme.com or Müller@acme.com, or zoë.müller@example.com.';
@@ -455,11 +461,21 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(cvText(text, 'cv', [name])).toBe(text),
   );
 
-  // SAFETY: mutation check: dropped the (?<![\w.%+-]) lookbehind from EMAIL -> this test timed out (quadratic scan)
+  // SAFETY: mutation check: dropped the (?<!${LOCAL}) lookbehind from EMAIL -> this test timed out (quadratic scan)
   it('scans a long unbroken run once, so it finishes', () => {
     const run = 'a'.repeat(120_000);
     expect(cvText(run)).toBe(run);
     expect(cvText('Write to a+b@example.com', 'document')).toBe('Write to [EMAIL_1]');
+  });
+
+  // SAFETY: mutation check: put back a per-name-part email lookahead (${own}(?!${LOCAL}*@…)) -> this test took
+  // seconds instead of milliseconds and failed its time limit (AIV-P2-081)
+  it('redacts a long run of repeated name parts in linear time', () => {
+    const arabic = 'ليلى-'.repeat(12_000);
+    const started = performance.now();
+    cvText(arabic, 'cv', ['ليلى حداد']);
+    cvText('Layla.'.repeat(10_000), 'document');
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {
