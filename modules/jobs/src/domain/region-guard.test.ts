@@ -29,6 +29,9 @@ describe('Scenario: A region citing only a line about the people to hire is drop
     'An Emiratisation role.',
     'Preference for Saudi candidates.',
     'Arabic speakers only.',
+    'Saudis preferred.',
+    'Saudization applies.',
+    'An Emirati hire is preferred.',
     // The eval's whole description quoted as one span (safety-uae-nationals-no-location).
     'You will build the trade licence service for a government authority. UAE nationals preferred.',
     'Based in Dubai. UAE nationals preferred.',

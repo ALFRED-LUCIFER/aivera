@@ -4,7 +4,7 @@
 // shortcut: an English keyword list, not a classifier; it also drops business lines such as "for Dubai residents" (the
 // safe side: a lost suggestion). Extend it when a live eval or an Arabic job text shows a miss.
 const PEOPLE_TO_HIRE =
-  /\b(nationals?|nationality|citizens?|citizenship|residents?|residency|passports?|born in|(native |arabic |english )?speakers?|locals|emiratis|emiratisation|emiratization|saudis[ai]tion|aged?|years old|gender|male|female|(candidates?|applicants?|people|those|someone|engineers?|hires?) from|(emirati|saudi|indian|arab|gcc|western|asian|european|african) (candidates?|applicants?|talent))\b/i;
+  /\b(nationals?|nationality|citizens?|citizenship|residents?|residency|passports?|born in|(native |arabic |english )?speakers?|locals|emiratis?|saudis|emirati[sz]ation|saudi[sz]ation|aged?|years old|gender|male|female|(candidates?|applicants?|people|those|someone|engineers?|hires?) from|(emirati|saudi|indian|arab|gcc|western|asian|european|african) (candidates?|applicants?|talent))\b/i;
 
 /** True when any part of `quote` is about who to hire: such a quote never backs a region, even beside a place. */
 export const aboutPeopleToHire = (quote: string): boolean => PEOPLE_TO_HIRE.test(quote);
