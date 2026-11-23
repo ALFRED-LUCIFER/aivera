@@ -1492,7 +1492,7 @@
       },
       "cannot": {
         "admin": "remove the last admin. A workspace always keeps at least one.",
-        "recruiter": "invite members, change workspace settings or a job's hiring owner. Those belong to an admin.",
+        "recruiter": "invite members, change workspace settings or a job’s hiring owner. Those belong to an admin.",
         "hiring_owner": "see other jobs or their candidates. Hiring owners see only the jobs they are given.",
         "interviewer": "see rankings, other interviewers’ scores, or other jobs. Interviewers see only the jobs they are given."
       },
