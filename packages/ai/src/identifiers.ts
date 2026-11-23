@@ -129,9 +129,9 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
   const ownWord = parts.length ? `(?<!${letter})${own}` : '';
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
-  // A name part that starts an email ("sara.alqahtani@") is left to the email: a run ending in it would eat the
+  // A name part that starts a real email ("sara.alqahtani@example.com") is left to the email: a run ending in it would eat the
   // candidate's own address and leave its tail unredacted (AIV-P2-081).
-  const part = `${own}(?![\\w.%+-]*@)`;
+  const part = `${own}(?![\\w.%+-]*@[\\w-]+(?:\\.[\\w-]+)+)`;
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's", split across lines) is one placeholder; it starts and ends
   // on a non-particle.
   const name = parts.length ? `(?<!${letter})${lead}${part}(?:[\\s-]+${lead}${part})*(?:['’]s(?!${letter}))?` : '';

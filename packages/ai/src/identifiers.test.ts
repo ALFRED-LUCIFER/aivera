@@ -143,6 +143,13 @@ describe('the replacer', () => {
     },
   );
 
+  // SAFETY: mutation check: widened the lookahead to any "@" ((?![\w.%+-]*@)) -> this test failed ("Qahtani@Acme")
+  it('still replaces a name next to an "@" that is not an email', () => {
+    expect(redact('Sara Al Qahtani@Acme')).toBe('[CANDIDATE]@Acme');
+    expect(redact('Sara Al Qahtani\nsara@localhost')).toBe('[CANDIDATE]@localhost');
+    expect(redact('Ask Sara@acme')).toBe('Ask [CANDIDATE]@acme');
+  });
+
   it('keeps a name split across lines or by a no-break space as one placeholder', () => {
     expect(redactSources([source('Sara Al\nQahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
       '[CANDIDATE] led it',

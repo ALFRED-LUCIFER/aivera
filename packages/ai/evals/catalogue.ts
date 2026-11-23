@@ -1,7 +1,7 @@
 import type { AiClient, TokenBudgetStore } from '../src/client.ts';
 import { detectDomainRunner, liveTokenCap, runners, type Runner } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
-import { evalWorkspaceId, evaluateTask, liveJudge, liveMatcher } from './run.ts';
+import { evalWorkspaceId, evaluateTask, liveJudge, liveMatcher, matchPrompt } from './run.ts';
 
 // The live eval of a catalogue draft (AIV-P2-048, ADR-013 point 12): the jobs.detectDomain and jobs.draftCompetencies
 // golden sets under the thresholds of config.ts, the draft's keys as data. Inputs are the synthetic golden cases only,
@@ -117,12 +117,24 @@ export function recordedClient(
 ): Pick<AiClient, 'generateStructured'> {
   // A case is found by its task and sources; a judge request by the case's rubric and sources.
   const cases = new Map<string, { task: string; golden: GoldenCase }>();
+  // A matcher request names no case: answer from every recorded verdict (the scorer still checks each one).
+  const verdicts: Record<string, string | null> = {};
   for (const [task, list] of loadGolden(dir))
     for (const golden of list) {
+      Object.assign(verdicts, golden.recorded.matches);
       cases.set(JSON.stringify([task, golden.sources]), { task, golden });
       if (golden.expected.judge) cases.set(JSON.stringify([golden.expected.judge, golden.sources]), { task, golden });
     }
-  const generateStructured = async (request: { task: string; prompt: string; sources: readonly unknown[] }) => {
+  const generateStructured = async (request: {
+    task: string;
+    promptVersion: string;
+    prompt: string;
+    sources: readonly unknown[];
+  }) => {
+    if (request.promptVersion === matchPrompt.id) {
+      const misses = JSON.parse(request.prompt) as { expected: string }[];
+      return { matches: misses.map((m) => ({ expected: m.expected, match: verdicts[m.expected] ?? null })) };
+    }
     const judged = request.task === 'evals.judge';
     const key = judged ? (JSON.parse(request.prompt) as { rubric: string }).rubric : request.task;
     const found = cases.get(JSON.stringify([key, request.sources]));
