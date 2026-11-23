@@ -136,6 +136,8 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
 /**
  * The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only.
  * Every change re-runs the judge golden cases live (evals/judge, AIV-P2-084) and records their verdicts.
+ * shortcut: @4's authorship sentence is checked against one rubric and source (sara-eval-harness); add judge golden
+ * cases for other source kinds when a second judged rubric runs live.
  */
 export const judgePrompt = {
   id: 'evals.judge@4',
@@ -396,6 +398,6 @@ export async function evaluateJudge(cases: JudgeCase[], verdictOf: JudgeVerdict)
   const rates = Object.fromEntries(metrics.map((metric) => [metric, null])) as Record<Metric, number | null>;
   if (scored.length) rates.judge = scored.filter((r) => r.passed).length / scored.length;
   // Every case must get its expected verdict: one judge miss can pass a mapping that misstates its evidence.
-  const thresholds = { ...hardGates, fieldMatch: 1, judge: 1 };
+  const thresholds = { ...hardGates, fieldMatch: 1, judge: 1 }; // only judge is scored; the rest are n/a
   return { task: 'evals.judge', passed: results.every((r) => r.passed), cases: results, rates, thresholds, groups: [] };
 }
