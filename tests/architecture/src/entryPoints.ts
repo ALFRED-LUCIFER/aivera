@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { walk, type Violation } from './rules.ts';
@@ -204,7 +204,10 @@ export function findUndeclaredEntryPoints(root: string): Violation[] {
     ['web', webViolations],
     ['backend/worker', workerViolations],
   ] as const) {
-    for (const path of walk(join(root, 'apps', app, 'src'))) {
+    const src = join(root, 'apps', app, 'src');
+    // A moved or renamed app must fail here, not leave its entry points unchecked.
+    if (!existsSync(src)) throw new Error(`${relative(root, src)} does not exist: update the app list`);
+    for (const path of walk(src)) {
       if (!SOURCE.test(path) || TEST.test(path)) continue;
       const text = readFileSync(path, 'utf8');
       const route = ROUTE.test(path);

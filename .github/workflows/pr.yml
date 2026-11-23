@@ -147,7 +147,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build --target web . && docker build --target migrate .
       # The worker image's CMD names a file path; fail here, not at the dev deploy, if that file is not in the image.
-      - run: docker build --target worker -t worker . && docker run --rm --entrypoint test worker -f apps/backend/worker/src/main.ts
+      - run: |
+          docker build --target worker -t worker .
+          docker run --rm --entrypoint test worker -f "$(docker inspect -f '{{index .Config.Cmd 1}}' worker)"
 
   secrets:
     runs-on: ubuntu-latest

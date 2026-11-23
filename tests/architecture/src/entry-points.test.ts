@@ -13,6 +13,11 @@ describe('every server entry point declares its policy or is explicitly public (
     expect(findUndeclaredEntryPoints(repoRoot)).toEqual([]);
   });
 
+  // SAFETY: mutation check: removed the missing-folder throw -> this test failed
+  it('an app folder in the list that does not exist fails the check instead of passing it silently', () => {
+    expect(() => findUndeclaredEntryPoints(import.meta.dirname)).toThrow('apps/web/src does not exist');
+  });
+
   it.each([
     [`${web}/features/jobs/services/createJob.ts`, 'createJob'],
     // SAFETY: mutation check: accepted any file importing workspaceAction as declared -> these two cases failed

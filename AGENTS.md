@@ -32,7 +32,7 @@ Credalent ranks job candidates on evidence of their work and holds their CVs, do
 9. **Comments explain why**, in one line, only where the code cannot.
 10. **Parallel agents.** Each agent works in its own git worktree on its own branch, with non-overlapping files; check `git branch --show-current` before committing. A ticket that depends on an unmerged ticket is built as a stacked PR on top of it (7.1). One agent at a time drives the Playwright browser. Never restart Docker or prune volumes on a shared machine. Details: [`docs/runbooks/parallel-agents.md`](docs/runbooks/parallel-agents.md).
 
-## 3 · Back end (TypeScript, `modules/`, `apps/backend/worker`, server code in `apps/web`)
+## 3 · Back end (TypeScript and the Python AI service: `modules/`, `apps/backend/worker`, server code in `apps/web`, `apps/ai-service`)
 
 1. **Modular monolith** ([ADR-002](docs/adr/ADR-002-repository-layout.md)). A module is a package `modules/<m>` (`@credalent/<m>`) with `src/domain`, `src/application`, `src/contracts`, `src/infrastructure`. Other code imports a module **only through its contracts entry** (`@credalent/<m>`); the package `exports` map exposes nothing else except `@credalent/<m>/composition`, which only apps, `tools/seed` and the test suites (`tests/`) may import: they are composition roots too. Never another module's domain, infrastructure, tables or Drizzle schema (architecture-test-enforced). Talk through contract interfaces or versioned events through the outbox (`CandidateAssessed.v1`); event payloads carry opaque ids only.
 2. **Domain is pure.** No database, HTTP, AI SDK or `Date.now()` in `domain/`. Use cases live in `application/` over narrow ports; Drizzle and adapters live in `infrastructure/`.
@@ -50,11 +50,11 @@ Credalent ranks job candidates on evidence of their work and holds their CVs, do
 
 ### Python AI service (`apps/ai-service`, [ADR-015](docs/adr/ADR-015-python-ai-service.md))
 
-1. **Prompting and orchestration only.** No database access and no workspace data beyond what a task call carries. It never receives unredacted text; redaction, the token budget and the citation check stay in `@credalent/ai` and are never re-implemented here in their place.
-2. **Toolchain:** Python with a committed `uv` lockfile (`uv.lock`), `ruff` (lint and format), `mypy --strict`, `pytest`. CI runs all four; a new dependency follows section 6.
-3. **pydantic v2 models generated from the JSON Schema** that `@credalent/ai` generates from its zod schemas; CI regenerates both and fails on drift. Never hand-edit a generated model.
-4. **No prompt or answer text in logs** or telemetry, nor any candidate value: log the task id, prompt version, model, token counts, latency and outcome only (rule 1.2, ADR-006 point 9).
-5. **The eval set runs in CI** for every prompt or model change in the service, with the same hard gates as `pnpm ai:eval` (ADR-006 point 8).
+14. **Prompting and orchestration only.** No database access and no workspace data beyond what a task call carries. It never receives unredacted text; redaction, the token budget and the citation check stay in `@credalent/ai` and are never re-implemented here in their place.
+15. **Toolchain:** Python with a committed `uv` lockfile (`uv.lock`), `ruff` (lint and format), `mypy --strict`, `pytest`. CI runs all four; a new dependency follows section 6.
+16. **pydantic v2 models generated from the JSON Schema** that `@credalent/ai` generates from its zod schemas; CI regenerates both and fails on drift. Never hand-edit a generated model.
+17. **No prompt or answer text in logs** or telemetry, nor any candidate value: log the task id, prompt version, model, token counts, latency and outcome only (rule 1.2, ADR-006 point 9). Its OpenTelemetry export goes through the same allowlist scrubbing as the TypeScript apps; never weaken it.
+18. **The eval set runs in CI** for every prompt or model change in the service, with the same hard gates as `pnpm ai:eval` (ADR-006 point 8).
 
 ## 4 · Front end (Next.js 16 App Router, `apps/web`): hard rule, [ADR-003](docs/adr/ADR-003-frontend-feature-layers.md)
 

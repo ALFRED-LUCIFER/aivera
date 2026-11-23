@@ -102,13 +102,12 @@ export function* walk(dir: string): Generator<string> {
 const dirsIn = (dir: string) =>
   existsSync(dir) ? readdirSync(dir).filter((n) => statSync(join(dir, n)).isDirectory()) : [];
 
-/** apps/backend groups the back-end apps (ADR-015): each of its folders is an app of its own. */
+/** apps/backend groups the back-end apps (ADR-015); its folders are apps too. */
 const APP_GROUP = 'backend';
 
-/** The unit a path belongs to, e.g. "modules/jobs", "packages/ui", "apps/web", "apps/backend/worker". */
+/** The unit a path belongs to, e.g. "modules/jobs", "packages/ui", "apps/web". */
 function unitOf(root: string, path: string): string | undefined {
-  const [top, name, app] = relative(root, path).split(sep);
-  if (top === 'apps' && name === APP_GROUP) return app ? `apps/${APP_GROUP}/${app}` : undefined;
+  const [top, name] = relative(root, path).split(sep);
   return top && name && ['apps', 'modules', 'packages'].includes(top) ? `${top}/${name}` : undefined;
 }
 
