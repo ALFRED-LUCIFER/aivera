@@ -107,7 +107,7 @@ The `aivera` database already exists: it was created on 18 Nov 2026 with charset
 The Python AI service ([`apps/backend/ai-service`](../apps/backend/ai-service/README.md), ADR-015) is left out until `aiServiceAudience` is set, so applies before these steps change nothing.
 
 1. Register an app in the workforce tenant (Entra, owner only): `az ad app create --display-name credalent-ai-service-dev`, then set its Application ID URI to `api://<appId>` (`az ad app update --id <appId> --identifier-uris api://<appId>`). No secret, no redirect URI, no API permission: it only names the audience the web app's token is for, and the service itself checks which identity calls.
-2. Run `deploy-dev` once so it pushes `ghcr.io/alfred-lucifer/aivera/ai-service:<sha>`, then make that package public as in step 2 above.
+2. Run `deploy-dev` once so it pushes `ghcr.io/alfred-lucifer/aivera/ai-service:<sha>`, then make that package public as in step 2 above. The image's `org.opencontainers.image.source` label links the package to this repository on its first push. If a push still fails with `denied`, the package was created unlinked: in its settings, under Manage Actions access, add `ALFRED-LUCIFER/aivera` with the Write role, then re-run `deploy-dev`.
 3. Apply with `-p aiServiceAudience=api://<appId>` (and `imageTag=<sha from step 2>`). This creates `id-aivera-ai-dev` and its role on the AI resource, `ca-aivera-ai-dev`, the deployer's rights on both, and sets `AI_SERVICE_URL` and `AI_SERVICE_AUDIENCE` on the web app. Pass the same value on every later apply, or the web app loses the two settings.
 4. Later `deploy-dev` runs update the service with web and roll it back with web.
 

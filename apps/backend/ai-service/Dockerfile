@@ -3,6 +3,9 @@
 FROM ghcr.io/astral-sh/uv:0.11.8@sha256:3b7b60a81d3c57ef471703e5c83fd4aaa33abcd403596fb22ab07db85ae91347 AS uv
 
 FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
+# Links the new ghcr.io package to this repository on its first push, so deploy-dev's GITHUB_TOKEN may write to it;
+# without it ghcr.io creates an unlinked package and refuses the manifest ("denied").
+LABEL org.opencontainers.image.source="https://github.com/ALFRED-LUCIFER/aivera"
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_NO_CACHE=1 PATH="/app/.venv/bin:$PATH"
