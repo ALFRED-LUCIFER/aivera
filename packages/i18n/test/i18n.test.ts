@@ -100,7 +100,7 @@ describe('score and competency wording', () => {
     ['score.backedUpToCompact', { backed: 68, upTo: 84 }, '68 backed by evidence · up to 84 if claims hold'],
     ['score.upTo', { upTo: 78 }, 'up to 78 if claims hold in interview'],
     ['score.upToCompact', { upTo: 84 }, 'up to 84 if claims hold'],
-    ['score.unavailable', {}, 'Score unavailable'],
+    ['score.unavailable', {}, 'Score cannot be shown'],
     ['score.level', { proven: 1, levels: 5, needed: 2 }, 'Proven 1 of 5 · job needs 2'],
     ['score.levelBar', { proven: 1, claimed: 4, needed: 2, levels: 5 }, 'Proven 1 of 5, claimed 4, the job needs 2'],
     ['score.aboveNeed', {}, 'Above the need'],

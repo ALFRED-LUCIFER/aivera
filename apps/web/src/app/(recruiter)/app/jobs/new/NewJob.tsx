@@ -16,7 +16,8 @@ type Props = Pick<
 
 export function NewJob({ defaultJobType, catalogue, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
-  const { result, onDraft, onSaving, onUseStarters, rubric, ...draft } = useCompetencyDraftController(catalogue);
+  const { result, onDraft, onSaving, onUseStarters, rubric, replacing, onConfirmRedraft, onCancelRedraft, ...draft } =
+    useCompetencyDraftController(catalogue);
   const send = useSendRubricController(job.state.rubricVersionId);
   if (job.state.saved) return <JobSaved {...send} />;
   return (
@@ -25,6 +26,9 @@ export function NewJob({ defaultJobType, catalogue, ...props }: Props) {
       {...job}
       errors={result.status === 'invalid' ? result.errors : job.state.errors}
       onDraft={onDraft}
+      replacing={replacing}
+      onConfirmRedraft={onConfirmRedraft}
+      onCancelRedraft={onCancelRedraft}
       onSaving={onSaving}
       rubric={rubric}
       drafting={draft.drafting}

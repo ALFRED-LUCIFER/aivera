@@ -126,7 +126,7 @@ export const sample = {
     submitted: 'Candidate-submitted',
     claim: 'Claim awaiting validation',
     contradictory: 'Contradictory',
-    awaitingDefence: 'Awaiting live defence',
+    awaitingDefence: 'To check in interview',
   },
   strength: {
     strong: 'Strong',

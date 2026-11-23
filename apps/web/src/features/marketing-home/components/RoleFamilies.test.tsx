@@ -21,7 +21,7 @@ describe('Feature: Role families', () => {
         title="Not only software engineers"
         lead=""
         noPublicWork=""
-        familyHeader="Role family"
+        familyHeader="Job family"
         evidenceHeader="Evidence that counts"
         rows={offeredJobTypes(CATALOGUE_V1).map((j) => ({ key: j.key, family: j.label.en, evidence: j.evidence.en }))}
         more=""

@@ -1,6 +1,7 @@
 // The website hero's evidence card: Hessa Al Mazrouei from the synthetic cast (docs/00-product/personas.md).
 // Fixed demo values, labelled "Illustrative candidate, synthetic data." on the card; no candidate data is read here.
-export const heroCandidate = { backed: 72, upTo: 85, rank: 1, total: 38, weight: 25 } as const;
+// Deviation from the Landing artboard ("weight 25%"): 35 is the seeded demo job's weight (tools/seed/src/cast.ts), so the two agree.
+export const heroCandidate = { backed: 72, upTo: 85, rank: 1, total: 38, weight: 35 } as const;
 
 /** The design's ease (DESIGN.md motion) as a cubic-bezier tuple for motion/react. */
 export const caseEase = [0.16, 1, 0.3, 1] as const;

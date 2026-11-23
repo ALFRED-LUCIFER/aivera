@@ -64,7 +64,9 @@ describe('the eval panel', () => {
 
   it('Scenario: A new pack without golden cases names the key', () => {
     show({ status: 'failed', finishedAt, uncovered: ['insurance'], failedCases: [], tasks: [] });
-    expect(screen.getByText('Add golden cases for insurance in packages/ai/evals before publishing.')).toBeTruthy();
+    expect(
+      screen.getByText('The eval has no test cases for insurance yet. Ask an engineer to add them before publishing.'),
+    ).toBeTruthy();
   });
 
   it('stale, could not run and running each say so; running cannot start another', () => {

@@ -30,7 +30,7 @@ export function useScoreLabels(compact = false) {
   } satisfies Partial<ComponentProps<typeof ScoreWithUncertainty>>;
 }
 
-// shortcut: the "Score unavailable" state is not shown; the score components throw on bad values outside production by
+// shortcut: the "Score cannot be shown" state is not shown; the score components throw on bad values outside production by
 // design, so the gallery (development only) cannot render it. Unit tests in packages/ui cover it.
 export function EvidenceSections() {
   const t = useTranslations();

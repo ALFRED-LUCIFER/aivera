@@ -87,6 +87,7 @@ const cells: (Omit<DataTableColumn<Row>, 'header'> & { id: 'competency' | 'weigh
 export function CompetencyDraft(props: CompetencyDraftProps) {
   const t = useTranslations('jobDraft');
   const tJob = useTranslations('jobNew');
+  const ta = useTranslations('access');
   const { result, rows, industry } = props;
   const packLabel = (key: string | undefined) => props.packs.find((p) => p.key === key)?.label ?? null;
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
@@ -122,8 +123,10 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
     drafted: drafted && !result.competencies.some((c) => c.origin === 'from_description') ? t('none') : null,
     failed: t('failed'),
     budget: t('budget'),
+    saveFailed: ta('saveFailed'),
+    saveForbidden: ta('saveForbidden'),
   }[result.status];
-  const alert = result.status === 'failed' || result.status === 'budget';
+  const alert = ['failed', 'budget', 'saveFailed', 'saveForbidden'].includes(result.status);
 
   return (
     <section aria-labelledby="job-draft-heading" aria-busy={props.drafting} className="mt-8 flex flex-col gap-3">

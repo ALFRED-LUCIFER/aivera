@@ -77,7 +77,7 @@ describe('JobDetail (AIV-P3-005)', () => {
         <JobDetailFailed onRetry={onRetry} />
       </IntlProvider>,
     );
-    expect(screen.getByRole('alert').textContent).toBe('This job could not load. Try again.');
+    expect(screen.getByRole('alert').textContent).toBe('We could not load this job. Try again.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
     expect(screen.getByRole('link', { name: 'See all jobs' })).toHaveProperty('pathname', '/candidates/jobs');

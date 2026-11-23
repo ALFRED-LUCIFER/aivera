@@ -26,13 +26,13 @@ describe('FilePicker', () => {
         {...props}
         onSelect={() => undefined}
         progress={40}
-        status="Uploading, 40%"
-        error="This file could not be accepted."
+        status="Uploading… 40%"
+        error="We cannot use this file. Try a different file."
       />,
     );
-    expect(screen.getByRole('progressbar', { name: 'Uploading, 40%' })).toHaveProperty('value', 40);
-    expect(screen.getByRole('status').textContent).toBe('Uploading, 40%');
-    const error = screen.getByText('This file could not be accepted.');
+    expect(screen.getByRole('progressbar', { name: 'Uploading… 40%' })).toHaveProperty('value', 40);
+    expect(screen.getByRole('status').textContent).toBe('Uploading… 40%');
+    const error = screen.getByText('We cannot use this file. Try a different file.');
     expect(error.className).toContain('text-err-text');
     expect(screen.getByRole('button').getAttribute('aria-describedby')).toContain(error.id);
   });

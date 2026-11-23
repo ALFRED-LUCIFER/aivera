@@ -27,10 +27,16 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn, canS
   const title = withOwner ? 'titleSent' : canReturn ? 'title' : 'titleDraft';
   const intro = withOwner ? 'introSent' : canReturn ? 'intro' : 'introDraft';
   const t = useTranslations('rubric.decide');
+  const ta = useTranslations('access');
   const noteId = useId();
   const { status } = decision;
   const done = status === 'approved' || status === 'returned' ? status : null;
-  const problem = status === 'stale' || status === 'failed' ? status : null;
+  const problem =
+    status === 'stale' || status === 'failed'
+      ? t(status)
+      : status === 'saveFailed' || status === 'saveForbidden'
+        ? ta(status)
+        : null;
 
   return (
     <Card title={review ? t(title, { version: review.version }) : t('doneTitle')} level={2}>
@@ -107,7 +113,7 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn, canS
         )}
         {problem && (
           <p role="alert" className="rounded-control border border-err-border bg-err-bg p-3 text-err-text">
-            {t(problem)}
+            {problem}
           </p>
         )}
       </div>

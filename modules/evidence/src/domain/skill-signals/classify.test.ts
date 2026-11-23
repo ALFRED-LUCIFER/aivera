@@ -252,7 +252,7 @@ describe('classifySkill', () => {
     const graded = classifySkill(skill, signals, FULL);
     expect(graded).toMatchObject({ grade: 'PARTIAL', reason: 'declaration_only' });
     expect(en.evidence.skillGrade.reason[graded.reason]).toBe(
-      'Only declaration-level evidence was found; declaring or mentioning a tool is not evidence of using it.',
+      'Only declaration-level evidence was found. Declaring or mentioning a tool is not evidence of using it.',
     );
   });
 

@@ -80,6 +80,16 @@ export default async function NewJobPage() {
             title: t('jobNew.errors.title'),
             jobType: t('jobNew.errors.jobType'),
             failed: t('jobNew.errors.failed'),
+            saveFailed: t('access.saveFailed'),
+            saveForbidden: t('access.saveForbidden'),
+          },
+          redraft: {
+            title: t('jobNew.redraft.title'),
+            body: t('jobNew.redraft.body'),
+            confirm: t('jobNew.redraft.confirm'),
+            cancel: t('jobNew.redraft.cancel'),
+            footer: t('jobNew.redraft.footer'),
+            unnamed: t('jobDraft.newCompetency'),
           },
         }}
       />

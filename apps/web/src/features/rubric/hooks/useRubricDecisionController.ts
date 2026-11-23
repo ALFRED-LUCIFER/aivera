@@ -1,5 +1,6 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { saveFailure } from '@/features/shell/domain/saveFailure.ts';
 import type { ReviewView, RubricDecisionView } from '../domain/rubric.ts';
 import { decideRubric } from '../services/decideRubric.ts';
 import { sendRubricForApproval } from '../services/sendRubricForApproval.ts';
@@ -20,12 +21,18 @@ export function useRubricDecisionController(jobId: string, review: ReviewView | 
     startTransition(async () => {
       if (!review) return;
       const { versionId, revision } = review;
-      const result = await decideRubric({
-        jobId,
-        versionId,
-        revision,
-        ...(returnNote !== undefined && { note: returnNote }),
-      });
+      let result;
+      try {
+        result = await decideRubric({
+          jobId,
+          versionId,
+          revision,
+          ...(returnNote !== undefined && { note: returnNote }),
+        });
+      } catch (error) {
+        // The note typed so far stays in the panel.
+        return setStatus(saveFailure(error));
+      }
       if ('error' in result) return setStatus(result.error);
       setDecided({ version: review.version, inForce: review.approvedVersion !== null });
       setStatus(returnNote === undefined ? 'approved' : 'returned');
@@ -50,7 +57,12 @@ export function useRubricDecisionController(jobId: string, review: ReviewView | 
     onSend: () =>
       startTransition(async () => {
         if (!review) return;
-        const result = await sendRubricForApproval(review.versionId);
+        let result;
+        try {
+          result = await sendRubricForApproval(review.versionId);
+        } catch (error) {
+          return setStatus(saveFailure(error));
+        }
         if (!result.ok) return setStatus('failed');
         setStatus('sent');
         router.refresh();

@@ -531,12 +531,12 @@ describe('A CV whose file was rejected before the parse was asked for', () => {
 
 describe('Scenario: Transient failures retry and then fail visibly', () => {
   // SAFETY: mutation check: removed the own-transaction write of 'failed' in createFileReadHandlers -> this test failed (pending)
-  it('Document Intelligence timing out is retried by the worker, then dead-lettered, and the source shows "Parsing failed, retry"', async () => {
+  it('Document Intelligence timing out is retried by the worker, then dead-lettered, and the source shows "We could not read this CV. Try again."', async () => {
     const { candidateId, sourceId, view, settled } = await parse('Mark Reyes', 'unavailable', answer({}));
     // The first delivery backs off for a redelivery; the parse already shows the failure.
     expect(settled).toContain('abandon');
     expect(view?.status).toBe('failed');
-    expect(en.evidence.cvStatus['failed']).toBe('Parsing failed, retry');
+    expect(en.evidence.cvStatus['failed']).toBe('We could not read this CV. Try again.');
     const parseRequest = lastSent.filter((e) => e.type === CvParseRequestedV1.type);
     expect(await consume(parseRequest, answer({}), 2)).toEqual(['abandon']);
     // The consumer's last delivery (AIV-P0-015 table) is dead-lettered; the source still shows the failure.

@@ -28,7 +28,7 @@ export function canMove(from: RequestStatus, to: RequestStatus, actor: RequestAc
   return TRANSITIONS[from][to] === actor;
 }
 
-/** The provenances that mean "rests on a claim": Claim awaiting validation, Awaiting live defence. */
+/** The provenances that mean "rests on a claim": Claim awaiting validation, To check in interview. */
 const OPEN_CLAIM: readonly EvidenceItem['provenance'][] = ['claim', 'awaiting-defence'];
 
 export type OpenClaim = { competencyId: string; itemId: string; claim: string };

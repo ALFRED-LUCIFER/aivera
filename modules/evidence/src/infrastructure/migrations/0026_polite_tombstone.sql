@@ -1,0 +1,1 @@
+ALTER TABLE "evidence"."mapping" ADD COLUMN "too_long_source_ids" uuid[] DEFAULT '{}' NOT NULL;

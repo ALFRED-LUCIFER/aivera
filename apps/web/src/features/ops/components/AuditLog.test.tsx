@@ -124,8 +124,8 @@ describe('Scenario Outline: Filters narrow the list', () => {
       'from',
       'to',
     ]);
-    // Only an opaque id is submitted from "Target id": the browser refuses typed names or emails.
-    const target = new RegExp(`^(?:${screen.getByLabelText('Target id').getAttribute('pattern')})$`, 'v');
+    // Only an opaque id is submitted from "Record": the browser refuses typed names or emails.
+    const target = new RegExp(`^(?:${screen.getByLabelText('Record').getAttribute('pattern')})$`, 'v');
     expect(target.test(GULF)).toBe(true);
     expect(target.test('pia.platform@example.com')).toBe(false);
     expect(screen.getByLabelText('From (UTC)').getAttribute('type')).toBe('date');

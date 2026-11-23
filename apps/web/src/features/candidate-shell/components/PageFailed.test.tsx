@@ -15,7 +15,7 @@ it('says the page could not load and "Try again" retries', async () => {
       <PageFailed onRetry={onRetry} />
     </IntlProvider>,
   );
-  expect(screen.getByRole('alert').textContent).toBe('This page could not load. Try again.');
+  expect(screen.getByRole('alert').textContent).toBe('We could not load this page. Try again.');
   await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
   expect(onRetry).toHaveBeenCalledTimes(1);
 });

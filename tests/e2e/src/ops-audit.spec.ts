@@ -66,7 +66,7 @@ for (const theme of themes) {
     await expectAccessible(page);
 
     // Scenario: The log lists entries newest first (this workspace's entries, by its target id)
-    await page.getByLabel('Target id').fill(workspace.id);
+    await page.getByLabel('Record', { exact: true }).fill(workspace.id);
     await apply(page);
     await expect(page).toHaveURL(`/ops/audit?target=${workspace.id}`);
     await expect(rows(page)).toHaveCount(2);

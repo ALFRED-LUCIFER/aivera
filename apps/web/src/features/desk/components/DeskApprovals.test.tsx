@@ -29,7 +29,7 @@ describe('My desk rubric approvals: states (AIV-P1-014)', () => {
   it('loading is announced as busy', () => {
     show({ status: 'loading' });
     expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByRole('status').textContent).toBe('Loading what is waiting');
+    expect(screen.getByRole('status').textContent).toBe('Loading what is waiting…');
   });
 
   it('error: an alert with a retry', async () => {
@@ -48,7 +48,7 @@ describe('My desk rubric approvals: states (AIV-P1-014)', () => {
         { jobId: 'j1', job: 'Senior AI Engineer', version: 2, owner: null, done: true },
       ],
     });
-    expect(screen.getByText('Staff Backend Engineer, version 2. With the VP Engineering.')).toBeTruthy();
+    expect(screen.getByText('Staff Backend Engineer, version 2. Waiting for VP Engineering.')).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Open the Senior AI Engineer rubric' }).getAttribute('href')).toBe(
       '/app/jobs/j1/rubric',

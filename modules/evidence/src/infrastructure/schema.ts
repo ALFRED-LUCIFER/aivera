@@ -101,6 +101,11 @@ export const mapping = evidence
       model: text().notNull(),
       // Up to three checks, each closing a gap or a capped item of this run; the text is candidate data (never logged).
       changes: jsonb().$type<StoredChange[]>().notNull(),
+      // Sources left out of the model call as too long to read automatically (AIV-P2-062).
+      tooLongSourceIds: uuid('too_long_source_ids')
+        .array()
+        .notNull()
+        .default(sql`'{}'`),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [
@@ -653,6 +658,8 @@ export const comparison = evidence
       resolvedAt: timestamp('resolved_at', tz),
       resolutionNote: text('resolution_note'),
       resolutionLimit: text('resolution_limit'),
+      // The source the person let stand (AIV-P2-063), one of the pair's; null while open or when both stand.
+      resolutionStandingSourceId: uuid('resolution_standing_source_id'),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [
@@ -689,7 +696,8 @@ export const comparison = evidence
         sql`(${t.resolvedAt} is null) = (${t.resolvedBy} is null)
           and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionNote}), '') = '')
           and (${t.resolvedAt} is null) = (coalesce(btrim(${t.resolutionLimit}), '') = '')
-          and (${t.resolvedAt} is null or ${t.outcome} = 'contradiction')`,
+          and (${t.resolvedAt} is null or ${t.outcome} = 'contradiction')
+          and (${t.resolvedAt} is not null or ${t.resolutionStandingSourceId} is null)`,
       ),
       tenantPolicy('comparison_tenant_isolation', t.workspaceId),
     ],

@@ -67,7 +67,11 @@ describe('member-invitation template', () => {
 
   it.each([
     ['admin', 'as Workspace admin. Accept', 'You can: manage members and billing'],
-    ['recruiter', 'as Recruiter. Accept', 'You cannot: approve a rubric or record a hiring decision.'],
+    [
+      'recruiter',
+      'as Recruiter. Accept',
+      'You cannot: invite members, change workspace settings or a job’s hiring owner.',
+    ],
     ['interviewer', 'as Interviewer for Senior AI Engineer. Accept', 'You can: see the candidates you interview for'],
   ] as const)('the %s variant (ERoles)', async (role, intro, scopeLine) => {
     const scope = role === 'interviewer' ? 'Senior AI Engineer' : null;

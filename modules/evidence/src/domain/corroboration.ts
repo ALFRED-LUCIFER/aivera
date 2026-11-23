@@ -107,8 +107,9 @@ export function comparablePairs(
 
 /**
  * A comparison of two cited items' excerpts (AIV-P1-029). An unresolved contradiction shows both items as
- * "Contradictory" and keeps them out of the backed score; a person resolves it with a note and the limit both items
- * then state. An agreement is a recorded fact and changes nothing.
+ * "Contradictory" and keeps them out of the backed score; a person resolves it with a note, the limit the items then
+ * state, and which source stands (AIV-P2-063): the other stays "Contradictory", or both count again when both stand.
+ * An agreement is a recorded fact and changes nothing.
  */
 export type Comparison = {
   id: string;
@@ -125,11 +126,20 @@ export type Comparison = {
   resolvedAt: Date | null;
   resolutionNote: string | null;
   resolutionLimit: string | null;
+  /** The source a person's resolution let stand; null while open, or when both stand. */
+  resolutionStandingSourceId: string | null;
   createdAt: Date;
 };
 
 /** A person's resolution, kept on a re-map when the same two excerpts of the same two sources contradict again. */
-export type Resolution = Pick<Comparison, 'resolvedBy' | 'resolvedAt' | 'resolutionNote' | 'resolutionLimit'>;
+export type Resolution = Pick<
+  Comparison,
+  'resolvedBy' | 'resolvedAt' | 'resolutionNote' | 'resolutionLimit' | 'resolutionStandingSourceId'
+>;
+
+/** The source a resolution set aside: the other one when only one stands, else none. */
+export const setAside = (r: Pick<Resolution, 'resolutionStandingSourceId'>, sourceIds: readonly string[]) =>
+  r.resolutionStandingSourceId === null ? [] : sourceIds.filter((id) => id !== r.resolutionStandingSourceId);
 
 /** The key of a pair of cited excerpts, the same in either order. */
 export const pairKey = (a: { sourceId: string; excerpt: string }, b: { sourceId: string; excerpt: string }) =>
@@ -138,9 +148,12 @@ export const pairKey = (a: { sourceId: string; excerpt: string }, b: { sourceId:
     .toSorted()
     .join('\u0001');
 
-/** The provenance and limit an item shows: "Contradictory" while a contradiction on it is open, else its own. */
+/**
+ * The provenance and limit an item shows: "Contradictory" while a contradiction on it is open or a resolution let the
+ * other source stand (so it counts nowhere), else its own.
+ */
 export function shownAs(
-  item: { id: string; provenance: Provenance; limit: string },
+  item: { id: string; sourceId: string; provenance: Provenance; limit: string },
   comparisons: readonly Comparison[],
 ): { provenance: Provenance; limit: string } {
   const own = comparisons.filter(
@@ -148,5 +161,7 @@ export function shownAs(
   );
   if (own.some((c) => c.resolvedAt === null)) return { provenance: 'contradictory', limit: item.limit };
   const latest = own.toSorted((x, y) => (y.resolvedAt?.getTime() ?? 0) - (x.resolvedAt?.getTime() ?? 0))[0];
-  return { provenance: item.provenance, limit: latest?.resolutionLimit ?? item.limit };
+  const limit = latest?.resolutionLimit ?? item.limit;
+  const outvoted = own.some((c) => setAside(c, [item.sourceId]).length > 0);
+  return { provenance: outvoted ? 'contradictory' : item.provenance, limit };
 }

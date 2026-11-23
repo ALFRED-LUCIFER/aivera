@@ -86,7 +86,7 @@ describe('Recruiter app shell', () => {
   });
 
   it('Scenario: Members of a suspended workspace can read but not start work: the banner, and never the reason', () => {
-    const banner = 'This workspace is paused by Credalent. You can read everything; new work is paused.';
+    const banner = 'This workspace is paused by Credalent. You can read everything. New work is paused.';
     renderShell({ status: 'suspended' });
     expect(within(screen.getByRole('main')).getByText(banner)).toBeTruthy();
     expect(screen.getByText('Page body')).toBeTruthy();

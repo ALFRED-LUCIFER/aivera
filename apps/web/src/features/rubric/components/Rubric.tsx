@@ -29,6 +29,7 @@ type Props = {
  */
 export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
   const t = useTranslations('rubric');
+  const ta = useTranslations('access');
   const successId = useId();
   const rubric = state.status === 'ready' ? state.rubric : null;
   const editing = editor?.editing ? editor : null;
@@ -38,14 +39,16 @@ export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
   const columns = cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
   const message = editor && editor.status !== 'idle' && (
     <div
-      role={editor.status === 'stale' || editor.status === 'failed' ? 'alert' : 'status'}
+      role={editor.status === 'saved' || editor.status === 'sent' ? 'status' : 'alert'}
       className="mx-5 mb-5 rounded-control border border-border bg-surface-subtle px-3 py-2 text-body"
     >
       {editor.status === 'sent'
         ? hiringOwner
           ? t('edit.sent', { name: hiringOwner })
           : t('edit.sentNoOwner')
-        : t(`edit.${editor.status}`)}
+        : editor.status === 'saveFailed' || editor.status === 'saveForbidden'
+          ? ta(editor.status)
+          : t(`edit.${editor.status}`)}
     </div>
   );
 

@@ -201,18 +201,24 @@ export interface EvidenceContract {
    */
   listComparisons(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<Comparison[]>;
   /**
-   * A person resolves a contradiction with a note and the limit both items then state; the items show their own
-   * provenance again. A re-map keeps the resolution while the same two excerpts contradict. Audited
-   * (`evidence.contradiction_resolved`: actor, time, note) as the last statement; changes no stage, rank or contact.
-   * Admins and recruiters. Throws `EvidenceError` (`resolution_note`, `limit`, `comparison_not_found`).
+   * A person resolves a contradiction (AIV-P2-063): which of the two items stands (`standingItemId`, or null when both
+   * do), a note on why, and the limit the items then state. A standing item shows its own provenance again; the other
+   * stays "Contradictory" and counts nowhere. A re-map keeps the resolution while the same two excerpts contradict.
+   * Audited (`evidence.contradiction_resolved`: actor, time, note, the standing item) as the last statement; changes no
+   * stage, rank or contact. Admins and recruiters. Throws `EvidenceError` (`resolution_note`, `limit`, `standing`,
+   * `comparison_not_found`).
    */
   resolveContradiction(
     ctx: WorkspaceContext,
     comparisonId: string,
-    input: { note: string; limit: string },
+    input: { note: string; limit: string; standingItemId: string | null },
   ): Promise<void>;
-  /** Links an item to a competency of a job's rubric; linking twice keeps one link. Admins and recruiters. */
-  linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void>;
+  /**
+   * Links an item to a competency of a job's rubric; linking twice keeps one link, at the latest level. A changed level
+   * is audited (`evidence.level_changed`: actor, time, `reason`, the old and new level) as the last statement
+   * (AIV-P2-063). Admins and recruiters. Throws `EvidenceError` (`level`, `level_reason`, `not_found`).
+   */
+  linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink, reason: string): Promise<void>;
   /**
    * The candidate's items, oldest first, each with its source and its links to `jobId`'s competencies; items of an
    * earlier mapping run for the job are left out (AIV-P1-027). An empty list when there are none. Admins and recruiters.
@@ -305,7 +311,7 @@ export interface EvidenceContract {
   getLinkRead(ctx: WorkspaceContext, sourceId: string): Promise<LinkReadView | null>;
   /**
    * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
-   * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.
+   * validation" or "To check in interview"), with the default follow-up policy (after 2 days, at most twice). Audited.
    * Admins and recruiters. Throws `EvidenceError` (`nothing_to_request` "Nothing rests on a claim for this job",
    * `open_request`) and creates nothing.
    */
@@ -314,10 +320,17 @@ export interface EvidenceContract {
     input: { candidateId: string; jobId: string },
   ): Promise<EvidenceRequestView>;
   /**
-   * A person sends a draft: status "sent", a portal token issued (stored only as its SHA-256, valid 30 days) and
-   * returned once, `EvidenceRequestSent.v1` written. Audited. Throws `EvidenceError('request_status')` unless a draft.
+   * A person sends a draft: status "sent", a portal token issued (stored only as its SHA-256, valid 30 days),
+   * `EvidenceRequestSent.v1` written, and `queueEmail` called with the sent request and the token to queue the
+   * candidate's email in `ctx.tx` (the notifications module's `queueEmail`). All commit together or not at all
+   * (AIV-P2-063): when queuing throws, the request stays a draft, "Not sent", and sending again retries. Audited.
+   * Throws `EvidenceError('request_status')` unless a draft, or what `queueEmail` threw.
    */
-  sendRequest(ctx: WorkspaceContext, requestId: string): Promise<{ request: EvidenceRequestView; portalToken: string }>;
+  sendRequest(
+    ctx: WorkspaceContext,
+    requestId: string,
+    queueEmail: (sent: { request: EvidenceRequestView; portalToken: string }) => Promise<unknown>,
+  ): Promise<{ request: EvidenceRequestView; portalToken: string }>;
   /** A person closes the request. Audited. Throws `EvidenceError('request_status')` when already closed. */
   closeRequest(ctx: WorkspaceContext, requestId: string): Promise<void>;
   /** The request with its items, or null when the workspace has none. Admins and recruiters. */

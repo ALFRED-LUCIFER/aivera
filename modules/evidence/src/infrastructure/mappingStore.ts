@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { MappingStore } from '../application/mapping.ts';
 import { pairKey, type Resolution } from '../domain/corroboration.ts';
@@ -8,6 +8,13 @@ import { comparison, competencyLink, evidenceGap, item, mapping } from './schema
 /** Mapping runs over a workspace-scoped transaction: the workspace filter here, row-level security below it. */
 export function mappingStore(tx: Tx): MappingStore {
   return {
+    async tryLock(workspaceId, candidateId, jobId) {
+      // The key names the workspace too, so another workspace's runs never wait on this one.
+      const [row] = await tx.execute<{ got: boolean }>(
+        sql`select pg_try_advisory_xact_lock(hashtextextended(${`evidence.mapping:${workspaceId}:${candidateId}:${jobId}`}, 0)) as got`,
+      );
+      return row?.got === true;
+    },
     async insert(run, items, links, gaps, comparisons) {
       await tx.insert(mapping).values(run);
       if (items.length) await tx.insert(item).values(items);
@@ -33,6 +40,7 @@ export function mappingStore(tx: Tx): MappingStore {
           resolvedAt: comparison.resolvedAt,
           resolutionNote: comparison.resolutionNote,
           resolutionLimit: comparison.resolutionLimit,
+          resolutionStandingSourceId: comparison.resolutionStandingSourceId,
         })
         .from(comparison)
         .innerJoin(item, and(eq(item.workspaceId, comparison.workspaceId), eq(item.id, comparison.itemId)))

@@ -21,9 +21,9 @@ export type FilePickerProps = {
   disabled?: boolean;
   /** 0 to 100 while uploading, otherwise null. */
   progress?: number | null;
-  /** Announced politely: "Uploading, 40%", "Checking the file", "Uploaded." */
+  /** Announced politely: "Uploading… 40%", "Checking the file…", "Uploaded." */
   status?: string | null;
-  /** The size, type or scan refusal, e.g. "This file could not be accepted." */
+  /** The size, type or scan refusal, e.g. "We cannot use this file." */
   error?: string | null;
 };
 
