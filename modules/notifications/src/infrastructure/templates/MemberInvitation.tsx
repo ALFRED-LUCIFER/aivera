@@ -15,6 +15,7 @@ import type { TemplateContext } from './render.ts';
 
 // The "Email: workspace invitation" artboard (docs/01-design/artboards/EInvite.dc.html) and its four role variants
 // (ERoles.dc.html), HTML and plain text: only the role, its jobs and what it can and cannot see change.
+// Deviation from ERoles: the recruiter "cannot" line names the admin-only actions; the artboard predates ADR-014.
 
 export function memberInvitation(data: MemberInvitationData, { t, layout, sender }: TemplateContext) {
   const dir = layout.dir;

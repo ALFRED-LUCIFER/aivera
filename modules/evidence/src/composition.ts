@@ -579,6 +579,8 @@ export function createEvidenceMappingHandlers(config: {
           run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
         } catch (error) {
           if (error instanceof MappingBusy) {
+            // shortcut: busy requests are not coalesced, so each makes its own model call in turn; dedupe per candidate
+            // and job if pilot fan-out shows it.
             // Not a retry: the delivery budget would dead-letter the newest run behind a long model call.
             await config.scheduler.schedule(
               EVIDENCE_QUEUE,

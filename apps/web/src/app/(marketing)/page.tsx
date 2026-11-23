@@ -21,7 +21,6 @@ const mark = (chunks: ReactNode) => (
 const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
 const sweep = (chunks: ReactNode) => <ScrollSweep>{chunks}</ScrollSweep>;
 
-// Deviation from the Landing artboard: the hero card's weight is 35%, not 25%, to match the seeded demo job (AIV-P2-066).
 // Public: the website (AIV-P5-001). It reads no session and no candidate data; the job types come from the published
 // catalogue (ADR-013 point 15).
 export default async function WebsitePage() {

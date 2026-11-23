@@ -550,6 +550,7 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     };
     let tick = NOW.getTime();
     const rescheduled: Envelope[] = [];
+    const delays: number[] = [];
     const ordered = createEvidenceMappingHandlers({
       ai: createAiClient({
         provider: gated,
@@ -560,8 +561,9 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
       applications: { jobsForCandidate: async () => [], candidatesForJob: async () => [] },
       readPerson: readPersonAsSystem,
       scheduler: {
-        schedule: async (_queue, envelope) => {
+        schedule: async (_queue, envelope, at) => {
           rescheduled.push(envelope);
+          delays.push(at.getTime() - new Date(envelope.occurredAt).getTime());
           return '1';
         },
         cancel: async () => undefined,
@@ -593,6 +595,8 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
       // The newer run does not wait on the lock (it would outlast lock_timeout behind a model call): it is rescheduled.
       await run();
       expect(rescheduled).toHaveLength(1);
+      // Not retried at once: it waits out the run in flight.
+      expect(delays[0]).toBeGreaterThanOrEqual(60_000);
       expect(await tryLock(w1)).toBe(false);
       expect(await tryLock(w2)).toBe(true);
       release();

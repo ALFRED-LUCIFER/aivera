@@ -205,21 +205,23 @@ const idOf = (rows: readonly { id: string }[], i: number) => {
   return row.id;
 };
 
-/**
- * The worker job `evidence.mapping` (AIV-P1-027): maps the candidate's recorded evidence to the job's approved rubric
- * version through the model, applies the guards, and stores the links, the gaps and "What would change this" as one
- * run, then writes `EvidenceMapped.v1`. Before a rubric is approved it stores nothing (the evidence stays recorded).
- * A transient model failure throws, so the consumer retries with back-off; an out-of-budget or permanently rejected answer is rescheduled or dead-lettered by the handler.
- */
-// shortcut: an invented quote rejects the whole answer (citation contract), so a model repeating it dead-letters the
-// candidate's mapping; drop only that link if pilot telemetry shows it happening.
-// shortcut: the model call runs inside the consumer's workspace transaction, as the GitHub reads do; call it before
-// opening the write transaction if pilot mappings hold connections too long.
 /** Another mapping run for the candidate and job is in flight; the request runs again after it (AIV-P2-062). */
 export class MappingBusy extends Error {
   override name = 'MappingBusy';
 }
 
+/**
+ * The worker job `evidence.mapping` (AIV-P1-027): maps the candidate's recorded evidence to the job's approved rubric
+ * version through the model, applies the guards, and stores the links, the gaps and "What would change this" as one
+ * run, then writes `EvidenceMapped.v1`. Before a rubric is approved it stores nothing (the evidence stays recorded).
+ * A transient model failure throws, so the consumer retries with back-off; an out-of-budget or permanently rejected
+ * answer is rescheduled or dead-lettered by the handler, and a run already in flight for the candidate and job
+ * reschedules it (`MappingBusy`).
+ */
+// shortcut: an invented quote rejects the whole answer (citation contract), so a model repeating it dead-letters the
+// candidate's mapping; drop only that link if pilot telemetry shows it happening.
+// shortcut: the model call runs inside the consumer's workspace transaction, as the GitHub reads do; call it before
+// opening the write transaction if pilot mappings hold connections too long.
 export async function mapEvidence(
   ports: MappingPorts,
   tx: Tx,

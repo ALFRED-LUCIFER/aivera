@@ -58,7 +58,7 @@ export class SourceTooLong extends Error {
 }
 
 /** Whether `sources` fit the caps: each within MAX_SOURCE_CHARS, all within MAX_CALL_SOURCE_CHARS. */
-export const withinSourceCaps = (sources: readonly { text: string }[]) =>
+const withinSourceCaps = (sources: readonly { text: string }[]) =>
   sources.every((s) => s.text.length <= MAX_SOURCE_CHARS) &&
   sources.reduce((sum, s) => sum + s.text.length, 0) <= MAX_CALL_SOURCE_CHARS;
 
