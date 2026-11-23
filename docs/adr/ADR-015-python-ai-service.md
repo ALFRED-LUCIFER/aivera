@@ -1,0 +1,25 @@
+# ADR-015: A Python AI service behind `@credalent/ai`, and the worker moves to `apps/backend/worker`
+
+- **Status:** Accepted, 22 Nov 2026: the owner decided it in the 21 Nov 2026 architecture audit, so it is accepted now rather than in AIV-P2-068; the layout part is implemented here.
+- **Ticket:** AIV-P2-067 (#480); the service itself is AIV-P2-068, the admin app AIV-P5-019.
+- **Amends:** [ADR-006](ADR-006-ai-on-azure-foundry.md) point 2 (one AI package), [ADR-002](ADR-002-repository-layout.md) (the `apps/` layout) and [ADR-001](ADR-001-technology-stack.md) (TypeScript end to end: Python joins for this service only).
+
+## Context
+
+Prompting and orchestration for the assistant and later AI tasks (multi-step tool use, retrieval chains, agent frameworks on Azure AI Foundry) are best supported in Python. Until now ADR-006 point 2 put every model call in the TypeScript package `@credalent/ai`, and ADR-002 had one back-end app, `apps/worker`. The owner decided to add a Python service and to group the back-end apps before more worker code lands. The risk to manage: moving AI behind a second runtime must not weaken any safety check that ADR-006 and AGENTS.md 1.5 to 1.7 rely on.
+
+## Decision
+
+1. **Layout.** `apps/web` (front end), `apps/backend/worker` (the worker host, moved from `apps/worker` without behaviour change), `apps/ai-service` (Python, created by AIV-P2-068, not before: AGENTS.md 9.2). `modules/` and `packages/` are unchanged. A separate admin app comes only after the MVP (AIV-P5-019). The pnpm workspace lists `apps/*` and `apps/backend/*`, and the architecture tests list the apps under `apps/backend/` too. `apps/backend/` holds the TypeScript back-end apps that are pnpm packages; the AI service is Python, not a pnpm package, so it sits at `apps/ai-service`.
+2. **What the service does.** Prompting and orchestration only: it receives a task call, calls the model, and returns structured output. It has **no database access** (no connection string, no network path to PostgreSQL) and receives **no workspace data except what a task call carries**. It is deployed as an Azure Container App with internal ingress only, authenticates to Azure AI Foundry with managed identity, and holds no secret. Internal ingress is network reach, not a policy (AGENTS.md 1.3): every request carries the caller's managed-identity token, the service checks its audience and the caller's identity and refuses anything else, and AIV-P2-068 adds a test that every route declares that check. Tools and retrieval inside a multi-step task reach data only by calling back through TypeScript, never directly.
+3. **What stays in TypeScript, in `@credalent/ai`.** Identifier and protected-trait redaction (ADR-006 point 7), the per-workspace token budget (point 2), schema validation (point 3) and the citation check (point 4) stay in `@credalent/ai`. The service never receives unredacted text; its output is validated by the task's zod schema and the citation check before any module uses it, and output that fails is rejected exactly as today. For the budget, `@credalent/ai` checks the workspace's remaining budget before the call and passes a token cap with it; the service stops at the cap and returns the token use of every model call it made, and `@credalent/ai` charges that actual total, so a multi-step task is budgeted like a single call. `@credalent/ai` also checks the reported use is within the cap and treats a call over it as failed, so the budget never relies on the service behaving. No safety check moves to Python or is duplicated there in place of the TypeScript one.
+4. **One contract, generated.** The task contract is JSON Schema generated from the zod schemas in `@credalent/ai`; the service's pydantic v2 models are generated from that JSON Schema and checked in. CI regenerates both and fails the build on any drift.
+5. **The existing six tasks do not move.** They keep calling the model from `@credalent/ai`. A task moves to the service only by its own ticket, with the eval set passing before and after.
+6. **Region.** The service and its model deployments run in UAE North in pilot and production (AGENTS.md 1.10). Dev follows [ADR-008](ADR-008-dev-environment-shares-medvya-dev.md) and [ADR-011](ADR-011-dev-ai-in-uae-north-global.md).
+7. **Python rules** are in AGENTS.md (Python AI service section): ruff, mypy strict, pytest, pydantic v2, a `uv` lockfile, no prompt or answer text in logs, and the eval set in CI.
+
+## Consequences
+
+- A second language and toolchain (uv, ruff, mypy) in CI and in review; Copilot and the `code-reviewer` agent review Python against the same rulebook.
+- A network hop for tasks that move to the service; the token budget and citation check still run once, in TypeScript, around it.
+- Every path that named `apps/worker` (Dockerfile, deploy comments, Bicep comments, architecture tests, docs) now names `apps/backend/worker`; the image target and Container App names (`worker`, `ca-aivera-worker-dev`) are unchanged, so the deploy workflows are unchanged.

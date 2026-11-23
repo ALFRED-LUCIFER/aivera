@@ -6,7 +6,7 @@ import { envelopeSchema, type Envelope, type EventDefinition, type InboxTable } 
 import { backoffMs } from './relay.ts';
 import { withWorkspace } from './withWorkspace.ts';
 
-/** One received message and how to settle it; the worker adapts a Service Bus message to this (apps/worker). */
+/** One received message and how to settle it; the worker adapts a Service Bus message to this (apps/backend/worker). */
 export type Delivery = {
   body: unknown;
   /** 1 on the first delivery. */

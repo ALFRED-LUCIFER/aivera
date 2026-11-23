@@ -1,4 +1,4 @@
-// AIV-P0-015: the worker host in Credalent's environment: the outbox relay and the queue consumers (apps/worker).
+// AIV-P0-015: the worker host in Credalent's environment: the outbox relay and the queue consumers (apps/backend/worker).
 // No ingress; the probes reach its internal port. Two identities: id-aivera-dev (aivera_app, Service Bus receive)
 // and id-aivera-relay-dev (aivera_relay, Service Bus send).
 // shortcut: one replica always on, because the relay polls the outbox every second (smallest size, about $5 to $10 a

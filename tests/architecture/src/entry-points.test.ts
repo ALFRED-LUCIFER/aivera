@@ -13,12 +13,18 @@ describe('every server entry point declares its policy or is explicitly public (
     expect(findUndeclaredEntryPoints(repoRoot)).toEqual([]);
   });
 
+  // SAFETY: mutation check: removed the missing-folder throw -> this test failed
+  it('an app folder in the list that does not exist fails the check instead of passing it silently', () => {
+    expect(() => findUndeclaredEntryPoints(import.meta.dirname)).toThrow('apps/web/src does not exist');
+  });
+
   it.each([
     [`${web}/features/jobs/services/createJob.ts`, 'createJob'],
     // SAFETY: mutation check: accepted any file importing workspaceAction as declared -> these two cases failed
     [`${web}/app/api/jobs/route.ts`, 'POST'],
     [`${web}/app/api/jobs/route.ts`, 'GET'],
-    ['apps/worker/src/consumers/assessment.ts', 'handle'],
+    // SAFETY: mutation check: walked apps/worker instead of apps/backend/worker (ADR-015) -> every worker case failed
+    ['apps/backend/worker/src/consumers/assessment.ts', 'handle'],
     [`${web}/features/jobs/services/reexport.ts`, 'makeJob'],
     // SAFETY: mutation check: put getSessionUserId back in GUARDS -> this case failed
     [`${web}/features/signup/services/session.ts`, 'readsSession'],
@@ -38,10 +44,10 @@ describe('every server entry point declares its policy or is explicitly public (
     [`${web}/app/api/legacy/route.js`, 'GET'],
     [`${web}/app/api/mixed/route.ts`, 'GET'],
     // SAFETY: mutation check: removed the raw-receive check -> these cases failed
-    ['apps/worker/src/consumers/raw.ts', 'subscribe'],
-    ['apps/worker/src/consumers/raw.ts', 'processMessage'],
-    ['apps/worker/src/consumers/iterate.ts', 'getMessageIterator'],
-    ['apps/worker/src/consumers/iterate.ts', 'processMessage'],
+    ['apps/backend/worker/src/consumers/raw.ts', 'subscribe'],
+    ['apps/backend/worker/src/consumers/raw.ts', 'processMessage'],
+    ['apps/backend/worker/src/consumers/iterate.ts', 'getMessageIterator'],
+    ['apps/backend/worker/src/consumers/iterate.ts', 'processMessage'],
   ])('an undeclared entry point fails and names %s and %s', (file, name) => {
     expect(reported).toContainEqual(
       expect.stringMatching(new RegExp(`^${file.replace(/[.[\]()]/g, '\\$&')} ${name.replace(/[{}]/g, '\\$&')}: `)),
@@ -52,7 +58,7 @@ describe('every server entry point declares its policy or is explicitly public (
     expect(reported.filter((r) => / (?:createWorkspace|addApplicants):/.test(r))).toEqual([]);
     expect(reported.filter((r) => /declared\.ts|clients\.ts|api\/health\//.test(r))).toEqual([
       // the only one in those files: systemConsumer('') below
-      expect.stringContaining('apps/worker/src/consumers/declared.ts systemConsumer('),
+      expect.stringContaining('apps/backend/worker/src/consumers/declared.ts systemConsumer('),
     ]);
   });
 
@@ -62,7 +68,7 @@ describe('every server entry point declares its policy or is explicitly public (
       `${web}/app/api/probe/route.ts GET: publicEntry needs a reason`,
       `${web}/app/api/probe/route.ts HEAD: publicEntry needs a reason`,
       `${web}/app/api/probe/route.ts OPTIONS: publicEntry needs a reason`,
-      `apps/worker/src/consumers/declared.ts systemConsumer('', async (delivery: Delivery) => delivery.complete()): systemConsumer needs a reason`,
+      `apps/backend/worker/src/consumers/declared.ts systemConsumer('', async (delivery: Delivery) => delivery.complete()): systemConsumer needs a reason`,
     ]);
   });
 

@@ -159,6 +159,8 @@ describe('architecture boundaries (ADR-002, AGENTS.md 1.8 and 9)', () => {
     ['evidence-infrastructure', 'module-contracts-only', 'modules/assessment/src/application/x.ts'],
     ['evidence-infrastructure', 'relative-crosses-unit', 'modules/assessment/src/application/y.ts'],
     ['package-imports-app', 'package-imports-app', 'packages/ui/src/x.ts'],
+    // SAFETY: mutation check: listed apps one level deep only (dropped apps/backend/*) -> this case failed
+    ['package-imports-app', 'package-imports-app', 'packages/ui/src/y.ts'],
     ['module-no-ui', 'module-no-ui', 'modules/jobs/src/application/x.ts'],
     ['paid-ranking', 'paying-never-changes-ranking', 'modules/assessment/src/application/rank.ts'],
     ['components-tsx', 'components-tsx-only', 'apps/web/src/features/jobs/components/sortJobs.ts'],

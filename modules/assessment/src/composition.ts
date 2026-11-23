@@ -64,7 +64,7 @@ type ApplicationsPort = {
  * The `assessment` queue's worker jobs (AIV-P1-031): each scores the candidates an event touches against the job's
  * approved rubric version and stores a result only when it changed, as the system in the envelope's workspace.
  * `EvidenceMapped.v1` scores that candidate for that job; `RubricApproved.v1` and `EvidenceRecorded.v1` reach this
- * queue only while evidence mapping is off (apps/worker), and score every applicant of the job, or every job of the
+ * queue only while evidence mapping is off (apps/backend/worker), and score every applicant of the job, or every job of the
  * candidate. The jobs, evidence and intake reads come from the worker's composition root.
  */
 export function createAssessmentHandlers(config: {

@@ -33,7 +33,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2024-01-01' = {
   }
 }
 
-// One queue per consuming module; the worker maps each event type to one (apps/worker/src/main.ts).
+// One queue per consuming module; the worker maps each event type to one (apps/backend/worker/src/main.ts).
 var queues = ['assessment', 'candidates', 'evidence', 'jobs', 'notifications']
 
 resource queue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = [

@@ -102,6 +102,9 @@ export function* walk(dir: string): Generator<string> {
 const dirsIn = (dir: string) =>
   existsSync(dir) ? readdirSync(dir).filter((n) => statSync(join(dir, n)).isDirectory()) : [];
 
+/** apps/backend groups the back-end apps (ADR-015); its folders are apps too. */
+const APP_GROUP = 'backend';
+
 /** The unit a path belongs to, e.g. "modules/jobs", "packages/ui", "apps/web". */
 function unitOf(root: string, path: string): string | undefined {
   const [top, name] = relative(root, path).split(sep);
@@ -110,8 +113,12 @@ function unitOf(root: string, path: string): string | undefined {
 
 export function findViolations(root: string): Violation[] {
   const modules = new Set(dirsIn(join(root, 'modules')));
+  const apps = [
+    ...dirsIn(join(root, 'apps')).filter((app) => app !== APP_GROUP),
+    ...dirsIn(join(root, 'apps', APP_GROUP)).map((app) => `${APP_GROUP}/${app}`),
+  ];
   const appPackages = new Set(
-    dirsIn(join(root, 'apps')).flatMap((app) => {
+    apps.flatMap((app) => {
       const pkg = join(root, 'apps', app, 'package.json');
       return existsSync(pkg) ? [(JSON.parse(readFileSync(pkg, 'utf8')) as { name: string }).name] : [];
     }),

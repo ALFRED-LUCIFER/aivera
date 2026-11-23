@@ -104,7 +104,7 @@ resource appBlobRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
 ]
 
 // Malware scanning (pilot and production): Defender sends each scan result to an Event Grid topic, whose subscription
-// puts it on a Service Bus queue the worker receives from (apps/worker, SCAN_RESULTS_QUEUE). The worker has no ingress.
+// puts it on a Service Bus queue the worker receives from (apps/backend/worker, SCAN_RESULTS_QUEUE). The worker has no ingress.
 resource namespace 'Microsoft.ServiceBus/namespaces@2024-01-01' existing = if (malwareScanning) {
   name: serviceBusNamespaceName
 }
