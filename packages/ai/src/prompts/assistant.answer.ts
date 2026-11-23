@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { cited, type Source } from '../citations.ts';
 
-// "Ask Aivera" answers a recruiter's question from the page's sources (AIV-P2-068, the assistant of epic #23): the
+// The assistant answers a recruiter's question from the page's sources (AIV-P2-068, the assistant of epic #23): the
 // first task served by the Python AI service (ADR-015). The prompt stays here, versioned, so the eval set covers it;
 // the service makes the model call. The assistant module (AIV-P2-028) gathers the sources and calls it.
 
