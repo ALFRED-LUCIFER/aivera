@@ -128,10 +128,13 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   const own = word(alone.length ? alone : parts);
   // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
   const ownWord = parts.length ? `(?<!${letter})${own}` : '';
-  const lead = particles.length ? `(?:${word(particles)}[ \\t-]+)*` : '';
-  // A run of name parts on one line ("Sara Al Qahtani", "Al-Qahtani's") is one placeholder; it starts and ends on a
-  // non-particle. It never crosses a line break, or it would eat an email on the next line (AIV-P2-081).
-  const name = parts.length ? `(?<!${letter})${lead}${own}(?:[ \\t-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
+  const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
+  // A name part that starts an email ("sara.alqahtani@") is left to the email: a run ending in it would eat the
+  // candidate's own address and leave its tail unredacted (AIV-P2-081).
+  const part = `${own}(?![\\w.%+-]*@)`;
+  // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's", split across lines) is one placeholder; it starts and ends
+  // on a non-particle.
+  const name = parts.length ? `(?<!${letter})${lead}${part}(?:[\\s-]+${lead}${part})*(?:['’]s(?!${letter}))?` : '';
   // The record's own phones match by their digits in any formatting, spaced dashes included, at any length.
   const record = phones
     .map((phone) => phone.replace(/\D/g, '').replace(/^00/, ''))

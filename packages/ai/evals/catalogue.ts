@@ -1,7 +1,7 @@
 import type { AiClient, TokenBudgetStore } from '../src/client.ts';
 import { detectDomainRunner, liveTokenCap, runners, type Runner } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
-import { evalWorkspaceId, evaluateTask, liveJudge } from './run.ts';
+import { evalWorkspaceId, evaluateTask, liveJudge, liveMatcher } from './run.ts';
 
 // The live eval of a catalogue draft (AIV-P2-048, ADR-013 point 12): the jobs.detectDomain and jobs.draftCompetencies
 // golden sets under the thresholds of config.ts, the draft's keys as data. Inputs are the synthetic golden cases only,
@@ -71,7 +71,13 @@ export async function evaluateCatalogue(
     const cases = golden.get(task);
     const runner = run[task];
     if (!cases?.length || !runner) throw new Error(`No golden cases or runner for ${task}`);
-    const report = await evaluateTask(task, cases, (_task, c) => runner(ai, c, evalWorkspaceId), judge);
+    const report = await evaluateTask(
+      task,
+      cases,
+      (_task, c) => runner(ai, c, evalWorkspaceId),
+      judge,
+      liveMatcher(ai),
+    );
     unavailable ||= report.cases.some((c) => c.error !== undefined && UNAVAILABLE.has(c.error));
     tasks.push({
       task,

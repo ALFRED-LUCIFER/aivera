@@ -36,7 +36,14 @@ export type Matcher = (
 const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge', 'prompt'] as const;
 type Metric = (typeof metrics)[number];
 
-type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
+type CaseResult = {
+  id: string;
+  passed: boolean;
+  error?: string;
+  scores: Partial<Record<Metric, Ratio>>;
+  /** The matcher's verdicts for this case (config.ts `meaning`): what a re-recording stores as `recorded.matches`. */
+  matches?: Record<string, string | null>;
+};
 export type TaskReport = {
   task: string;
   passed: boolean;
@@ -142,11 +149,11 @@ export const judgePrompt = {
 export const matchPrompt = {
   id: 'evals.match@1',
   system:
-    'You compare short texts: competency names, or statements from a CV. For each expected text, give the one ' +
-    'candidate that means the same, worded differently, or null when none does. Same meaning: the same skill, area of ' +
+    'You compare short texts: competency names, or statements from a CV. For each expected text, give the one of ' +
+    'its options that means the same, worded differently, or null when none does. Same meaning: the same skill, area of ' +
     'work or fact, not merely a related one ("Incident response" and "On-call incident handling" match; "Incident ' +
     'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
-    'the candidate exactly. Answer for every expected text, in order.',
+    'the option exactly. Answer for every expected text, in order.',
 };
 const matchVerdicts = z.object({
   matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
@@ -199,6 +206,7 @@ async function scoreCase(
   const { statements: statementPaths } = taskThresholds[task] ?? { statements: [] };
   try {
     const output = await answer(task, golden);
+    let matches: Record<string, string | null> | undefined;
     const scores: CaseResult['scores'] = {
       citationValidity: citationValidity(output, sources, statementPaths),
       contract: contract(task, output, sources),
@@ -210,17 +218,23 @@ async function scoreCase(
       const misses = missedPoints(output, expected.match).filter(
         (p): p is { path: string; value: string } => meaning.has(p.path) && typeof p.value === 'string',
       );
-      const candidates = (path: string) => valuesAt(output, path).filter((v): v is string => typeof v === 'string');
-      const same = misses.length
-        ? await matcher(
-            golden,
-            misses.map((p) => ({ expected: p.value, candidates: candidates(p.path) })),
-          )
-        : {};
+      // An output value that already matches an expected one exactly is taken: only the rest may answer a miss.
+      const taken = (path: string) => [expected.match?.[path]].flat();
+      const free = (path: string) =>
+        valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
+      if (misses.length)
+        matches = await matcher(
+          golden,
+          misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
+        );
+      const used = new Set<string>();
       scores.fieldMatch = fieldMatch(output, expected.match, ({ path, value }) => {
-        const found = typeof value === 'string' ? same[value] : null;
-        // A verdict counts only when the name it points to is really in the output at that path.
-        return meaning.has(path) && typeof found === 'string' && candidates(path).includes(found);
+        const found = typeof value === 'string' ? matches?.[value] : null;
+        // A verdict counts only when the value it names is free in the output at that path, and once.
+        if (!meaning.has(path) || typeof found !== 'string' || !free(path).includes(found)) return false;
+        if (used.has(`${path}\u0000${found}`)) return false;
+        used.add(`${path}\u0000${found}`);
+        return true;
       });
     }
     if (expected.safety) scores.safety = safety(output, expected.safety);
@@ -234,7 +248,7 @@ async function scoreCase(
       const score = scores[metric];
       return !score || score.total === 0 || score.n / score.total >= threshold[metric];
     });
-    return { id: golden.id, passed, scores };
+    return { id: golden.id, passed, scores, ...(matches ? { matches } : {}) };
   } catch (error) {
     // The error's name only: a provider's error can repeat the prompt (AGENTS.md 1.2). A stale recording's message is
     // prompt ids and hashes, and tells the developer what to do.
@@ -254,7 +268,7 @@ export async function evaluateTask(
   cases: GoldenCase[],
   answer: Answer,
   judge: Judge,
-  matcher: Matcher = recordedMatcher,
+  matcher: Matcher,
 ): Promise<TaskReport> {
   const thresholds = thresholdsOf(task);
   const results: CaseResult[] = [];

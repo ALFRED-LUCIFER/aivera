@@ -130,13 +130,26 @@ describe('the replacer', () => {
     expect(CONTACT_EXTRACTION_TASKS).toEqual(['evidence.parseCv']);
   });
 
-  // SAFETY: mutation check: let a name run cross a line break ([\s-]+) -> this test failed ("[CANDIDATE].alqahtani")
-  it('ends a name at the line end, so an email on the next line stays whole (AIV-P2-081)', () => {
-    const cv = 'Sara Al Qahtani\nsara.alqahtani@example.com\n+971 50 000 0001';
-    expect(redactSources([source(cv, 'cv')], sara, true).sources[0]?.text).toBe(
-      '[CANDIDATE]\nsara.alqahtani@example.com\n+971 50 000 0001',
+  // SAFETY: mutation check: removed the not-an-email lookahead on a name part -> this test failed
+  // ("[CANDIDATE].alqahtani@example.com" on every separator)
+  it.each(['\n', ' ', ' - ', '\t', ' · '])(
+    'never lets a name eat the email after it (separator %j, AIV-P2-081)',
+    (separator) => {
+      const cv = `Sara Al Qahtani${separator}sara.alqahtani@example.com`;
+      expect(redactSources([source(cv, 'cv')], sara, true).sources[0]?.text).toBe(
+        `[CANDIDATE]${separator}sara.alqahtani@example.com`,
+      );
+      expect(redactSources([source(cv, 'cv')], sara, false).sources[0]?.text).toBe(`[CANDIDATE]${separator}[EMAIL_1]`);
+    },
+  );
+
+  it('keeps a name split across lines or by a no-break space as one placeholder', () => {
+    expect(redactSources([source('Sara Al\nQahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
+      '[CANDIDATE] led it',
     );
-    expect(redactSources([source(cv, 'cv')], sara, false).sources[0]?.text).toBe('[CANDIDATE]\n[EMAIL_1]\n[PHONE_1]');
+    expect(redactSources([source('Sara Al Qahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
+      '[CANDIDATE] led it',
+    );
   });
 });
 
