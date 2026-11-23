@@ -3,7 +3,11 @@ export {
   AiUnavailable,
   BudgetExceeded,
   createAiClient,
+  MAX_CALL_SOURCE_CHARS,
+  MAX_SOURCE_CHARS,
+  SourceTooLong,
   UnknownAiTask,
+  withinSourceCaps,
   type AiClient,
   type TokenBudgetStore,
 } from './client.ts';

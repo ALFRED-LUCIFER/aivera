@@ -129,6 +129,8 @@ const MESSAGES = {
   called_on: 'Give the date of the call',
   resolution_note: 'Write a note on how the contradiction was resolved',
   comparison_not_found: 'No such contradiction',
+  level_reason: 'Give the reason for this level',
+  standing: 'Choose one of the two sources, or both',
 } as const;
 
 export type EvidenceErrorCode = keyof typeof MESSAGES;

@@ -9,6 +9,7 @@ import {
   flaggedPairs,
   InvalidCitation,
   SchemaMismatch,
+  SourceTooLong,
   UncitedOutput,
   modelOf,
   parseCvRequest,
@@ -126,6 +127,15 @@ const publishContradictionResolved: Ports['publishContradictionResolved'] = (
     occurredAt,
   });
 
+const publishMappingRequested: Ports['publishMappingRequested'] = (tx, { workspaceId, ...payload }, occurredAt) =>
+  enqueue(tx, outbox, EvidenceMappingRequestedV1, {
+    workspaceId,
+    payload,
+    // Every resolution asks once; a later one must not be dropped as a duplicate.
+    dedupeKey: `mapping:resolution:${uuidv7()}`,
+    occurredAt,
+  });
+
 const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
   log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
 const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
@@ -187,6 +197,7 @@ export function createEvidence(
     storeFor: evidenceStore,
     publishRecorded,
     publishContradictionResolved,
+    publishMappingRequested,
     candidateJob,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
@@ -321,7 +332,10 @@ async function rescheduleForBudget<P>(
 
 /** An answer a retry cannot fix is dead-lettered on the first delivery (AIV-P1-089). */
 const permanent = (error: unknown): error is Error =>
-  error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput;
+  error instanceof InvalidCitation ||
+  error instanceof SchemaMismatch ||
+  error instanceof UncitedOutput ||
+  error instanceof SourceTooLong;
 
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request
@@ -516,6 +530,7 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.gaps': counts.gaps,
           'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          'credalent.evidence.too_long': counts.tooLong,
           'credalent.evidence.compared.sent': compared.sent,
           'credalent.evidence.compared.flagged': compared.flagged,
           'credalent.evidence.compared.rejected': compared.rejected,

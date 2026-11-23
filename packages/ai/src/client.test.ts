@@ -12,7 +12,10 @@ import {
   AiUnavailable,
   BudgetExceeded,
   createAiClient,
+  MAX_CALL_SOURCE_CHARS,
+  MAX_SOURCE_CHARS,
   memoryTokenBudget,
+  SourceTooLong,
   UnknownAiTask,
   type TokenBudgetStore,
 } from './client';
@@ -347,6 +350,33 @@ describe('Scenario: Workspace budget', () => {
       });
     },
   );
+});
+
+// Job descriptions need no identifiers, so only the caps decide.
+const job = (text: string) => ({ id: 'S', kind: 'job_description' as const, text });
+
+describe('Scenario: An oversized source is not truncated silently (AIV-P2-062)', () => {
+  it.each([
+    ['one source at the cap', [job('x'.repeat(MAX_SOURCE_CHARS))], true],
+    ['one source a character over', [job('x'.repeat(MAX_SOURCE_CHARS + 1))], false],
+    [
+      'four sources filling the call cap',
+      Array.from({ length: 4 }, () => job('x'.repeat(MAX_CALL_SOURCE_CHARS / 4))),
+      true,
+    ],
+    [
+      'five sources a source over it',
+      Array.from({ length: 5 }, () => job('x'.repeat(MAX_CALL_SOURCE_CHARS / 4))),
+      false,
+    ],
+  ])('%s', async (_, sources, sent) => {
+    const { ai, calls } = setup(fake({ completion: '{"ready":true}' }));
+    const result = ai.generateStructured({ ...draft, sources });
+    // SAFETY: mutation check: removed the withinSourceCaps check -> this test failed
+    if (sent) await expect(result).resolves.toBeDefined();
+    else await expect(result).rejects.toBeInstanceOf(SourceTooLong);
+    expect(calls).toHaveLength(sent ? 1 : 0);
+  });
 });
 
 describe('embed', () => {
