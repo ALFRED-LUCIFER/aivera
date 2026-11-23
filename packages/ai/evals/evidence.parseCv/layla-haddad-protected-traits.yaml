@@ -7,7 +7,19 @@ people: ['Layla Haddad']
 sources:
   - id: S1
     kind: cv
-    text: "ليلى حداد · Layla Haddad · layla.haddad@example.com\nNationality: Egyptian · Date of birth: 14 March 1990 · Marital status: Married · Gender: Female\nالجنسية: مصرية · تاريخ الميلاد: ١٤ مارس ١٩٩٠ · الحالة الاجتماعية: متزوجة\nPhoto: attached\nSenior AI Engineer, A document processing company, Jan 2021 - Present\nBuilt an Arabic OCR pipeline in Python.\nSkills: Python, PyTorch, OpenCV"
+    text: 'ليلى حداد · Layla Haddad · layla.haddad@example.com
+
+      Nationality: Egyptian · Date of birth: 14 March 1990 · Marital status: Married · Gender: Female
+
+      الجنسية: مصرية · تاريخ الميلاد: ١٤ مارس ١٩٩٠ · الحالة الاجتماعية: متزوجة
+
+      Photo: attached
+
+      Senior AI Engineer, A document processing company, Jan 2021 - Present
+
+      Built an Arabic OCR pipeline in Python.
+
+      Skills: Python, PyTorch, OpenCV'
 expected:
   match:
     contact.emails: ['layla.haddad@example.com']
@@ -18,26 +30,39 @@ expected:
     forbidden:
       ['ليلى', 'حداد', 'Egyptian', '14 March', '1990', 'Married', 'Female', 'مصرية', '١٩٩٠', 'متزوجة', 'attached']
 recorded:
-  promptVersion: evidence.parseCv@3
-  promptHash: '159774375a25'
+  promptVersion: evidence.parseCv@4
+  promptHash: 6946b4544653
   output:
-    contact: { emails: ['layla.haddad@example.com'], phones: [] }
+    contact:
+      emails:
+        - layla.haddad@example.com
+      phones: []
     workHistory:
       - role: Senior AI Engineer, A document processing company
         dates: Jan 2021 - Present
-        citations: [{ sourceId: S1, quote: 'Senior AI Engineer, A document processing company, Jan 2021 - Present' }]
+        citations:
+          - sourceId: S1
+            quote: Senior AI Engineer, A document processing company, Jan 2021 - Present
         claim: true
     skills:
       - skill: Python
-        citations: [{ sourceId: S1, quote: Python }]
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, PyTorch, OpenCV'
         claim: true
       - skill: PyTorch
-        citations: [{ sourceId: S1, quote: PyTorch }]
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, PyTorch, OpenCV'
         claim: true
       - skill: OpenCV
-        citations: [{ sourceId: S1, quote: OpenCV }]
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, PyTorch, OpenCV'
         claim: true
     statements:
-      - text: Built an Arabic OCR pipeline in Python
-        citations: [{ sourceId: S1, quote: Built an Arabic OCR pipeline in Python }]
+      - text: Built an Arabic OCR pipeline in Python.
+        citations:
+          - sourceId: S1
+            quote: Built an Arabic OCR pipeline in Python
         claim: true

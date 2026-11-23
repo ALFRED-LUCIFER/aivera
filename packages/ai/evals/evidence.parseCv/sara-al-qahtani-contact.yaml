@@ -7,30 +7,48 @@ people: ['Sara Al Qahtani']
 sources:
   - id: S1
     kind: cv
-    text: "Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer\nSummary: Sara Al Qahtani led the Gulf Arabic eval set for a BNPL fintech.\nSkills: Python, PyTorch"
+    text: 'Sara Al Qahtani · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer
+
+      Summary: Sara Al Qahtani led the Gulf Arabic eval set for a BNPL fintech.
+
+      Skills: Python, PyTorch'
 expected:
   match:
     contact.emails: ['sara.al.qahtani@example.com']
     contact.phones: ['+44 7700 900123']
     statements[*].text: ['[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech']
 recorded:
-  promptVersion: evidence.parseCv@3
-  promptHash: 'fde4f4a164b1'
+  promptVersion: evidence.parseCv@4
+  promptHash: 95a3c60568b5
   output:
-    contact: { emails: ['sara.al.qahtani@example.com'], phones: ['+44 7700 900123'] }
+    contact:
+      emails:
+        - sara.al.qahtani@example.com
+      phones:
+        - +44 7700 900123
     workHistory:
       - role: Senior AI Engineer
         dates: null
-        citations: [{ sourceId: S1, quote: Senior AI Engineer }]
+        citations:
+          - sourceId: S1
+            quote: sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer
         claim: true
     skills:
       - skill: Python
-        citations: [{ sourceId: S1, quote: Python }]
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, PyTorch'
         claim: true
       - skill: PyTorch
-        citations: [{ sourceId: S1, quote: PyTorch }]
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, PyTorch'
         claim: true
     statements:
-      - text: '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech'
-        citations: [{ sourceId: S1, quote: led the Gulf Arabic eval set for a BNPL fintech }]
+      - text: '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech.'
+        citations:
+          - sourceId: S1
+            quote: led the Gulf Arabic eval set for a BNPL fintech
         claim: true
+  matches:
+    '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech': '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech.'

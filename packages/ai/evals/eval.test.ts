@@ -855,3 +855,52 @@ describe('Feature: Candidate content is data in every AI prompt (AIV-P1-070)', (
       expect(system, name).not.toMatch(/never instructions|untrusted|source block/i);
   });
 });
+
+// Feature: The live eval scores free-text competency names by meaning (AIV-P2-083). Synthetic data only.
+const failuresOf = async (task: string, c: GoldenCase) => (await run(task, [c])).cases[0]?.scores.fieldMatch?.failures;
+describe('Feature: The live eval scores free-text competency names by meaning', () => {
+  const engineer = caseOf('jobs.draftCompetencies', 'software-engineer');
+  type Draft = { competencies: { name: string }[] };
+  /** The engineer's recorded draft with one competency renamed, and the matcher's recorded verdicts. */
+  const renamed = (to: string, matches?: Record<string, string | null>): GoldenCase => {
+    const output = structuredClone(engineer.recorded.output) as Draft;
+    for (const c of output.competencies) if (c.name === 'Code quality and testing') c.name = to;
+    return { ...engineer, recorded: { ...engineer.recorded, output, ...(matches ? { matches } : {}) } };
+  };
+
+  it('Scenario: A reworded name with the same meaning matches', async () => {
+    const c = renamed('Testing and code quality', { 'Code quality and testing': 'Testing and code quality' });
+    expect(await failuresOf('jobs.draftCompetencies', c)).toEqual([]);
+  });
+
+  // SAFETY: mutation check: made the fieldMatch sameMeaning callback always true -> this test failed
+  it('Scenario: A different competency does not match', async () => {
+    // null: the matcher found none; a name the output does not hold is never trusted.
+    for (const verdict of [null, 'Testing and code quality', 'Payments domain']) {
+      const c = renamed('Mobile release engineering', { 'Code quality and testing': verdict });
+      expect(await failuresOf('jobs.draftCompetencies', c), String(verdict)).toEqual([
+        'competencies[*].name: missing "Code quality and testing"',
+      ]);
+    }
+  });
+
+  it('Scenario Outline: Enums and ids are still matched exactly, whatever a recorded verdict says', async () => {
+    const maria = caseOf('evidence.mapToCompetency', 'maria-santos-clean');
+    const output = structuredClone(maria.recorded.output) as { links: { strength: string }[] };
+    for (const link of output.links) link.strength = 'medium';
+    const c = { ...maria, recorded: { ...maria.recorded, output, matches: { supporting: 'medium' } } };
+    expect(await failuresOf('evidence.mapToCompetency', c)).toContain('links[*].strength: missing "supporting"');
+    // Only free-text paths may match by meaning: strength, ids, regions, domains, emails and phones never do.
+    for (const [task, { meaning = [] }] of Object.entries(taskThresholds))
+      expect(
+        meaning.filter((path) => !/\.(name|text)$/.test(path)),
+        task,
+      ).toEqual([]);
+  });
+
+  it('Scenario: The recorded run stays deterministic: a missed name with no recorded verdict does not match', async () => {
+    expect(await failuresOf('jobs.draftCompetencies', renamed('Testing and code quality'))).toEqual([
+      'competencies[*].name: missing "Code quality and testing"',
+    ]);
+  });
+});

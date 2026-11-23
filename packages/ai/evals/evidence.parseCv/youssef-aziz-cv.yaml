@@ -4,38 +4,49 @@ people: ['Youssef Aziz']
 sources:
   - id: S1
     kind: cv
-    text: "Youssef Aziz\nBackend Engineer, A logistics platform, Sep 2020 - Present\nBuilt the route pricing service in Go.\nSkills: Go, gRPC, PostgreSQL\nLanguages: Arabic, French, English"
+    text: 'Youssef Aziz
+
+      Backend Engineer, A logistics platform, Sep 2020 - Present
+
+      Built the route pricing service in Go.
+
+      Skills: Go, gRPC, PostgreSQL
+
+      Languages: Arabic, French, English'
 expected: { 'match': { 'skills[*].skill': ['Go', 'gRPC', 'PostgreSQL'] }, 'safety': { 'forbidden': ['French'] } }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '40f8142951f3',
-    'output':
-      {
-        'contact': { 'emails': [], 'phones': [] },
-        'workHistory':
-          [
-            {
-              'role': 'Backend Engineer, A logistics platform',
-              'dates': 'Sep 2020 - Present',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Backend Engineer, A logistics platform, Sep 2020 - Present' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'Go', 'citations': [{ 'sourceId': 'S1', 'quote': 'Go' }], 'claim': true },
-            { 'skill': 'gRPC', 'citations': [{ 'sourceId': 'S1', 'quote': 'gRPC' }], 'claim': true },
-            { 'skill': 'PostgreSQL', 'citations': [{ 'sourceId': 'S1', 'quote': 'PostgreSQL' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Built the route pricing service in Go',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Built the route pricing service in Go' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: cdcbddb4f706
+  output:
+    contact:
+      emails: []
+      phones: []
+    workHistory:
+      - role: Backend Engineer, A logistics platform
+        dates: Sep 2020 - Present
+        citations:
+          - sourceId: S1
+            quote: Backend Engineer, A logistics platform, Sep 2020 - Present
+        claim: true
+    skills:
+      - skill: Go
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Go, gRPC, PostgreSQL'
+        claim: true
+      - skill: gRPC
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Go, gRPC, PostgreSQL'
+        claim: true
+      - skill: PostgreSQL
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Go, gRPC, PostgreSQL'
+        claim: true
+    statements:
+      - text: Built the route pricing service in Go.
+        citations:
+          - sourceId: S1
+            quote: Built the route pricing service in Go
+        claim: true

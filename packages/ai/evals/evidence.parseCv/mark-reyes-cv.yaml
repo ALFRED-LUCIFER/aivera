@@ -4,40 +4,52 @@ people: ['Mark Reyes']
 sources:
   - id: S1
     kind: cv
-    text: "Mark Reyes\nSite Reliability Engineer, A telecom operator, Jul 2019 - Present\nCut paging alerts by half by moving checks to SLO burn rates.\nSkills: Kubernetes, Prometheus, Terraform and Grafana"
+    text: 'Mark Reyes
+
+      Site Reliability Engineer, A telecom operator, Jul 2019 - Present
+
+      Cut paging alerts by half by moving checks to SLO burn rates.
+
+      Skills: Kubernetes, Prometheus, Terraform and Grafana'
 expected: { 'match': { 'skills[*].skill': ['Kubernetes', 'Prometheus', 'Terraform', 'Grafana'] } }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': 'f7c542322a7a',
-    'output':
-      {
-        'contact': { 'emails': [], 'phones': [] },
-        'workHistory':
-          [
-            {
-              'role': 'Site Reliability Engineer, A telecom operator',
-              'dates': 'Jul 2019 - Present',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Site Reliability Engineer, A telecom operator, Jul 2019 - Present' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'Kubernetes', 'citations': [{ 'sourceId': 'S1', 'quote': 'Kubernetes' }], 'claim': true },
-            { 'skill': 'Prometheus', 'citations': [{ 'sourceId': 'S1', 'quote': 'Prometheus' }], 'claim': true },
-            { 'skill': 'Terraform', 'citations': [{ 'sourceId': 'S1', 'quote': 'Terraform' }], 'claim': true },
-            { 'skill': 'Grafana', 'citations': [{ 'sourceId': 'S1', 'quote': 'Grafana' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Cut paging alerts by half by moving checks to SLO burn rates',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Cut paging alerts by half by moving checks to SLO burn rates' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: 8bbbf11e958a
+  output:
+    contact:
+      emails: []
+      phones: []
+    workHistory:
+      - role: Site Reliability Engineer, A telecom operator
+        dates: Jul 2019 - Present
+        citations:
+          - sourceId: S1
+            quote: Site Reliability Engineer, A telecom operator, Jul 2019 - Present
+        claim: true
+    skills:
+      - skill: Kubernetes
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+        claim: true
+      - skill: Prometheus
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+        claim: true
+      - skill: Terraform
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+        claim: true
+      - skill: Grafana
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+        claim: true
+    statements:
+      - text: Cut paging alerts by half by moving checks to SLO burn rates.
+        citations:
+          - sourceId: S1
+            quote: Cut paging alerts by half by moving checks to SLO burn rates
+        claim: true

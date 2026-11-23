@@ -65,6 +65,11 @@ export const goldenCase = z
         promptHash: z.string().min(1).optional(),
         output: z.unknown(),
         judge: verdict.optional(),
+        /**
+         * For an expected free-text value the answer words differently (config.ts `meaning`), the answer's value that
+         * means the same, or null: the live matcher's verdict, so a recorded run scores it without a model (AIV-P2-083).
+         */
+        matches: z.record(z.string(), z.string().nullable()).optional(),
       })
       .strict(),
   })

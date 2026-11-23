@@ -4,43 +4,54 @@ people: ['Paolo Garcia']
 sources:
   - id: S1
     kind: cv
-    text: "Paolo Garcia\nML Engineer, A travel marketplace, Jan 2021 - Present\nBuilt a customer support assistant on a retrieval pipeline.\nDesigned the offline eval set used before each release.\nSkills: Python, Kafka, dbt"
+    text: 'Paolo Garcia
+
+      ML Engineer, A travel marketplace, Jan 2021 - Present
+
+      Built a customer support assistant on a retrieval pipeline.
+
+      Designed the offline eval set used before each release.
+
+      Skills: Python, Kafka, dbt'
 expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*].skill': ['Python', 'Kafka', 'dbt'] } }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '886389b03e9c',
-    'output':
-      {
-        'contact': { 'emails': [], 'phones': [] },
-        'workHistory':
-          [
-            {
-              'role': 'ML Engineer, A travel marketplace',
-              'dates': 'Jan 2021 - Present',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'ML Engineer, A travel marketplace, Jan 2021 - Present' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
-            { 'skill': 'Kafka', 'citations': [{ 'sourceId': 'S1', 'quote': 'Kafka' }], 'claim': true },
-            { 'skill': 'dbt', 'citations': [{ 'sourceId': 'S1', 'quote': 'dbt' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Built a customer support assistant on a retrieval pipeline',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Built a customer support assistant on a retrieval pipeline' }],
-              'claim': true,
-            },
-            {
-              'text': 'Designed the offline eval set used before each release',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Designed the offline eval set used before each release' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: eeb3b8146e4a
+  output:
+    contact:
+      emails: []
+      phones: []
+    workHistory:
+      - role: ML Engineer, A travel marketplace
+        dates: Jan 2021 - Present
+        citations:
+          - sourceId: S1
+            quote: ML Engineer, A travel marketplace, Jan 2021 - Present
+        claim: true
+    skills:
+      - skill: Python
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, Kafka, dbt'
+        claim: true
+      - skill: Kafka
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, Kafka, dbt'
+        claim: true
+      - skill: dbt
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, Kafka, dbt'
+        claim: true
+    statements:
+      - text: Built a customer support assistant on a retrieval pipeline.
+        citations:
+          - sourceId: S1
+            quote: Built a customer support assistant on a retrieval pipeline
+        claim: true
+      - text: Designed the offline eval set used before each release.
+        citations:
+          - sourceId: S1
+            quote: Designed the offline eval set used before each release
+        claim: true

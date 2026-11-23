@@ -4,38 +4,53 @@ people: ['Fatima Al Hammadi']
 sources:
   - id: S1
     kind: cv
-    text: "Fatima Al Hammadi\nfatima.alhammadi@example.com\n+971 50 000 0002\nProduct Analyst, A retail bank, Apr 2021 - Present\nBuilt the weekly card-spend dashboard used by the risk team.\nSkills: SQL, Looker, Python"
+    text: 'Fatima Al Hammadi
+
+      fatima.alhammadi@example.com
+
+      +971 50 000 0002
+
+      Product Analyst, A retail bank, Apr 2021 - Present
+
+      Built the weekly card-spend dashboard used by the risk team.
+
+      Skills: SQL, Looker, Python'
 expected: { 'match': { 'contact.emails': ['fatima.alhammadi@example.com'], 'contact.phones': ['+971 50 000 0002'] } }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': 'a1372f9d86f5',
-    'output':
-      {
-        'contact': { 'emails': ['fatima.alhammadi@example.com'], 'phones': ['+971 50 000 0002'] },
-        'workHistory':
-          [
-            {
-              'role': 'Product Analyst, A retail bank',
-              'dates': 'Apr 2021 - Present',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Product Analyst, A retail bank, Apr 2021 - Present' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'SQL', 'citations': [{ 'sourceId': 'S1', 'quote': 'SQL' }], 'claim': true },
-            { 'skill': 'Looker', 'citations': [{ 'sourceId': 'S1', 'quote': 'Looker' }], 'claim': true },
-            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Built the weekly card-spend dashboard used by the risk team',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Built the weekly card-spend dashboard used by the risk team' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: 1386e3617f96
+  output:
+    contact:
+      emails:
+        - fatima.alhammadi@example.com
+      phones:
+        - +971 50 000 0002
+    workHistory:
+      - role: Product Analyst, A retail bank
+        dates: Apr 2021 - Present
+        citations:
+          - sourceId: S1
+            quote: Product Analyst, A retail bank, Apr 2021 - Present
+        claim: true
+    skills:
+      - skill: SQL
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Looker, Python'
+        claim: true
+      - skill: Looker
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Looker, Python'
+        claim: true
+      - skill: Python
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Looker, Python'
+        claim: true
+    statements:
+      - text: Built the weekly card-spend dashboard used by the risk team.
+        citations:
+          - sourceId: S1
+            quote: Built the weekly card-spend dashboard used by the risk team
+        claim: true

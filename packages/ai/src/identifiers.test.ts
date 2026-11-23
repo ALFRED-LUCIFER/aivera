@@ -129,6 +129,15 @@ describe('the replacer', () => {
     expect(sources[0]?.text).toBe('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer');
     expect(CONTACT_EXTRACTION_TASKS).toEqual(['evidence.parseCv']);
   });
+
+  // SAFETY: mutation check: let a name run cross a line break ([\s-]+) -> this test failed ("[CANDIDATE].alqahtani")
+  it('ends a name at the line end, so an email on the next line stays whole (AIV-P2-081)', () => {
+    const cv = 'Sara Al Qahtani\nsara.alqahtani@example.com\n+971 50 000 0001';
+    expect(redactSources([source(cv, 'cv')], sara, true).sources[0]?.text).toBe(
+      '[CANDIDATE]\nsara.alqahtani@example.com\n+971 50 000 0001',
+    );
+    expect(redactSources([source(cv, 'cv')], sara, false).sources[0]?.text).toBe('[CANDIDATE]\n[EMAIL_1]\n[PHONE_1]');
+  });
 });
 
 /** A client whose model answers `outputs` in turn and records every request. */

@@ -6,7 +6,25 @@ people: ['Sara Al Qahtani']
 sources:
   - id: S1
     kind: cv
-    text: "Sara Al Qahtani\nsara.alqahtani@example.com | +971 50 000 0001\nSkills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI\nLanguages: Arabic, English\nSenior AI Engineer, A BNPL fintech\nJun 2020 - Aug 2023\nMerchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.\nAI Engineer, A grocery delivery app\nMar 2018 - May 2020\nBuilt the Gulf Arabic evaluation set used before each release."
+    text: 'Sara Al Qahtani
+
+      sara.alqahtani@example.com | +971 50 000 0001
+
+      Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI
+
+      Languages: Arabic, English
+
+      Senior AI Engineer, A BNPL fintech
+
+      Jun 2020 - Aug 2023
+
+      Merchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.
+
+      AI Engineer, A grocery delivery app
+
+      Mar 2018 - May 2020
+
+      Built the Gulf Arabic evaluation set used before each release.'
 expected:
   {
     'match':
@@ -17,46 +35,92 @@ expected:
       },
   }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': '39762f63b195',
-    'output':
-      {
-        'contact': { 'emails': ['sara.alqahtani@example.com'], 'phones': ['+971 50 000 0001'] },
-        'workHistory':
-          [
-            {
-              'role': 'Senior AI Engineer, A BNPL fintech',
-              'dates': '2020 - 2023',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Senior AI Engineer, A BNPL fintech' }],
-              'claim': true,
-            },
-            {
-              'role': 'AI Engineer, A grocery delivery app',
-              'dates': '2018 - 2020',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'AI Engineer, A grocery delivery app' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
-            { 'skill': 'PyTorch', 'citations': [{ 'sourceId': 'S1', 'quote': 'PyTorch' }], 'claim': true },
-            { 'skill': 'Azure OpenAI', 'citations': [{ 'sourceId': 'S1', 'quote': 'Azure OpenAI' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'cut cost per request by 40%',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'cut cost per request by 40%' }],
-              'claim': true,
-            },
-            {
-              'text': 'Built the Gulf Arabic evaluation set used before each release',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Built the Gulf Arabic evaluation set used before each release' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: c80b4c4daa37
+  output:
+    contact:
+      emails:
+        - sara.alqahtani@example.com
+      phones:
+        - +971 50 000 0001
+    workHistory:
+      - role: Senior AI Engineer, A BNPL fintech
+        dates: Jun 2020 - Aug 2023
+        citations:
+          - sourceId: S1
+            quote: |-
+              Senior AI Engineer, A BNPL fintech
+              Jun 2020 - Aug 2023
+        claim: true
+      - role: AI Engineer, A grocery delivery app
+        dates: Mar 2018 - May 2020
+        citations:
+          - sourceId: S1
+            quote: |-
+              AI Engineer, A grocery delivery app
+              Mar 2018 - May 2020
+        claim: true
+    skills:
+      - skill: Python
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: TypeScript
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: PyTorch
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: LangGraph
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: PostgreSQL
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: Azure OpenAI
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: Docker
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: Terraform
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: Redis
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+      - skill: FastAPI
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, TypeScript, PyTorch, LangGraph, PostgreSQL, Azure OpenAI, Docker, Terraform, Redis, FastAPI'
+        claim: true
+    statements:
+      - text: 'Merchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.'
+        citations:
+          - sourceId: S1
+            quote: 'Merchant assistant: cut cost per request by 40% after moving retrieval to a smaller model'
+        claim: true
+      - text: Built the Gulf Arabic evaluation set used before each release.
+        citations:
+          - sourceId: S1
+            quote: Built the Gulf Arabic evaluation set used before each release
+        claim: true
+  matches:
+    cut cost per request by 40%: 'Merchant assistant: cut cost per request by 40% after moving retrieval to a smaller model.'

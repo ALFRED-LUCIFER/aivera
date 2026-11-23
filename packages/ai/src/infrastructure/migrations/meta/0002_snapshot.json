@@ -92,12 +92,7 @@
       "uniqueConstraints": {
         "chunk_owner_index": {
           "name": "chunk_owner_index",
-          "columns": [
-            "workspace_id",
-            "owner_module",
-            "owner_id",
-            "chunk_index"
-          ],
+          "columns": ["workspace_id", "owner_module", "owner_id", "chunk_index"],
           "nullsNotDistinct": false
         }
       },
@@ -106,9 +101,7 @@
           "name": "chunk_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "\"search\".\"chunk\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"search\".\"chunk\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
