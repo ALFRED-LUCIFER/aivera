@@ -135,6 +135,19 @@ describe('Scenario: Protected traits in a description are not turned into anythi
     expect(regionQuotes).toEqual(['DIFC, Dubai']);
     expect(JSON.stringify(detected)).not.toMatch(/nationals|big bank/);
   });
+
+  // SAFETY: mutation check: regionsNotAboutPeople call removed in detect-domain.ts -> this test failed (uae returned)
+  it('drops a region whose only citation is the nationality line, and keeps the domain (AIV-P2-082)', async () => {
+    const nationals = 'UAE nationals preferred.';
+    const answer = { ...payments, regions: [{ region: 'uae', citations: [{ sourceId: 'S1', quote: nationals }] }] };
+    const detected = await setup(answer).detection.detectDomain(
+      workspaceId,
+      { ...input, description: `${sentence} ${nationals}`, location: null },
+      CATALOGUE_V1,
+    );
+    expect(detected.domain).toBe('payments_fintech');
+    expect(detected.regions).toEqual([]);
+  });
 });
 
 describe('Scenario: No candidate data reaches the prompt', () => {
