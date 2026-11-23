@@ -25,6 +25,8 @@ export class MissingIdentifiers extends Error {
 
 /** One replacement: at `at` in the redacted text, `length` long, standing for `fromLength` characters at `from`. */
 type Cut = { at: number; length: number; from: number; fromLength: number; trait: boolean };
+/** Spacing and separators trimmed off a quote's ends once a placeholder is cut away. */
+const EDGE = /[\s.,;:!?·•|،–-]/;
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
@@ -147,13 +149,12 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   return new RegExp(alternatives.join('|'), 'giu');
 }
 
-/** Where an offset in the redacted text falls in the original; a span touching a placeholder covers its whole value. */
-function toOriginal(cuts: readonly Cut[], offset: number, end: boolean): number {
+/** Where an offset in the redacted text, never inside a placeholder, falls in the original. */
+function toOriginal(cuts: readonly Cut[], offset: number): number {
   let shift = 0;
   for (const cut of cuts) {
-    if (offset >= cut.at + cut.length) shift = cut.from + cut.fromLength - cut.at - cut.length;
-    else if (end ? offset > cut.at : offset >= cut.at) return end ? cut.from + cut.fromLength : cut.from;
-    else break;
+    if (offset < cut.at + cut.length) break;
+    shift = cut.from + cut.fromLength - cut.at - cut.length;
   }
   return offset + shift;
 }
@@ -162,8 +163,9 @@ export type Redaction = {
   /** The sources as the model sees them, in the same order. */
   sources: Source[];
   /**
-   * A span of the redacted `sources[index]` as a span of the original source text; undefined when it touches a removed
-   * trait, so a protected trait never comes back as a cited, stored quote.
+   * A span of the redacted `sources[index]` as a span of the original source text, cut to its longest stretch with no
+   * placeholder so no name, email or phone comes back as a stored quote; undefined when it touches a removed trait, so a
+   * protected trait never comes back either, or when nothing but placeholders is left.
    */
   original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
@@ -214,7 +216,19 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     original: (index, { start, end }) => {
       const cuts = cutsOf[index] ?? [];
       if (cuts.some((cut) => cut.trait && start < cut.at + cut.length && end > cut.at)) return undefined;
-      return { start: toOriginal(cuts, start, false), end: toOriginal(cuts, end, true) };
+      // A quote never brings an identifier back (AIV-P2-080): keep its longest stretch between placeholders.
+      const text = redacted[index]?.text ?? '';
+      let best = { start, end: start };
+      let from = start;
+      for (const cut of [...cuts.filter((c) => c.at < end && c.at + c.length > start), { at: end, length: 0 }]) {
+        let [s, e] = [from, Math.min(cut.at, end)];
+        while (s < e && EDGE.test(text[s] ?? '')) s++;
+        while (e > s && EDGE.test(text[e - 1] ?? '')) e--;
+        if (e - s > best.end - best.start) best = { start: s, end: e };
+        from = Math.max(from, cut.at + cut.length);
+      }
+      if (best.end === best.start) return undefined;
+      return { start: toOriginal(cuts, best.start), end: toOriginal(cuts, best.end) };
     },
   };
 }

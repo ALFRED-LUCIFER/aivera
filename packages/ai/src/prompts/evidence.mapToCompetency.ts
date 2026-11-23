@@ -7,19 +7,29 @@ import { cited, type Source } from '../citations.ts';
 // checks each quote (citations.ts).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored on every mapped link. */
-export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@2';
+export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@3';
 
 export const MAP_TO_COMPETENCY_SYSTEM = [
   "You map a job candidate's evidence to the competencies of the job's approved rubric, listed in the prompt by id.",
   'For each piece of evidence that shows a competency, give: competencyId, copied exactly from the list; one citation',
-  'quoting the exact words or numbers the link rests on, as short as still makes sense; strength: strong for real work',
-  'whose authorship is clear, medium for real work whose authorship or scale is unclear, supporting for an indirect',
-  'signal (a reference, a talk, a public post, a declared dependency, a README mention), claim for a statement with',
-  "nothing to inspect; label: claim for the candidate's own statement (a CV line), submitted for work the candidate",
-  'gave us to inspect; level: 1 (basic) to 5 (expert), what this evidence alone shows against the competency; limit:',
-  'one sentence on what this evidence does not show.',
-  'Skill signal lines in a repository source were measured from its files. A declaration (a manifest dependency, a',
-  'README mention, code only under test or example folders) is not evidence of using a skill.',
+  'quoting the few words or numbers the link rests on, from a single line, copied as one unbroken run exactly as',
+  'written, never shortened with "..." or joined from separate places; strength and label by the rules below;',
+  'level: 1 (basic) to 5 (expert), what this evidence alone shows against the competency; limit: one sentence on what',
+  'this evidence does not show, such as who reviewed the work, its scale or its effect.',
+  'A quote never contains a placeholder ([CANDIDATE], [EMAIL_1], [PHONE_1]): for "[CANDIDATE] wrote the scorer", quote',
+  '"wrote the scorer".',
+  'Strength, by the first rule that fits the sources the link cites:',
+  '1. Every citation of the link is in a cv source (judge each link by its own citations, even when other sources',
+  'exist): "strength": "supporting" with "label": "claim", however the CV line is worded, and the limit says the CV',
+  'line has nothing to inspect.',
+  '2. A source that is not a CV, written by the candidate in the first person, that only describes themselves ("I am',
+  'an expert", "I evaluate every release"): "strength": "claim" with "label": "claim".',
+  '3. A repository: first, when its skill signal line says declaration_only, or it only declares the skill (a manifest',
+  'dependency, a README mention, code only under test or example folders), "supporting", whatever its commits;',
+  'otherwise, from "authored A of B commits", "strong" when A is more than half of B (148 of 171) and "medium" when',
+  'not (140 of 410). A skill signal grades the code, not who wrote it, and never raises this. Label "submitted".',
+  '4. Any other indirect signal (a reference, a talk, a public post, a write-up): "supporting", label "submitted".',
+  "A repository's name and file paths show what the work is about.",
   'Never map a competency nothing in the sources shows, and never treat a competency as shown because nothing',
   'contradicts it.',
   'Then, in changes, give at most 3 concrete checks or pieces of evidence that would most raise confidence in this',

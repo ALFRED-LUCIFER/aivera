@@ -79,7 +79,9 @@ describe('the replacer', () => {
     expect(redact("'Sara' and Sara Al Qahtani")).toBe("'[CANDIDATE]' and [CANDIDATE]");
   });
 
-  it('maps offsets back across shorter and longer placeholders', () => {
+  // SAFETY: mutation check: mapped the whole quote back (no cut to the longest placeholder-free stretch) -> this test
+  // failed ('Sara built the merchant assistant', 'mail o@example.com')
+  it('maps offsets back across placeholders and never brings an identifier back (AIV-P2-080)', () => {
     const text = 'Al Qahtani: mail o@example.com. Sara built the merchant assistant.';
     const redaction = redactSources([source(text)], sara, false);
     const seen = redaction.sources[0]?.text ?? '';
@@ -89,10 +91,20 @@ describe('the replacer', () => {
       const mapped = redaction.original(0, { start, end: start + quote.length });
       return mapped && text.slice(mapped.start, mapped.end);
     };
-    expect(span('[CANDIDATE] built the merchant assistant')).toBe('Sara built the merchant assistant');
+    expect(span('[CANDIDATE] built the merchant assistant')).toBe('built the merchant assistant');
     expect(span('built the merchant assistant')).toBe('built the merchant assistant');
-    expect(span('mail [EMAIL_1]')).toBe('mail o@example.com');
-    expect(span('CANDIDATE]: mail')).toBe('Al Qahtani: mail');
+    expect(span('mail [EMAIL_1]')).toBe('mail');
+    expect(span('CANDIDATE]: mail')).toBe('mail');
+    expect(span('[CANDIDATE]: mail [EMAIL_1]')).toBe('mail');
+    expect(span('[EMAIL_1]')).toBeUndefined();
+  });
+
+  it('keeps the longest stretch of a quote with a placeholder inside it', () => {
+    const text = "Sara's eval harness replays 460 golden cases; Al Qahtani wrote the scorer.";
+    const redaction = redactSources([source(text)], sara, false);
+    const seen = redaction.sources[0]?.text ?? '';
+    const mapped = redaction.original(0, { start: 0, end: seen.length });
+    expect(mapped && text.slice(mapped.start, mapped.end)).toBe('eval harness replays 460 golden cases');
   });
 
   it('keeps emails and phones as written only with keepContact, and only evidence.parseCv gets it', () => {
@@ -173,7 +185,7 @@ describe('Feature: Candidate names and contact details never reach the model', (
     const redaction = redactSources([writeUp], sara, false);
 
     // SAFETY: mutation check: checkOutput returned the redacted span without redaction.original -> this test failed
-    it('accepts the placeholder quote with offsets covering the stored text', () => {
+    it('accepts the placeholder quote with offsets on the stored text, the name cut away', () => {
       const out = checkOutput(
         'evidence.mapToCompetency',
         answer('[CANDIDATE] built the merchant assistant'),
@@ -183,8 +195,8 @@ describe('Feature: Candidate names and contact details never reach the model', (
         redaction,
       );
       const [citation] = out.items[0]?.citations ?? [];
-      expect(citation).toEqual({ sourceId: 'e1', quote: 'Sara built the merchant assistant', start: 0, end: 33 });
-      expect(writeUp.text.slice(citation?.start, citation?.end)).toBe('Sara built the merchant assistant');
+      expect(citation).toEqual({ sourceId: 'e1', quote: 'built the merchant assistant', start: 5, end: 33 });
+      expect(writeUp.text.slice(citation?.start, citation?.end)).toBe('built the merchant assistant');
     });
 
     it('rejects a quote of the original value, which the model never saw', () => {
@@ -251,10 +263,11 @@ describe('Feature: Candidate names and contact details never reach the model', (
     expect(requests[0]).toContain('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123');
     expect(requests[0]).not.toMatch(/sara al qahtani/i);
     expect(out.contact).toEqual(contact);
-    // The statement repeating the email is the evidence module's to drop (cv.ts cvClaims); quotes come back as stored.
+    // The statement repeating the email is the evidence module's to drop (cv.ts cvClaims); quotes come back as stored,
+    // without the name (AIV-P2-080).
     expect(out.statements.map((s) => [s.text, s.claim, s.citations[0]?.quote])).toEqual([
-      ['Reach me at sara.al.qahtani@example.com', true, 'Sara Al Qahtani led the Gulf Arabic eval set'],
-      ['[CANDIDATE] led the Gulf Arabic eval set', true, 'Sara Al Qahtani led the Gulf Arabic eval set'],
+      ['Reach me at sara.al.qahtani@example.com', true, 'led the Gulf Arabic eval set'],
+      ['[CANDIDATE] led the Gulf Arabic eval set', true, 'led the Gulf Arabic eval set'],
     ]);
   });
 
