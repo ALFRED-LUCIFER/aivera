@@ -399,7 +399,8 @@ async function seed(
     });
     // An evidence request on that claim, sent, so its item and hashed portal token exist (evidence.request*, AIV-P1-037).
     const draft = await evidence.createDraftRequest(ctx, { candidateId: personId, jobId: job.id });
-    await evidence.sendRequest(ctx, draft.id);
+    // This suite checks tenancy of the rows only; the email itself: evidence-requests.test.ts.
+    await evidence.sendRequest(ctx, draft.id, async () => undefined);
     // An assessment result (assessment.result, AIV-P1-030).
     await assessment.assessCandidate(ctx, {
       candidateId: personId,

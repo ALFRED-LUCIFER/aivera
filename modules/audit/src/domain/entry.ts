@@ -42,6 +42,7 @@ export const ACTIONS = [
   'evidence.contradiction_resolved',
   'candidate.renamed',
   'job.hiring_owner_changed',
+  'evidence.level_changed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -101,6 +102,7 @@ export const NOTE_REQUIRED: readonly Action[] = [
   'decision.recorded',
   'ai_budget.changed',
   'evidence.contradiction_resolved',
+  'evidence.level_changed',
 ];
 
 /** `operator` is a Credalent operator acting on a workspace from the console, by identity user id (ADR-012 point 8). */

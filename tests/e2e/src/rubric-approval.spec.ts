@@ -44,7 +44,7 @@ async function addJobAndSend(page: Page, title: string) {
   // My desk: waiting on the hiring owner.
   await page.goto('/app');
   await expect(deskItem(page, title)).toContainText(
-    `Rubric approval${title}, version 1. With the Head of Engineering.`,
+    `Rubric approval${title}, version 1. Waiting for Head of Engineering.`,
   );
 }
 

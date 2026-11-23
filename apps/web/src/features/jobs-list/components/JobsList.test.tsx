@@ -24,7 +24,7 @@ describe('Scenario: Loading and error', () => {
   it('a slow request shows a table skeleton', () => {
     show({ status: 'loading' });
     expect(screen.getByRole('table', { name: 'Jobs' }).getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByRole('status').textContent).toBe('Loading jobs');
+    expect(screen.getByRole('status').textContent).toBe('Loading jobs…');
   });
 
   it('a failed request says so and retries', async () => {

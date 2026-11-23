@@ -14,6 +14,7 @@ import {
   type SuggestedCompetency,
 } from '@credalent/jobs';
 import { z } from 'zod';
+import type { SaveFailure } from '@/features/shell/domain/saveFailure.ts';
 import type { NewJobState } from './jobNew.ts';
 
 // Add a job, steps 2 and 3 "Competencies, drafted and suggested" and "Save to the job as its rubric" (AIV-P1-008 to
@@ -62,7 +63,9 @@ export type DraftResult =
   /** The model failed, or its answer was rejected twice by the citation contract. */
   | { status: 'failed' }
   /** The workspace has used its daily AI budget. */
-  | { status: 'budget' };
+  | { status: 'budget' }
+  /** The call threw in the browser (a 403, the network); the rows already on the page stay (AIV-P2-064). */
+  | { status: SaveFailure };
 
 const sentences = new Intl.Segmenter('en', { granularity: 'sentence' });
 

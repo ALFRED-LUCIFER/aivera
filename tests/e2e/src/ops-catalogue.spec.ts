@@ -84,7 +84,7 @@ test.describe('no draft: the published version', () => {
     await expect(jobTypes.getByRole('row').filter({ hasText: 'Software engineering' })).toContainText(
       'Repositories, shipped products, code reviews',
     );
-    await expect(page.getByRole('heading', { level: 2, name: 'Domain packs · version 1' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Industry packs · version 1' })).toBeVisible();
     const summaries = page.locator('main > * details:not(details details) > summary');
     await expect(summaries).toHaveCount(8);
     for (const [i, name] of PACKS.entries()) {
@@ -632,7 +632,9 @@ test.describe('the draft eval', () => {
     await finish('failed', { uncovered: ['insurance'], tasks: [] });
     await page.reload();
     await expect(page.getByRole('status').filter({ hasText: 'Eval failed' })).toBeVisible();
-    await expect(panel(page)).toContainText('Add golden cases for insurance in packages/ai/evals before publishing.');
+    await expect(panel(page)).toContainText(
+      'The eval has no test cases for insurance yet. Ask an engineer to add them before publishing.',
+    );
   });
 
   test('Scenario: A failing run lists the failed case ids', async ({ page }) => {

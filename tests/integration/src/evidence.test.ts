@@ -221,20 +221,44 @@ describe('Scenario: Recording a repository as evidence', () => {
     expect(await Promise.all([count(w1, 'source'), count(w1, 'outbox')])).toEqual(before);
   });
 
-  it('linkToCompetency adds a link once, however often it is called', async () => {
+  // SAFETY: mutation check: dropped the audit write from linkToCompetency -> this test failed
+  it('Scenario: Changing a proven level is audited; linking twice keeps one link; another workspace cannot link (AIV-P2-063)', async () => {
     const { itemIds } = await as(ALEX, w1, (ctx) =>
       evidence.recordEvidence(ctx, repository(sara, { competencies: [] })),
     );
     const itemId = itemIds[0] ?? '';
-    for (let i = 0; i < 2; i++)
-      await as(ALEX, w1, (ctx) =>
-        evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 }),
+    const link = (level: number, reason = 'Read the eval harness commits') =>
+      as(ALEX, w1, (ctx) =>
+        evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level }, reason),
       );
+    await expect(link(4, ' ')).rejects.toThrow('Give the reason for this level');
+    // Proven at level 4 ("advanced"); linking again at the same level changes nothing.
+    await link(4);
+    await link(4);
+    await link(5, 'The repository shows the harness in production use');
     expect((await as(ALEX, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId)))?.competencies).toEqual([
-      { jobId: JOB, competencyId: RETRIEVAL, level: 4 },
+      { jobId: JOB, competencyId: RETRIEVAL, level: 5 },
+    ]);
+    expect(await audit.listFor(w1, { type: 'evidence_item', id: itemId })).toMatchObject([
+      {
+        action: 'evidence.level_changed',
+        actor: { type: 'user', id: ALEX },
+        note: 'Read the eval harness commits',
+        before: { level: null },
+        after: { level: 4, jobId: JOB, competencyId: RETRIEVAL },
+      },
+      {
+        action: 'evidence.level_changed',
+        actor: { type: 'user', id: ALEX },
+        note: 'The repository shows the harness in production use',
+        before: { level: 4 },
+        after: { level: 5, jobId: JOB, competencyId: RETRIEVAL },
+      },
     ]);
     await expect(
-      as(ALEX, w2, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 })),
+      as(ALEX, w2, (ctx) =>
+        evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 }, 'Copied over'),
+      ),
     ).rejects.toThrow('No such evidence item');
   });
 });
@@ -356,7 +380,9 @@ describe('Authorisation (ADR-005 point 6)', () => {
     const itemId = itemIds[0] ?? '';
     await expect(as(LINA, w1, (ctx) => evidence.getEvidenceItem(ctx, itemId))).rejects.toThrow(ForbiddenError);
     await expect(
-      as(LINA, w1, (ctx) => evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 })),
+      as(LINA, w1, (ctx) =>
+        evidence.linkToCompetency(ctx, itemId, { jobId: JOB, competencyId: RETRIEVAL, level: 4 }, 'Interviewed'),
+      ),
     ).rejects.toThrow(ForbiddenError);
     await expect(as(LINA, w1, (ctx) => evidence.purgeSyntheticEvidence(ctx))).rejects.toThrow(ForbiddenError);
   });

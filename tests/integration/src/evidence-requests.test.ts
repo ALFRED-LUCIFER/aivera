@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -10,6 +10,7 @@ import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { EvidenceContract, RecordEvidenceInput, RequestOutcome } from '@credalent/evidence';
 import { createEvidence, createRequestOutcomeRecorder } from '@credalent/evidence/composition';
 import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { createNotifications } from '@credalent/notifications/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,6 +23,7 @@ const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
 const SARA = '0190d4a2-0000-7000-8000-00000000c001';
 const HESSA = '0190d4a2-0000-7000-8000-00000000c002';
+const OMAR = '0190d4a2-0000-7000-8000-00000000c003';
 const NOW = new Date('2026-11-20T09:00:00.000Z');
 // Opaque ids of the jobs module: Senior AI Engineer and three of its competencies.
 const JOB = '0190d4a2-0000-7000-8000-000000000b01';
@@ -75,6 +77,39 @@ const record = (
   ],
   synthetic: true,
 });
+
+// The candidate's email, queued in the send's transaction through the notifications module (AIV-P2-063).
+const notifications = createNotifications({
+  encryptionKey: randomBytes(32).toString('base64'),
+  origin: 'https://credalent.example',
+  synthetic: true,
+  now: () => NOW,
+});
+const SARA_EMAIL = 'sara.al.qahtani@example.com';
+const emailTo =
+  (ctx: WorkspaceContext, to: string) =>
+  ({ request, portalToken }: { request: { id: string }; portalToken: string }) =>
+    notifications.queueEmail(
+      { tx: ctx.tx, workspaceId: ctx.workspaceId },
+      {
+        template: 'evidence-request',
+        to,
+        causedBy: request.id,
+        sender: { name: 'Alex Recruiter', shortName: 'Alex', email: 'alex@example.com', workspace: 'Demo hiring team' },
+        data: {
+          jobTitle: 'Senior AI Engineer',
+          items: [{ competency: 'Cost and reliability', ask: 'Send a dashboard export.' }],
+          link: `https://credalent.example/evidence/${portalToken}`,
+          deleteUrl: 'https://credalent.example/delete',
+        },
+      },
+    );
+const queuedFor = async (requestId: string) => {
+  const [row] = await withWorkspace(app, w1, (tx) =>
+    tx.execute<{ n: number }>(sql`select count(*)::int as n from notifications.message where caused_by = ${requestId}`),
+  );
+  return row?.n;
+};
 
 const outboxTypes = async (workspaceId: string) =>
   (
@@ -174,8 +209,9 @@ describe('Scenario: Only a person can send', () => {
     expect(await as(w1, (ctx) => evidence.getRequest(ctx, id))).toMatchObject({ status: 'draft', sentAt: null });
     expect(await outboxTypes(w1)).toEqual([]);
 
-    const { request, portalToken } = await as(w1, (ctx) => evidence.sendRequest(ctx, id));
+    const { request, portalToken } = await as(w1, (ctx) => evidence.sendRequest(ctx, id, emailTo(ctx, SARA_EMAIL)));
     expect(request).toMatchObject({ status: 'sent', sentAt: NOW });
+    expect(await queuedFor(id)).toBe(1);
     const tokens = await withWorkspace(app, w1, (tx) =>
       tx.execute<{ hash: string; expires: string }>(
         sql`select token_hash as hash, to_char(expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI') as expires from evidence.portal_token where request_id = ${id}`,
@@ -186,7 +222,7 @@ describe('Scenario: Only a person can send', () => {
       { hash: createHash('sha256').update(portalToken).digest('hex'), expires: '2026-12-20T09:00' },
     ]);
     expect(tokens[0]?.hash).not.toContain(portalToken);
-    await expect(as(w1, (ctx) => evidence.sendRequest(ctx, id))).rejects.toThrow(
+    await expect(as(w1, (ctx) => evidence.sendRequest(ctx, id, emailTo(ctx, SARA_EMAIL)))).rejects.toThrow(
       'This request cannot move to that status',
     );
 
@@ -203,6 +239,34 @@ describe('Scenario: Only a person can send', () => {
       'evidence_request.sent',
       'evidence_request.closed',
     ]);
+  });
+});
+
+describe('Scenario: A request is "sent" only when an email is queued (AIV-P2-063)', () => {
+  // SAFETY: mutation check: caught and ignored a queueEmail failure in sendRequest (status saved apart from the email) -> this test failed
+  it('a queuing failure saves nothing, so the request stays a draft ("Not sent"); sending again queues the email with the status', async () => {
+    const draft = await as(w1, async (ctx) => {
+      await evidence.recordEvidence(ctx, record(OMAR, 'cut onboarding time by 30%', 'claim', COST));
+      return evidence.createDraftRequest(ctx, { candidateId: OMAR, jobId: JOB });
+    });
+    // The address is refused by the notifications module: the email cannot be queued.
+    await expect(
+      as(w1, (ctx) => evidence.sendRequest(ctx, draft.id, emailTo(ctx, 'not-an-address'))),
+    ).rejects.toThrow();
+    expect(await as(w1, (ctx) => evidence.getRequest(ctx, draft.id))).toMatchObject({ status: 'draft', sentAt: null });
+    expect(await queuedFor(draft.id)).toBe(0);
+    const tokens = await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`select 1 from evidence.portal_token where request_id = ${draft.id}`),
+    );
+    expect([...tokens]).toEqual([]);
+    expect((await audit.listFor(w1, { type: 'evidence_request', id: draft.id })).map((e) => e.action)).toEqual([
+      'evidence_request.created',
+    ]);
+
+    // The retry: status, token, event, email and audit entry together.
+    await as(w1, (ctx) => evidence.sendRequest(ctx, draft.id, emailTo(ctx, 'omar.al.suwaidi@example.com')));
+    expect(await as(w1, (ctx) => evidence.getRequest(ctx, draft.id))).toMatchObject({ status: 'sent', sentAt: NOW });
+    expect(await queuedFor(draft.id)).toBe(1);
   });
 });
 

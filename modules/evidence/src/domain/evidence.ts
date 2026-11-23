@@ -13,7 +13,7 @@ export const SOURCE_KINDS = [
 ] as const;
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 
-/** Independently corroborated, Candidate-submitted, Claim awaiting validation, Contradictory, Awaiting live defence. */
+/** Independently corroborated, Candidate-submitted, Claim awaiting validation, Contradictory, To check in interview. */
 export const PROVENANCES = ['corroborated', 'submitted', 'claim', 'contradictory', 'awaiting-defence'] as const;
 export type Provenance = (typeof PROVENANCES)[number];
 
@@ -129,6 +129,8 @@ const MESSAGES = {
   called_on: 'Give the date of the call',
   resolution_note: 'Write a note on how the contradiction was resolved',
   comparison_not_found: 'No such contradiction',
+  level_reason: 'Give the reason for this level',
+  standing: 'Choose one of the two sources, or both',
 } as const;
 
 export type EvidenceErrorCode = keyof typeof MESSAGES;

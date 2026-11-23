@@ -7,7 +7,7 @@ test('the hero states the promise, and New this week lists the three newest jobs
   await page.goto('/candidates');
   await expect(page.getByRole('heading', { level: 1, name: 'Get hired for what you have done.' })).toBeVisible();
   await expect(page.getByText(/No tests to sit\./)).toBeVisible();
-  await expect(page.getByText('Free to browse and apply. Always.')).toBeVisible();
+  await expect(page.getByText('Free to browse and apply.')).toBeVisible();
   const fresh = page.getByRole('region', { name: 'New this week' });
   // seed.ts posts them 2, 6 and 9 days ago (the 9-day tie is either job); newest first.
   await expect(fresh.getByRole('heading', { level: 3 })).toHaveCount(3);

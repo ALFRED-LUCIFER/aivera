@@ -454,13 +454,16 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       expect(await score()).toBe(0);
 
       await expect(
-        as(LINA, w1, (ctx) => evidence.resolveContradiction(ctx, contradictionId, { note: 'x', limit: 'y' })),
+        as(LINA, w1, (ctx) =>
+          evidence.resolveContradiction(ctx, contradictionId, { note: 'x', limit: 'y', standingItemId: null }),
+        ),
       ).rejects.toThrow(ForbiddenError);
 
       await as(ALEX, w1, (ctx) =>
         evidence.resolveContradiction(ctx, contradictionId, {
           note: 'Reference confirmed scale only roughly',
           limit: 'The user count comes from her own write-up; the reference confirmed the scale only roughly.',
+          standingItemId: null,
         }),
       );
       expect(await score()).toBeGreaterThan(0);
@@ -505,13 +508,71 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
 
     it('refuses an empty note and an unknown id', async () => {
       await expect(
-        as(ALEX, w1, (ctx) => evidence.resolveContradiction(ctx, contradictionId, { note: ' ', limit: 'y' })),
+        as(ALEX, w1, (ctx) =>
+          evidence.resolveContradiction(ctx, contradictionId, { note: ' ', limit: 'y', standingItemId: null }),
+        ),
       ).rejects.toThrow('Write a note');
       await expect(
         as(ALEX, w1, (ctx) =>
-          evidence.resolveContradiction(ctx, '0190d4a2-0000-7000-8000-00000000dead', { note: 'n', limit: 'l' }),
+          evidence.resolveContradiction(ctx, '0190d4a2-0000-7000-8000-00000000dead', {
+            note: 'n',
+            limit: 'l',
+            standingItemId: null,
+          }),
         ),
       ).rejects.toThrow('No such contradiction');
+    });
+
+    // SAFETY: mutation check: stored no standing source on the resolution -> this test failed
+    it('Scenario: Resolving a contradiction is a recorded decision: the source that stands counts, the other stays "Contradictory" (AIV-P2-063)', async () => {
+      const [current] = await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, daniel, JOB));
+      const id = current?.id ?? '';
+      const [first] = await linked(daniel, ACCURACY);
+      const standing = first?.id ?? '';
+      const resolve = (standingItemId: string | null) =>
+        as(ALEX, w1, (ctx) =>
+          evidence.resolveContradiction(ctx, id, {
+            note: 'The write-up links the dashboard behind the count',
+            limit: 'The reference did not see the dashboard.',
+            standingItemId,
+          }),
+        );
+      await expect(resolve('0190d4a2-0000-7000-8000-00000000dead')).rejects.toThrow(
+        'Choose one of the two sources, or both',
+      );
+      const remaps = async () =>
+        (
+          await rows(w1, sql`select count(*)::int as n from evidence.outbox where type = 'EvidenceMappingRequested.v1'`)
+        )[0]?.['n'];
+      const remapsBefore = await remaps();
+      await resolve(standing);
+      const setAside = async () =>
+        (await linked(daniel, ACCURACY)).filter((i) => i.provenance === 'contradictory').map((i) => i.sourceId);
+      const [otherSource] = (await linked(daniel, ACCURACY)).filter((i) => i.id !== standing).map((i) => i.sourceId);
+      expect(await setAside()).toEqual([otherSource]);
+      expect((await audit.listFor(w1, { type: 'comparison', id })).at(-1)).toMatchObject({
+        action: 'evidence.contradiction_resolved',
+        actor: { type: 'user', id: ALEX },
+        note: 'The write-up links the dashboard behind the count',
+        after: { resolved: true, standingItemId: standing },
+      });
+      // The set-aside source no longer vouches for anything: the evidence is mapped again without it.
+      expect(await remaps()).toBe((remapsBefore as number) + 1);
+      // The re-map keeps which source stands (by source: its items are new).
+      await mapNow(daniel);
+      expect(await setAside()).toEqual([otherSource]);
+      // Both stand again, as before.
+      const [remapped] = await as(ALEX, w1, (ctx) => evidence.listComparisons(ctx, daniel, JOB));
+      await as(ALEX, w1, (ctx) =>
+        evidence.resolveContradiction(ctx, remapped?.id ?? '', {
+          note: 'Both hold',
+          limit: 'The reference confirmed the scale only roughly.',
+          standingItemId: null,
+        }),
+      );
+      expect(await remaps()).toBe((remapsBefore as number) + 2);
+      await mapNow(daniel);
+      expect((await linked(daniel, ACCURACY)).map((i) => i.provenance)).toEqual(['corroborated', 'corroborated']);
     });
 
     // SAFETY: mutation check: set the evidence.comparison tenant policy to USING (true) -> this test failed
@@ -519,7 +580,9 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
       expect((await count(w1))[0]?.['n']).toBeGreaterThan(0);
       expect(await count(w2)).toEqual([{ n: 0 }]);
       await expect(
-        as(ALEX, w2, (ctx) => evidence.resolveContradiction(ctx, contradictionId, { note: 'n', limit: 'l' })),
+        as(ALEX, w2, (ctx) =>
+          evidence.resolveContradiction(ctx, contradictionId, { note: 'n', limit: 'l', standingItemId: null }),
+        ),
       ).rejects.toThrow('No such contradiction');
     });
 
@@ -587,6 +650,7 @@ describe('Feature: Corroboration and contradictions (AIV-P1-029)', () => {
         evidence.resolveContradiction(ctx, contradictionId, {
           note: 'Reference confirmed scale only roughly',
           limit: 'The merchant count is her own; the reference confirmed the scale only roughly.',
+          standingItemId: null,
         }),
       );
       expect(await audit.listFor(w1, { type: 'comparison', id: contradictionId })).toMatchObject([
@@ -708,6 +772,7 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
       evidence.resolveContradiction(ctx, teamPair?.id ?? '', {
         note: 'The team grew from 5 to 12',
         limit: 'Head count from her own accounts only.',
+        standingItemId: null,
       }),
     );
     expect((await linked(hessa, LLM)).find((i) => i.sourceId === write.sourceId)?.provenance).toBe('claim');

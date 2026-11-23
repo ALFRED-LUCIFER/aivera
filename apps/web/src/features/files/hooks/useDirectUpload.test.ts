@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import type { FileStatus } from '@credalent/files';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useDirectUpload } from './useDirectUpload.ts';
 
@@ -44,7 +44,7 @@ describe('useDirectUpload', () => {
     expect(s.uploadStatus).toHaveBeenCalledTimes(2);
   });
 
-  it('Scenario: An infected file never becomes evidence: the uploader sees "This file could not be accepted."', async () => {
+  it('Scenario: An infected file never becomes evidence: the uploader sees "We cannot use this file. Try a different file."', async () => {
     expect(await run(pdf(2048), services(['pending', 'infected']))).toEqual({ phase: 'error', message: 'notAccepted' });
   });
 
@@ -70,5 +70,39 @@ describe('useDirectUpload', () => {
     expect(await run(pdf(10), s)).toEqual({ phase: 'error', message: 'failed' });
     s.requestUpload.mockResolvedValueOnce({ ok: false, error: 'limits.evidence' } as never);
     expect(await run(pdf(10), s)).toEqual({ phase: 'error', message: 'limits.evidence' });
+  });
+
+  // AIV-P2-064. SAFETY: mutation check: dropped the `slow` state -> this test failed
+  it('Scenario: A slow scan is not shown as failed: past the usual wait it says "Still checking" and keeps polling', async () => {
+    const s = { ...services(['pending']), maxPolls: 2 };
+    let calls = 0;
+    const scan = Promise.withResolvers<FileStatus>();
+    s.uploadStatus.mockImplementation(() => (++calls <= 3 ? Promise.resolve('pending') : scan.promise));
+    const { result } = renderHook(() => useDirectUpload('cv', s));
+    let upload: Promise<void> = Promise.resolve();
+    act(() => void (upload = result.current.onSelect(pdf(10))));
+    await waitFor(() => expect(result.current.state).toEqual({ phase: 'checking', slow: true }));
+    scan.resolve('clean');
+    await act(() => upload);
+    expect(result.current.state).toEqual({ phase: 'done', fileId: FILE_ID });
+  });
+
+  it('gives up as failed only after ten times the usual wait', async () => {
+    const s = { ...services(['pending']), maxPolls: 2 };
+    s.uploadStatus.mockResolvedValue('pending');
+    expect(await run(pdf(10), s)).toEqual({ phase: 'error', message: 'failed' });
+    expect(s.uploadStatus).toHaveBeenCalledTimes(20);
+  });
+
+  // SAFETY: mutation check: made reset() only set idle (no run guard) -> this test failed (the old upload landed)
+  it('Scenario: An old error does not return: reset clears the state and drops an upload still polling', async () => {
+    const s = services(['pending', 'clean']);
+    const { result } = renderHook(() => useDirectUpload('cv', s));
+    s.uploadStatus.mockImplementation(async () => {
+      act(() => result.current.reset());
+      return 'clean';
+    });
+    await act(() => result.current.onSelect(pdf(10)));
+    expect(result.current.state).toEqual({ phase: 'idle' });
   });
 });

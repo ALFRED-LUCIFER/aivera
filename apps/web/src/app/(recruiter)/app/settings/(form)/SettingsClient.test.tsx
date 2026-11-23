@@ -17,7 +17,7 @@ beforeAll(async () => {
   intl = await intlConfig('en', 'Asia/Dubai');
 });
 
-const SAVED = 'Settings saved. New links, invitations and sessions use them; existing ones keep their expiry.';
+const SAVED = 'Settings saved. New links, invitations and sessions use them. Existing ones keep their expiry.';
 
 function Settings(props: {
   saved?: WorkspaceSettings;
@@ -109,7 +109,7 @@ describe('Settings screen: SettingsForm with its controller', () => {
       </IntlProvider>,
     );
     expect(screen.getByRole('button', { name: 'Save settings' })).toHaveProperty('disabled', true);
-    expect(screen.getByText('Loading settings')).toBeTruthy();
+    expect(screen.getByText('Loading settings…')).toBeTruthy();
     unmount();
 
     render(<Settings save={() => Promise.reject(new Error('down'))} />);

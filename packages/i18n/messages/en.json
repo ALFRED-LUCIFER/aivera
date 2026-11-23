@@ -5,7 +5,7 @@
   },
   "home": {
     "headline": "Hire on <mark>evidence</mark>, not claims.",
-    "lead": "Credalent reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on. You interview fewer people, and you can defend each decision.",
+    "lead": "Credalent reads the work candidates have already done, scores it against the competencies you agreed, and shows what every score rests on, so you can defend each decision.",
     "createWorkspace": "Create your workspace",
     "seeProduct": "See the product",
     "reassurance": "No tests to sit. No automatic rejections. A person makes every hiring decision.",
@@ -14,7 +14,7 @@
       "label": "Site",
       "home": "Credalent home",
       "howItWorks": "How it works",
-      "roles": "Roles we cover",
+      "roles": "Jobs we cover",
       "trust": "Why trust it",
       "candidates": "For candidates",
       "createWorkspace": "Create workspace"
@@ -26,7 +26,7 @@
       "backed": "{backed} backed by evidence",
       "caption": "{backed} backed by evidence · up to {upTo} if her open claim holds",
       "upTo": "up to {upTo} if her open claim holds",
-      "unavailable": "Score unavailable",
+      "unavailable": "Score cannot be shown",
       "competency": "Test automation design",
       "weight": "· weight {weight}%",
       "strength": "Strong",
@@ -49,7 +49,7 @@
       "steps": {
         "agree": {
           "title": "Agree what matters",
-          "body": "Paste the job description. Credalent drafts five or six competencies with weights and the evidence that would prove each. Nothing is assessed until the hiring manager approves."
+          "body": "Paste the job description. Credalent drafts the competencies with weights and the evidence that would prove each. Nothing is assessed until the rubric is approved."
         },
         "collect": {
           "title": "Collect the work",
@@ -71,11 +71,11 @@
     },
     "roleFamilies": {
       "title": "Not only software engineers",
-      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each role family has its own kinds of proof, and Credalent knows which to look for.",
-      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Credalent requests a short work sample scoped to the role instead.",
-      "family": "Role family",
+      "lead": "AI is changing what good looks like in testing, data, operations, product, design and customer-facing engineering too. Each job family has its own kinds of proof, and Credalent knows which to look for.",
+      "noPublicWork": "No public work? Many testers, analysts and support specialists have none. Credalent requests a short work sample scoped to the job instead.",
+      "family": "Job family",
       "evidence": "Evidence that counts",
-      "more": "<strong>This list is a start.</strong> We are piecing together more role families, and the one you hire for can be next."
+      "more": "<strong>This list is a start.</strong> We are piecing together more job families, and the one you hire for can be next."
     },
     "trust": {
       "title": "Recommendations you can check. Decisions that stay yours.",
@@ -100,7 +100,7 @@
     },
     "pilot": {
       "title": "One number to judge us on: interviews per completed hire",
-      "body": "Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Credalent shows the working."
+      "body": "Run a pilot on one job. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline, Credalent shows the working."
     },
     "footer": {
       "label": "Footer",
@@ -123,13 +123,13 @@
       "myApplications": "My applications",
       "footer": {
         "label": "Site links",
-        "rule": "© 2026 Credalent. Paying never changes how recruiters rank you.",
+        "rule": "© Credalent. Paying never changes how recruiters rank you.",
         "jobs": "Jobs",
         "forRecruiters": "For recruiters"
       },
       "placeholder": "This page is not available yet.",
       "signOut": "Sign out",
-      "failed": "This page could not load. Try again.",
+      "failed": "We could not load this page. Try again.",
       "retry": "Try again"
     },
     "jobs": {
@@ -154,13 +154,13 @@
       "viewJobFor": "View job: {title}",
       "empty": "No jobs match. Try a different word or clear the filters.",
       "clearFilters": "Clear filters",
-      "failed": "Jobs could not load. Try again.",
+      "failed": "We could not load jobs. Try again.",
       "retry": "Try again",
       "pages": "Pages",
       "previous": "Previous page",
       "next": "Next page",
       "pageOf": "Page {page} of {pageCount}",
-      "loading": "Loading jobs"
+      "loading": "Loading jobs…"
     },
     "job": {
       "payNotDisclosed": "Pay band not disclosed",
@@ -176,14 +176,14 @@
       "closedTitle": "This job is no longer open",
       "closedBody": "The employer is not taking applications for it, or the link is wrong.",
       "allJobs": "See all jobs",
-      "failed": "This job could not load. Try again.",
+      "failed": "We could not load this job. Try again.",
       "retry": "Try again"
     },
     "home": {
       "title": "Get hired for <mark>what you have done</mark>.",
       "lead": "On Credalent, every job shows what it needs before you apply, and recruiters judge your work, not your keywords. No tests to sit.",
       "findJobs": "Find jobs",
-      "free": "Free to browse and apply. Always.",
+      "free": "Free to browse and apply.",
       "sampleExample": "Example:",
       "sampleTitle": "Senior AI Engineer",
       "sampleJob": "What this job needs",
@@ -211,7 +211,7 @@
       "newTitle": "New this week",
       "noNew": "No new jobs this week. Check back soon.",
       "allJobs": "All jobs",
-      "plusTitle": "Want an edge that is still honest?",
+      "plusTitle": "Want help showing your best work?",
       "plusBody": "Credalent Plus gives you a portfolio page at your own address, a CV tailored to each job, and a gap report that shows what to prove before you apply. {price}."
     },
     "signup": {
@@ -232,7 +232,7 @@
         "jobs": "Every job, with what it needs shown before you apply.",
         "applications": "Direct applications, with status at each stage.",
         "cvCheck": "A CV check against one job at a time.",
-        "requests": "Evidence requests in one place, answered in minutes."
+        "requests": "Evidence requests in one place."
       },
       "sharing": "Your CV and work are shared with a recruiter only when you apply to their job or answer their request.",
       "errors": {
@@ -263,10 +263,10 @@
       "submitted": "Candidate-submitted",
       "claim": "Claim awaiting validation",
       "contradictory": "Contradictory",
-      "awaiting-defence": "Awaiting live defence"
+      "awaiting-defence": "To check in interview"
     },
     "repositoryStatus": {
-      "pending": "Reading the commit history",
+      "pending": "Reading the commit history…",
       "not_accessible": "This repository is private or no longer exists",
       "fork": "This repository is a fork. Forked code is not counted as the candidate's work.",
       "plainLink": "Only public GitHub repository links can be read. This link is kept on the candidate as a plain link."
@@ -289,7 +289,7 @@
       "reason": {
         "code_corroborated": "Code-level evidence, corroborated by a second kind of signal.",
         "code_files": "Code-level evidence in two or more files.",
-        "declaration_only": "Only declaration-level evidence was found; declaring or mentioning a tool is not evidence of using it.",
+        "declaration_only": "Only declaration-level evidence was found. Declaring or mentioning a tool is not evidence of using it.",
         "single_code_file": "Only one code-level file was found and nothing corroborates it."
       },
       "unableReason": {
@@ -302,13 +302,13 @@
       }
     },
     "cvStatus": {
-      "pending": "Reading the CV",
+      "pending": "Reading the CV…",
       "unreadable": "Could not be read automatically",
-      "failed": "Parsing failed, retry",
+      "failed": "We could not read this CV. Try again.",
       "waiting": "Waiting for tomorrow's AI allowance"
     },
     "linkStatus": {
-      "pending": "Reading the link",
+      "pending": "Reading the link…",
       "not_reachable": "We could not open this link"
     },
     "unusualContent": {
@@ -329,7 +329,7 @@
     "upToCompact": "up to {upTo} if claims hold",
     "backedUpTo": "{backed} backed by evidence · up to {upTo} if claims hold in interview",
     "backedUpToCompact": "{backed} backed by evidence · up to {upTo} if claims hold",
-    "unavailable": "Score unavailable",
+    "unavailable": "Score cannot be shown",
     "level": "Proven {proven} of {levels} · job needs {needed}",
     "levelBar": "Proven {proven} of {levels}, claimed {claimed}, the job needs {needed}",
     "aboveNeed": "Above the need",
@@ -368,7 +368,7 @@
     "account": "Signed in as {name}",
     "signOut": "Sign out",
     "placeholder": "This page is not available yet.",
-    "paused": "This workspace is paused by Credalent. You can read everything; new work is paused."
+    "paused": "This workspace is paused by Credalent. You can read everything. New work is paused."
   },
   "signIn": {
     "title": "Sign in",
@@ -378,7 +378,7 @@
       "claims": "Claims are labelled as claims.",
       "people": "Nobody is rejected automatically."
     },
-    "lead": "Welcome back. Pick up where your roles left off.",
+    "lead": "Sign in to see your jobs and candidates.",
     "email": "Work email",
     "passwordNote": "You enter your password on the next page, hosted by Credalent's sign-in service.",
     "remember": "Keep me signed in",
@@ -390,7 +390,7 @@
     "createWorkspace": "Create a workspace",
     "errors": {
       "unverifiedEmail": "Verify your email to continue.",
-      "unavailable": "Sign-in is not set up in this environment yet.",
+      "unavailable": "Sign-in is not available here.",
       "failed": "Sign-in did not finish. Try again."
     }
   },
@@ -400,7 +400,7 @@
     "noWorkspaceTitle": "You are not in a workspace yet",
     "noWorkspace": "Ask your workspace admin to add you to their workspace.",
     "pausedTitle": "This workspace is paused.",
-    "paused": "You can read everything; new work is paused until Credalent reactivates the workspace.",
+    "paused": "You can read everything. New work is paused until Credalent reactivates the workspace.",
     "waitingTitle": "Waiting for approval",
     "waiting": "Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.",
     "rejectedTitle": "Your workspace was not approved",
@@ -409,11 +409,13 @@
     "errorTitle": "Something went wrong. Try again.",
     "retry": "Try again",
     "notFoundTitle": "We could not find that page.",
-    "home": "Go to the home page"
+    "home": "Go to the home page",
+    "saveFailed": "We could not save your changes. Try again.",
+    "saveForbidden": "You do not have access to do this."
   },
   "signup": {
     "points": {
-      "define": "Define a role and agree its competencies with the hiring manager.",
+      "define": "Define a job and agree its competencies with the hiring owner.",
       "rank": "See candidates ranked by work you can inspect.",
       "decide": "Keep every hiring decision with a person."
     },
@@ -466,6 +468,13 @@
     "discardBody": "What you typed is not saved.",
     "discard": "Discard",
     "keepEditing": "Keep editing",
+    "redraft": {
+      "title": "Draft competencies again?",
+      "body": "A new draft replaces these competencies, with your edits:",
+      "confirm": "Replace and draft",
+      "cancel": "Keep my competencies",
+      "footer": "Nothing changes until you confirm."
+    },
     "close": "Close",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
     "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
@@ -560,7 +569,7 @@
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
   "jobsList": {
-    "intro": "Every job runs on an approved rubric. Candidates are assessed only after its recruiter approves it.",
+    "intro": "Every job runs on an approved rubric. Candidates are assessed only after a version is approved.",
     "add": "Add a job",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
@@ -605,7 +614,7 @@
     "coverageAfterApproval": "Starts after rubric approval",
     "empty": "No jobs yet. Add a job to define what it needs.",
     "emptyFiltered": "No jobs match this filter.",
-    "loading": "Loading jobs",
+    "loading": "Loading jobs…",
     "error": "We could not load your jobs. Try again.",
     "retry": "Try again",
     "clientFilter": "Client",
@@ -666,7 +675,7 @@
     },
     "workspaces": {
       "title": "Workspaces",
-      "description": "Every workspace on the platform, newest first; open one to change its AI budget or status.",
+      "description": "Every workspace on the platform, newest first. Open one to change its AI budget or status.",
       "caption": "Workspaces",
       "searchLabel": "Search by workspace name",
       "search": "Search",
@@ -718,7 +727,7 @@
             "suspended": "Suspended",
             "reactivated": "Reactivated",
             "approved": "Approved",
-            "rejected": "Rejected"
+            "rejected": "Not approved"
           },
           "ai_budget": {
             "changed": "Daily AI budget changed"
@@ -767,7 +776,7 @@
           "body": "Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.",
           "pending": "Suspending…",
           "done": "Workspace suspended.",
-          "hint": "At least 10 characters. Recorded in the audit logs; members do not see it."
+          "hint": "At least 10 characters. Recorded in the audit logs. Members do not see it."
         },
         "reactivate": {
           "open": "Reactivate",
@@ -776,7 +785,7 @@
           "body": "Members can start new work again. Nothing they hold has changed.",
           "pending": "Reactivating…",
           "done": "Workspace reactivated.",
-          "hint": "At least 10 characters. Recorded in the audit logs; members do not see it."
+          "hint": "At least 10 characters. Recorded in the audit logs. Members do not see it."
         },
         "confirm": "Confirm",
         "reason": "Reason",
@@ -793,13 +802,13 @@
           "done": "Workspace approved."
         },
         "reject": {
-          "open": "Reject",
-          "openLabel": "Reject {name}",
-          "title": "Reject {name}?",
+          "open": "Do not approve",
+          "openLabel": "Do not approve {name}",
+          "title": "Do not approve {name}?",
           "body": "The workspace stays closed to new work. Its creator sees your reason. Nothing is deleted.",
-          "pending": "Rejecting…",
-          "done": "Workspace rejected.",
-          "hint": "At least 10 characters. Recorded in the audit logs; the creator sees it."
+          "pending": "Saving…",
+          "done": "Workspace not approved.",
+          "hint": "At least 10 characters. Recorded in the audit logs. The creator sees it."
         }
       }
     },
@@ -812,7 +821,7 @@
         "starters": "Starter competencies"
       },
       "evidence": "Evidence that counts",
-      "domainPacks": "Domain packs · version {version, number}",
+      "domainPacks": "Industry packs · version {version, number}",
       "packSummary": "Version {version, number} · {count, plural, one {# job type} other {# job types}}",
       "competencies": "{count, plural, one {# competency} other {# competencies}}",
       "core": "Default suggestions",
@@ -864,7 +873,7 @@
         "starting": "Starting…",
         "banner": "Draft — not live. Recruiters see version {version, number}.",
         "jobTypes": "Job types in the draft",
-        "packs": "Domain packs in the draft",
+        "packs": "Industry packs in the draft",
         "addPack": "Add a pack",
         "editPack": "Edit pack",
         "regions": "Regions in the draft",
@@ -968,7 +977,7 @@
           },
           "message": {
             "not_run": "The eval has not run on this draft. Publishing needs a passed eval.",
-            "running": "The golden cases are running against the draft. This page updates when they finish.",
+            "running": "The eval is running against the draft. This page updates when it finishes.",
             "stale": "The draft changed after the last eval run. Run it again.",
             "error": "The eval could not run. Try again."
           },
@@ -986,12 +995,12 @@
           "percent": "{value, number}%",
           "observed": "Observed",
           "failedCases": "Failed cases",
-          "uncovered": "Add golden cases for {keys} in packages/ai/evals before publishing."
+          "uncovered": "The eval has no test cases for {keys} yet. Ask an engineer to add them before publishing."
         },
         "publish": {
           "open": "Review and publish",
           "title": "Publish catalogue version {version, number}",
-          "body": "Recruiters get version {version, number} on their next request. Rubrics already drafted or approved keep the version that seeded them.",
+          "body": "Recruiters see version {version, number} from the next page they open. Rubrics already drafted or approved keep the version that seeded them.",
           "confirm": "Publish version {version, number}",
           "pending": "Publishing…",
           "reason": "Reason",
@@ -1090,8 +1099,8 @@
       "anyAction": "Any action",
       "operator": "Operator",
       "anyOperator": "Any operator",
-      "target": "Target id",
-      "targetHint": "An opaque id, such as a workspace id.",
+      "target": "Record",
+      "targetHint": "The id of a workspace or another record, copied from its page.",
       "from": "From (UTC)",
       "to": "To (UTC)",
       "apply": "Apply filters",
@@ -1140,7 +1149,7 @@
           "suspended": "Suspended",
           "reactivated": "Reactivated",
           "approved": "Approved",
-          "rejected": "Rejected"
+          "rejected": "Not approved"
         },
         "catalogue": {
           "draft_opened": "Catalogue draft opened",
@@ -1158,10 +1167,10 @@
   "settings": {
     "intro": "Timings and limits Credalent uses in this workspace.",
     "readOnly": "Only an admin can change these settings",
-    "loading": "Loading settings",
+    "loading": "Loading settings…",
     "save": "Save settings",
-    "saving": "Saving settings",
-    "saved": "Settings saved. New links, invitations and sessions use them; existing ones keep their expiry.",
+    "saving": "Saving settings…",
+    "saved": "Settings saved. New links, invitations and sessions use them. Existing ones keep their expiry.",
     "failed": "Settings were not saved. Try again.",
     "range": "Enter a number from {min} to {max}",
     "hint": {
@@ -1322,7 +1331,7 @@
   },
   "rubric": {
     "competencies": "Agreed competencies",
-    "intro": "This rubric belongs to this job only; every job has its own. Candidates are judged against the level each competency needs, not against each other. Weights must total 100%.",
+    "intro": "This rubric belongs to this job only. Every job has its own. Candidates are judged against the level each competency needs, not against each other. Weights must total 100%.",
     "columns": {
       "competency": "Competency and evidence expected",
       "weight": "Weight",
@@ -1357,14 +1366,14 @@
     "version": "Version {version}, {status}",
     "status": {
       "approved": "approved",
-      "superseded": "superseded",
+      "superseded": "replaced by a newer version",
       "draft": "draft",
       "awaiting_approval": "awaiting approval",
       "returned": "returned"
     },
     "approvedBy": "{name} · {date, date, short}",
     "editNote": "Editing a weight creates a new version that needs approval again.",
-    "loading": "Loading the rubric",
+    "loading": "Loading the rubric…",
     "error": "We could not load this rubric. Try again.",
     "retry": "Try again",
     "separator": " · ",
@@ -1383,9 +1392,9 @@
       "save": "Save draft",
       "send": "Send changes for approval",
       "weightsWrong": "Weights total {total}%. They must total 100%.",
-      "saved": "Draft saved. The approved rubric stays in force until the new version is approved.",
-      "sent": "Sent to {name}. The approved rubric stays in force, and rankings do not change until the new version is approved.",
-      "sentNoOwner": "Sent for approval. The approved rubric stays in force, and rankings do not change until the new version is approved.",
+      "saved": "Draft saved. The approved rubric still applies until the new version is approved.",
+      "sent": "Sent to {name}. The approved rubric still applies, and rankings do not change until the new version is approved.",
+      "sentNoOwner": "Sent for approval. The approved rubric still applies, and rankings do not change until the new version is approved.",
       "stale": "This rubric changed since you opened it. Reload to see the latest.",
       "failed": "We could not save the rubric. Check each competency has a name, a weight from 1 to 100 and a level, then try again."
     },
@@ -1407,10 +1416,10 @@
       "noteLabel": "Note for the recruiter",
       "confirmReturn": "Return version {version}",
       "cancel": "Cancel",
-      "footer": "The approved version stays in force until a new one is approved.",
+      "footer": "The approved version still applies until a new one is approved.",
       "approved": "Version {version} is approved. Assessment can now start for this job.",
-      "returned": "Version {version} was returned with your note. {inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
-      "sent": "Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.",
+      "returned": "Version {version} was returned with your note. {inForce, select, yes {The previously approved version still applies.} other {Nothing is assessed until a version is approved.}}",
+      "sent": "Sent to the hiring owner. They can approve it or return it with a note. You can still approve it yourself.",
       "stale": "This version changed since you opened it. Reload to see the latest.",
       "failed": "That did not go through. Nothing was changed.",
       "newer": "A newer version is waiting for you",
@@ -1426,7 +1435,7 @@
       "hidden": "Hidden: weights, the client's name, other candidates and all scores.",
       "inbox": "Applications arrive in your Inbox.",
       "descriptorLabel": "How candidates see the employer",
-      "descriptorHint": "For example, \"A BNPL fintech\". Never the client's name; up to {max} characters.",
+      "descriptorHint": "For example, \"A BNPL fintech\". Never the client's name, up to {max} characters.",
       "confirm": "Publish",
       "publishing": "Publishing…",
       "cancel": "Cancel",
@@ -1436,7 +1445,7 @@
       "live": "Live on the candidate site. New applications arrive in your Inbox.",
       "view": "View public listing",
       "unpublish": "Unpublish",
-      "unpublished": "Unpublished. The listing is off the candidate site; applications already received stay in your Inbox.",
+      "unpublished": "Unpublished. The listing is off the candidate site. Applications already received stay in your Inbox.",
       "descriptorError": "Describe the employer for candidates, without its name, in up to {max} characters.",
       "failed": "That did not go through. Nothing was changed."
     }
@@ -1446,7 +1455,7 @@
       "brand": "Credalent",
       "logoAlt": "Credalent",
       "sentBy": "Sent by {sender} at {workspace} through Credalent",
-      "devBand": "Synthetic data — development environment",
+      "devBand": "Practice data: nothing here is a real person",
       "reasonCandidate": "You are receiving this because you applied for a job through this workspace.",
       "repliesGoTo": "Replies go to {name}.",
       "privacy": "Privacy",
@@ -1458,9 +1467,9 @@
     },
     "evidenceRequest": {
       "subject": "A request about your application: {jobTitle}",
-      "preheader": "The recruiter would like to see more of your work. About two minutes.",
+      "preheader": "The recruiter would like to see more of your work.",
       "heading": "More evidence would help your application",
-      "intro": "{recruiter} at {workspace} would like more evidence for your application to {jobTitle}. Add it with the button below; it takes about two minutes.",
+      "intro": "{recruiter} at {workspace} would like more evidence for your application to {jobTitle}. Add it with the button below.",
       "whatToSend": "What to send, by competency",
       "youSaid": "You said:",
       "quoted": "“{claim}”",
@@ -1482,8 +1491,8 @@
         "interviewer": "see the candidates you interview for {scope}, and submit your scorecards."
       },
       "cannot": {
-        "admin": "be limited to single jobs. Admins see the whole workspace.",
-        "recruiter": "approve a rubric or record a hiring decision. Those belong to the hiring owner.",
+        "admin": "remove the last admin. A workspace always keeps at least one.",
+        "recruiter": "invite members, change workspace settings or a job’s hiring owner. Those belong to an admin.",
         "hiring_owner": "see other jobs or their candidates. Hiring owners see only the jobs they are given.",
         "interviewer": "see rankings, other interviewers’ scores, or other jobs. Interviewers see only the jobs they are given."
       },
@@ -1495,7 +1504,7 @@
       "subject": "Rubric waiting for your approval: {jobTitle}",
       "preheader": "{changed, select, yes {Version {version}, with what changed.} other {Version {version}.}} Nothing is assessed until you approve.",
       "heading": "{jobTitle}: version {version} of the rubric is waiting for your approval",
-      "intro": "{sender} at {workspace} sent you version {version} of the rubric. <hl>Approve or return version {version}</hl> once you have reviewed the competencies below; if you return it, add a note.",
+      "intro": "{sender} at {workspace} sent you version {version} of the rubric. <hl>Approve or return version {version}</hl> once you have reviewed the competencies below. If you return it, add a note.",
       "competency": "Competency",
       "weight": "Weight",
       "level": "Level needed",
@@ -1518,21 +1527,21 @@
     },
     "rubricReturned": {
       "subject": "Rubric returned with a note: {jobTitle}",
-      "preheader": "Version {version} was not approved. {inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "preheader": "Version {version} was not approved. {inForce, select, yes {The previously approved version still applies.} other {Nothing is assessed until a version is approved.}}",
       "status": "Returned",
       "version": "Version {version}",
       "heading": "{owner} returned version {version} of the rubric",
       "intro": "{owner} returned version {version} for {jobTitle} with a note. Open the rubric to change it and send it again.",
       "noteFrom": "Note from {owner}",
       "quoted": "“{note}”",
-      "callout": "{inForce, select, yes {The previously approved version stays in force.} other {Nothing is assessed until a version is approved.}}",
+      "callout": "{inForce, select, yes {The previously approved version still applies.} other {Nothing is assessed until a version is approved.}}",
       "button": "Open the rubric"
     }
   },
   "members": {
     "title": "Members",
     "breadcrumb": "Breadcrumb",
-    "error": "The members could not be loaded. Nothing was changed.",
+    "error": "We could not load the members. Try again.",
     "retry": "Try again",
     "roles": {
       "admin": "Workspace admin",
@@ -1579,7 +1588,7 @@
     },
     "removeDialog": {
       "title": "Remove {email}?",
-      "body": "They lose access to this workspace on their next request. Their job access is removed too.",
+      "body": "They lose access to this workspace from the next page they open. Their job access is removed too.",
       "confirm": "Remove member"
     },
     "picker": {
@@ -1623,12 +1632,12 @@
     "nothingWaiting": "Nothing is waiting on others.",
     "rubricApproval": "Rubric approval",
     "rubricApproved": "Rubric approved",
-    "approvalWith": "{job}, version {version}. With the {owner}.",
+    "approvalWith": "{job}, version {version}. Waiting for {owner}.",
     "approvalOf": "{job}, version {version}.",
     "done": "Done",
     "open": "Open",
     "openLabel": "Open the {job} rubric",
-    "loading": "Loading what is waiting",
+    "loading": "Loading what is waiting…",
     "error": "We could not load your desk. Try again.",
     "retry": "Try again"
   },
@@ -1639,9 +1648,10 @@
       "cv": "PDF or Word, up to 10 MB.",
       "evidence": "PDF, image or document, up to 20 MB."
     },
-    "uploading": "Uploading, {percent}%",
-    "notAccepted": "This file could not be accepted.",
-    "failed": "The upload did not finish. Try again."
+    "uploading": "Uploading… {percent}%",
+    "notAccepted": "We cannot use this file. Try a different file.",
+    "failed": "The upload did not finish. Try again.",
+    "stillChecking": "Still checking this file…"
   },
   "addApplicants": {
     "open": "Add applicants",
@@ -1657,7 +1667,7 @@
       "careers_page": "Careers page",
       "recruiter": "Recruiter"
     },
-    "checking": "Checking the file",
+    "checking": "Checking the file…",
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
     "readyCv": "{name} · ready",
     "submit": "{count, plural, =0 {Add applicants} one {Add # applicant} other {Add # applicants}}",
@@ -1714,11 +1724,11 @@
     "notYetAvailable": "Not yet available",
     "awaitingRubric": "Starts after rubric approval",
     "sendRubric": "Send rubric for approval",
-    "footer": "{filtered, select, true {{assessed, plural, =0 {None of these is assessed yet.} other {Showing {shown} of # assessed that match.}}} other {{assessed, plural, =0 {No one is assessed yet.} other {Showing {shown} of # assessed.}}}} Ranking orders your attention; nobody is rejected automatically.",
+    "footer": "{filtered, select, true {{assessed, plural, =0 {None of these is assessed yet.} other {Showing {shown} of # assessed that match.}}} other {{assessed, plural, =0 {No one is assessed yet.} other {Showing {shown} of # assessed.}}}} Ranking orders your attention. Nobody is rejected automatically.",
     "showAll": "Show all {count}",
     "empty": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
     "emptyFiltered": "No candidates match these filters.",
-    "loading": "Loading the ranking",
+    "loading": "Loading the ranking…",
     "error": "We could not load the ranking. Try again.",
     "retry": "Try again"
   }

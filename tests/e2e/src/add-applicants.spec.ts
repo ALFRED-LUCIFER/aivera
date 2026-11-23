@@ -67,7 +67,7 @@ async function openCandidates(page: Page) {
   return page.getByRole('table', { name: 'Ranked candidates' });
 }
 const bodyRows = (table: Locator) => table.getByRole('row').filter({ has: table.page().getByRole('cell') });
-const FAIRNESS = 'Ranking orders your attention; nobody is rejected automatically.';
+const FAIRNESS = 'Ranking orders your attention. Nobody is rejected automatically.';
 
 test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   await signIn(page, { email: AP });

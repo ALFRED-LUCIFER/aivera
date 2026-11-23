@@ -7,9 +7,7 @@ test('Scenario: Sign-in not set up in this environment', async ({ page }) => {
   await page.goto('/candidates/sign-in');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/candidates\/sign-in\?error=unavailable$/);
-  await expect(
-    page.getByRole('alert').filter({ hasText: 'Sign-in is not set up in this environment yet.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Sign-in is not available here.' })).toBeVisible();
   await page.goto('/candidates/jobs');
   await expect(page).toHaveURL(/\/candidates\/jobs$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

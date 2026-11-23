@@ -9,6 +9,7 @@ import {
   flaggedPairs,
   InvalidCitation,
   SchemaMismatch,
+  SourceTooLong,
   UncitedOutput,
   modelOf,
   parseCvRequest,
@@ -31,7 +32,7 @@ import type { WorkspacesContract } from '@credalent/workspaces';
 import { documentReadUseCases, readDocument, type ReadPorts } from './application/documentRead.ts';
 import { evidenceUseCases, type Ports } from './application/evidence.ts';
 import { linkReadUseCases, readLink, type FetchPage, type LinkPorts } from './application/linkRead.ts';
-import { mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
+import { MappingBusy, mapEvidence, mappingUseCases, type MappingPorts } from './application/mapping.ts';
 import {
   type ApprovedRubricPort,
   GitHubRateLimited,
@@ -126,6 +127,15 @@ const publishContradictionResolved: Ports['publishContradictionResolved'] = (
     occurredAt,
   });
 
+const publishMappingRequested: Ports['publishMappingRequested'] = (tx, { workspaceId, ...payload }, occurredAt) =>
+  enqueue(tx, outbox, EvidenceMappingRequestedV1, {
+    workspaceId,
+    payload,
+    // Every resolution asks once; a later one must not be dropped as a duplicate.
+    dedupeKey: `mapping:resolution:${uuidv7()}`,
+    occurredAt,
+  });
+
 const logFlagged: Ports['logFlagged'] = ({ similarity, ...ids }) =>
   log.info({ ...ids, 'credalent.evidence.similarity': similarity }, 'evidence near-duplicate flagged');
 const sha1: Ports['sha1'] = (input) => createHash('sha1').update(input).digest();
@@ -187,6 +197,7 @@ export function createEvidence(
     storeFor: evidenceStore,
     publishRecorded,
     publishContradictionResolved,
+    publishMappingRequested,
     candidateJob,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
@@ -319,9 +330,15 @@ async function rescheduleForBudget<P>(
   );
 }
 
+/** How long a mapping request waits behind a run in flight for the same candidate and job. */
+const MAPPING_BUSY_DELAY_MS = 60_000;
+
 /** An answer a retry cannot fix is dead-lettered on the first delivery (AIV-P1-089). */
 const permanent = (error: unknown): error is Error =>
-  error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput;
+  error instanceof InvalidCitation ||
+  error instanceof SchemaMismatch ||
+  error instanceof UncitedOutput ||
+  error instanceof SourceTooLong;
 
 /**
  * The worker job `evidence.repository.read` on the evidence queue. When GitHub's rate limit is spent, the same request
@@ -489,7 +506,12 @@ export function createEvidenceMappingHandlers(config: {
         return flaggedPairs(answer, pairs);
       } catch (error) {
         // A rejected answer stores no contradiction and is counted (logMapped); an outage still throws and retries.
-        if (error instanceof InvalidCitation || error instanceof SchemaMismatch || error instanceof UncitedOutput)
+        if (
+          error instanceof InvalidCitation ||
+          error instanceof SchemaMismatch ||
+          error instanceof UncitedOutput ||
+          error instanceof SourceTooLong
+        )
           return null;
         throw error;
       }
@@ -516,6 +538,7 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.gaps': counts.gaps,
           'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          'credalent.evidence.too_long': counts.tooLong,
           'credalent.evidence.compared.sent': compared.sent,
           'credalent.evidence.compared.flagged': compared.flagged,
           'credalent.evidence.compared.rejected': compared.rejected,
@@ -555,6 +578,22 @@ export function createEvidenceMappingHandlers(config: {
         try {
           run = await mapEvidence(portsFor(candidate), tx, envelope.workspaceId, candidateId, jobId);
         } catch (error) {
+          if (error instanceof MappingBusy) {
+            // shortcut: busy requests are not coalesced, so each makes its own model call in turn; dedupe per candidate
+            // and job if pilot fan-out shows it.
+            // Not a retry: the delivery budget would dead-letter the newest run behind a long model call.
+            await config.scheduler.schedule(
+              EVIDENCE_QUEUE,
+              newEnvelope(EvidenceMappingRequestedV1, {
+                workspaceId: envelope.workspaceId,
+                payload: { candidateId, jobId },
+                occurredAt: now(),
+              }),
+              new Date(now().getTime() + MAPPING_BUSY_DELAY_MS),
+            );
+            log.info({ 'outbox.event_id': envelope.id }, 'evidence mapping rescheduled behind a run in flight');
+            return;
+          }
           if (error instanceof BudgetExceeded)
             return rescheduleForBudget(
               config.scheduler,

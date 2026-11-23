@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 import { pairKey } from '../domain/corroboration.ts';
-import { comparePairs } from './mapping.ts';
+import { MAX_CALL_SOURCE_CHARS, MAX_SOURCE_CHARS } from '@credalent/ai';
+import { comparePairs, fitSources } from './mapping.ts';
 
 // AIV-P1-078: which pairs reach the AI comparison. Synthetic cast only (docs/00-product/personas.md).
 
@@ -122,5 +123,34 @@ describe('comparePairs', () => {
       await run([link('write-up', c.sources[0]?.text ?? ''), link('reference', c.sources[1]?.text ?? '')], compare);
       expect(compare, c.id).toHaveBeenCalledOnce();
     }
+  });
+});
+
+const src = (id: string, length: number) => ({ id, text: 'x'.repeat(length) });
+
+describe('fitSources (AIV-P2-062)', () => {
+  // SAFETY: mutation check: sent every source whatever its length -> this test failed
+  it('Scenario: An oversized source is not truncated silently', () => {
+    const { sent, tooLong } = fitSources([src('cv', 2_000), src('write-up', 500_000), src('reference', 300)]);
+    expect(sent.map((s) => s.id)).toEqual(['cv', 'reference']);
+    // Sent whole: nothing is cut, so no citation can point past what was sent.
+    expect(sent.map((s) => s.text.length)).toEqual([2_000, 300]);
+    expect(tooLong).toEqual(['write-up']);
+  });
+
+  it.each([
+    [MAX_SOURCE_CHARS, true],
+    [MAX_SOURCE_CHARS + 1, false],
+  ])('a source of %i characters is sent: %s', (length, fits) =>
+    expect(fitSources([src('s', length)]).sent).toHaveLength(fits ? 1 : 0),
+  );
+
+  it('leaves out a source that would take the call past its total, and still sends a smaller one after it', () => {
+    const big = MAX_SOURCE_CHARS - 1_000;
+    const left = MAX_CALL_SOURCE_CHARS - 4 * big;
+    const sources = [...['a', 'b', 'c', 'd'].map((id) => src(id, big)), src('e', left + 1), src('f', left)];
+    const { sent, tooLong } = fitSources(sources);
+    expect(sent.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd', 'f']);
+    expect(tooLong).toEqual(['e']);
   });
 });

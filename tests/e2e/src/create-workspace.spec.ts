@@ -75,7 +75,7 @@ for (const theme of themes) {
     await expect(panel.getByRole('link', { name: 'Credalent' })).toHaveAttribute('href', '/');
     await expect(panel.locator('mark')).toHaveText('evidence');
     for (const point of [
-      'Define a role and agree its competencies with the hiring manager.',
+      'Define a job and agree its competencies with the hiring owner.',
       'See candidates ranked by work you can inspect.',
       'Keep every hiring decision with a person.',
     ])

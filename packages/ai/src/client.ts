@@ -43,6 +43,26 @@ export class BudgetExceeded extends Error {
   }
 }
 
+/** Characters one source may hold, and all the sources of one call together (AIV-P2-062): a bound on what is sent. */
+export const MAX_SOURCE_CHARS = 60_000;
+export const MAX_CALL_SOURCE_CHARS = 240_000;
+
+/**
+ * A source, or all of them together, is over the cap: nothing was sent. Never truncated, so no citation can point past
+ * what the model saw; the caller marks the source "too long to read automatically".
+ */
+export class SourceTooLong extends Error {
+  override name = 'SourceTooLong';
+  constructor(task: string) {
+    super(`AI task ${task}: a source is too long to read automatically`);
+  }
+}
+
+/** Whether `sources` fit the caps: each within MAX_SOURCE_CHARS, all within MAX_CALL_SOURCE_CHARS. */
+const withinSourceCaps = (sources: readonly { text: string }[]) =>
+  sources.every((s) => s.text.length <= MAX_SOURCE_CHARS) &&
+  sources.reduce((sum, s) => sum + s.text.length, 0) <= MAX_CALL_SOURCE_CHARS;
+
 // Task names come from typed callers, but a cast or a stored name can still be wrong; checked before any call.
 function settingsOf<T>(tasks: Record<string, T>, task: string): T {
   if (!Object.hasOwn(tasks, task)) throw new UnknownAiTask(task);
@@ -252,6 +272,7 @@ export function createAiClient(options: {
       // Fails closed before any request or budget read, so a new candidate-source task cannot skip the replacer.
       if (!identifiers && sources.some((source) => source.kind !== 'job_description'))
         throw new MissingIdentifiers(task);
+      if (!withinSourceCaps(sources)) throw new SourceTooLong(task);
       if ('service' in settings && !service) throw new AiUnavailable(task, 'no ai service');
       // A service task's prompt is a person's free text (the recruiter's question), which can name anyone: it always
       // needs identifiers, even with job-description sources only, since the service must never receive a candidate's

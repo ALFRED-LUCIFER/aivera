@@ -1,5 +1,6 @@
 import { offeredJobTypes, type CatalogueContent } from '@credalent/jobs';
 import { z } from 'zod';
+import type { SaveFailure } from '@/features/shell/domain/saveFailure.ts';
 
 // Add a job, step 1 (AIV-P1-007, RoleNew "1. The job"). Pure: no React, no I/O (ADR-003).
 
@@ -50,7 +51,8 @@ export const formValues = (form: FormData): NewJobValues =>
 /** The required fields the recruiter must fix; anything else refused (forged ids, over-long text) is `failed`. */
 export type NewJobState = {
   errors: { title?: true; jobType?: true };
-  error: 'failed' | null;
+  /** `saveFailed`, `saveForbidden`: the save threw in the browser; the form keeps what was typed (AIV-P2-064). */
+  error: 'failed' | SaveFailure | null;
   /** The job and rubric version 1 were saved (AIV-P1-010): the page shows what happens next. */
   saved: boolean;
   /** Version 1, which "Send rubric for approval" sends (AIV-P1-014); set once saved. */

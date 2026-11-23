@@ -87,13 +87,13 @@ describe('JobsList (AIV-P3-004)', () => {
   it('loading: the heading and intro stay, and the list is announced as loading', () => {
     withIntl(<JobsListLoading />);
     expect(screen.getByRole('heading', { level: 1, name: 'Jobs' })).toBeDefined();
-    expect(screen.getByText('Loading jobs')).toBeDefined();
+    expect(screen.getByText('Loading jobs…')).toBeDefined();
   });
 
   it('failed: the message is an alert, and Try again retries', async () => {
     const onRetry = vi.fn();
     withIntl(<JobsListFailed onRetry={onRetry} />);
-    expect(screen.getByRole('alert').textContent).toBe('Jobs could not load. Try again.');
+    expect(screen.getByRole('alert').textContent).toBe('We could not load jobs. Try again.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });

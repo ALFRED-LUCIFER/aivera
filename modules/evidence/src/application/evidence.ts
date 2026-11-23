@@ -31,8 +31,11 @@ export type EvidenceItemView = EvidenceItem & { source: EvidenceSource; competen
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type EvidenceStore = {
   insert(source: EvidenceSource, items: EvidenceItem[], links: (CompetencyLink & { itemId: string })[]): Promise<void>;
-  /** False when the workspace has no such item. Linking twice keeps one link, at the latest level. */
-  link(workspaceId: string, itemId: string, link: CompetencyLink): Promise<boolean>;
+  /**
+   * The link's level before (null when new), or null when the workspace has no such item. Linking twice keeps one link,
+   * at the latest level.
+   */
+  link(workspaceId: string, itemId: string, link: CompetencyLink): Promise<{ level: number | null } | null>;
   /**
    * The candidate's items, oldest first; `jobId` set narrows `competencies` to that job's and leaves out items of any
    * mapping run but the candidate's newest for the job; null keeps every link. `unmapped` keeps only recorded items.
@@ -57,13 +60,15 @@ export type EvidenceStore = {
     resolution: Pick<DuplicateFlag, 'resolution' | 'resolvedBy' | 'resolvedAt'>,
   ): Promise<DuplicateFlag | null>;
   /**
-   * Resolves an open or resolved contradiction (never an agreement) and returns it as it was before, or null when the
-   * workspace has no such contradiction.
+   * Resolves an open or resolved contradiction (never an agreement), letting `standingItemId`'s source stand (null:
+   * both), and returns it as it was before, or null when the workspace has no such contradiction. Throws
+   * `EvidenceError('standing')` when the standing item is not one of the pair's.
    */
   resolveComparison(
     workspaceId: string,
     comparisonId: string,
-    resolution: Resolution,
+    resolution: Omit<Resolution, 'resolutionStandingSourceId'>,
+    standingItemId: string | null,
   ): Promise<(Comparison & { rubricVersionId: string }) | null>;
   /** The comparisons of the candidate's newest mapping run for the job, oldest first. */
   comparisons(workspaceId: string, candidateId: string, jobId: string): Promise<Comparison[]>;
@@ -94,6 +99,15 @@ export type Ports = {
       rubricVersionId: string;
       comparisonId: string;
     },
+    occurredAt: Date,
+  ): Promise<void>;
+  /**
+   * Asks the worker to map the candidate's evidence for the job again (`EvidenceMappingRequested.v1`): after a
+   * resolution sets a source aside, what that source vouched for is settled again without it (AIV-P2-063).
+   */
+  publishMappingRequested(
+    tx: Tx,
+    request: { workspaceId: string; candidateId: string; jobId: string },
     occurredAt: Date,
   ): Promise<void>;
   /** Job-scoped roles also need a grant on `resource` (ADR-005 point 6). */
@@ -182,6 +196,7 @@ export function evidenceUseCases({
   storeFor,
   publishRecorded,
   publishContradictionResolved,
+  publishMappingRequested,
   candidateJob,
   authorize,
   isSyntheticWorkspace,
@@ -271,25 +286,26 @@ export function evidenceUseCases({
     },
 
     /**
-     * A person resolves a contradiction with a note and the limit both items then state; the items count again.
-     * Audited (`evidence.contradiction_resolved`: actor, time, note) as the last statement. Admins and recruiters.
+     * A person resolves a contradiction: which item stands (null: both), a note and the limit the items then state; a
+     * standing item counts again, the other stays "Contradictory". Audited (`evidence.contradiction_resolved`: actor,
+     * time, note, the standing item) as the last statement. Admins and recruiters.
      */
     async resolveContradiction(
       ctx: WorkspaceContext,
       comparisonId: string,
-      input: { note: string; limit: string },
+      input: { note: string; limit: string; standingItemId: string | null },
     ): Promise<void> {
       await authorize(ctx, 'candidate.create');
       const note = input.note.trim();
       const limit = input.limit.trim();
       if (!note) throw new EvidenceError('resolution_note');
       if (!limit) throw new EvidenceError('limit');
-      const before = await storeFor(ctx.tx).resolveComparison(ctx.workspaceId, comparisonId, {
-        resolvedBy: ctx.userId,
-        resolvedAt: now(),
-        resolutionNote: note,
-        resolutionLimit: limit,
-      });
+      const before = await storeFor(ctx.tx).resolveComparison(
+        ctx.workspaceId,
+        comparisonId,
+        { resolvedBy: ctx.userId, resolvedAt: now(), resolutionNote: note, resolutionLimit: limit },
+        input.standingItemId,
+      );
       if (!before) throw new EvidenceError('comparison_not_found');
       await publishContradictionResolved(
         ctx.tx,
@@ -302,12 +318,27 @@ export function evidenceUseCases({
         },
         now(),
       );
+      // SAFETY: links were stored as they settle with every resolved source counting; when a source is set aside, or
+      // counts again, map again so what it vouches for is settled anew.
+      // shortcut: until that run, a link corroborated only by the set-aside source still shows as corroborated; settle it
+      // here, without the model, if pilot re-maps lag.
+      if (input.standingItemId !== null || before.resolutionStandingSourceId !== null)
+        await publishMappingRequested(
+          ctx.tx,
+          { workspaceId: ctx.workspaceId, candidateId: before.candidateId, jobId: before.jobId },
+          now(),
+        );
       await audit(ctx, {
         action: 'evidence.contradiction_resolved',
         subject: { type: 'comparison', id: comparisonId },
         note,
         before: { resolved: before.resolvedAt !== null },
-        after: { resolved: true, itemId: before.itemId, otherItemId: before.otherItemId },
+        after: {
+          resolved: true,
+          itemId: before.itemId,
+          otherItemId: before.otherItemId,
+          standingItemId: input.standingItemId,
+        },
       });
     },
 
@@ -317,10 +348,22 @@ export function evidenceUseCases({
       return storeFor(ctx.tx).comparisons(ctx.workspaceId, candidateId, jobId);
     },
 
-    async linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink): Promise<void> {
+    /** A person's link; a changed level is audited with the old and new level and the reason (AIV-P2-063). */
+    async linkToCompetency(ctx: WorkspaceContext, itemId: string, link: CompetencyLink, reason: string): Promise<void> {
       await authorize(ctx, 'candidate.create');
       checkLink(link);
-      if (!(await storeFor(ctx.tx).link(ctx.workspaceId, itemId, link))) throw new EvidenceError('not_found');
+      const note = reason.trim();
+      if (!note) throw new EvidenceError('level_reason');
+      const before = await storeFor(ctx.tx).link(ctx.workspaceId, itemId, link);
+      if (!before) throw new EvidenceError('not_found');
+      if (before.level === link.level) return;
+      await audit(ctx, {
+        action: 'evidence.level_changed',
+        subject: { type: 'evidence_item', id: itemId },
+        note,
+        before: { level: before.level },
+        after: { level: link.level, jobId: link.jobId, competencyId: link.competencyId },
+      });
     },
 
     // shortcut: no paging; a candidate holds tens of items, not thousands. Page when the evidence profile needs it.

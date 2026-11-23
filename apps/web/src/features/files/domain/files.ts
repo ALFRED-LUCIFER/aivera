@@ -41,7 +41,8 @@ export type { FileStatus, Purpose };
 export type DirectUpload =
   | { phase: 'idle' }
   | { phase: 'uploading'; percent: number }
-  | { phase: 'checking' }
+  /** `slow`: the scan is still running after about three minutes; polling goes on (AIV-P2-064). */
+  | { phase: 'checking'; slow?: true }
   | { phase: 'done'; fileId: string }
   | { phase: 'error'; message: UploadMessage };
 

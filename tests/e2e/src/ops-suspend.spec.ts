@@ -10,7 +10,7 @@ import { approvedWorkspace, PIA } from './workspaces.ts';
 // server refusal is mutation-checked in the workspaces module and tests/integration/src/ops-status.test.ts. Synthetic
 // people only.
 
-const BANNER = 'This workspace is paused by Credalent. You can read everything; new work is paused.';
+const BANNER = 'This workspace is paused by Credalent. You can read everything. New work is paused.';
 const PREVIEW = 'Members can still read everything. New work, AI calls and emails stop. Nothing is deleted.';
 
 /** A new workspace and its admin, signed in, in a browser context of their own. */

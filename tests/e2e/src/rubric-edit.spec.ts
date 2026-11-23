@@ -41,13 +41,13 @@ test('Scenarios: edit as version 3, weights must total 100, send for approval, r
   // Sending for approval keeps version 2 in force.
   await send(page).click();
   await expect(page.getByRole('status').filter({ hasText: 'Sent to Head of Engineering.' })).toHaveText(
-    'Sent to Head of Engineering. The approved rubric stays in force, and rankings do not change until the new ' +
+    'Sent to Head of Engineering. The approved rubric still applies, and rankings do not change until the new ' +
       'version is approved.',
   );
   await expect(history(page)).toHaveText([
     `Version 3, awaiting approval · ${NOTE}`,
     'Version 2, approved · Head of Engineering · 12 Nov 2026',
-    'Version 1, superseded · Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
+    'Version 1, replaced by a newer version · Product judgement raised from 10% to 15%; Arabic NLP changed to desirable.',
   ]);
   // The table shows the version in force, still 15% for Cost and reliability.
   await expect(page.getByRole('row').filter({ hasText: 'Cost and reliability' })).toContainText('15%');
@@ -91,6 +91,34 @@ test('Add and remove a competency, by keyboard', async ({ page }) => {
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('button', { name: 'Edit rubric' })).toBeVisible();
 });
+
+// AIV-P2-064: the save's server action never reaches the server, so the browser's fetch rejects.
+for (const theme of themes) {
+  test(`Scenario: A rejected save keeps the form, by keyboard, axe clean (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page);
+    await openRubric(page);
+    await page.getByRole('button', { name: 'Edit rubric' }).click();
+    await weight(page, 'Product judgement').fill('10');
+    await weight(page, 'Cost and reliability').fill('20');
+    await page.route('**/*', (route) =>
+      route.request().method() === 'POST' && route.request().headers()['next-action']
+        ? route.abort()
+        : route.fallback(),
+    );
+    await page.getByRole('button', { name: 'Save draft' }).press('Enter');
+    await expect(page.getByRole('alert').filter({ hasText: 'We could not' })).toHaveText(
+      'We could not save your changes. Try again.',
+    );
+    await expect(weight(page, 'Cost and reliability')).toHaveValue('20');
+    await expect(page.getByRole('button', { name: 'Save draft' })).toBeEnabled();
+    await expectAccessible(page);
+  });
+}
 
 for (const theme of themes) {
   test(`axe passes on the rubric in edit mode (${theme})`, async ({ page, context, baseURL }) => {

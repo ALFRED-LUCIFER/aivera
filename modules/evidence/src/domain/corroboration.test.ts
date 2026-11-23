@@ -73,6 +73,7 @@ const contradiction = (over: Partial<Comparison>): Comparison => ({
   resolvedAt: null,
   resolutionNote: null,
   resolutionLimit: null,
+  resolutionStandingSourceId: null,
   createdAt: new Date('2026-11-20T09:00:00Z'),
   ...over,
 });
@@ -207,8 +208,17 @@ describe('comparablePairs', () => {
   });
 });
 
+const resolvedWith = (standing: string | null) =>
+  contradiction({
+    resolvedBy: 'u',
+    resolvedAt: new Date('2026-11-21T09:00:00Z'),
+    resolutionNote: 'The repository shows the work',
+    resolutionLimit: 'The CV overstated the scale.',
+    resolutionStandingSourceId: standing,
+  });
+
 describe('shownAs and pairKey', () => {
-  const item = { id: 'i1', provenance: 'corroborated' as const, limit: 'Own limit.' };
+  const item = { id: 'i1', sourceId: 's1', provenance: 'corroborated' as const, limit: 'Own limit.' };
   // SAFETY: mutation check: returned the item's own provenance for an open contradiction -> this test failed
   it('an open contradiction shows "Contradictory"; a resolved one shows its own provenance and the resolution limit', () => {
     expect(shownAs(item, [contradiction({})])).toEqual({ provenance: 'contradictory', limit: 'Own limit.' });
@@ -226,6 +236,14 @@ describe('shownAs and pairKey', () => {
       provenance: 'corroborated',
       limit: 'Own limit.',
     });
+  });
+
+  // SAFETY: mutation check: ignored the standing source in shownAs -> this test failed
+  it('Scenario: Resolving a contradiction is a recorded decision: the source set aside stays "Contradictory" (AIV-P2-063)', () => {
+    const limit = 'The CV overstated the scale.';
+    expect(shownAs(item, [resolvedWith('s1')])).toEqual({ provenance: 'corroborated', limit });
+    expect(shownAs(item, [resolvedWith('s2')])).toEqual({ provenance: 'contradictory', limit });
+    expect(shownAs(item, [resolvedWith(null)])).toEqual({ provenance: 'corroborated', limit });
   });
 
   it('pairs two excerpts the same way in either order', () => {

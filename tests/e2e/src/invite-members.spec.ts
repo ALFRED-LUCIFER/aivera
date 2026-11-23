@@ -161,7 +161,11 @@ test('removing a member asks first, then takes them off the list and out of the 
   await openMembers(page);
   await page.getByRole('button', { name: 'Remove lina@example.com' }).click();
   const dialog = page.getByRole('dialog', { name: 'Remove lina@example.com?' });
-  await expect(dialog.getByText('They lose access to this workspace on their next request.')).toBeVisible();
+  await expect(
+    dialog.getByText(
+      'They lose access to this workspace from the next page they open. Their job access is removed too.',
+    ),
+  ).toBeVisible();
   await dialog.getByRole('button', { name: 'Remove member' }).click();
   await expect(dialog).toBeHidden();
   await expect(row(page, 'lina@example.com', 'Active')).toHaveCount(0);

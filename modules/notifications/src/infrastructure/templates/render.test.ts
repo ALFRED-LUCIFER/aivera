@@ -51,7 +51,7 @@ describe('evidence-request template', () => {
     const { html } = await renderEmail('evidence-request', data, ctx(false));
     expect(html).toMatch(/^<!DOCTYPE html/);
     expect(html).toContain('<html lang="en" dir="ltr">');
-    expect(html).toContain('The recruiter would like to see more of your work. About two minutes.');
+    expect(html).toContain('The recruiter would like to see more of your work.');
     expect(html).toContain('More evidence would help your application');
     expect(html).toContain('Sent by Layla Haddad at Demo Hiring Co through Credalent');
     // The highlighter marks the two asks (highlight.test.ts).
@@ -77,8 +77,8 @@ describe('evidence-request template', () => {
 
   it('adds the synthetic-data band in development, in HTML and plain text', async () => {
     const { html, text } = await renderEmail('evidence-request', data, ctx(true));
-    expect(html).toContain('Synthetic data — development environment');
-    expect(text.split('\n')[0]).toBe('Synthetic data — development environment');
+    expect(html).toContain('Practice data: nothing here is a real person');
+    expect(text.split('\n')[0]).toBe('Practice data: nothing here is a real person');
   });
 
   it('leaves out "You said" for a competency without a claim', async () => {
