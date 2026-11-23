@@ -24,19 +24,31 @@ export type AddApplicantsDialogProps = {
   canSubmit: boolean;
   pending: boolean;
   result: AddApplicantsResult | null;
+  /** The save threw; the CVs and source stay. A key under `access`. */
+  failure: 'saveFailed' | 'saveForbidden' | null;
   onSubmit: () => void;
 };
 
 export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
   const t = useTranslations('addApplicants');
   const tf = useTranslations('files');
+  const ta = useTranslations('access');
   const { upload, result, cvs } = props;
   const status =
     upload.phase === 'uploading'
       ? tf('uploading', { percent: upload.percent })
       : upload.phase === 'checking'
-        ? t('checking')
+        ? upload.slow
+          ? tf('stillChecking')
+          : t('checking')
         : null;
+  const error = props.failure
+    ? ta(props.failure)
+    : result && !result.ok
+      ? result.error === 'jobNotFound'
+        ? t('jobNotFound')
+        : tf(result.error)
+      : null;
   return (
     <Dialog
       open={props.open}
@@ -82,7 +94,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
             </ul>
           )}
         </div>
-        {result && !result.ok && (
+        {error && (
           <p role="alert" className="flex items-center gap-1.5 text-meta font-semibold text-err-text">
             {/* The FilePicker's error icon: status colour always travels with an icon and words (DESIGN.md). */}
             <svg
@@ -96,7 +108,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
               <circle cx="8" cy="8" r="6.25" />
               <path d="M8 4.75v3.75M8 10.75v.5" strokeLinecap="round" />
             </svg>
-            {result.error === 'jobNotFound' ? t('jobNotFound') : tf(result.error)}
+            {error}
           </p>
         )}
         <SuccessBanner>

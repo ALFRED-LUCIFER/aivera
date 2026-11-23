@@ -409,7 +409,9 @@
     "errorTitle": "Something went wrong. Try again.",
     "retry": "Try again",
     "notFoundTitle": "We could not find that page.",
-    "home": "Go to the home page"
+    "home": "Go to the home page",
+    "saveFailed": "We could not save your changes. Try again.",
+    "saveForbidden": "You do not have access to do this."
   },
   "signup": {
     "points": {
@@ -466,6 +468,13 @@
     "discardBody": "What you typed is not saved.",
     "discard": "Discard",
     "keepEditing": "Keep editing",
+    "redraft": {
+      "title": "Draft competencies again?",
+      "body": "A new draft replaces these competencies, with your edits:",
+      "confirm": "Replace and draft",
+      "cancel": "Keep my competencies",
+      "footer": "Nothing changes until you confirm."
+    },
     "close": "Close",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
     "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
@@ -1641,7 +1650,8 @@
     },
     "uploading": "Uploading… {percent}%",
     "notAccepted": "We cannot use this file. Upload a PDF, image or document within the size limit.",
-    "failed": "The upload did not finish. Try again."
+    "failed": "The upload did not finish. Try again.",
+    "stillChecking": "Still checking this file…"
   },
   "addApplicants": {
     "open": "Add applicants",

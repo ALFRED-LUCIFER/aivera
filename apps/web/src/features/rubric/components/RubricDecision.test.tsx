@@ -94,6 +94,15 @@ describe('Scenario: Approving an outdated version is refused', () => {
       'This version changed since you opened it. Reload to see the latest.',
     );
   });
+
+  it.each([
+    ['saveFailed', 'We could not save your changes. Try again.'],
+    ['saveForbidden', 'You do not have access to do this.'],
+  ] as const)('a decision that threw (%s) says "%s" and keeps the panel', (status, text) => {
+    show({ decision: decision({ status }) });
+    expect(screen.getByRole('alert').textContent).toBe(text);
+    expect(screen.getByRole('button', { name: 'Approve version 2' })).toBeTruthy();
+  });
 });
 
 describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {

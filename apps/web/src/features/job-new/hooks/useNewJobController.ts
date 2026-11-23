@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { useActionState, useState } from 'react';
-import { initialNewJobState } from '../domain/jobNew.ts';
+import { saveFailure } from '@/features/shell/domain/saveFailure.ts';
+import { formValues, initialNewJobState, type NewJobState } from '../domain/jobNew.ts';
 import { addJob } from '../services/addJob.ts';
 
 /**
@@ -9,7 +10,17 @@ import { addJob } from '../services/addJob.ts';
  * anything was typed.
  */
 export function useNewJobController(defaultJobType: string) {
-  const [state, action, pending] = useActionState(addJob, initialNewJobState(defaultJobType));
+  const [state, action, pending] = useActionState(
+    async (previous: NewJobState, form: FormData): Promise<NewJobState> => {
+      try {
+        return await addJob(previous, form);
+      } catch (error) {
+        // A throw would reach the error boundary; the form is shown again with what was typed instead.
+        return { errors: {}, error: saveFailure(error), saved: false, values: formValues(form) };
+      }
+    },
+    initialNewJobState(defaultJobType),
+  );
   const [jobType, setJobType] = useState(state.values.jobType);
   const [title, setTitle] = useState(state.values.title);
   const [dirty, setDirty] = useState(false);
