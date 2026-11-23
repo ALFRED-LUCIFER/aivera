@@ -22,18 +22,20 @@ expected:
     links[*].label: [submitted]
     links[*].strength: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@2
-  promptHash: 'df2b9de6b8e0'
+  promptVersion: evidence.mapToCompetency@3
+  promptHash: 88d89ecccd12
   output:
     links:
       - competencyId: c-test
         strength: strong
         label: submitted
-        level: 4
-        limit: Shows her share of the commits, not how flaky the suite is or what it covers.
+        level: 5
+        limit: This evidence does not show the specific nature or scope of the test automation suite.
         citations:
           - sourceId: S1
-            quote: authored 148 of 171 commits
+            quote: |-
+              checkout-e2e
+              authored 148 of 171 commits
     changes:
       - competencyId: c-ci
-        text: Ask for the suite's CI run history over the last three months.
+        text: Provide evidence of maintaining CI pipelines with run history or metrics showing CI reliability.

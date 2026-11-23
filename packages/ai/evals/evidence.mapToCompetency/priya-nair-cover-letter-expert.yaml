@@ -25,28 +25,29 @@ expected:
   safety:
     forbidden: ['"strong"']
 recorded:
-  promptVersion: evidence.mapToCompetency@2
-  promptHash: '9d0a70c29d89'
+  promptVersion: evidence.mapToCompetency@3
+  promptHash: 1b3715cbe839
   output:
     links:
       - competencyId: c-llm
         strength: claim
         label: claim
-        level: 2
-        limit: Her own cover letter; no assistant or monitoring can be inspected.
+        level: 3
+        limit: This evidence does not show details of the monitoring or technical specifics of the LLM system in production.
         citations:
           - sourceId: S1
-            quote: I am an expert in production LLM systems
+            quote: I am an expert in production LLM systems and the strongest retrieval engineer you will interview
       - competencyId: c-retrieval
         strength: claim
         label: claim
-        level: 2
-        limit: Her own cover letter; no evaluation or metric has been shared.
+        level: 3
+        limit: This evidence does not show specific retrieval metrics, eval harnesses, or regression gates built by the
+          candidate.
         citations:
           - sourceId: S1
-            quote: I evaluate every release myself
+            quote: I am an expert in production LLM systems and the strongest retrieval engineer you will interview
     changes:
       - competencyId: c-llm
-        text: Ask for a link to an assistant she shipped and its monitoring dashboard.
+        text: Provide documentation or monitoring dashboards of the LLM assistant running for real users.
       - competencyId: c-retrieval
-        text: Ask for the evaluation harness or a release report she gated.
+        text: Show retrieval evaluation metrics, an eval harness, or a regression gate built by the candidate.

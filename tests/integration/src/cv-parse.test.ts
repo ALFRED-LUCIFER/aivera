@@ -435,11 +435,12 @@ describe('Scenario: CV parsing may send the candidate own email and phone, never
     expect(sent).toContain('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123');
     expect(sent).not.toMatch(/sara al qahtani/i);
     expect(telemetry).not.toMatch(/sara|qahtani|900123|\[CANDIDATE\]/i);
-    // The statement reads as the CV wrote it, a claim; the one repeating the email is dropped.
+    // The statement is a claim cut to the CV's words without the name (AIV-P2-080); the one repeating the email is dropped.
     expect(parsed.items.map((i) => [i.excerpt, i.provenance])).toContainEqual([
-      'Sara Al Qahtani led the Gulf Arabic eval set',
+      'led the Gulf Arabic eval set',
       'claim',
     ]);
+    expect(parsed.items.map((i) => i.excerpt).join(' ')).not.toMatch(/sara|qahtani/i);
     expect(parsed.items.map((i) => i.excerpt).join(' ')).not.toMatch(/@|900123|\[CANDIDATE\]/);
     const record = await as(w1, (ctx) => candidates.getPerson(ctx, parsed.candidateId));
     expect(record?.emails).toEqual(expect.arrayContaining(contact.emails));

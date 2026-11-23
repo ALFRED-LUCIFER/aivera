@@ -1,5 +1,6 @@
-# Sara Al Qahtani: her eval harness repository backs "Retrieval and evaluation" and Python; her CV lines stay claims at
-# Supporting or below. Each limit states what the evidence does not show, which only a judge can check.
+# Sara Al Qahtani: her eval harness repository backs Python; its "Retrieval and evaluation" link quotes only the
+# repository name, which the product caps at Supporting (sourceText marks the name as a declaration span). Her CV lines
+# stay claims at Supporting or below. Each limit states what the evidence does not show, which only a judge can check.
 id: sara-eval-harness
 people: [Sara Al Qahtani]
 input:
@@ -42,31 +43,15 @@ expected:
     Every link's limit names what its evidence does not show, such as who reviewed the work, its effect on product
     decisions, or that a CV line has nothing to inspect.
 recorded:
-  promptVersion: evidence.mapToCompetency@2
-  promptHash: 'f3f12b45fd01'
+  promptVersion: evidence.mapToCompetency@3
+  promptHash: 88d58689f47d
   output:
     links:
-      - competencyId: c-retrieval
-        strength: strong
-        label: submitted
-        level: 4
-        limit: Shows the tooling, not how results changed product decisions.
-        citations:
-          - sourceId: S1
-            quote: authored 412 of 460 commits
-      - competencyId: c-python
-        strength: strong
-        label: submitted
-        level: 4
-        limit: Shows Python code in one repository, not how it runs in production.
-        citations:
-          - sourceId: S1
-            quote: 'Python in src/harness/run.py (path, code): Python source file'
       - competencyId: c-llm
         strength: supporting
         label: claim
         level: 3
-        limit: A CV line; nothing about the assistant can be inspected yet.
+        limit: This evidence does not show the detailed monitoring or scale of the LLM system.
         citations:
           - sourceId: S2
             quote: Led the merchant assistant used by about 9,000 merchants
@@ -74,25 +59,44 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: The 40% figure is on her CV only, with no measurement behind it.
+        limit: This evidence does not show the exact measurement methods or ongoing reliability data.
         citations:
           - sourceId: S2
             quote: Cut cost per request by 40% with response caching
       - competencyId: c-arabic
-        strength: claim
+        strength: supporting
         label: claim
-        level: 2
-        limit: The evaluation set has not been shared.
+        level: 3
+        limit: This evidence does not show the size or impact of the Arabic evaluation set.
         citations:
           - sourceId: S2
             quote: Built a Gulf Arabic evaluation set for the assistant
+      - competencyId: c-retrieval
+        strength: strong
+        label: submitted
+        level: 4
+        limit: This evidence does not show the scale or impact of the evaluation harness in production.
+        citations:
+          - sourceId: S1
+            quote: llm-eval-harness
+      - competencyId: c-python
+        strength: strong
+        label: submitted
+        level: 4
+        limit: This evidence does not show the candidate's role in maintaining the Python service or its production use.
+        citations:
+          - sourceId: S1
+            quote: authored 412 of 460 commits
     changes:
-      - competencyId: c-cost
-        text: Ask for the billing or latency dashboard behind the 40% cost cut.
-      - competencyId: c-arabic
-        text: Ask for the Gulf Arabic evaluation set and the results it produced.
       - competencyId: c-llm
-        text: Ask for the assistant's monitoring dashboard or a public changelog.
+        text: Provide monitoring data or logs showing the assistant's performance and uptime in production.
+      - competencyId: c-cost
+        text: Include detailed cost or latency measurement reports before and after optimizations.
+      - competencyId: c-arabic
+        text: Show the size, annotation process, or evaluation results of the Gulf Arabic dataset.
   judge:
     pass: true
-    reason: Each limit says what is not shown, from product decisions to the CV lines having nothing to inspect.
+    reason: "Each link's limit clearly states what the evidence does not show: the LLM system's detailed monitoring or
+      scale, the exact measurement methods or ongoing reliability data for cost reduction, the size or impact of the
+      Arabic evaluation set, the scale or impact of the evaluation harness in production, and the candidate's role in
+      maintaining the Python service or its production use, thus meeting the rubric requirements."

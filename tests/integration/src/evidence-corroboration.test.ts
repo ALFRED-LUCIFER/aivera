@@ -781,7 +781,7 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
 });
 
 describe('Feature: Candidate names and contact details never reach the model (AIV-P1-080)', () => {
-  it('Scenario: mapping and comparison send placeholders; stored excerpts keep the text, logs hold neither', async () => {
+  it('Scenario: mapping and comparison send placeholders; stored excerpts never hold the name, logs hold neither', async () => {
     const sara = await person('Sara Al Qahtani', 'sara.identifiers@example.com');
     const writeUp =
       "Sara's merchant assistant serves about 9,000 merchants; Al Qahtani wrote the scorer. Call +44 7700 900123.";
@@ -804,14 +804,15 @@ describe('Feature: Candidate names and contact details never reach the model (AI
       '[CANDIDATE] merchant assistant serves about 9,000 merchants; [CANDIDATE] wrote the scorer. Call [PHONE_1].',
     );
     expect(mapping).toContain('A few hundred merchants used it while I managed [CANDIDATE] (referee: [EMAIL_1]).');
-    expect(compare).toContain('[CANDIDATE] merchant assistant serves about 9,000 merchants');
+    expect(compare).toContain('merchant assistant serves about 9,000 merchants');
     expect(requests().join(' ')).not.toMatch(/sara|qahtani|900123|omar@/i);
     expect(logged).not.toMatch(/sara|qahtani|900123|omar@|\[CANDIDATE\]/i);
 
-    // Excerpts are the stored text (offsets mapped back); model text shown to a recruiter has the name put back.
+    // Excerpts are the stored text without the name (AIV-P2-080); model text shown to a recruiter has the name put back.
     const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, JOB));
     const cited = items.filter((i) => i.competencies.some((c) => c.competencyId === LLM));
-    expect(cited.map((i) => i.excerpt)).toContain("Sara's merchant assistant serves about 9,000 merchants");
+    expect(cited.map((i) => i.excerpt)).toContain('merchant assistant serves about 9,000 merchants');
+    expect(cited.map((i) => i.excerpt).join(' ')).not.toMatch(/sara|qahtani|900123/i);
     expect(cited.map((i) => i.limit)).toContain('Sara Al Qahtani shows the work described, not its scale.');
     expect(JSON.stringify(cited)).not.toMatch(/\[(?:CANDIDATE|EMAIL_\d|PHONE_\d)\]/);
   });
