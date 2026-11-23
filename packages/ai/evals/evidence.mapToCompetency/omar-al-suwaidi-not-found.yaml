@@ -23,11 +23,11 @@ expected:
     changes[*].competencyId: [c-python]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 361dda8d513d
+  promptHash: a16d5597414e
   output:
     links: []
     changes:
       - competencyId: c-python
-        text: Provide evidence of Python services written and maintained by the candidate, including tests.
+        text: Provide evidence of Python services the candidate wrote and maintains, with tests.
       - competencyId: c-llm
-        text: Provide evidence of an LLM system or assistant running in production for real users, with monitoring.
+        text: Provide evidence of an assistant or LLM feature running for real users, with its monitoring.

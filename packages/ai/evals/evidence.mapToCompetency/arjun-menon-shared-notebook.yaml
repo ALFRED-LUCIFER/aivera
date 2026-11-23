@@ -25,14 +25,14 @@ expected:
     links[*].strength: [medium]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: c281f34ef3f2
+  promptHash: fc60c01dadcc
   output:
     links:
       - competencyId: c-python
         strength: medium
         label: submitted
         level: 3
-        limit: This evidence does not show the scale or impact of the Python services or their test coverage.
+        limit: This evidence does not show the scale or impact of the Python services or the extent of their maintenance.
         citations:
           - sourceId: S1
             quote: 'Python in notebooks/eval_runner.py (path, code): Python source file'
@@ -40,12 +40,14 @@ recorded:
         strength: medium
         label: submitted
         level: 3
-        limit: This evidence does not show specific retrieval metrics or regression gating details.
+        limit: This evidence does not show specific retrieval metrics or a regression gate built by the candidate.
         citations:
           - sourceId: S1
-            quote: authored 140 of 410 commits
+            quote: 'Python in notebooks/eval_runner.py (path, code): Python source file'
     changes:
       - competencyId: c-retrieval
-        text: Provide explicit retrieval evaluation metrics or a regression gate built by the candidate.
+        text: Provide explicit retrieval metrics, an evaluation harness, or a regression gate built by the candidate.
       - competencyId: c-python
-        text: Show evidence of Python services maintained with tests and their operational impact.
+        text:
+          Show evidence of Python services maintained by the candidate with tests and documentation of their impact or
+          scale.

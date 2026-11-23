@@ -23,7 +23,7 @@ expected:
     links[*].strength: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: cab006bdbb6e
+  promptHash: 88d89ecccd12
   output:
     links:
       - competencyId: c-test
@@ -33,7 +33,9 @@ recorded:
         limit: This evidence does not show the specific nature or scope of the test automation suite.
         citations:
           - sourceId: S1
-            quote: authored 148 of 171 commits
+            quote: |-
+              checkout-e2e
+              authored 148 of 171 commits
     changes:
       - competencyId: c-ci
-        text: Provide evidence of maintaining CI pipelines with a history of keeping them green.
+        text: Provide evidence of maintaining CI pipelines with run history or metrics showing CI reliability.

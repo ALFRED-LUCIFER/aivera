@@ -1,0 +1,47 @@
+# Karim Nasser's requirements document (AIV-P2-080): submitted work a person can inspect, so Medium (the product's
+# ceiling for a document), labelled submitted; nothing shows pricing, so that competency gets no link.
+id: karim-nasser-requirements-doc
+people: [Karim Nasser]
+input:
+  competencies:
+    - id: c-prd
+      name: Product requirements writing
+      evidenceExpected: A requirements document or spec the candidate wrote, with goals and acceptance criteria.
+    - id: c-pricing
+      name: Pricing strategy
+      evidenceExpected: A pricing change the candidate led, with its measured effect on revenue.
+sources:
+  - id: S1
+    kind: document
+    text: |-
+      Card checkout retries: product requirements, version 3
+      Owner: Karim Nasser
+      Problem: 4.1% of card checkouts fail on a first-attempt gateway timeout.
+      Goal: recover half of them without charging any customer twice.
+      Requirement: retry once after 2 seconds with the same idempotency key.
+      Acceptance: no duplicate charge in 10,000 replayed timeouts.
+expected:
+  match:
+    links[*].competencyId: [c-prd]
+    links[*].label: [submitted]
+    links[*].strength: [medium]
+recorded:
+  promptVersion: evidence.mapToCompetency@3
+  promptHash: 653c438e10ea
+  output:
+    links:
+      - competencyId: c-prd
+        strength: medium
+        label: submitted
+        level: 4
+        limit: This evidence does not show who reviewed the requirements or the scale of the product impact.
+        citations:
+          - sourceId: S1
+            quote: |-
+              Problem: 4.1% of card checkouts fail on a first-attempt gateway timeout.
+              Goal: recover half of them without charging any customer twice.
+              Requirement: retry once after 2 seconds with the same idempotency key.
+              Acceptance: no duplicate charge in 10,000 replayed timeouts
+    changes:
+      - competencyId: c-pricing
+        text: Provide evidence of a pricing change led by the candidate with measured revenue impact.

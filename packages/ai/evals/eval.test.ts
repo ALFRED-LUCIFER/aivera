@@ -216,11 +216,11 @@ describe('the golden set', () => {
       }
   });
 
-  it('AIV-P1-027: every recorded mapping is valid against the product schema, 24 source/competency pairs', () => {
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 25 source/competency pairs', () => {
     const cases = golden.get('evidence.mapToCompetency') ?? [];
     for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
-    expect(pairs).toHaveLength(24);
+    expect(pairs).toHaveLength(25);
   });
 
   it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {

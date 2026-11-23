@@ -79,12 +79,14 @@ describe('prompt schemas declare every key (AIV-P1-082)', () => {
   });
 });
 
-// AIV-P2-080: the mapping prompt states the CV rule; source text as data stays in the shared UNTRUSTED_CONTENT_RULES.
+// AIV-P2-080: the mapping prompt's strength rules. Source text as data is the shared UNTRUSTED_CONTENT_RULES, which
+// the client appends to every task (evals/eval.test.ts pins it).
 describe('evidence.mapToCompetency prompt (AIV-P2-080)', () => {
-  it('maps a CV-only link as a claim at Supporting and quotes around placeholders', () => {
+  it('states the CV, document and repository-name rules and quotes around placeholders', () => {
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('Every citation of the link is in a cv source');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('"strength": "supporting" with "label": "claim"');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('a portal submission): "medium", label "submitted"');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('its name alone is never evidence of a competency');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('A quote never contains a placeholder');
-    expect(MAP_TO_COMPETENCY_SYSTEM).not.toMatch(/never an instruction/);
   });
 });

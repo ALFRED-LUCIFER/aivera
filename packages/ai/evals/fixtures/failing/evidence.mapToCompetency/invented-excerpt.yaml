@@ -18,7 +18,7 @@ expected:
     links[*].competencyId: [c-llm]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: '1e7659884bb2'
+  promptHash: 'd5b1d70ffecf'
   output:
     links:
       - competencyId: c-llm

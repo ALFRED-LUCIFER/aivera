@@ -165,7 +165,7 @@ export type Redaction = {
   /**
    * A span of the redacted `sources[index]` as a span of the original source text, cut to its longest stretch with no
    * placeholder so no name, email or phone comes back as a stored quote; undefined when it touches a removed trait, so a
-   * protected trait never comes back either, or when nothing but placeholders is left.
+   * protected trait never comes back either, or when no word is left once the placeholders are cut away.
    */
   original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
@@ -227,7 +227,8 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
         if (e - s > best.end - best.start) best = { start: s, end: e };
         from = Math.max(from, cut.at + cut.length);
       }
-      if (best.end === best.start) return undefined;
+      // A stretch with no word left ("(", "'") would cite nothing.
+      if (!/[\p{L}\p{N}]/u.test(text.slice(best.start, best.end))) return undefined;
       return { start: toOriginal(cuts, best.start), end: toOriginal(cuts, best.end) };
     },
   };

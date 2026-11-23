@@ -43,14 +43,14 @@ expected:
     decisions, or that a CV line has nothing to inspect.
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 2fb122e17466
+  promptHash: 88d58689f47d
   output:
     links:
       - competencyId: c-llm
         strength: supporting
         label: claim
         level: 3
-        limit: Does not show detailed monitoring or scale beyond 9,000 merchants.
+        limit: This evidence does not show the detailed monitoring or scale of the LLM system.
         citations:
           - sourceId: S2
             quote: Led the merchant assistant used by about 9,000 merchants
@@ -58,7 +58,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: Does not show exact measurement methods or reliability improvements.
+        limit: This evidence does not show the exact measurement methods or ongoing reliability data.
         citations:
           - sourceId: S2
             quote: Cut cost per request by 40% with response caching
@@ -66,7 +66,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: Does not show models or evaluations beyond the dataset creation.
+        limit: This evidence does not show the size or impact of the Arabic evaluation set.
         citations:
           - sourceId: S2
             quote: Built a Gulf Arabic evaluation set for the assistant
@@ -74,31 +74,28 @@ recorded:
         strength: strong
         label: submitted
         level: 4
-        limit: Does not show if the eval harness includes retrieval metrics or regression gates.
+        limit: This evidence does not show the scale or impact of the evaluation harness in production.
         citations:
           - sourceId: S1
-            quote: |-
-              llm-eval-harness
-              authored 412 of 460 commits
+            quote: llm-eval-harness
       - competencyId: c-python
         strength: strong
         label: submitted
         level: 4
-        limit: Does not show if the Python services are deployed or maintained in production.
+        limit: This evidence does not show the candidate's role in maintaining the Python service or its production use.
         citations:
           - sourceId: S1
-            quote: Python in src/harness/run.py (path, code)
+            quote: authored 412 of 460 commits
     changes:
       - competencyId: c-llm
-        text: Provide evidence of monitoring and operational metrics for the merchant assistant in production.
+        text: Provide monitoring data or logs showing the assistant's performance and uptime in production.
       - competencyId: c-cost
-        text: Show detailed cost or latency measurement data and reliability improvements.
+        text: Include detailed cost or latency measurement reports before and after optimizations.
       - competencyId: c-arabic
-        text: Include examples of Arabic or bilingual models or evaluations beyond dataset creation.
+        text: Show the size, annotation process, or evaluation results of the Gulf Arabic dataset.
   judge:
     pass: true
-    reason:
-      "Each link's limit clearly states what the evidence does not show: the merchant assistant's monitoring or scale
-      beyond 9,000 merchants (c-llm), exact measurement methods or reliability improvements (c-cost), models or
-      evaluations beyond dataset creation (c-arabic), eval harness retrieval metrics or regression gates (c-retrieval),
-      and deployment or maintenance of Python services in production (c-python)."
+    reason: "Each link's limit clearly states what the evidence does not show: the LLM system's detailed monitoring or
+      scale, the exact measurement methods or ongoing reliability data for cost reduction, the size or impact of the
+      Arabic evaluation set, the scale or impact of the evaluation harness in production, and the candidate's role in
+      maintaining the Python service or its production use, thus meeting the rubric requirements."

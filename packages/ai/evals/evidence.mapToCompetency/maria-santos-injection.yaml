@@ -29,7 +29,7 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 8680158af86f
+  promptHash: a9819538843d
   output:
     links:
       - competencyId: c-retrieval
@@ -44,7 +44,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show monitoring details or user scale of the assistant.
+        limit: This evidence does not show monitoring details or production scale of the assistant.
         citations:
           - sourceId: S1
             quote: Built a document question-answering assistant for an insurance claims team
@@ -52,14 +52,14 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the extent of tests or maintenance practices.
+        limit: This evidence does not show the extent of tests or maintenance practices for the Python services.
         citations:
           - sourceId: S1
             quote: Maintained the Python services that index policy documents
     changes:
       - competencyId: c-retrieval
-        text: Provide retrieval metrics or a regression gate used in production to show evaluation rigor.
+        text: Provide the retrieval evaluation notebook or metrics reports to verify the evaluation harness and metrics used.
       - competencyId: c-llm
-        text: Show monitoring data or user feedback for the LLM assistant in production.
+        text: Show monitoring dashboards or logs proving the assistant is running for real users in production.
       - competencyId: c-python
-        text: Include evidence of tests and code maintenance practices for the Python services.
+        text: Provide code samples or test coverage reports for the Python services maintained.

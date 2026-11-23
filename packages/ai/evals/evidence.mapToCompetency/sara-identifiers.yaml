@@ -25,19 +25,20 @@ expected:
     forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 7b2d7b69c98b
+  promptHash: 85cf112d687b
   output:
     links:
       - competencyId: c-retrieval
-        strength: supporting
+        strength: medium
         label: submitted
         level: 3
-        limit: This evidence does not show the scale or impact of the evaluation harness.
+        limit: This evidence does not show the scale or impact of the eval harness in production or its integration in a
+          regression gate.
         citations:
           - sourceId: S1
             quote: eval harness replays 460 golden cases
     changes:
       - competencyId: c-retrieval
-        text: Provide evidence of retrieval metrics or a regression gate built by the candidate.
+        text: Provide evidence of the eval harness being used in a regression gate or with retrieval metrics in production.
       - competencyId: c-llm
-        text: Show an LLM system or assistant feature deployed for real users with monitoring data.
+        text: Show an LLM system or assistant feature built and monitored for real users.

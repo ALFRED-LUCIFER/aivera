@@ -28,14 +28,14 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 3e0bdbc806ae
+  promptHash: 120398f9e37d
   output:
     links:
       - competencyId: c-python
         strength: supporting
         label: submitted
         level: 1
-        limit: This evidence does not show the scale or impact of the Python services or the extent of maintenance.
+        limit: This evidence does not show the scale, complexity, or impact of the Python services written or maintained.
         citations:
           - sourceId: S1
             quote: 'Python in requirements.txt (manifest, declaration): declares fastapi'
@@ -43,16 +43,12 @@ recorded:
         strength: supporting
         label: submitted
         level: 1
-        limit:
-          This evidence does not show specific retrieval metrics, evaluation harness, or regression gates built by the
-          candidate.
+        limit: This evidence does not show any retrieval metrics, eval harness, or regression gate built by the candidate.
         citations:
           - sourceId: S1
             quote: claims-indexer
     changes:
       - competencyId: c-python
-        text: Provide evidence of Python service code authored and maintained beyond declarations, including tests and usage.
+        text: Provide evidence of Python service code authored and maintained with tests, beyond manifest declarations.
       - competencyId: c-retrieval
-        text:
-          Provide evidence of retrieval evaluation artifacts such as an eval harness, retrieval metrics, or regression gates
-          built by the candidate.
+        text: Provide evidence of building or maintaining retrieval evaluation tools, metrics, or regression gates.

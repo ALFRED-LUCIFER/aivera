@@ -24,7 +24,7 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@3
-  promptHash: 4e2ad7e723b2
+  promptHash: de9f5861ea0f
   output:
     links:
       - competencyId: c-python
@@ -39,12 +39,12 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the measurement method or the baseline for latency reduction.
+        limit: This evidence does not show the measurement method or the baseline for the latency reduction.
         citations:
           - sourceId: S1
             quote: Kept p95 latency under 300 ms for the search API
     changes:
       - competencyId: c-python
-        text: Provide code samples or repository links showing the Python services and tests authored and maintained.
+        text: Provide code samples or repository links showing the Python services and tests authored by the candidate.
       - competencyId: c-cost
         text: Provide detailed metrics or reports demonstrating cost or latency reductions with measurement methodology.

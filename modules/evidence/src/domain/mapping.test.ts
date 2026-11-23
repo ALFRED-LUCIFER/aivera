@@ -94,6 +94,7 @@ describe('Feature: Evidence mapped to competencies with cited excerpts (AIV-P1-0
   });
 
   // SAFETY: mutation check: lower a CV-sourced Strong to Supporting instead of rejecting it -> "a CV item returned with strength Strong is rejected" failed
+  // SAFETY: mutation check (AIV-P2-080): removed the `cv && RANK[link.strength] > RANK.supporting` guard -> this test failed
   it('Scenario: A CV item returned with strength Strong is rejected', () => {
     const quote = 'Built a document question-answering assistant for an insurance claims team';
     for (const strength of ['strong', 'medium'] as const) {

@@ -97,6 +97,22 @@ describe('the replacer', () => {
     expect(span('CANDIDATE]: mail')).toBe('mail');
     expect(span('[CANDIDATE]: mail [EMAIL_1]')).toBe('mail');
     expect(span('[EMAIL_1]')).toBeUndefined();
+    expect(span('mail [EMAIL')).toBe('mail');
+  });
+
+  // SAFETY: mutation check: rejected only an empty stretch (best.end === best.start) -> this test failed ('(')
+  it('rejects a quote with no word left once its placeholders are cut away', () => {
+    const text = "Sara Al Qahtani (sara.al.qahtani@example.com) built it; 'Sara' said so.";
+    const redaction = redactSources([source(text)], sara, false);
+    const seen = redaction.sources[0]?.text ?? '';
+    const span = (quote: string) => {
+      const start = seen.indexOf(quote);
+      return redaction.original(0, { start, end: start + quote.length });
+    };
+    expect(seen).toBe("[CANDIDATE] ([EMAIL_1]) built it; '[CANDIDATE]' said so.");
+    expect(span('[CANDIDATE] ([EMAIL_1])')).toBeUndefined();
+    expect(span("'[CANDIDATE]'")).toBeUndefined();
+    expect(span('[CANDIDATE]')).toBeUndefined();
   });
 
   it('keeps the longest stretch of a quote with a placeholder inside it', () => {
