@@ -121,3 +121,10 @@ def test_the_formatter_drops_arguments_and_tracebacks() -> None:
     line = AllowlistFormatter().format(record)
     assert PROMPT_TEXT not in line
     assert json.loads(line) == {"level": "ERROR", "message": "Exception: %s"}
+
+
+def test_the_formatter_names_a_non_string_message_by_its_type() -> None:
+    record = logging.LogRecord("openai", logging.ERROR, __file__, 1, ValueError(PROMPT_TEXT), None, None)
+    line = AllowlistFormatter().format(record)
+    assert PROMPT_TEXT not in line
+    assert json.loads(line) == {"level": "ERROR", "message": "ValueError"}

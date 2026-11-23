@@ -44,7 +44,11 @@ class AllowlistFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         fields = {key: getattr(record, key) for key in LOG_FIELDS if hasattr(record, key)}
-        return json.dumps({"level": record.levelname, "message": record.msg, **fields})
+        # A non-string message (log.error(exc)) is named by its type: json.dumps failing would print it to stderr.
+        message = record.msg if isinstance(record.msg, str) else type(record.msg).__name__
+        return json.dumps(
+            {"level": record.levelname, "message": message, **fields}, default=lambda value: type(value).__name__
+        )
 
 
 def _failure(error: Exception) -> tuple[int, str, dict[str, str]]:
@@ -134,7 +138,8 @@ def app_from_env() -> FastAPI:
     handler = logging.StreamHandler()
     handler.setFormatter(AllowlistFormatter())
     logging.basicConfig(handlers=[handler], level=logging.INFO, force=True)
-    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    # uvicorn.error has no handler of its own: it reaches this one once, through uvicorn.
+    for name in ("uvicorn", "uvicorn.access"):
         logging.getLogger(name).handlers = [handler]
     allowed = frozenset(c.strip() for c in _env("AI_SERVICE_ALLOWED_CALLERS").split(",") if c.strip())
     return create_app(

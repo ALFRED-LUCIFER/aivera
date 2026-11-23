@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.routing import APIRoute
@@ -12,7 +13,7 @@ from fastapi.testclient import TestClient
 from ai_service.app import PUBLIC_PATHS
 from ai_service.auth import require_caller
 
-from .conftest import OTHER, FakeModel, token
+from .conftest import OTHER, FakeKeys, FakeModel, token
 
 TASK = "/tasks/assistant.answer"
 
@@ -55,6 +56,18 @@ def test_a_valid_token_for_an_identity_not_allowed_is_forbidden(
 ) -> None:
     response = client.post(TASK, json=example("request.json"), headers={"authorization": f"Bearer {token(oid=OTHER)}"})
     assert response.status_code == 403
+    assert model.calls == []
+
+
+def test_a_key_set_outage_is_a_retryable_503(
+    client: TestClient, model: FakeModel, example: Callable[[str], dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def unreachable(_self: object, _token: str) -> None:
+        raise jwt.PyJWKClientConnectionError("keys unreachable")
+
+    monkeypatch.setattr(FakeKeys, "get_signing_key_from_jwt", unreachable)
+    response = client.post(TASK, json=example("request.json"), headers={"authorization": f"Bearer {token()}"})
+    assert response.status_code == 503
     assert model.calls == []
 
 
