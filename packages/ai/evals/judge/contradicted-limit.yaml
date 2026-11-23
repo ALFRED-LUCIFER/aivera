@@ -1,0 +1,14 @@
+# AIV-P2-084: a specific limit the sources contradict fails: S1 shows the candidate authored 412 of 460 commits.
+id: contradicted-limit
+case: evidence.mapToCompetency/sara-eval-harness
+limit: This evidence does not show who authored the repository.
+expected: fail
+recorded:
+  judgePrompt: evals.judge@4
+  verdict:
+    pass: false
+    reason: >-
+      The output fails the rubric because every link's limit must name what its evidence does not show, but the
+      limits for the links citing S1 and S2 all state 'This evidence does not show who authored the repository,' which
+      is false for S1 since it states 'authored 412 of 460 commits,' showing who authored the repository; therefore,
+      the limits do not correctly name what the evidence does not show, failing the rubric.

@@ -22,13 +22,18 @@ import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
-import { identifiersOf, loadGolden, type GoldenCase } from './golden.ts';
+import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase } from './golden.ts';
 import {
+  caseLines,
+  evaluateJudge,
   evaluateTask,
+  judgePrompt,
   liveJudge,
+  liveJudgeVerdict,
   promptOf,
   recordedAnswer,
   recordedJudge,
+  recordedJudgeVerdict,
   recordedMatcher,
   summaryTable,
   type Answer,
@@ -917,4 +922,71 @@ describe('Feature: The live eval scores free-text competency names by meaning', 
       'competencies[*].name: missing "Code quality and testing"',
     ]);
   });
+});
+
+// Feature: The live AI judge is pinned by golden good and bad outputs (AIV-P2-084). Synthetic data only.
+describe('Feature: The live AI judge is pinned by golden good and bad outputs', () => {
+  const judgeCases = loadJudgeCases(import.meta.dirname, golden);
+  const contradicted = 'This evidence does not show who authored the repository.';
+
+  it('holds the good output and every bad limit, each with its expected verdict', () => {
+    expect(judgeCases.map((c) => [c.id, c.expected, c.limit])).toEqual([
+      ['contradicted-limit', 'fail', contradicted],
+      ['good', 'pass', undefined],
+      ['nothing-specific', 'fail', 'See the source.'],
+      ['praise', 'fail', 'Strong, convincing evidence of excellent engineering.'],
+    ]);
+    const sara = caseOf('evidence.mapToCompetency', 'sara-eval-harness');
+    expect(sara.sources[0]?.text).toContain('authored 412 of 460 commits');
+    for (const c of judgeCases) expect([c.golden, c.rubric]).toEqual([sara, sara.expected.judge]);
+    expect(judgeCases[1]?.output).toBe(sara.recorded.output);
+    const output = judgeCases[0]?.output as { links: { limit: string }[] } | undefined;
+    expect(output?.links.map((l) => l.limit)).toEqual(Array(5).fill(contradicted));
+  });
+
+  it('Scenario: The recorded run stays deterministic: scored from recorded verdicts, no model call', async () => {
+    // recordedJudgeVerdict takes no client: there is no model to call.
+    const report = await evaluateJudge(judgeCases, recordedJudgeVerdict);
+    expect(report.cases.map((c) => [c.id, c.passed])).toEqual(judgeCases.map((c) => [c.id, true]));
+    expect(report.passed).toBe(true);
+  });
+
+  // SAFETY: mutation check: evaluateJudge compared nothing (passed = true) -> this test failed
+  it('Scenario: A judge that misses a bad case fails the live eval, naming the case', async () => {
+    const lenient = await evaluateJudge(judgeCases, liveJudgeVerdict(judgeWith('{"pass":true,"reason":"fine"}')));
+    expect(lenient.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual([
+      'contradicted-limit',
+      'nothing-specific',
+      'praise',
+    ]);
+    expect(lenient.passed).toBe(false);
+    const lines = caseLines(lenient);
+    expect(lines).toContain('FAIL evals.judge contradicted-limit: judge 0/1');
+    expect(lines).toContain('    judge: expected fail, the judge said pass');
+    // Never the judge's reason: it can quote the sources (AGENTS.md 1.2).
+    expect(lines.join('\n')).not.toContain('fine');
+
+    const strict = await evaluateJudge(judgeCases, liveJudgeVerdict(judgeWith('{"pass":false,"reason":"no"}')));
+    expect(strict.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual(['good']);
+  });
+
+  // SAFETY: mutation check: judge prompt id comparison removed from recordedJudgeVerdict in run.ts -> this test failed
+  it('Scenario: A judge prompt change is never graded by stale recordings', async () => {
+    const stale = judgeCases.map((c) => ({ ...c, recorded: { ...c.recorded, judgePrompt: 'evals.judge@3' } }));
+    const report = await evaluateJudge(stale, recordedJudgeVerdict);
+    expect(report.passed).toBe(false);
+    expect(report.cases[0]?.error).toBe(
+      `judge verdict recorded with evals.judge@3, code is ${judgePrompt.id}: re-run the judge golden cases live`,
+    );
+  });
+
+  it(
+    'runs in the recorded CLI as the task evals.judge',
+    () => {
+      const { status, stdout } = cli(['--task', 'evals.judge']);
+      expect(stdout).toContain('PASS evals.judge contradicted-limit: judge 1/1');
+      expect(status).toBe(0);
+    },
+    cliTimeout,
+  );
 });

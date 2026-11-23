@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
@@ -84,11 +84,14 @@ export type GoldenCase = z.infer<typeof goldenCase>;
  */
 export const identifiersOf = (golden: GoldenCase) => ({ names: golden.people.slice(0, 1), emails: [], phones: [] });
 
-/** Reads every `<dir>/<task>/*.yaml`, except the gate's own failing fixtures. Throws on the first invalid case. */
+/**
+ * Reads every `<dir>/<task>/*.yaml`, except the gate's own failing fixtures and the judge's golden cases. Throws on the
+ * first invalid case.
+ */
 export function loadGolden(dir: string): Map<string, GoldenCase[]> {
   const tasks = new Map<string, GoldenCase[]>();
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === 'fixtures') continue;
+    if (!entry.isDirectory() || entry.name === 'fixtures' || entry.name === 'judge') continue;
     const files = readdirSync(join(dir, entry.name)).filter((file) => file.endsWith('.yaml'));
     if (files.length === 0) continue;
     tasks.set(
@@ -103,4 +106,49 @@ export function loadGolden(dir: string): Map<string, GoldenCase[]> {
     );
   }
   return tasks;
+}
+
+/**
+ * A judge golden case (AIV-P2-084): an output whose verdict is known, graded against a golden case's rubric and
+ * sources, so every judge prompt change is tested on the real model. One YAML file per case in `<dir>/judge/`.
+ */
+const judgeCase = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    /** The golden case (`<task>/<id>`) whose rubric, sources and recorded output the judge grades. */
+    case: z.string().regex(/^[\w.-]+\/[a-z0-9-]+$/),
+    /** Replaces every link's limit in that output; omitted, the recorded output is graded as it is. */
+    limit: z.string().min(1).optional(),
+    expected: z.enum(['pass', 'fail']),
+    /** The live judge's verdict and the judge prompt it came from: a recorded run refuses one from another prompt. */
+    recorded: z.object({ judgePrompt: z.string().min(1), verdict }).strict(),
+  })
+  .strict();
+export type JudgeCase = z.infer<typeof judgeCase> & { rubric: string; golden: GoldenCase; output: unknown };
+
+const withLinks = z.object({ links: z.array(z.record(z.string(), z.unknown())) }).loose();
+
+/** Reads every `<dir>/judge/*.yaml` against the golden set `golden`; none when the folder is absent. */
+export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): JudgeCase[] {
+  if (!existsSync(join(dir, 'judge'))) return [];
+  return readdirSync(join(dir, 'judge'))
+    .filter((file) => file.endsWith('.yaml'))
+    .toSorted()
+    .map((file) => {
+      const path = join('judge', file);
+      const parsed = judgeCase.safeParse(parse(readFileSync(join(dir, path), 'utf8')));
+      if (!parsed.success) throw new Error(`${path}: ${z.prettifyError(parsed.error)}`);
+      if (parsed.data.id !== basename(file, '.yaml')) throw new Error(`${path}: id must equal the file name`);
+      const [task = '', id] = parsed.data.case.split('/');
+      const target = golden.get(task)?.find((c) => c.id === id);
+      if (!target?.expected.judge) throw new Error(`${path}: no golden case ${parsed.data.case} with a judge rubric`);
+      const { limit } = parsed.data;
+      let output = target.recorded.output;
+      if (limit !== undefined) {
+        const links = withLinks.safeParse(output);
+        if (!links.success) throw new Error(`${path}: ${parsed.data.case} has no links whose limit to replace`);
+        output = { ...links.data, links: links.data.links.map((link) => ({ ...link, limit })) };
+      }
+      return { ...parsed.data, rubric: target.expected.judge, golden: target, output };
+    });
 }

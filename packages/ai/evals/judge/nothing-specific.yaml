@@ -1,0 +1,12 @@
+# AIV-P2-084: a limit that names nothing specific fails.
+id: nothing-specific
+case: evidence.mapToCompetency/sara-eval-harness
+limit: See the source.
+expected: fail
+recorded:
+  judgePrompt: evals.judge@4
+  verdict:
+    pass: false
+    reason: >-
+      The output fails the rubric because every link's limit is 'See the source.', which does not name what its
+      evidence does not show, violating the requirement that every link's limit must specify what the evidence lacks.
