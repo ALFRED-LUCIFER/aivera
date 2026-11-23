@@ -193,7 +193,7 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
 const PERMANENT_AI_FAILURES = [SchemaMismatch, UncitedOutput, InvalidCitation, SourceTooLong];
 
 /**
- * A failure worth another delivery (a timeout, throttling, an outage): the worker records "Parsing failed, retry" in its
+ * A failure worth another delivery (a timeout, throttling, an outage): the worker records "We could not read this CV. Try again." in its
  * own transaction and rethrows, so the consumer backs off, redelivers and dead-letters after its last delivery.
  */
 export const isTransient = (error: unknown) =>

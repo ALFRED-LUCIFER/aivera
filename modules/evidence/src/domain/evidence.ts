@@ -13,7 +13,7 @@ export const SOURCE_KINDS = [
 ] as const;
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 
-/** Independently corroborated, Candidate-submitted, Claim awaiting validation, Contradictory, Awaiting live defence. */
+/** Independently corroborated, Candidate-submitted, Claim awaiting validation, Contradictory, To check in interview. */
 export const PROVENANCES = ['corroborated', 'submitted', 'claim', 'contradictory', 'awaiting-defence'] as const;
 export type Provenance = (typeof PROVENANCES)[number];
 

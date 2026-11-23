@@ -311,7 +311,7 @@ export interface EvidenceContract {
   getLinkRead(ctx: WorkspaceContext, sourceId: string): Promise<LinkReadView | null>;
   /**
    * A draft evidence request naming only the candidate's open claims for the job (items resting on "Claim awaiting
-   * validation" or "Awaiting live defence"), with the default follow-up policy (after 2 days, at most twice). Audited.
+   * validation" or "To check in interview"), with the default follow-up policy (after 2 days, at most twice). Audited.
    * Admins and recruiters. Throws `EvidenceError` (`nothing_to_request` "Nothing rests on a claim for this job",
    * `open_request`) and creates nothing.
    */
