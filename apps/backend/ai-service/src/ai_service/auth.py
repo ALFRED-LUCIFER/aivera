@@ -2,7 +2,7 @@
 
 Every task call carries the caller's managed-identity token for this service's app registration. The token's
 signature, issuer (the workforce tenant), audience and expiry are checked, and its object id must be one of the app
-identities allowed to call. Anything else is refused before the request body is read.
+identities allowed to call. Anything else is refused before the request body is validated or used.
 """
 
 from collections.abc import Callable
@@ -24,13 +24,15 @@ def entra_verifier(
     keys = jwks or jwt.PyJWKClient(f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys")
     # A managed identity gets a v1 token unless the app registration asks for v2; both are signed by the tenant's keys.
     issuers = [f"https://sts.windows.net/{tenant_id}/", f"https://login.microsoftonline.com/{tenant_id}/v2.0"]
+    # A v1 token names the audience as asked (api://<appId>); a v2 token names the bare app id.
+    audiences = [audience, audience.removeprefix("api://")]
 
     def verify(token: str) -> str:
         claims = jwt.decode(
             token,
             keys.get_signing_key_from_jwt(token).key,
             algorithms=["RS256"],
-            audience=audience,
+            audience=audiences,
             issuer=issuers,
             options={"require": ["exp", "iat", "aud", "iss", "oid"]},
         )
@@ -50,6 +52,9 @@ def require_caller(request: Request) -> str:
     verify: Verifier = request.app.state.verify
     try:
         return verify(token)
+    except jwt.PyJWKClientConnectionError:
+        # The tenant's key set could not be fetched: retryable, not the caller's fault.
+        raise HTTPException(503) from None
     except jwt.PyJWTError:
         raise HTTPException(401, headers={"www-authenticate": "Bearer"}) from None
     except NotAllowed:

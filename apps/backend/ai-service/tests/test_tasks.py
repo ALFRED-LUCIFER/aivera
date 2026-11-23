@@ -2,10 +2,11 @@
 
 import json
 import logging
+import sys
 from collections.abc import Callable
 from typing import Any
 
-import httpx2 as httpx  # openai's own HTTP client
+import httpx2 as httpx  # openai's own HTTP client (a declared dev dependency)
 import openai
 import pytest
 from fastapi.testclient import TestClient
@@ -60,7 +61,7 @@ def _status_error(status: int, headers: dict[str, str] | None = None) -> openai.
         (_status_error(500), 503),
         (_status_error(400), 502),
         (openai.APITimeoutError(httpx.Request("POST", "https://model.credalent.example")), 503),
-        (ValueError(PROMPT_TEXT), 500),
+        (ValueError(PROMPT_TEXT), 502),
     ],
     ids=["rate-limited", "model-5xx", "model-4xx", "timeout", "bug"],
 )
@@ -109,3 +110,14 @@ def test_logs_carry_task_ids_tokens_and_durations_only(
         "caller": WEB,
     }
     assert lines[1]["outcome"] == "model_unavailable"
+
+
+def test_the_formatter_drops_arguments_and_tracebacks() -> None:
+    try:
+        raise ValueError(PROMPT_TEXT)
+    except ValueError:
+        record = logging.LogRecord("uvicorn.error", logging.ERROR, __file__, 1, "Exception: %s", (PROMPT_TEXT,), None)
+        record.exc_info = sys.exc_info()
+    line = AllowlistFormatter().format(record)
+    assert PROMPT_TEXT not in line
+    assert json.loads(line) == {"level": "ERROR", "message": "Exception: %s"}

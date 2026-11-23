@@ -57,4 +57,4 @@ export {
   assistantAnswerRequest,
   assistantAnswerSchema,
 } from './prompts/assistant.answer.ts';
-export { aiService, aiServiceFromEnv, type AiService } from './service.ts';
+export { aiServiceFromEnv } from './service.ts';

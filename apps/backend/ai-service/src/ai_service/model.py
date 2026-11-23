@@ -33,7 +33,8 @@ class AzureModel:
             api_version=API_VERSION,
             azure_ad_token_provider=token,
             max_retries=0,
-            timeout=55,
+            # Under the caller's 60 s, with room for a cold start: a call it gave up on is never spent unseen.
+            timeout=45,
         )
         self.name = deployment
 
@@ -45,17 +46,16 @@ class AzureModel:
                 "type": "json_schema",
                 "json_schema": {"name": task.replace(".", "_"), "strict": True, "schema": schema},
             },
-            # The output can never take the call past its cap; the input is counted by the caller against it too.
+            # shortcut: bounds the output only, so input plus output can pass the cap; @credalent/ai then charges the
+            # call and fails it. Count the prompt's tokens here (a tokenizer dependency) if pages grow near the cap.
             max_completion_tokens=min(request.maxOutputTokens, request.tokenCap),
             temperature=request.temperature,
         )
         usage = response.usage
-        return (
-            response.choices[0].message.content or "",
-            Usage(
-                inputTokens=usage.prompt_tokens if usage else 0,
-                outputTokens=usage.completion_tokens if usage else 0,
-            ),
+        if usage is None:  # the budget must never rest on a count the model left out
+            raise ValueError("no usage reported")
+        return response.choices[0].message.content or "", Usage(
+            inputTokens=usage.prompt_tokens, outputTokens=usage.completion_tokens
         )
 
     def ping(self) -> None:

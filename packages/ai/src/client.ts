@@ -253,16 +253,16 @@ export function createAiClient(options: {
       if (!identifiers && sources.some((source) => source.kind !== 'job_description'))
         throw new MissingIdentifiers(task);
       if ('service' in settings && !service) throw new AiUnavailable(task, 'no ai service');
-      const redaction = identifiers && redactSources(sources, identifiers, CONTACT_EXTRACTION_TASKS.includes(task));
+      // A service task's prompt is a person's free text (the recruiter's question), which can name anyone: it always
+      // needs identifiers, even with job-description sources only, since the service must never receive a candidate's
+      // identifiers (ADR-015 point 3). Redacted in one pass with the sources, so placeholders number alike.
+      if ('service' in settings && !identifiers) throw new MissingIdentifiers(task);
+      const asked =
+        'service' in settings ? [...sources, { id: 'prompt', kind: 'document' as const, text: input.prompt }] : sources;
+      const redaction = identifiers && redactSources(asked, identifiers, CONTACT_EXTRACTION_TASKS.includes(task));
+      const prompt = 'service' in settings ? (redaction?.sources.at(-1)?.text ?? '') : input.prompt;
       const system = `${input.system}\n\n${CITATION_RULES}\n\n${UNTRUSTED_CONTENT_RULES}`;
-      // A service task's prompt is a person's free text (the recruiter's question): redacted like a source, since the
-      // service must never receive a candidate's identifiers (ADR-015 point 3).
-      const prompt =
-        'service' in settings && identifiers
-          ? (redactSources([{ id: 'prompt', kind: 'document', text: input.prompt }], identifiers, false).sources[0]
-              ?.text ?? '')
-          : input.prompt;
-      const full = `${prompt}\n\nSources:\n${formatSources(redaction?.sources ?? sources)}`;
+      const full = `${prompt}\n\nSources:\n${formatSources((redaction?.sources ?? sources).slice(0, sources.length))}`;
       // The model is given the schema; we parse its text ourselves, so a mismatch and an uncited answer are told apart.
       const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
       return withSpan(`ai structured ${task}`, async () => {
@@ -289,6 +289,8 @@ export function createAiClient(options: {
               );
               // A response off the contract is an error: rejected, never charged on its own word.
               const reply = serviceResponse.parse(answer);
+              // Every real call reads its prompt: a zero input count would leave the call uncharged.
+              if (reply.usage.inputTokens === 0) throw new Error('no usage reported');
               return { value: reply.output, usage: reply.usage, cap: tokenCap };
             }
             const result = await generateText({

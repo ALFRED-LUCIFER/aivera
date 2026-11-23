@@ -56,7 +56,8 @@ def _failure(error: Exception) -> tuple[int, str, dict[str, str]]:
         return (503, "model_unavailable", {}) if error.status_code >= 500 else (502, "model_refused", {})
     if isinstance(error, openai.APIConnectionError):  # includes timeouts
         return 503, "model_unreachable", {}
-    return 500, "error", {}
+    # Not 500: the caller retries 5xx, and a bug does not go away on a retry.
+    return 502, "error", {}
 
 
 def create_app(model: Model, verify: Verifier) -> FastAPI:
@@ -128,11 +129,13 @@ def _env(name: str) -> str:
 
 def app_from_env() -> FastAPI:
     """The deployed app (`uvicorn --factory ai_service.app:app_from_env`): configuration from the environment only."""
+    # Every logger, not only ours: uvicorn's tracebacks and the SDKs' messages go through the allowlist too. uvicorn
+    # sets its own handlers before it calls this factory, so they are replaced here.
     handler = logging.StreamHandler()
     handler.setFormatter(AllowlistFormatter())
-    log.addHandler(handler)
-    log.setLevel(logging.INFO)
-    log.propagate = False
+    logging.basicConfig(handlers=[handler], level=logging.INFO, force=True)
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(name).handlers = [handler]
     allowed = frozenset(c.strip() for c in _env("AI_SERVICE_ALLOWED_CALLERS").split(",") if c.strip())
     return create_app(
         AzureModel(_env("AZURE_OPENAI_RESOURCE_NAME"), os.environ.get("AI_DEPLOYMENT", "gpt-main")),

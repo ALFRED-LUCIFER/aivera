@@ -19,10 +19,11 @@ TASK = "/tasks/assistant.answer"
 
 # SAFETY: mutation check: removed the require_caller dependency from run_task -> this test and the 401 tests failed
 def test_every_route_but_the_probes_declares_the_caller_check(client: TestClient) -> None:
-    routes = [route for route in client.app.routes if isinstance(route, APIRoute)]  # type: ignore[attr-defined]
+    routes = client.app.routes  # type: ignore[attr-defined]
     assert {route.path for route in routes} >= PUBLIC_PATHS
     for route in routes:
         if route.path not in PUBLIC_PATHS:
+            assert isinstance(route, APIRoute), route.path  # a mount or a raw route could skip the dependency
             assert require_caller in [d.call for d in route.dependant.dependencies], route.path
 
 
@@ -67,5 +68,8 @@ def test_the_allowed_caller_is_served(client: TestClient, example: Callable[[str
 
 
 def test_a_v2_token_is_accepted_too(client: TestClient, example: Callable[[str], dict[str, Any]]) -> None:
-    v2 = token(iss="https://login.microsoftonline.com/00000000-0000-4000-8000-0000000000aa/v2.0")
+    v2 = token(
+        iss="https://login.microsoftonline.com/00000000-0000-4000-8000-0000000000aa/v2.0",
+        aud="ai-service.credalent.example",
+    )
     assert client.post(TASK, json=example("request.json"), headers={"authorization": f"Bearer {v2}"}).status_code == 200

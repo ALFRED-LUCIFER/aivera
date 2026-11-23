@@ -69,7 +69,8 @@ export function aiService(options: {
       body: JSON.stringify(request),
       signal: abortSignal,
     });
-    if (!response.ok)
+    if (!response.ok) {
+      await response.body?.cancel(); // never read: it could repeat the prompt
       throw new APICallError({
         message: `ai service ${response.status}`,
         url,
@@ -78,6 +79,7 @@ export function aiService(options: {
         responseHeaders: Object.fromEntries(response.headers),
         isRetryable: response.status === 429 || response.status >= 500,
       });
+    }
     return response.json();
   };
 }

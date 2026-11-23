@@ -2,7 +2,7 @@
 
 - **Status:** Accepted, 22 Nov 2026: the owner decided it in the 21 Nov 2026 architecture audit, so it is accepted now rather than in AIV-P2-068; the layout part is implemented here.
 - **Ticket:** AIV-P2-067 (#480); the service itself is AIV-P2-068, the admin app AIV-P5-019.
-- **Amended, 23 Nov 2026 (AIV-P2-068, owner):** the AI service lives at `apps/backend/ai-service`, with the other back-end apps, not at `apps/ai-service` (point 1). Built in AIV-P2-068: see points 2 and 3 for what the first task does. One gap against point 2: the service runs in the shared Container Apps environment, whose subnet can reach PostgreSQL; it holds no connection string, role or credential for it (a recorded `shortcut:` in `infra/modules/ai-service.bicep`).
+- **Amended, 23 Nov 2026 (AIV-P2-068, owner):** the AI service lives at `apps/backend/ai-service`, with the other back-end apps, not at `apps/ai-service` (point 1). Built in AIV-P2-068: see points 2 and 3 for what the first task does. One gap against point 2: the service runs in the shared Container Apps environment, whose subnet can reach PostgreSQL; it holds no connection string, role or credential for it (a recorded `shortcut:` in `infra/modules/ai-service.bicep`). And against point 3: the service bounds the output tokens only, so input plus output can pass the cap; `@credalent/ai` then charges the call and fails it (`shortcut:` in `model.py`).
 - **Amends:** [ADR-006](ADR-006-ai-on-azure-foundry.md) point 2 (one AI package), [ADR-002](ADR-002-repository-layout.md) (the `apps/` layout) and [ADR-001](ADR-001-technology-stack.md) (TypeScript end to end: Python joins for this service only).
 
 ## Context

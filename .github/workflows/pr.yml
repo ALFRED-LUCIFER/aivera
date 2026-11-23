@@ -52,6 +52,7 @@ jobs:
 
   # The Python AI service (AIV-P2-068, AGENTS.md 3.15): lint, format, strict types and tests, from the committed uv.lock.
   # Its contract drift check is a test on each side: tests/test_contract.py here, packages/ai service.test.ts in "web".
+  # Make "ai-service" a required check (owner setting, ruleset "Required CI on main") so a red run blocks a merge.
   ai-service:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -114,6 +114,8 @@ jobs:
 
       # AIV-P2-068: the AI service, after web for the same reason; skipped until the owner's apply creates it
       # (aiServiceAudience set, infra/README.md).
+      # shortcut: a revision that never passes /readyz is not detected here (it scales to zero, and the smoke test hits
+      # web only); wait for the revision's healthState once the assistant (AIV-P2-028) calls the service.
       - name: deploy ai service
         id: ai
         run: |
