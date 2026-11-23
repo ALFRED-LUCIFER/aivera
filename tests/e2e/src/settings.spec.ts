@@ -5,7 +5,7 @@ import { expectAccessible, themes } from './gallery.ts';
 // AIV-P1-052 J1: the workspace settings screen. seed.ts: Alex is the admin of Demo Hiring Co (all defaults); Zaid is a
 // recruiter in Oasis Talent.
 
-const SAVED = 'Settings saved. New links, invitations and sessions use them; existing ones keep their expiry.';
+const SAVED = 'Settings saved. New links, invitations and sessions use them. Existing ones keep their expiry.';
 const shortlist = (page: Page) => page.getByRole('textbox', { name: 'Client shortlist link lasts', exact: true });
 const save = (page: Page) => page.getByRole('button', { name: 'Save settings' });
 

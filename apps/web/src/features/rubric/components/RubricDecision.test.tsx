@@ -130,7 +130,7 @@ describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {
   it('after sending, says the hiring owner has it', () => {
     show({ decision: decision({ status: 'sent' }), canReturn: false });
     expect(screen.getByRole('status').textContent).toBe(
-      'Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.',
+      'Sent to the hiring owner. They can approve it or return it with a note. You can still approve it yourself.',
     );
   });
 });

@@ -83,7 +83,7 @@ for (const theme of themes)
     await expect(
       page.getByRole('status').filter({
         hasText:
-          'Sent to the hiring owner. They can approve it or return it with a note; you can still approve it yourself.',
+          'Sent to the hiring owner. They can approve it or return it with a note. You can still approve it yourself.',
       }),
     ).toBeVisible();
     // Sent, it waits for the hiring owner; the recruiter may still approve it but never returns it to themselves.

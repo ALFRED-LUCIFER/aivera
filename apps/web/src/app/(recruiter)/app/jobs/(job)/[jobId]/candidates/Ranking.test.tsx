@@ -87,7 +87,7 @@ describe('Scenario: The ranking for Senior AI Engineer', () => {
     showRanking(nine);
     expect(bodyRows()).toHaveLength(7);
     expect(
-      screen.getByText('Showing 7 of 8 assessed. Ranking orders your attention; nobody is rejected automatically.'),
+      screen.getByText('Showing 7 of 8 assessed. Ranking orders your attention. Nobody is rejected automatically.'),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Show all 9' }));
     expect(bodyRows()).toHaveLength(9);
@@ -170,7 +170,7 @@ describe('Scenario: Empty, loading and error', () => {
   it('a slow read shows skeleton rows', () => {
     show({ status: 'loading' });
     expect(table().getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByRole('status').textContent).toBe('Loading the ranking');
+    expect(screen.getByRole('status').textContent).toBe('Loading the ranking…');
   });
 
   it('a failed read says "We could not load the ranking. Try again." and retries', async () => {

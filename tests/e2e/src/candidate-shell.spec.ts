@@ -17,7 +17,7 @@ test('a signed-out visitor sees the candidate navigation and footer, and no recr
   await expect(page.getByRole('link', { name: 'My applications' })).toHaveCount(0);
 
   const footer = page.getByRole('contentinfo');
-  await expect(footer).toContainText('© 2026 Credalent. Paying never changes how recruiters rank you.');
+  await expect(footer).toContainText('© Credalent. Paying never changes how recruiters rank you.');
   await expect(footer.getByRole('link')).toHaveText(['Jobs', 'For recruiters']);
 
   await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);

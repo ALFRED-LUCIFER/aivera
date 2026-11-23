@@ -92,7 +92,7 @@ test('the header keyboard path reaches every link in order', async ({ page }) =>
     'Skip to content',
     'Credalent home',
     'How it works',
-    'Roles we cover',
+    'Jobs we cover',
     'Why trust it',
     'For candidates',
     'Sign in',
@@ -194,7 +194,7 @@ test('Scenario Outline: The table lists evidence per role family', async ({ page
 test('Scenario: No public work', async ({ page }) => {
   await page.goto('/');
   const note = page.getByText(
-    'No public work? Many testers, analysts and support specialists have none. Credalent requests a short work sample scoped to the role instead.',
+    'No public work? Many testers, analysts and support specialists have none. Credalent requests a short work sample scoped to the job instead.',
   );
   await note.scrollIntoViewIfNeeded();
   await expect(note).toBeInViewport();
@@ -202,9 +202,9 @@ test('Scenario: No public work', async ({ page }) => {
   await expect(note.locator('xpath=ancestor::*[contains(@class,"mk-reveal")]')).toHaveCSS('opacity', '1');
 });
 
-test('the header "Roles we cover" link moves focus to the section heading', async ({ page }) => {
+test('the header "Jobs we cover" link moves focus to the section heading', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('banner').getByRole('link', { name: 'Roles we cover' }).click();
+  await page.getByRole('banner').getByRole('link', { name: 'Jobs we cover' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Not only software engineers' })).toBeFocused();
 });
 
@@ -226,7 +226,7 @@ test('Scenario Outline: The four principles', async ({ page }) => {
 test('Scenario: The pilot promise', async ({ page }) => {
   await page.goto('/');
   const promise = page.getByText(
-    'Run a pilot on one role. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline; Credalent shows the working.',
+    'Run a pilot on one job. It passes if you hold 30% fewer interviews per hire than your own baseline. You bring the baseline, Credalent shows the working.',
   );
   await promise.scrollIntoViewIfNeeded();
   await expect(promise).toBeInViewport();
@@ -237,7 +237,7 @@ test('Scenario: Footer', async ({ page }) => {
   await page.goto('/');
   const footer = page.getByRole('contentinfo');
   await expect(footer.getByText('Credalent', { exact: true })).toBeVisible();
-  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Roles we cover', 'Why trust it', 'Sign in']);
+  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Jobs we cover', 'Why trust it', 'Sign in']);
   await expect(footer.getByText(`© ${new Date().getUTCFullYear()} Credalent`)).toBeVisible();
 });
 

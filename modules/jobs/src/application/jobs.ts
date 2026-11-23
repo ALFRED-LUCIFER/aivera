@@ -623,7 +623,7 @@ export function jobsUseCases({
       const since = new Date(now().getTime() - DONE_ON_DESK_MS);
       const rows = await storeFor(ctx.tx).rubricApprovals(ctx.workspaceId, since);
       // Done only when the hiring owner approved it: one a recruiter approved, sent or not, never waited on them
-      // (ADR-014), so it never says "With the {owner}".
+      // (ADR-014), so it never says "Waiting for {owner}".
       return rows.flatMap(({ status, approvedBy, ...row }) =>
         status === 'awaiting_approval' || (status === 'approved' && approvedBy === row.hiringOwnerUserId)
           ? [{ ...row, status }]

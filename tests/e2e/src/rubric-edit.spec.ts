@@ -41,7 +41,7 @@ test('Scenarios: edit as version 3, weights must total 100, send for approval, r
   // Sending for approval keeps version 2 in force.
   await send(page).click();
   await expect(page.getByRole('status').filter({ hasText: 'Sent to Head of Engineering.' })).toHaveText(
-    'Sent to Head of Engineering. The approved rubric stays in force, and rankings do not change until the new ' +
+    'Sent to Head of Engineering. The approved rubric still applies, and rankings do not change until the new ' +
       'version is approved.',
   );
   await expect(history(page)).toHaveText([

@@ -90,9 +90,9 @@ for (const theme of themes) {
     await signIn(page, { email: PIA });
     await page.goto('/ops/approvals');
     await approvalRow(page, name)
-      .getByRole('button', { name: `Reject ${name}` })
+      .getByRole('button', { name: `Do not approve ${name}` })
       .click();
-    const dialog = page.getByRole('dialog', { name: `Reject ${name}?` });
+    const dialog = page.getByRole('dialog', { name: `Do not approve ${name}?` });
     const confirm = dialog.getByRole('button', { name: 'Confirm' });
     await expect(confirm).toBeDisabled();
     await dialog.getByRole('textbox', { name: 'Reason' }).fill('Too short');

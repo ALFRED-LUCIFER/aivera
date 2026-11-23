@@ -68,7 +68,7 @@ Text selection uses the highlighter. The marketing site's, the candidate home's 
 | **Status chip**          | Subtle ground with its own text and border token, plus an icon and a word: Supported (ok), Needs validation (warn), Contradiction (err), Informational (info).           |
 | **Button**               | 40 px. **One primary per view.** Variants: primary (ink), secondary (outlined), ghost, disabled ("Unavailable").                                                         |
 | **Value-basis marker**   | Every metric carries one: Observed (solid square), Baseline (outlined square), Projection (dashed square), Not yet available (rule).                                     |
-| **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Claim awaiting validation · Contradictory · Awaiting live defence.                 |
+| **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Claim awaiting validation · Contradictory · To check in interview.                 |
 | **Level meter**          | Five segments in neutral ink and the words "N of 5": the level a job needs, never read as a grade.                                                                       |
 | **Strength meter**       | Three segments in neutral ink, so it is not read as pass or fail: Strong · Medium · Supporting · Claim only.                                                             |
 | **Score bar**            | Solid fill for the backed score, hatched segment for the range still resting on claims, with the caption "62 backed by evidence · up to 78 if claims hold in interview". |
@@ -85,3 +85,5 @@ Text selection uses the highlighter. The marketing site's, the candidate home's 
 ## Voice
 
 Plain, specific, honest about uncertainty. Say what a number rests on ("7 of 9", "4 decisions"). Never "verified" without a second source. Never "rejected"; say "not taken forward". Use the real counts the screen has.
+
+One name per thing: **job** (never "role" for a job; "role" is a member's workspace role), **hiring owner** (never "hiring manager"), **industry pack** (never "domain pack"). A person is an **applicant** until they have an account or are scored, and a **candidate** after. A load failure always reads "We could not load {thing}. Try again." Progress text ends with an ellipsis character ("Loading…", "Saving…"). No semicolons in copy: use a full stop or a comma, as the design canvas does. No year or promise the product cannot back. `packages/i18n/test/copy.test.ts` enforces these on the message catalogue.

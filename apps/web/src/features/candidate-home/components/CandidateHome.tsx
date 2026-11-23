@@ -94,7 +94,8 @@ export function CandidateHome({ newJobs, plusPrice }: CandidateHomeProps) {
             <div className="flex flex-col gap-0.5">
               {/* Named as an example, so the illustration is never read as a real listing. */}
               <h2 id="sample" className="text-card">
-                <span className="sr-only">{t('candidate.home.sampleExample')}</span> {t('candidate.home.sampleTitle')}
+                <span className="text-text-2">{t('candidate.home.sampleExample')}</span>{' '}
+                {t('candidate.home.sampleTitle')}
               </h2>
               <p className="text-meta text-text-2">{t('candidate.home.sampleJob')}</p>
             </div>

@@ -66,7 +66,7 @@ for (const theme of themes) {
 test('the not-set-up page shows its message, not an error page', async ({ page }) => {
   await page.goto('/sign-in?error=unavailable');
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Sign-in is not set up in this environment yet.' }),
+    page.getByRole('alert').filter({ hasText: 'Sign-in is not available right now. Try again later.' }),
   ).toBeVisible();
 });
 

@@ -52,7 +52,7 @@ describe('CandidateHome (AIV-P3-003)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Get hired for what you have done.' })).toBeDefined();
     expect(screen.getByRole('heading', { level: 1 }).querySelector('mark')?.textContent).toBe('what you have done');
     expect(screen.getByText(/No tests to sit\./)).toBeDefined();
-    expect(screen.getByText('Free to browse and apply. Always.')).toBeDefined();
+    expect(screen.getByText('Free to browse and apply.')).toBeDefined();
     const search = screen.getByRole('searchbox', { name: 'Job title or skill' });
     expect(search.closest('form')?.getAttribute('action')).toBe('/candidates/jobs');
     expect(search.getAttribute('name')).toBe('q');
@@ -63,6 +63,8 @@ describe('CandidateHome (AIV-P3-003)', () => {
   it('the sample job shows what will be judged', () => {
     renderHome();
     const card = screen.getByRole('region', { name: 'Example: Senior AI Engineer' });
+    // Sighted users see it is a sample, not only screen readers.
+    expect(within(card).getByText('Example:').className).not.toContain('sr-only');
     expect(within(card).getByText('What this job needs')).toBeDefined();
     const rows = within(card)
       .getAllByRole('listitem')
@@ -105,9 +107,9 @@ describe('CandidateHome (AIV-P3-003)', () => {
 
   it('the jobs feed fails: the rest renders and New this week says so', () => {
     renderHome(null);
-    expect(newSection().getByRole('alert').textContent).toBe('Jobs could not load. Try again.');
+    expect(newSection().getByRole('alert').textContent).toBe('We could not load jobs. Try again.');
     expect(screen.getByRole('heading', { level: 1 })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Want an edge that is still honest?' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Want help showing your best work?' })).toBeDefined();
   });
 
   it('the Plus teaser shows the price, links nowhere until Plans is built, and promises no rank', () => {

@@ -11,7 +11,7 @@ const scoreLabels = {
   backedLabel: (n: number) => `${n} backed by evidence`,
   captionLabel: (b: number, u: number) => `${b} backed by evidence · up to ${u} if claims hold in interview`,
   upToLabel: (n: number) => `up to ${n} if claims hold in interview`,
-  unavailableLabel: 'Score unavailable',
+  unavailableLabel: 'Score not yet available',
 };
 const renderScore = (backed: number, upTo: number, compact = false) =>
   render(<ScoreWithUncertainty backed={backed} upTo={upTo} compact={compact} {...scoreLabels} />);
@@ -108,10 +108,10 @@ describe('Scenario: Invalid input is refused', () => {
     expect(() => renderScore(backed, upTo)).toThrow(/^ScoreWithUncertainty: values out of range$/);
   });
 
-  it.each(invalidScores)('%s: renders "Score unavailable" in production, and no bar', (_, backed, upTo) => {
+  it.each(invalidScores)('%s: renders "Score not yet available" in production, and no bar', (_, backed, upTo) => {
     vi.stubEnv('NODE_ENV', 'production');
     const { container } = renderScore(backed, upTo);
-    expect(container.textContent).toBe('Score unavailable');
+    expect(container.textContent).toBe('Score not yet available');
     expect(container.querySelector('.score-solid')).toBeNull();
   });
 
@@ -120,13 +120,16 @@ describe('Scenario: Invalid input is refused', () => {
     ['above level 5', 1, 6, 2],
     ['not a whole level', 1.5, 3, 2],
     ['needed below 0', 1, 3, -1],
-  ])('NeedVsProvenBar, %s: throws in development, "Score unavailable" in production', (_, proven, claimed, needed) => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const bar = <NeedVsProvenBar {...needLabels} name="Python" proven={proven} claimed={claimed} needed={needed} />;
-    expect(() => render(bar)).toThrow(/^NeedVsProvenBar: values out of range$/);
-    vi.stubEnv('NODE_ENV', 'production');
-    expect(render(bar).container.textContent).toBe('Score unavailable');
-  });
+  ])(
+    'NeedVsProvenBar, %s: throws in development, "Score not yet available" in production',
+    (_, proven, claimed, needed) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const bar = <NeedVsProvenBar {...needLabels} name="Python" proven={proven} claimed={claimed} needed={needed} />;
+      expect(() => render(bar)).toThrow(/^NeedVsProvenBar: values out of range$/);
+      vi.stubEnv('NODE_ENV', 'production');
+      expect(render(bar).container.textContent).toBe('Score not yet available');
+    },
+  );
 });
 
 const needLabels = {
@@ -135,7 +138,7 @@ const needLabels = {
   aboveLabel: 'Above the need',
   meetsLabel: 'Meets the need',
   shortLabel: (n: number, claimed: boolean) => `${n} short${claimed ? ', claimed' : ''}`,
-  unavailableLabel: 'Score unavailable',
+  unavailableLabel: 'Score not yet available',
 };
 const renderNeed = (proven: number, claimed: number, needed: number) =>
   render(

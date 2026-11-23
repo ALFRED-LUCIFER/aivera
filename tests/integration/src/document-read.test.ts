@@ -351,7 +351,9 @@ describe('Scenario: Infected files are never read', () => {
     await scan(fileId, 'Malicious');
     expect(await relayAndConsume()).toEqual(['complete']);
     expect(await as(w1, (ctx) => files.getStatus(ctx, fileId))).toBe('infected');
-    expect(en.files.notAccepted).toBe('This file could not be accepted.');
+    expect(en.files.notAccepted).toBe(
+      'We cannot use this file. Upload a PDF, image or document within the size limit.',
+    );
     const after = await read(candidateId, sourceId);
     expect(after.view).toEqual({ status: 'unreadable', notes: [] });
     expect(after.items).toEqual([]);

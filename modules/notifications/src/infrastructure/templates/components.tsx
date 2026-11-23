@@ -453,7 +453,7 @@ export type LayoutCopy = {
   logoAlt: string;
   brand: string;
   sentBy: string;
-  /** "Synthetic data — development environment", shown only outside the pilot and production (AGENTS.md 1.1). */
+  /** "Practice data: nothing here is a real person", shown only outside the pilot and production (AGENTS.md 1.1). */
   devBand: string | null;
   footer: {
     workspace: string;

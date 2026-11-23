@@ -33,7 +33,7 @@ describe('Feature: How it works', () => {
       'Decide with the pack in front of you',
     ]);
     // Scenario: Safety principles are in the steps
-    expect(steps[0]?.textContent).toContain('Nothing is assessed until the hiring manager approves.');
+    expect(steps[0]?.textContent).toContain('Nothing is assessed until the hiring owner approves.');
     expect(steps[2]?.textContent).toContain(
       'Claims are marked as claims, and count for nothing until something supports them.',
     );

@@ -51,7 +51,7 @@ describe('CandidateSite', () => {
   it('states the ranking rule and links Jobs and For recruiters in the footer', () => {
     renderSite(false);
     const footer = within(screen.getByRole('contentinfo'));
-    expect(footer.getByText('© 2026 Credalent. Paying never changes how recruiters rank you.')).toBeDefined();
+    expect(footer.getByText('© Credalent. Paying never changes how recruiters rank you.')).toBeDefined();
     expect(footer.getAllByRole('link').map((link) => link.textContent)).toEqual(['Jobs', 'For recruiters']);
   });
 

@@ -41,7 +41,7 @@ const provenances: [Provenance, string][] = [
   ['submitted', 'Candidate-submitted'],
   ['claim', 'Claim awaiting validation'],
   ['contradictory', 'Contradictory'],
-  ['awaiting-defence', 'Awaiting live defence'],
+  ['awaiting-defence', 'To check in interview'],
 ];
 
 describe('Scenario Outline: Provenance is an icon and a word', () => {

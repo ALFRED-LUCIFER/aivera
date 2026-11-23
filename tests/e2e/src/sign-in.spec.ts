@@ -107,7 +107,7 @@ test('Scenario: The page offers only the two ways in and the artboard copy', asy
     'Nobody is rejected automatically.',
   ])
     await expect(page.getByRole('listitem').filter({ hasText: point })).toBeVisible();
-  await expect(page.getByText('Welcome back. Pick up where your roles left off.')).toBeVisible();
+  await expect(page.getByText('Sign in to see your jobs and candidates.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Create a workspace' })).toHaveAttribute('href', '/signup');
   await expect(page.getByRole('checkbox', { name: 'Keep me signed in' })).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible();
@@ -259,7 +259,7 @@ for (const theme of themes) {
     await page.goto('/sign-in');
     const title = page.getByRole('heading', { level: 1, name: 'Sign in' });
     expect([await css(title, 'font-size'), await css(title, 'line-height')]).toEqual(['32px', '40px']);
-    const lead = page.getByText('Welcome back. Pick up where your roles left off.');
+    const lead = page.getByText('Sign in to see your jobs and candidates.');
     expect([await css(lead, 'font-size'), await css(lead, 'line-height')]).toEqual(['16px', '24px']);
     expect((await page.getByLabel('Email').boundingBox())?.height).toBe(44);
     for (const name of ['Sign in', 'Continue with Google'])
