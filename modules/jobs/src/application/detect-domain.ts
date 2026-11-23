@@ -8,6 +8,7 @@ import {
   type Source,
 } from '@credalent/ai';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
+import { regionsNotAboutPeople } from '../domain/region-guard.ts';
 
 // "Detect the job's industry" (AIV-P1-063, ADR-006): runs beside "Draft competencies" (AIV-P1-008) under the same
 // citation contract. The industry is the hiring company's, read from the job's own text: never about a candidate.
@@ -58,9 +59,8 @@ export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
         return {
           domain: industry.domain,
           citations: 'citations' in industry ? industry.citations : [],
-          // shortcut: a region citing a line about the people to hire (nationality, residency) is not rejected in code;
-          // the prompt forbids it and the eval safety case gates it. Upgrade if AIV-P1-066 shows a miss.
-          regions: answer.regions.map((r) => ({ region: r.region, citations: r.citations })),
+          // The prompt forbids a region from a line about the people to hire; code enforces it too (AIV-P2-082).
+          regions: regionsNotAboutPeople(answer.regions),
         };
       } catch (error) {
         // An answer the contract rejected twice (an invented domain or quote) is no detection; outages still throw.
