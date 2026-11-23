@@ -150,6 +150,15 @@ describe('the replacer', () => {
     expect(redact('Ask Sara@acme')).toBe('Ask [CANDIDATE]@acme');
   });
 
+  // SAFETY: mutation check: an ASCII-only email local part ([\w.%+-]) again -> this test failed ("Zoë@acme.com" whole)
+  it('treats a non-ASCII local part as an email, so the name never reaches the model inside it', () => {
+    const zoe = { names: ['Zoë Müller'], emails: [], phones: [] };
+    const text = 'Write to Zoë@acme.com or Müller@acme.com, or zoë.müller@example.com.';
+    expect(redactSources([source(text)], zoe, false).sources[0]?.text).toBe(
+      'Write to [EMAIL_1] or [EMAIL_2], or [EMAIL_3].',
+    );
+  });
+
   it('keeps a name split across lines or by a no-break space as one placeholder', () => {
     expect(redactSources([source('Sara Al\nQahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
       '[CANDIDATE] led it',

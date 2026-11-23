@@ -117,11 +117,12 @@ export function recordedClient(
 ): Pick<AiClient, 'generateStructured'> {
   // A case is found by its task and sources; a judge request by the case's rubric and sources.
   const cases = new Map<string, { task: string; golden: GoldenCase }>();
-  // A matcher request names no case: answer from every recorded verdict (the scorer still checks each one).
-  const verdicts: Record<string, string | null> = {};
+  // A matcher request names no case: answer each miss with a recorded verdict that is one of its options.
+  const verdicts = new Map<string, (string | null)[]>();
   for (const [task, list] of loadGolden(dir))
     for (const golden of list) {
-      Object.assign(verdicts, golden.recorded.matches);
+      for (const [expected, match] of Object.entries(golden.recorded.matches ?? {}))
+        verdicts.set(expected, [...(verdicts.get(expected) ?? []), match]);
       cases.set(JSON.stringify([task, golden.sources]), { task, golden });
       if (golden.expected.judge) cases.set(JSON.stringify([golden.expected.judge, golden.sources]), { task, golden });
     }
@@ -132,8 +133,10 @@ export function recordedClient(
     sources: readonly unknown[];
   }) => {
     if (request.promptVersion === matchPrompt.id) {
-      const misses = JSON.parse(request.prompt) as { expected: string }[];
-      return { matches: misses.map((m) => ({ expected: m.expected, match: verdicts[m.expected] ?? null })) };
+      const misses = JSON.parse(request.prompt) as { expected: string; candidates: string[] }[];
+      const pick = (m: (typeof misses)[number]) =>
+        verdicts.get(m.expected)?.find((v): v is string => v !== null && m.candidates.includes(v)) ?? null;
+      return { matches: misses.map((m) => ({ expected: m.expected, match: pick(m) })) };
     }
     const judged = request.task === 'evals.judge';
     const key = judged ? (JSON.parse(request.prompt) as { rubric: string }).rubric : request.task;

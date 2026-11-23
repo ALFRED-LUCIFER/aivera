@@ -31,8 +31,11 @@ const EDGE = /[\s.,;:!?·•|،–-]/;
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
 const letter = String.raw`(?:\p{L}|\p{M}|\p{N}|_)`;
+// One local-part class for the email and for the check that leaves a name part to it, so they never disagree (Zoë@).
+const LOCAL = String.raw`[\p{L}\p{M}\p{N}_.%+-]`;
+const EMAIL_FROM_HERE = String.raw`${LOCAL}*@[\w-]+(?:\.[\w-]+)+`;
 // Starts only at the start of a run, so a long run with no @ is scanned once, not from every position.
-const EMAIL = String.raw`(?<![\w.%+-])[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
+const EMAIL = String.raw`(?<!${LOCAL})${LOCAL}+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
 const END = String.raw`(?![\w]|[.,]\d)`;
@@ -129,9 +132,9 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
   const ownWord = parts.length ? `(?<!${letter})${own}` : '';
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
-  // A name part that starts a real email ("sara.alqahtani@example.com") is left to the email: a run ending in it would eat the
-  // candidate's own address and leave its tail unredacted (AIV-P2-081).
-  const part = `${own}(?![\\w.%+-]*@[\\w-]+(?:\\.[\\w-]+)+)`;
+  // A name part that starts a real email ("sara.alqahtani@example.com") is left to the email: a run ending in it
+  // would eat the candidate's own address and leave its tail unredacted (AIV-P2-081).
+  const part = `${own}(?!${EMAIL_FROM_HERE})`;
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's", split across lines) is one placeholder; it starts and ends
   // on a non-particle.
   const name = parts.length ? `(?<!${letter})${lead}${part}(?:[\\s-]+${lead}${part})*(?:['’]s(?!${letter}))?` : '';
