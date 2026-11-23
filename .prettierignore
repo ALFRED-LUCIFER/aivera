@@ -7,3 +7,5 @@ pnpm-lock.yaml
 packages/tokens/tokens.css
 # Design artboards are copied verbatim from the claude.ai canvas; never reformat them
 docs/01-design/artboards/**
+# Generated from the zod schemas (pnpm --filter @credalent/ai contract); never hand-edited
+apps/backend/ai-service/contract/**/*.schema.json

@@ -8,6 +8,8 @@ param brand string
 param tags object
 param appIdentityPrincipalId string
 param aiEvalIdentityPrincipalId string
+@description('The AI service\'s identity (AIV-P2-068); empty when the service is not deployed.')
+param aiServiceIdentityPrincipalId string = ''
 
 var location = 'uaenorth' // ADR-011: explicit, so a group created elsewhere cannot move the account.
 // The subdomain must equal the name: @ai-sdk/azure builds <AZURE_OPENAI_RESOURCE_NAME>.openai.azure.com.
@@ -72,6 +74,17 @@ resource evalCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (
   properties: {
     roleDefinitionId: openAiUser
     principalId: aiEvalIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The AI service (AIV-P2-068, ADR-015), with the same role: call deployments, nothing else.
+resource aiServiceCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServiceIdentityPrincipalId)) {
+  scope: account
+  name: guid(account.id, aiServiceIdentityPrincipalId, openAiUser)
+  properties: {
+    roleDefinitionId: openAiUser
+    principalId: aiServiceIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

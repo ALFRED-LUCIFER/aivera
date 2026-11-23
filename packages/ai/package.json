@@ -11,7 +11,8 @@
     "lint": "oxlint --deny-warnings .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "eval": "tsx evals/cli.ts"
+    "eval": "tsx evals/cli.ts",
+    "contract": "node scripts/contract.ts"
   },
   "dependencies": {
     "@ai-sdk/azure": "4.0.116",

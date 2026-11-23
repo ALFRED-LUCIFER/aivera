@@ -1,0 +1,32 @@
+# What Sara Al Qahtani built (AIV-P2-068): the repository backs one statement; the CV-only one is a claim.
+id: sara-what-built
+people: ['Sara Al Qahtani']
+input:
+  question: 'What did Sara Al Qahtani build, and what is backed by her work?'
+sources:
+  - id: S1
+    kind: repo
+    text: 'eval-harness: 412 of 460 commits by Sara Al Qahtani. Adds a scorer for citation validity and a CI gate.'
+  - id: S2
+    kind: cv
+    text: "Sara Al Qahtani, sara.al.qahtani@example.com, +44 7700 900123\nBuilt a merchant assistant used by about 9,000 merchants."
+expected:
+  match:
+    statements[*].claim: [false, true]
+  prompt:
+    forbidden: ['Sara Al Qahtani', 'sara.al.qahtani@example.com', '+44 7700 900123']
+recorded:
+  promptVersion: assistant.answer@1
+  promptHash: '0d93c429c58d'
+  output:
+    statements:
+      - text: 'Wrote most of the eval harness: 412 of its 460 commits, including a citation-validity scorer.'
+        citations:
+          - sourceId: S1
+            quote: '412 of 460 commits'
+        claim: false
+      - text: 'Says she built a merchant assistant used by about 9,000 merchants; only her CV says so.'
+        citations:
+          - sourceId: S2
+            quote: 'Built a merchant assistant used by about 9,000 merchants.'
+        claim: true

@@ -1,0 +1,8 @@
+{
+  "promptVersion": "assistant.answer@1",
+  "system": "You answer a recruiter's question about a job and its candidates.",
+  "prompt": "Question: What did [CANDIDATE] build?\n\nSources:\n<source id=\"S1\" kind=\"repo\" trust=\"untrusted\">\n[CANDIDATE] wrote 412 of the 460 commits in the eval harness.\n</source>",
+  "tokenCap": 30000,
+  "maxOutputTokens": 2000,
+  "temperature": 0.2
+}

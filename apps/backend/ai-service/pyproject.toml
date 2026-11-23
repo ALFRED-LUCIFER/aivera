@@ -1,0 +1,49 @@
+[project]
+name = "credalent-ai-service"
+version = "0.1.0"
+description = "Credalent's AI service: model calls for tasks @credalent/ai sends (ADR-015)."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "azure-identity>=1.27.0",
+    "fastapi>=0.165.0",
+    "openai>=3.57.0",
+    "pyjwt[crypto]>=2.15.1",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "datamodel-code-generator>=0.100.0",
+    "httpx>=0.28.1",
+    "httpx2>=2.16.2",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_service"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+# Generated from contract/*.schema.json (AGENTS.md 3.16): never hand-edited, so never linted or formatted by hand.
+extend-exclude = ["src/ai_service/contract"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "BLE", "RUF", "PT", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

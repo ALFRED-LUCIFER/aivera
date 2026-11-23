@@ -4,8 +4,9 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { createAiClient, memoryTokenBudget } from '../src/client.ts';
-import { deployments } from '../src/config.ts';
+import { deployments, generateTasks } from '../src/config.ts';
 import { providerFromEnv } from '../src/providers.ts';
+import { aiServiceFromEnv } from '../src/service.ts';
 import { liveTokenCap, runners, taskThresholds } from './config.ts';
 import { loadGolden } from './golden.ts';
 import {
@@ -56,7 +57,11 @@ if (values.live) {
   // Dev and local only: the golden set is synthetic, but a run must never spend a pilot workspace's model.
   if (process.env['APP_ENV'] !== 'dev' && process.env['APP_ENV'] !== 'local')
     usage('--live needs APP_ENV=dev or local');
-  const ai = createAiClient({ provider: providerFromEnv(process.env), budget: memoryTokenBudget(liveTokenCap) });
+  const ai = createAiClient({
+    provider: providerFromEnv(process.env),
+    budget: memoryTokenBudget(liveTokenCap),
+    service: aiServiceFromEnv(process.env),
+  });
   answer = async (task, goldenCase) => {
     const runner = runners[task];
     if (!runner) throw new Error(`no runner for ${task}`);
@@ -69,6 +74,17 @@ const reports: TaskReport[] = [];
 for (const [task, cases] of tasks) {
   if (values.live && !runners[task]) {
     console.log(`SKIP ${task}: no prompt registered yet, so nothing to run live (the recorded answers still gate CI)`);
+    continue;
+  }
+  // shortcut: the AI service has internal ingress only, so a GitHub runner cannot reach it; its live run needs a runner
+  // inside the environment (AI_SERVICE_URL). The recorded answers still gate CI. Upgrade with a self-hosted runner.
+  if (
+    values.live &&
+    Object.hasOwn(generateTasks, task) &&
+    'service' in generateTasks[task as keyof typeof generateTasks] &&
+    !process.env['AI_SERVICE_URL']
+  ) {
+    console.log(`SKIP ${task}: served by the AI service and AI_SERVICE_URL is not set`);
     continue;
   }
   const report = await evaluateTask(task, cases, answer, judge);

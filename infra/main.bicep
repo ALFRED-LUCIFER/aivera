@@ -37,6 +37,9 @@ param entraTenantSubdomain string = 'aiveradev'
 param entraTenantId string = '88c795fc-1018-45f7-8904-75e1c2991b8f'
 param entraRecruiterClientId string = '463fb57b-570d-4384-b914-1078df012bd8'
 
+@description('The AI service\'s app registration, as api://<client id> (AIV-P2-068, infra/README.md); empty leaves the service out.')
+param aiServiceAudience string = ''
+
 // Pilot only (modules/network.bicep): dev uses Medvya's VNet and server.
 @description('Address space of the pilot\'s own VNet.')
 param vnetPrefix string = ''
@@ -129,6 +132,14 @@ module database 'modules/database.bicep' = {
   dependsOn: [network] // the server: referenced by name only
 }
 
+// The AI service's own identity (AIV-P2-068): may call the AI deployments (ai.bicep) and nothing else. Here, not in
+// ai-service.bicep, because ai.bicep grants it the role and ai-service.bicep needs ai.bicep's resource name.
+resource aiServiceIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (!empty(aiServiceAudience)) {
+  name: 'id-${brand}-ai-${env}'
+  location: location
+  tags: tags
+}
+
 module ai 'modules/ai.bicep' = {
   name: '${brand}-ai'
   scope: resourceGroup(aiResourceGroup)
@@ -138,6 +149,25 @@ module ai 'modules/ai.bicep' = {
     tags: tags
     appIdentityPrincipalId: foundation.outputs.appIdentityPrincipalId
     aiEvalIdentityPrincipalId: foundation.outputs.aiEvalIdentityPrincipalId
+    aiServiceIdentityPrincipalId: empty(aiServiceAudience) ? '' : aiServiceIdentity!.properties.principalId
+  }
+}
+
+// The Python AI service (AIV-P2-068, ADR-015): internal ingress, called by the web app only.
+module aiService 'modules/ai-service.bicep' = if (!empty(aiServiceAudience)) {
+  name: '${brand}-ai-service'
+  params: {
+    env: env
+    brand: brand
+    location: location
+    tags: tags
+    containerAppsEnvName: environment.outputs.environmentName
+    image: '${images}/ai-service:${imageTag}'
+    identityId: aiServiceIdentity.id
+    identityClientId: aiServiceIdentity!.properties.clientId
+    audience: aiServiceAudience
+    allowedCallers: [foundation.outputs.appIdentityPrincipalId]
+    aiResourceName: ai.outputs.resourceName
   }
 }
 
@@ -165,6 +195,8 @@ module web 'modules/web.bicep' = {
     googleClientId: googleClientId
     blobUrl: blobUrl
     malwareScanning: malwareScanning
+    aiServiceUrl: empty(aiServiceAudience) ? '' : aiService!.outputs.url
+    aiServiceAudience: aiServiceAudience
   }
 }
 
@@ -260,8 +292,9 @@ module deployAccess 'modules/deploy-access.bicep' = {
     brand: brand
     cicdPrincipalId: foundation.outputs.cicdIdentityPrincipalId
     containerAppsEnvName: environment.outputs.environmentName
+    aiService: !empty(aiServiceAudience)
   }
-  dependsOn: [database, web, worker, messaging]
+  dependsOn: [database, web, worker, messaging, aiService]
 }
 
 output webFqdn string = web.outputs.webFqdn

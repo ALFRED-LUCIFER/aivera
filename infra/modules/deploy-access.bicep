@@ -6,6 +6,8 @@ param env string
 param brand string
 param cicdPrincipalId string
 param containerAppsEnvName string
+@description('Whether the AI service (AIV-P2-068) is deployed.')
+param aiService bool = false
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -93,5 +95,25 @@ resource onWorker 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 resource onRelayIdentity 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(relayIdentity.id, cicdPrincipalId, deployerRole.id)
   scope: relayIdentity
+  properties: { roleDefinitionId: deployerRole.id, principalId: cicdPrincipalId, principalType: 'ServicePrincipal' }
+}
+
+// AIV-P2-068: the AI service app, which runs with its own identity.
+resource aiServiceApp 'Microsoft.App/containerApps@2024-03-01' existing = if (aiService) {
+  name: 'ca-${brand}-ai-${env}'
+}
+resource aiServiceIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (aiService) {
+  name: 'id-${brand}-ai-${env}'
+}
+
+resource onAiService 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (aiService) {
+  name: guid(aiServiceApp.id, cicdPrincipalId, contributor)
+  scope: aiServiceApp
+  properties: { roleDefinitionId: contributor, principalId: cicdPrincipalId, principalType: 'ServicePrincipal' }
+}
+
+resource onAiServiceIdentity 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (aiService) {
+  name: guid(aiServiceIdentity.id, cicdPrincipalId, deployerRole.id)
+  scope: aiServiceIdentity
   properties: { roleDefinitionId: deployerRole.id, principalId: cicdPrincipalId, principalType: 'ServicePrincipal' }
 }

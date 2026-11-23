@@ -10,7 +10,8 @@ on:
   push:
     branches: [main]
     # Kept filtered: every push to main would otherwise spend the live token cap.
-    paths: ['packages/ai/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
+    # apps/backend/ai-service builds the model call for its tasks (AGENTS.md 3.18).
+    paths: ['packages/ai/**', 'apps/backend/ai-service/**', 'infra/modules/ai.bicep', '.github/workflows/ai-eval.yml']
   workflow_dispatch:
 
 permissions:

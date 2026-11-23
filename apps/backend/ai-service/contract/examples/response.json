@@ -1,0 +1,4 @@
+{
+  "output": "{\"statements\":[{\"text\":\"Wrote most of the eval harness.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"wrote 412 of the 460 commits\"}]}]}",
+  "usage": { "inputTokens": 900, "outputTokens": 100 }
+}
