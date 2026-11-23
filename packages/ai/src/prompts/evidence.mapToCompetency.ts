@@ -9,6 +9,8 @@ import { cited, type Source } from '../citations.ts';
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored on every mapped link. */
 export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@3';
 
+// shortcut: "at most 12 words, from a single line" is advice the model may break (recorded quotes span lines); nothing
+// enforces it and a stored excerpt may be multi-line. Enforce it in checkOutput if long excerpts hurt the profile.
 export const MAP_TO_COMPETENCY_SYSTEM = [
   "You map a job candidate's evidence to the competencies of the job's approved rubric, listed in the prompt by id.",
   'For each piece of evidence that shows a competency, give: competencyId, copied exactly from the list; one citation',
