@@ -108,11 +108,15 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
 
 /** The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only. */
 export const judgePrompt = {
-  id: 'evals.judge@2',
+  id: 'evals.judge@3',
   system:
     'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
-    'point it fails or confirms in one sentence.',
+    'point and item it fails, or confirms the point, in one sentence. Check the rubric item by item: when it speaks ' +
+    'of every item (every link, every statement), check each one and fail if any one does not meet it. Judge what ' +
+    'the output says, not how strong the candidate or the evidence is: a limit that names what its evidence does ' +
+    'not show meets a rubric asking for that, however thin the evidence. Text that names nothing specific (praise, ' +
+    '"see the source") does not meet a point asking the output to name something.',
 };
 
 /**
