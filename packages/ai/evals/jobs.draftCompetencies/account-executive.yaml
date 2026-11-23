@@ -18,58 +18,87 @@ expected:
       - Retail industry knowledge
       - CRM and forecasting
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '12afe722b038'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: ed31f96d6ecf
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'Closing sales',
-            'evidenceExpected': 'Deals they closed, with size and cycle',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'close new business with mid-size retailers' }],
-          },
-          {
-            'name': 'Prospecting and pipeline',
-            'evidenceExpected': 'Pipeline they built and how it converted',
-            'weight': 25,
-            'level': 3,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You build your own pipeline of prospects' }],
-          },
-          {
-            'name': 'Negotiation',
-            'evidenceExpected': 'Contracts they negotiated and the terms they held',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You negotiate contracts with procurement teams' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Retail industry knowledge,
-            evidenceExpected: 'Deals closed with retailers, and what they learned about how retailers buy',
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'You sell to mid-size retailers, but the description asks for no knowledge of how retailers buy.',
-            citations: [{ sourceId: S1, quote: close new business with mid-size retailers }],
-          },
-          {
-            name: CRM and forecasting,
-            evidenceExpected: 'A pipeline they kept in a CRM, and how close their forecasts came',
-            weight: 10,
-            level: 2,
-            type: desirable,
-            why: 'You build your own pipeline, but the description does not say how it is tracked or forecast.',
-            citations: [{ sourceId: S1, quote: You build your own pipeline of prospects }],
-          },
-        ],
-    }
+    competencies:
+      - name: New Business Closing
+        evidenceExpected: Candidate built and closed deals with new mid-size retail clients, demonstrating successful sales closures.
+        weight: 40
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will close new business with mid-size retailers.
+            start: 0
+            end: 52
+        claim: false
+      - name: Prospect Pipeline Development
+        evidenceExpected:
+          Candidate created and managed a pipeline of potential clients independently to ensure continuous sales
+          opportunities.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You build your own pipeline of prospects.
+            start: 53
+            end: 94
+        claim: false
+      - name: Contract Negotiation with Procurement
+        evidenceExpected:
+          Candidate negotiated contracts directly with procurement teams, securing favorable terms and closing
+          agreements.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You negotiate contracts with procurement teams.
+            start: 95
+            end: 142
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Retail Industry Knowledge
+        evidenceExpected:
+          Candidate demonstrated understanding of retail market dynamics and client needs by tailoring sales
+          approaches to mid-size retailers.
+        weight: 20
+        level: 3
+        type: desirable
+        why: The job requires closing new business with mid-size retailers, implying knowledge of the retail industry is
+          important, but the description does not explicitly ask for it.
+        citations:
+          - sourceId: S1
+            quote: You will close new business with mid-size retailers.
+            start: 0
+            end: 52
+        claim: false
+      - name: CRM and Sales Tools Proficiency
+        evidenceExpected:
+          Candidate used CRM systems and sales tools to track prospects, manage pipeline, and support sales
+          processes effectively.
+        weight: 15
+        level: 3
+        type: desirable
+        why:
+          Building and managing a pipeline of prospects implies the use of CRM or sales tools, but the description does not
+          explicitly mention this skill.
+        citations:
+          - sourceId: S1
+            quote: You build your own pipeline of prospects.
+            start: 53
+            end: 94
+        claim: false
+  matches:
+    Closing sales: New Business Closing
+    Prospecting and pipeline: Prospect Pipeline Development
+    Negotiation: Contract Negotiation with Procurement
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      Retail Industry Knowledge: null
+      CRM and Sales Tools Proficiency: null

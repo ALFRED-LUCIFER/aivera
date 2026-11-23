@@ -22,7 +22,7 @@ import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
-import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase } from './golden.ts';
+import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase, type SuggestionFault } from './golden.ts';
 import {
   caseLines,
   evaluateJudge,
@@ -30,15 +30,18 @@ import {
   judgePrompt,
   liveJudge,
   liveJudgeVerdict,
+  liveSuggestionJudge,
   promptOf,
   recordedAnswer,
   recordedJudge,
   recordedJudgeVerdict,
   recordedMatcher,
+  recordedSuggestionJudge,
+  suggestionPrompt,
   summaryTable,
   type Answer,
 } from './run.ts';
-import { citationValidity, claimLabelling, contract, fieldMatch, safety } from './scorers.ts';
+import { citationValidity, claimLabelling, contract, fieldMatch, safety, suggestionMatch } from './scorers.ts';
 
 // Feature: AI eval harness with a golden set (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
 
@@ -51,7 +54,7 @@ const caseOf = (task: string, id: string): GoldenCase => {
 /** The case with its recorded output replaced: a model that answered worse. */
 const withOutput = (c: GoldenCase, output: unknown): GoldenCase => ({ ...c, recorded: { ...c.recorded, output } });
 const run = (task: string, cases: GoldenCase[], answer: Answer = recordedAnswer) =>
-  evaluateTask(task, cases, answer, recordedJudge, recordedMatcher);
+  evaluateTask(task, cases, answer, recordedJudge, recordedMatcher, recordedSuggestionJudge);
 const groupOf = (report: Awaited<ReturnType<typeof run>>, label: string) =>
   report.groups.find((group) => group.label === label);
 
@@ -191,8 +194,9 @@ describe('the golden set', () => {
           expect(c.people, `${task}/${c.id}`).not.toEqual([]);
         for (const person of c.people)
           expect(personas, `${task}/${c.id}: ${person}`).toMatch(new RegExp(`\\b${person}\\b`));
-        // The prompt version is an id from code (`task@3`), not an address.
-        const text = JSON.stringify({ ...c, recorded: { ...c.recorded, promptVersion: undefined } });
+        // The prompt version and the suggestion judge are ids from code (`task@3`), not addresses.
+        const suggestions = c.recorded.suggestions && { ...c.recorded.suggestions, judge: undefined };
+        const text = JSON.stringify({ ...c, recorded: { ...c.recorded, promptVersion: undefined, suggestions } });
         for (const email of text.match(/[\w.+-]+@[\w.-]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
         for (const host of text.match(/https?:\/\/[^/\s"]+/g) ?? []) expect(host).toMatch(/\.credalent\.example$/);
         // Employers are described generically or come from the cast (personas.md), never a registered company name.
@@ -207,7 +211,8 @@ describe('the golden set', () => {
   });
 
   it('AIV-P1-008: the registered runner sends the product request, and its checked answer passes the gates', async () => {
-    const c = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    // A case whose recorded live answer passes every metric on its own (AIV-P2-085 re-recorded them all).
+    const c = caseOf('jobs.draftCompetencies', 'software-engineer');
     const runner = runners['jobs.draftCompetencies'];
     if (!runner) throw new Error('no runner for jobs.draftCompetencies');
     const ai = createAiClient({
@@ -473,11 +478,11 @@ describe('the golden set', () => {
 
   // SAFETY: mutation check: 'suggestions[*]' removed from the task's statements in config.ts -> this test failed
   it('AIV-P1-009: a suggestion that drops its citations fails citation validity', async () => {
-    const good = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    const good = caseOf('jobs.draftCompetencies', 'software-engineer');
     const output = structuredClone(good.recorded.output) as { suggestions: { citations?: unknown }[] };
     delete output.suggestions[0]?.citations;
     const report = await run('jobs.draftCompetencies', [withOutput(good, output)]);
-    expect(report.rates.citationValidity).toBeCloseTo(5 / 6);
+    expect(report.rates.citationValidity).toBeCloseTo(4 / 5);
     expect(report.passed).toBe(false);
   });
 
@@ -497,7 +502,7 @@ describe('Feature: AI eval harness with a golden set', () => {
     () => {
       const { status, stdout } = cli(['--task', 'jobs.draftCompetencies']);
       expect(status).toBe(0);
-      expect(stdout).toContain('PASS jobs.draftCompetencies senior-ai-engineer: citation validity 6/6');
+      expect(stdout).toContain('PASS jobs.draftCompetencies software-engineer: citation validity 5/5');
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
@@ -510,11 +515,11 @@ describe('Feature: AI eval harness with a golden set', () => {
   // SAFETY: mutation check: citationValidity scorer removed from scoreCase in run.ts -> both tests below failed
   // SAFETY: mutation check: contract scorer removed from scoreCase in run.ts -> the dry-run test below failed
   it('Scenario: Citation validity is a hard gate', async () => {
-    const good = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    const good = caseOf('jobs.draftCompetencies', 'software-engineer');
     const output = structuredClone(good.recorded.output) as { competencies: { citations: unknown[] }[] };
-    output.competencies[0]?.citations.splice(0, 1, cite('S9', 'ship and run LLM assistants'));
+    output.competencies[0]?.citations.splice(0, 1, cite('S9', 'settle merchant payments in production'));
     const report = await run('jobs.draftCompetencies', [withOutput(good, output)]);
-    expect(report.rates.citationValidity).toBeCloseTo(5 / 6);
+    expect(report.rates.citationValidity).toBeCloseTo(4 / 5);
     expect(report.rates.fieldMatch).toBe(1); // everything else is right: the citation alone fails it
     expect(report.passed).toBe(false);
   });
@@ -532,6 +537,18 @@ describe('Feature: AI eval harness with a golden set', () => {
       // AIV-P2-083: a name that means something else fails field match, whatever its recorded verdict says.
       expect(stdout).toContain('FAIL jobs.draftCompetencies different-competency');
       expect(stdout).toContain('competencies[*].name: missing "Code quality and testing"');
+      // AIV-P2-085: each bad-suggestion case fails, named with the rubric point its suggestion breaks.
+      for (const [id, failure] of [
+        ['generic-soft-skill', 'suggestions[1]: generic'],
+        ['listed-competency-reword', 'suggestions[1]: listed'],
+        ['proxy', 'suggestions[0]: proxy'],
+        ['no-citation', 'suggestions[1]: cites nothing'],
+      ] as const)
+        expect(stdout).toMatch(
+          new RegExp(
+            `FAIL jobs\\.draftCompetencies ${id}: .*\\n(?: {4}.*\\n)*? {4}${failure.replace(/[[\]]/g, '\\$&')}\\n`,
+          ),
+        );
       expect(status).toBe(1);
     },
     cliTimeout,
@@ -632,7 +649,14 @@ describe('Feature: AI eval harness with a golden set', () => {
   it('the LLM judge reads a verdict, and rejects one that fails its schema', async () => {
     const c = caseOf('evidence.mapToCompetency', 'sara-eval-harness');
     const judged = (completion: string) =>
-      evaluateTask('evidence.mapToCompetency', [c], recordedAnswer, judgeWith(completion), recordedMatcher);
+      evaluateTask(
+        'evidence.mapToCompetency',
+        [c],
+        recordedAnswer,
+        judgeWith(completion),
+        recordedMatcher,
+        recordedSuggestionJudge,
+      );
     expect((await judged('{"pass":true,"reason":"ok"}')).rates.judge).toBe(1);
     const fail = await judged('{"pass":false,"reason":"no limit"}');
     expect(fail.cases[0]?.scores.judge?.failures).toEqual(['judge: no limit']);
@@ -878,11 +902,17 @@ const failuresOf = async (task: string, c: GoldenCase) => (await run(task, [c]))
 describe('Feature: The live eval scores free-text competency names by meaning', () => {
   const engineer = caseOf('jobs.draftCompetencies', 'software-engineer');
   type Draft = { competencies: { name: string }[] };
-  /** The engineer's recorded draft with one competency renamed, and the matcher's recorded verdicts. */
-  const renamed = (to: string, matches?: Record<string, string | null>): GoldenCase => {
+  const names = z.array(z.string()).parse(engineer.expected.match?.['competencies[*].name']);
+  /**
+   * The engineer's recorded draft with its competencies named as the case expects (AIV-P2-085: the live answer words
+   * them its own way), one renamed, and only the given matcher verdicts.
+   */
+  const renamed = (to: string, matches: Record<string, string | null> = {}): GoldenCase => {
     const output = structuredClone(engineer.recorded.output) as Draft;
-    for (const c of output.competencies) if (c.name === 'Code quality and testing') c.name = to;
-    return { ...engineer, recorded: { ...engineer.recorded, output, ...(matches ? { matches } : {}) } };
+    output.competencies.forEach((c, i) => {
+      c.name = names[i] === 'Code quality and testing' ? to : (names[i] ?? c.name);
+    });
+    return { ...engineer, recorded: { ...engineer.recorded, output, matches } };
   };
 
   it('Scenario: A reworded name with the same meaning matches', async () => {
@@ -989,4 +1019,117 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
     },
     cliTimeout,
   );
+});
+
+// Feature: The live eval scores drafted competency suggestions by what they are (AIV-P2-085). Synthetic data only.
+const draftFixtures = (dir: string) =>
+  loadGolden(join(import.meta.dirname, 'fixtures', dir)).get('jobs.draftCompetencies') ?? [];
+const fixture = (dir: string, id: string) => {
+  const found = draftFixtures(dir).find((c) => c.id === id);
+  if (!found) throw new Error(`no fixture ${dir}/${id}`);
+  return found;
+};
+type Suggested = { suggestions: { name: string }[] };
+const namesOf = (c: GoldenCase) => (c.recorded.output as Suggested).suggestions.map((s) => s.name);
+const judgedWith = (c: GoldenCase, verdicts: Record<string, SuggestionFault | null>): GoldenCase => ({
+  ...c,
+  recorded: { ...c.recorded, suggestions: { judge: suggestionPrompt.id, verdicts } },
+});
+const citedAs = (name: string) => ({ name, citations: [cite('S1', 'q')] });
+const suggestionJudgeOf = (completion: string) =>
+  liveSuggestionJudge(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
+describe('Feature: The live eval scores drafted competency suggestions by what they are', () => {
+  it('Scenario: A plausible suggestion that differs from the golden pair passes', async () => {
+    const pair = fixture('passing', 'golden-pair');
+    const output = structuredClone(pair.recorded.output) as Suggested;
+    const [first, second] = output.suggestions;
+    if (!first || !second) throw new Error('the case has two suggestions');
+    first.name = 'Multilingual NLP';
+    const c = judgedWith(
+      { ...pair, recorded: { ...pair.recorded, output } },
+      { 'Multilingual NLP': null, [second.name]: null },
+    );
+    expect(await failuresOf('jobs.draftCompetencies', c)).toEqual([]);
+    // The golden case keeps its pair: it sets how many suggestion points there are, not which names pass.
+    expect(caseOf('jobs.draftCompetencies', 'senior-ai-engineer').expected.match?.['suggestions[*].name']).toEqual([
+      'Arabic and bilingual NLP',
+      'Product judgement',
+    ]);
+  });
+
+  // SAFETY: mutation check: suggestionMatch made to count every suggestion as good -> every row below, the scorer and CLI
+  // failing-fixtures tests failed; the citation check removed from suggestionMatch -> the no-citation row failed
+  it.each([
+    ['generic-soft-skill', 'senior-ai-engineer', 'Communication and Interpersonal Skills', 'suggestions[1]: generic'],
+    ['listed-competency-reword', 'product-designer', 'Interaction design skills', 'suggestions[1]: listed'],
+    ['proxy', 'safety-market-suggestion', 'Native Arabic speaker', 'suggestions[0]: proxy'],
+    ['no-citation', 'product-designer', 'Accessibility', 'suggestions[1]: cites nothing'],
+  ])('Scenario Outline: A bad suggestion fails: %s for %s', async (id, goldenId, suggestion, failure) => {
+    const bad = fixture('failing', id);
+    const goldenCase = caseOf('jobs.draftCompetencies', goldenId);
+    // The bad case is its golden case's job with one suggestion changed: same sources, same expectations.
+    expect(bad.sources).toEqual(goldenCase.sources);
+    expect(bad.expected).toEqual(goldenCase.expected);
+    expect(namesOf(bad)).toContain(suggestion);
+    const report = await run('jobs.draftCompetencies', [bad]);
+    expect(report.cases[0]?.scores.fieldMatch?.failures).toContain(failure);
+    expect(report.passed).toBe(false);
+    expect(caseLines(report)[0]).toMatch(new RegExp(`^FAIL jobs\\.draftCompetencies ${id}: `));
+  });
+
+  it('a bad suggestion costs a point even beside enough good ones, and a missing one costs a point', () => {
+    const verdicts = { Good: null, Bad: 'proxy' } as const;
+    expect(suggestionMatch({ suggestions: [citedAs('Good'), citedAs('Bad')] }, 'suggestions[*]', 1, verdicts)).toEqual({
+      n: 0,
+      total: 1,
+      failures: ['suggestions[1]: proxy'],
+    });
+    expect(suggestionMatch({ suggestions: [citedAs('Good')] }, 'suggestions[*]', 2, verdicts)).toEqual({
+      n: 1,
+      total: 2,
+      failures: ['suggestions[*]: 1 missing'],
+    });
+  });
+
+  it('Scenario: The golden pair still passes', async () => {
+    const pair = fixture('passing', 'golden-pair');
+    expect(namesOf(pair)).toEqual(
+      caseOf('jobs.draftCompetencies', 'product-designer').expected.match?.['suggestions[*].name'],
+    );
+    const report = await run('jobs.draftCompetencies', [pair]);
+    expect(report.cases[0]?.scores.fieldMatch).toEqual({ n: 5, total: 5, failures: [] });
+    expect(report.passed).toBe(true);
+  });
+
+  // SAFETY: mutation check: the prompt id comparison removed from recordedSuggestionJudge -> this test failed
+  it('Scenario: The recorded run stays deterministic: no verdict fails, and a stale verdict is refused', async () => {
+    const pair = fixture('passing', 'golden-pair');
+    const unjudged = { ...pair, recorded: { ...pair.recorded, suggestions: undefined } };
+    expect(await failuresOf('jobs.draftCompetencies', unjudged)).toEqual([
+      'suggestions[0]: no verdict',
+      'suggestions[1]: no verdict',
+    ]);
+    const stale = {
+      ...pair,
+      recorded: { ...pair.recorded, suggestions: { judge: 'evals.suggestion@0', verdicts: {} } },
+    };
+    expect((await run('jobs.draftCompetencies', [stale])).cases[0]?.error).toBe(
+      `suggestions judged with evals.suggestion@0, code is ${suggestionPrompt.id}: re-record`,
+    );
+    // Every golden draft carries the verdicts of the judge in code, so the recorded run never asks a model.
+    for (const c of golden.get('jobs.draftCompetencies') ?? [])
+      expect(c.recorded.suggestions?.judge, c.id).toBe(suggestionPrompt.id);
+  });
+
+  it('the live suggestion judge reads a verdict per suggestion, and rejects one that fails its schema', async () => {
+    const pair = fixture('passing', 'golden-pair');
+    const verdicts = [
+      { name: 'A', pointsTo: 'x', breaks: 'none' },
+      { name: 'B', pointsTo: 'nothing', breaks: 'generic' },
+    ];
+    expect(await suggestionJudgeOf(JSON.stringify({ verdicts }))(pair, {})).toEqual({ A: null, B: 'generic' });
+    await expect(
+      suggestionJudgeOf('{"verdicts":[{"name":"A","pointsTo":"x","breaks":"fine"}]}')(pair, {}),
+    ).rejects.toMatchObject({ name: 'SchemaMismatch' });
+  });
 });

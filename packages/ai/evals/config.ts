@@ -58,15 +58,23 @@ export const taskThresholds: Record<
     groups?: Record<string, { label: string; min: number }>;
     /** Free-text paths a missed value may match by meaning (run.ts Matcher); every other path is matched exactly. */
     meaning?: string[];
+    /** Where the output's suggestions are: `<this>.name` points are scored by the suggestion judge (run.ts). */
+    suggestions?: string;
   }
 > = {
   // AIV-P2-083: a competency name is free text a live model never words like the golden case, so its names match by
   // meaning (the LLM matcher, its verdicts recorded per case); enums, ids, emails and phones stay exact everywhere.
+  // AIV-P2-085: a suggestion is scored by what it is, not by whether it is the golden pair, which is one good answer of
+  // many. The golden case still sets how many suggestion points there are; each passes with an output suggestion that
+  // cites a line and that the suggestion judge (run.ts suggestionPrompt, verdicts recorded per case) finds implied by
+  // the job, not a listed competency reworded, not a proxy, not a generic soft skill, and implied by the line it cites.
+  // Each bad suggestion costs a point. The bad-suggestion fixtures (fixtures/failing) prove those fail.
   'jobs.draftCompetencies': {
     statements: ['competencies[*]', 'suggestions[*]'],
     fieldMatch: 0.9,
     judge: 1,
-    meaning: ['competencies[*].name', 'suggestions[*].name'],
+    meaning: ['competencies[*].name'],
+    suggestions: 'suggestions[*]',
   },
   // `industry` is a statement only when it names a domain (it then carries citations); `none` cites nothing.
   // AIV-P1-066: pack and near-miss cases (domain), descriptions with no industry (none) and fairness cases. A group

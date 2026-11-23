@@ -19,60 +19,83 @@ expected:
       - Credit risk regulation
       - Explaining results to decision makers
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '693a71ba84c2'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 6c9198609e1b
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'Modelling and evaluation',
-            'evidenceExpected': 'Models they built and how they evaluated them',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'build and evaluate credit risk models' }],
-          },
-          {
-            'name': 'Data quality and pipelines',
-            'evidenceExpected': 'Pipelines they owned and the checks in them',
-            'weight': 25,
-            'level': 3,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You own the data pipelines that feed them' }],
-          },
-          {
-            'name': 'Experimentation',
-            'evidenceExpected': 'Experiments they designed and the decisions they changed',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You design experiments to test policy changes' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Credit risk regulation,
-            evidenceExpected: Models they took through model risk review or a regulator's questions,
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'The models decide who gets credit, which is regulated, but the description names no lending or model risk rules.',
-            citations: [{ sourceId: S1, quote: build and evaluate credit risk models }],
-          },
-          {
-            name: Explaining results to decision makers,
-            evidenceExpected: Write-ups or talks that explained a model or experiment to people who acted on it,
-            weight: 10,
-            level: 3,
-            type: desirable,
-            why:
-              'Your experiments test policy changes, but the description does not ask you to explain results to the people who
-              decide.',
-            citations: [{ sourceId: S1, quote: You design experiments to test policy changes }],
-          },
-        ],
-    }
+    competencies:
+      - name: Credit Risk Model Development
+        evidenceExpected: Built and evaluated credit risk models deployed in production or research environments.
+        weight: 40
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will build and evaluate credit risk models.
+            start: 0
+            end: 47
+        claim: false
+      - name: Data Pipeline Ownership
+        evidenceExpected:
+          Designed, built, and maintained data pipelines that feed credit risk models ensuring data quality and
+          reliability.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You own the data pipelines that feed them.
+            start: 48
+            end: 90
+        claim: false
+      - name: Experimental Design for Policy Testing
+        evidenceExpected: Designed and executed experiments to test the impact of policy changes on credit risk outcomes.
+        weight: 30
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You design experiments to test policy changes.
+            start: 91
+            end: 137
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Statistical Analysis and Inference
+        evidenceExpected:
+          Performed statistical analysis and inference to support model validation and experimental results
+          interpretation.
+        weight: 20
+        level: 4
+        type: desirable
+        why: The job involves building and evaluating models and designing experiments, which implies a need for strong
+          statistical skills not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: You will build and evaluate credit risk models.
+            start: 0
+            end: 47
+        claim: false
+      - name: Programming for Data Science
+        evidenceExpected: Developed code for data processing, model building, and experiment automation using languages like Python or R.
+        weight: 20
+        level: 4
+        type: desirable
+        why:
+          Owning data pipelines and building models implies programming skills, though not explicitly mentioned in the
+          description.
+        citations:
+          - sourceId: S1
+            quote: You own the data pipelines that feed them.
+            start: 48
+            end: 90
+        claim: false
+  matches:
+    Modelling and evaluation: Credit Risk Model Development
+    Data quality and pipelines: Data Pipeline Ownership
+    Experimentation: Experimental Design for Policy Testing
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      Statistical Analysis and Inference: null
+      Programming for Data Science: null

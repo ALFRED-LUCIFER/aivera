@@ -24,60 +24,108 @@ expected:
       - Arabic and bilingual NLP
       - Product judgement
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '76912f13bfed'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 729fa2a23ace
   output:
     competencies:
-      - name: LLM systems in production
-        evidenceExpected: A shipped assistant or RAG system with real users, and their part in it
-        weight: 25
+      - name: LLM Assistant and Retrieval System Development
+        evidenceExpected: Built and deployed LLM assistants and retrieval systems used by real merchants in production environments.
+        weight: 30
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: ship and run LLM assistants and retrieval systems that real merchants use every day
-      - name: Retrieval and evaluation
-        evidenceExpected: Eval sets and retrieval metrics, and how they changed decisions
+            quote: You will ship and run LLM assistants and retrieval systems that real merchants use every day.
+            start: 0
+            end: 93
+        claim: false
+      - name: Evaluation Set and Retrieval Metric Construction
+        evidenceExpected: Created evaluation datasets and retrieval metrics to assess and decide production readiness of AI systems.
         weight: 20
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: build the eval sets and retrieval metrics that decide what we ship
-      - name: Python service engineering
-        evidenceExpected: 'Production Python they wrote: services, tests, deployment'
+            quote: You will build the eval sets and retrieval metrics that decide what we ship.
+            start: 94
+            end: 170
+        claim: false
+      - name: Production Python Service Development
+        evidenceExpected: Wrote production-grade Python services with comprehensive tests and deployed them independently.
+        weight: 20
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will write production Python services, with tests, and deploy them yourself.
+            start: 171
+            end: 251
+        claim: false
+      - name: System Performance and Reliability Management
+        evidenceExpected: Monitored and optimized system latency, cost per request, and incident rates to maintain service quality.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You keep latency, cost per request and incidents in check.
+            start: 252
+            end: 310
+        claim: false
+      - name: Multilingual Assistant Support (Arabic and English)
+        evidenceExpected: Developed AI assistants capable of answering merchants in both Arabic and English languages.
         weight: 15
         level: 3
         type: mandatory
         citations:
           - sourceId: S1
-            quote: write production Python services, with tests, and deploy them yourself
-      - name: Cost and reliability
-        evidenceExpected: Numbers on latency, cost per request and incidents handled
-        weight: 15
-        level: 2
-        type: desirable
-        citations:
-          - sourceId: S1
-            quote: You keep latency, cost per request and incidents in check
+            quote: The assistant answers merchants in Arabic and English.
+            start: 311
+            end: 365
+        claim: false
     refused: false
     reason: null
     suggestions:
-      - name: Arabic and bilingual NLP
-        evidenceExpected: 'Work on Arabic or bilingual text: models, evals, tokenisation'
+      - name: Cloud Deployment and Infrastructure Management
+        evidenceExpected:
+          Deployed and managed cloud infrastructure for scalable AI services ensuring high availability and
+          fault tolerance.
         weight: 10
-        level: 2
-        type: desirable
-        why: The assistant must answer in Arabic, but the description lists no language requirement.
-        citations:
-          - sourceId: S1
-            quote: The assistant answers merchants in Arabic and English
-      - name: Product judgement
-        evidenceExpected: Product decisions they shaped from evals or merchant feedback
-        weight: 15
         level: 3
         type: desirable
-        why: Your evals decide what ships, but the description does not ask for judging what merchants need.
+        why: The job requires deploying production Python services and managing latency and incidents, implying cloud or
+          infrastructure deployment skills, which the description does not explicitly ask for.
         citations:
           - sourceId: S1
-            quote: build the eval sets and retrieval metrics that decide what we ship
+            quote: You will write production Python services, with tests, and deploy them yourself.
+            start: 171
+            end: 251
+          - sourceId: S1
+            quote: You keep latency, cost per request and incidents in check.
+            start: 252
+            end: 310
+        claim: false
+      - name: Data Engineering for Large-scale Retrieval Systems
+        evidenceExpected: Built data pipelines and processed large datasets to support retrieval systems and evaluation set construction.
+        weight: 10
+        level: 3
+        type: desirable
+        why:
+          Building eval sets and retrieval metrics for LLM assistants implies handling and engineering large datasets, which
+          is not explicitly requested.
+        citations:
+          - sourceId: S1
+            quote: You will build the eval sets and retrieval metrics that decide what we ship.
+            start: 94
+            end: 170
+        claim: false
+  matches:
+    LLM systems in production: LLM Assistant and Retrieval System Development
+    Retrieval and evaluation: Evaluation Set and Retrieval Metric Construction
+    Python service engineering: Production Python Service Development
+    Cost and reliability: System Performance and Reliability Management
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      Cloud Deployment and Infrastructure Management: null
+      Data Engineering for Large-scale Retrieval Systems: null

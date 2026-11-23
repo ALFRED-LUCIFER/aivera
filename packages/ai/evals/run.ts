@@ -5,7 +5,15 @@ import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from 
 import { fakeProvider } from '../src/providers.ts';
 import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
-import { identifiersOf, verdict, type GoldenCase, type JudgeCase, type Verdict } from './golden.ts';
+import {
+  identifiersOf,
+  suggestionFaults,
+  verdict,
+  type GoldenCase,
+  type JudgeCase,
+  type SuggestionFault,
+  type Verdict,
+} from './golden.ts';
 import {
   citationValidity,
   claimLabelling,
@@ -14,6 +22,7 @@ import {
   missedPoints,
   promptSafety,
   safety,
+  suggestionMatch,
   valuesAt,
   type Ratio,
 } from './scorers.ts';
@@ -32,6 +41,9 @@ export type Matcher = (
   golden: GoldenCase,
   misses: { expected: string; candidates: string[] }[],
 ) => Promise<Record<string, string | null>>;
+
+/** For each suggestion in an output, by name, the rubric point it fails or null (AIV-P2-085). */
+export type SuggestionJudge = (golden: GoldenCase, output: unknown) => Promise<Record<string, SuggestionFault | null>>;
 
 const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge', 'prompt'] as const;
 type Metric = (typeof metrics)[number];
@@ -128,6 +140,13 @@ export const recordedAnswer: Answer = async (task, golden) => {
 };
 /** The recorded verdicts: an expected value with none recorded does not match, so a recorded run stays exact. */
 export const recordedMatcher: Matcher = async (golden) => golden.recorded.matches ?? {};
+/** The recorded suggestion verdicts, refused when the suggestion judge's prompt has changed since. */
+export const recordedSuggestionJudge: SuggestionJudge = async (golden) => {
+  const recorded = golden.recorded.suggestions;
+  if (recorded && recorded.judge !== suggestionPrompt.id)
+    throw new StaleRecording(`suggestions judged with ${recorded.judge}, code is ${suggestionPrompt.id}: re-record`);
+  return recorded?.verdicts ?? {};
+};
 export const recordedJudge: Judge = async (_rubric, golden) => {
   if (!golden.recorded.judge) throw new Error('no recorded verdict');
   return golden.recorded.judge;
@@ -184,6 +203,48 @@ export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
   };
 }
 
+export const suggestionPrompt = {
+  id: 'evals.suggestion@1',
+  system:
+    'You grade the suggestions in a draft hiring rubric. The source is the job description. The draft lists the ' +
+    'competencies the description asks for, then suggestions: competencies the description does NOT ask for, but ' +
+    'that the work, market, users or product it describes would need. A good suggestion is never mentioned in the ' +
+    'description: it is implied (building a hospital scheduling app implies health-data privacy rules; a support ' +
+    'team serving Spanish speakers implies writing in Spanish). Never fail a suggestion because the description ' +
+    'does not mention it. For each suggestion, in order: copy its name; in pointsTo, quote the words of the ' +
+    'description that imply it, or "nothing"; then give the first rule it breaks, or "none". ' +
+    '"unrelated": nothing described implies it, or it belongs to a different job. ' +
+    '"listed": it is a listed competency reworded or a part of one. ' +
+    '"proxy": it asks who someone is, not what they can do: a native speaker, a nationality, where someone lives or ' +
+    'comes from, age, gender, religion, an employer or a school. A language the work is done in, shown by work, is a ' +
+    'skill, not a proxy. ' +
+    '"generic": a soft skill any job asks for, not tied to this work (communication skills, teamwork); one aimed at a ' +
+    'party the work involves, such as explaining results to decision makers or working with its customers, is not ' +
+    'generic. ' +
+    '"citation": the lines it cites have nothing to do with what implies it.',
+};
+const suggestionVerdicts = z.object({
+  verdicts: z.array(
+    z.object({ name: z.string(), pointsTo: z.string(), breaks: z.enum(['none', ...suggestionFaults]) }).strict(),
+  ),
+});
+
+/** The suggestion judge on the `evals.judge` task (AIV-P2-085): one call per case whose output suggests anything. */
+export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): SuggestionJudge {
+  return async (golden, output) => {
+    const { verdicts } = await ai.generateStructured({
+      task: 'evals.judge',
+      workspaceId: evalWorkspaceId,
+      promptVersion: suggestionPrompt.id,
+      system: suggestionPrompt.system,
+      prompt: JSON.stringify(output),
+      schema: suggestionVerdicts,
+      sources: golden.sources,
+    });
+    return Object.fromEntries(verdicts.map((v) => [v.name, v.breaks === 'none' ? null : v.breaks]));
+  };
+}
+
 /**
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
  * fails with SchemaMismatch, never patched (AGENTS.md 3.7).
@@ -210,9 +271,10 @@ async function scoreCase(
   answer: Answer,
   judge: Judge,
   matcher: Matcher,
+  suggestionJudge: SuggestionJudge,
 ): Promise<CaseResult> {
   const { expected, sources } = golden;
-  const { statements: statementPaths } = taskThresholds[task] ?? { statements: [] };
+  const { statements: statementPaths, suggestions: suggestionPath } = taskThresholds[task] ?? { statements: [] };
   try {
     const output = await answer(task, golden);
     let matches: Record<string, string | null> | undefined;
@@ -222,13 +284,15 @@ async function scoreCase(
       claimLabelling: claimLabelling(output, sources, statementPaths),
     };
     if (expected.match) {
+      // Suggestion points are the suggestion judge's (config.ts `suggestions`); the golden names set only their count.
+      const { [`${suggestionPath}.name`]: expectedSuggestions, ...match } = expected.match;
       // Free-text paths the task declares (config.ts `meaning`) may match by meaning; everything else stays exact.
       const meaning = new Set(taskThresholds[task]?.meaning ?? []);
-      const misses = missedPoints(output, expected.match).filter(
+      const misses = missedPoints(output, match).filter(
         (p): p is { path: string; value: string } => meaning.has(p.path) && typeof p.value === 'string',
       );
       // An output value that already matches an expected one exactly is taken: only the rest may answer a miss.
-      const taken = (path: string) => [expected.match?.[path]].flat();
+      const taken = (path: string) => [match[path]].flat();
       const free = (path: string) =>
         valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
       if (misses.length)
@@ -237,7 +301,7 @@ async function scoreCase(
           misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
         );
       const used = new Set<string>();
-      scores.fieldMatch = fieldMatch(output, expected.match, ({ path, value }) => {
+      scores.fieldMatch = fieldMatch(output, match, ({ path, value }) => {
         const found = typeof value === 'string' ? matches?.[value] : null;
         // A verdict counts only when the value it names is free in the output at that path, and once.
         if (!meaning.has(path) || typeof found !== 'string' || !free(path).includes(found)) return false;
@@ -245,6 +309,16 @@ async function scoreCase(
         used.add(`${path}\u0000${found}`);
         return true;
       });
+      if (suggestionPath && Array.isArray(expectedSuggestions)) {
+        const verdicts = valuesAt(output, suggestionPath).length ? await suggestionJudge(golden, output) : {};
+        const judged = suggestionMatch(output, suggestionPath, expectedSuggestions.length, verdicts);
+        const { n, total, failures } = scores.fieldMatch;
+        scores.fieldMatch = {
+          n: n + judged.n,
+          total: total + judged.total,
+          failures: [...failures, ...judged.failures],
+        };
+      }
     }
     if (expected.safety) scores.safety = safety(output, expected.safety);
     if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);
@@ -278,10 +352,11 @@ export async function evaluateTask(
   answer: Answer,
   judge: Judge,
   matcher: Matcher,
+  suggestionJudge: SuggestionJudge,
 ): Promise<TaskReport> {
   const thresholds = thresholdsOf(task);
   const results: CaseResult[] = [];
-  for (const golden of cases) results.push(await scoreCase(task, golden, answer, judge, matcher)); // one call at a time
+  for (const golden of cases) results.push(await scoreCase(task, golden, answer, judge, matcher, suggestionJudge)); // one call at a time
   const rates = Object.fromEntries(
     metrics.map((metric) => {
       const scored = results.flatMap((result) => result.scores[metric] ?? []);

@@ -18,44 +18,67 @@ expected:
     competencies[*].name: [Onboarding flow design]
     suggestions[*].name: [Arabic and right-to-left design]
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '8974737186a4'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 046556a25826
   output:
     competencies:
-      - name: Onboarding flow design
-        evidenceExpected: Onboarding flows they designed and shipped, and how completion changed
-        weight: 45
-        level: 3
+      - name: Onboarding Flow Design
+        evidenceExpected: Designed and shipped onboarding flows for merchants to open stores on a marketplace platform.
+        weight: 50
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: design the onboarding flows that merchants across the Gulf use to open a store
-      - name: Testing with users
-        evidenceExpected: Usability tests they ran with merchants, and the changes that followed
-        weight: 30
-        level: 3
+            quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
+            start: 0
+            end: 107
+        claim: false
+      - name: User Testing with Merchants
+        evidenceExpected: Conducted user testing sessions with merchants to validate and improve onboarding flow changes before release.
+        weight: 50
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: You test every change with merchants before it ships
+            quote: You test every change with merchants before it ships.
+            start: 108
+            end: 161
+        claim: false
     refused: false
     reason: null
     suggestions:
-      - name: Arabic and right-to-left design
-        evidenceExpected: Shipped Arabic or right-to-left interfaces, and the layout decisions behind them
-        weight: 15
-        level: 2
+      - name: User Experience Research
+        evidenceExpected: Conducted research to understand merchant needs and behaviors to inform onboarding design improvements.
+        weight: 40
+        level: 3
         type: desirable
-        why: Merchants across the Gulf open stores, but the description asks for no Arabic or right-to-left design work.
+        why:
+          The job involves designing onboarding flows and testing changes with merchants, implying a need for understanding
+          user experience and research methods, which the description does not explicitly ask for.
         citations:
           - sourceId: S1
-            quote: merchants across the Gulf
-      - name: Marketplace seller tools
-        evidenceExpected: Seller dashboards or store setup tools they designed
-        weight: 10
-        level: 2
+            quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
+            start: 0
+            end: 107
+        claim: false
+      - name: Cross-Cultural Design Sensitivity
+        evidenceExpected: Designed onboarding experiences tailored to merchants from diverse cultural backgrounds in the Gulf region.
+        weight: 30
+        level: 3
         type: desirable
-        why: Merchants open a store on the marketplace, but the description asks for no experience designing seller tools.
+        why:
+          The description states the merchants are across the Gulf, implying the need to consider cultural differences in
+          design, which is not explicitly requested.
         citations:
           - sourceId: S1
-            quote: open a store on our marketplace
+            quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
+            start: 0
+            end: 107
+        claim: false
+  matches:
+    Onboarding flow design: Onboarding Flow Design
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      User Experience Research: null
+      Cross-Cultural Design Sensitivity: null

@@ -19,58 +19,80 @@ expected:
       - Cloud cost control
       - Infrastructure security
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '760ad5c47e65'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 46ddee1216bf
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'Infrastructure as code',
-            'evidenceExpected': 'Infrastructure code they wrote and maintained',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'manage our cloud infrastructure as code' }],
-          },
-          {
-            'name': 'Incident response',
-            'evidenceExpected': 'Incidents they led and the reviews they wrote',
-            'weight': 25,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You lead incident response and write the reviews' }],
-          },
-          {
-            'name': 'Observability',
-            'evidenceExpected': 'Dashboards and alerts they built and tuned',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You build the dashboards and alerts we run on' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Cloud cost control,
-            evidenceExpected: 'Cloud spend they cut, with the numbers before and after',
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'You manage the cloud infrastructure, but the description does not ask you to keep its cost down.',
-            citations: [{ sourceId: S1, quote: manage our cloud infrastructure as code }],
-          },
-          {
-            name: Infrastructure security,
-            evidenceExpected: 'Access, secrets or network controls they put in place',
-            weight: 10,
-            level: 3,
-            type: desirable,
-            why: 'You run the infrastructure, but the description says nothing about securing it.',
-            citations: [{ sourceId: S1, quote: manage our cloud infrastructure as code }],
-          },
-        ],
-    }
+    competencies:
+      - name: Cloud Infrastructure as Code Management
+        evidenceExpected: Built and maintained cloud infrastructure using infrastructure as code tools and practices.
+        weight: 40
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will manage our cloud infrastructure as code.
+            start: 0
+            end: 49
+        claim: false
+      - name: Incident Response Leadership
+        evidenceExpected: Led incident response efforts and authored incident review reports.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You lead incident response and write the reviews.
+            start: 50
+            end: 99
+        claim: false
+      - name: Dashboard and Alert Development
+        evidenceExpected: Designed and implemented dashboards and alerting systems for monitoring and operational awareness.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You build the dashboards and alerts we run on.
+            start: 100
+            end: 146
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Monitoring and Observability Tools Expertise
+        evidenceExpected: Developed and maintained monitoring and observability solutions beyond dashboards and alerts,
+          including metrics collection and tracing.
+        weight: 20
+        level: 4
+        type: desirable
+        why:
+          The job involves building dashboards and alerts, implying a need for broader monitoring and observability skills
+          which are not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: You build the dashboards and alerts we run on.
+            start: 100
+            end: 146
+        claim: false
+      - name: Cloud Security Best Practices
+        evidenceExpected: Implemented security controls and best practices in cloud infrastructure management.
+        weight: 15
+        level: 3
+        type: desirable
+        why: Managing cloud infrastructure as code implies responsibility for secure configurations, but security is not
+          explicitly mentioned.
+        citations:
+          - sourceId: S1
+            quote: You will manage our cloud infrastructure as code.
+            start: 0
+            end: 49
+        claim: false
+  matches:
+    Infrastructure as code: Cloud Infrastructure as Code Management
+    Incident response: Incident Response Leadership
+    Observability: null
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      Monitoring and Observability Tools Expertise: null
+      Cloud Security Best Practices: null

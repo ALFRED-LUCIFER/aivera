@@ -32,77 +32,132 @@ expected:
     suggestions[*].name:
       - Retail data knowledge
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '3d5a345a05e9'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 543c41beb56e
   output:
     competencies:
-      - name: Batch data pipelines
-        evidenceExpected: Nightly pipelines they built in Python and SQL, and how they kept them on time
-        weight: 30
-        level: 4
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote: Build and run batch pipelines in Python and SQL that load sales data into our warehouse every night.
-          - sourceId: S1
-            quote: Strong SQL and Python.
-      - name: Data modelling
-        evidenceExpected: Warehouse tables they designed that analysts and dashboards query
+      - name: Batch data pipeline development in Python and SQL
+        evidenceExpected: Built and maintained batch pipelines that load sales data into a data warehouse nightly using Python and SQL.
         weight: 25
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: Model the warehouse tables that analysts and dashboards query.
-      - name: Data quality
-        evidenceExpected: Checks they added that caught a broken load before anyone used it
+            quote: Build and run batch pipelines in Python and SQL that load sales data into our warehouse every night.
+            start: 95
+            end: 195
+        claim: false
+      - name: Data warehouse modeling
+        evidenceExpected: Designed and modeled warehouse tables that support analyst queries and dashboard reporting.
         weight: 20
-        level: 3
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Model the warehouse tables that analysts and dashboards query.
+            start: 198
+            end: 260
+        claim: false
+      - name: Data quality monitoring and checks
+        evidenceExpected: Implemented data quality checks to detect and prevent broken data loads before reports are generated.
+        weight: 15
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
             quote: Add data quality checks so a broken load is caught before a report goes out.
-      - name: Streaming pipelines
-        evidenceExpected: A batch pipeline they moved to streaming, and the latency before and after
-        weight: 20
+            start: 263
+            end: 339
+        claim: false
+      - name: Streaming data pipeline development
+        evidenceExpected: Migrated slow batch pipelines to streaming pipelines to update stock levels within minutes.
+        weight: 15
         level: 3
         type: desirable
         citations:
           - sourceId: S1
             quote: Move our slowest pipelines to streaming so stock levels update within minutes.
-      - name: Working with analysts
-        evidenceExpected: Tables they built from an analyst's question, and how the analyst used them
+            start: 342
+            end: 420
+        claim: false
+      - name: Collaboration with analysts to translate questions into usable tables
+        evidenceExpected: Worked directly with analysts to convert their questions into data tables for analysis and reporting.
         weight: 10
         level: 3
         type: mandatory
         citations:
           - sourceId: S1
             quote: Work with analysts to turn their questions into tables they can use.
-      - name: Pipeline orchestration
-        evidenceExpected: Airflow or similar schedules they wrote, with retries and dependencies
-        weight: 15
+            start: 423
+            end: 491
+        claim: false
+      - name: Proficiency with Airflow or similar schedulers
+        evidenceExpected: Developed and managed data pipelines using Airflow or comparable scheduling tools.
+        weight: 10
         level: 3
         type: mandatory
         citations:
           - sourceId: S1
             quote: Experience with Airflow or a similar scheduler.
-      - name: Data documentation
-        evidenceExpected: Written documentation of tables they owned that others relied on
+            start: 533
+            end: 580
+        claim: false
+      - name: Clear written documentation of data assets
+        evidenceExpected: Produced clear and comprehensive documentation for owned tables and data assets.
         weight: 5
-        level: 2
-        type: desirable
+        level: 3
+        type: mandatory
         citations:
           - sourceId: S1
             quote: Clear written documentation of the tables you own.
+            start: 583
+            end: 633
+        claim: false
     refused: false
     reason: null
     suggestions:
-      - name: Retail data knowledge
-        evidenceExpected: Sales or stock data they worked with, such as returns, promotions or stock counts
-        weight: 10
+      - name: Data visualization or dashboarding skills
+        evidenceExpected:
+          Created or contributed to dashboards or visualizations that use the modeled data to provide insights
+          to store managers or analysts.
+        weight: 5
         level: 2
         type: desirable
-        why: The reports are about store sales and stock, but the description asks for no knowledge of retail data.
+        why:
+          The description mentions dashboards and reports for store managers but does not explicitly require skills in
+          visualization, which would complement the data engineering work.
         citations:
           - sourceId: S1
             quote: Our analytics platform gives store managers daily sales and stock reports.
+            start: 0
+            end: 74
+        claim: false
+      - name: Knowledge of retail sales domain
+        evidenceExpected:
+          Applied understanding of retail sales and stock management concepts to optimize data models and
+          pipelines for relevant business insights.
+        weight: 5
+        level: 2
+        type: desirable
+        why:
+          The platform supports store managers with sales and stock reports, implying domain knowledge in retail sales would
+          enhance effectiveness but is not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: Our analytics platform gives store managers daily sales and stock reports.
+            start: 0
+            end: 74
+        claim: false
+  matches:
+    Batch data pipelines: Batch data pipeline development in Python and SQL
+    Data modelling: Data warehouse modeling
+    Data quality: Data quality monitoring and checks
+    Streaming pipelines: Streaming data pipeline development
+    Working with analysts: Collaboration with analysts to translate questions into usable tables
+    Pipeline orchestration: Proficiency with Airflow or similar schedulers
+    Data documentation: Clear written documentation of data assets
+  suggestions:
+    judge: evals.suggestion@1
+    verdicts:
+      Data visualization or dashboarding skills: null
+      Knowledge of retail sales domain: null
