@@ -136,7 +136,7 @@ describe('Scenario: Protected traits in a description are not turned into anythi
     expect(JSON.stringify(detected)).not.toMatch(/nationals|big bank/);
   });
 
-  // SAFETY: mutation check: regionsNotAboutPeople call removed in detect-domain.ts -> this test failed (uae returned)
+  // SAFETY: mutation check: regionsNotAboutPeople call replaced by the plain map in detect-domain.ts -> this test failed (uae returned)
   it('drops a region whose only citation is the nationality line, and keeps the domain (AIV-P2-082)', async () => {
     const nationals = 'UAE nationals preferred.';
     const answer = { ...payments, regions: [{ region: 'uae', citations: [{ sourceId: 'S1', quote: nationals }] }] };

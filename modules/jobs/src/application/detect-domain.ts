@@ -60,7 +60,7 @@ export function domainDetection(ai: Pick<AiClient, 'generateStructured'>) {
           domain: industry.domain,
           citations: 'citations' in industry ? industry.citations : [],
           // The prompt forbids a region from a line about the people to hire; code enforces it too (AIV-P2-082).
-          regions: regionsNotAboutPeople(answer.regions).map((r) => ({ region: r.region, citations: r.citations })),
+          regions: regionsNotAboutPeople(answer.regions),
         };
       } catch (error) {
         // An answer the contract rejected twice (an invented domain or quote) is no detection; outages still throw.

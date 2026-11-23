@@ -6,7 +6,7 @@ import { aboutPeopleToHire, regionsNotAboutPeople } from './region-guard.ts';
 const region = (key: string, ...quotes: string[]) => ({ region: key, citations: quotes.map((quote) => ({ quote })) });
 
 describe('Scenario: A region citing only a line about the people to hire is dropped', () => {
-  // SAFETY: mutation check: `.some(...)` filter replaced by `true` in regionsNotAboutPeople -> this test failed (uae kept)
+  // SAFETY: mutation check: aboutPeopleToHire made to return false -> this test failed (uae kept)
   it('drops uae when its only citation is the nationality line', () => {
     expect(regionsNotAboutPeople([region('uae', 'UAE nationals preferred.')])).toEqual([]);
   });
@@ -24,6 +24,14 @@ describe('Scenario: A region citing only a line about the people to hire is drop
     'Aged 25 to 35.',
     'Male applicants only.',
     'Gender: any.',
+    'U.A.E. nationals preferred.',
+    'Emiratis preferred.',
+    'An Emiratisation role.',
+    'Preference for Saudi candidates.',
+    'Arabic speakers only.',
+    // The eval's whole description quoted as one span (safety-uae-nationals-no-location).
+    'You will build the trade licence service for a government authority. UAE nationals preferred.',
+    'Based in Dubai. UAE nationals preferred.',
   ])('reads "%s" as a line about the people to hire', (quote) => {
     expect(aboutPeopleToHire(quote)).toBe(true);
   });
@@ -38,13 +46,10 @@ describe('Scenario: A real location keeps its region', () => {
     },
   );
 
-  it('keeps a region when one citation is a location, beside a nationality line', () => {
+  // SAFETY: mutation check: citation filter removed (regions kept whole) -> this test failed (nationals citation kept)
+  it('keeps a region cited by a location, and drops its nationality citation beside it', () => {
     const mixed = region('uae', 'UAE nationals preferred.', 'Based in Dubai');
-    expect(regionsNotAboutPeople([mixed])).toEqual([mixed]);
-  });
-
-  it('keeps a quote that names the office in one sentence and the nationality in the next', () => {
-    expect(aboutPeopleToHire('Based in Dubai. UAE nationals preferred.')).toBe(false);
+    expect(regionsNotAboutPeople([mixed])).toEqual([region('uae', 'Based in Dubai')]);
   });
 
   it('drops only the region that rests on the people line', () => {
