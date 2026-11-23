@@ -20,6 +20,7 @@ env:
   RG: rg-medvya-dev-in
   WEB: ca-aivera-web-dev
   WORKER: ca-aivera-worker-dev
+  AI_SERVICE: ca-aivera-ai-dev
   JOB: job-aivera-migrate-dev
 
 jobs:
@@ -63,6 +64,11 @@ jobs:
             docker build --target "$target" -t "$IMAGES/$target:$GITHUB_SHA" .
             docker push "$IMAGES/$target:$GITHUB_SHA"
           done
+      # AIV-P2-068: the Python AI service, from its own folder.
+      - name: build and push ai-service
+        run: |
+          docker build -t "$IMAGES/ai-service:$GITHUB_SHA" apps/backend/ai-service
+          docker push "$IMAGES/ai-service:$GITHUB_SHA"
 
   deploy:
     needs: images
@@ -106,21 +112,40 @@ jobs:
             echo "Skipped $WORKER: not created yet (owner's Bicep apply)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # AIV-P2-068: the AI service, after web for the same reason; skipped until the owner's apply creates it
+      # (aiServiceAudience set, infra/README.md).
+      - name: deploy ai service
+        id: ai
+        run: |
+          if az containerapp show -g "$RG" -n "$AI_SERVICE" -o none 2>/dev/null; then
+            prev=$(az containerapp show -g "$RG" -n "$AI_SERVICE" --query 'properties.template.containers[0].image' -o tsv)
+            echo "previous=$prev" >> "$GITHUB_OUTPUT"
+            az containerapp update -g "$RG" -n "$AI_SERVICE" --image "$IMAGES/ai-service:$GITHUB_SHA" -o none
+          else
+            echo "Skipped $AI_SERVICE: not created yet (owner's Bicep apply)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: smoke test
         run: |
           fqdn=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
           SMOKE_URL="https://$fqdn" COMMIT="$GITHUB_SHA" node infra/scripts/smoke.mjs
 
-      # Rolls back the images only, web and worker together: migrations stay applied, so they must be expand-only
-      # (ADR-004). The worker is rolled back only when it existed (its previous image was recorded).
-      - name: roll back web and worker
+      # Rolls back the images only, web, worker and AI service together: migrations stay applied, so they must be
+      # expand-only (ADR-004). The worker and AI service are rolled back only when they existed (a previous image).
+      - name: roll back web, worker and ai service
         if: (failure() || cancelled()) && steps.web.outcome == 'success'
         env:
           PREVIOUS: ${{ steps.web.outputs.previous }}
           PREVIOUS_WORKER: ${{ steps.worker.outputs.previous }}
+          PREVIOUS_AI: ${{ steps.ai.outputs.previous }}
         # Both updates run even if one fails; the step fails at the end if either did.
         run: |
           rc=0
+          if [ -n "$PREVIOUS_AI" ]; then
+            if az containerapp update -g "$RG" -n "$AI_SERVICE" --image "$PREVIOUS_AI" -o none; then
+              echo "Rolled $AI_SERVICE back to $PREVIOUS_AI (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+            else rc=1; fi
+          fi
           if [ -n "$PREVIOUS_WORKER" ]; then
             if az containerapp update -g "$RG" -n "$WORKER" --image "$PREVIOUS_WORKER" -o none; then
               echo "Rolled $WORKER back to $PREVIOUS_WORKER (was $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
@@ -137,5 +162,6 @@ jobs:
             echo "Deployed commit $GITHUB_SHA to Azure dev"
             echo "- web: $IMAGES/web:$GITHUB_SHA"
             echo "- worker: $IMAGES/worker:$GITHUB_SHA"
+            echo "- ai-service: $IMAGES/ai-service:$GITHUB_SHA (if created)"
             echo "- migrate: $IMAGES/migrate:$GITHUB_SHA (job $JOB succeeded)"
           } >> "$GITHUB_STEP_SUMMARY"

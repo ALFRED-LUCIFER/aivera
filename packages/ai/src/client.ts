@@ -14,6 +14,7 @@ import {
 } from './config.ts';
 import type { AiProvider } from './providers.ts';
 import { CONTACT_EXTRACTION_TASKS, MissingIdentifiers, redactSources, type Identifiers } from './identifiers.ts';
+import { serviceResponse, type AiService, type ServiceTask } from './service.ts';
 
 // Every error carries the task and a safe reason only: never the prompt, the completion or the provider's error,
 // whose request body repeats the prompt (AGENTS.md 1.2).
@@ -104,12 +105,15 @@ export type AiClient = ReturnType<typeof createAiClient>;
 export function createAiClient(options: {
   provider: AiProvider;
   budget: TokenBudgetStore;
+  /** The Python AI service (ADR-015), for tasks config.ts marks `service`; without it they throw AiUnavailable. */
+  service?: AiService | undefined;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
 }) {
   const {
     provider,
     budget,
+    service,
     now = Date.now,
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   } = options;
@@ -123,7 +127,8 @@ export function createAiClient(options: {
     task: string,
     settings: { deployment: Deployment; timeoutMs: number },
     workspaceId: string,
-    attempt: (abortSignal: AbortSignal) => Promise<{ value: T; usage: Usage }>,
+    /** `remaining` is the workspace's budget left today; `cap`, when returned, is the most the attempt could spend. */
+    attempt: (abortSignal: AbortSignal, remaining: number) => Promise<{ value: T; usage: Usage; cap?: number }>,
   ): Promise<T> {
     const { deployment } = settings;
     return withSpan(`ai ${operation} ${task}`, async () => {
@@ -158,9 +163,9 @@ export function createAiClient(options: {
           outcome('circuit_open', { 'credalent.ai.attempts': attempts - 1 });
           throw new AiUnavailable(task, 'circuit open');
         }
-        let result: { value: T; usage: Usage };
+        let result: { value: T; usage: Usage; cap?: number };
         try {
-          result = await attempt(AbortSignal.timeout(settings.timeoutMs));
+          result = await attempt(AbortSignal.timeout(settings.timeoutMs), limit - spent);
         } catch (error) {
           const status = APICallError.isInstance(error) ? error.statusCode : undefined;
           const timedOut = error instanceof Error && error.name === 'TimeoutError';
@@ -184,6 +189,11 @@ export function createAiClient(options: {
         const { value, usage } = result;
         // Charged to the day the call was checked against; only a successful call spends.
         await budget.add(workspaceId, day, usage.inputTokens + usage.outputTokens).catch(() => unbudgeted(attempts));
+        // The service reports its own use: charged as reported, and a call over the cap it was given fails (ADR-015).
+        if (result.cap !== undefined && usage.inputTokens + usage.outputTokens > result.cap) {
+          outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': 'over_token_cap' });
+          throw new AiUnavailable(task, 'over token cap');
+        }
         const price = deployments[deployment];
         outcome('ok', {
           'credalent.ai.attempts': attempts,
@@ -242,7 +252,17 @@ export function createAiClient(options: {
       // Fails closed before any request or budget read, so a new candidate-source task cannot skip the replacer.
       if (!identifiers && sources.some((source) => source.kind !== 'job_description'))
         throw new MissingIdentifiers(task);
+      if ('service' in settings && !service) throw new AiUnavailable(task, 'no ai service');
       const redaction = identifiers && redactSources(sources, identifiers, CONTACT_EXTRACTION_TASKS.includes(task));
+      const system = `${input.system}\n\n${CITATION_RULES}\n\n${UNTRUSTED_CONTENT_RULES}`;
+      // A service task's prompt is a person's free text (the recruiter's question): redacted like a source, since the
+      // service must never receive a candidate's identifiers (ADR-015 point 3).
+      const prompt =
+        'service' in settings && identifiers
+          ? (redactSources([{ id: 'prompt', kind: 'document', text: input.prompt }], identifiers, false).sources[0]
+              ?.text ?? '')
+          : input.prompt;
+      const full = `${prompt}\n\nSources:\n${formatSources(redaction?.sources ?? sources)}`;
       // The model is given the schema; we parse its text ourselves, so a mismatch and an uncited answer are told apart.
       const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
       return withSpan(`ai structured ${task}`, async () => {
@@ -252,12 +272,30 @@ export function createAiClient(options: {
           'workspace.id': input.workspaceId,
         });
         for (let attempts = 1; ; attempts++) {
-          const text = await call('chat', task, settings, input.workspaceId, async (abortSignal) => {
+          const text = await call('chat', task, settings, input.workspaceId, async (abortSignal, remaining) => {
+            if ('service' in settings && service) {
+              const tokenCap = Math.min(remaining, settings.service.tokenCap);
+              const answer = await service(
+                task as ServiceTask,
+                {
+                  promptVersion: input.promptVersion,
+                  system,
+                  prompt: full,
+                  tokenCap,
+                  maxOutputTokens: settings.maxOutputTokens,
+                  temperature: settings.temperature,
+                },
+                abortSignal,
+              );
+              // A response off the contract is an error: rejected, never charged on its own word.
+              const reply = serviceResponse.parse(answer);
+              return { value: reply.output, usage: reply.usage, cap: tokenCap };
+            }
             const result = await generateText({
               ...sdk,
               model: provider.languageModel(settings.deployment),
-              system: `${input.system}\n\n${CITATION_RULES}\n\n${UNTRUSTED_CONTENT_RULES}`,
-              prompt: `${input.prompt}\n\nSources:\n${formatSources(redaction?.sources ?? sources)}`,
+              system,
+              prompt: full,
               output,
               maxOutputTokens: settings.maxOutputTokens,
               temperature: settings.temperature,

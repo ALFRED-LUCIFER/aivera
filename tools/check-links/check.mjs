@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
-const skip = new Set(['node_modules', '.git', '.next', '.turbo', 'dist', 'coverage']);
+const skip = new Set(['node_modules', '.git', '.next', '.turbo', 'dist', 'coverage', '.venv']);
 
 function* markdownFiles(dir) {
   for (const name of readdirSync(dir)) {

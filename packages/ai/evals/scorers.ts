@@ -152,7 +152,7 @@ export function safety(output: unknown, expected: NonNullable<GoldenCase['expect
  * would not be caught here (identifiers.test.ts checks the client's requests).
  */
 export function promptSafety(task: string, golden: GoldenCase, forbidden: readonly string[]): Ratio {
-  const sent = task.startsWith('evidence.')
+  const sent = /^(?:evidence|assistant)\./.test(task)
     ? redactSources(golden.sources, identifiersOf(golden), CONTACT_EXTRACTION_TASKS.includes(task)).sources
     : golden.sources;
   const text = sent.map((source) => source.text.toLowerCase()).join('\n');

@@ -6,9 +6,11 @@ import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
+import { assistantAnswerRequest } from '../src/prompts/assistant.answer.ts';
 import { identifiersOf, type GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
+const questionInput = z.object({ question: z.string().min(1) });
 const pairsInput = z.object({ pairs: z.array(z.tuple([z.string(), z.string()])).min(1) });
 const rubricInput = z.object({
   competencies: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), evidenceExpected: z.string() })),
@@ -84,6 +86,9 @@ export const taskThresholds: Record<
   // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
   // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
   'evidence.parseCv': { statements: ['workHistory[*]', 'skills[*]', 'statements[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P2-068: the assistant's answers through the Python AI service; every statement cites, a CV-only one is a claim,
+  // and it never recommends rejecting anyone. Recorded answers are checked ones, as the client returns them.
+  'assistant.answer': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
 };
 
 /**
@@ -137,6 +142,13 @@ export const runners: Record<string, Runner> = {
   // AIV-P1-025: the CV text Document Intelligence extracted is the one source, as the evidence module sends it.
   'evidence.parseCv': (ai, golden, workspaceId) =>
     ai.generateStructured({ ...parseCvRequest(golden.sources), workspaceId, identifiers: identifiersOf(golden) }),
+  // AIV-P2-068: the recruiter's question in the prompt, the page's sources as sources, through the AI service.
+  'assistant.answer': (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...assistantAnswerRequest(questionInput.parse(golden.input).question, golden.sources),
+      workspaceId,
+      identifiers: identifiersOf(golden),
+    }),
 };
 
 /** Tokens one live run may spend across all its calls; past it the remaining cases error and the run fails. */

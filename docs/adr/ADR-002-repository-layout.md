@@ -2,7 +2,7 @@
 
 - **Status:** Accepted, 18 Nov 2026
 - **Ticket:** AIV-P0-001
-- **Amended by:** [ADR-015](ADR-015-python-ai-service.md): the worker moved to `apps/backend/worker` and a Python AI service (`apps/ai-service`, AIV-P2-068) joins the apps
+- **Amended by:** [ADR-015](ADR-015-python-ai-service.md): the worker moved to `apps/backend/worker` and a Python AI service (`apps/backend/ai-service`, AIV-P2-068) joins the back-end apps
 
 ## Context
 

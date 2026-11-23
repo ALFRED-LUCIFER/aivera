@@ -85,7 +85,7 @@ const USER_SETTING = /app\.user_id/;
 const RESOLVE_CALL = /\bresolveActiveWorkspace\(/;
 const WORKSPACES_FILE = (file: string, name: string) =>
   new RegExp(`modules[/\\\\]workspaces[/\\\\]src[/\\\\]${name.replace('/', '[/\\\\]')}\\.ts$`).test(file);
-const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures']);
+const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.turbo', 'fixtures', '.venv']);
 const IMPORT =
   /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
 

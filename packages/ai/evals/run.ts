@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { MockLanguageModelV4 } from 'ai/test';
+import { z } from 'zod';
 import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
+import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
@@ -39,7 +41,8 @@ class StaleRecording extends Error {
 /**
  * The prompt a case's answer comes from (AIV-P1-085): the version in code, and a hash of the request the client hands
  * the model for this case (deployment, messages with the shared rules and the sources as the model reads them, output
- * schema, temperature, token limit), so an edit without a version bump shows too. Null for a task with no runner yet.
+ * schema, temperature, token limit), so an edit without a version bump shows too; for a task the AI service serves,
+ * the request sent to it and the output schema it asks for. Null for a task with no runner yet.
  * No model is called and nothing is spent: the request is captured and the call stopped.
  */
 export async function promptOf(
@@ -50,23 +53,25 @@ export async function promptOf(
   if (!runner) return null;
   let version: string | undefined;
   let hash: string | undefined;
+  const capture = (sent: unknown): never => {
+    hash = createHash('sha256').update(JSON.stringify(sent)).digest('hex').slice(0, 12);
+    throw new Error('captured');
+  };
   const ai = createAiClient({
     budget: memoryTokenBudget(),
+    service: async (serviceTask, request) => capture([serviceTask, request, z.toJSONSchema(serviceTasks[serviceTask])]),
     provider: {
       ...fakeProvider(),
       languageModel: (deployment) =>
         new MockLanguageModelV4({
           provider: 'capture',
           modelId: deployment,
-          doGenerate: async ({ prompt, responseFormat, temperature, maxOutputTokens }) => {
-            const sent = JSON.stringify([deployment, prompt, responseFormat, temperature, maxOutputTokens]);
-            hash = createHash('sha256').update(sent).digest('hex').slice(0, 12);
-            throw new Error('captured');
-          },
+          doGenerate: async ({ prompt, responseFormat, temperature, maxOutputTokens }) =>
+            capture([deployment, prompt, responseFormat, temperature, maxOutputTokens]),
         }),
     },
   });
-  const capture: Pick<AiClient, 'generateStructured'> = {
+  const recording: Pick<AiClient, 'generateStructured'> = {
     generateStructured: (request) => {
       version = request.promptVersion;
       return ai.generateStructured(request);
@@ -74,7 +79,7 @@ export async function promptOf(
   };
   // The stopped call surfaces as AiUnavailable; anything else, or anything before a request was captured, is a real
   // error. A runner sends one request per case: a second one would not be reached, so not hashed.
-  await runner(capture, golden, evalWorkspaceId).catch((error: unknown) => {
+  await runner(recording, golden, evalWorkspaceId).catch((error: unknown) => {
     if (!hash || !(error instanceof AiUnavailable)) throw error;
   });
   if (!version || !hash) throw new Error(`the ${task} runner sent no request`);

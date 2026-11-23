@@ -25,6 +25,9 @@ param entraCandidateClientId string = ''
 param googleClientId string = ''
 @description('The uploads storage account\'s blob endpoint (modules/storage.bicep, AIV-P0-016).')
 param blobUrl string
+@description('The AI service\'s internal URL and app registration audience (AIV-P2-068); empty when it is not deployed.')
+param aiServiceUrl string = ''
+param aiServiceAudience string = ''
 @description('Whether Defender scans uploads; off in dev only (owner, 20 Nov 2026).')
 param malwareScanning bool
 
@@ -59,6 +62,14 @@ var googleEnv = empty(googleClientId)
   : [
       { name: 'AUTH_GOOGLE_CLIENT_ID', value: googleClientId }
       { name: 'AUTH_GOOGLE_CLIENT_SECRET', secretRef: 'google-client-secret' }
+    ]
+
+// The AI service (AIV-P2-068): @credalent/ai sends its tasks there with the app identity's token.
+var aiServiceEnv = empty(aiServiceUrl)
+  ? []
+  : [
+      { name: 'AI_SERVICE_URL', value: aiServiceUrl }
+      { name: 'AI_SERVICE_AUDIENCE', value: aiServiceAudience }
     ]
 
 resource web 'Microsoft.App/containerApps@2024-03-01' = {
@@ -139,7 +150,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             // Uploads (AIV-P0-016). With scanning off the web app settles uploads itself after re-checking the blob.
             { name: 'AZURE_STORAGE_BLOB_URL', value: blobUrl }
             { name: 'MALWARE_SCANNING', value: malwareScanning ? 'on' : 'off' }
-          ], candidateEnv, googleEnv)
+          ], candidateEnv, googleEnv, aiServiceEnv)
           resources: { cpu: json('0.5'), memory: '1Gi' }
           probes: [
             { type: 'Liveness', httpGet: union(probe, { path: '/api/health' }), periodSeconds: 30 }

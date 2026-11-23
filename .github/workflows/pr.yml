@@ -50,6 +50,25 @@ jobs:
           IMAGE_TAG=ci ALERT_EMAIL=ci@example.com ENTRA_TENANT_SUBDOMAIN=ci ENTRA_TENANT_ID=ci ENTRA_RECRUITER_CLIENT_ID=ci \
             az bicep build-params --file infra/pilot.bicepparam --stdout > /dev/null
 
+  # The Python AI service (AIV-P2-068, AGENTS.md 3.15): lint, format, strict types and tests, from the committed uv.lock.
+  # Its contract drift check is a test on each side: tests/test_contract.py here, packages/ai service.test.ts in "web".
+  ai-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/backend/ai-service
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          working-directory: apps/backend/ai-service
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+
   # Playwright on the @credalent/ui gallery: axe and visual snapshots in light and dark (AIV-P0-025), in four parallel
   # jobs (AIV-P0-929). Each has its own database, so "publish" runs without waiting for "gallery" (playwright.config.ts).
   e2e-shard:
@@ -150,6 +169,10 @@ jobs:
       - run: |
           docker build --target worker -t worker .
           docker run --rm --entrypoint test worker -f "$(docker inspect -f '{{index .Config.Cmd 1}}' worker)"
+      # The AI service (AIV-P2-068): builds from its own folder, and its app factory imports in the image.
+      - run: |
+          docker build -t ai-service apps/backend/ai-service
+          docker run --rm --entrypoint python ai-service -c 'from ai_service.app import app_from_env, task_schemas; assert task_schemas()'
 
   secrets:
     runs-on: ubuntu-latest

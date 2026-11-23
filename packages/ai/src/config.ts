@@ -11,7 +11,14 @@ export const deployments = {
 
 export type Deployment = keyof typeof deployments;
 
-type TaskSettings = { deployment: Deployment; timeoutMs: number; maxOutputTokens?: number; temperature?: number };
+type TaskSettings = {
+  deployment: Deployment;
+  timeoutMs: number;
+  maxOutputTokens?: number;
+  temperature?: number;
+  /** Served by the Python AI service (ADR-015) on its deployment, spending at most this many tokens per attempt. */
+  service?: { tokenCap: number };
+};
 
 export const generateTasks = {
   'jobs.draftCompetencies': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 4_000, temperature: 0.2 },
@@ -23,6 +30,14 @@ export const generateTasks = {
   'evidence.parseCv': { deployment: 'gpt-main', timeoutMs: 90_000, maxOutputTokens: 8_000, temperature: 0 },
   // The unsettled pairs of one candidate and job in one call, each flag two short quotes (AIV-P1-078).
   'evidence.compareExcerpts': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 3_000, temperature: 0 },
+  // A recruiter's question answered from the page's sources (AIV-P2-068), through the Python AI service.
+  'assistant.answer': {
+    deployment: 'gpt-main',
+    timeoutMs: 60_000,
+    maxOutputTokens: 2_000,
+    temperature: 0.2,
+    service: { tokenCap: 30_000 },
+  },
   // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows.
   'evals.judge': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;

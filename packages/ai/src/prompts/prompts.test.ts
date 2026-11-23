@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
+import { assistantAnswerSchema } from './assistant.answer.ts';
 import { compareExcerptsSchema } from './evidence.compareExcerpts.ts';
 import { mapToCompetencySchema } from './evidence.mapToCompetency.ts';
 import { parseCvSchema } from './evidence.parseCv.ts';
@@ -39,6 +40,7 @@ const SCHEMAS: [string, z.ZodType][] = [
   ['evidence.parseCv', parseCvSchema],
   ['evidence.mapToCompetency', mapToCompetencySchema],
   ['evidence.compareExcerpts', compareExcerptsSchema],
+  ['assistant.answer', assistantAnswerSchema],
 ];
 
 // Node types the walker knows to have only declared keys below them. Anything else (record, map, catchall, and any type

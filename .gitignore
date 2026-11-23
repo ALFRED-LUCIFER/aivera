@@ -11,6 +11,13 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
+# Python (apps/backend/ai-service): the virtualenv and tool caches; uv.lock is committed
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
 # Playwright
 test-results/
 playwright-report/

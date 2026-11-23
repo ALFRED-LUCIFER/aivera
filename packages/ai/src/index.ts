@@ -51,3 +51,10 @@ export {
   compareExcerptsRequest,
   flaggedPairs,
 } from './prompts/evidence.compareExcerpts.ts';
+export {
+  ASSISTANT_ANSWER_SYSTEM,
+  ASSISTANT_ANSWER_VERSION,
+  assistantAnswerRequest,
+  assistantAnswerSchema,
+} from './prompts/assistant.answer.ts';
+export { aiService, aiServiceFromEnv, type AiService } from './service.ts';
