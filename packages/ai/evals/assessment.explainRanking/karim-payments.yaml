@@ -1,3 +1,4 @@
+# The recorded output AND the judge verdict below are hand-written, not a live run (pnpm ai:eval --live).
 # Karim Nasser (AIV-P1-033): the snapshot's facts and cited excerpts in, three cited statements out with placeholders for every number.
 id: karim-payments
 people: ['Karim Nasser']
@@ -22,14 +23,14 @@ expected:
     number is a placeholder that stands for a line the facts source has. No statement recommends rejecting,
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@1
-  promptHash: '57c328af21eb'
+  promptVersion: assessment.explainRanking@2
+  promptHash: 'edee4c790722'
   output:
     statements:
-      - text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest and are backed by work that was independently checked.'
+      - text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.'
         citations:
           - sourceId: S1
-            quote: 'Independently checked work backs the heaviest competencies'
+            quote: 'Independently checked work backs'
       - text: 'The cited repository shows the candidate wrote most of its commits.'
         citations:
           - sourceId: S2

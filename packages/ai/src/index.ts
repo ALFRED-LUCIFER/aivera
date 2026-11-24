@@ -55,13 +55,7 @@ export {
   compareExcerptsRequest,
   flaggedPairs,
 } from './prompts/evidence.compareExcerpts.ts';
-export {
-  EXPLAIN_PLACEHOLDERS,
-  EXPLAIN_RANKING_SYSTEM,
-  EXPLAIN_RANKING_VERSION,
-  explainRankingRequest,
-  explainRankingSchema,
-} from './prompts/assessment.explainRanking.ts';
+export { EXPLAIN_RANKING_VERSION, explainRankingRequest } from './prompts/assessment.explainRanking.ts';
 export {
   ASSISTANT_ANSWER_SYSTEM,
   ASSISTANT_ANSWER_VERSION,

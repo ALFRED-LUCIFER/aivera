@@ -25,8 +25,8 @@ export type Facts = {
   heaviest: boolean;
   /** The facts source, one line per fact; null when the snapshot has nothing to explain. */
   factsText: string | null;
-  /** The evidence items the backed score rests on, heaviest competency first. */
-  items: ExplainSource[];
+  /** The evidence items the backed score rests on, heaviest competency first, each with the competency it backs. */
+  items: (ExplainSource & { competency: string })[];
 };
 
 // shortcut: at most 8 excerpts go to the model, the heaviest competencies' first, to bound the prompt; raise it if a
@@ -70,8 +70,9 @@ export function factsOf(
     heaviest =
       others.length === 0 ||
       Math.min(...checked.map((c) => c.weightPercent)) >= Math.max(...others.map((c) => c.weightPercent));
+    const noun = checked.length === 1 ? 'competency' : 'competencies';
     lines.push(
-      `Independently checked work backs ${heaviest ? 'the heaviest competencies' : 'these competencies'}: ${listText(checked.map(nameOf))}, ${values['checkedWeight']} of the weight.`,
+      `Independently checked work backs ${heaviest ? `the heaviest ${noun}` : `${checked.length === 1 ? 'this' : 'these'} ${noun}`}: ${listText(checked.map(nameOf))}, ${values['checkedWeight']} of the weight.`,
     );
   }
   if (claims.length > 0) {
@@ -84,12 +85,12 @@ export function factsOf(
   const seen = new Set<string>();
   const items = assessment.competencies
     .toSorted((a, b) => b.weightPercent - a.weightPercent)
-    .flatMap((c) => c.proven.itemIds)
-    .flatMap((id) => {
+    .flatMap((c) => c.proven.itemIds.map((id) => ({ id, competency: nameOf(c) })))
+    .flatMap(({ id, competency }) => {
       const item = byId.get(id);
       if (!item || seen.has(id)) return [];
       seen.add(id);
-      return [{ id, label: item.source.label, kind: item.source.kind, text: item.excerpt }];
+      return [{ id, competency, label: item.source.label, kind: item.source.kind, text: item.excerpt }];
     })
     .slice(0, MAX_ITEMS);
 
@@ -109,6 +110,20 @@ export function fill(text: string, values: Readonly<Record<string, string>>): st
   });
   return missing ? null : filled.replace(/^\s*\p{L}/u, (c) => c.toUpperCase());
 }
+
+const HEAVIEST = /\b(?:heaviest|largest share|most weighted|biggest)\b/i;
+// Rule 1.6: nothing is called verified or proven (only a second independent source "checks"), and a claim is never
+// described as checked or backed.
+const OVERSTATES = /\bverif|\bproven\b|\bconfirm/i;
+
+/**
+ * Whether a model statement may be shown: it says "heaviest" only when the facts do, never calls anything verified,
+ * proven or confirmed, and never says a claim is checked or backed. `raw` is the text with its placeholders, `filled` the text shown.
+ */
+export const statementAllowed = (raw: string, filled: string, facts: Pick<Facts, 'heaviest'>): boolean =>
+  (facts.heaviest || !HEAVIEST.test(filled)) &&
+  !OVERSTATES.test(filled) &&
+  !(/\{claim\w*\}/.test(raw) && /\b(?:checked|backed)\b/i.test(raw));
 
 /** What a statement cites for a source of the explanation: the facts line (no item id) or the evidence item. */
 // shortcut: a citation keeps its quote, not its offsets or claim flag; the profile (AIV-P1-043) finds the quote in the
@@ -141,7 +156,7 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
     ...(first
       ? [
           {
-            text: `The cited work behind the heaviest competency is ${first.label}.`,
+            text: `The cited work behind ${first.competency} is ${first.label}.`,
             citations: [citationOf(first, first.text)],
           },
         ]

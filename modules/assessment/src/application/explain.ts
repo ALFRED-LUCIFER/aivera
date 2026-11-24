@@ -21,6 +21,7 @@ import {
   citationOf,
   factsOf,
   fill,
+  statementAllowed,
   FACTS_ID,
   templateStatements,
   type ExplainSource,
@@ -92,8 +93,11 @@ export function explainUseCases(ports: ExplainPorts) {
      * and the template shown. Cached per snapshot and prompt version. Null with no snapshot, or one on a rubric
      * version that is no longer the approved one (it is being scored again). `candidate.view` on the job, as `getLatestAssessment`.
      */
-    // shortcut: the model is called inside the request's transaction, and two requests for one snapshot may both call
-    // it (the first answer is kept); lock per snapshot or move the call to a worker if pilot traffic shows either.
+    // shortcut: the model is called inside the request's transaction. Worst case is 2 schema attempts x 3 transient
+    // attempts x 45 s plus backoff (about 4.5 min), longer than the 240 s ingress timeout, so a very slow model can drop
+    // the request; two requests for one snapshot may also both call it (the first answer is kept). Move the call to a
+    // worker, or lock per snapshot, if pilot traffic shows either.
+    // shortcut: the template is never cached: it is cheap, and the model may be back on the next request.
     async explainRanking(
       ctx: WorkspaceContext,
       candidateId: string,
@@ -141,9 +145,10 @@ export function explainUseCases(ports: ExplainPorts) {
             const source = byId.get(c.sourceId);
             return source ? [citationOf(source, c.quote)] : [];
           });
-          // "heaviest" is true only when the facts say so (the model is told, code decides).
-          const untrue = /heaviest/i.test(filled ?? '') && !facts.heaviest;
-          return filled === null || untrue || cites.length === 0 ? [] : [{ text: filled, citations: cites }];
+          // The model is told the rules; code decides (statementAllowed).
+          return filled === null || !statementAllowed(text, filled, facts) || cites.length === 0
+            ? []
+            : [{ text: filled, citations: cites }];
         });
       } catch (error) {
         if (!unusable(error)) throw error;
@@ -162,7 +167,9 @@ export function explainUseCases(ports: ExplainPorts) {
         statements,
         createdAt: now(),
       });
-      return { resultId: snapshot.id, source: 'ai', statements };
+      // Re-read, so a concurrent viewer whose answer lost the insert shows the stored text, not its own.
+      const stored = await cache.get(ctx.workspaceId, snapshot.id, EXPLAIN_RANKING_VERSION);
+      return { resultId: snapshot.id, source: 'ai', statements: stored ?? statements };
     },
   };
 }

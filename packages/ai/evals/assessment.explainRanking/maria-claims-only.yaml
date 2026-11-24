@@ -1,3 +1,4 @@
+# The recorded output AND the judge verdict below are hand-written, not a live run (pnpm ai:eval --live).
 # Maria Santos (AIV-P1-033): the snapshot's facts and cited excerpts in, three cited statements out with placeholders for every number.
 id: maria-claims-only
 people: ['Maria Santos']
@@ -17,8 +18,8 @@ expected:
     number is a placeholder that stands for a line the facts source has. No statement recommends rejecting,
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@1
-  promptHash: 'f3d405a130b2'
+  promptVersion: assessment.explainRanking@2
+  promptHash: 'd8a1d17c49d4'
   output:
     statements:
       - text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.'

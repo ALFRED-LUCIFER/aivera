@@ -46,12 +46,14 @@ export const result = assessment
 
 // The AI explanation of a stored result (AIV-P1-033), cached per result id and prompt version: a new result or a new
 // prompt writes a new row. Holds the statements with their quotes of the candidate's evidence, so it stays in the database
-// (AGENTS.md 1.2). Only AI answers are stored; the template is cheap and never cached.
+// (AGENTS.md 1.2); deleting a result deletes its explanations (erasure, AIV-P3-014). Only AI answers are stored; the template is cheap and never cached.
 export const explanation = assessment
   .table(
     'explanation',
     {
-      resultId: uuid('result_id').notNull(),
+      resultId: uuid('result_id')
+        .notNull()
+        .references(() => result.id, { onDelete: 'cascade' }),
       promptVersion: text('prompt_version').notNull(),
       workspaceId: uuid('workspace_id').notNull(),
       statements: jsonb().$type<ExplanationStatement[]>().notNull(),

@@ -160,8 +160,8 @@ const cite = (sourceId: string, quote: string) => ({ sourceId, quote });
 const GOOD = {
   statements: [
     {
-      text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest and are backed by work that was independently checked.',
-      citations: [cite('S1', 'Independently checked work backs the heaviest competencies')],
+      text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.',
+      citations: [cite('S1', 'Independently checked work backs')],
     },
     { text: 'The candidate authored most of the evaluation harness.', citations: [cite('S2', '412 of 460 commits')] },
     {
@@ -177,7 +177,7 @@ describe("Scenario: Sara's explanation", () => {
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('ai');
     expect(explained?.statements.map((s) => s.text)).toEqual([
-      'The two competencies, 45% of the weight, are the heaviest and are backed by work that was independently checked.',
+      'Work that was independently checked backs two competencies, 45% of the weight, the heaviest.',
       'The candidate authored most of the evaluation harness.',
       'Two competencies, 25% of the weight, still rest on claims: Cost and reliability, and Arabic NLP.',
     ]);
@@ -196,6 +196,14 @@ describe('Scenario: Numbers come from the snapshot', () => {
     'Two competencies rest on claims',
     'One competency rests on claims',
     'Both rest on claims',
+    'Fifteen competencies rest on claims',
+    'Hundreds of commits back it',
+    'Worth a million',
+    'Forty-five per cent of the weight',
+    '٤٥٪ of the weight',
+    '４５％ of the weight',
+    'One of the competencies rests on claims',
+    'One heavily weighted competency rests on claims',
     '{checkedWeight}% of the weight',
     'A {madeUp} share',
   ])('rejects the model text %j and shows the template', async (text) => {
@@ -258,10 +266,46 @@ describe('Scenario: Model unavailable', () => {
     expect(explained?.source).toBe('template');
     expect(explained?.statements.map((s) => s.text)).toEqual([
       'Competencies carrying 45% of the weight are backed by work that was independently checked.',
-      'The cited work behind the heaviest competency is llm-eval-harness.',
+      'The cited work behind Retrieval and evaluation is llm-eval-harness.',
       'Competencies carrying 25% of the weight still rest on claims: Cost and reliability, and Arabic NLP.',
     ]);
     expect(explained?.statements.every((s) => s.citations.length > 0)).toBe(true);
+  });
+});
+
+describe('The template never states what the facts do not', () => {
+  // SAFETY: mutation check: template said "behind the heaviest competency" for the first cited item -> this test failed (Retrieval has only claims)
+  it('names the competency the cited work backs, not the heaviest, when the heaviest has only claims', async () => {
+    const evidence = EVIDENCE.map((e) =>
+      e.id === 'e1' ? { ...e, strength: 'supporting' as const, provenance: 'claim' as const } : e,
+    );
+    const { useCases } = setup(GOOD, { failure: 503, evidence });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    const texts = explained?.statements.map((s) => s.text) ?? [];
+    expect(texts).toContain('The cited work behind LLM systems in production is rag-service.');
+    expect(texts.join(' ')).not.toMatch(/heaviest/);
+  });
+});
+
+const say = (text: string, quote = 'Independently checked work backs') => ({
+  text,
+  citations: [cite('S1', quote)],
+});
+
+describe('Rule 1.6 wording is enforced in code, not only asked of the model', () => {
+  // Retrieval (25%) is only candidate-submitted here, so the checked work is not the heaviest.
+  const evidence = EVIDENCE.map((e) => (e.id === 'e1' ? { ...e, provenance: 'submitted' as const } : e));
+
+  // SAFETY: mutation check: statementAllowed always true -> this test failed (verified, proven and a "backed" claim were shown)
+  it.each([
+    ['verified', say('The work was independently verified.')],
+    ['proven', say('The work is proven.')],
+    ['a claim called backed', say('{claimNames} are backed.', 'Still resting on claims')],
+    ['largest share when not the heaviest', say('This holds the largest share of the weight.')],
+  ])('drops a statement saying %s, leaving the template', async (_, statement) => {
+    const { useCases } = setup({ statements: [statement] }, { evidence });
+    expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
   });
 });
 

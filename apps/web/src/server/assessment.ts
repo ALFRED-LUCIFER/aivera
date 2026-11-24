@@ -4,7 +4,7 @@ import { createAudit } from '@credalent/audit/composition';
 import { readPersonAsSystem } from '@credalent/candidates/composition';
 import { createApprovedRubricReads } from '@credalent/jobs/composition';
 import { createApplicationReads, createCandidateJobResolver } from '@credalent/intake/composition';
-import { getAi } from './ai';
+import { aiOrUnavailable } from './ai';
 import { getDb } from './db';
 import { getEvidence } from './evidence';
 import { getJobs } from './jobs';
@@ -22,7 +22,7 @@ export const getAssessment = (): AssessmentContract =>
     createApplicationReads().candidatesForJob,
     {
       // Lazy: building the module must not need AI configuration (an unconfigured app still lists rankings).
-      ai: { generateStructured: (input) => getAi().generateStructured(input) },
+      ai: aiOrUnavailable('assessment.explainRanking'),
       approvedRubric: createApprovedRubricReads().approvedRubric,
       evidence: (ctx, candidateId, jobId) => getEvidence().listEvidenceForCandidate(ctx, candidateId, jobId),
       identifiersOf: async (ctx, candidateId) => {
