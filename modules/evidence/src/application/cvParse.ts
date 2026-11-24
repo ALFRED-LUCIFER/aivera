@@ -299,7 +299,8 @@ export async function parseCv(
   await recordContact(tx, workspaceId, source.candidateId, contact);
   // A repository the CV links is read like an application's link. No login and no emails: CV contact is unverified, so
   // it never makes commits count as the candidate's (the read then says authorship is unclear).
-  for (const url of repositoryLinks(layout.content, instructions))
+  // A link a reader cannot see queues nothing (AIV-P1-119): a hidden line never makes the system fetch anything.
+  for (const url of repositoryLinks(layout.content, [...instructions, ...hidden]))
     await queueRead(tx, workspaceId, {
       candidateId: source.candidateId,
       url,
