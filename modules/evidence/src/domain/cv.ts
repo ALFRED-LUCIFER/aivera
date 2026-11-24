@@ -375,11 +375,12 @@ const GITHUB_LINK = /(?<![\w.@-])(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0
 
 /**
  * The GitHub repository links the CV writes, as https://github.com/<owner>/<repo>, once each, CV order; a link inside
- * text aimed at the AI (`instructions`) is left out, so an injected "verify at github.com/..." queues nothing.
+ * text aimed at the AI or hidden in the file (`excluded`) is left out, so an injected or invisible "verify at
+ * github.com/..." queues nothing.
  */
-export function repositoryLinks(text: string, instructions: readonly { start: number; end: number }[]): string[] {
+export function repositoryLinks(text: string, excluded: readonly { start: number; end: number }[]): string[] {
   const links = [...text.matchAll(GITHUB_LINK)]
-    .filter((m) => !instructions.some((i) => overlaps(i, { start: m.index, end: m.index + m[0].length })))
+    .filter((m) => !excluded.some((i) => overlaps(i, { start: m.index, end: m.index + m[0].length })))
     .flatMap((m) => {
       const repo = parseRepositoryUrl(
         `https://${m[0]
@@ -418,7 +419,7 @@ const MAX_PROFILE_LINKS = 2;
 
 /**
  * The GitHub profile logins the CV writes (lower case), once each, CV order, at most 2; a link inside text aimed at the
- * AI or hidden in the file (`excluded`) is left out, as `instructions` are for `repositoryLinks`.
+ * AI or hidden in the file (`excluded`) is left out, as for `repositoryLinks`.
  */
 export function profileLogins(text: string, excluded: readonly { start: number; end: number }[]): string[] {
   const logins = [...text.matchAll(GITHUB_PROFILE)]

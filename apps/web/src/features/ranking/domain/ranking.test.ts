@@ -51,9 +51,11 @@ describe('toCandidateRows', () => {
     ]);
   });
 
-  it('names the missing competencies from the rubric and keeps no person id in the browser data', () => {
+  // The person id reaches the browser since AIV-P1-043: it is the candidate profile's address, an opaque id.
+  it('names the missing competencies from the rubric and carries the person id for the profile link', () => {
     expect(rows[0]).toEqual({
       id: 'a1',
+      personId: 'p1',
       name: 'Sara Al Qahtani',
       stage: 'new',
       score: {
@@ -69,7 +71,6 @@ describe('toCandidateRows', () => {
     });
     // An id the rubric does not name is left out, never shown raw.
     expect(rows[2]?.score?.missing).toEqual(['Retrieval and evaluation']);
-    expect(JSON.stringify(rows)).not.toContain('"p1"');
   });
 });
 

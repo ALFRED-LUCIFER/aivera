@@ -6,11 +6,13 @@ import type { RowDuplicates } from './duplicates.ts';
 export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical'> & { missing: string[] };
 
 /**
- * A table row as the page hands it to the browser: plain data, keyed by the application id. The person id travels only
- * inside `duplicates`, which only admins and recruiters get, for the merge actions (AIV-P1-018).
+ * A table row as the page hands it to the browser: plain data, keyed by the application id. The opaque person id is
+ * the candidate profile's address (AIV-P1-043); `duplicates`, for the merge actions (AIV-P1-018), reaches only admins
+ * and recruiters.
  */
 export type CandidateRow = {
   id: string;
+  personId: string;
   name: string | null;
   stage: Stage;
   /** Null until the candidate is assessed: "Not yet scored", basis "Not yet available" (AGENTS.md 1.7). */
@@ -34,7 +36,13 @@ export function toCandidateRows(
   const scores = new Map(ranking.map((r) => [r.candidateId, r]));
   const row = (a: ApplicationListItem): CandidateRow => {
     const dup = duplicates.get(a.personId);
-    const base = { id: a.applicationId, name: a.displayName, stage: a.stage, ...(dup && { duplicates: dup }) };
+    const base = {
+      id: a.applicationId,
+      personId: a.personId,
+      name: a.displayName,
+      stage: a.stage,
+      ...(dup && { duplicates: dup }),
+    };
     const r = scores.get(a.personId);
     if (!r) return { ...base, score: null };
     const { candidateId: _, missingCritical, ...figures } = r;

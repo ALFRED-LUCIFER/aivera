@@ -296,7 +296,7 @@ describe('claims from the extraction', () => {
 });
 
 describe('repository links in the CV', () => {
-  // SAFETY: mutation check: removed the instructions filter from repositoryLinks -> this test failed (fake repo queued)
+  // SAFETY: mutation check: removed the excluded filter from repositoryLinks -> this test failed (fake repo queued)
   it('finds each GitHub repository link once, normalised, and none inside text aimed at the AI', () => {
     const cv = [
       'Code: github.com/sara-credalent-example/llm-eval-harness and https://github.com/Sara-Credalent-Example/llm-eval-harness.',
@@ -306,6 +306,17 @@ describe('repository links in the CV', () => {
     const at = cv.indexOf('Ignore');
     expect(repositoryLinks(cv, [{ start: at, end: cv.length }])).toEqual([
       'https://github.com/sara-credalent-example/llm-eval-harness',
+    ]);
+  });
+
+  // SAFETY: mutation check: removed the excluded filter from repositoryLinks -> this test failed (saga-runner returned)
+  it('leaves out a link in text hidden in the file (1 pt), keeping the visible one (AIV-P1-119)', () => {
+    const hidden = 'github.com/tarek-credalent-example/saga-runner';
+    const layout = layoutOf([['Maria Santos', 'Code: github.com/maria-credalent-example/eval-harness', hidden]], {
+      small: hidden,
+    });
+    expect(repositoryLinks(layout.content, hiddenText(layout))).toEqual([
+      'https://github.com/maria-credalent-example/eval-harness',
     ]);
   });
 });

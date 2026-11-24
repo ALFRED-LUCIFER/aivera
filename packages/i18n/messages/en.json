@@ -1802,6 +1802,22 @@
     "error": "We could not load the ranking. Try again.",
     "retry": "Try again"
   },
+  "candidateProfile": {
+    "title": "Candidate profile",
+    "backToRanking": "Back to the {job} ranking",
+    "fitTitle": "Fit for {job}",
+    "upTo": "up to {upTo} if {claims, plural, =0 {claims hold} =1 {their one open claim holds} =2 {their two open claims hold} other {their # open claims hold}}",
+    "meetsNeed": "meets the job's need on {meets} of {count} competencies",
+    "rank": "rank {rank} of {ranked}",
+    "awaitingRubric": "Jobs without an approved rubric are not assessed.",
+    "whyTitle": "Why they are ranked here",
+    "withoutAi": "Summary generated without AI",
+    "noExplanation": "No explanation is available yet.",
+    "markLabel": "cited evidence",
+    "source": "Source: {label}",
+    "loading": "Loading the candidate profile…",
+    "error": "We could not load this candidate. Try again."
+  },
   "interviews": {
     "round": {
       "structured_screen": "Round 1, structured screen",

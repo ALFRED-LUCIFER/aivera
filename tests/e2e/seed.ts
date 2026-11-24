@@ -5,7 +5,7 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
-import { createEvidenceRecords } from '@credalent/evidence/composition';
+import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import { receiveConfirmed } from './confirmedBatch.ts';
 import { applicationRecords, createIntake } from '@credalent/intake/composition';
 import type { Source } from '@credalent/intake';
@@ -325,6 +325,8 @@ export default async function seed() {
     // The worker never runs in this harness, so these rows are hand-written into assessment.result, not produced by
     // assessCandidate: their `competencies` are empty and they have no score.changed audit entry. Missing critical
     // evidence lists only rubric v2's mandatory competencies, as assessment does (owner's decision, #98's Gherkin).
+    // AIV-P1-043: Sara's row alone carries competencies and two evidence items, for her profile's open claims and
+    // "Why they are ranked here".
     let received: Date;
     // Merging wired as in the app, so an arrival proving two records are one person merges them (AIV-P1-018).
     const candidates = createCandidates(workspaces, undefined, {
@@ -404,13 +406,77 @@ export default async function seed() {
           );
       const [backed, upTo, meets, confidence, missing] = score;
       if (backed === null) continue;
+      const results = name === 'Sara Al Qahtani' ? await saraCompetencies(personId) : [];
       await withWorkspace(db, workspaceId, (tx) =>
         tx.execute(sql`insert into assessment.result (id, workspace_id, candidate_id, job_id, rubric_version_id,
             backed_score, upper_bound, meets_need, competency_count, missing_critical, confidence, competencies, assessed_at)
           values (${crypto.randomUUID()}, ${workspaceId}, ${personId}, ${sae}, ${rubric.id}, ${backed}, ${upTo}, ${meets},
-            6, ${JSON.stringify(missing.map(competency))}::jsonb, ${confidence}, '[]'::jsonb,
+            6, ${JSON.stringify(missing.map(competency))}::jsonb, ${confidence}, ${JSON.stringify(results)}::jsonb,
             ${new Date(Date.UTC(2026, 10, 14, 10, i)).toISOString()})`),
       );
+    }
+
+    /**
+     * Sara's levels on rubric v2, as her seeded row reads (meets the need on 4 of 6, Product judgement missing): two
+     * competencies proven by an independently checked repository, two by submitted work, two resting on claims.
+     */
+    async function saraCompetencies(personId: string) {
+      const evidence = createEvidence(workspaces, createAudit(db));
+      // [competency, proven, claimed, the repository whose item proves it]
+      const levels: [string, number, number, string | null][] = [
+        ['LLM systems in production', 5, 5, 'llm-eval-harness'],
+        ['Retrieval and evaluation', 5, 5, 'llm-eval-harness'],
+        ['Python service engineering', 3, 3, 'fastapi-ml-serve'],
+        ['Cost and reliability', 2, 2, 'fastapi-ml-serve'],
+        ['Arabic and bilingual NLP', 0, 4, null],
+        ['Product judgement', 2, 4, 'fastapi-ml-serve'],
+      ];
+      const items = new Map<string, string>();
+      for (const [label, excerpt, provenance, strength] of [
+        ['llm-eval-harness', 'authored 412 of 460 commits', 'corroborated', 'strong'],
+        ['fastapi-ml-serve', 'contract tests on every endpoint', 'submitted', 'medium'],
+      ] as const) {
+        const { itemIds } = await as((ctx) =>
+          evidence.recordEvidence(ctx, {
+            candidateId: personId,
+            source: {
+              kind: 'repository',
+              label,
+              url: `https://code.credalent.example/${label}`,
+              blobFileId: null,
+              capturedAt: new Date('2026-11-12T08:00:00.000Z'),
+              checkedAt: provenance === 'corroborated' ? new Date('2026-11-12T08:00:00.000Z') : null,
+              checkMethod: provenance === 'corroborated' ? 'Commit history' : null,
+            },
+            items: [
+              {
+                excerpt,
+                excerptSpan: null,
+                provenance,
+                strength,
+                limit: 'Shows the tooling, not how results changed product decisions.',
+                competencies: levels
+                  .filter(([, , , source]) => source === label)
+                  .map(([c, level]) => ({ jobId: sae, competencyId: competency(c), level })),
+              },
+            ],
+            synthetic: true,
+          }),
+        );
+        items.set(label, itemIds[0] ?? '');
+      }
+      return levels.map(([c, proven, claimedLevel, source]) => {
+        const found = rubric?.competencies.find((r) => r.name === c);
+        return {
+          competencyId: competency(c),
+          weightPercent: found?.weightPercent,
+          levelNeeded: found?.levelNeeded,
+          mandatory: found?.type === 'mandatory',
+          proven: { level: proven, itemIds: source ? [items.get(source)] : [] },
+          claimedLevel,
+          claimItemIds: [],
+        };
+      });
     }
   }
 
