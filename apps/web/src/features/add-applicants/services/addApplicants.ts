@@ -2,6 +2,7 @@
 
 import { UNNAMED_APPLICANT } from '@credalent/candidates';
 import { IntakeError } from '@credalent/intake';
+import { log } from '@credalent/observability';
 import { ZodError } from 'zod';
 import { getFiles } from '@/server/files';
 import { getIntake } from '@/server/intake';
@@ -27,14 +28,18 @@ const add = workspaceAction(
   { input: addApplicantsSchema },
 );
 
+const REFUSALS = { confirmation_required: 'confirmationRequired', job_not_found: 'jobNotFound' } as const;
+
 export async function addApplicants(input: AddApplicantsInput): Promise<AddApplicantsResult> {
   try {
     return await add(input);
   } catch (error) {
     // Thrown out of the transaction, so a refused job rolls back everything.
     if (error instanceof IntakeError) {
-      const refusals = { confirmation_required: 'confirmationRequired', job_not_found: 'jobNotFound' } as const;
-      return { ok: false, error: error.code in refusals ? refusals[error.code as keyof typeof refusals] : 'failed' };
+      const refused = REFUSALS[error.code as keyof typeof REFUSALS];
+      // The code only, never a candidate value (AGENTS.md 1.2).
+      if (!refused) log.warn({ area: 'intake', 'error.code': error.code }, 'add applicants refused');
+      return { ok: false, error: refused ?? 'failed' };
     }
     // The schema's literal refuses a missing or false tick before anything is authorised or read.
     if (error instanceof ZodError && error.issues.some((i) => i.path[0] === 'rightToProcessConfirmed')) {

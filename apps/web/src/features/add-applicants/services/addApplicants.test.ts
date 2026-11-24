@@ -17,6 +17,7 @@ const fake = vi.hoisted(() => ({
 }));
 vi.mock('@credalent/observability', () => ({
   annotateSpan: vi.fn(),
+  log: { warn: vi.fn() },
   withSpan: (_: string, fn: () => unknown) => fn(),
 }));
 vi.mock('@/server/auth', () => ({ getSessionUserId: async () => 'u1', getIdentity: () => ({}) }));
@@ -82,6 +83,12 @@ describe('addApplicants', () => {
   it('a job outside the workspace is "jobNotFound"', async () => {
     fake.receiveBatch.mockRejectedValue(new IntakeError('job_not_found'));
     expect(await addApplicants(input)).toEqual({ ok: false, error: 'jobNotFound' });
+  });
+
+  // SAFETY: mutation check: mapped every IntakeError other than confirmation_required back to jobNotFound -> this test failed
+  it('any other intake refusal is the generic "failed", not "jobNotFound"', async () => {
+    fake.receiveBatch.mockRejectedValue(new IntakeError('invalid_wording'));
+    expect(await addApplicants(input)).toEqual({ ok: false, error: 'failed' });
   });
 
   // AIV-P1-104. SAFETY: mutation check: removed the rightToProcessConfirmed literal from addApplicantsSchema -> this test failed (the batch was filed)
