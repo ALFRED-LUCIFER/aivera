@@ -1,14 +1,26 @@
+import { createAudit } from '@credalent/audit/composition';
+import { createDb } from '@credalent/db/client';
+import { withWorkspace } from '@credalent/db/with-workspace';
+import { createJobs } from '@credalent/jobs/composition';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { type Page } from '@playwright/test';
+import { sql } from 'drizzle-orm';
+import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
+import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 
 // AIV-P1-101: "Bring in candidates", as AP, admin of "Demo" (seed.ts): Senior AI Engineer has version 2 approved and is
-// not published; Senior Product Designer has a draft, never sent for approval.
+// not published.
 // shortcut: this harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here and upload to
 // ranking is proven against Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts; add the step here
 // when Azurite joins the e2e harness.
 const AP = 'ap@example.com';
+// Its own workspace and users for the waiting rubric and the job-scoped member (made through the contracts, as seed.ts
+// does), so no seeded user, job or screenshot changes: a sign-in renames a user to the email's local part.
+let creator: string;
+let owner: string;
 const IMPORT_PATH = /^\/app\/jobs\/[0-9a-f-]{36}\/import$/;
 
 const row = (page: Page, title: string) => page.getByRole('row').filter({ hasText: title });
@@ -22,6 +34,46 @@ async function openFromJobs(page: Page, title: string) {
 }
 
 const picker = (page: Page) => page.getByRole('combobox', { name: 'Import into this job' });
+
+test.beforeAll(async () => {
+  const stamp = Date.now();
+  creator = `alex+import-${stamp}@example.com`;
+  owner = `hana+import-${stamp}@example.com`;
+  const { workspaceId, creatorUserId } = await approvedWorkspace(creator, `Import ${stamp}`);
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    const audit = createAudit(db);
+    const workspaces = createWorkspaces(db, audit);
+    const jobs = createJobs(workspaces, audit);
+    const ownerUserId = await syntheticUser(db, owner);
+    await withWorkspace(db, workspaceId, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${workspaceId}, ${ownerUserId}, 'hiring_owner', 'active')`),
+    );
+    await workspaces.switchWorkspace({ userId: ownerUserId }, workspaceId);
+    await workspaces.withWorkspace({ userId: creatorUserId }, workspaceId, async (ctx) => {
+      for (const title of ['Platform Engineer', 'Staff ML Engineer']) {
+        const job = await jobs.createJob(ctx, {
+          title,
+          jobType: 'ai_llm_engineering',
+          hiringOwnerUserId: ownerUserId,
+          description: `${title}, synthetic e2e job.`,
+          synthetic: true,
+        });
+        const version = await jobs.saveRubric(ctx, job.id, {
+          successStatement: 'Ships reliable work.',
+          competencies: [
+            { name: 'Delivery', evidenceExpected: 'A repository or a document', weightPercent: 60, levelNeeded: 4 },
+            { name: 'Communication', evidenceExpected: 'A write-up or a reference', weightPercent: 40, levelNeeded: 3 },
+          ].map((c) => ({ ...c, type: 'mandatory', origin: 'from_description' })),
+        });
+        if (title === 'Staff ML Engineer') await jobs.submitRubric(ctx, version.id);
+      }
+    });
+  } finally {
+    await db.$client.end();
+  }
+});
 
 test('Scenario: The page for Senior AI Engineer', async ({ page }) => {
   await signIn(page, { email: AP });
@@ -43,31 +95,29 @@ test('Scenario: The page for Senior AI Engineer', async ({ page }) => {
   );
 });
 
-// The seed has no rubric sent for approval in "Demo": a draft is the not-yet-approved case here; the "waiting" label is
-// importPage.test.ts.
 test('Scenario: Importing into a job whose rubric is waiting', async ({ page }) => {
-  await signIn(page, { email: AP });
-  await openFromJobs(page, 'Senior AI Engineer');
+  await signIn(page, { email: creator });
+  await openFromJobs(page, 'Platform Engineer');
   const from = new URL(page.url()).pathname;
-  await picker(page).selectOption({ label: 'Senior Product Designer · rubric draft, needs approval' });
-  await expect(page).toHaveTitle('Senior Product Designer: Bring in candidates · Credalent');
+  await picker(page).selectOption({ label: 'Staff ML Engineer · rubric waiting for approval' });
+  await expect(page).toHaveTitle('Staff ML Engineer: Bring in candidates · Credalent');
   // Scenario: No candidate data in the URL: the opaque job id, nothing else.
   const url = new URL(page.url());
   expect(url.pathname).toMatch(IMPORT_PATH);
   expect(url.pathname).not.toBe(from);
   expect(url.search).toBe('');
-  await expect(picker(page).locator('option:checked')).toHaveText(
-    'Senior Product Designer · rubric draft, needs approval',
-  );
+  await expect(picker(page).locator('option:checked')).toHaveText('Staff ML Engineer · rubric waiting for approval');
   await expect(
     page.getByText('For a job whose rubric is still waiting, people are added now and assessed once it is approved.', {
       exact: false,
     }),
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Upload files' })).toBeVisible();
 });
 
 // WCAG 3.2.2: Chromium on Linux and Windows changes a closed select's value on ArrowDown, which opens that job's page;
-// the picker says so before it is used, as its description.
+// the picker says so before it is used, as its description. This relies on Linux Chromium firing `change` on a closed
+// select (macOS opens the list instead): CI is the reference.
 test('The picker says that choosing a job opens its page, and ArrowDown does', async ({ page }) => {
   await signIn(page, { email: AP });
   await openFromJobs(page, 'Senior AI Engineer');
@@ -123,17 +173,17 @@ test('Upload files opens "Add applicants" from the keyboard, and Escape returns 
   await expect(upload).toBeFocused();
 });
 
-// The interviewer and the hiring owner share the job-scoped path (loadJobHeader's canImport); the seed grants the hiring
-// owner Senior AI Engineer. The add-applicants action's own 403 for an interviewer on the job: add-applicants.test.ts.
+// The interviewer and the hiring owner share the job-scoped path (loadJobHeader's canImport); the hiring owner here owns
+// Platform Engineer. The add-applicants action's own 403 for an interviewer on the job: add-applicants.test.ts.
 test('Scenario: A job-scoped member cannot bring candidates in: the message, no upload control', async ({
   page,
   context,
 }) => {
-  await signIn(page, { email: AP });
-  await openFromJobs(page, 'Senior AI Engineer');
+  await signIn(page, { email: creator });
+  await openFromJobs(page, 'Platform Engineer');
   const url = page.url();
   await context.clearCookies({ name: '__Host-credalent-session' });
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: owner });
   await page.goto(url);
   await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Upload files' })).toHaveCount(0);
@@ -147,8 +197,8 @@ test("Scenario: Another workspace's job", async ({ page, context }) => {
   await openFromJobs(page, 'Senior AI Engineer');
   const path = new URL(page.url()).pathname;
   await context.clearCookies({ name: '__Host-credalent-session' });
-  // Alex runs "Demo Hiring Co", another workspace.
-  await signIn(page, { email: 'alex@example.com' });
+  // The creator runs "Import <stamp>", another workspace.
+  await signIn(page, { email: creator });
   expect((await page.goto(path))?.status()).toBe(404);
   await expect(page.getByText('This job does not exist or you do not have access.')).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Import into this job' })).toHaveCount(0);

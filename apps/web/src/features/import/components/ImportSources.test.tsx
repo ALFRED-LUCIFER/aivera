@@ -96,7 +96,7 @@ describe('Bring in candidates', () => {
 
   it('loading and error keep the frame: the load is announced, and a failure offers to try again', async () => {
     wrap(<ImportLoading />);
-    expect(screen.getByRole('status').textContent).toBe('Loading Bring in candidates');
+    expect(screen.getByRole('status').textContent).toBe('Loading Bring in candidates…');
     cleanup();
     const onRetry = vi.fn();
     wrap(<ImportFailed onRetry={onRetry} />);

@@ -1,5 +1,5 @@
 import { createAudit } from '@credalent/audit/composition';
-import { createDb } from '@credalent/db/client';
+import { createDb, type Db } from '@credalent/db/client';
 import { createIdentity } from '@credalent/identity/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { expect, type Browser, type Page } from '@playwright/test';
@@ -42,20 +42,8 @@ export async function approvedWorkspace(
 ): Promise<{ workspaceId: string; creatorUserId: string }> {
   const db = createDb(databaseUrl, { max: 1 });
   try {
-    const identity = createIdentity(db, { trustedIssuer: 'e2e-seed' });
     const workspaces = createWorkspaces(db, createAudit(db));
-    // Named as the mocked tenant names people (the email's local part), so a later sign-in renames nobody.
-    const person = async (email: string) =>
-      (
-        await identity.upsertUserFromIdToken({
-          issuer: 'e2e-seed',
-          subject: email,
-          email,
-          emailVerified: true,
-          displayName: email.slice(0, email.indexOf('@')),
-        })
-      ).id;
-    const creatorUserId = await person(creatorEmail);
+    const creatorUserId = await syntheticUser(db, creatorEmail);
     const { id } = await workspaces.createWorkspace({
       name,
       company: name,
@@ -64,9 +52,26 @@ export async function approvedWorkspace(
       needsApproval: true,
       creatorUserId,
     });
-    await workspaces.changeStatus({ operatorId: await person(PIA), workspaceId: id, change: 'approve', reason: '' });
+    await workspaces.changeStatus({
+      operatorId: await syntheticUser(db, PIA),
+      workspaceId: id,
+      change: 'approve',
+      reason: '',
+    });
     return { workspaceId: id, creatorUserId };
   } finally {
     await db.$client.end();
   }
 }
+
+/** The synthetic user `email`, named as the mocked tenant names people (the email's local part), so a later sign-in renames nobody. */
+export const syntheticUser = async (db: Db, email: string) =>
+  (
+    await createIdentity(db, { trustedIssuer: 'e2e-seed' }).upsertUserFromIdToken({
+      issuer: 'e2e-seed',
+      subject: email,
+      email,
+      emailVerified: true,
+      displayName: email.slice(0, email.indexOf('@')),
+    })
+  ).id;

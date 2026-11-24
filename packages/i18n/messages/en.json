@@ -1702,7 +1702,7 @@
       "body": "PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.",
       "button": "Upload files"
     },
-    "loading": "Loading Bring in candidates",
+    "loading": "Loading Bring in candidates…",
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
   },
