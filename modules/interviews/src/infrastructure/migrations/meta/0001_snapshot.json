@@ -1,0 +1,303 @@
+{
+  "id": "3dfdf8f4-2ab1-41da-93ff-a7b5a44d466a",
+  "prevId": "a9f99751-2f12-4f47-a882-06c60ca323f5",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "interviews.interview": {
+      "name": "interview",
+      "schema": "interviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "round": {
+          "name": "round",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interviewer_user_id": {
+          "name": "interviewer_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competency_ids": {
+          "name": "competency_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "interview_status_idx": {
+          "name": "interview_status_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "interview_workspace_id_key": {
+          "name": "interview_workspace_id_key",
+          "columns": [
+            "workspace_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "interview_tenant_isolation": {
+          "name": "interview_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "interview_round_check": {
+          "name": "interview_round_check",
+          "value": "\"interviews\".\"interview\".\"round\" in ('structured_screen', 'evidence_defence', 'panel')"
+        },
+        "interview_status_check": {
+          "name": "interview_status_check",
+          "value": "\"interviews\".\"interview\".\"status\" in ('to_schedule', 'scheduled', 'in_progress', 'scorecard_due', 'completed', 'cancelled')"
+        },
+        "interview_scheduled_at_check": {
+          "name": "interview_scheduled_at_check",
+          "value": "(\"interviews\".\"interview\".\"status\" <> 'scheduled' or \"interviews\".\"interview\".\"scheduled_at\" is not null) and (\"interviews\".\"interview\".\"status\" <> 'to_schedule' or \"interviews\".\"interview\".\"scheduled_at\" is null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "interviews.outbox": {
+      "name": "outbox",
+      "schema": "interviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correlation_id": {
+          "name": "correlation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "outbox_unsent_idx": {
+          "name": "outbox_unsent_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"interviews\".\"outbox\".\"sent_at\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "outbox_workspace_dedupe_key": {
+          "name": "outbox_workspace_dedupe_key",
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "outbox_tenant_isolation": {
+          "name": "outbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "outbox_relay_read": {
+          "name": "outbox_relay_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true"
+        },
+        "outbox_relay_mark": {
+          "name": "outbox_relay_mark",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "interviews": "interviews"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

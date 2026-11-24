@@ -1793,5 +1793,21 @@
     "loading": "Loading the ranking…",
     "error": "We could not load the ranking. Try again.",
     "retry": "Try again"
+  },
+  "interviews": {
+    "round": {
+      "structured_screen": "Round 1, structured screen",
+      "evidence_defence": "Round 2, evidence defence",
+      "panel": "Round 3, panel"
+    },
+    "status": {
+      "to_schedule": "Not scheduled yet",
+      "scheduled": "Scheduled",
+      "in_progress": "In progress",
+      "scorecard_due": "Scorecard due",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}"
   }
 }

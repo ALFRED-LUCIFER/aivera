@@ -33,6 +33,11 @@ export const PERMISSIONS = {
   'candidate.merge': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.unmerge': { scope: 'workspace', roles: ['admin'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  // Interviews (AIV-P2-001): recruiters plan them; everyone on the job sees and holds them, and the interviews module
+  // narrows hiring owners and interviewers to the interviews they hold, interviewers' views to their own.
+  'interview.schedule': { scope: 'job', roles: ['admin', 'recruiter'] },
+  'interview.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  'interview.conduct': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
   // Adding a work link on a candidate's application; a GitHub repository link is then read (AIV-P1-076).
   'application.add_link': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },

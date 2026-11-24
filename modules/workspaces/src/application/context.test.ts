@@ -73,6 +73,10 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'candidate.merge': ['YYY', 'YYY', '---', '---'],
   'candidate.unmerge': ['YYY', '---', '---', '---'],
   'scorecard.submit': ['YYY', 'YYY', 'Y--', 'Y--'],
+  // SAFETY: mutation check: added interviewer to interview.schedule -> this matrix failed (AIV-P2-001)
+  'interview.schedule': ['YYY', 'YYY', '---', '---'],
+  'interview.view': ['YYY', 'YYY', 'Y--', 'Y--'],
+  'interview.conduct': ['YYY', 'YYY', 'Y--', 'Y--'],
   'decision.record': ['YYY', 'YYY', 'Y--', '---'],
   'application.add_link': ['YYY', 'YYY', 'Y--', 'Y--'],
   'file.upload': ['YYY', 'YYY', '---', '---'],
@@ -130,6 +134,7 @@ describe('Scenario: Members of a suspended workspace can read but not start work
     'job_access.view',
     'candidate.view',
     'candidate.duplicates',
+    'interview.view',
     'file.download',
   ];
 

@@ -112,6 +112,9 @@ const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_
 // on arrival, while an unmapped one waits in its outbox (retried by the relay) until the owner configures it.
 const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
+// shortcut: `interviews` (InterviewScheduled.v1, InterviewCompleted.v1, AIV-P2-001) is left out until something consumes
+// them (score changes from scorecards, AIV-P2-005): they wait unsent in interviews.outbox; that ticket adds the schema
+// here and the queue mapping.
 const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App or file reading, below), and its EvidenceMapped.v1 is scored on `assessment`;

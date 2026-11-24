@@ -122,6 +122,15 @@ export const jobsForCandidate = async (tx: Tx, workspaceId: string, personId: st
       .orderBy(application.jobId)
   ).map((r) => r.jobId);
 
+/** An application's person and job, or null for none or one a duplicate merge emptied (AIV-P2-001's interviews). */
+export const findApplication = async (tx: Tx, workspaceId: string, applicationId: string) => {
+  const [row] = await tx
+    .select({ personId: application.personId, jobId: application.jobId })
+    .from(application)
+    .where(and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId), hasSource));
+  return row ?? null;
+};
+
 /** The people who applied to a job, for the worker (AIV-P1-027), in id order as above. */
 export const candidatesForJob = async (tx: Tx, workspaceId: string, jobId: string) =>
   (
