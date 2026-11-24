@@ -52,7 +52,8 @@ export interface InterviewsContract {
   getInterview(ctx: WorkspaceContext, interviewId: string): Promise<Interview | null>;
   /**
    * The demo seed's reset (`pnpm db:seed --reset`): deletes the workspace's interviews. Admins. Throws
-   * `InterviewError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic.
+   * `InterviewError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic. The flag is the only
+   * check: interviews carry no synthetic mark of their own, so it deletes every one in a flagged workspace.
    */
   purgeSyntheticInterviews(ctx: WorkspaceContext): Promise<void>;
 }

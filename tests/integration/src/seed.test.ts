@@ -15,7 +15,7 @@ import { JobError } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
 import { seedDemo, SEED_ISSUER } from '@credalent/seed';
 import { CANDIDATES, INDUSTRY_JOBS } from '@credalent/seed/cast';
-import { WorkspaceError } from '@credalent/workspaces';
+import { ForbiddenError, WorkspaceError } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql, type SQL } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -183,6 +183,28 @@ describe('Scenario: Seeding a fresh database', () => {
       to_char(checked_at at time zone 'UTC', 'YYYY-MM-DD') as checked from evidence.source
       where workspace_id = ${workspaceId} and label = 'llm-eval-harness'`);
     expect(source).toEqual({ check_method: 'Commit history', checked: '2026-11-12' });
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'workspace.settings') in purgeSyntheticApplications -> this test failed (resolved)
+  // SAFETY: mutation check: removed authorize(ctx, 'workspace.settings') in purgeSyntheticInterviews -> this test failed (resolved)
+  it('only an admin may purge the demo applications and interviews: a hiring owner is refused, deleting nothing', async () => {
+    const audit = createAudit(app);
+    const workspaces = createWorkspaces(app, audit);
+    const jobs = createJobs(workspaces, audit);
+    const intake = createIntake(workspaces, createCandidates(workspaces), jobs, displayNamesInWorkspace, audit);
+    const interviews = createInterviews(workspaces, jobs, createApprovedRubricReads().approvedRubric, findApplication);
+    const [cpo] = await admin.execute<{ id: string }>(
+      sql`select id from identity.user where email = 'cpo.payments@example.com'`,
+    );
+    if (!cpo) throw new Error('the seed created Camille Fares');
+    const asOwner = <T>(fn: Parameters<typeof workspaces.withWorkspace<T>>[2]) =>
+      workspaces.withWorkspace({ userId: cpo.id }, workspaceId, fn);
+    await expect(asOwner((ctx) => intake.purgeSyntheticApplications(ctx))).rejects.toThrow(ForbiddenError);
+    await expect(asOwner((ctx) => interviews.purgeSyntheticInterviews(ctx))).rejects.toThrow(ForbiddenError);
+    expect(await count(sql`select count(*) as n from intake.application where workspace_id = ${workspaceId}`)).toBe(5);
+    expect(await count(sql`select count(*) as n from interviews.interview where workspace_id = ${workspaceId}`)).toBe(
+      5,
+    );
   });
 
   it("AIV-P2-001: seeds the Interviews artboard's five ongoing interviews, each on its candidate's application", async () => {
@@ -713,7 +735,7 @@ describe('Scenario: Seeding a fresh database', () => {
     });
 
     // Last: it leaves a person who is not synthetic in the demo workspace (and the job above), and the candidates
-    // purge runs first.
+    // purge refuses before the jobs purge; the interviews and applications deleted before it roll back with it.
     // SAFETY: mutation check: removed the synthetic = false lookup in deleteSyntheticPeople -> this test failed (resolved)
     it('reset refuses a demo workspace holding anyone not synthetic and deletes nothing', async () => {
       const workspaces = createWorkspaces(app, createAudit(app));

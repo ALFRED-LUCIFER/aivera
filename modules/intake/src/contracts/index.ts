@@ -68,7 +68,8 @@ export interface IntakeContract {
   countApplications(ctx: WorkspaceContext, jobId: string): Promise<number>;
   /**
    * The demo seed's reset (`pnpm db:seed --reset`): deletes the workspace's applications, sources and batches. Admins.
-   * Throws `IntakeError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic.
+   * Throws `IntakeError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic. The flag is the
+   * only check: applications carry no synthetic mark of their own, so it deletes every one in a flagged workspace.
    */
   purgeSyntheticApplications(ctx: WorkspaceContext): Promise<void>;
 }

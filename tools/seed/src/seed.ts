@@ -79,6 +79,9 @@ export async function seedDemo(
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
       // Interviews and applications first: no foreign key across modules would stop them outliving their people and jobs.
+      // shortcut: assessment.* has no purge; if a worker assessed the demo's applicants (a rubric approved again on
+      // dev), their results outlive the reset under the old workspace id. Add purgeSyntheticAssessments when the seed
+      // adds scores (AIV-P1-030).
       await interviews.purgeSyntheticInterviews(ctx);
       await intake.purgeSyntheticApplications(ctx);
       await evidence.purgeSyntheticEvidence(ctx);
@@ -218,10 +221,15 @@ export async function seedDemo(
     for (const i of INTERVIEWS) {
       const jobId = jobIds.get(i.job);
       const candidate = CANDIDATES.find((c) => c.displayName === i.candidate);
-      const rubric = jobId && (await approvedRubric(ctx.tx, ctx.workspaceId, jobId));
-      if (!jobId || !candidate || !rubric) throw new Error('A demo interview names a job or candidate the cast lacks');
+      if (!jobId || !candidate) throw new Error('A demo interview names a job or candidate the cast lacks');
+      const rubric = await approvedRubric(ctx.tx, ctx.workspaceId, jobId);
+      if (!rubric) throw new Error(`The demo job ${i.job} has no approved rubric to interview on`);
+      const interviewerUserId = i.interviewer ? ownerOf(i.interviewer) : recruiter;
+      if (!interviewerUserId) throw new Error(`No hiring owner ${i.interviewer}`);
       const applied = (await intake.listApplicationsForJob(ctx, jobId)).find((a) => a.displayName === i.candidate);
       // No batch: the worker never reads the arrival, so the demo's applications cost no AI call.
+      // shortcut: the application stays at stage `new` though its interview is under way; intake has no contract to
+      // move a stage yet. Set `in_process` here when choose-for-interview (AIV-P1-114) adds one.
       const applicationId =
         applied?.applicationId ??
         (await intake.receiveApplication(ctx, { jobId, person: personOf(candidate), source: 'linkedin' }))
@@ -230,7 +238,7 @@ export async function seedDemo(
       const { interviewId } = await interviews.createInterview(ctx, {
         applicationId,
         round: i.round,
-        interviewerUserId: (i.interviewer && ownerOf(i.interviewer)) || recruiter,
+        interviewerUserId,
         scheduledAt: new Date(`${gulfDay(now, i.day)}T${i.time}:00+04:00`),
         competencyIds: i.competencies.map((name) => {
           const found = rubric.competencies.find((c) => c.name === name);
