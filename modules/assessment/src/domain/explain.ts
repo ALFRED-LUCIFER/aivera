@@ -25,7 +25,10 @@ export type Facts = {
   counts: { checked: number; claims: number };
   /** The checked competencies are the heaviest of the rubric: the only case a statement may say "heaviest". */
   heaviest: boolean;
-  /** The facts source, one line per fact; null when the snapshot has nothing to explain. */
+  /**
+   * The facts source, one line per fact, with a placeholder where a figure or the claims' names stand, so a line the
+   * model copies is a statement it may write (AIV-P1-132); null when the snapshot has nothing to explain.
+   */
   factsText: string | null;
   /** The evidence items the backed score rests on, heaviest competency first, each with the competency it backs. */
   items: (ExplainSource & { competency: string })[];
@@ -74,14 +77,14 @@ export function factsOf(
       Math.min(...checked.map((c) => c.weightPercent)) >= Math.max(...others.map((c) => c.weightPercent));
     const noun = checked.length === 1 ? 'competency' : 'competencies';
     lines.push(
-      `Independently checked work backs ${heaviest ? `the heaviest ${noun}` : `${checked.length === 1 ? 'this' : 'these'} ${noun}`}: ${listText(checked.map(nameOf))}, ${values['checkedWeight']} of the weight.`,
+      `Independently checked work backs ${heaviest ? `the heaviest ${noun}` : `${checked.length === 1 ? 'this' : 'these'} ${noun}`}: ${listText(checked.map(nameOf))}, {checkedWeight} of the weight.`,
     );
   }
   if (claims.length > 0) {
     values['claimCompetencies'] = competenciesText(claims.length);
     values['claimWeight'] = `${weight(claims)}%`;
     values['claimNames'] = listText(claims.map(nameOf));
-    lines.push(`Still resting on claims: ${values['claimNames']}, ${values['claimWeight']} of the weight.`);
+    lines.push('Still resting on claims: {claimNames}, {claimWeight} of the weight.');
   }
 
   const seen = new Set<string>();
@@ -105,19 +108,23 @@ export function factsOf(
   };
 }
 
-/**
- * The statement's text with each placeholder replaced from the snapshot and the first letter capitalised, or null when
- * it holds a placeholder the snapshot has no fact for (such a statement is dropped, never shown with a blank).
- */
-export function fill(text: string, values: Readonly<Record<string, string>>): string | null {
+/** The text with each placeholder replaced from the snapshot, or null when it holds one the snapshot has no fact for. */
+function resolve(text: string, values: Readonly<Record<string, string>>): string | null {
   let missing = false;
   const filled = text.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = Object.hasOwn(values, name) ? values[name] : undefined;
     if (value === undefined) missing = true;
     return value ?? '';
   });
-  return missing ? null : filled.replace(/^\s*\p{L}/u, (c) => c.toUpperCase());
+  return missing ? null : filled;
 }
+
+/**
+ * The statement's text with each placeholder replaced from the snapshot and the first letter capitalised, or null when
+ * it holds a placeholder the snapshot has no fact for (such a statement is dropped, never shown with a blank).
+ */
+export const fill = (text: string, values: Readonly<Record<string, string>>): string | null =>
+  resolve(text, values)?.replace(/^\s*\p{L}/u, (c) => c.toUpperCase()) ?? null;
 
 const HEAVIEST = /\b(?:heaviest|largest share|most weighted|biggest)\b/i;
 // Rule 1.6: nothing is called verified or proven (only a second independent source "checks"), and a claim is never
@@ -142,14 +149,22 @@ export const statementAllowed = (raw: string, facts: Pick<Facts, 'heaviest'>): b
   );
 };
 
-/** What a statement cites for a source of the explanation: the facts line (no item id) or the evidence item. */
+/**
+ * What a statement cites for a source of the explanation: the evidence item, or the facts line (no item id) with its
+ * placeholders filled from the snapshot. Null for a facts quote that holds a placeholder with no fact behind it, or cuts
+ * one in half: it would show a brace, so it is dropped.
+ */
 // shortcut: a citation keeps its quote, not its offsets or claim flag; the profile (AIV-P1-043) finds the quote in the
 // item's excerpt to highlight it. Carry start, end and claim through if that search proves wrong or slow.
-export const citationOf = (source: ExplainSource, quote: string): ExplanationCitation => ({
-  itemId: source.id === FACTS_ID ? null : source.id,
-  label: source.label,
-  quote,
-});
+export const citationOf = (
+  source: ExplainSource,
+  quote: string,
+  values: Readonly<Record<string, string>>,
+): ExplanationCitation | null => {
+  if (source.id !== FACTS_ID) return { itemId: source.id, label: source.label, quote };
+  const filled = resolve(quote, values);
+  return filled === null || /[{}]/.test(filled) ? null : { itemId: null, label: source.label, quote: filled };
+};
 
 /**
  * The explanation without a model: the same facts in fixed words, each statement citing the line or excerpt it states.
@@ -164,7 +179,7 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
   };
   const [first] = facts.items;
   const stated = (prefix: string) =>
-    factLines.filter((l) => l.startsWith(prefix)).map((l) => citationOf(factSource, l));
+    factLines.filter((l) => l.startsWith(prefix)).flatMap((l) => citationOf(factSource, l, facts.values) ?? []);
   return [
     ...statement(
       `{checkedCompetencies} carrying {checkedWeight} of the weight ${facts.counts.checked === 1 ? 'is' : 'are'} backed by work that was independently checked.`,
@@ -174,7 +189,7 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
       ? [
           {
             text: `The cited work behind ${first.competency} is ${first.label}.`,
-            citations: [citationOf(first, first.text)],
+            citations: [{ itemId: first.id, label: first.label, quote: first.text }],
           },
         ]
       : []),

@@ -1189,9 +1189,38 @@ describe('Feature: Cited ranking explanation', () => {
     expect(report.rates.citationValidity).toBe(1);
   });
 
-  // SAFETY: mutation check: removed the number refine from explainText -> this test failed (the 60% answer parsed)
+  // SAFETY: mutation check: removed the percent refine from explainText -> this test failed (the 60% answer parsed)
   it('Scenario: Numbers come from the snapshot: an answer holding a number is rejected by the schema', () => {
     expect(explainRankingSchema.safeParse(withText('60% of the weight')).success).toBe(false);
+    expect(explainRankingSchema.safeParse(withText('60 of the weight')).success).toBe(false);
     expect(explainRankingSchema.safeParse(withText('{checkedWeight} of the weight')).success).toBe(true);
   });
+
+  // AIV-P1-132, owner decision 24 Nov 2026. S1 is the facts source; a figure in it never counts.
+  // SAFETY: mutation check: dropped the facts-source filter in quotesItsFigures -> the "Python 3" row failed (it parsed)
+  it.each([
+    ['The candidate authored 412 of 460 commits.', 'S2', 'authored 412 of 460 commits between March and October', true],
+    ['The work cut p95 latency in the benchmark suite.', 'S2', 'cutting p95 latency in the benchmark suite', true],
+    ['The work cut p99 latency in the benchmark suite.', 'S2', 'cutting p95 latency in the benchmark suite', false],
+    ['The cited repository shows 70 of 80 commits.', 'S2', 'authored 64 of 80 commits', false],
+    ['The candidate authored 12 commits.', 'S2', 'authored 412 of 460 commits', false],
+    [
+      'The candidate wrote 3 services.',
+      'S1',
+      'Independently checked work backs this competency: Python 3 services',
+      false,
+    ],
+    [
+      'The candidate authored 64 of 80 commits, 30% of the work.',
+      'S2',
+      'authored 64 of 80 commits, 30% of the work',
+      false,
+    ],
+  ])(
+    'Scenario Outline: a figure only where the statement quotes it from evidence: %j citing %s',
+    (text, sourceId, quote, ok) => {
+      const said = { statements: [{ text, citations: [{ sourceId, quote }] }] };
+      expect(explainRankingSchema.safeParse(said).success).toBe(ok);
+    },
+  );
 });

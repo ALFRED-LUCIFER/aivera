@@ -88,8 +88,9 @@ export function explainUseCases(ports: ExplainPorts) {
   return {
     /**
      * Why the candidate's latest snapshot is what it is, in up to three statements each citing a snapshot fact or an
-     * evidence item. Numbers are filled from the snapshot; a statement with no citation, or with a placeholder the
-     * snapshot has no fact for, is dropped; an answer off the schema or citing a source it was not given is rejected
+     * evidence item. The score's numbers are filled from the snapshot, in a statement and in a quote of the facts; a
+     * figure of the work stands only where the statement quotes it from the excerpt it cites. A statement with no
+     * citation, or with a placeholder the snapshot has no fact for, is dropped; an answer off the schema or citing a source it was not given is rejected
      * and the template shown. Cached per snapshot and prompt version. Null with no snapshot, or one on a rubric
      * version that is no longer the approved one (it is being scored again). `candidate.view` on the job, as `getLatestAssessment`.
      */
@@ -143,7 +144,7 @@ export function explainUseCases(ports: ExplainPorts) {
           const filled = fill(text.replaceAll(CANDIDATE_PLACEHOLDER, 'the candidate'), facts.values);
           const cites = citations.flatMap((c) => {
             const source = byId.get(c.sourceId);
-            return source ? [citationOf(source, c.quote)] : [];
+            return (source && citationOf(source, c.quote, facts.values)) ?? [];
           });
           // The model is told the rules; code decides (statementAllowed).
           return filled === null || !statementAllowed(text, facts) || cites.length === 0

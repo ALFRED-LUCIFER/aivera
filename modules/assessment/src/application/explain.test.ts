@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { createAiClient, fakeProvider, memoryTokenBudget } from '@credalent/ai';
 import type { EvidenceItemView } from '@credalent/evidence';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
 import { assess } from '../domain/assess.ts';
+import { factsOf } from '../domain/explain.ts';
 import type { Ports, StoredAssessment } from './assessment.ts';
 import { explainUseCases, type ExplainPorts, type ExplanationStore } from './explain.ts';
 
@@ -195,7 +197,7 @@ describe("Scenario: Sara's explanation", () => {
 });
 
 describe('Scenario: Numbers come from the snapshot', () => {
-  // SAFETY: mutation check: removed the digit and number-word refine from explainText -> this test failed (the 60% text was shown)
+  // SAFETY: mutation check: removed the percent and number-word refine from explainText -> this test failed (the 60% text was shown)
   it.each([
     '60% of the weight',
     'sixty percent of the weight',
@@ -217,6 +219,84 @@ describe('Scenario: Numbers come from the snapshot', () => {
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('template');
     expect(JSON.stringify(explained)).not.toContain('60%');
+  });
+});
+
+// AIV-P1-132, owner decision 24 Nov 2026: a figure of the work only where the statement quotes it from its excerpt.
+const answer = (text: string, sourceId: string, quote: string) => ({
+  statements: [{ text, citations: [cite(sourceId, quote)] }],
+});
+describe('Scenario Outline: A number the model wrote is never shown', () => {
+  it('shows a figure the statement quotes from the excerpt it cites', async () => {
+    const text = 'The candidate authored 412 of 460 commits.';
+    const { useCases } = setup(answer(text, 'S2', 'authored 412 of 460 commits'));
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements.map((s) => s.text)).toEqual([text]);
+  });
+
+  // SAFETY: mutation check: removed the quotesItsFigures refine from explainRankingSchema -> these tests failed (400 was shown)
+  it.each([
+    [
+      'a figure the excerpt does not hold',
+      'The cited repository shows 400 of 460 commits.',
+      'S2',
+      '412 of 460 commits',
+    ],
+    ['a figure citing the facts only', 'The candidate authored 412 of 460 commits.', 'S1', 'Still resting on claims'],
+    ['a figure from another excerpt', 'The candidate authored 120 of 180 commits.', 'S2', '412 of 460 commits'],
+  ])('rejects %s and shows the template', async (_, text, sourceId, quote) => {
+    const { useCases } = setup(answer(text, sourceId, quote));
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(JSON.stringify(explained)).not.toContain(text);
+  });
+});
+
+describe('Scenario: The facts line holds placeholders, and a line copied from it is a valid statement', () => {
+  const CHECKED =
+    'Independently checked work backs the heaviest competencies: Retrieval and evaluation, and LLM systems in production, {checkedWeight} of the weight.';
+  const CLAIMS = 'Still resting on claims: {claimNames}, {claimWeight} of the weight.';
+
+  // SAFETY: mutation check: wrote values['checkedWeight'] back into the checked line of factsOf -> this test failed
+  it("Sara's facts lines hold no figure, keep the figures as values, and are the golden case's facts source", () => {
+    const facts = factsOf(snapshot('r1'), new Map(NAMES.map(([id, name]) => [id, name])), EVIDENCE);
+    expect(facts.factsText).toBe(`${CHECKED}\n${CLAIMS}`);
+    expect(facts.factsText).not.toMatch(/[\p{N}%]/u);
+    expect(facts.values).toMatchObject({
+      checkedWeight: '45%',
+      claimWeight: '25%',
+      claimNames: 'Cost and reliability, and Arabic NLP',
+    });
+    // So the eval set cannot drift from the code.
+    const golden = readFileSync(
+      new URL('../../../../packages/ai/evals/assessment.explainRanking/sara-heaviest-checked.yaml', import.meta.url),
+      'utf8',
+    );
+    expect(golden).toContain(`${CHECKED}\n      ${CLAIMS}`);
+  });
+
+  // SAFETY: mutation check: citationOf returned the facts quote unfilled -> this test failed ({claimNames} was shown)
+  it('accepts the copied line and shows the snapshot figures in its text and its facts quote, never a brace', async () => {
+    const { useCases } = setup({ statements: [{ text: CLAIMS, citations: [cite('S1', CLAIMS)] }] });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    const shown = 'Still resting on claims: Cost and reliability, and Arabic NLP, 25% of the weight.';
+    // The client trims the quote's final full stop.
+    expect(explained).toMatchObject({
+      source: 'ai',
+      statements: [{ text: shown, citations: [{ itemId: null, label: 'Snapshot', quote: shown.slice(0, -1) }] }],
+    });
+  });
+
+  // SAFETY: mutation check: removed the brace check in citationOf -> this test failed ("{claimWeight" was shown)
+  it('drops a facts citation whose quote cuts a placeholder in half, and the statement it leaves uncited', async () => {
+    const { useCases } = setup({
+      statements: [{ text: 'Some work still rests on claims.', citations: [cite('S1', '{claimNames}, {claimWeight')] }],
+    });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    for (const s of explained?.statements ?? [])
+      expect(s.text + s.citations.map((c) => c.quote).join('')).not.toMatch(/[{}]/);
   });
 });
 
