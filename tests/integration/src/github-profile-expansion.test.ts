@@ -58,12 +58,26 @@ const API = 'https://api.github.credalent.example';
 // --- Document Intelligence: one 11 pt line per text line, as the service answers for a PDF --------------------------
 
 const layouts = new Map<string, object>();
-const layoutOf = (lines: string[]) => {
+/** `tiny` names a line drawn at 1 pt, which a reader cannot see (Document Intelligence reports it as a hidden line). */
+const layoutOf = (lines: string[], tiny?: string) => {
   let offset = 0;
   const items = lines.map((content, row) => {
     const span = { offset, length: content.length };
     offset += content.length + 1;
-    return { content, polygon: [1, row, 7, row, 7, row + 0.153, 1, row + 0.153], spans: [span] };
+    return {
+      content,
+      polygon: [
+        1,
+        row,
+        7,
+        row,
+        7,
+        row + (content === tiny ? 1 / 72 : 0.153),
+        1,
+        row + (content === tiny ? 1 / 72 : 0.153),
+      ],
+      spans: [span],
+    };
   });
   return {
     status: 'succeeded',
@@ -106,6 +120,7 @@ type Owned = { name: string; fork?: boolean; archived?: boolean; size?: number; 
 const users = new Map<string, { type: 'User' | 'Organization'; repos: Owned[] }>();
 let rateLimitNext = false;
 let listCalls = 0;
+let userCalls = 0;
 const resetAt = new Date(NOW.getTime() + 15 * 60_000);
 
 /** Active own repositories, the first pushed most recently. */
@@ -119,6 +134,7 @@ const githubHandlers = [
     HttpResponse.json({ token: 'ghs_synthetic_test_token', expires_at: '2026-11-20T10:00:00Z' }, { status: 201 }),
   ),
   http.get(`${API}/users/:login`, ({ params }) => {
+    userCalls++;
     const found = users.get(String(params['login']));
     return found
       ? HttpResponse.json({ login: params['login'], type: found.type })
@@ -275,10 +291,10 @@ const personNamed = (name: string) =>
   );
 
 /** Uploads `lines` as the CV of a new applicant, parses it, and runs every expansion it queued. */
-async function apply(name: string, lines: string[]) {
+async function apply(name: string, lines: string[], tiny?: string) {
   const candidateId = await personNamed(name);
   const marker = randomUUID();
-  layouts.set(marker, layoutOf([name, 'Skills: Python', ...lines]));
+  layouts.set(marker, layoutOf([name, 'Skills: Python', ...lines], tiny));
   const data = Buffer.from(`%PDF-1.7 ${marker} synthetic`);
   const ticket = await as(w1, (ctx) =>
     files.requestUpload(ctx, { purpose: 'cv', fileName: 'cv.pdf', contentType: 'application/pdf', size: data.length }),
@@ -438,6 +454,15 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
     });
 
     // SAFETY: mutation check: removed the excluded-spans filter from profileLogins -> this test failed (one stored)
+    // SAFETY: mutation check: dropped `...hidden` from the profileLogins call in parseCv -> this test failed (one stored)
+    it('a profile named only in text hidden in the file (1 pt) is not stored', async () => {
+      users.set('layla-credalent-example', { type: 'User', repos: active('layla', 3) });
+      const hidden = 'github.com/layla-credalent-example';
+      const candidate = await apply('Tarek Mansour', ['Code: none', hidden], hidden);
+      expect(await expansionsOf(candidate)).toEqual([]);
+      expect(await readsOf(candidate)).toEqual([]);
+    });
+
     it('a profile named only inside text aimed at the AI is not stored', async () => {
       users.set('tariq-credalent-example', { type: 'User', repos: active('planted', 3) });
       const candidate = await apply('Hessa Al Mazrouei', [
@@ -454,13 +479,14 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
     for (const login of ['priya', 'hessa', 'omar'])
       users.set(`${login}-credalent-example`, { type: 'User', repos: active(login, 6) });
     const listedBefore = listCalls;
+    const usersBefore = userCalls;
     const candidate = await apply('Karim Nasser', [
       'Code: github.com/priya-credalent-example, github.com/hessa-credalent-example, github.com/omar-credalent-example',
     ]);
     expect(await expansionsOf(candidate)).toHaveLength(2);
     expect(await readsOf(candidate)).toHaveLength(5);
-    // The second profile found no room left and spent no repository listing.
-    expect(listCalls - listedBefore).toBe(1);
+    // The second profile found no room left and spent no GitHub call at all.
+    expect([listCalls - listedBefore, userCalls - usersBefore]).toEqual([1, 1]);
   });
 
   it("Scenario: GitHub's rate limit postpones the expansion", async () => {
@@ -517,6 +543,14 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
       tx.execute<{ kind: string }>(sql`select kind from evidence.source where candidate_id = ${candidate}`),
     );
     expect([...sources].map((r) => r.kind).toSorted()).toEqual(['document', 'shipped_product']);
+    // Both were really read, so the empty result below is not because nothing ran.
+    const statuses = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ status: string }>(
+        sql`select status from evidence.document_read where candidate_id = ${candidate}
+          union all select status from evidence.link_read where candidate_id = ${candidate}`,
+      ),
+    );
+    expect([...statuses].map((r) => r.status)).toEqual(['read', 'read']);
     expect(await expansionsOf(candidate)).toEqual([]);
     expect(await readsOf(candidate)).toEqual([]);
   });

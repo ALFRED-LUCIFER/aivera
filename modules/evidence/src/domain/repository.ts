@@ -176,7 +176,10 @@ export const isStale = (source: { checkedAt: Date | null }, now: Date, latestPus
   now.getTime() - source.checkedAt.getTime() > STALE_AFTER_MS ||
   (latestPushedAt !== null && latestPushedAt > source.checkedAt);
 
-/** pending until the worker has listed the profile; `not_expandable` for an organisation or a profile GitHub does not have. */
+/**
+ * pending until the worker has run the expansion; `not_expandable` for an organisation or a profile GitHub does not have;
+ * `expanded` with 0 queued also means the candidate's 5 repositories were already used (or none qualified).
+ */
 export const PROFILE_EXPANSION_STATUSES = ['pending', 'expanded', 'not_expandable'] as const;
 export type ProfileExpansionStatus = (typeof PROFILE_EXPANSION_STATUSES)[number];
 
@@ -194,6 +197,8 @@ export type OwnedRepository = {
   pushedAt: Date | null;
 };
 
+const REPOSITORY_NAME = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,100}$/;
+
 /** A profile's own public work, newest push first: no fork, no archived, no empty or private repository. */
 export const chooseProfileRepositories = (repositories: readonly OwnedRepository[]): string[] =>
   repositories
@@ -204,7 +209,8 @@ export const chooseProfileRepositories = (repositories: readonly OwnedRepository
         !r.private &&
         r.size > 0 &&
         r.pushedAt !== null &&
-        parseRepositoryUrl(`https://github.com/x/${r.name}`),
+        REPOSITORY_NAME.test(r.name) &&
+        !r.name.endsWith('.git'),
     )
     .toSorted((a, b) => (b.pushedAt?.getTime() ?? 0) - (a.pushedAt?.getTime() ?? 0))
     .map((r) => r.name);

@@ -343,14 +343,19 @@ describe('GitHub profile logins in the CV (AIV-P1-112)', () => {
     ['https://www.github.com/maria-credalent-example/', ['maria-credalent-example']],
     ['github.com/maria-credalent-example?tab=repositories.', ['maria-credalent-example']],
     ['github.com/maria-credalent-example, github.com/Maria-Credalent-Example', ['maria-credalent-example']],
-    ['github.com/maria,', ['maria']],
-    ['github.com/maria.', ['maria']],
-    ['github.com/maria.example', []],
+    ['github.com/maria-credalent-example,', ['maria-credalent-example']],
+    ['github.com/maria-credalent-example.', ['maria-credalent-example']],
+    ['github.com/maria-credalent-example.example', []],
+    ['github.com/maria-credalent-example._x', []],
+    ['github.com/maria-credalent-example.-x', []],
     ['github.com/maria-credalent-example/rag-notebook', []],
     ['github.com/features and github.com/orgs and github.com/-bad- and github.com/a--b', []],
     ['mygithub.com/maria-credalent-example', []],
     ['https://docs.github.com/en and education.github.com/pack and api.github.com/users', []],
-    ['github.com/sara, github.com/arjun, github.com/layla', ['sara', 'arjun']],
+    [
+      'github.com/sara-credalent-example, github.com/arjun-credalent-example, github.com/layla-credalent-example',
+      ['sara-credalent-example', 'arjun-credalent-example'],
+    ],
   ])('%j -> %j', (cv, expected) => {
     expect(profileLogins(cv, [])).toEqual(expected);
   });

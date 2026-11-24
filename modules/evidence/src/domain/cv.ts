@@ -394,7 +394,7 @@ export function repositoryLinks(text: string, instructions: readonly { start: nu
 
 // A login followed by nothing that makes it a repository path: `github.com/<login>`, a trailing slash, a query or a fragment.
 const GITHUB_PROFILE =
-  /(?<![\w.@-])(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/?(?![A-Za-z0-9_/-]|\.[A-Za-z0-9])/gi;
+  /(?<![\w.@-])(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/?(?![A-Za-z0-9_/-]|\.[\w-])/gi;
 // GitHub's own pages under github.com/<word>, which are not people.
 const GITHUB_SITE_PATHS = new Set([
   'orgs',
