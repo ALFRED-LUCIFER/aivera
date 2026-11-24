@@ -1133,6 +1133,12 @@ importers:
       '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@credalent/intake':
+        specifier: workspace:*
+        version: link:../../modules/intake
+      '@credalent/interviews':
+        specifier: workspace:*
+        version: link:../../modules/interviews
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
