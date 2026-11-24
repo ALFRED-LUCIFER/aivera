@@ -1,4 +1,4 @@
-import { aiServiceFromEnv, createAiClient, providerFromEnv, type AiClient } from '@credalent/ai';
+import { AiUnavailable, aiServiceFromEnv, createAiClient, providerFromEnv, type AiClient } from '@credalent/ai';
 import { createAiTokenBudget } from '@credalent/workspaces/composition';
 import { getDb } from './db';
 
@@ -14,3 +14,20 @@ export const getAi = (): AiClient =>
     budget: createAiTokenBudget(getDb()),
     service: aiServiceFromEnv(process.env),
   }));
+
+/**
+ * `getAi` for a caller that has a fallback (the ranking explanation's template): an app with no AI configured throws
+ * `AiUnavailable` at the call, not at start-up, so the fallback runs instead of an error page. The construction error
+ * is dropped: it names configuration, nothing a caller needs.
+ */
+export const aiOrUnavailable = (task: string, get: () => AiClient = getAi): Pick<AiClient, 'generateStructured'> => ({
+  generateStructured: (input) => {
+    let client: AiClient;
+    try {
+      client = get();
+    } catch {
+      throw new AiUnavailable(task, 'not configured');
+    }
+    return client.generateStructured(input);
+  },
+});

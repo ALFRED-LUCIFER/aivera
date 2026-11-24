@@ -1,0 +1,368 @@
+import { createAiClient, fakeProvider, memoryTokenBudget } from '@credalent/ai';
+import type { EvidenceItemView } from '@credalent/evidence';
+import type { WorkspaceContext } from '@credalent/workspaces';
+import { describe, expect, it } from 'vitest';
+import { assess } from '../domain/assess.ts';
+import type { Ports, StoredAssessment } from './assessment.ts';
+import { explainUseCases, type ExplainPorts, type ExplanationStore } from './explain.ts';
+
+// Sara Al Qahtani (synthetic): the two heaviest competencies rest on checked repositories, two rest on claims.
+const JOB = 'job-sae';
+const day = new Date('2026-11-10T08:00:00.000Z');
+const NAMES: [string, string, number][] = [
+  ['c-retrieval', 'Retrieval and evaluation', 25],
+  ['c-llm', 'LLM systems in production', 20],
+  ['c-python', 'Python service engineering', 15],
+  ['c-pipelines', 'Data pipelines', 15],
+  ['c-cost', 'Cost and reliability', 15],
+  ['c-arabic', 'Arabic NLP', 10],
+];
+const RUBRIC = {
+  versionId: 'rubric-v2',
+  competencies: NAMES.map(([id, , weightPercent]) => ({
+    id,
+    weightPercent,
+    levelNeeded: 3,
+    type: 'mandatory' as const,
+  })),
+};
+const item = (
+  id: string,
+  competencyId: string,
+  kind: 'repository' | 'document' | 'cv',
+  label: string,
+  excerpt: string,
+  strength: 'strong' | 'medium' | 'supporting',
+  provenance: 'corroborated' | 'submitted' | 'claim',
+  level: number,
+): EvidenceItemView => ({
+  id,
+  workspaceId: 'w1',
+  sourceId: `src-${id}`,
+  candidateId: 'sara',
+  excerpt,
+  excerptSpan: null,
+  provenance,
+  strength,
+  limit: 'Shows the tooling only.',
+  synthetic: true,
+  createdAt: day,
+  source: {
+    id: `src-${id}`,
+    workspaceId: 'w1',
+    candidateId: 'sara',
+    kind,
+    label,
+    url: null,
+    blobFileId: null,
+    capturedAt: day,
+    checkedAt: null,
+    checkMethod: null,
+    textFingerprint: null,
+    synthetic: true,
+    createdAt: day,
+  },
+  competencies: [{ jobId: JOB, competencyId, level }],
+});
+const EVIDENCE = [
+  item(
+    'e1',
+    'c-retrieval',
+    'repository',
+    'llm-eval-harness',
+    'llm-eval-harness: authored 412 of 460 commits.',
+    'strong',
+    'corroborated',
+    5,
+  ),
+  item(
+    'e2',
+    'c-llm',
+    'repository',
+    'rag-service',
+    'rag-service: authored 120 of 180 commits.',
+    'strong',
+    'corroborated',
+    4,
+  ),
+  item('e3', 'c-python', 'document', 'Design doc', 'Designed the ingestion service.', 'medium', 'submitted', 3),
+  item(
+    'e4',
+    'c-pipelines',
+    'document',
+    'Pipeline write-up',
+    'Built nightly batch pipelines.',
+    'medium',
+    'submitted',
+    3,
+  ),
+  item('e5', 'c-cost', 'cv', 'CV', 'Cut cost per request by 40%.', 'supporting', 'claim', 2),
+  item('e6', 'c-arabic', 'cv', 'CV', 'Shipped Arabic query handling.', 'supporting', 'claim', 2),
+];
+const snapshot = (id: string, items = EVIDENCE): StoredAssessment => ({
+  ...assess(
+    RUBRIC,
+    items.map((e) => ({
+      itemId: e.id,
+      competencyId: e.competencies[0]?.competencyId ?? '',
+      level: e.competencies[0]?.level ?? 0,
+      strength: e.strength,
+      provenance: e.provenance,
+    })),
+  ),
+  id,
+  workspaceId: 'w1',
+  candidateId: 'sara',
+  jobId: JOB,
+  assessedAt: day,
+});
+
+const ctx = { userId: 'ap', workspaceId: 'w1', role: 'recruiter', tx: {} } as unknown as WorkspaceContext;
+
+/** The explanation over in-memory ports; `answer` is the model's raw output, `failure` a provider status for every attempt. */
+function setup(
+  answer: unknown,
+  {
+    failure,
+    evidence = EVIDENCE,
+    names = NAMES,
+    latest = snapshot('r1', evidence),
+  }: {
+    failure?: number;
+    latest?: StoredAssessment | null;
+    evidence?: EvidenceItemView[];
+    names?: [string, string, number][];
+  } = {},
+) {
+  const cache = new Map<string, unknown>();
+  const calls = { model: 0 };
+  const store: ExplanationStore = {
+    get: async (_w, resultId, version) => (cache.get(`${resultId} ${version}`) as never) ?? null,
+    put: async (row) => void cache.set(`${row.resultId} ${row.promptVersion}`, row.statements),
+  };
+  const provider = fakeProvider({
+    completion: JSON.stringify(answer),
+    ...(failure && { failures: [failure, failure, failure] }),
+  });
+  const real = createAiClient({ provider, budget: memoryTokenBudget(), sleep: async () => {} });
+  const ai: ExplainPorts['ai'] = { generateStructured: (input) => (calls.model++, real.generateStructured(input)) };
+  const state = { latest };
+  const useCases = explainUseCases({
+    storeFor: () => ({ latest: async () => state.latest }) as never,
+    authorize: async () => {},
+    candidateJob: async () => ({ jobId: JOB, clientId: null }),
+    now: () => day,
+    explanationsFor: () => store,
+    ai,
+    approvedRubric: async () => ({ id: 'rubric-v2', competencies: names.map(([id, name]) => ({ id, name })) }),
+    evidence: async () => evidence,
+    identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
+  } as unknown as ExplainPorts & Ports);
+  return { useCases, calls, state };
+}
+
+const cite = (sourceId: string, quote: string) => ({ sourceId, quote });
+// S1 is the facts source; S2 onward are the cited items, heaviest competency first (e1, e2, e3, e4).
+const GOOD = {
+  statements: [
+    {
+      text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.',
+      citations: [cite('S1', 'Independently checked work backs')],
+    },
+    { text: 'The candidate authored most of the evaluation harness.', citations: [cite('S2', '412 of 460 commits')] },
+    {
+      text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.',
+      citations: [cite('S1', 'Still resting on claims')],
+    },
+  ],
+};
+
+describe("Scenario: Sara's explanation", () => {
+  it('says what the ticket says, with every number from the snapshot, and cites the source', async () => {
+    const { useCases } = setup(GOOD);
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements.map((s) => s.text)).toEqual([
+      'Work that was independently checked backs two competencies, 45% of the weight, the heaviest.',
+      'The candidate authored most of the evaluation harness.',
+      'Two competencies, 25% of the weight, still rest on claims: Cost and reliability, and Arabic NLP.',
+    ]);
+    expect(explained?.statements[1]?.citations).toEqual([
+      { itemId: 'e1', label: 'llm-eval-harness', quote: '412 of 460 commits' },
+    ]);
+    expect(explained?.statements[0]?.citations[0]?.itemId).toBeNull();
+  });
+});
+
+describe('Scenario: Numbers come from the snapshot', () => {
+  // SAFETY: mutation check: removed the digit and number-word refine from explainText -> this test failed (the 60% text was shown)
+  it.each([
+    '60% of the weight',
+    'sixty percent of the weight',
+    'Two competencies rest on claims',
+    'One competency rests on claims',
+    'Both rest on claims',
+    'Fifteen competencies rest on claims',
+    'Hundreds of commits back it',
+    'Worth a million',
+    'Forty-five per cent of the weight',
+    '٤٥٪ of the weight',
+    '４５％ of the weight',
+    'One of the competencies rests on claims',
+    'One heavily weighted competency rests on claims',
+    '{checkedWeight}% of the weight',
+    'A {madeUp} share',
+  ])('rejects the model text %j and shows the template', async (text) => {
+    const { useCases } = setup({ statements: [{ text, citations: [cite('S1', 'Still resting on claims')] }] });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(JSON.stringify(explained)).not.toContain('60%');
+  });
+});
+
+describe('Statements the facts do not support are dropped', () => {
+  // SAFETY: mutation check: removed the `untrue` heaviest check in explainRanking -> this test failed (the false claim was shown)
+  it('drops "heaviest" when the checked competencies are not the heaviest, and counts one claim as "one competency"', async () => {
+    // Retrieval (25%) is only candidate-submitted here, so the checked LLM work (20%) is not the heaviest; Arabic NLP is no claim.
+    const evidence = EVIDENCE.filter((e) => e.id !== 'e6').map((e) =>
+      e.id === 'e1' ? { ...e, provenance: 'submitted' as const } : e,
+    );
+    const { useCases } = setup(
+      {
+        statements: [
+          {
+            text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest.',
+            citations: [cite('S1', 'Independently checked work backs')],
+          },
+          { text: '{claimCompetencies} still rest on claims.', citations: [cite('S1', 'Still resting on claims')] },
+        ],
+      },
+      { evidence },
+    );
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements.map((s) => s.text)).toEqual(['One competency still rest on claims.']);
+  });
+});
+
+describe('Scenario: A statement without a citation is dropped', () => {
+  // SAFETY: mutation check: kept statements with no citations in explainRanking -> this test failed (3 statements shown)
+  it('removes it and keeps the cited ones', async () => {
+    const { useCases } = setup({
+      statements: [...GOOD.statements.slice(1), { text: 'The candidate is a strong hire.', citations: [] }],
+    });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements).toHaveLength(2);
+    expect(explained?.statements.every((s) => s.citations.length > 0)).toBe(true);
+  });
+
+  it('rejects an answer quoting words that are not in the source, and shows the template', async () => {
+    const { useCases } = setup({
+      statements: [{ text: 'Work is checked.', citations: [cite('S2', 'authored all 460 commits')] }],
+    });
+    expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
+  });
+});
+
+describe('Scenario: Model unavailable', () => {
+  it('shows a template from the same facts, marked as not AI', async () => {
+    const { useCases } = setup(GOOD, { failure: 503 });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(explained?.statements.map((s) => s.text)).toEqual([
+      'Two competencies carrying 45% of the weight are backed by work that was independently checked.',
+      'The cited work behind Retrieval and evaluation is llm-eval-harness.',
+      'Two competencies carrying 25% of the weight still rest on claims: Cost and reliability, and Arabic NLP.',
+    ]);
+    expect(explained?.statements.every((s) => s.citations.length > 0)).toBe(true);
+  });
+});
+
+describe('The template never states what the facts do not', () => {
+  // SAFETY: mutation check: template said "behind the heaviest competency" for the first cited item -> this test failed (Retrieval has only claims)
+  it('names the competency the cited work backs, not the heaviest, when the heaviest has only claims', async () => {
+    const evidence = EVIDENCE.map((e) =>
+      e.id === 'e1' ? { ...e, strength: 'supporting' as const, provenance: 'claim' as const } : e,
+    );
+    const { useCases } = setup(GOOD, { failure: 503, evidence });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    const texts = explained?.statements.map((s) => s.text) ?? [];
+    expect(texts).toContain('The cited work behind LLM systems in production is rag-service.');
+    expect(texts.join(' ')).not.toMatch(/heaviest/);
+  });
+});
+
+const say = (text: string, quote = 'Independently checked work backs') => ({
+  text,
+  citations: [cite('S1', quote)],
+});
+
+describe('Rule 1.6 wording is enforced in code, not only asked of the model', () => {
+  // Retrieval (25%) is only candidate-submitted here, so the checked work is not the heaviest.
+  const evidence = EVIDENCE.map((e) => (e.id === 'e1' ? { ...e, provenance: 'submitted' as const } : e));
+
+  // SAFETY: mutation check: statementAllowed always true -> this test failed (verified, proven and a "backed" claim were shown)
+  // Here the checked work IS the heaviest (Sara's own evidence), so only a claim being "heaviest" is wrong.
+  it('drops a statement calling the claims the heaviest, even when the checked work is', async () => {
+    const { useCases } = setup({ statements: [say('{claimNames} are the heaviest.', 'Still resting on claims')] });
+    expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
+  });
+
+  it.each([
+    ['verified', say('The work was independently verified.')],
+    ['proven', say('The work is proven.')],
+    ['a claim called backed', say('{claimNames} are backed.', 'Still resting on claims')],
+    ['largest share when not the heaviest', say('This holds the largest share of the weight.')],
+    ['a claim supported', say('{claimNames} are supported.', 'Still resting on claims')],
+    ['a claim checked', say('{claimNames} have been checked.', 'Still resting on claims')],
+  ])('drops a statement saying %s, leaving the template', async (_, statement) => {
+    const { useCases } = setup({ statements: [statement] }, { evidence });
+    expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
+  });
+});
+
+describe("A rubric competency named like a banned word is a server fact, not the model's claim", () => {
+  // SAFETY: mutation check: statementAllowed tested the filled text instead of the model's own words -> this test failed (the claims line was dropped)
+  it('keeps "still rest on claims: Test and verification"', async () => {
+    const names = NAMES.map(([id, name, weight]): [string, string, number] => [
+      id,
+      id === 'c-cost' ? 'Test and verification' : name,
+      weight,
+    ]);
+    const { useCases } = setup(
+      {
+        statements: [
+          {
+            text: '{claimCompetencies} still rest on claims: {claimNames}.',
+            citations: [cite('S1', 'Still resting on claims')],
+          },
+        ],
+      },
+      { names },
+    );
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements[0]?.text).toBe(
+      'Two competencies still rest on claims: Test and verification, and Arabic NLP.',
+    );
+  });
+});
+
+describe('Scenario: Explanation follows the snapshot', () => {
+  it('is cached per snapshot id and written again for a new snapshot', async () => {
+    const { useCases, calls, state } = setup(GOOD);
+    await useCases.explainRanking(ctx, 'sara', JOB);
+    await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(calls.model).toBe(1);
+    state.latest = snapshot('r2');
+    const next = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(calls.model).toBe(2);
+    expect(next?.resultId).toBe('r2');
+  });
+
+  it('is null with no snapshot', async () => {
+    expect(await setup(GOOD, { latest: null }).useCases.explainRanking(ctx, 'sara', JOB)).toBeNull();
+  });
+});

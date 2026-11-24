@@ -22,7 +22,7 @@ const BACKS_NOTHING: ReadonlySet<SourceKind> = new Set(['cv', 'job_description']
 // shortcut: any non-empty quote passes, so a one-word quote proves little; set a minimum if the eval set (AIV-P0-029)
 // shows short quotes slipping through.
 /** What the model returns for each citation: the source label it was shown (`S1`) and a quote from that source. */
-const citation = z.object({ sourceId: z.string(), quote: z.string().min(1) });
+export const citation = z.object({ sourceId: z.string(), quote: z.string().min(1) });
 
 /** Makes an object schema a cited statement: the model must give at least one citation for it. */
 export const cited = <T extends z.ZodRawShape>(item: z.ZodObject<T>) =>

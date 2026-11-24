@@ -29,6 +29,27 @@
       "when": 1795273116165,
       "tag": "0003_force_rls_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795522038566,
+      "tag": "0004_explanation_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795522045250,
+      "tag": "0005_force_rls_explanation",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795524899040,
+      "tag": "0006_explanation_follows_result",
+      "breakpoints": true
     }
   ]
 }
