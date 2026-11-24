@@ -12,6 +12,7 @@ import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { IntakeContract } from '@credalent/intake';
 import { applicationRecords, createIntake } from '@credalent/intake/composition';
+import { receiveConfirmed } from './confirmedBatch.ts';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
@@ -280,7 +281,7 @@ const modulesOn = (db: Db): Modules => {
     evidence: createEvidence(workspaces, audit, () => NOW),
     assessment: createAssessment(workspaces, audit, jobs, () => NOW),
     jobs,
-    intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => NOW),
+    intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, () => NOW),
   };
 };
 
@@ -366,8 +367,8 @@ async function seed(
       jobIds: [job.id],
       clientIds: [],
     });
-    // An application (intake.application and .application_source, AIV-P1-017); it finds or creates the person.
-    const { personId } = await intake.receiveApplication(ctx, {
+    // An application under a confirmed batch (intake.application, .application_source and .import_batches, AIV-P1-017, AIV-P1-104); it finds or creates the person.
+    const { personId } = await receiveConfirmed(intake, ctx, {
       jobId: job.id,
       person: {
         displayName: person,

@@ -7,6 +7,7 @@ import type {
   ApplicationListItem,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
+  ReceiveBatchInput,
 } from '../application/applications.ts';
 
 export { IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
@@ -15,6 +16,7 @@ export type {
   ApplicationListItem,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
+  ReceiveBatchInput,
 } from '../application/applications.ts';
 
 /**
@@ -35,6 +37,17 @@ export interface IntakeContract {
    * `IntakeError('job_not_found')`, writing nothing, when the job is not in the workspace.
    */
   receiveApplication(ctx: WorkspaceContext, input: ReceiveApplicationInput): Promise<ReceiveApplicationResult>;
+  /**
+   * Adds the CVs of one save of "Add applicants" under one confirmation (AIV-P1-104): records the batch (who, when, job,
+   * wording version, count), receives each arrival with its `batchId`, and audits `intake.batch_confirmed` last, all in
+   * the caller's transaction. Admins and recruiters. Throws `IntakeError('confirmation_required')` unless
+   * `rightToProcessConfirmed` is `true` and `IntakeError('job_not_found')`, writing nothing. The worker reads only
+   * arrivals that carry a batch.
+   */
+  receiveBatch(
+    ctx: WorkspaceContext,
+    input: ReceiveBatchInput,
+  ): Promise<{ batchId: string; applications: ReceiveApplicationResult[] }>;
   /**
    * A member adds a work link on an application: stored as a `recruiter` source and announced with
    * `ApplicationReceived.v1`, so evidence reads it when it is a GitHub repository and keeps it as a plain link

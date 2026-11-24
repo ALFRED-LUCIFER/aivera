@@ -34,9 +34,19 @@ describe('useAddApplicantsController', () => {
     expect(result.current.cvs).toEqual([{ fileId: F1, name: 'cv-sample.pdf' }]);
 
     act(() => result.current.onSourceChange('referral'));
+    // AIV-P1-104. SAFETY: mutation check: removed `confirmed &&` from canSubmit -> this assertion failed (the add button was enabled unticked)
+    expect(result.current.canSubmit).toBe(false);
+    act(() => result.current.onConfirmedChange(true));
+    expect(result.current.canSubmit).toBe(true);
     await act(async () => result.current.onSubmit());
-    expect(addApplicants).toHaveBeenCalledWith({ jobId: JOB, source: 'referral', fileIds: [F1] });
-    expect([result.current.result?.ok, result.current.cvs]).toEqual([true, []]);
+    expect(addApplicants).toHaveBeenCalledWith({
+      jobId: JOB,
+      rightToProcessConfirmed: true,
+      source: 'referral',
+      fileIds: [F1],
+    });
+    // Each save is its own batch: the box is unticked again for the next one.
+    expect([result.current.result?.ok, result.current.cvs, result.current.confirmed]).toEqual([true, [], false]);
     // The Candidates tab re-reads its applicant list (AIV-P1-086).
     expect(refresh).toHaveBeenCalledOnce();
   });
@@ -52,6 +62,7 @@ describe('useAddApplicantsController', () => {
       state = { phase: 'done', fileId: F1 };
       const { result } = renderHook(() => useAddApplicantsController(JOB, { addApplicants }));
       act(() => result.current.onSourceChange('referral'));
+      act(() => result.current.onConfirmedChange(true));
       await act(async () => result.current.onSubmit());
       expect([result.current.failure, result.current.source, result.current.cvs.length]).toEqual([
         failure,

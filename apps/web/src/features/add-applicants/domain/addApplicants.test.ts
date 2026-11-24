@@ -19,26 +19,44 @@ describe('SOURCE_OPTIONS', () => {
 
 describe('addApplicantsSchema', () => {
   it("refuses the recruiter source, which is a member's link, not an upload", () => {
-    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'recruiter', fileIds: [F1] }).success).toBe(false);
+    expect(
+      addApplicantsSchema.safeParse({ jobId: JOB, rightToProcessConfirmed: true, source: 'recruiter', fileIds: [F1] })
+        .success,
+    ).toBe(false);
+  });
+
+  // AIV-P1-104. SAFETY: mutation check: changed rightToProcessConfirmed from z.literal(true) to z.boolean() -> this test failed (a false tick parsed)
+  it.each([false, undefined, 'true'])('refuses the confirmation %s', (value) => {
+    const input = { jobId: JOB, source: 'linkedin', fileIds: [F1], rightToProcessConfirmed: value };
+    expect(addApplicantsSchema.safeParse(input).success).toBe(false);
   });
 
   it('takes a job, a source and one or more file ids', () => {
-    const input = { jobId: JOB, source: 'linkedin', fileIds: [F1, F2] };
+    const input = { jobId: JOB, rightToProcessConfirmed: true, source: 'linkedin', fileIds: [F1, F2] };
     expect(addApplicantsSchema.parse(input)).toEqual(input);
   });
 
   it('takes up to 200 CVs at a time (AIV-P1-101), and refuses 201', () => {
-    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'email', fileIds: ids(200) }).success).toBe(true);
-    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'email', fileIds: ids(201) }).success).toBe(false);
+    expect(
+      addApplicantsSchema.safeParse({ jobId: JOB, rightToProcessConfirmed: true, source: 'email', fileIds: ids(200) })
+        .success,
+    ).toBe(true);
+    expect(
+      addApplicantsSchema.safeParse({ jobId: JOB, rightToProcessConfirmed: true, source: 'email', fileIds: ids(201) })
+        .success,
+    ).toBe(false);
   });
 
   it.each([
-    ['no CV', { jobId: JOB, source: 'linkedin', fileIds: [] }],
-    ['the same file twice', { jobId: JOB, source: 'linkedin', fileIds: [F1, F1] }],
-    ['an unknown source', { jobId: JOB, source: 'fax', fileIds: [F1] }],
+    ['no CV', { jobId: JOB, rightToProcessConfirmed: true, source: 'linkedin', fileIds: [] }],
+    ['the same file twice', { jobId: JOB, rightToProcessConfirmed: true, source: 'linkedin', fileIds: [F1, F1] }],
+    ['an unknown source', { jobId: JOB, rightToProcessConfirmed: true, source: 'fax', fileIds: [F1] }],
     ['a job that is not an id', { jobId: 'senior-ai-engineer', source: 'email', fileIds: [F1] }],
-    ['a file that is not an id', { jobId: JOB, source: 'email', fileIds: ['cv.pdf'] }],
-    ['a workspace from the client', { jobId: JOB, source: 'email', fileIds: [F1], workspaceId: JOB }],
+    ['a file that is not an id', { jobId: JOB, rightToProcessConfirmed: true, source: 'email', fileIds: ['cv.pdf'] }],
+    [
+      'a workspace from the client',
+      { jobId: JOB, rightToProcessConfirmed: true, source: 'email', fileIds: [F1], workspaceId: JOB },
+    ],
   ])('refuses %s', (_, input) => {
     expect(addApplicantsSchema.safeParse(input).success).toBe(false);
   });

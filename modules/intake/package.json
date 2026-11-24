@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@credalent/audit": "workspace:*",
     "@credalent/candidates": "workspace:*",
     "@credalent/db": "workspace:*",
     "@credalent/jobs": "workspace:*",

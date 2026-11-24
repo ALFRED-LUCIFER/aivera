@@ -456,6 +456,9 @@ importers:
 
   modules/intake:
     dependencies:
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@credalent/candidates':
         specifier: workspace:*
         version: link:../candidates
