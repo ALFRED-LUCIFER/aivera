@@ -36,6 +36,8 @@ export type ProfileExpansionStore = {
   ): Promise<boolean>;
   /** Repository reads the candidate already has that came from a profile, whichever expansion queued them. */
   profileReads(workspaceId: string, candidateId: string): Promise<number>;
+  /** Waits for, then holds until commit, the candidate's lock, so expansions of one candidate run one at a time. */
+  lockCandidate(workspaceId: string, candidateId: string): Promise<void>;
 };
 
 export type ExpansionQueuePorts = {
@@ -72,8 +74,8 @@ export type ExpandPorts = Pick<ExpansionQueuePorts, 'profileStoreFor'> & {
  * authorship cap. A repository the candidate already has a read of is skipped and the next takes its slot. Throws
  * GitHubRateLimited before writing anything. Returns null when another delivery already settled it.
  */
-// shortcut: the 5-repository cap counts reads committed so far, so two expansions of one candidate running at the same
-// moment can pass it together; serialise per candidate if pilot CVs link several profiles.
+// shortcut: a duplicate merge (AIV-P1-018) does not move a pending expansion to the surviving person, so it queues reads
+// on the merged-away record; move `profile_expansion` rows in `mergeRecords` if pilot merges happen while one is pending.
 export async function expandProfile(
   ports: ExpandPorts,
   tx: Tx,
@@ -81,6 +83,10 @@ export async function expandProfile(
   expansionId: string,
 ): Promise<{ status: Exclude<ProfileExpansionStatus, 'pending'>; queued: number; candidateId: string } | null> {
   const store = ports.profileStoreFor(tx);
+  const first = await store.find(workspaceId, expansionId);
+  if (first?.status !== 'pending') return null;
+  // Both profiles of one CV run at once on the worker; the 5-repository cap counts what the other committed.
+  await store.lockCandidate(workspaceId, first.candidateId);
   const found = await store.find(workspaceId, expansionId);
   if (found?.status !== 'pending') return null;
   const { candidateId, login, synthetic } = found;

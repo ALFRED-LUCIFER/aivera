@@ -371,7 +371,7 @@ export function cvClaims(
   return { claims, contact };
 }
 
-const GITHUB_LINK = /\b(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}/gi;
+const GITHUB_LINK = /(?<![\w.@-])(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}/gi;
 
 /**
  * The GitHub repository links the CV writes, as https://github.com/<owner>/<repo>, once each, CV order; a link inside
@@ -393,7 +393,7 @@ export function repositoryLinks(text: string, instructions: readonly { start: nu
 }
 
 // A login followed by nothing that makes it a repository path: `github.com/<login>`, a trailing slash, a query or a fragment.
-const GITHUB_PROFILE = /\b(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/?(?![A-Za-z0-9_/-])/gi;
+const GITHUB_PROFILE = /(?<![\w.@-])(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/?(?![A-Za-z0-9_/-])/gi;
 // GitHub's own pages under github.com/<word>, which are not people.
 const GITHUB_SITE_PATHS = new Set([
   'orgs',

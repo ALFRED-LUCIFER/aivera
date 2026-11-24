@@ -306,7 +306,7 @@ export const repositoryRead = evidence
   .enableRLS();
 
 // A GitHub profile a CV links (AIV-P1-112), expanded by the worker into repository reads. The login is candidate
-// personal data (PERSONAL_DATA_FIELDS): never in an event or a log line. No foreign keys across modules: opaque ids.
+// personal data: never in an event or a log line. No foreign keys across modules: opaque ids.
 export const profileExpansion = evidence
   .table(
     'profile_expansion',

@@ -322,6 +322,7 @@ describe('GitHub profile links in the CV (AIV-P1-112)', () => {
     ['github.com/maria-credalent-example/rag-notebook', []],
     ['github.com/features and github.com/orgs and github.com/-bad- and github.com/a--b', []],
     ['mygithub.com/maria-credalent-example', []],
+    ['https://docs.github.com/en and education.github.com/pack and api.github.com/users', []],
     [
       'github.com/a-one, github.com/b-two, github.com/c-three',
       ['https://github.com/a-one', 'https://github.com/b-two'],

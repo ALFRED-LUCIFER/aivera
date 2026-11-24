@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, sql } from 'drizzle-orm';
 import type { ProfileExpansionStore } from '../application/profileExpansion.ts';
 import { profileExpansion, repositoryRead } from './schema.ts';
 
@@ -36,6 +36,11 @@ export function profileExpansionStore(tx: Tx): ProfileExpansionStore {
         )
         .returning({ id: profileExpansion.id });
       return settled.length > 0;
+    },
+    async lockCandidate(workspaceId, candidateId) {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`evidence.profile-expand:${workspaceId}:${candidateId}`}, 0))`,
+      );
     },
     async profileReads(workspaceId, candidateId) {
       const [row] = await tx
