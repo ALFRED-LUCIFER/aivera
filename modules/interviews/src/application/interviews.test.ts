@@ -40,6 +40,7 @@ function setup(over: Partial<Ports> = {}, rows: Interview[] = [stored()]) {
     find: vi.fn<InterviewStore['find']>(async (_w, interviewId) => rows.find((r) => r.id === interviewId) ?? null),
     moveStatus: vi.fn<InterviewStore['moveStatus']>(async () => true),
     list: vi.fn<InterviewStore['list']>(async () => rows),
+    deleteAll: vi.fn<InterviewStore['deleteAll']>(async () => undefined),
   };
   const ports: Ports = {
     storeFor: () => store,
@@ -50,6 +51,7 @@ function setup(over: Partial<Ports> = {}, rows: Interview[] = [stored()]) {
       applicationId === APPLICATION ? { personId: DANIEL, jobId: JOB.jobId } : null,
     approvedRubric: async () => RUBRIC,
     canInterview: async (_ctx, userId) => userId === LINA || userId === AYESHA,
+    isSyntheticWorkspace: async () => false,
     newId: () => id(61),
     now: () => NOW,
     ...over,

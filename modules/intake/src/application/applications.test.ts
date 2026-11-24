@@ -24,6 +24,7 @@ function setup(authorize: Ports['authorize']) {
     findOrCreatePerson: vi.fn(),
     displayNames,
     jobResource: async () => JOB,
+    isSyntheticWorkspace: async () => false,
     newId: () => 'id',
     now: () => at,
   });
@@ -91,6 +92,7 @@ describe('receiveBatch', () => {
       findOrCreatePerson: async () => ({ personId: 'p' }),
       displayNames: vi.fn(),
       jobResource: async () => JOB,
+      isSyntheticWorkspace: async () => false,
       newId: () => `id${calls.length}`,
       now: () => at,
     });

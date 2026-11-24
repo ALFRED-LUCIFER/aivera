@@ -18,6 +18,8 @@
     "@credalent/db": "workspace:*",
     "@credalent/evidence": "workspace:*",
     "@credalent/identity": "workspace:*",
+    "@credalent/intake": "workspace:*",
+    "@credalent/interviews": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/workspaces": "workspace:*"
   },

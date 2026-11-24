@@ -72,6 +72,7 @@ const MESSAGES = {
   application_not_found: 'Application not found',
   confirmation_required: 'Confirm you are responsible for the right to process these CVs.',
   invalid_wording: 'Unknown confirmation wording',
+  not_synthetic: 'Only a synthetic demo workspace can be purged.',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;

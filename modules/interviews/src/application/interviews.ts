@@ -25,6 +25,8 @@ export type InterviewStore = {
   moveStatus(workspaceId: string, interviewId: string, from: InterviewStatus, to: InterviewStatus): Promise<boolean>;
   /** Interviews with a stored status in `statuses`, soonest first and those with no time last; one interviewer's if given. */
   list(workspaceId: string, statuses: readonly InterviewStatus[], interviewerUserId?: string): Promise<Interview[]>;
+  /** Deletes every interview of the workspace. */
+  deleteAll(workspaceId: string): Promise<void>;
 };
 
 export type Ports = {
@@ -48,6 +50,7 @@ export type Ports = {
   ): Promise<{ id: string; competencies: { id: string }[] } | null>;
   /** Whether `userId` is an active member who can see the job: admin or recruiter, or granted the job or its client. */
   canInterview(ctx: WorkspaceContext, userId: string, job: JobResource): Promise<boolean>;
+  isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   newId(): string;
   now(): Date;
 };
@@ -153,6 +156,13 @@ export function interviewUseCases(ports: Ports) {
         seen.set(jobId, !!job);
       }
       return rows.filter((r) => seen.get(r.jobId)).map(shown);
+    },
+
+    /** The demo seed's reset (AIV-P2-001): admins; refuses unless the workspace is flagged synthetic. */
+    async purgeSyntheticInterviews(ctx: WorkspaceContext): Promise<void> {
+      await authorize(ctx, 'workspace.settings');
+      if (!(await ports.isSyntheticWorkspace(ctx))) throw new InterviewError('not_synthetic');
+      await storeFor(ctx.tx).deleteAll(ctx.workspaceId);
     },
   };
 }

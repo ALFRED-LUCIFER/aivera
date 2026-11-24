@@ -5,10 +5,14 @@ import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createAudit } from '@credalent/audit/composition';
 import { CandidateError } from '@credalent/candidates';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb, type Db } from '@credalent/db';
+import { IntakeError } from '@credalent/intake';
+import { createIntake, findApplication } from '@credalent/intake/composition';
+import { InterviewError } from '@credalent/interviews';
+import { createInterviews } from '@credalent/interviews/composition';
 import { JobError } from '@credalent/jobs';
-import { createJobs } from '@credalent/jobs/composition';
+import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
 import { seedDemo, SEED_ISSUER } from '@credalent/seed';
 import { CANDIDATES, INDUSTRY_JOBS } from '@credalent/seed/cast';
 import { WorkspaceError } from '@credalent/workspaces';
@@ -22,6 +26,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 const ALEX = '0190d4a2-0000-7000-8000-00000000a1e1';
+// 09:00 on 18 Nov in the Gulf: the Interviews artboard's "today".
+const NOW = new Date('2026-11-18T05:00:00.000Z');
 
 let container: StartedPostgreSqlContainer;
 let admin: Db;
@@ -49,6 +55,11 @@ const snapshot = async () => {
     'evidence.source',
     'evidence.item',
     'evidence.outbox',
+    'intake.application',
+    'intake.application_source',
+    'intake.outbox',
+    'interviews.interview',
+    'interviews.outbox',
     'audit.entry',
   ];
   const rows: Record<string, unknown[]> = {};
@@ -117,7 +128,7 @@ describe('Scenario: Seeding a fresh database', () => {
   // Scenario: Seeding a fresh database finishes (exits within 60 seconds); a hang fails here, not in CI's job timeout.
   // SAFETY: mutation check: read the catalogue inside withWorkspace again -> this hook timed out
   beforeAll(async () => {
-    workspaceId = await seedDemo(app, { appEnv: 'local' });
+    workspaceId = await seedDemo(app, { appEnv: 'local', now: NOW });
   }, 60_000);
 
   it('creates a synthetic workspace with the recruiter as admin and 5 hiring owners', async () => {
@@ -172,6 +183,74 @@ describe('Scenario: Seeding a fresh database', () => {
       to_char(checked_at at time zone 'UTC', 'YYYY-MM-DD') as checked from evidence.source
       where workspace_id = ${workspaceId} and label = 'llm-eval-harness'`);
     expect(source).toEqual({ check_method: 'Commit history', checked: '2026-11-12' });
+  });
+
+  it("AIV-P2-001: seeds the Interviews artboard's five ongoing interviews, each on its candidate's application", async () => {
+    // The join on the application proves each interview's job and candidate are its application's.
+    const rows = await admin.execute(sql`select p.display_name as candidate, j.title as job, i.round, i.status,
+        to_char(i.scheduled_at at time zone 'Asia/Dubai', 'DD Mon HH24:MI') as at, u.email as interviewer,
+        (select array_agg(c.name order by c.position) from jobs.competency c where c.id = any(i.competency_ids)) as tests
+      from interviews.interview i
+      join intake.application a on a.id = i.application_id and a.job_id = i.job_id and a.person_id = i.candidate_id
+      join candidates.person p on p.id = i.candidate_id join jobs.job j on j.id = i.job_id
+      join identity.user u on u.id = i.interviewer_user_id
+      where i.workspace_id = ${workspaceId} order by i.scheduled_at`);
+    const pm = 'Senior Product Manager, Payments';
+    expect([...rows].map((r) => Object.values(r))).toEqual([
+      // Stored as scheduled: "Scorecard due" is computed from the time, never written.
+      [
+        'Anjali Iyer',
+        pm,
+        'structured_screen',
+        'scheduled',
+        '16 Nov 11:00',
+        'ap@example.com',
+        ['Working with engineering and design'],
+      ],
+      [
+        'Daniel Novak',
+        'Senior AI Engineer',
+        'structured_screen',
+        'in_progress',
+        '18 Nov 14:00',
+        'ap@example.com',
+        ['Retrieval and evaluation', 'Cost and reliability'],
+      ],
+      [
+        'Priya Nair',
+        'Senior AI Engineer',
+        'structured_screen',
+        'scheduled',
+        '20 Nov 10:30',
+        'ap@example.com',
+        ['LLM systems in production'],
+      ],
+      [
+        'Rana Khoury',
+        pm,
+        'structured_screen',
+        'scheduled',
+        '20 Nov 15:00',
+        'ap@example.com',
+        ['Outcomes with metrics'],
+      ],
+      [
+        'Karim Nasser',
+        pm,
+        'evidence_defence',
+        'scheduled',
+        '21 Nov 11:00',
+        'cpo.payments@example.com',
+        ['Prioritisation'],
+      ],
+    ]);
+    // The applications reuse the cast's people: still 23, and no arrival carries a batch for the worker to read.
+    expect(await count(sql`select count(*) as n from intake.application where workspace_id = ${workspaceId}`)).toBe(5);
+    expect(
+      await count(sql`select count(*) as n from intake.application_source where workspace_id = ${workspaceId}
+        and batch_id is null`),
+    ).toBe(5);
+    expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${workspaceId}`)).toBe(23);
   });
 
   it('audits the workspace and every added member', async () => {
@@ -439,11 +518,16 @@ describe('Scenario: Seeding a fresh database', () => {
         'jobs.competency',
         'evidence.source',
         'evidence.item',
+        'intake.application',
+        'intake.application_source',
+        'interviews.interview',
       ])
         expect(await left(t)).toBe(0);
       expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${reseeded}`)).toBe(23);
       expect(await count(sql`select count(*) as n from jobs.job where workspace_id = ${reseeded}`)).toBe(10);
       expect(await count(sql`select count(*) as n from evidence.item where workspace_id = ${reseeded}`)).toBe(16);
+      expect(await count(sql`select count(*) as n from intake.application where workspace_id = ${reseeded}`)).toBe(5);
+      expect(await count(sql`select count(*) as n from interviews.interview where workspace_id = ${reseeded}`)).toBe(5);
       expect([...(await facts(reseeded))]).toEqual(seeded);
       // The append-only log keeps the old workspace's entries and records the purge last.
       const [last] = await admin.execute<{ action: string }>(
@@ -573,6 +657,42 @@ describe('Scenario: Seeding a fresh database', () => {
         workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => jobs.purgeSyntheticJobs(ctx)),
       ).rejects.toThrow(JobError);
       expect(await count(sql`select count(*) as n from jobs.job where workspace_id = ${real.id}`)).toBe(1);
+    });
+
+    // SAFETY: mutation check: removed the isSyntheticWorkspace check in purgeSyntheticApplications -> this test failed (resolved)
+    // SAFETY: mutation check: removed the isSyntheticWorkspace check in purgeSyntheticInterviews -> this test failed (resolved)
+    it('the applications and interviews purges refuse a workspace not flagged synthetic, deleting nothing', async () => {
+      const audit = createAudit(app);
+      const workspaces = createWorkspaces(app, audit);
+      const jobs = createJobs(workspaces, audit);
+      const intake = createIntake(workspaces, createCandidates(workspaces), jobs, displayNamesInWorkspace, audit);
+      const interviews = createInterviews(
+        workspaces,
+        jobs,
+        createApprovedRubricReads().approvedRubric,
+        findApplication,
+      );
+      const real = await workspaces.createWorkspace({
+        name: 'Khalid Search',
+        company: 'Khalid Search',
+        hiringFocus: 'several',
+        creatorUserId: ALEX,
+      });
+      // Rows with opaque ids only: the purges must refuse on the workspace's flag, whatever it holds.
+      await admin.execute(sql`insert into intake.application (id, workspace_id, person_id, job_id, stage, received_at)
+        values (gen_random_uuid(), ${real.id}, gen_random_uuid(), gen_random_uuid(), 'new', now())`);
+      await admin.execute(sql`insert into interviews.interview (id, workspace_id, application_id, job_id, candidate_id,
+          round, interviewer_user_id, status, rubric_version_id, competency_ids, created_by, created_at)
+        values (gen_random_uuid(), ${real.id}, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(),
+          'structured_screen', ${ALEX}, 'to_schedule', gen_random_uuid(), '{}', ${ALEX}, now())`);
+      await expect(
+        workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => intake.purgeSyntheticApplications(ctx)),
+      ).rejects.toThrow(IntakeError);
+      await expect(
+        workspaces.withWorkspace({ userId: ALEX }, real.id, (ctx) => interviews.purgeSyntheticInterviews(ctx)),
+      ).rejects.toThrow(InterviewError);
+      expect(await count(sql`select count(*) as n from intake.application where workspace_id = ${real.id}`)).toBe(1);
+      expect(await count(sql`select count(*) as n from interviews.interview where workspace_id = ${real.id}`)).toBe(1);
     });
 
     // SAFETY: mutation check: removed the synthetic = false lookup in deleteSyntheticJobs -> this test failed (resolved)

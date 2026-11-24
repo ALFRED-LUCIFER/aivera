@@ -1,11 +1,13 @@
 // pnpm db:seed (AIV-P0-031): the synthetic demo workspace, written through each module's contract, never raw SQL.
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import type { Db } from '@credalent/db/client';
 import { createEvidence } from '@credalent/evidence/composition';
 import { createIdentity } from '@credalent/identity/composition';
+import { createIntake, findApplication } from '@credalent/intake/composition';
+import { createInterviews } from '@credalent/interviews/composition';
 import type { Competency } from '@credalent/jobs';
-import { createCatalogueReads, createJobs } from '@credalent/jobs/composition';
+import { createApprovedRubricReads, createCatalogueReads, createJobs } from '@credalent/jobs/composition';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import {
@@ -14,9 +16,11 @@ import {
   HIRING_OWNERS,
   INDUSTRY_JOBS,
   industryRubric,
+  INTERVIEWS,
   JOBS,
   RECRUITER,
   WORKSPACE,
+  type CastCandidate,
   type CastCompetency,
   type CastUser,
 } from './cast.ts';
@@ -38,9 +42,12 @@ export class SeedRefused extends Error {
 /**
  * Seeds the demo workspace, or tops it up: running it again adds and changes nothing. `reset` first purges the demo
  * workspace (the recruiter's active workspace), which each module refuses unless it is flagged synthetic.
- * Returns the demo workspace id.
+ * `now` sets the day the demo interviews count from. Returns the demo workspace id.
  */
-export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: string | undefined; reset?: boolean }) {
+export async function seedDemo(
+  db: Db,
+  { appEnv, reset = false, now = new Date() }: { appEnv: string | undefined; reset?: boolean; now?: Date },
+) {
   // shortcut: trusts APP_ENV, not the database; APP_ENV=local against a pilot DATABASE_URL would add (never purge) a
   // synthetic workspace there. Check the server's environment marker once databases carry one.
   if (!SYNTHETIC_ENVS.includes(appEnv ?? '')) throw new SeedRefused();
@@ -50,6 +57,9 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   const candidates = createCandidates(workspaces);
   const jobs = createJobs(workspaces, audit);
   const evidence = createEvidence(workspaces, audit);
+  const { approvedRubric } = createApprovedRubricReads();
+  const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, () => now);
+  const interviews = createInterviews(workspaces, jobs, approvedRubric, findApplication, () => now);
   const userId = async (u: CastUser) =>
     (
       await identity.upsertUserFromIdToken({
@@ -66,10 +76,11 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
   // shortcut: the demo is the recruiter's active workspace, so two seeds started at once can create two; find it by the synthetic
   // flag under a lock if concurrent seeding ever matters.
   let workspaceId = await workspaces.activeWorkspace(recruiter);
-  // shortcut: the reset purges people and jobs but not intake.* (the demo seeds no applications yet); the first seed
-  // that adds applications must purge them here first, as there are no foreign keys across modules to stop orphans.
   if (workspaceId && reset) {
     await workspaces.withWorkspace(session, workspaceId, async (ctx) => {
+      // Interviews and applications first: no foreign key across modules would stop them outliving their people and jobs.
+      await interviews.purgeSyntheticInterviews(ctx);
+      await intake.purgeSyntheticApplications(ctx);
       await evidence.purgeSyntheticEvidence(ctx);
       await candidates.purgeSyntheticPeople(ctx);
       await jobs.purgeSyntheticJobs(ctx);
@@ -90,16 +101,7 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
     // First, though audited before the jobs (AGENTS.md 3.6 asks audit last): a job's hiring owner must already be an
     // active member, and gets the job's grant, audited, as the job is saved (AIV-P1-056).
     for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
-    for (const c of CANDIDATES)
-      await candidates.findOrCreatePerson(ctx, {
-        displayName: c.displayName,
-        identifiers: [
-          { type: 'email', value: c.email },
-          { type: 'phone', value: c.phone },
-        ],
-        location: c.location,
-        synthetic: c.synthetic,
-      });
+    for (const c of CANDIDATES) await candidates.findOrCreatePerson(ctx, personOf(c));
     // AIV-P1-065: a job is found again by its title; each new one gets its draft rubric v1, audited as `job.created`.
     // shortcut: a demo job renamed in the app is seeded again on the next run; match on a seed key if that matters.
     const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
@@ -201,8 +203,60 @@ export async function seedDemo(db: Db, { appEnv, reset = false }: { appEnv: stri
         });
     }
   });
+
+  // AIV-P2-001: the Interviews artboard's five ongoing interviews, each on its candidate's application to the job. A
+  // rerun skips an application that has an interview.
+  // shortcut: a cancelled interview is in neither list, so its application would get a second one; nothing cancels yet.
+  await asRecruiter(async (ctx) => {
+    const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
+    const planned = new Set(
+      [
+        ...(await interviews.listInterviews(ctx, 'ongoing')),
+        ...(await interviews.listInterviews(ctx, 'completed')),
+      ].map((i) => i.applicationId),
+    );
+    for (const i of INTERVIEWS) {
+      const jobId = jobIds.get(i.job);
+      const candidate = CANDIDATES.find((c) => c.displayName === i.candidate);
+      const rubric = jobId && (await approvedRubric(ctx.tx, ctx.workspaceId, jobId));
+      if (!jobId || !candidate || !rubric) throw new Error('A demo interview names a job or candidate the cast lacks');
+      const applied = (await intake.listApplicationsForJob(ctx, jobId)).find((a) => a.displayName === i.candidate);
+      // No batch: the worker never reads the arrival, so the demo's applications cost no AI call.
+      const applicationId =
+        applied?.applicationId ??
+        (await intake.receiveApplication(ctx, { jobId, person: personOf(candidate), source: 'linkedin' }))
+          .applicationId;
+      if (planned.has(applicationId)) continue;
+      const { interviewId } = await interviews.createInterview(ctx, {
+        applicationId,
+        round: i.round,
+        interviewerUserId: (i.interviewer && ownerOf(i.interviewer)) || recruiter,
+        scheduledAt: new Date(`${gulfDay(now, i.day)}T${i.time}:00+04:00`),
+        competencyIds: i.competencies.map((name) => {
+          const found = rubric.competencies.find((c) => c.name === name);
+          if (!found) throw new Error(`No competency ${name} in the approved rubric`);
+          return found.id;
+        }),
+      });
+      if (i.started) await interviews.startInterview(ctx, interviewId);
+    }
+  });
   return workspaceId;
 }
+
+/** The Gulf (UTC+4) calendar date `days` from `now`, as YYYY-MM-DD. */
+const gulfDay = (now: Date, days: number) =>
+  new Date(now.getTime() + (4 + 24 * days) * 3_600_000).toISOString().slice(0, 10);
+
+const personOf = (c: CastCandidate) => ({
+  displayName: c.displayName,
+  identifiers: [
+    { type: 'email' as const, value: c.email },
+    { type: 'phone' as const, value: c.phone },
+  ],
+  location: c.location,
+  synthetic: c.synthetic,
+});
 
 const day = (date: string) => new Date(`${date}T08:00:00Z`);
 
