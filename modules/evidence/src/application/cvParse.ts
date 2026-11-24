@@ -18,7 +18,7 @@ import {
   nameFromCv,
   mergeNotes,
   pageSpan,
-  profileLinks,
+  profileLogins,
   repositoryLinks,
   type CvExtraction,
   type CvLayout,
@@ -286,7 +286,8 @@ export async function parseCv(
     sourceId,
     synthetic: source.synthetic,
   }));
-  const notes = mergeNotes(instructions, hiddenText(layout)).map((n): SourceNote => ({
+  const hidden = hiddenText(layout);
+  const notes = mergeNotes(instructions, hidden).map((n): SourceNote => ({
     ...base,
     id: newId(),
     sourceId,
@@ -307,12 +308,8 @@ export async function parseCv(
       synthetic: source.synthetic,
     });
   // A profile the CV links is expanded on the worker, never fetched here; its repositories stay "Authorship unclear".
-  for (const url of profileLinks(layout.content, instructions))
-    await queueProfile(tx, workspaceId, {
-      candidateId: source.candidateId,
-      login: url.slice('https://github.com/'.length),
-      synthetic: source.synthetic,
-    });
+  for (const login of profileLogins(layout.content, [...instructions, ...hidden]))
+    await queueProfile(tx, workspaceId, { candidateId: source.candidateId, login, synthetic: source.synthetic });
   if (items.length)
     await publishRecorded(
       tx,

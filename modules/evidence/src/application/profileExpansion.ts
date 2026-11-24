@@ -93,9 +93,11 @@ export async function expandProfile(
   const settle = async (status: 'expanded' | 'not_expandable', queued: number) =>
     (await store.settle(workspaceId, expansionId, status, queued)) ? { status, queued, candidateId } : null;
 
+  // The candidate's other profile may have used the room already: no GitHub call is spent on this one.
+  const room = PROFILE_REPOSITORY_CAP - (await store.profileReads(workspaceId, candidateId));
+  if (room <= 0) return settle('expanded', 0);
   if ((await ports.github.user(login))?.type !== 'User') return settle('not_expandable', 0);
   const names = chooseProfileRepositories(await ports.github.ownedRepositories(login));
-  const room = PROFILE_REPOSITORY_CAP - (await store.profileReads(workspaceId, candidateId));
   let queued = 0;
   for (const name of names) {
     if (queued >= room) break;

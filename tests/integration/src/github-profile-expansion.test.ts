@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { createAiClient, fakeProvider } from '@credalent/ai';
@@ -15,10 +15,17 @@ import {
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
 import { createConsumer, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
-import { CvParseRequestedV1, GitHubProfileExpandRequestedV1, type EvidenceContract } from '@credalent/evidence';
+import {
+  CvParseRequestedV1,
+  DocumentReadRequestedV1,
+  GitHubProfileExpandRequestedV1,
+  LinkReadRequestedV1,
+  type EvidenceContract,
+} from '@credalent/evidence';
 import {
   createEvidence,
   createFileReadHandlers,
+  createLinkReadHandler,
   createProfileExpansionHandler,
   EVIDENCE_QUEUE,
 } from '@credalent/evidence/composition';
@@ -206,6 +213,13 @@ async function consume(envelopes: Envelope[]): Promise<string[]> {
       now: () => NOW,
     }),
     createProfileExpansionHandler({ github, scheduler, now: () => NOW }),
+    createLinkReadHandler({
+      fetchPage: async () => ({
+        ok: true,
+        html: '<html><body><p>Notes: github.com/hessa-credalent-example</p></body></html>',
+      }),
+      now: () => NOW,
+    }),
   ];
   const consumer = createConsumer({ db: app, queue: EVIDENCE_QUEUE, handlers, now: () => NOW });
   const settled: string[] = [];
@@ -227,6 +241,8 @@ async function drain() {
     const sent: Envelope[] = [];
     const toEvidence = new Set<string>([
       CvParseRequestedV1.type,
+      DocumentReadRequestedV1.type,
+      LinkReadRequestedV1.type,
       GitHubProfileExpandRequestedV1.type,
       FileCleanV1.type,
       FileRejectedV1.type,
@@ -245,9 +261,8 @@ async function drain() {
   }
 }
 
-/** Uploads `lines` as the CV of a new applicant, parses it, and runs every expansion it queued. */
-async function apply(name: string, lines: string[]) {
-  const candidateId = await as(
+const personNamed = (name: string) =>
+  as(
     w1,
     async (ctx) =>
       (
@@ -258,6 +273,10 @@ async function apply(name: string, lines: string[]) {
         })
       ).personId,
   );
+
+/** Uploads `lines` as the CV of a new applicant, parses it, and runs every expansion it queued. */
+async function apply(name: string, lines: string[]) {
+  const candidateId = await personNamed(name);
   const marker = randomUUID();
   layouts.set(marker, layoutOf([name, 'Skills: Python', ...lines]));
   const data = Buffer.from(`%PDF-1.7 ${marker} synthetic`);
@@ -345,13 +364,13 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
 
     // SAFETY: mutation check: removed the fork filter from chooseProfileRepositories -> this test failed (forked-1 queued)
     // SAFETY: mutation check: removed the 5-repository cap from expandProfile -> this test failed (6 reads queued)
-    // SAFETY: mutation check: set githubLogin to the profile login in expandProfile -> the next test failed (login set)
     it('Scenario: the profile expands to the five most recently pushed own repositories', async () => {
       const reads = await readsOf(maria);
       expect(names(reads)).toEqual(['active-1', 'active-2', 'active-3', 'active-4', 'active-5']);
       expect(await expansionsOf(maria)).toEqual([{ status: 'expanded', queued: 5 }]);
     });
 
+    // SAFETY: mutation check: set githubLogin to the profile login in expandProfile -> this test failed (login set)
     it('each read has no GitHub login and no emails, so its limit stays "Authorship unclear", and its chip says where it came from', async () => {
       for (const read of await readsOf(maria))
         expect(read).toMatchObject({ github_login: null, emails: [], via: 'cv_profile' });
@@ -386,9 +405,9 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
   });
 
   it('Scenario: A repository the CV already links directly is not read twice', async () => {
-    users.set('rania-credalent-example', { type: 'User', repos: active('rag', 8) });
+    users.set('arjun-credalent-example', { type: 'User', repos: active('rag', 8) });
     const candidate = await apply('Arjun Menon', [
-      'Code: github.com/rania-credalent-example and github.com/rania-credalent-example/rag-1',
+      'Code: github.com/arjun-credalent-example and github.com/arjun-credalent-example/rag-1',
     ]);
     const reads = await readsOf(candidate);
     expect(names(reads)).toEqual(['rag-1', 'rag-2', 'rag-3', 'rag-4', 'rag-5', 'rag-6']);
@@ -408,7 +427,7 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
       [
         'a profile GitHub answers with 404',
         'Omar Al Suwaidi',
-        'Code: github.com/nobody-credalent-example',
+        'Code: github.com/anjali-credalent-example',
         [{ status: 'not_expandable', queued: 0 }],
       ],
     ])('%s', async (_what, name, line, outcome) => {
@@ -418,7 +437,7 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
       expect(await expansionsOf(candidate)).toEqual(outcome);
     });
 
-    // SAFETY: mutation check: removed the instructions overlap filter from profileLinks -> this test failed (one stored)
+    // SAFETY: mutation check: removed the excluded-spans filter from profileLogins -> this test failed (one stored)
     it('a profile named only inside text aimed at the AI is not stored', async () => {
       users.set('tariq-credalent-example', { type: 'User', repos: active('planted', 3) });
       const candidate = await apply('Hessa Al Mazrouei', [
@@ -429,23 +448,26 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
     });
   });
 
-  // SAFETY: mutation check: removed the 2-profile cap from profileLinks -> this test failed (3 expansions stored)
+  // SAFETY: mutation check: removed the 2-login cap from profileLogins -> this test failed (3 expansions stored)
   // SAFETY: mutation check: removed the per-candidate lock from expandProfile -> this test failed (10 reads queued)
   it('Scenario: At most two profiles and five repositories per CV', async () => {
-    for (const login of ['layla-one', 'layla-two', 'layla-three'])
+    for (const login of ['priya', 'hessa', 'omar'])
       users.set(`${login}-credalent-example`, { type: 'User', repos: active(login, 6) });
+    const listedBefore = listCalls;
     const candidate = await apply('Karim Nasser', [
-      'Code: github.com/layla-one-credalent-example, github.com/layla-two-credalent-example, github.com/layla-three-credalent-example',
+      'Code: github.com/priya-credalent-example, github.com/hessa-credalent-example, github.com/omar-credalent-example',
     ]);
     expect(await expansionsOf(candidate)).toHaveLength(2);
     expect(await readsOf(candidate)).toHaveLength(5);
+    // The second profile found no room left and spent no repository listing.
+    expect(listCalls - listedBefore).toBe(1);
   });
 
   it("Scenario: GitHub's rate limit postpones the expansion", async () => {
-    users.set('noura-credalent-example', { type: 'User', repos: active('noura', 3) });
+    users.set('rana-credalent-example', { type: 'User', repos: active('rana', 3) });
     rateLimitNext = true;
     scheduled.length = 0;
-    const candidate = await apply('Rana Khoury', ['Code: github.com/noura-credalent-example']);
+    const candidate = await apply('Rana Khoury', ['Code: github.com/rana-credalent-example']);
     expect(scheduled.map((s) => [s.queue, s.envelope.type, s.at])).toEqual([
       [EVIDENCE_QUEUE, GitHubProfileExpandRequestedV1.type, new Date(resetAt.getTime() + 1000)],
     ]);
@@ -458,18 +480,45 @@ describe('Feature: Read the repositories behind a GitHub profile link in a CV', 
     expect(await readsOf(candidate)).toHaveLength(3);
   });
 
-  it('a profile named in an uploaded write-up is not expanded: only CV parsing finds profile links', () => {
-    const callers = readdirSync(
-      join(import.meta.dirname, '..', '..', '..', 'modules', 'evidence', 'src', 'application'),
-    )
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
-      .filter((f) =>
-        readFileSync(
-          join(import.meta.dirname, '..', '..', '..', 'modules', 'evidence', 'src', 'application', f),
-          'utf8',
-        ).includes('profileLinks('),
-      );
-    expect(callers).toEqual(['cvParse.ts']);
+  it('Scenario: A profile link elsewhere than the CV is not expanded (an uploaded write-up, a linked page)', async () => {
+    users.set('hessa-credalent-example', { type: 'User', repos: active('hessa', 3) });
+    const candidate = await personNamed('Anjali Iyer');
+    const marker = randomUUID();
+    layouts.set(marker, layoutOf(['Write-up: github.com/hessa-credalent-example']));
+    const data = Buffer.from(`%PDF-1.7 ${marker} synthetic`);
+    const ticket = await as(w1, (ctx) =>
+      files.requestUpload(ctx, {
+        purpose: 'evidence',
+        fileName: 'write-up.pdf',
+        contentType: 'application/pdf',
+        size: data.length,
+      }),
+    );
+    stored.set(`uploads-quarantine/w/${w1}/${ticket.fileId}`, { data, contentType: 'application/pdf' });
+    expect(await as(w1, (ctx) => files.markCleanWithoutScan(ctx, ticket.fileId))).toBe('clean');
+    await as(w1, (ctx) =>
+      evidence.requestDocumentRead(ctx, {
+        candidateId: candidate,
+        fileId: ticket.fileId,
+        label: 'Write-up',
+        synthetic: true,
+      }),
+    );
+    await as(w1, (ctx) =>
+      evidence.requestLinkRead(ctx, {
+        candidateId: candidate,
+        url: 'https://write-up.credalent.example/anjali',
+        label: 'Linked work',
+        synthetic: true,
+      }),
+    );
+    await drain();
+    const sources = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ kind: string }>(sql`select kind from evidence.source where candidate_id = ${candidate}`),
+    );
+    expect([...sources].map((r) => r.kind).toSorted()).toEqual(['document', 'shipped_product']);
+    expect(await expansionsOf(candidate)).toEqual([]);
+    expect(await readsOf(candidate)).toEqual([]);
   });
 
   it('the synthetic purge removes the expansions with the rest of the evidence', async () => {

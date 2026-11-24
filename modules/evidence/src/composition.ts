@@ -462,8 +462,8 @@ export function createProfileExpansionHandler(config: {
             {
               'evidence.expansion_id': payload.expansionId,
               'evidence.candidate_id': result.candidateId,
-              'evidence.queued': result.queued,
-              'evidence.outcome': result.status,
+              'credalent.evidence.profile_queued': result.queued,
+              'credalent.evidence.profile_outcome': result.status,
             },
             'github profile expanded',
           );
