@@ -3,7 +3,7 @@ import { AiUnavailable, type AiClient } from '../src/client.ts';
 import { evaluateCatalogue, recordedClient, runBudget, uncoveredKeys } from './catalogue.ts';
 import { domainCatalogue, liveTokenCap } from './config.ts';
 import { loadGolden } from './golden.ts';
-import { matchPrompt } from './run.ts';
+import { matchPrompt, suggestionPrompt } from './run.ts';
 
 // Feature: Run the eval set on a catalogue draft (AIV-P2-048). Recorded answers only: no model call in CI.
 
@@ -30,6 +30,14 @@ describe('the coverage rule', () => {
     expect(result).toEqual({ outcome: 'failed', uncovered: ['eu'], tasks: [] });
   });
 });
+
+const askSuggestionJudge = (sources: unknown[]) =>
+  recordedClient().generateStructured({
+    task: 'evals.judge',
+    promptVersion: suggestionPrompt.id,
+    prompt: '{}',
+    sources,
+  } as unknown as Parameters<AiClient['generateStructured']>[0]);
 
 describe('a run with recorded answers', () => {
   it('Scenario: A passing run reports each task with its group rates', async () => {
@@ -68,6 +76,16 @@ describe('a run with recorded answers', () => {
       } as unknown as Parameters<AiClient['generateStructured']>[0]);
     expect(await ask(['another statement', match])).toEqual({ matches: [{ expected, match }] });
     expect(await ask(['another statement'])).toEqual({ matches: [{ expected, match: null }] });
+  });
+
+  it("answers a suggestion-judge request with the case's recorded verdicts, and refuses one it has none for (AIV-P2-085)", async () => {
+    const c = golden.get('jobs.draftCompetencies')?.find((g) => g.id === 'product-designer');
+    if (!c?.recorded.suggestions) throw new Error('no recorded suggestion verdicts');
+    const { verdicts } = (await askSuggestionJudge(c.sources)) as { verdicts: { name: string }[] };
+    expect(verdicts.map((v) => v.name)).toEqual(Object.keys(c.recorded.suggestions.verdicts));
+    await expect(
+      askSuggestionJudge([{ id: 'S1', kind: 'job_description', text: 'Not a golden case.' }]),
+    ).rejects.toThrow('no recorded suggestion verdicts for this request');
   });
 
   it('Scenario: The AI deployment is unavailable', async () => {

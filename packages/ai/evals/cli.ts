@@ -18,11 +18,14 @@ import {
   liveJudge,
   liveJudgeVerdict,
   liveMatcher,
+  liveSuggestionJudge,
   matchPrompt,
   recordedAnswer,
   recordedJudge,
   recordedJudgeVerdict,
   recordedMatcher,
+  recordedSuggestionJudge,
+  suggestionPrompt,
   summaryTable,
   type TaskReport,
 } from './run.ts';
@@ -65,6 +68,7 @@ let answer = recordedAnswer;
 let judge = recordedJudge;
 let matcher = recordedMatcher;
 let judgeVerdict = recordedJudgeVerdict;
+let suggestionJudge = recordedSuggestionJudge;
 if (values.live) {
   // Dev and local only: the golden set is synthetic, but a run must never spend a pilot workspace's model.
   if (process.env['APP_ENV'] !== 'dev' && process.env['APP_ENV'] !== 'local')
@@ -82,6 +86,7 @@ if (values.live) {
   judge = liveJudge(ai);
   matcher = liveMatcher(ai);
   judgeVerdict = liveJudgeVerdict(judge);
+  suggestionJudge = liveSuggestionJudge(ai);
 }
 
 const reports: TaskReport[] = [];
@@ -101,7 +106,7 @@ for (const [task, cases] of tasks) {
     console.log(`SKIP ${task}: served by the AI service and AI_SERVICE_URL is not set`);
     continue;
   }
-  const report = await evaluateTask(task, cases, answer, judge, matcher);
+  const report = await evaluateTask(task, cases, answer, judge, matcher, suggestionJudge);
   for (const line of caseLines(report)) console.log(line);
   reports.push(report);
 }
@@ -120,7 +125,7 @@ if (values.out) {
   const at = new Date().toISOString();
   const mode = values.live ? 'live' : 'recorded';
   // The judge's prompt id and the deployments' models, so a trend can tell a prompt change from a model change.
-  const versions = { judge: judgePrompt.id, match: matchPrompt.id, deployments };
+  const versions = { judge: judgePrompt.id, match: matchPrompt.id, suggestion: suggestionPrompt.id, deployments };
   const results = { at, mode, commit: process.env['GITHUB_SHA'], versions, passed, reports };
   writeFileSync(values.out, `${JSON.stringify(results, null, 2)}\n`);
 }

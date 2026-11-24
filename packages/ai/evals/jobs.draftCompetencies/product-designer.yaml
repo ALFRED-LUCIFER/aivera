@@ -19,58 +19,90 @@ expected:
       - Arabic and right-to-left design
       - Accessibility
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '85f1c205ca3f'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: ff09bc84bbe2
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'Interaction design craft',
-            'evidenceExpected': 'Flows they designed and shipped',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'design the checkout flows our customers use' }],
-          },
-          {
-            'name': 'Research to decisions',
-            'evidenceExpected': 'Research they ran and the design decisions it changed',
-            'weight': 25,
-            'level': 3,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You turn research into design decisions' }],
-          },
-          {
-            'name': 'Prototyping',
-            'evidenceExpected': 'Prototypes they built and what testing them showed',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You prototype and test ideas before we build them' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Arabic and right-to-left design,
-            evidenceExpected: 'Shipped Arabic or right-to-left interfaces, and the layout decisions behind them',
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'Customers shop in Arabic, but the description asks for no right-to-left design work.',
-            citations: [{ sourceId: S1, quote: Our customers shop in Arabic and English }],
-          },
-          {
-            name: Accessibility,
-            evidenceExpected: 'Designs they made accessible: contrast, focus order, screen reader checks',
-            weight: 10,
-            level: 3,
-            type: desirable,
-            why: 'Every customer must be able to finish checkout, but the description does not mention accessibility.',
-            citations: [{ sourceId: S1, quote: design the checkout flows our customers use }],
-          },
-        ],
-    }
+    competencies:
+      - name: Checkout Flow Design
+        evidenceExpected: Designed and shipped checkout flows for e-commerce platforms used by customers.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will design the checkout flows our customers use.
+            start: 0
+            end: 53
+        claim: false
+      - name: User Research Integration
+        evidenceExpected: Produced design decisions directly informed by user research findings.
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You turn research into design decisions.
+            start: 54
+            end: 94
+        claim: false
+      - name: Prototyping and Testing
+        evidenceExpected: Built and tested prototypes to validate design ideas before development.
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You prototype and test ideas before we build them.
+            start: 95
+            end: 145
+        claim: false
+      - name: Bilingual Design (Arabic and English)
+        evidenceExpected: Created user interfaces and experiences that support both Arabic and English languages.
+        weight: 20
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Our customers shop in Arabic and English across the UAE and Saudi Arabia.
+            start: 146
+            end: 219
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: E-commerce User Experience Design
+        evidenceExpected: Designed user experiences specifically tailored for online shopping platforms.
+        weight: 15
+        level: 4
+        type: desirable
+        why: The job involves designing checkout flows for customers shopping online, implying a need for e-commerce UX
+          knowledge, which is not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: You will design the checkout flows our customers use.
+            start: 0
+            end: 53
+        claim: false
+      - name: Localization and Cultural Adaptation
+        evidenceExpected: Adapted product designs to fit cultural and regional user expectations and norms.
+        weight: 15
+        level: 3
+        type: desirable
+        why:
+          Designing for customers in UAE and Saudi Arabia shopping in Arabic and English implies the need to localize and
+          culturally adapt designs, which the description does not explicitly mention.
+        citations:
+          - sourceId: S1
+            quote: Our customers shop in Arabic and English across the UAE and Saudi Arabia.
+            start: 146
+            end: 219
+        claim: false
+  matches:
+    Interaction design craft: Checkout Flow Design
+    Research to decisions: User Research Integration
+    Prototyping: Prototyping and Testing
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      E-commerce User Experience Design: null
+      Localization and Cultural Adaptation: null

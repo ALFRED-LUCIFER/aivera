@@ -18,6 +18,13 @@ const sourceKinds = [
 export const verdict = z.object({ pass: z.boolean(), reason: z.string().min(1) }).strict();
 export type Verdict = z.infer<typeof verdict>;
 
+/**
+ * The rubric point a drafted suggestion fails (AIV-P2-085, run.ts suggestionPrompt): not needed by the job as
+ * described, a listed competency reworded, a proxy, a generic soft skill, or a cited line that does not imply it.
+ */
+export const suggestionFaults = ['unrelated', 'listed', 'proxy', 'generic', 'citation'] as const;
+export type SuggestionFault = (typeof suggestionFaults)[number];
+
 export const goldenCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -70,6 +77,17 @@ export const goldenCase = z
          * means the same, or null: the live matcher's verdict, so a recorded run scores it without a model (AIV-P2-083).
          */
         matches: z.record(z.string(), z.string().nullable()).optional(),
+        /**
+         * For each suggestion in the answer, by name, the rubric point it fails or null: the live suggestion judge's
+         * verdicts under its prompt id, so a recorded run scores suggestions without a model (AIV-P2-085).
+         */
+        suggestions: z
+          .object({
+            judge: z.string().min(1),
+            verdicts: z.record(z.string(), z.enum(suggestionFaults).nullable()),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
   })

@@ -19,58 +19,81 @@ expected:
       - Payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: 'ae48e35695f8'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 9e1d661bd882
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'Discovery to decision',
-            'evidenceExpected': 'Discovery they ran and the decisions it led to',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'run discovery with merchants and decide what we build next' }],
-          },
-          {
-            'name': 'Outcomes with metrics',
-            'evidenceExpected': 'Metrics they set and how the product moved them',
-            'weight': 25,
-            'level': 4,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You set outcome metrics and report against them' }],
-          },
-          {
-            'name': 'Working with engineering and design',
-            'evidenceExpected': 'Work they shipped with engineers and designers',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You work daily with engineering and design' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Payments domain,
-            evidenceExpected: 'Payments products they shaped: checkout, payouts, settlement or risk',
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'You decide what a payments product builds next, but the description asks for no payments knowledge.',
-            citations: [{ sourceId: S1, quote: decide what we build next }],
-          },
-          {
-            name: Working under regulation,
-            evidenceExpected: Product decisions they made within payments or data protection rules,
-            weight: 10,
-            level: 2,
-            type: desirable,
-            why: 'Payments are regulated, but the description names no rules the product must meet.',
-            citations: [{ sourceId: S1, quote: run discovery with merchants }],
-          },
-        ],
-    }
+    competencies:
+      - name: Product Discovery with Merchants
+        evidenceExpected: Led product discovery sessions with merchants to identify needs and define product features.
+        weight: 40
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will run discovery with merchants and decide what we build next.
+            start: 0
+            end: 68
+        claim: false
+      - name: Outcome Metrics Definition and Reporting
+        evidenceExpected: Defined outcome metrics for product initiatives and regularly reported performance against these metrics.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You set outcome metrics and report against them.
+            start: 69
+            end: 117
+        claim: false
+      - name: Cross-functional Collaboration with Engineering and Design
+        evidenceExpected: Collaborated daily with engineering and design teams to deliver product features and improvements.
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You work daily with engineering and design.
+            start: 118
+            end: 161
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Payments Industry Knowledge
+        evidenceExpected:
+          Developed or managed payment products or features demonstrating understanding of payment systems and
+          merchant needs.
+        weight: 50
+        level: 4
+        type: desirable
+        why: The job title 'Senior Product Manager, Payments' implies the need for payments industry knowledge, but the
+          description does not explicitly mention it.
+        citations:
+          - sourceId: S1
+            quote: You will run discovery with merchants and decide what we build next.
+            start: 0
+            end: 68
+        claim: false
+      - name: Data Analysis and Interpretation
+        evidenceExpected: Analyzed product data to derive insights and inform product decisions beyond setting outcome metrics.
+        weight: 50
+        level: 4
+        type: desirable
+        why:
+          The description mentions setting and reporting outcome metrics but does not explicitly require skills in data
+          analysis and interpretation, which are implied for effective metric use.
+        citations:
+          - sourceId: S1
+            quote: You set outcome metrics and report against them.
+            start: 69
+            end: 117
+        claim: false
+  matches:
+    Discovery to decision: Product Discovery with Merchants
+    Outcomes with metrics: Outcome Metrics Definition and Reporting
+    Working with engineering and design: Cross-functional Collaboration with Engineering and Design
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Payments Industry Knowledge: null
+      Data Analysis and Interpretation: null

@@ -6,26 +6,32 @@ import { cited, type Source } from '../citations.ts';
 // the eval runner calls the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@3';
+export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@4';
 
 export const DRAFT_COMPETENCIES_SYSTEM = [
-  'You help a recruiter turn a job description into the competencies the job needs.',
-  'List only the competencies the description itself states, never more than 8: when it states more, merge related',
-  'ones or keep the 8 most central. For each give: a short name of at most 60 characters; the evidence of work that',
-  'would show it (what the candidate built, shipped or wrote) in one sentence of at most 300 characters; a weight',
-  'from 1 to 100 for how central it is compared with the others (Credalent scales the weights to total 100, so they',
-  'need not add up); the level the job needs from 1 (basic) to 5 (expert); and mandatory or desirable, as the',
-  'description says.',
-  'A competency is a skill shown by work. Never a proxy: no nationality, age, gender, religion, marital status, health,',
-  'where someone lives or comes from, an employer or school name, or years of experience on their own. Leave out any',
-  'line that asks for such a thing: set refused to true and say in reason, in one sentence of at most 300 characters,',
-  'what was left out and why. Otherwise refused is false and reason is null.',
-  'Then suggest at most 2 competencies the job needs that the description does not ask for, such as knowledge of the',
-  'industry or market, a language the work is done in, or a skill the work implies. Never repeat a listed competency.',
-  'Give each suggestion the same fields, and in why one sentence of at most 300 characters on what in the description',
-  'implies it and what the description leaves out; cite the line that implies it. Weigh suggestions against the listed',
-  'competencies on the same scale. Suggest none when nothing is missing. Suggestions follow the same rule: never a',
-  'proxy. A language is a skill shown by work in it, never being a native speaker, a nationality or a place.',
+  'You help a recruiter turn a job description into the competencies the job needs. List only the competencies the',
+  'description itself states, never more than 8: when it states more, merge related ones or keep the 8 most central.',
+  'For each give: a short name of at most 60 characters; the evidence of work that would show it (what the candidate',
+  'built, shipped or wrote) in one sentence of at most 300 characters; a weight from 1 to 100 for how central it is',
+  'compared with the others (Credalent scales the weights to total 100, so they need not add up); the level the job',
+  'needs from 1 (basic) to 5 (expert); and mandatory or desirable, as the description says. A competency is a skill',
+  'shown by work. Never a proxy: no nationality, age, gender, religion, marital status, health, where someone lives',
+  'or comes from, an employer or school name, or years of experience on their own. Leave out any line that asks for',
+  'such a thing: set refused to true and say in reason, in one sentence of at most 300 characters, what was left out',
+  'and why. refused is true only when the description has such a line; otherwise refused is false and reason is',
+  'null. Then suggest the 2 competencies the job most needs that the description does not ask for, such as knowledge',
+  'of the industry or market, a language the work is done in, or a skill the work implies (a customer-facing design',
+  'implies accessibility). Never repeat or reword a listed competency, and never suggest a soft skill any job asks',
+  'for. Give each suggestion the same fields, and in why one sentence of at most 300 characters on what in the',
+  'description implies it and what the description leaves out; cite each sentence of the description that implies',
+  'it, one citation per sentence. When the title implies it (an industry named in the title), cite the description',
+  'line about the work it applies to. Weigh suggestions against the listed competencies on the same scale. Suggest',
+  'fewer than 2 only when the description leaves nothing out. Suggestions follow the same rule: never a proxy. A',
+  'language is a skill shown by work in it, never being a native speaker, a nationality or a place. Every citation',
+  'quotes one unbroken run of the description source, copied exactly: never shortened with "..." or joined. A quote',
+  'is at most one sentence: when more sentences imply it, give each its own citation. The title and job type are not',
+  'part of the description and are never quoted: a quote of the title fails the whole draft. Check every quote is',
+  'word for word in the description before you answer.',
 ].join(' ');
 
 const competency = z.object({

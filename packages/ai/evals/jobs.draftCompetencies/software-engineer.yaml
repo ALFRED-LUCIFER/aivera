@@ -19,59 +19,80 @@ expected:
       - Banking and payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: '540f9a092816'
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: a73c5cffcdf3
   output:
-    {
-      'competencies':
-        [
-          {
-            'name': 'System design in production',
-            'evidenceExpected': 'Services they designed and ran in production, with the trade-offs they chose',
-            'weight': 30,
-            'level': 4,
-            'type': 'mandatory',
-            'citations':
-              [{ 'sourceId': 'S1', 'quote': 'design and run services that settle merchant payments in production' }],
-          },
-          {
-            'name': 'Code quality and testing',
-            'evidenceExpected': 'Code and tests they wrote, and reviews they gave',
-            'weight': 25,
-            'level': 3,
-            'type': 'mandatory',
-            'citations': [{ 'sourceId': 'S1', 'quote': "You write tested code and review your teammates' changes" }],
-          },
-          {
-            'name': 'Reliability and operations',
-            'evidenceExpected': 'Incidents they handled on call and what they changed after',
-            'weight': 20,
-            'level': 3,
-            'type': 'desirable',
-            'citations': [{ 'sourceId': 'S1', 'quote': 'You join the on-call rota and fix what breaks' }],
-          },
-        ],
-      'refused': false,
-      'reason': null,
-      suggestions:
-        [
-          {
-            name: Banking and payments domain,
-            evidenceExpected: 'Payment, ledger or settlement systems they built or ran',
-            weight: 15,
-            level: 2,
-            type: desirable,
-            why: 'The services settle merchant payments, but the description asks for no payments or banking knowledge.',
-            citations: [{ sourceId: S1, quote: settle merchant payments in production }],
-          },
-          {
-            name: Working under regulation,
-            evidenceExpected: Systems they built to meet a regulator's or auditor's rules,
-            weight: 10,
-            level: 2,
-            type: desirable,
-            why: 'Settling payments is regulated work, but the description names no regulation or audit duties.',
-            citations: [{ sourceId: S1, quote: settle merchant payments in production }],
-          },
-        ],
-    }
+    competencies:
+      - name: Backend service design and operation
+        evidenceExpected: Built and maintained backend services that handle merchant payment settlements in production environments.
+        weight: 40
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will design and run services that settle merchant payments in production.
+            start: 0
+            end: 77
+        claim: false
+      - name: Writing tested code and code review
+        evidenceExpected: Authored well-tested code and participated in peer code reviews to ensure code quality and reliability.
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You write tested code and review your teammates' changes.
+            start: 78
+            end: 135
+        claim: false
+      - name: Incident response and on-call support
+        evidenceExpected: Participated in on-call rotations and resolved production issues promptly to maintain service uptime.
+        weight: 25
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You join the on-call rota and fix what breaks.
+            start: 136
+            end: 182
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Payment systems domain knowledge
+        evidenceExpected: Developed or contributed to payment processing systems or services handling merchant transactions.
+        weight: 10
+        level: 3
+        type: desirable
+        why:
+          The job involves designing and running services that settle merchant payments, implying knowledge of payment
+          systems is important but not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: You will design and run services that settle merchant payments in production.
+            start: 0
+            end: 77
+        claim: false
+      - name: Production monitoring and alerting
+        evidenceExpected: Implemented monitoring and alerting solutions to detect and respond to production issues in backend services.
+        weight: 10
+        level: 3
+        type: desirable
+        why:
+          The job requires joining an on-call rota and fixing issues, implying the need for skills in production monitoring
+          and alerting, though not explicitly mentioned.
+        citations:
+          - sourceId: S1
+            quote: You join the on-call rota and fix what breaks.
+            start: 136
+            end: 182
+        claim: false
+  matches:
+    System design in production: Backend service design and operation
+    Code quality and testing: Writing tested code and code review
+    Reliability and operations: Incident response and on-call support
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Payment systems domain knowledge: null
+      Production monitoring and alerting: null

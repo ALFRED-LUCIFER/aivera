@@ -21,8 +21,8 @@ expected:
       - Banking and payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@3
-  promptHash: 540f9a092816
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: a73c5cffcdf3
   output:
     competencies:
       - name: System design in production
@@ -72,3 +72,8 @@ recorded:
             quote: settle merchant payments in production
   matches:
     Code quality and testing: Testing and code quality
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Banking and payments domain: null
+      Working under regulation: null

@@ -1,7 +1,15 @@
 import type { AiClient, TokenBudgetStore } from '../src/client.ts';
 import { detectDomainRunner, liveTokenCap, runners, type Runner } from './config.ts';
 import { loadGolden, type GoldenCase } from './golden.ts';
-import { evalWorkspaceId, evaluateTask, liveJudge, liveMatcher, matchPrompt } from './run.ts';
+import {
+  evalWorkspaceId,
+  evaluateTask,
+  liveJudge,
+  liveMatcher,
+  liveSuggestionJudge,
+  matchPrompt,
+  suggestionPrompt,
+} from './run.ts';
 
 // The live eval of a catalogue draft (AIV-P2-048, ADR-013 point 12): the jobs.detectDomain and jobs.draftCompetencies
 // golden sets under the thresholds of config.ts, the draft's keys as data. Inputs are the synthetic golden cases only,
@@ -77,6 +85,7 @@ export async function evaluateCatalogue(
       (_task, c) => runner(ai, c, evalWorkspaceId),
       judge,
       liveMatcher(ai),
+      liveSuggestionJudge(ai),
     );
     unavailable ||= report.cases.some((c) => c.error !== undefined && UNAVAILABLE.has(c.error));
     tasks.push({
@@ -137,6 +146,23 @@ export function recordedClient(
       const pick = (m: (typeof misses)[number]) =>
         verdicts.get(m.expected)?.find((v): v is string => v !== null && m.candidates.includes(v)) ?? null;
       return { matches: misses.map((m) => ({ expected: m.expected, match: pick(m) })) };
+    }
+    if (request.promptVersion === suggestionPrompt.id) {
+      const recorded = cases.get(JSON.stringify(['jobs.draftCompetencies', request.sources]))?.golden.recorded
+        .suggestions?.verdicts;
+      if (!recorded) throw new Error('no recorded suggestion verdicts for this request');
+      return {
+        verdicts: Object.entries(recorded).map(([name, fault]) => ({
+          name,
+          pointsTo: '',
+          closestListed: '',
+          sameWorkAsClosest: fault === 'listed',
+          aboutThePerson: fault === 'proxy',
+          softSkillAnyJobAsks: fault === 'generic',
+          implied: fault !== 'unrelated',
+          citedLineImplies: fault !== 'citation',
+        })),
+      };
     }
     const judged = request.task === 'evals.judge';
     const key = judged ? (JSON.parse(request.prompt) as { rubric: string }).rubric : request.task;

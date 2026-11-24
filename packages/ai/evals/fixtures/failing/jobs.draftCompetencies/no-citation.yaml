@@ -1,0 +1,74 @@
+# A bad-suggestion case (AIV-P2-085) for golden case product-designer: its golden answer with the Accessibility
+# suggestion citing nothing. It fails whatever the judge says ("suggestions[1]: cites nothing").
+id: no-citation
+input:
+  jobType: product_design
+  title: Product Designer
+sources:
+  - id: S1
+    kind: job_description
+    text:
+      You will design the checkout flows our customers use. You turn research into design decisions. You prototype and
+      test ideas before we build them. Our customers shop in Arabic and English across the UAE and Saudi Arabia.
+expected:
+  match:
+    competencies[*].name:
+      - Interaction design craft
+      - Research to decisions
+      - Prototyping
+    suggestions[*].name:
+      - Arabic and right-to-left design
+      - Accessibility
+recorded:
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: ff09bc84bbe2
+  output:
+    competencies:
+      - name: Interaction design craft
+        evidenceExpected: Flows they designed and shipped
+        weight: 30
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: design the checkout flows our customers use
+      - name: Research to decisions
+        evidenceExpected: Research they ran and the design decisions it changed
+        weight: 25
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You turn research into design decisions
+      - name: Prototyping
+        evidenceExpected: Prototypes they built and what testing them showed
+        weight: 20
+        level: 3
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: You prototype and test ideas before we build them
+    refused: false
+    reason: null
+    suggestions:
+      - name: Arabic and right-to-left design
+        evidenceExpected: Shipped Arabic or right-to-left interfaces, and the layout decisions behind them
+        weight: 15
+        level: 2
+        type: desirable
+        why: Customers shop in Arabic, but the description asks for no right-to-left design work.
+        citations:
+          - sourceId: S1
+            quote: Our customers shop in Arabic and English
+      - name: Accessibility
+        evidenceExpected: 'Designs they made accessible: contrast, focus order, screen reader checks'
+        weight: 10
+        level: 3
+        type: desirable
+        why: Every customer must be able to finish checkout, but the description does not mention accessibility.
+        citations: []
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Arabic and right-to-left design: null
+      Accessibility: citation

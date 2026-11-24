@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { checkOutput, findQuote, type SourceKind } from '../src/citations.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
-import { identifiersOf, type GoldenCase } from './golden.ts';
+import { identifiersOf, type GoldenCase, type SuggestionFault } from './golden.ts';
 
 // Pure scorers over one model output (AIV-P0-029). They read the raw answer, before the product's own validation, so
 // the eval measures how often the model gets it right, not only that bad answers are caught.
@@ -131,6 +131,33 @@ export function fieldMatch(output: unknown, match: Json, sameMeaning: (point: Po
     .filter((point) => !sameMeaning(point))
     .map(({ path, value }) => `${path}: missing ${JSON.stringify(value)}`);
   return { n: total - failures.length, total, failures };
+}
+
+/**
+ * AIV-P2-085: one point per expected suggestion, scored by what the output suggests rather than by the golden names: a
+ * suggestion is good when it cites a line and the judge's verdict on it (keyed by name) finds no fault. Every bad one
+ * costs a point, so a bad suggestion fails even beside enough good ones; one with no verdict, or a repeated name, is bad.
+ */
+export function suggestionMatch(
+  output: unknown,
+  path: string,
+  expected: number,
+  verdicts: Record<string, SuggestionFault | null>,
+): Ratio {
+  const seen = new Set<unknown>();
+  const faults = valuesAt(output, path).map((item) => {
+    if (!isRecord(item) || citationsOf(item).length === 0) return 'cites nothing';
+    const name = item['name'];
+    // Verdicts are keyed by name, so a second suggestion of the same name has none of its own.
+    if (seen.has(name)) return 'duplicate';
+    seen.add(name);
+    return typeof name === 'string' && Object.hasOwn(verdicts, name) ? verdicts[name] : 'no verdict';
+  });
+  const bad = faults.filter((fault) => fault !== null).length;
+  const n = Math.max(0, Math.min(faults.length - bad, expected - bad));
+  const failures = faults.flatMap((fault, i) => (fault ? [`${path.slice(0, -3)}[${i}]: ${fault}`] : []));
+  const missing = expected - n - bad;
+  return { n, total: expected, failures: missing > 0 ? [...failures, `${path}: ${missing} missing`] : failures };
 }
 
 /** `phrase` in `text` from a word start, case-insensitive; `wholeWord` also requires a word end. */

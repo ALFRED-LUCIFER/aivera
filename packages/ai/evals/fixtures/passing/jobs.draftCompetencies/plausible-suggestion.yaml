@@ -1,0 +1,90 @@
+# A plausible suggestion (AIV-P2-085) for golden case senior-ai-engineer: its golden answer with "Arabic and bilingual
+# NLP" suggested as "Multilingual NLP", citing the same line. It differs from the golden pair and must still pass.
+id: plausible-suggestion
+input:
+  jobType: ai_llm_engineering
+  title: Senior AI Engineer
+sources:
+  - id: S1
+    kind: job_description
+    text:
+      You will ship and run LLM assistants and retrieval systems that real merchants use every day. You will build the
+      eval sets and retrieval metrics that decide what we ship. You will write production Python services, with tests,
+      and deploy them yourself. You keep latency, cost per request and incidents in check. The assistant answers
+      merchants in Arabic and English.
+expected:
+  match:
+    competencies[*].name:
+      - LLM systems in production
+      - Retrieval and evaluation
+      - Python service engineering
+      - Cost and reliability
+    competencies[*].type:
+      - mandatory
+      - desirable
+    suggestions[*].name:
+      - Arabic and bilingual NLP
+      - Product judgement
+recorded:
+  promptVersion: jobs.draftCompetencies@4
+  promptHash: 729fa2a23ace
+  output:
+    competencies:
+      - name: LLM systems in production
+        evidenceExpected: A shipped assistant or RAG system with real users, and their part in it
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: ship and run LLM assistants and retrieval systems that real merchants use every day
+      - name: Retrieval and evaluation
+        evidenceExpected: Eval sets and retrieval metrics, and how they changed decisions
+        weight: 20
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: build the eval sets and retrieval metrics that decide what we ship
+      - name: Python service engineering
+        evidenceExpected: 'Production Python they wrote: services, tests, deployment'
+        weight: 15
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: write production Python services, with tests, and deploy them yourself
+      - name: Cost and reliability
+        evidenceExpected: Numbers on latency, cost per request and incidents handled
+        weight: 15
+        level: 2
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: You keep latency, cost per request and incidents in check
+    refused: false
+    reason: null
+    suggestions:
+      - name: Multilingual NLP
+        evidenceExpected: 'Work on Arabic or bilingual text: models, evals, tokenisation'
+        weight: 10
+        level: 2
+        type: desirable
+        why: The assistant must answer in Arabic, but the description lists no language requirement.
+        citations:
+          - sourceId: S1
+            quote: The assistant answers merchants in Arabic and English
+      - name: Product judgement
+        evidenceExpected: Product decisions they shaped from evals or merchant feedback
+        weight: 15
+        level: 3
+        type: desirable
+        why: Your evals decide what ships, but the description does not ask for judging what merchants need.
+        citations:
+          - sourceId: S1
+            quote: build the eval sets and retrieval metrics that decide what we ship
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Multilingual NLP: null
+      Product judgement: null
