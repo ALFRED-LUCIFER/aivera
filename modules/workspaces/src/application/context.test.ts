@@ -68,6 +68,10 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   'job.change_stage': ['YYY', 'YYY', '---', '---'],
   'candidate.create': ['YYY', 'YYY', '---', '---'],
   'candidate.view': ['YYY', 'YYY', 'Y--', 'Y--'],
+  'candidate.duplicates': ['YYY', 'YYY', '---', '---'],
+  // SAFETY: mutation check: added interviewer to candidate.merge -> this matrix failed (AIV-P1-018)
+  'candidate.merge': ['YYY', 'YYY', '---', '---'],
+  'candidate.unmerge': ['YYY', '---', '---', '---'],
   'scorecard.submit': ['YYY', 'YYY', 'Y--', 'Y--'],
   'decision.record': ['YYY', 'YYY', 'Y--', '---'],
   'application.add_link': ['YYY', 'YYY', 'Y--', 'Y--'],
@@ -120,7 +124,14 @@ describe("Scenario Outline: Job-scoped roles need a grant on the record's job", 
 
 // AIV-P2-037: a suspended workspace keeps its reads and refuses every other action, for every role allowed it.
 describe('Scenario: Members of a suspended workspace can read but not start work', () => {
-  const reads: Action[] = ['job.list', 'job.view', 'job_access.view', 'candidate.view', 'file.download'];
+  const reads: Action[] = [
+    'job.list',
+    'job.view',
+    'job_access.view',
+    'candidate.view',
+    'candidate.duplicates',
+    'file.download',
+  ];
 
   // SAFETY: mutation check: removed the allowedWhile check from authorize -> this test failed (writes allowed)
   it.each(Object.keys(PERMISSIONS) as Action[])('%s as admin while suspended', async (action) => {

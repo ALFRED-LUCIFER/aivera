@@ -1701,6 +1701,46 @@
     "fromListing": "Applications from the published job listing arrive here on their own: {count, number} so far."
   },
   "ranking": {
+    "duplicates": {
+      "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
+      "possible": "Possible duplicate of {name}.",
+      "merge": "Merge?",
+      "mergeTitle": "Preview: merge {merged} into {survivor}",
+      "why": {
+        "same_name": "Same name on both records.",
+        "same_contact": "The same email or phone on both records."
+      },
+      "stays": "{name} (stays)",
+      "mergedIn": "{name} (merged in)",
+      "noApplications": "No applications",
+      "noJob": "A job you cannot see",
+      "evidence": "{count, plural, =0 {No evidence sources} one {# evidence source} other {# evidence sources}}",
+      "sources": {
+        "linkedin": "LinkedIn",
+        "careers_page": "Careers page",
+        "referral": "Referral",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "recruiter": "Recruiter"
+      },
+      "nothingDeleted": "Nothing is deleted. The applications, sources and evidence combine on {name}, and an admin can undo the merge.",
+      "reason": "Reason, recorded in the audit log",
+      "confirm": "Merge",
+      "pending": "Merging…",
+      "undo": "Undo merge",
+      "undoTitle": "Preview: undo the merge of {name}",
+      "undoBody": "{name} becomes a separate candidate again, with their original applications and evidence.",
+      "undoConfirm": "Undo merge",
+      "undoPending": "Undoing…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "footer": "Nothing changes until you confirm.",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "done": {
+        "merged": "Merged. Both records are now one candidate.",
+        "undone": "Merge undone. Both people are separate again."
+      }
+    },
     "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",
     "caption": "Ranked candidates",
     "basis": "Backed scores and needs met are observed from inspected evidence.",

@@ -19,7 +19,7 @@ export type Person = {
   location: string | null;
   /** Demo and test people (AGENTS.md 1.1). */
   synthetic: boolean;
-  /** Set when duplicate merge (AIV-P1-018) folds this person into another. */
+  /** Set while this person is merged into another (AIV-P1-018); cleared by an undo. */
   mergedIntoId: string | null;
   createdAt: Date;
 };
@@ -35,7 +35,15 @@ const MESSAGES = {
   no_identifiers: 'A person needs at least one identifier',
   display_name: "Enter the person's name.",
   not_synthetic: 'Only a synthetic workspace holding only synthetic people can be purged.',
+  merge_people: 'Pick two different people in this workspace, neither merged already.',
+  merge_reason: 'Give the reason, in at most 500 characters.',
+  merge_not_found: 'That merge was not found or is already undone.',
+  undo_expired: 'This merge can no longer be undone.',
+  undo_blocked: 'The person this one was merged into has been merged since; undo that merge first.',
 } as const;
+
+/** The longest merge or undo reason. */
+export const MERGE_REASON_MAX = 500;
 
 export type CandidateErrorCode = keyof typeof MESSAGES;
 

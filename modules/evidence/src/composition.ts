@@ -79,6 +79,8 @@ import { requestStore } from './infrastructure/requestStore.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
 export { createLinkFetcher, type Resolve } from './infrastructure/linkFetch.ts';
+// A person's evidence for a duplicate merge (AIV-P1-018); apps wire it into `createCandidates`.
+export { createEvidenceRecords } from './infrastructure/mergeRecords.ts';
 
 /** The queue RepositoryReadRequested.v1 and RepositoryRefreshRequested.v1 go to (infra/modules/messaging.bicep). */
 export const EVIDENCE_QUEUE = 'evidence';

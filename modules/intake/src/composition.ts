@@ -7,7 +7,7 @@ import type { JobsContract } from '@credalent/jobs';
 import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases, type Ports } from './application/applications.ts';
 import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
-import { candidatesForJob, intakeStore, jobsForCandidate } from './infrastructure/repository.ts';
+import { applicationRecords, candidatesForJob, intakeStore, jobsForCandidate } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
@@ -46,6 +46,12 @@ export function createIntake(
  */
 export const readApplicationSourceAsSystem = (tx: Tx, workspaceId: string, sourceId: string) =>
   intakeStore(tx).findSource(workspaceId, sourceId);
+
+/**
+ * A person's applications for a duplicate merge (AIV-P1-018): apps wire it into `createCandidates`, whose merge
+ * authorises the change and calls it in the merge's transaction. Not authorised itself.
+ */
+export { applicationRecords };
 
 /** The worker's application reads (AIV-P1-027). */
 export const createApplicationReads = (): ApplicationReads => ({ jobsForCandidate, candidatesForJob });

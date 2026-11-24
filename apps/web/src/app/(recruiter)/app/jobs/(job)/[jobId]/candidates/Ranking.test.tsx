@@ -5,11 +5,19 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RankingTable, type RankingTableView } from '@/features/ranking/components/RankingTable.tsx';
+import type { RowDuplicates } from '@/features/ranking/domain/duplicates.ts';
 import type { CandidateRow } from '@/features/ranking/domain/ranking.ts';
 import { Ranking } from './Ranking.tsx';
 
 // AIV-P1-034: the ranked table with its controller, as the page renders it. Synthetic cast only (docs/00-product/personas.md).
-afterEach(cleanup);
+// The merge and undo server actions (AIV-P1-018) are faked: these tests check what is shown and sent.
+const fake = vi.hoisted(() => ({ merge: vi.fn(), undo: vi.fn(), refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: fake.refresh }) }));
+vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 let intl: Awaited<ReturnType<typeof intlConfig>>;
 beforeAll(async () => {
@@ -179,5 +187,112 @@ describe('Scenario: Empty, loading and error', () => {
     expect(screen.getByRole('alert').textContent).toBe('We could not load the ranking. Try again.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+const OMAR_1 = '0190d4a2-0000-7000-8000-0000000000a1';
+const OMAR_2 = '0190d4a2-0000-7000-8000-0000000000a2';
+const MERGE = '0190d4a2-0000-7000-8000-0000000000b1';
+const possibleOmar: RowDuplicates = {
+  personId: OMAR_2,
+  mergedCount: 0,
+  undo: null,
+  possible: {
+    personId: OMAR_1,
+    name: 'Omar Al Suwaidi',
+    reason: 'same_name',
+    survivor: {
+      name: 'Omar Al Suwaidi',
+      applications: [{ job: 'Staff Backend Engineer', sources: ['linkedin'] }],
+      evidenceSources: 2,
+    },
+    merged: {
+      name: 'Omar Alsuwaidi',
+      applications: [{ job: 'Senior AI Engineer', sources: ['email'] }],
+      evidenceSources: 1,
+    },
+  },
+};
+const omarRow: CandidateRow = {
+  id: 'a20',
+  name: 'Omar Alsuwaidi',
+  stage: 'new',
+  score: null,
+  duplicates: possibleOmar,
+};
+
+describe('Scenario: A likely duplicate needs a person (AIV-P1-018)', () => {
+  it('the row shows "Possible duplicate of Omar Al Suwaidi." with "Merge?", and nothing is sent', () => {
+    showRanking([omarRow]);
+    expect(bodyRows()[0]?.textContent).toContain('Possible duplicate of Omar Al Suwaidi.Merge?');
+    expect(fake.merge).not.toHaveBeenCalled();
+  });
+
+  it('rows without duplicates, and viewers who get none, show no prompt', () => {
+    showRanking(nine);
+    expect(screen.queryByText(/Possible duplicate/)).toBeNull();
+    expect(screen.queryByText(/duplicates? merged/)).toBeNull();
+  });
+});
+
+describe('Scenario: Merge preview', () => {
+  // SAFETY: mutation check: dropped confirmDisabled from the merge card -> this test failed (Merge pressed with no reason)
+  it('"Merge?" previews the applications, sources and evidence that combine and "Nothing is deleted"; Confirm sends the reason', async () => {
+    fake.merge.mockResolvedValue({ ok: true });
+    showRanking([omarRow]);
+    await userEvent.click(screen.getByRole('button', { name: 'Merge?' }));
+    const dialog = screen.getByRole('dialog', { name: 'Preview: merge Omar Alsuwaidi into Omar Al Suwaidi' });
+    expect(dialog.textContent).toContain('Same name on both records.');
+    expect(dialog.textContent).toContain('Omar Al Suwaidi (stays)Staff Backend EngineerLinkedIn2 evidence sources');
+    expect(dialog.textContent).toContain('Omar Alsuwaidi (merged in)Senior AI EngineerEmail1 evidence source');
+    expect(dialog.textContent).toContain('Nothing is deleted.');
+    expect(dialog.textContent).toContain('Nothing changes until you confirm.');
+    const confirm = within(dialog).getByRole('button', { name: 'Merge' });
+    await userEvent.click(confirm);
+    expect(fake.merge).not.toHaveBeenCalled();
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Reason, recorded in the audit log' }), 'Same CV');
+    await userEvent.click(confirm);
+    expect(fake.merge).toHaveBeenCalledExactlyOnceWith({ survivorId: OMAR_1, mergedId: OMAR_2, reason: 'Same CV' });
+    expect(fake.refresh).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText('Merged. Both records are now one candidate.')).toBeTruthy();
+  });
+
+  it('a refused merge says nothing was changed and keeps the preview open', async () => {
+    fake.merge.mockResolvedValue({ ok: false, error: 'refused' });
+    showRanking([omarRow]);
+    await userEvent.click(screen.getByRole('button', { name: 'Merge?' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Reason, recorded in the audit log' }), 'Same CV');
+    await userEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    expect(screen.getByRole('alert').textContent).toBe('That did not go through. Nothing was changed. Try again.');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+});
+
+const sneha = (undo: RowDuplicates['undo']): CandidateRow => ({
+  id: 'a30',
+  name: 'Sneha Iyer',
+  stage: 'new',
+  score: null,
+  duplicates: { personId: OMAR_1, mergedCount: 2, undo, possible: null },
+});
+
+describe('Scenario: Exact duplicates merged, and undo for admins', () => {
+  it('the row shows "2 duplicates merged"; with no undo to offer there is no "Undo merge"', () => {
+    showRanking([sneha(null)]);
+    expect(bodyRows()[0]?.textContent).toContain('2 duplicates merged');
+    expect(screen.queryByRole('button', { name: 'Undo merge' })).toBeNull();
+  });
+
+  it('an admin undoes the newest merge with a reason, after the preview', async () => {
+    fake.undo.mockResolvedValue({ ok: true });
+    showRanking([sneha({ mergeId: MERGE, name: 'Sneha Iyer' })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Undo merge' }));
+    const dialog = screen.getByRole('dialog', { name: 'Preview: undo the merge of Sneha Iyer' });
+    expect(dialog.textContent).toContain('Sneha Iyer becomes a separate candidate again');
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Two different people');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Undo merge' }));
+    expect(fake.undo).toHaveBeenCalledExactlyOnceWith({ mergeId: MERGE, reason: 'Two different people' });
+    expect(screen.getByText('Merge undone. Both people are separate again.')).toBeTruthy();
   });
 });

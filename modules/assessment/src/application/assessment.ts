@@ -84,6 +84,11 @@ export type Ports = {
   ): Promise<{ resource: JobResource; approvedVersionId: string | null } | null>;
   /** Writes `score.changed` to the audit log in `scope.tx`: the last statement before commit (AGENTS.md 3.6). */
   auditScoreChange(scope: Scope, change: ScoreChange): Promise<void>;
+  /**
+   * Who applies to the job now (intake's `candidatesForJob`), so a candidate merged into another (AIV-P1-018) leaves
+   * the ranking with their application. Without it every candidate with a result is ranked.
+   */
+  applicants?: (tx: Tx, workspaceId: string, jobId: string) => Promise<string[]>;
   newId(): string;
   now(): Date;
 };
@@ -208,7 +213,7 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
 }
 
 export function assessmentUseCases(ports: Ports) {
-  const { storeFor, authorize, rankingJob, candidateJob } = ports;
+  const { storeFor, authorize, rankingJob, candidateJob, applicants } = ports;
   return {
     /**
      * Assesses the candidate and stores the result when it differs from the latest one; every stored result is
@@ -234,7 +239,9 @@ export function assessmentUseCases(ports: Ports) {
       await authorize(ctx, 'candidate.view', job.resource);
       if (!job.approvedVersionId) return { status: 'awaiting_rubric' };
       const results = await storeFor(ctx.tx).listForJob(ctx.workspaceId, jobId);
-      return { status: 'ranked', rubricVersionId: job.approvedVersionId, rows: rank(results, job.approvedVersionId) };
+      const current = applicants && new Set(await applicants(ctx.tx, ctx.workspaceId, jobId));
+      const ranked = current ? results.filter((r) => current.has(r.candidateId)) : results;
+      return { status: 'ranked', rubricVersionId: job.approvedVersionId, rows: rank(ranked, job.approvedVersionId) };
     },
 
     async countAssessed(ctx: WorkspaceContext, jobIds: readonly string[]): Promise<Record<string, number>> {

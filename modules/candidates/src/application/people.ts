@@ -1,17 +1,22 @@
 import type { Tx } from '@credalent/db';
 import type { Action, WorkspaceContext } from '@credalent/workspaces';
+import { AUTO_MERGE_NOTES, exactReason } from '../domain/duplicates.ts';
 import {
   CandidateError,
   normaliseIdentifier,
   normaliseIdentifiers,
   type Identifier,
+  type IdentifierType,
   type Person,
 } from '../domain/person.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type CandidateStore = {
-  /** The earliest-created person holding any of `identifiers`, followed through a merge; null when none. */
-  findPersonId(workspaceId: string, identifiers: Identifier[]): Promise<string | null>;
+  /**
+   * Every person holding any of `identifiers`, each followed through merges to the person it is now part of, with the
+   * identifier types that matched them; earliest-created first.
+   */
+  findPeople(workspaceId: string, identifiers: Identifier[]): Promise<{ person: Person; types: IdentifierType[] }[]>;
   /** Inserts the person and their identifiers; false, with nothing written, when an identifier is already taken. */
   insertPerson(person: Person, identifiers: Identifier[]): Promise<boolean>;
   /** Adds the identifiers no person holds yet to the person, and their emails and phones to its record. */
@@ -40,6 +45,11 @@ export type Ports = {
   isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   newId(): string;
   now(): Date;
+  /**
+   * The merge use cases' `merge` (AIV-P1-018), so an arrival that proves two records are one person merges them. Apps
+   * that never merge (the seed) leave it out: the earliest match is then used and the others stay as they are.
+   */
+  autoMerge?: (ctx: WorkspaceContext, survivorId: string, mergedId: string, reason: string) => Promise<unknown>;
 };
 
 /** What an application or import knows about the person. Its caller (a server action, route handler or job) validates the shape with zod (AGENTS.md 3.7). */
@@ -53,7 +63,34 @@ export type FindOrCreatePersonInput = {
 
 export type FindOrCreatePersonResult = { personId: string; created: boolean };
 
-export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSyntheticWorkspace, newId, now }: Ports) {
+export function peopleUseCases({
+  storeFor,
+  publishPersonCreated,
+  authorize,
+  isSyntheticWorkspace,
+  newId,
+  now,
+  autoMerge,
+}: Ports) {
+  /**
+   * The earliest person the identifiers match gets the identifiers no one holds; every other match that is an exact
+   * duplicate (domain/duplicates.ts) is merged into it, as the system, with the reason as the audit note.
+   */
+  async function useMatches(
+    ctx: WorkspaceContext,
+    displayName: string,
+    identifiers: Identifier[],
+    [first, ...others]: { person: Person; types: IdentifierType[] }[],
+  ): Promise<FindOrCreatePersonResult | null> {
+    if (!first) return null;
+    await storeFor(ctx.tx).attachIdentifiers(ctx.workspaceId, first.person.id, identifiers);
+    for (const other of others) {
+      const reason = exactReason(other.types, displayName, other.person.displayName);
+      if (reason && autoMerge) await autoMerge(ctx, first.person.id, other.person.id, AUTO_MERGE_NOTES[reason]);
+    }
+    return { personId: first.person.id, created: false };
+  }
+
   return {
     async findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<FindOrCreatePersonResult> {
       await authorize(ctx, 'candidate.create');
@@ -62,13 +99,13 @@ export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSy
       if (!displayName) throw new CandidateError('display_name');
       const store = storeFor(ctx.tx);
 
-      // shortcut: when identifiers match two different people, the earliest wins and keeps only the identifiers no one
-      // holds; duplicate detection and merge (AIV-P1-018) resolve the rest.
-      const found = await store.findPersonId(ctx.workspaceId, identifiers);
-      if (found) {
-        await store.attachIdentifiers(ctx.workspaceId, found, identifiers);
-        return { personId: found, created: false };
-      }
+      const found = await useMatches(
+        ctx,
+        displayName,
+        identifiers,
+        await store.findPeople(ctx.workspaceId, identifiers),
+      );
+      if (found) return found;
 
       const person: Person = {
         id: newId(),
@@ -87,10 +124,14 @@ export function peopleUseCases({ storeFor, publishPersonCreated, authorize, isSy
       }
 
       // Another request created this person between the lookup and the insert; theirs is committed, so visible now.
-      const raced = await store.findPersonId(ctx.workspaceId, identifiers);
+      const raced = await useMatches(
+        ctx,
+        displayName,
+        identifiers,
+        await store.findPeople(ctx.workspaceId, identifiers),
+      );
       if (!raced) throw new Error('person identifier taken but no person holds it');
-      await store.attachIdentifiers(ctx.workspaceId, raced, identifiers);
-      return { personId: raced, created: false };
+      return raced;
     },
 
     // shortcut: a hiring owner or interviewer is refused (no job named); they reach a person through their
@@ -130,8 +171,8 @@ const normalised = (type: 'email' | 'phone', values: string[]) =>
  * else's address, so CV contact must never make another applicant match this person. Values that are not a valid
  * email or E.164 phone are skipped.
  */
-// shortcut: CV contact is unverified and never matched on; duplicate detection and merge (AIV-P1-018) decides whether
-// a CV address may become an identifier.
+// CV contact never becomes an identifier: an address on two records only makes them a likely duplicate, which a person
+// confirms (AIV-P1-018, domain/duplicates.ts).
 export async function recordCvContact(
   store: Pick<CandidateStore, 'appendContact'>,
   workspaceId: string,

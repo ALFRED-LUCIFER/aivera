@@ -1,7 +1,7 @@
 import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidateJobResolver } from '@credalent/intake/composition';
+import { createApplicationReads, createCandidateJobResolver } from '@credalent/intake/composition';
 import { getDb } from './db';
 import { getJobs } from './jobs';
 import { getWorkspaces } from './workspace';
@@ -15,4 +15,5 @@ export const getAssessment = (): AssessmentContract =>
     getJobs(),
     undefined,
     createCandidateJobResolver(getJobs()),
+    createApplicationReads().candidatesForJob,
   ));

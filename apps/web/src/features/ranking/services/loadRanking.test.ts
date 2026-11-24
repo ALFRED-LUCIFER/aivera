@@ -8,13 +8,26 @@ import { loadRanking } from './loadRanking.ts';
 const JOB = '0190d4a2-0000-7000-9000-000000001031';
 const VERSION = '0190d4a2-0000-7000-9000-000000000002';
 const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'recruiter', tx: {} };
-const fake = vi.hoisted(() => ({ list: vi.fn(), ranking: vi.fn(), rubric: vi.fn() }));
+const fake = vi.hoisted(() => ({
+  list: vi.fn(),
+  ranking: vi.fn(),
+  rubric: vi.fn(),
+  detect: vi.fn(async (): Promise<unknown[]> => []),
+  preview: vi.fn(),
+  jobs: vi.fn(),
+}));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
 }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
-vi.mock('@/server/jobs', () => ({ getApprovedRubricReads: () => ({ approvedRubric: fake.rubric }) }));
+vi.mock('@/server/jobs', () => ({
+  getApprovedRubricReads: () => ({ approvedRubric: fake.rubric }),
+  getJobs: () => ({ listJobs: fake.jobs }),
+}));
+vi.mock('@/server/people', () => ({
+  getCandidates: () => ({ detectDuplicates: fake.detect, previewMerge: fake.preview }),
+}));
 
 const at = new Date('2026-11-14T08:00:00.000Z');
 const sara = { applicationId: 'a1', personId: 'p1', displayName: 'Sara Al Qahtani', stage: 'new', receivedAt: at };
@@ -86,6 +99,68 @@ describe('loadRanking', () => {
     fake.list.mockClear();
     expect(await loadRanking('not-a-uuid')).toBe('notFound');
     expect(fake.list).not.toHaveBeenCalled();
+  });
+
+  it('a recruiter gets each row’s duplicates: the merged count, and the possible duplicate with what a merge combines (AIV-P1-018)', async () => {
+    fake.list.mockResolvedValue([sara]);
+    fake.ranking.mockResolvedValue({ status: 'awaiting_rubric' });
+    fake.detect.mockResolvedValueOnce([
+      {
+        personId: 'p1',
+        possible: [{ personId: 'p0', displayName: 'Sara Al-Qahtani', reason: 'same_name' }],
+        merged: [{ mergeId: 'm1', displayName: 'Sara Al Qahtani', mergedAt: at, automatic: true, undoable: true }],
+      },
+    ]);
+    const side = (personId: string, displayName: string) => ({
+      personId,
+      displayName,
+      applications: [{ jobId: JOB, sources: ['linkedin'] }],
+      evidenceSources: 1,
+    });
+    fake.preview.mockResolvedValueOnce({
+      survivor: side('p0', 'Sara Al-Qahtani'),
+      merged: side('p1', 'Sara Al Qahtani'),
+    });
+    fake.jobs.mockResolvedValueOnce([{ id: JOB, title: 'Senior AI Engineer' }]);
+    const data = await loadRanking(JOB);
+    expect(fake.detect).toHaveBeenCalledWith(ctx, ['p1']);
+    expect(fake.preview).toHaveBeenCalledWith(ctx, 'p0', 'p1');
+    expect(data !== 'notFound' && data?.rows[0]?.duplicates).toEqual({
+      personId: 'p1',
+      mergedCount: 1,
+      // Undo is for admins; this viewer is a recruiter.
+      undo: null,
+      possible: {
+        personId: 'p0',
+        name: 'Sara Al-Qahtani',
+        reason: 'same_name',
+        survivor: {
+          name: 'Sara Al-Qahtani',
+          applications: [{ job: 'Senior AI Engineer', sources: ['linkedin'] }],
+          evidenceSources: 1,
+        },
+        merged: {
+          name: 'Sara Al Qahtani',
+          applications: [{ job: 'Senior AI Engineer', sources: ['linkedin'] }],
+          evidenceSources: 1,
+        },
+      },
+    });
+  });
+
+  // SAFETY: mutation check: removed the role check from duplicatesOf -> this test failed (detectDuplicates called)
+  it('a hiring owner or interviewer is never sent duplicates', async () => {
+    fake.list.mockResolvedValue([sara]);
+    fake.ranking.mockResolvedValue({ status: 'awaiting_rubric' });
+    fake.detect.mockClear();
+    ctx.role = 'interviewer';
+    try {
+      const data = await loadRanking(JOB);
+      expect(data !== 'notFound' && data?.rows[0]?.duplicates).toBeUndefined();
+      expect(fake.detect).not.toHaveBeenCalled();
+    } finally {
+      ctx.role = 'recruiter';
+    }
   });
 
   it('any other failure reaches the error state', async () => {

@@ -28,6 +28,10 @@ export const PERMISSIONS = {
   'job.change_stage': { scope: 'job', roles: ['admin', 'recruiter'] },
   'candidate.create': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  // Duplicate applicants (AIV-P1-018): recruiters see possible duplicates and merge them; only an admin undoes a merge.
+  'candidate.duplicates': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
+  'candidate.merge': { scope: 'workspace', roles: ['admin', 'recruiter'] },
+  'candidate.unmerge': { scope: 'workspace', roles: ['admin'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
   // Adding a work link on a candidate's application; a GitHub repository link is then read (AIV-P1-076).

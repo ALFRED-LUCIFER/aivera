@@ -6,11 +6,13 @@ import {
   check,
   foreignKey,
   index,
+  jsonb,
   pgSchema,
   primaryKey,
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { IDENTIFIER_TYPES } from '../domain/person.ts';
@@ -65,6 +67,56 @@ export const personIdentifier = candidates
       // Must list exactly IDENTIFIER_TYPES (domain/person.ts); changing it needs a new migration.
       check('person_identifier_type_check', sql`${t.type} in ('email', 'phone', 'cv_hash', 'github_login')`),
       tenantPolicy('person_identifier_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// One merge of a duplicate into the person who stays (AIV-P1-018), and its undo. `moved` holds the opaque ids each
+// module moved, so an undo moves back exactly those. `reason` is a person's free text: never log a row.
+export const merge = candidates
+  .table(
+    'merge',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      survivorId: uuid('survivor_id').notNull(),
+      mergedId: uuid('merged_id').notNull(),
+      reason: text().notNull(),
+      automatic: boolean().notNull(),
+      // The member who confirmed it; null when Credalent merged exact duplicates itself.
+      mergedBy: uuid('merged_by'),
+      mergedAt: timestamp('merged_at', { withTimezone: true }).notNull(),
+      // From the workspace's mergeUndoDays when merged, so a later settings change applies going forward only.
+      undoUntil: timestamp('undo_until', { withTimezone: true }).notNull(),
+      moved: jsonb().$type<Record<string, unknown>>().notNull(),
+      undoneAt: timestamp('undone_at', { withTimezone: true }),
+      undoneBy: uuid('undone_by'),
+      undoReason: text('undo_reason'),
+    },
+    (t) => [
+      foreignKey({
+        name: 'merge_survivor_fk',
+        columns: [t.workspaceId, t.survivorId],
+        foreignColumns: [person.workspaceId, person.id],
+      }),
+      foreignKey({
+        name: 'merge_merged_fk',
+        columns: [t.workspaceId, t.mergedId],
+        foreignColumns: [person.workspaceId, person.id],
+      }),
+      // A person is merged into one other at a time.
+      uniqueIndex('merge_active_key')
+        .on(t.workspaceId, t.mergedId)
+        .where(sql`${t.undoneAt} is null`),
+      index('merge_survivor_idx').on(t.workspaceId, t.survivorId),
+      check('merge_people_check', sql`${t.survivorId} <> ${t.mergedId}`),
+      check('merge_reason_check', sql`btrim(${t.reason}) <> ''`),
+      // Undone means a time, a person and a reason, together.
+      check(
+        'merge_undone_check',
+        sql`(${t.undoneAt} is null) = (${t.undoneBy} is null) and (${t.undoneAt} is null) = (${t.undoReason} is null)`,
+      ),
+      tenantPolicy('merge_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
