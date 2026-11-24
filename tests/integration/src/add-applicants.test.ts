@@ -149,8 +149,8 @@ beforeAll(async () => {
   for (const name of ['uploads-quarantine', 'cvs', 'evidence']) await storage.createContainer(name);
   blobs = createBlobStore({ url: azurite.getBlobEndpoint(), sharedKey });
   // Dev (scanning off) settles at upload; the pilot (scanning on) waits for Defender's result.
-  files = createFiles({ db: app, workspaces, blobs, malwareScanning: false });
-  scanned = createFiles({ db: app, workspaces, blobs, malwareScanning: true });
+  files = createFiles({ db: app, workspaces, audit, blobs, malwareScanning: false });
+  scanned = createFiles({ db: app, workspaces, audit, blobs, malwareScanning: true });
   jobs = createJobs(workspaces, audit, () => NOW);
   intake = createIntake(
     workspaces,

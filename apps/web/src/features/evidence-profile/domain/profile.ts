@@ -1,8 +1,12 @@
 import type { ExplanationStatement, RankingRow } from '@credalent/assessment';
 import type { Stage } from '@credalent/intake';
+import type { EvidenceCard, SourceNoteView } from './evidenceCards.ts';
 
 /** The profile's address: opaque ids only (AGENTS.md 1.2). The job is required: a profile is always for one job. */
 export const profileHref = (candidateId: string, jobId: string) => `/app/candidates/${candidateId}?job=${jobId}`;
+
+/** The element id of a cited item on its evidence card, which a cited phrase in "Why they are ranked here" scrolls to. */
+export const evidenceAnchor = (itemId: string) => `evidence-${itemId}`;
 
 /** How the candidate fits the job: nothing is assessed before a rubric is approved, and not everyone is scored yet. */
 export type Fit =
@@ -28,4 +32,8 @@ export type ProfileData = {
   fit: Fit;
   /** "Why they are ranked here" (AIV-P1-033); null when there is no result on the approved rubric version. */
   explanation: { source: 'ai' | 'template'; statements: ExplanationStatement[] } | null;
+  /** "Competency by competency" (AIV-P1-045), heaviest first; empty with no result on the approved rubric version. */
+  competencies: EvidenceCard[];
+  /** "Unusual content in this source" notes on the candidate's sources; admins and recruiters only. */
+  notes: SourceNoteView[];
 };

@@ -46,7 +46,7 @@ const urlFor = (role: string) =>
 const as = <T>(userId: string, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>) =>
   workspaces.withWorkspace({ userId }, workspaceId, fn);
 const filesWith = (malwareScanning: boolean, now?: () => Date) =>
-  createFiles({ db: app, workspaces, blobs, malwareScanning, ...(now && { now }) });
+  createFiles({ db: app, workspaces, audit: createAudit(app), blobs, malwareScanning, ...(now && { now }) });
 
 /** A synthetic PDF of `size` bytes. */
 const pdfOf = (size: number) => Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(size - 9, 0x20)]);
@@ -293,6 +293,60 @@ describe('Scenario: Files from another workspace cannot be downloaded', () => {
   it('an interviewer (job-scoped, no job named) is refused', async () => {
     const { fileId } = await upload(w1, 'evidence', pdfOf(4096));
     await expect(as(LINA, w1, (ctx) => files.openDownload(ctx, fileId))).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+const linkEntries = async (fileId: string) =>
+  (await createAudit(app).listFor(w1, { type: 'file', id: fileId })).filter((e) => e.action === 'file.link_issued');
+const cleanFile = async (workspaceId = w1) => {
+  const { fileId, blobUri } = await upload(workspaceId, 'evidence', pdfOf(4096));
+  await files.handleScanResult(scanResult(blobUri, 'No threats found'));
+  return fileId;
+};
+
+describe('Scenario: Opening an uploaded file (AIV-P1-045)', () => {
+  it('a recruiter gets a link that reads that one file as an attachment for 5 minutes, and the access is audited', async () => {
+    const fileId = await cleanFile();
+    const before = Date.now();
+    const link = await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId));
+    if (!link) throw new Error('no link');
+    expect(link.expiresAt.getTime() - before).toBeGreaterThanOrEqual(5 * 60_000 - 1000);
+    expect(link.expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(5 * 60_000);
+    // The signature itself ends then (`se`), to the second.
+    expect(new URL(link.url).searchParams.get('se')).toBe(link.expiresAt.toISOString().replace(/\.\d{3}Z$/, 'Z'));
+    const response = await fetch(link.url);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-disposition')).toBe('attachment');
+    expect(response.headers.get('content-type')).toBe(PDF);
+    expect((await response.arrayBuffer()).byteLength).toBe(4096);
+    // Read only: the same signature cannot overwrite or delete the blob.
+    expect((await put(link.url, pdfOf(16))).status).toBe(403);
+    expect((await fetch(link.url, { method: 'DELETE' })).status).toBe(403);
+    const entries = await linkEntries(fileId);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ actor: { type: 'user', id: ALEX }, subject: { type: 'file', id: fileId } });
+  });
+
+  it('the link stops working once its 5 minutes have passed', async () => {
+    const fileId = await cleanFile();
+    const sixMinutesAgo = filesWith(true, () => new Date(Date.now() - 6 * 60_000));
+    const link = await as(ALEX, w1, (ctx) => sixMinutesAgo.issueReadLink(ctx, fileId));
+    expect((await fetch(link?.url ?? '')).status).toBe(403);
+  });
+
+  // SAFETY: mutation check: removed `await p.authorize(ctx, 'file.download')` from issueReadLink -> this test failed (the interviewer got a link)
+  it('Scenario: Interviewer not on the job: an interviewer is refused and nothing is audited', async () => {
+    const fileId = await cleanFile();
+    await expect(as(LINA, w1, (ctx) => files.issueReadLink(ctx, fileId))).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await linkEntries(fileId)).toEqual([]);
+  });
+
+  it("another workspace's file, and a file not yet clean, get no link and no audit entry", async () => {
+    const theirs = await cleanFile(w2);
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, theirs))).toBeNull();
+    const { fileId: pending } = await upload(w1, 'evidence', pdfOf(4096));
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, pending))).toBeNull();
+    expect([...(await linkEntries(theirs)), ...(await linkEntries(pending))]).toEqual([]);
   });
 });
 

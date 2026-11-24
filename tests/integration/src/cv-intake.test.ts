@@ -101,6 +101,7 @@ let job: string;
 const stored = new Map<string, { data: Buffer; contentType: string }>();
 const blobs: BlobStore = {
   uploadUrl: async (path) => `https://blob.credalent.example/${path}`,
+  readUrl: async (path) => `https://blob.credalent.example/${path}`,
   read: async (path) => {
     const blob = stored.get(path);
     return blob ? { size: blob.data.length, contentType: blob.contentType, data: blob.data } : null;
@@ -264,7 +265,7 @@ beforeAll(async () => {
     () => NOW,
   );
   evidence = createEvidence(workspaces, audit, () => NOW);
-  files = createFiles({ db: app, workspaces, blobs, malwareScanning: false, now: () => NOW });
+  files = createFiles({ db: app, workspaces, audit, blobs, malwareScanning: false, now: () => NOW });
   handlers = [
     createApplicationReceivedHandler({
       readArrival: readApplicationSourceAsSystem,

@@ -3,12 +3,12 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { Download, UploadTicket } from '../application/files.ts';
+import type { Download, ReadLink, UploadTicket } from '../application/files.ts';
 import type { FileStatus, Purpose, UploadRequest } from '../domain/files.ts';
 
 export { checkUpload, contentTypeFor, FileError, PURPOSES, UPLOAD_LIMITS } from '../domain/files.ts';
 export type { FileErrorCode, FileStatus, LimitMessage, Purpose, UploadRequest } from '../domain/files.ts';
-export type { Download, UploadTicket } from '../application/files.ts';
+export type { Download, ReadLink, UploadTicket } from '../application/files.ts';
 
 /** The ticket's "file.clean": a workspace's upload passed the scan and sits in its final container. Opaque ids only. */
 export const FileCleanV1 = {
@@ -48,6 +48,13 @@ export interface FilesContract {
   markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus>;
   /** A clean file's bytes; null for another workspace's file, a missing one, or one not clean. */
   openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null>;
+  /**
+   * A link that reads one clean file of the context's workspace for 5 minutes, as an attachment (AIV-P1-045): the way
+   * a recruiter opens a candidate's uploaded evidence. `file.download`: admins and recruiters; a hiring owner or
+   * interviewer gets `ForbiddenError` (AGENTS.md 1.9). Audited (`file.link_issued`: actor, time, the file id) as the
+   * last statement. Null, with nothing audited, for another workspace's file, a missing one, or one not clean.
+   */
+  issueReadLink(ctx: WorkspaceContext, fileId: string): Promise<ReadLink | null>;
   /**
    * The worker's handler for one Defender for Storage scan result (an Event Grid event): "No threats found" settles the
    * file clean, "Malicious" infected; a result for a blob outside quarantine is ignored. Throws `ZodError` on a body

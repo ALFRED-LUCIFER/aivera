@@ -5,10 +5,12 @@ import { Button, Card, EvidenceHighlight, ScoreWithUncertainty, ValueBasis } fro
 import type { Route } from 'next';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
-import type { Fit, ProfileData } from '../domain/profile.ts';
+import { evidenceAnchor, type Fit, type ProfileData } from '../domain/profile.ts';
+import { EvidenceCards } from './EvidenceCards.tsx';
 
 // AIV-P1-043: the top of the candidate evidence profile, from the Candidate artboard
 // (docs/01-design/artboards/Candidate.dc.html): breadcrumb, name, subtitle, the fit block and "Why she is ranked here".
+// "Competency by competency" under it is EvidenceCards (AIV-P1-045), with its own deviations.
 // Deviations, each for a later ticket or a rule:
 // - no "Compare" button: the comparison page is AIV-P1-047 (#111), and a link to nothing is not shipped;
 // - no "Request evidence" button, preview card or "sent" note: the drafted preview is AIV-P1-038 (#102) and sending is
@@ -24,9 +26,9 @@ import type { Fit, ProfileData } from '../domain/profile.ts';
 //   (packages/i18n/test/copy.test.ts);
 // - "her" and "she" are "their" and "they": a person's gender is not recorded (ticket: pronoun-neutral copy);
 // - "rank 1 of 64" counts the candidates the ranking lists (assessed on the approved rubric version), as the ranked table does;
-// - a cited phrase is highlighted under its statement with its source's label, not inside the sentence, and is not a
-//   link: statements cite an evidence item's quoted words (AIV-P1-033), and the evidence cards a link would scroll to
-//   are AIV-P1-045 (#109), which makes it one;
+// - a cited phrase is highlighted under its statement with its source's label, not inside the sentence: statements
+//   cite an evidence item's quoted words (AIV-P1-033). It links to that item on its evidence card (AIV-P1-045), the
+//   first card that cites it when it backs two competencies, and stays plain text if no card cites the item;
 // - "Summary generated without AI" shows when the explanation is the template (AIV-P1-033), which the artboard does not draw;
 // - the fit line sits beside the big score, under the bar, not under both: it is the shared ScoreWithUncertainty's caption;
 // - a line under the fit gives the figures' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
@@ -36,7 +38,6 @@ import type { Fit, ProfileData } from '../domain/profile.ts';
 //   tokens have no 15 px step;
 // - a candidate not yet scored on the approved rubric shows "Not yet scored", basis "Not yet available" (AGENTS.md 1.7);
 // - no "Against what the job needs" chart and competency bars: AIV-P1-044 (#108);
-// - no "Competency by competency" evidence cards: AIV-P1-045 (#109);
 // - no "Needs live verification", "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
 
@@ -96,11 +97,17 @@ export function CandidateProfile({ view }: { view: CandidateProfileView }) {
           {view.fit.status === 'scored' && (
             <section className="flex min-w-0 flex-[2_1_420px] flex-col gap-2">
               <h3 className="text-card text-text">{t('candidateProfile.whyTitle')}</h3>
-              <Why explanation={view.explanation} />
+              <Why
+                explanation={view.explanation}
+                onCards={new Set(view.competencies.flatMap((card) => card.items.map((item) => item.id)))}
+              />
             </section>
           )}
         </div>
       </Card>
+      {(view.competencies.length > 0 || view.notes.length > 0) && (
+        <EvidenceCards cards={view.competencies} notes={view.notes} />
+      )}
     </div>
   );
 }
@@ -155,7 +162,7 @@ function FitBlock({ fit }: { fit: Fit }) {
   );
 }
 
-function Why({ explanation }: { explanation: ProfileData['explanation'] }) {
+function Why({ explanation, onCards }: { explanation: ProfileData['explanation']; onCards: ReadonlySet<string> }) {
   const t = useTranslations('candidateProfile');
   if (!explanation || explanation.statements.length === 0)
     return <p className="text-body text-text-2">{t('noExplanation')}</p>;
@@ -167,21 +174,29 @@ function Why({ explanation }: { explanation: ProfileData['explanation'] }) {
           <li key={`${i}:${statement.text}`}>
             {statement.text}
             {/* A citation with no item is the snapshot's own figures, which the statement already states. */}
-            {statement.citations.map(
-              ({ itemId, label, quote }) =>
-                itemId && (
-                  <span key={itemId + quote} className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span>
-                      <EvidenceHighlight
-                        text={quote}
-                        citations={[{ start: 0, end: quote.length, sourceId: itemId }]}
-                        markLabel={t('markLabel')}
-                      />
-                    </span>
-                    <span className="text-meta text-text-2">{t('source', { label })}</span>
-                  </span>
-                ),
-            )}
+            {statement.citations.map(({ itemId, label, quote }) => {
+              if (!itemId) return null;
+              const mark = (
+                <EvidenceHighlight
+                  text={quote}
+                  citations={[{ start: 0, end: quote.length, sourceId: itemId }]}
+                  markLabel={t('markLabel')}
+                />
+              );
+              return (
+                <span key={itemId + quote} className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  {/* A plain in-page link: the browser scrolls to the item's card and moves the keyboard's place there. */}
+                  {onCards.has(itemId) ? (
+                    <a href={`#${evidenceAnchor(itemId)}`} className="rounded-xs">
+                      {mark}
+                    </a>
+                  ) : (
+                    <span>{mark}</span>
+                  )}
+                  <span className="text-meta text-text-2">{t('source', { label })}</span>
+                </span>
+              );
+            })}
           </li>
         ))}
       </ul>

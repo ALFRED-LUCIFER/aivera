@@ -56,6 +56,8 @@ export const QUARANTINE = 'uploads-quarantine';
 export const finalContainer = (purpose: Purpose) => (purpose === 'cv' ? 'cvs' : 'evidence');
 /** How long an upload SAS lives. */
 export const UPLOAD_TTL_MS = 10 * 60_000;
+/** A read link to one clean file is valid for 5 minutes (AIV-P1-045). */
+export const READ_LINK_TTL_MS = 5 * 60_000;
 
 /** Who owns a file: a workspace, or for a candidate-site upload the candidate account (ADR-009). */
 export type Owner = { workspaceId: string } | { candidateAccountId: string };
