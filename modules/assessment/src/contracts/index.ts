@@ -3,7 +3,17 @@
 import type { WorkspaceContext } from '@credalent/workspaces';
 import type { AssessCandidateInput, JobRanking, StoredAssessment } from '../application/assessment.ts';
 import type { RankingExplanation } from '../application/explain.ts';
+import type { ApplyScoreChangeInput, ScoreChangeInput, ScoreChangePreview } from '../application/scoreChange.ts';
 
+export { ScoreChangeError } from '../application/scoreChange.ts';
+export type {
+  ApplyScoreChangeInput,
+  ScoreChangeErrorCode,
+  ScoreChangeInput,
+  ScoreChangePreview,
+} from '../application/scoreChange.ts';
+export { RATINGS } from '../domain/scoreChange.ts';
+export type { CompetencyState, Rating } from '../domain/scoreChange.ts';
 export type {
   Assessment,
   CompetencyResult,
@@ -56,4 +66,24 @@ export interface AssessmentContract {
    * interviewers on a granted job only. It rejects, advances and contacts nobody (AGENTS.md 1.5).
    */
   explainRanking(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<RankingExplanation | null>;
+  /**
+   * What an interviewer's ratings would change (AIV-P1-117): strength and proven level before and after per competency,
+   * and the backed score and upper bound, from the same scoring as `assessCandidate`. Not shown weakens the competency's
+   * present evidence to Claim only; Partly shown changes nothing; Clearly shown adds the interview as Medium and Strongly
+   * shown as Strong evidence, "Candidate-submitted": the interviewer's word, never verified and never a second
+   * independent source. Writes nothing. `candidate.view` on the snapshot's job. Throws `ForbiddenError` for a snapshot
+   * of another workspace or none; `ScoreChangeError` `stale` (not the latest snapshot, or evidence not yet scored),
+   * `source_not_found` (no interview of this candidate and job the context can see), `competency_not_in_rubric`; a zod
+   * error for a malformed input.
+   */
+  previewScoreChange(ctx: WorkspaceContext, input: ScoreChangeInput): Promise<ScoreChangePreview>;
+  /**
+   * Applies a preview a person confirmed, in the caller's transaction: one new snapshot citing the interview, the
+   * changes stored so every later assessment keeps them, and one `score.changed` audit entry per changed competency
+   * (actor, time, reason, before and after) as the last statements. `stale`, storing nothing, unless `previewId` is
+   * what `previewScoreChange` returns now. The same `idempotencyKey` again returns the snapshot stored the first time
+   * and writes nothing. Ratings that change nothing store nothing and return the snapshot unchanged. No stage or
+   * contact changes. `scorecard.submit` on the snapshot's job; refusals as `previewScoreChange`.
+   */
+  applyScoreChange(ctx: WorkspaceContext, input: ApplyScoreChangeInput): Promise<StoredAssessment>;
 }

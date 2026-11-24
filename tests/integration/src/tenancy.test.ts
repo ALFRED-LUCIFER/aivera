@@ -446,6 +446,14 @@ async function seed(
       sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
           values (${scored.id}, 'assessment.explainRanking@1', ${ctx.workspaceId}, '[]'::jsonb, ${NOW.toISOString()})`,
     );
+    // An applied interview change on that result (assessment.interview_change, AIV-P1-117).
+    await ctx.tx.execute(
+      sql`insert into assessment.interview_change (id, workspace_id, candidate_id, job_id, result_id, competency_id,
+            source_id, strength, level, item_ids, reason, applied_by, applied_at, idempotency_key)
+          values (${crypto.randomUUID()}, ${ctx.workspaceId}, ${personId}, ${job.id}, ${scored.id}, ${competencyId},
+            ${crypto.randomUUID()}, 'medium', 3, '[]'::jsonb, 'Defended the design in detail', ${ctx.userId},
+            ${NOW.toISOString()}, ${crypto.randomUUID()})`,
+    );
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
       await evidence.recordEvidence(ctx, {
@@ -780,7 +788,11 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
         (result) => result.count,
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
-      const noUpdate = name === 'audit.entry' || name === 'assessment.result' || name.endsWith('.outbox');
+      const noUpdate =
+        name === 'audit.entry' ||
+        name === 'assessment.result' ||
+        name === 'assessment.interview_change' ||
+        name.endsWith('.outbox');
       expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);
     }
   });

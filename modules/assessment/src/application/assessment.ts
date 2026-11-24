@@ -2,6 +2,8 @@ import type { Tx } from '@credalent/db';
 import type { EvidenceItemView } from '@credalent/evidence';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
 import { assess, type Assessment, type Confidence, type EvidenceLink, type RubricInput } from '../domain/assess.ts';
+import { withInterviewChanges, type InterviewChange } from '../domain/scoreChange.ts';
+import type { InterviewChangeRow } from './scoreChange.ts';
 
 export type StoredAssessment = Assessment & {
   id: string;
@@ -16,6 +18,17 @@ export type AssessmentStore = {
   /** Holds the candidate and job's assessment lock until commit, so concurrent runs store one result, not two. */
   lock(workspaceId: string, candidateId: string, jobId: string): Promise<void>;
   latest(workspaceId: string, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
+  byId(workspaceId: string, id: string): Promise<StoredAssessment | null>;
+  /** The candidate's applied interview changes for the job, oldest first (AIV-P1-117). */
+  interviewChanges(workspaceId: string, candidateId: string, jobId: string): Promise<InterviewChange[]>;
+  insertInterviewChanges(rows: InterviewChangeRow[]): Promise<void>;
+  /** The snapshot an apply with this idempotency key stored for the candidate and job, or null. */
+  appliedResult(
+    workspaceId: string,
+    candidateId: string,
+    jobId: string,
+    idempotencyKey: string,
+  ): Promise<StoredAssessment | null>;
   insert(row: StoredAssessment): Promise<void>;
   /** Every result of the job, any rubric version, oldest first. */
   listForJob(workspaceId: string, jobId: string): Promise<StoredAssessment[]>;
@@ -50,9 +63,10 @@ export type JobRanking =
 export type Scope = { tx: Tx; workspaceId: string; userId: string | null };
 
 /** The audited summary of a stored result: ids, levels and numbers only (AGENTS.md 1.2). */
-export type ScoreSummary = Record<string, string | number>;
+export type ScoreSummary = Record<string, string | number | null>;
 
-export type ScoreChange = { candidateId: string; before: ScoreSummary | null; after: ScoreSummary };
+/** `note` is a person's reason (an interview-based change); without one the entry says it was assessed from the evidence. */
+export type ScoreChange = { candidateId: string; before: ScoreSummary | null; after: ScoreSummary; note?: string };
 
 /** Scores, confidence, the rubric version and each competency's proven level (`proven:<competency id>`). */
 export function summarise(a: Assessment): ScoreSummary {
@@ -124,13 +138,13 @@ export function toLinks(candidateId: string, jobId: string, evidence: readonly E
 }
 
 // jsonb stores object keys in its own order, so compare with keys sorted.
-const canonical = (value: unknown) =>
+export const canonical = (value: unknown) =>
   JSON.stringify(value, (_, v: unknown) =>
     v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).toSorted()) : v,
   );
-const sameResult = (a: Assessment, b: Assessment) => canonical(a) === canonical(b);
+export const sameResult = (a: Assessment, b: Assessment) => canonical(a) === canonical(b);
 
-const pickAssessment = (s: StoredAssessment): Assessment => ({
+export const pickAssessment = (s: StoredAssessment): Assessment => ({
   rubricVersionId: s.rubricVersionId,
   backedScore: s.backedScore,
   upperBound: s.upperBound,
@@ -151,11 +165,18 @@ export async function recordAssessment(
   input: AssessCandidateInput,
 ): Promise<{ stored: StoredAssessment; changed: boolean }> {
   const store = storeFor(scope.tx);
-  const next = assess(input.rubric, toLinks(input.candidateId, input.jobId, input.evidence));
   // Taken again, harmlessly, after the worker's lock before its evidence read (assessForJob).
   // shortcut: `assessCandidate` gets evidence its caller read before this lock, so two concurrent calls can store the
   // older; only tests call it today (the worker scores); lock before the read if a screen ever calls it.
   await store.lock(scope.workspaceId, input.candidateId, input.jobId);
+  // A person's applied interview changes stand in every later run (AIV-P1-117); read under the lock.
+  const next = assess(
+    input.rubric,
+    withInterviewChanges(
+      toLinks(input.candidateId, input.jobId, input.evidence),
+      await store.interviewChanges(scope.workspaceId, input.candidateId, input.jobId),
+    ),
+  );
   const previous = await store.latest(scope.workspaceId, input.candidateId, input.jobId);
   if (previous && sameResult(pickAssessment(previous), next)) return { stored: previous, changed: false };
   const row: StoredAssessment = {
