@@ -61,8 +61,23 @@ export const explainText = z
 /** The facts source's label: `explainRankingRequest` takes it first. */
 const FACTS_LABEL = sourceLabel(0);
 
-/** The figures in a text: each run of letters and digits that holds a digit in any script ("412", "p95"). */
-const figures = (text: string) => text.match(/[\p{L}\p{N}]*\p{N}[\p{L}\p{N}]*/gu) ?? [];
+// A figure: a run of letters and digits that holds a digit in any script ("412", "p95"), with a separator between two
+// digits kept inside it, so "4,120" is not read as the "4" and "120" of another phrase.
+const FIGURE = /[\p{L}\p{N}]*\p{N}(?:[.,]\p{N}|[\p{L}\p{N}])*/gu;
+// What a figure of the work may never stand beside: a placeholder, or a word for what the snapshot measures.
+// Whole words, so a repository called "fraud-scorer" is not one.
+const ABOUT_THE_SCORE = /\{\w+\}|\b(?:weight(?:s|ed|ing)?|scor(?:e|es|ed|ing)|competenc\w*|rubric)\b/i;
+
+/**
+ * Whether every figure in `text` stands in one of `quotes` (the evidence excerpts the statement cites), in a statement
+ * that says nothing of the score: a quoted figure can then never read as a weight, a score or a count of competencies.
+ */
+export const figuresQuoted = (text: string, quotes: readonly string[]): boolean => {
+  const written = text.match(FIGURE) ?? [];
+  if (written.length === 0) return true;
+  const quoted = new Set(quotes.flatMap((quote) => quote.match(FIGURE) ?? []));
+  return !ABOUT_THE_SCORE.test(text) && written.every((figure) => quoted.has(figure));
+};
 
 /**
  * Every figure in a statement is one it quotes from an evidence excerpt it cites; the facts source never counts, so a
@@ -70,12 +85,15 @@ const figures = (text: string) => text.match(/[\p{L}\p{N}]*\p{N}[\p{L}\p{N}]*/gu
  */
 // shortcut: a competency whose name holds a digit ("Python 3") makes the facts line fail when copied, so that job's
 // explanation is the template; give the checked names a placeholder if a pilot rubric has one.
-// shortcut: figures are matched one by one, so "460 of 412 commits" passes on a quote of "412 of 460 commits"; the live
-// judge's rubric ("says only what its source shows") is the backstop. Match the quoted phrase if one slips through.
-const quotesItsFigures = ({ text, citations }: { text: string; citations: { sourceId: string; quote: string }[] }) => {
-  const quoted = new Set(citations.filter((c) => c.sourceId !== FACTS_LABEL).flatMap((c) => figures(c.quote)));
-  return figures(text).every((figure) => quoted.has(figure));
-};
+// shortcut: figures are matched one by one, so "460 of 412 commits" passes on a quote of "412 of 460 commits", and
+// nothing at run time catches it (the judge only runs in the eval). Match the quoted phrase if a pilot answer does it.
+// This runs on the quotes as the model wrote them; the assessment module runs `figuresQuoted` again on the quotes it
+// stores, which redaction may have cut (AIV-P1-132).
+const quotesItsFigures = ({ text, citations }: { text: string; citations: { sourceId: string; quote: string }[] }) =>
+  figuresQuoted(
+    text,
+    citations.filter((c) => c.sourceId !== FACTS_LABEL).map((c) => c.quote),
+  );
 
 export const explainRankingSchema = z.object({
   statements: z

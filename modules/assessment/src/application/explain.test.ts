@@ -4,7 +4,7 @@ import type { EvidenceItemView } from '@credalent/evidence';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it } from 'vitest';
 import { assess } from '../domain/assess.ts';
-import { factsOf } from '../domain/explain.ts';
+import { citationOf, factsOf } from '../domain/explain.ts';
 import type { Ports, StoredAssessment } from './assessment.ts';
 import { explainUseCases, type ExplainPorts, type ExplanationStore } from './explain.ts';
 
@@ -197,7 +197,7 @@ describe("Scenario: Sara's explanation", () => {
 });
 
 describe('Scenario: Numbers come from the snapshot', () => {
-  // SAFETY: mutation check: removed the percent and number-word refine from explainText -> this test failed (the 60% text was shown)
+  // SAFETY: mutation check: removed the number-word refine from explainText -> this test failed (the number-word rows were shown)
   it.each([
     '60% of the weight',
     'sixty percent of the weight',
@@ -253,6 +253,26 @@ describe('Scenario Outline: A number the model wrote is never shown', () => {
   });
 });
 
+describe('A figure is checked against the quote that is stored, not only the one the model wrote', () => {
+  // SAFETY: mutation check: removed the figuresQuoted check in explainRanking -> this test failed ("18 months" was shown beside a quote without it)
+  it('drops a statement whose figure stood in the part of the quote that redaction cut', async () => {
+    const evidence = EVIDENCE.map((e) =>
+      e.id === 'e1' ? { ...e, excerpt: 'Over 18 months, Sara Al Qahtani owned the on-call rota for the platform.' } : e,
+    );
+    const { useCases } = setup(
+      answer(
+        'Over 18 months the candidate owned the on-call rota.',
+        'S2',
+        'Over 18 months, [CANDIDATE] owned the on-call rota for the platform',
+      ),
+      { evidence },
+    );
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(JSON.stringify(explained)).not.toContain('18 months the candidate');
+  });
+});
+
 describe('Scenario: The facts line holds placeholders, and a line copied from it is a valid statement', () => {
   const CHECKED =
     'Independently checked work backs the heaviest competencies: Retrieval and evaluation, and LLM systems in production, {checkedWeight} of the weight.';
@@ -286,6 +306,13 @@ describe('Scenario: The facts line holds placeholders, and a line copied from it
       source: 'ai',
       statements: [{ text: shown, citations: [{ itemId: null, label: 'Snapshot', quote: shown.slice(0, -1) }] }],
     });
+  });
+
+  // Defence only: a quote must be in the facts text, which holds no placeholder without a value.
+  it('drops a facts quote whose placeholder the snapshot has no fact for', () => {
+    const facts = { id: 'facts', label: 'Snapshot', kind: 'facts' as const, text: '' };
+    expect(citationOf(facts, '{claimWeight} of the weight', {})).toBeNull();
+    expect(citationOf(facts, '{claimWeight} of the weight', { claimWeight: '25%' })?.quote).toBe('25% of the weight');
   });
 
   // SAFETY: mutation check: removed the brace check in citationOf -> this test failed ("{claimWeight" was shown)

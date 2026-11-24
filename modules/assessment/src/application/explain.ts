@@ -9,6 +9,7 @@ import {
   SourceTooLong,
   UncitedOutput,
   explainRankingRequest,
+  figuresQuoted,
   type AiClient,
   type Identifiers,
   type Source,
@@ -146,8 +147,13 @@ export function explainUseCases(ports: ExplainPorts) {
             const source = byId.get(c.sourceId);
             return (source && citationOf(source, c.quote, facts.values)) ?? [];
           });
+          // Again on the quotes as stored: redaction may have cut the part of a quote that held a figure.
+          const quoted = figuresQuoted(
+            text,
+            cites.filter((c) => c.itemId !== null).map((c) => c.quote),
+          );
           // The model is told the rules; code decides (statementAllowed).
-          return filled === null || !statementAllowed(text, facts) || cites.length === 0
+          return filled === null || !statementAllowed(text, facts) || !quoted || cites.length === 0
             ? []
             : [{ text: filled, citations: cites }];
         });
