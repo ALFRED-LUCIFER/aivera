@@ -23,19 +23,19 @@ expected:
     number is a placeholder that stands for a line the facts source has. No statement recommends rejecting,
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@2
-  promptHash: '06c9e938e0bd'
+  promptVersion: assessment.explainRanking@3
+  promptHash: '4cdd8eebea1a'
   output:
     statements:
       - text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.'
         citations:
           - sourceId: S1
-            quote: 'Independently checked work backs'
+            quote: 'Independently checked work backs the heaviest competency'
       - text: 'The cited document supports the checked work.'
         citations:
           - sourceId: S2
             quote: 'signed by the reviewing lead'
-      - text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.'
+      - text: '{claimCompetencies}, {claimWeight} of the weight, still rests on claims: {claimNames}.'
         citations:
           - sourceId: S1
             quote: 'Still resting on claims'

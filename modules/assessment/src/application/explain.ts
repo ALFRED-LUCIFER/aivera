@@ -146,7 +146,7 @@ export function explainUseCases(ports: ExplainPorts) {
             return source ? [citationOf(source, c.quote)] : [];
           });
           // The model is told the rules; code decides (statementAllowed).
-          return filled === null || !statementAllowed(text, filled, facts) || cites.length === 0
+          return filled === null || !statementAllowed(text, facts) || cites.length === 0
             ? []
             : [{ text: filled, citations: cites }];
         });

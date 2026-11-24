@@ -21,6 +21,8 @@ export type ExplainSource = {
 export type Facts = {
   /** Placeholder to the text that replaces it; a placeholder with no entry has no fact behind it. */
   values: Record<string, string>;
+  /** How many competencies rest on independently checked work, and how many on claims. */
+  counts: { checked: number; claims: number };
   /** The checked competencies are the heaviest of the rubric: the only case a statement may say "heaviest". */
   heaviest: boolean;
   /** The facts source, one line per fact; null when the snapshot has nothing to explain. */
@@ -94,7 +96,13 @@ export function factsOf(
     })
     .slice(0, MAX_ITEMS);
 
-  return { values, heaviest, factsText: lines.length > 0 ? lines.join('\n') : null, items };
+  return {
+    values,
+    heaviest,
+    counts: { checked: checked.length, claims: claims.length },
+    factsText: lines.length > 0 ? lines.join('\n') : null,
+    items,
+  };
 }
 
 /**
@@ -113,17 +121,26 @@ export function fill(text: string, values: Readonly<Record<string, string>>): st
 
 const HEAVIEST = /\b(?:heaviest|largest share|most weighted|biggest)\b/i;
 // Rule 1.6: nothing is called verified or proven (only a second independent source "checks"), and a claim is never
-// described as checked or backed.
+// described as checked, backed or supported.
 const OVERSTATES = /\bverif|\bproven\b|\bconfirm/i;
+const CLAIM_CREDIT = /\b(?:back(?:s|ed|ing)?|check(?:s|ed)?|support(?:s|ed)?)\b/i;
 
 /**
- * Whether a model statement may be shown: it says "heaviest" only when the facts do, never calls anything verified,
- * proven or confirmed, and never says a claim is checked or backed. `raw` is the text with its placeholders, `filled` the text shown.
+ * Whether a model statement may be shown, judged on `raw`, the model's own words with its placeholders unfilled (a
+ * filled-in competency name such as "Test and verification" is a server fact, not the model's claim): it says "heaviest"
+ * only when the facts do and not of a claim, never calls anything verified, proven or confirmed, and never says a claim
+ * is checked, backed or supported.
  */
-export const statementAllowed = (raw: string, filled: string, facts: Pick<Facts, 'heaviest'>): boolean =>
-  (facts.heaviest || !HEAVIEST.test(filled)) &&
-  !OVERSTATES.test(filled) &&
-  !(/\{claim\w*\}/.test(raw) && /\b(?:checked|backed)\b/i.test(raw));
+// shortcut: a competency name the model writes out literally, instead of through its placeholder, is not checked here;
+// the live judge's rubric ("says only what its source shows") is the backstop. Check names against the rubric if it slips.
+export const statementAllowed = (raw: string, facts: Pick<Facts, 'heaviest'>): boolean => {
+  const aboutClaims = /\{claim\w*\}/.test(raw);
+  return (
+    !OVERSTATES.test(raw) &&
+    !(HEAVIEST.test(raw) && (!facts.heaviest || aboutClaims)) &&
+    !(aboutClaims && CLAIM_CREDIT.test(raw))
+  );
+};
 
 /** What a statement cites for a source of the explanation: the facts line (no item id) or the evidence item. */
 // shortcut: a citation keeps its quote, not its offsets or claim flag; the profile (AIV-P1-043) finds the quote in the
@@ -150,7 +167,7 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
     factLines.filter((l) => l.startsWith(prefix)).map((l) => citationOf(factSource, l));
   return [
     ...statement(
-      'Competencies carrying {checkedWeight} of the weight are backed by work that was independently checked.',
+      `{checkedCompetencies} carrying {checkedWeight} of the weight ${facts.counts.checked === 1 ? 'is' : 'are'} backed by work that was independently checked.`,
       stated('Independently'),
     ),
     ...(first
@@ -162,7 +179,7 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
         ]
       : []),
     ...statement(
-      'Competencies carrying {claimWeight} of the weight still rest on claims: {claimNames}.',
+      `{claimCompetencies} carrying {claimWeight} of the weight still ${facts.counts.claims === 1 ? 'rests' : 'rest'} on claims: {claimNames}.`,
       stated('Still'),
     ),
   ];

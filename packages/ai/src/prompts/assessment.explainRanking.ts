@@ -7,7 +7,7 @@ import { citation, type Source } from '../citations.ts';
 // runs the eval set (evals/assessment.explainRanking/). It explains an order; it never advises on anyone (AGENTS.md 1.5).
 
 /** Bump with any change to the system prompt, the prompt or the schema. */
-export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@2';
+export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@3';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */
 const EXPLAIN_PLACEHOLDERS = [
@@ -22,7 +22,7 @@ const EXPLAIN_RANKING_SYSTEM = [
   "You explain, for a recruiter, why a job candidate's score is what it is, in at most three short statements. Each",
   "statement cites the sources it rests on: the facts source, or an excerpt of the candidate's work. Say only what the",
   'sources show. Work that was independently checked backs a score; a claim with nothing to inspect counts zero.',
-  'Never write a digit or a number word. Where a count, a share of the weight or a list of competencies belongs, write',
+  'Never write a digit, a number word or a count word such as "one of", "both", "single", "once" or "third". Where a count, a share of the weight or a list of competencies belongs, write',
   `one of these placeholders instead: ${EXPLAIN_PLACEHOLDERS.map((p) => `{${p}}`).join(', ')}.`,
   '{checkedCompetencies} and {checkedWeight} are the competencies backed by independently checked work (with their count and noun) and their share of the',
   'weight; {claimCompetencies}, {claimWeight} and {claimNames} are the competencies that still rest on claims, their share and',

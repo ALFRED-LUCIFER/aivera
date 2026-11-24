@@ -248,7 +248,7 @@ describe('Scenario: Assessments never cross workspaces', () => {
   });
 });
 
-const insert = (workspaceId: string, version: string) =>
+const insertExplanation = (workspaceId: string, version: string) =>
   withWorkspace(app, w1, (tx) =>
     tx.execute(
       sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
@@ -260,9 +260,9 @@ const insert = (workspaceId: string, version: string) =>
 describe('Scenario: An explanation is cached per snapshot and never crosses workspaces (AIV-P1-033)', () => {
   // SAFETY: mutation check: dropped the primary key on (result_id, prompt_version) -> this test failed (a second row for one snapshot)
   it('keeps one row per snapshot and prompt version, and a new prompt version is a new row', async () => {
-    await insert(w1, 'assessment.explainRanking@1');
-    await expect(insert(w1, 'assessment.explainRanking@1')).rejects.toThrow();
-    await insert(w1, 'assessment.explainRanking@2');
+    await insertExplanation(w1, 'assessment.explainRanking@1');
+    await expect(insertExplanation(w1, 'assessment.explainRanking@1')).rejects.toThrow();
+    await insertExplanation(w1, 'assessment.explainRanking@2');
   });
 
   // SAFETY: mutation check: ALTER POLICY explanation_tenant_isolation USING (true) WITH CHECK (true) -> this test failed
@@ -270,23 +270,31 @@ describe('Scenario: An explanation is cached per snapshot and never crosses work
     expect([...(await withWorkspace(app, w2, (tx) => tx.execute(sql`select * from assessment.explanation`)))]).toEqual(
       [],
     );
-    await expect(insert(w2, 'assessment.explainRanking@3')).rejects.toThrow();
+    await expect(insertExplanation(w2, 'assessment.explainRanking@3')).rejects.toThrow();
   });
 
   // SAFETY: mutation check: dropped ON DELETE CASCADE from the foreign key -> this test failed (the delete was refused)
   it('is deleted with its result, so an erasure of results leaves none behind (rolled back here)', async () => {
     const rollback = new Error('roll back');
-    let left: number | undefined;
+    const counts: (number | undefined)[] = [];
     await withWorkspace(app, w1, async (tx) => {
+      const count = async () =>
+        (await tx.execute<{ n: number }>(sql`select count(*)::int as n from assessment.explanation`))[0]?.n;
+      // Its own row, so the test holds when run alone: one explanation for the first result of the workspace.
+      await tx.execute(
+        sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
+            select id, 'assessment.explainRanking@erasure', workspace_id, '[]'::jsonb, ${NOW.toISOString()}
+            from assessment.result limit 1`,
+      );
+      counts.push(await count());
       await tx.execute(sql`delete from assessment.result where id in (select result_id from assessment.explanation)`);
-      [{ n: left } = { n: undefined }] = [
-        ...(await tx.execute<{ n: number }>(sql`select count(*)::int as n from assessment.explanation`)),
-      ];
+      counts.push(await count());
       throw rollback;
     }).catch((error: unknown) => {
       if (error !== rollback) throw error;
     });
-    expect(left).toBe(0);
+    expect(counts[0]).toBeGreaterThan(0);
+    expect(counts[1]).toBe(0);
   });
 });
 

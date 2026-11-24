@@ -125,8 +125,14 @@ function setup(
   {
     failure,
     evidence = EVIDENCE,
+    names = NAMES,
     latest = snapshot('r1', evidence),
-  }: { failure?: number; latest?: StoredAssessment | null; evidence?: EvidenceItemView[] } = {},
+  }: {
+    failure?: number;
+    latest?: StoredAssessment | null;
+    evidence?: EvidenceItemView[];
+    names?: [string, string, number][];
+  } = {},
 ) {
   const cache = new Map<string, unknown>();
   const calls = { model: 0 };
@@ -148,7 +154,7 @@ function setup(
     now: () => day,
     explanationsFor: () => store,
     ai,
-    approvedRubric: async () => ({ id: 'rubric-v2', competencies: NAMES.map(([id, name]) => ({ id, name })) }),
+    approvedRubric: async () => ({ id: 'rubric-v2', competencies: names.map(([id, name]) => ({ id, name })) }),
     evidence: async () => evidence,
     identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
   } as unknown as ExplainPorts & Ports);
@@ -265,9 +271,9 @@ describe('Scenario: Model unavailable', () => {
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('template');
     expect(explained?.statements.map((s) => s.text)).toEqual([
-      'Competencies carrying 45% of the weight are backed by work that was independently checked.',
+      'Two competencies carrying 45% of the weight are backed by work that was independently checked.',
       'The cited work behind Retrieval and evaluation is llm-eval-harness.',
-      'Competencies carrying 25% of the weight still rest on claims: Cost and reliability, and Arabic NLP.',
+      'Two competencies carrying 25% of the weight still rest on claims: Cost and reliability, and Arabic NLP.',
     ]);
     expect(explained?.statements.every((s) => s.citations.length > 0)).toBe(true);
   });
@@ -298,14 +304,49 @@ describe('Rule 1.6 wording is enforced in code, not only asked of the model', ()
   const evidence = EVIDENCE.map((e) => (e.id === 'e1' ? { ...e, provenance: 'submitted' as const } : e));
 
   // SAFETY: mutation check: statementAllowed always true -> this test failed (verified, proven and a "backed" claim were shown)
+  // Here the checked work IS the heaviest (Sara's own evidence), so only a claim being "heaviest" is wrong.
+  it('drops a statement calling the claims the heaviest, even when the checked work is', async () => {
+    const { useCases } = setup({ statements: [say('{claimNames} are the heaviest.', 'Still resting on claims')] });
+    expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
+  });
+
   it.each([
     ['verified', say('The work was independently verified.')],
     ['proven', say('The work is proven.')],
     ['a claim called backed', say('{claimNames} are backed.', 'Still resting on claims')],
     ['largest share when not the heaviest', say('This holds the largest share of the weight.')],
+    ['a claim supported', say('{claimNames} are supported.', 'Still resting on claims')],
+    ['a claim checked', say('{claimNames} have been checked.', 'Still resting on claims')],
   ])('drops a statement saying %s, leaving the template', async (_, statement) => {
     const { useCases } = setup({ statements: [statement] }, { evidence });
     expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
+  });
+});
+
+describe("A rubric competency named like a banned word is a server fact, not the model's claim", () => {
+  // SAFETY: mutation check: statementAllowed tested the filled text instead of the model's own words -> this test failed (the claims line was dropped)
+  it('keeps "still rest on claims: Test and verification"', async () => {
+    const names = NAMES.map(([id, name, weight]): [string, string, number] => [
+      id,
+      id === 'c-cost' ? 'Test and verification' : name,
+      weight,
+    ]);
+    const { useCases } = setup(
+      {
+        statements: [
+          {
+            text: '{claimCompetencies} still rest on claims: {claimNames}.',
+            citations: [cite('S1', 'Still resting on claims')],
+          },
+        ],
+      },
+      { names },
+    );
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements[0]?.text).toBe(
+      'Two competencies still rest on claims: Test and verification, and Arabic NLP.',
+    );
   });
 });
 

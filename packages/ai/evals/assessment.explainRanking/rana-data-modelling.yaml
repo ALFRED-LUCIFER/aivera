@@ -23,8 +23,8 @@ expected:
     number is a placeholder that stands for a line the facts source has. No statement recommends rejecting,
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@2
-  promptHash: '10ef8bf5cf44'
+  promptVersion: assessment.explainRanking@3
+  promptHash: '274a153f7964'
   output:
     statements:
       - text: 'Competencies carrying {checkedWeight} of the weight are backed by work that was independently checked.'
