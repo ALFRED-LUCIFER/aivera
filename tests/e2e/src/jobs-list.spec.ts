@@ -27,9 +27,17 @@ test('Scenario: The seeded workspace shows five jobs', async ({ page }) => {
     /^\d+Observed$/,
     'Not yet available',
     'Approved',
-    'Not yet available',
+    // AIV-P1-101: "Import candidates" under the next action, for an admin or recruiter.
+    'Not yet availableImport candidates',
   ]);
-  await expect(sae.getByRole('link')).toHaveAttribute('href', /^\/app\/jobs\/[0-9a-f-]+\/candidates$/);
+  await expect(sae.getByRole('link', { name: 'Senior AI Engineer' })).toHaveAttribute(
+    'href',
+    /^\/app\/jobs\/[0-9a-f-]+\/candidates$/,
+  );
+  await expect(sae.getByRole('link', { name: 'Import candidates' })).toHaveAttribute(
+    'href',
+    /^\/app\/jobs\/[0-9a-f-]+\/import$/,
+  );
 });
 
 test('Scenario: A job without an approved rubric is not assessed', async ({ page }) => {
@@ -42,9 +50,11 @@ test('Scenario: A job without an approved rubric is not assessed', async ({ page
     '0Observed',
     'Starts after rubric approval',
     'Draft, needs approval',
-    'Approve the rubric',
+    'Approve the rubricImport candidates',
   ]);
-  await expect(row(page, 'Senior Product Designer').getByRole('link')).toHaveAttribute('href', /\/rubric$/);
+  await expect(
+    row(page, 'Senior Product Designer').getByRole('link', { name: 'Senior Product Designer' }),
+  ).toHaveAttribute('href', /\/rubric$/);
 });
 
 // mutation check: made the rubricNotApproved filter match every row -> this test failed (the tab read "Rubric not approved 5")
@@ -60,9 +70,9 @@ test('Scenario: Filter to rubrics not approved, by keyboard, kept in the URL', a
   await expect(page.getByRole('radio', { name: 'Rubric not approved 1' })).toBeChecked();
   await expect(page).toHaveURL(/\?filter=rubricNotApproved$/);
   const links = page.getByRole('table', { name: 'Jobs' }).getByRole('link');
-  await expect(links).toHaveText(['Senior Product Designer']);
+  await expect(links).toHaveText(['Senior Product Designer', 'Import candidates']);
   await page.reload();
-  await expect(links).toHaveText(['Senior Product Designer']);
+  await expect(links).toHaveText(['Senior Product Designer', 'Import candidates']);
   // Tab moves on from the tabs into the table, to the job's link.
   await page.getByRole('radio', { name: 'Rubric not approved 1' }).focus();
   await page.keyboard.press('Tab');

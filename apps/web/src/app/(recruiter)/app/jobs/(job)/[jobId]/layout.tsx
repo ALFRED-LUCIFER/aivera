@@ -13,7 +13,10 @@ export default async function JobLayout({ children, params }: LayoutProps<'/app/
   if ('missing' in loaded) return loaded.missing === 'forbidden' ? forbidden() : notFound();
   return (
     <>
-      <JobHeaderNav view={jobHeaderView(loaded.header, loaded.hiringOwner, loaded.assessed, loaded.ownerChange)} />
+      <JobHeaderNav
+        view={jobHeaderView(loaded.header, loaded.hiringOwner, loaded.assessed, loaded.ownerChange, loaded.imported)}
+        canImport={loaded.canImport}
+      />
       {children}
     </>
   );

@@ -13,7 +13,7 @@ const header = (more: Partial<JobHeader>): JobHeader => ({
   ...more,
 });
 const lines = (h: JobHeader, assessed = 0) =>
-  Object.fromEntries(jobHeaderView(h, null, assessed).stages.map((s) => [s.page, s.line]));
+  Object.fromEntries(jobHeaderView(h, null, assessed, null, 0).stages.map((s) => [s.page, s.line]));
 
 describe('Job header stage lines (AIV-P1-011)', () => {
   it('Senior AI Engineer, version 2 approved with 64 assessed', () => {
@@ -21,11 +21,14 @@ describe('Job header stage lines (AIV-P1-011)', () => {
       header({ approved: version(2, 'approved'), latest: version(2, 'approved') }),
       'Head of Engineering',
       64,
+      null,
+      0,
     );
     expect(view).toMatchObject({ hiringOwner: 'Head of Engineering', assessed: 64, rubric: { approved: true } });
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toEqual({
       description: { key: 'saved', values: { date: saved } },
       rubric: { key: 'approved', values: { version: 2 } },
+      import: { key: 'notStarted' },
       candidates: { key: 'assessed', values: { count: 64 } },
       interviews: { key: 'notStarted' },
       pack: { key: 'notStarted' },
@@ -42,7 +45,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   });
 
   it('a draft rubric: evidence and ranking starts after approval, and the rubric is not done', () => {
-    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0);
+    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0, null, 0);
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toMatchObject({
       rubric: { key: 'draft', values: { version: 1 } },
       candidates: { key: 'afterApproval' },
@@ -55,7 +58,15 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(lines(header({}))).toMatchObject({ rubric: { key: 'notStarted' }, candidates: { key: 'afterApproval' } });
   });
 
-  it('only the five stage segments are a current page', () => {
+  it('AIV-P1-101: "Bring in candidates" counts applications from every source, before the rubric is approved too', () => {
+    const draft = header({ latest: version(1, 'draft') });
+    const line = (imported: number) => jobHeaderView(draft, null, 0, null, imported).stages[2];
+    expect(line(212)).toEqual({ page: 'import', line: { key: 'imported', values: { count: 212 } }, done: false });
+    expect(line(0)?.line).toEqual({ key: 'notStarted' });
+  });
+
+  it('only the stage segments are a current page', () => {
+    expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');
     expect(parseJobPage('settings')).toBeNull();
     expect(parseJobPage(null)).toBeNull();

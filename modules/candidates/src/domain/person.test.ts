@@ -37,4 +37,13 @@ describe('Scenario: Identifiers are normalised', () => {
     ).toEqual([{ type: 'email', value: 'sara.alqahtani@example.com' }]);
     expect(() => normaliseIdentifiers([])).toThrow(new CandidateError('no_identifiers'));
   });
+
+  // SAFETY: mutation check: returned the identifiers in arrival order -> this test failed
+  it('returns one fixed order, so two arrivals insert the same identifiers in the same lock order', () => {
+    const cv = { type: 'cv_hash' as const, value: 'ab'.repeat(32) };
+    const email = { type: 'email' as const, value: 'tarek.mansour@example.com' };
+    const phone = { type: 'phone' as const, value: '+971500000002' };
+    expect(normaliseIdentifiers([phone, email, cv])).toEqual([cv, email, phone]);
+    expect(normaliseIdentifiers([email, cv, phone])).toEqual([cv, email, phone]);
+  });
 });

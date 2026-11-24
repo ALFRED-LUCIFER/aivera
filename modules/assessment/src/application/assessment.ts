@@ -19,11 +19,11 @@ export type AssessmentStore = {
   insert(row: StoredAssessment): Promise<void>;
   /** Every result of the job, any rubric version, oldest first. */
   listForJob(workspaceId: string, jobId: string): Promise<StoredAssessment[]>;
-  /** Per job, how many candidates have a result on that job's rubric version: one grouped read; jobs with none are absent. */
-  countOnVersions(
+  /** Per job, the candidates with a result on that job's rubric version: one read; jobs with none are absent. */
+  assessedOnVersions(
     workspaceId: string,
     versions: readonly { jobId: string; rubricVersionId: string }[],
-  ): Promise<Map<string, number>>;
+  ): Promise<Map<string, string[]>>;
 };
 
 /** One candidate in a job's ranking: their latest result on the job's approved rubric version. */
@@ -84,6 +84,11 @@ export type Ports = {
   ): Promise<{ resource: JobResource; approvedVersionId: string | null } | null>;
   /** Writes `score.changed` to the audit log in `scope.tx`: the last statement before commit (AGENTS.md 3.6). */
   auditScoreChange(scope: Scope, change: ScoreChange): Promise<void>;
+  /**
+   * Who applies to the job now (intake's `candidatesForJob`), so a candidate merged into another (AIV-P1-018) leaves
+   * the ranking with their application. Without it every candidate with a result is ranked.
+   */
+  applicants?: (tx: Tx, workspaceId: string, jobId: string) => Promise<string[]>;
   newId(): string;
   now(): Date;
 };
@@ -208,7 +213,9 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
 }
 
 export function assessmentUseCases(ports: Ports) {
-  const { storeFor, authorize, rankingJob, candidateJob } = ports;
+  const { storeFor, authorize, rankingJob, candidateJob, applicants } = ports;
+  const currentApplicants = async (ctx: WorkspaceContext, jobId: string) =>
+    applicants && new Set(await applicants(ctx.tx, ctx.workspaceId, jobId));
   return {
     /**
      * Assesses the candidate and stores the result when it differs from the latest one; every stored result is
@@ -234,20 +241,30 @@ export function assessmentUseCases(ports: Ports) {
       await authorize(ctx, 'candidate.view', job.resource);
       if (!job.approvedVersionId) return { status: 'awaiting_rubric' };
       const results = await storeFor(ctx.tx).listForJob(ctx.workspaceId, jobId);
-      return { status: 'ranked', rubricVersionId: job.approvedVersionId, rows: rank(results, job.approvedVersionId) };
+      const current = await currentApplicants(ctx, jobId);
+      const ranked = current ? results.filter((r) => current.has(r.candidateId)) : results;
+      return { status: 'ranked', rubricVersionId: job.approvedVersionId, rows: rank(ranked, job.approvedVersionId) };
     },
 
+    /** Per job, the candidates `listRanking` ranks: the same applicants filter, so "N assessed" matches its rows. */
     async countAssessed(ctx: WorkspaceContext, jobIds: readonly string[]): Promise<Record<string, number>> {
       const versions: { jobId: string; rubricVersionId: string }[] = [];
-      // shortcut: one job read per job; a workspace lists tens of jobs. Batch the jobs read if the Jobs list outgrows that.
+      // shortcut: one job read, and one applicants read per job with results; a workspace lists tens of jobs. Batch both
+      // if the Jobs list outgrows that.
       for (const jobId of jobIds) {
         const job = await rankingJob(ctx, jobId);
         if (!job) throw new ForbiddenError();
         await authorize(ctx, 'candidate.view', job.resource);
         if (job.approvedVersionId) versions.push({ jobId, rubricVersionId: job.approvedVersionId });
       }
-      const counts = await storeFor(ctx.tx).countOnVersions(ctx.workspaceId, versions);
-      return Object.fromEntries(jobIds.map((jobId) => [jobId, counts.get(jobId) ?? 0]));
+      const assessed = await storeFor(ctx.tx).assessedOnVersions(ctx.workspaceId, versions);
+      const counts: Record<string, number> = {};
+      for (const jobId of jobIds) {
+        const ids = assessed.get(jobId) ?? [];
+        const current = ids.length > 0 ? await currentApplicants(ctx, jobId) : undefined;
+        counts[jobId] = current ? ids.filter((id) => current.has(id)).length : ids.length;
+      }
+      return counts;
     },
   };
 }

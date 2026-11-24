@@ -6,6 +6,8 @@ import { addApplicantsSchema, SOURCE_OPTIONS } from './addApplicants.ts';
 const JOB = '0190d4a2-0000-7000-9000-000000001031';
 const F1 = '0190d4a2-0000-7000-8000-0000000000f1';
 const F2 = '0190d4a2-0000-7000-8000-0000000000f2';
+const ids = (n: number) =>
+  Array.from({ length: n }, (_, i) => `0190d4a2-0000-7000-8000-${String(i).padStart(12, '0')}`);
 
 describe('SOURCE_OPTIONS', () => {
   it("offers every intake source but a member's link (recruiter, AIV-P1-076) exactly once, each with its label", async () => {
@@ -23,6 +25,11 @@ describe('addApplicantsSchema', () => {
   it('takes a job, a source and one or more file ids', () => {
     const input = { jobId: JOB, source: 'linkedin', fileIds: [F1, F2] };
     expect(addApplicantsSchema.parse(input)).toEqual(input);
+  });
+
+  it('takes up to 200 CVs at a time (AIV-P1-101), and refuses 201', () => {
+    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'email', fileIds: ids(200) }).success).toBe(true);
+    expect(addApplicantsSchema.safeParse({ jobId: JOB, source: 'email', fileIds: ids(201) }).success).toBe(false);
   });
 
   it.each([

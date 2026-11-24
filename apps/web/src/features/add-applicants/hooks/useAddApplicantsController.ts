@@ -71,7 +71,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
         setResult(outcome);
         if (!outcome.ok) return;
         setCvs([]);
-        // The Candidates tab lists the new applicants behind the dialog (AIV-P1-086).
+        // The job header's "Bring in candidates" count, and the ranking, read the new applicants (AIV-P1-101).
         router.refresh();
       });
     },

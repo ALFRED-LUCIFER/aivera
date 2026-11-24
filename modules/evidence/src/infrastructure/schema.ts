@@ -63,6 +63,8 @@ export const source = evidence
       textFingerprint: text('text_fingerprint'),
     },
     (t) => [
+      // Every row about a source names its candidate through this key, ON UPDATE CASCADE: a duplicate merge (AIV-P1-018)
+      // moves a source to another candidate and its reads, items, notes and flags follow.
       unique('source_workspace_candidate_key').on(t.workspaceId, t.id, t.candidateId),
       // Must list exactly SOURCE_KINDS (domain/evidence.ts); changing it needs a new migration.
       check(
@@ -146,7 +148,7 @@ export const item = evidence
         name: 'item_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       unique('item_workspace_id_key').on(t.workspaceId, t.id),
       index('item_candidate_idx').on(t.workspaceId, t.candidateId, t.createdAt, t.id),
       // Must list exactly PROVENANCES and STRENGTHS (domain/evidence.ts); changing them needs a new migration.
@@ -216,12 +218,12 @@ export const duplicateFlag = evidence
         name: 'duplicate_flag_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       foreignKey({
         name: 'duplicate_flag_other_source_fk',
         columns: [t.workspaceId, t.otherSourceId, t.otherCandidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       unique('duplicate_flag_pair_key').on(t.workspaceId, t.sourceId, t.otherSourceId),
       index('duplicate_flag_candidate_idx').on(t.workspaceId, t.candidateId),
       index('duplicate_flag_other_candidate_idx').on(t.workspaceId, t.otherCandidateId),
@@ -278,7 +280,7 @@ export const repositoryRead = evidence
         name: 'repository_read_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       // Must list exactly REPOSITORY_READ_STATUSES (domain/repository.ts); changing it needs a new migration.
       check('repository_read_status_check', sql`${t.status} in ('pending', 'read', 'not_accessible', 'fork')`),
       // A read repository has its numbers; generated-only commits are a subset of the checked authored ones.
@@ -541,7 +543,7 @@ export const cvParse = evidence
         name: 'cv_parse_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       // Must list exactly CV_PARSE_STATUSES (domain/cv.ts); changing it needs a new migration.
       check('cv_parse_status_check', sql`${t.status} in ('pending', 'waiting', 'parsed', 'unreadable', 'failed')`),
       tenantPolicy('cv_parse_tenant_isolation', t.workspaceId),
@@ -566,7 +568,7 @@ export const documentRead = evidence
         name: 'document_read_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       // Must list exactly DOCUMENT_READ_STATUSES (domain/document.ts); changing it needs a new migration.
       check('document_read_status_check', sql`${t.status} in ('pending', 'read', 'unreadable', 'failed')`),
       tenantPolicy('document_read_tenant_isolation', t.workspaceId),
@@ -594,7 +596,7 @@ export const linkRead = evidence
         name: 'link_read_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       // One read per candidate and link, so a repeated or redelivered arrival reads it once.
       unique('link_read_candidate_url_key').on(t.workspaceId, t.candidateId, t.url),
       // Must list exactly LINK_READ_STATUSES (domain/link.ts); changing it needs a new migration.
@@ -624,7 +626,7 @@ export const sourceNote = evidence
         name: 'source_note_source_fk',
         columns: [t.workspaceId, t.sourceId, t.candidateId],
         foreignColumns: [source.workspaceId, source.id, source.candidateId],
-      }),
+      }).onUpdate('cascade'),
       index('source_note_source_idx').on(t.workspaceId, t.sourceId),
       // Must list exactly NOTE_REASONS (domain/cv.ts); changing it needs a new migration.
       check('source_note_reason_check', sql`${t.reason} in ('instruction', 'role_marker', 'tool_call', 'hidden_text')`),

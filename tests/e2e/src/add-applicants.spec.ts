@@ -3,19 +3,23 @@ import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
-// AIV-P1-019: "Add applicants" on a job's Candidates tab, as AP, admin of "Demo" (seed.ts). This harness has no Blob
-// storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the upload-to-application path is proven against
-// Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts. This spec covers the dialog itself.
+// AIV-P1-019: "Add applicants", opened by "Upload files" on a job's Bring in candidates page (AIV-P1-101), as AP, admin
+// of "Demo" (seed.ts). This harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the
+// upload-to-application path is proven against Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts.
+// This spec covers the dialog itself.
 const AP = 'ap@example.com';
 
 async function openDialog(page: Page) {
   await page.goto('/app/jobs');
-  // An approved job opens on its Candidates tab. The title streams in after the page commits: waiting for it means axe
-  // never reads a page mid-navigation.
-  await page.getByRole('link', { name: 'Senior AI Engineer' }).click();
-  await expect(page).toHaveURL(/\/candidates$/);
-  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
-  await page.getByRole('button', { name: 'Add applicants' }).click();
+  // The title streams in after the page commits: waiting for it means axe never reads a page mid-navigation.
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'Senior AI Engineer' })
+    .getByRole('link', { name: 'Import candidates' })
+    .click();
+  await expect(page).toHaveURL(/\/import$/);
+  await expect(page).toHaveTitle('Senior AI Engineer: Bring in candidates · Credalent');
+  await page.getByRole('button', { name: 'Upload files' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add applicants' });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -55,7 +59,7 @@ test('the dialog is keyboard operable: source, upload, then close with Escape ba
   await expect(dialog.getByRole('button', { name: 'Upload CV' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Add applicants' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Upload files' })).toBeFocused();
 });
 
 // AIV-P1-034: the ranked candidates, replacing AIV-P1-086's plain list. seed.ts files nine applicants on Senior AI
@@ -87,12 +91,32 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   ]);
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(7);
+  // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it.
   await expect(rows.nth(0)).toHaveText(
-    '1Sara Al QahtaniNew68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+    '1Sara Al QahtaniNew1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
   );
   await expect(rows.nth(1)).toHaveText(/^2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/);
   await expect(rows.nth(2)).toHaveText(/^3Tarek MansourNew63up to 80 if claims hold/);
   await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+});
+
+test('Scenario: Exact duplicates merge automatically: the row shows "1 duplicate merged", and undo previews first', async ({
+  page,
+}) => {
+  await signIn(page, { email: AP });
+  const table = await openCandidates(page);
+  const sara = bodyRows(table).nth(0);
+  await expect(sara.getByText('1 duplicate merged')).toBeVisible();
+  // Nine applicants still: the merged record's application joined Sara's, it did not add a row.
+  await expect(page.getByRole('button', { name: 'Show all 9' })).toBeVisible();
+  await sara.getByRole('button', { name: 'Undo merge' }).click();
+  const card = page.getByRole('dialog', { name: 'Preview: undo the merge of Sara Al Qahtani' });
+  await expect(card).toContainText('Nothing changes until you confirm.');
+  await expect(card.getByRole('button', { name: 'Undo merge' })).toBeDisabled();
+  await expectAccessible(page);
+  await page.keyboard.press('Escape');
+  await expect(card).toBeHidden();
+  await expect(sara.getByText('1 duplicate merged')).toBeVisible();
 });
 
 test('Scenario: Show all', async ({ page }) => {
@@ -126,7 +150,8 @@ test('Scenario: Job without an approved rubric, and no applicants', async ({ pag
   await expect(page.getByRole('table', { name: 'Ranked candidates' })).toContainText(
     'No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.',
   );
-  await expect(page.getByRole('button', { name: 'Add applicants' })).toBeVisible();
+  // People can be brought in before the rubric is approved (AIV-P1-101).
+  await expect(page.getByRole('link', { name: 'Add candidates' })).toBeVisible();
   // The stage line in the header says it too; this is the page's own notice, with its link.
   await expect(page.locator('p').filter({ hasText: /^Starts after rubric approval/ })).toBeVisible();
   await page.getByRole('link', { name: 'Send rubric for approval' }).click();
@@ -147,16 +172,12 @@ test("Scenario: Another workspace's job", async ({ page, context }) => {
   expect(await page.content()).not.toMatch(/Sara Al Qahtani|Arjun Menon/);
 });
 
-test('Scenario: The ranking is keyboard operable: "Add applicants", search, the filters and Columns', async ({
-  page,
-}) => {
+test('Scenario: The ranking is keyboard operable: search, the filters and Columns', async ({ page }) => {
   await signIn(page, { email: AP });
   const table = await openCandidates(page);
   // The rows have streamed in: loading.tsx's skeleton is gone, so focus stays where it is put.
   await expect(bodyRows(table)).toHaveCount(7);
   await page.getByRole('navigation', { name: 'Stages of this job' }).getByRole('link').last().focus();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Add applicants' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('searchbox', { name: 'Search candidates' })).toBeFocused();
   await page.keyboard.type('menon');
@@ -173,12 +194,15 @@ test('Scenario: The ranking is keyboard operable: "Add applicants", search, the 
   await expect(table.getByRole('columnheader', { name: 'Backed score' })).toHaveCount(0);
 });
 
-test('Scenario: "Add applicants" opens from the ranking with Enter', async ({ page }) => {
+test('Scenario: "Add candidates" opens Bring in candidates from the ranking with Enter (AIV-P1-101)', async ({
+  page,
+}) => {
   await signIn(page, { email: AP });
   await expect(await openCandidates(page)).toBeVisible();
-  await page.getByRole('button', { name: 'Add applicants' }).focus();
+  await page.getByRole('link', { name: 'Add candidates' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'Add applicants' })).toBeVisible();
+  await expect(page).toHaveTitle('Senior AI Engineer: Bring in candidates · Credalent');
+  await expect(page.getByRole('button', { name: 'Upload files' })).toBeVisible();
 });
 
 for (const theme of themes) {

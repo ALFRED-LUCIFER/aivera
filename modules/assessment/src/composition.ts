@@ -37,11 +37,14 @@ export function createAssessment(
   now: () => Date = () => new Date(),
   // Fails closed: with no resolver a hiring owner or interviewer reads no assessment (intake's resolver, AIV-P1-091).
   candidateJob: Ports['candidateJob'] = async () => null,
+  // Intake's candidatesForJob, so the ranking lists only current applicants (AIV-P1-018).
+  applicants?: Ports['applicants'],
 ): AssessmentContract {
   return assessmentUseCases({
     storeFor: assessmentStore,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     candidateJob,
+    ...(applicants && { applicants }),
     rankingJob: async (ctx, jobId) => {
       const job = await jobs.getJob(ctx, jobId);
       if (!job) return null;

@@ -1,7 +1,9 @@
 // Workspace-scoped embeddings in pgvector (AIV-P0-030): the owning module keeps the text; search.chunk keeps each
 // chunk's hash, offsets and vector. Callers authorise the workspace first; RLS keeps every query inside it.
 import { createHash } from 'node:crypto';
-import { uuidv7, withWorkspace, type Db, type Tx } from '@credalent/db';
+import type { Db, Tx } from '@credalent/db';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import { withWorkspace } from '@credalent/db/with-workspace';
 import { and, cosineDistance, eq, sql } from 'drizzle-orm';
 import type { AiClient } from './client.ts';
 import { chunk } from './infrastructure/schema.ts';

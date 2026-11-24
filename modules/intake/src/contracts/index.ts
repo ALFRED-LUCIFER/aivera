@@ -48,6 +48,11 @@ export interface IntakeContract {
    * job the context cannot see (another workspace's, or not granted), revealing nothing about its applicants.
    */
   listApplicationsForJob(ctx: WorkspaceContext, jobId: string): Promise<ApplicationListItem[]>;
+  /**
+   * How many applications the job has, from every source, for the job header's "Bring in candidates" stage
+   * (AIV-P1-101). Same access and `IntakeError('job_not_found')` as `listApplicationsForJob`.
+   */
+  countApplications(ctx: WorkspaceContext, jobId: string): Promise<number>;
 }
 
 /**

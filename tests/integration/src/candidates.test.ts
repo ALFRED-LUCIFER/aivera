@@ -95,6 +95,7 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'candidates' order by name`);
     expect([...tables]).toEqual([
+      { name: 'merge', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'outbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'person', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'person_identifier', owner: 'aivera_migrator', rls: true, forced: true },

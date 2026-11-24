@@ -2,6 +2,7 @@
 
 import { useId, useRef } from 'react';
 import { Button } from './Button.tsx';
+import { UploadIcon } from './UploadIcon.tsx';
 
 // AIV-P0-016: the upload control of the Portal ("Upload a file", "PDF, image or document, up to 20 MB.") and CApply
 // ("Upload CV", "PDF or Word, up to 10 MB.") artboards: a secondary button with the upload icon and the limits beside it.
@@ -39,18 +40,7 @@ export function FilePicker({ label, hint, accept, onSelect, disabled, progress, 
           aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
           onClick={() => input.current?.click()}
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="size-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14" />
-          </svg>
+          <UploadIcon />
           {label}
         </Button>
         <span id={`${id}-hint`} className="text-meta text-text-2">

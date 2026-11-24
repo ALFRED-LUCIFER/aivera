@@ -414,7 +414,15 @@ describe('Scenario: Seeding a fresh database', () => {
           where w.id = ${real.id} and not w.synthetic`);
       expect(await realRows()).toBe(1);
       const realBefore = await rowsOf(real.id);
+      // AIV-P1-018: a merge names both its people by foreign key, so the purge must delete it before them.
+      await admin.execute(sql`insert into candidates.merge
+          (id, workspace_id, survivor_id, merged_id, reason, automatic, merged_at, undo_until, moved)
+        select gen_random_uuid(), ${workspaceId}, a.id, b.id, 'merged automatically: same CV file', true, now(),
+          now() + interval '30 days', '{}'::jsonb
+        from (select id from candidates.person where workspace_id = ${workspaceId} order by id limit 1) a,
+          (select id from candidates.person where workspace_id = ${workspaceId} order by id offset 1 limit 1) b`);
 
+      // SAFETY: mutation check: dropped the merge delete from deleteSyntheticPeople -> this test failed (merge_survivor_fk)
       const reseeded = await seedDemo(app, { appEnv: 'local', reset: true });
       expect(reseeded).not.toBe(workspaceId);
       const left = (table: string) =>
@@ -423,6 +431,7 @@ describe('Scenario: Seeding a fresh database', () => {
       for (const t of [
         'workspaces.member',
         'workspaces.job_grant',
+        'candidates.merge',
         'candidates.person',
         'candidates.person_identifier',
         'jobs.job',

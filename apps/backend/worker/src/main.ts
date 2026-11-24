@@ -183,7 +183,7 @@ const senderFor = (queue: string) => {
 };
 
 // Each queue's handlers, exported by the consuming module's infrastructure. A consuming module's ticket adds its queue.
-// shortcut: nothing consumes `candidates` yet, so PersonCreated.v1 dead-letters after its 14-day TTL and raises the dead-letter alert; add its consumer or drop the mapping with the first candidates handler (AIV-P1-018)
+// shortcut: nothing consumes `candidates` yet, so PersonCreated.v1 dead-letters after its 14-day TTL and raises the dead-letter alert; add its consumer or drop the mapping with the first candidates handler (duplicate merge, AIV-P1-018, runs in the request and needs none)
 const CONSUMERS: Record<string, Parameters<typeof createConsumer>[0]['handlers']> = {
   [NOTIFICATIONS_QUEUE]: [
     createEmailHandler({

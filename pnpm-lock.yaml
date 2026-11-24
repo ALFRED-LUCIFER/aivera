@@ -299,6 +299,9 @@ importers:
 
   modules/candidates:
     dependencies:
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -928,6 +931,9 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/evidence':
+        specifier: workspace:*
+        version: link:../../modules/evidence
       '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity

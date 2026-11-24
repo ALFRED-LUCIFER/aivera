@@ -2,9 +2,20 @@
 
 import type { Messages } from '@credalent/i18n';
 import { useTranslations } from '@credalent/i18n/react';
-import { DataTable, FilterTabs, Label, Select, StatusBadge, ValueBasis, type DataTableColumn } from '@credalent/ui';
+import {
+  buttonClassName,
+  DataTable,
+  FilterTabs,
+  Label,
+  Select,
+  StatusBadge,
+  UploadIcon,
+  ValueBasis,
+  type DataTableColumn,
+} from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
+import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { JOB_FILTERS, jobHref, parseFilter, rubricLabel, type JobFilter, type JobRow } from '../domain/jobsList.ts';
 
 export type JobsListView =
@@ -35,14 +46,23 @@ const cells: (Omit<DataTableColumn<JobRow>, 'header'> & { id: keyof Messages['jo
   { id: 'rubric', cell: (row) => <RubricCell row={row} /> },
   { id: 'nextAction', cell: (row) => <NextActionCell row={row} /> },
 ];
+// The next action with "Import candidates" under it, for admins and recruiters.
+const importCell = (row: JobRow) => <NextActionAndImport row={row} />;
 
-/** Every job, where it stands and what it needs (AIV-P1-006). Every figure shows its basis (AGENTS.md 1.7). */
-export function JobsList({ view }: { view: JobsListView }) {
+/**
+ * Every job, where it stands and what it needs (AIV-P1-006). Every figure shows its basis (AGENTS.md 1.7). Admins and
+ * recruiters get "Import candidates" under each job's next action (AIV-P1-101, the Roles artboard).
+ */
+export function JobsList({ view, canImport = false }: { view: JobsListView; canImport?: boolean }) {
   const t = useTranslations('jobsList');
   const agency = view.status === 'ready' && view.clients !== null;
   const columns = cells
     .filter((column) => agency || column.id !== 'client')
-    .map((column) => ({ ...column, header: t(`columns.${column.id}`) }));
+    .map((column) => ({
+      ...column,
+      header: t(`columns.${column.id}`),
+      cell: canImport && column.id === 'nextAction' ? importCell : column.cell,
+    }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,6 +165,22 @@ function RubricCell({ row }: { row: JobRow }) {
       status={row.rubric.approved ? 'supported' : 'needsValidation'}
       label={t(`rubric.${rubricLabel(row.rubric)}`)}
     />
+  );
+}
+
+function NextActionAndImport({ row }: { row: JobRow }) {
+  const t = useTranslations('jobsList');
+  return (
+    <>
+      <NextActionCell row={row} />
+      <div className="mt-2">
+        {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
+        <Link href={jobPageHref(row.id, 'import') as Route} className={buttonClassName('secondary', 'compact')}>
+          <UploadIcon className="size-3.5" />
+          {t('import')}
+        </Link>
+      </div>
+    </>
   );
 }
 

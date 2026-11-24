@@ -11,9 +11,9 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { IntakeContract } from '@credalent/intake';
-import { createIntake } from '@credalent/intake/composition';
+import { applicationRecords, createIntake } from '@credalent/intake/composition';
 import type { EvidenceContract } from '@credalent/evidence';
-import { createEvidence } from '@credalent/evidence/composition';
+import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
 import { createFiles, type BlobStore } from '@credalent/files/composition';
@@ -267,7 +267,11 @@ type Modules = {
 const modulesOn = (db: Db): Modules => {
   const audit = createAudit(db);
   const workspaces = createWorkspaces(db, audit);
-  const candidates = createCandidates(workspaces, () => NOW);
+  const candidates = createCandidates(workspaces, () => NOW, {
+    audit,
+    applications: applicationRecords,
+    evidence: createEvidenceRecords(() => NOW),
+  });
   const jobs = createJobs(workspaces, audit, () => NOW);
   return {
     audit,
@@ -300,7 +304,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, evidence, assessment, jobs, intake }: Modules,
+  { workspaces, candidates, evidence, assessment, jobs, intake }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -372,6 +376,13 @@ async function seed(
       },
       source: 'email',
     });
+    // The same person arriving again under another address, merged by a recruiter (candidates.merge, AIV-P1-018).
+    const duplicate = await candidates.findOrCreatePerson(ctx, {
+      displayName: person,
+      identifiers: [{ type: 'email', value: `second.${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
+      synthetic: true,
+    });
+    await candidates.mergePeople(ctx, personId, duplicate.personId, 'Same person, second address');
     // A source, its item and a competency link (evidence.*, AIV-P1-024).
     const competencyId = crypto.randomUUID();
     const { itemIds } = await evidence.recordEvidence(ctx, {

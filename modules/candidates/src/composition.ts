@@ -1,8 +1,10 @@
 // Builds the candidates module for an app (ADR-002: only apps import this).
+import type { AuditContract } from '@credalent/audit';
 import type { Tx } from '@credalent/db';
 import { enqueue } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { WorkspacesContract } from '@credalent/workspaces';
+import { mergeUseCases, type MergePorts } from './application/merge.ts';
 import { peopleUseCases, recordCvContact } from './application/people.ts';
 import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
 import { UNNAMED_APPLICANT } from './domain/person.ts';
@@ -10,27 +12,74 @@ import { candidateStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 /**
+ * What merging duplicates (AIV-P1-018) needs from other modules, wired by the app: the audit log, and intake's and
+ * evidence's records about a person (their compositions' `applicationRecords` and `evidenceRecords`).
+ */
+type MergeWiring = {
+  audit: Pick<AuditContract, 'record'>;
+  applications: MergePorts['applications'];
+  evidence: MergePorts['evidence'];
+};
+
+const notWired = async (): Promise<never> => {
+  throw new Error('Duplicate merge is not wired in this app');
+};
+
+/**
  * Every call runs in the request's `withWorkspace` transaction (`ctx.tx`), so no pool is needed here.
- * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one.
+ * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. Without `merging` (the seed, other modules'
+ * tests) nothing merges: `findOrCreatePerson` uses the earliest match and the merge calls throw.
  */
 export function createCandidates(
-  workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace'>,
+  workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace' | 'getSettings'>,
   now: () => Date = () => new Date(),
+  merging?: MergeWiring,
 ): CandidatesContract {
-  return peopleUseCases({
-    storeFor: candidateStore,
-    publishPersonCreated: (tx, person) =>
-      enqueue(tx, outbox, PersonCreatedV1, {
-        workspaceId: person.workspaceId,
-        payload: { personId: person.id },
-        dedupeKey: `person:${person.id}`,
-        occurredAt: person.createdAt,
+  const authorize: MergePorts['authorize'] = (ctx, action) => workspaces.authorize(ctx, action);
+  const merges =
+    merging &&
+    mergeUseCases({
+      storeFor: candidateStore,
+      authorize,
+      applications: merging.applications,
+      evidence: merging.evidence,
+      undoDays: async (ctx) => (await workspaces.getSettings(ctx)).mergeUndoDays,
+      audit: (ctx, system, entry) =>
+        merging.audit.record(
+          {
+            tx: ctx.tx,
+            workspaceId: ctx.workspaceId,
+            actor: system ? { type: 'system' } : { type: 'user', id: ctx.userId },
+          },
+          entry,
+        ),
+      newId: () => uuidv7(),
+      now,
+    });
+  return {
+    ...peopleUseCases({
+      storeFor: candidateStore,
+      publishPersonCreated: (tx, person) =>
+        enqueue(tx, outbox, PersonCreatedV1, {
+          workspaceId: person.workspaceId,
+          payload: { personId: person.id },
+          dedupeKey: `person:${person.id}`,
+          occurredAt: person.createdAt,
+        }),
+      authorize,
+      isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
+      newId: () => uuidv7(),
+      now,
+      ...(merges && {
+        autoMerge: (ctx, survivorId, mergedId, reason) =>
+          merges.merge(ctx, survivorId, mergedId, { reason, automatic: true }),
       }),
-    authorize: (ctx, action) => workspaces.authorize(ctx, action),
-    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
-    newId: () => uuidv7(),
-    now,
-  });
+    }),
+    detectDuplicates: merges?.detectDuplicates ?? notWired,
+    previewMerge: merges?.previewMerge ?? notWired,
+    mergePeople: merges?.mergePeople ?? notWired,
+    unmergePeople: merges?.unmergePeople ?? notWired,
+  };
 }
 
 /**

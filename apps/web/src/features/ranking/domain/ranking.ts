@@ -1,16 +1,21 @@
 import type { RankingRow } from '@credalent/assessment';
 import type { ApplicationListItem, Stage } from '@credalent/intake';
+import type { RowDuplicates } from './duplicates.ts';
 
 /** An assessed candidate's figures, with the missing critical competencies by name. */
 export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical'> & { missing: string[] };
 
-/** A table row as the page hands it to the browser: plain data, keyed by the application id, no person id. */
+/**
+ * A table row as the page hands it to the browser: plain data, keyed by the application id. The person id travels only
+ * inside `duplicates`, which only admins and recruiters get, for the merge actions (AIV-P1-018).
+ */
 export type CandidateRow = {
   id: string;
   name: string | null;
   stage: Stage;
   /** Null until the candidate is assessed: "Not yet scored", basis "Not yet available" (AGENTS.md 1.7). */
   score: CandidateScore | null;
+  duplicates?: RowDuplicates;
 };
 
 /** The page's data: the job, whether its rubric is approved yet, and every applicant's row. */
@@ -24,14 +29,17 @@ export function toCandidateRows(
   applicants: ApplicationListItem[],
   ranking: RankingRow[],
   competencyName: (competencyId: string) => string | undefined,
+  duplicates: ReadonlyMap<string, RowDuplicates> = new Map(),
 ): CandidateRow[] {
   const scores = new Map(ranking.map((r) => [r.candidateId, r]));
   const row = (a: ApplicationListItem): CandidateRow => {
+    const dup = duplicates.get(a.personId);
+    const base = { id: a.applicationId, name: a.displayName, stage: a.stage, ...(dup && { duplicates: dup }) };
     const r = scores.get(a.personId);
-    if (!r) return { id: a.applicationId, name: a.displayName, stage: a.stage, score: null };
+    if (!r) return { ...base, score: null };
     const { candidateId: _, missingCritical, ...figures } = r;
     const missing = missingCritical.flatMap((id) => competencyName(id) ?? []);
-    return { id: a.applicationId, name: a.displayName, stage: a.stage, score: { ...figures, missing } };
+    return { ...base, score: { ...figures, missing } };
   };
   const rows = applicants.map(row);
   const rank = (r: CandidateRow) => r.score?.rank ?? Number.MAX_SAFE_INTEGER;

@@ -12,6 +12,7 @@ import {
   LevelMeter,
   ScoreWithUncertainty,
   Select,
+  SuccessBanner,
   ValueBasis,
   buttonClassName,
   type DataTableColumn,
@@ -20,6 +21,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import type { DuplicatesView } from '../domain/duplicates.ts';
 import {
   HIDEABLE_COLUMNS,
   type CandidateRow,
@@ -27,6 +29,7 @@ import {
   type HideableColumn,
   type RankingFilters,
 } from '../domain/ranking.ts';
+import { DuplicateActions } from './DuplicateActions.tsx';
 
 // AIV-P1-034: the ranked candidates table, from the Candidates artboard (docs/01-design/artboards/Candidates.dc.html).
 // Deviations, each for a later ticket or a rule:
@@ -45,7 +48,8 @@ import {
 // - a line under the filters gives the scores' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
 // - candidates not yet assessed stay listed after the ranked ones as "Not yet scored" (AGENTS.md 1.5);
 // - the intro sits under the stages, not under the title: the job header is shared by every job page (AIV-P1-011);
-// - no Credalent assistant panel: the assistant is AIV-P2-028 (#142).
+// - no Credalent assistant panel: the assistant is AIV-P2-028 (#142);
+// - admins and recruiters see a row's duplicates under the name (AIV-P1-018; deviations in DuplicateActions.tsx).
 
 export type RankingTableView =
   | { status: 'loading' }
@@ -92,8 +96,11 @@ const cells: (Omit<DataTableColumn<CandidateRow>, 'header'> & { id: ColumnId })[
   { id: 'nextAction', cell: () => <NotYet /> },
 ];
 
-/** Who is ahead and how sure we are. Every applicant stays visible; ranking orders attention (AGENTS.md 1.5). */
-export function RankingTable({ view }: { view: RankingTableView }) {
+/**
+ * Who is ahead and how sure we are. Every applicant stays visible; ranking orders attention (AGENTS.md 1.5).
+ * `duplicates` drives the rows' merge and undo previews (AIV-P1-018).
+ */
+export function RankingTable({ view, duplicates }: { view: RankingTableView; duplicates?: DuplicatesView }) {
   const t = useTranslations('ranking');
   const timeZone = useTimeZone();
   const ready = view.status === 'ready' ? view : null;
@@ -101,6 +108,7 @@ export function RankingTable({ view }: { view: RankingTableView }) {
     .filter((column) => !(ready && isHideable(column.id) && ready.hidden.includes(column.id)))
     .map((column) => ({
       ...column,
+      ...(column.id === 'candidate' && { cell: nameCell(duplicates) }),
       // The date column names the workspace time zone it shows (AGENTS.md 3.9).
       header: column.id === 'lastScored' ? t('lastScoredIn', { timeZone }) : t(`columns.${column.id}`),
     }));
@@ -117,6 +125,7 @@ export function RankingTable({ view }: { view: RankingTableView }) {
           </Link>
         </p>
       )}
+      {duplicates && <SuccessBanner>{duplicates.done && t(`duplicates.done.${duplicates.done}`)}</SuccessBanner>}
       {ready && ready.total > 0 && <Toolbar view={ready} />}
       <DataTable
         caption={t('caption')}
@@ -264,12 +273,18 @@ function NotYet() {
   return <ValueBasis basis="not-available" label={t('notYetAvailable')} />;
 }
 
-function NameCell({ row }: { row: CandidateRow }) {
+// The candidate cell with the rows' duplicate actions, built outside render's component definitions.
+const nameCell = (duplicates?: DuplicatesView) => (row: CandidateRow) => <NameCell row={row} duplicates={duplicates} />;
+
+function NameCell({ row, duplicates }: { row: CandidateRow; duplicates?: DuplicatesView | undefined }) {
   const t = useTranslations('ranking');
   return (
     <>
       <span className="font-semibold">{row.name ?? t('unnamed')}</span>
       <span className="block text-meta text-text-2">{t(`stages.${row.stage}`)}</span>
+      {row.duplicates && duplicates && (
+        <DuplicateActions rowId={row.id} duplicates={row.duplicates} view={duplicates} />
+      )}
     </>
   );
 }

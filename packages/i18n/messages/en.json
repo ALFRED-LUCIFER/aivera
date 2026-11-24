@@ -571,6 +571,7 @@
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after a version is approved.",
     "add": "Add a job",
+    "import": "Import candidates",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
     "filters": {
@@ -1280,6 +1281,8 @@
   "jobHeader": {
     "breadcrumb": "Breadcrumb",
     "stagesLabel": "Stages of this job",
+    "importCandidates": "Import candidates",
+    "addCandidates": "Add candidates",
     "hiringOwner": "Hiring owner: {name}",
     "noHiringOwner": "Hiring owner: not assigned",
     "owner": {
@@ -1306,6 +1309,7 @@
     "stages": {
       "description": "Job description",
       "rubric": "Competencies and rubric",
+      "import": "Bring in candidates",
       "candidates": "Evidence and ranking",
       "interviews": "Interviews",
       "pack": "Decision"
@@ -1317,6 +1321,7 @@
       "awaiting_approval": "Awaiting approval, version {version}",
       "returned": "Returned, version {version}",
       "assessed": "{count, number} assessed",
+      "imported": "{count, number} imported",
       "afterApproval": "Starts after rubric approval",
       "notStarted": "Not started"
     },
@@ -1678,7 +1683,64 @@
     "added": "{count, plural, =0 {No new applications: each CV was already filed for this job.} one {# application added.} other {# applications added.}}",
     "jobNotFound": "This job does not exist or you do not have access."
   },
+  "import": {
+    "title": "Bring in candidates",
+    "intro": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
+    "picker": "Import into this job",
+    "pickerHint": "Choosing a job opens its page.",
+    "option": {
+      "approvedVersion": "{title} · rubric approved, version {version}",
+      "approved": "{title} · rubric approved",
+      "waiting": "{title} · rubric waiting for approval",
+      "draft": "{title} · rubric draft, needs approval",
+      "returned": "{title} · rubric returned, needs changes",
+      "none": "{title} · no rubric yet"
+    },
+    "note": "Everyone you import is assessed against this job's rubric. For a job whose rubric is still waiting, people are added now and assessed once it is approved. The same person can be imported into more than one job. They keep one profile.",
+    "upload": {
+      "title": "Upload CVs",
+      "body": "PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.",
+      "button": "Upload files"
+    },
+    "loading": "Loading Bring in candidates…",
+    "failed": "We could not load this page. Try again.",
+    "retry": "Try again"
+  },
   "ranking": {
+    "duplicates": {
+      "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
+      "possible": "Possible duplicate of {name}.",
+      "merge": "Merge?",
+      "mergeTitle": "Preview: merge {merged} into {survivor}",
+      "why": {
+        "same_name": "Same name on both records.",
+        "same_contact": "The same email or phone on both records."
+      },
+      "stays": "{name} (stays)",
+      "mergedIn": "{name} (merged in)",
+      "noApplications": "No applications",
+      "noJob": "A job you cannot see",
+      "evidence": "{count, plural, =0 {No evidence sources} one {# evidence source} other {# evidence sources}}",
+      "stage": "Stage: {stage}",
+      "stageKept": "Stage: {stage}. Both applied to this job: the applications combine at the stage of the one that stays, {kept}.",
+      "nothingDeleted": "Nothing is deleted. The applications, sources and evidence combine on {name}, and an admin can undo the merge.",
+      "reason": "Reason, recorded in the audit log",
+      "confirm": "Merge",
+      "pending": "Merging…",
+      "undo": "Undo merge",
+      "undoTitle": "Preview: undo the merge of {name}",
+      "undoBody": "{name} becomes a separate candidate again, with their original applications and evidence.",
+      "undoConfirm": "Undo merge",
+      "undoPending": "Undoing…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "footer": "Nothing changes until you confirm.",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "done": {
+        "merged": "Merged. Both records are now one candidate.",
+        "undone": "Merge undone. Both people are separate again."
+      }
+    },
     "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",
     "caption": "Ranked candidates",
     "basis": "Backed scores and needs met are observed from inspected evidence.",
