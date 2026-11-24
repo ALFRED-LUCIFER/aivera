@@ -15,6 +15,7 @@ import {
   linkRead,
   mapping,
   mergedPullRequest,
+  profileExpansion,
   repositoryRead,
   repositorySkillGrade,
   repositorySkillSignal,
@@ -227,6 +228,7 @@ export function evidenceStore(tx: Tx): EvidenceStore {
       await tx.delete(repositorySkillGrade).where(eq(repositorySkillGrade.workspaceId, workspaceId));
       await tx.delete(repositorySkillSignal).where(eq(repositorySkillSignal.workspaceId, workspaceId));
       await tx.delete(repositoryRead).where(eq(repositoryRead.workspaceId, workspaceId));
+      await tx.delete(profileExpansion).where(eq(profileExpansion.workspaceId, workspaceId));
       await tx.delete(cvParse).where(eq(cvParse.workspaceId, workspaceId));
       await tx.delete(documentRead).where(eq(documentRead.workspaceId, workspaceId));
       await tx.delete(linkRead).where(eq(linkRead.workspaceId, workspaceId));

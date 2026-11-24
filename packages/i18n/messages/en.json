@@ -271,6 +271,9 @@
       "fork": "This repository is a fork. Forked code is not counted as the candidate's work.",
       "plainLink": "Only public GitHub repository links can be read. This link is kept on the candidate as a plain link."
     },
+    "sourceVia": {
+      "cv_profile": "from the GitHub profile in the CV"
+    },
     "request": {
       "send": "Send request"
     },

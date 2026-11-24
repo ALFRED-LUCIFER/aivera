@@ -276,7 +276,13 @@ async function consume(envelopes: Envelope[], handlers: Handler<unknown>[] = [ha
 }
 
 /** Requests a read of `owner/name` for `who`, runs the worker, and returns what was stored. */
-async function read(who: { id: string; email: string }, login: string | null, owner: string, name: string) {
+async function read(
+  who: { id: string; email: string },
+  login: string | null,
+  owner: string,
+  name: string,
+  via?: 'cv_profile',
+) {
   const { sourceId } = await as(ALEX, w1, (ctx) =>
     evidence.requestRepositoryRead(ctx, {
       candidateId: who.id,
@@ -284,6 +290,7 @@ async function read(who: { id: string; email: string }, login: string | null, ow
       githubLogin: login,
       emails: [who.email],
       synthetic: true,
+      ...(via && { via }),
     }),
   );
   const settled = await relayAndConsume();
@@ -414,6 +421,19 @@ describe('Scenario: No GitHub login supplied', () => {
     const { view, items } = await read(maria, null, 'maria-credalent-example', 'ledger-sync');
     expect(view).toMatchObject({ authoredCommits: 30, totalCommits: 35, authorship: 'clear', strengthCap: 'medium' });
     expect(items).toMatchObject([{ excerpt: 'authored 30 of 35 commits', strength: 'medium' }]);
+    expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
+  });
+});
+
+describe('AIV-P1-112: a repository reached through a GitHub profile in a CV', () => {
+  it('stays "Authorship unclear" and capped at Medium; the owner login never counts as hers', async () => {
+    const maria = await person('Maria Santos');
+    repos.set('maria-credalent-example/rag-notebook', {
+      commits: [...commits(30, { email: maria.email }), ...commits(5, { login: 'maria-credalent-example' })],
+    });
+    const { view, items } = await read(maria, null, 'maria-credalent-example', 'rag-notebook', 'cv_profile');
+    expect(view).toMatchObject({ via: 'cv_profile', authoredCommits: 30, totalCommits: 35, strengthCap: 'medium' });
+    expect(items).toMatchObject([{ strength: 'medium' }]);
     expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
   });
 });

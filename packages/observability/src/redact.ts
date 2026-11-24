@@ -57,6 +57,9 @@ const ALLOWED = [
   'credalent.evidence.similarity',
   // "Unusual content in this source" notes found on one CV parse (AIV-P1-025): a count, never the notes.
   'credalent.evidence.unusual_count',
+  // A GitHub profile expansion's end (AIV-P1-112): the repositories queued and the outcome word, never a name or a login.
+  'credalent.evidence.profile_queued',
+  'credalent.evidence.profile_outcome',
   // Evidence mapping counts per run (AIV-P1-027): numbers only, so guard failures show in telemetry.
   'credalent.evidence.links',
   'credalent.evidence.gaps',
