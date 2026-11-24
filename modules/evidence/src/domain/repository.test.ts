@@ -12,6 +12,8 @@ import {
   strengthCapOf,
   type Authorship,
   type Commit,
+  chooseProfileRepositories,
+  type OwnedRepository,
 } from './repository.ts';
 
 // AIV-P1-026: the authorship rules. Synthetic logins only (docs/00-product/personas.md).
@@ -174,5 +176,32 @@ describe('isStale', () => {
 
   it('a source never checked is stale', () => {
     expect(isStale({ checkedAt: null }, days(0), null)).toBe(true);
+  });
+});
+
+const ownedRepo = (name: string, day: number, over: Partial<OwnedRepository> = {}): OwnedRepository => ({
+  name,
+  fork: false,
+  archived: false,
+  private: false,
+  size: 10,
+  pushedAt: new Date(Date.UTC(2026, 10, day)),
+  ...over,
+});
+
+describe('chooseProfileRepositories (AIV-P1-112)', () => {
+  it('keeps own, public, active, non-empty repositories, newest push first', () => {
+    expect(
+      chooseProfileRepositories([
+        ownedRepo('older', 3),
+        ownedRepo('forked', 20, { fork: true }),
+        ownedRepo('archived', 19, { archived: true }),
+        ownedRepo('private', 18, { private: true }),
+        ownedRepo('empty', 17, { size: 0 }),
+        ownedRepo('never-pushed', 1, { pushedAt: null }),
+        ownedRepo('newest', 9),
+        ownedRepo('not a repository name', 8),
+      ]),
+    ).toEqual(['newest', 'older']);
   });
 });

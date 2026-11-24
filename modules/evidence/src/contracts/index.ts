@@ -102,6 +102,15 @@ export const RepositoryReadRequestedV1 = {
 } satisfies EventDefinition<{ candidateId: string; sourceId: string }>;
 
 /**
+ * `evidence.github.profile-expand` queues a read for the best public repositories of a GitHub profile a CV links
+ * (AIV-P1-112). Strict, opaque ids only: the login stays in `evidence.profile_expansion`.
+ */
+export const GitHubProfileExpandRequestedV1 = {
+  type: 'GitHubProfileExpandRequested.v1',
+  payload: z.strictObject({ candidateId: z.uuid(), expansionId: z.uuid() }),
+} satisfies EventDefinition<{ candidateId: string; expansionId: string }>;
+
+/**
  * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.repository.refresh-stale`
  * re-reads the candidate's stale repository sources and grades their skill signals against the job's approved rubric
  * version (AIV-P1-072). AIV-P2-010 asks for it before it builds a decision pack. Strict, opaque ids only.

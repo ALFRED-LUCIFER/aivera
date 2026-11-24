@@ -154,6 +154,7 @@ describe('Migrations', () => {
         'merged_pull_request',
         'outbox',
         'portal_token',
+        'profile_expansion',
         'repository_read',
         'repository_skill_grade',
         'repository_skill_signal',
