@@ -5,7 +5,8 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
-import { createIntake } from '@credalent/intake/composition';
+import { createEvidenceRecords } from '@credalent/evidence/composition';
+import { applicationRecords, createIntake } from '@credalent/intake/composition';
 import type { Source } from '@credalent/intake';
 import type { Competency } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -324,13 +325,13 @@ export default async function seed() {
     // assessCandidate: their `competencies` are empty and they have no score.changed audit entry. Missing critical
     // evidence lists only rubric v2's mandatory competencies, as assessment does (owner's decision, #98's Gherkin).
     let received: Date;
-    const intake = createIntake(
-      workspaces,
-      createCandidates(workspaces),
-      jobs,
-      displayNamesInWorkspace,
-      () => received,
-    );
+    // Merging wired as in the app, so an arrival proving two records are one person merges them (AIV-P1-018).
+    const candidates = createCandidates(workspaces, undefined, {
+      audit: createAudit(db),
+      applications: applicationRecords,
+      evidence: createEvidenceRecords(),
+    });
+    const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => received);
     const rubric = await withWorkspace(db, workspaceId, (tx) =>
       createApprovedRubricReads().approvedRubric(tx, workspaceId, sae),
     );
@@ -382,6 +383,24 @@ export default async function seed() {
           fileIds: [crypto.randomUUID()],
         }),
       );
+      // AIV-P1-018: Sara also sent her CV by email from her address, first alone (a second record), then with the same
+      // CV file, which proves both are her: the second record merges into hers automatically ("1 duplicate merged").
+      if (name === 'Sara Al Qahtani')
+        for (const identifiers of [
+          [{ type: 'email' as const, value: 'sara.alqahtani@example.com' }],
+          [
+            { type: 'email' as const, value: 'sara.alqahtani@example.com' },
+            { type: 'cv_hash' as const, value: String(i + 1).padStart(64, '0') },
+          ],
+        ])
+          await as((ctx) =>
+            intake.receiveApplication(ctx, {
+              jobId: sae,
+              person: { displayName: name, identifiers, synthetic: true },
+              source: 'email',
+              fileIds: [crypto.randomUUID()],
+            }),
+          );
       const [backed, upTo, meets, confidence, missing] = score;
       if (backed === null) continue;
       await withWorkspace(db, workspaceId, (tx) =>

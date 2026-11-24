@@ -91,12 +91,32 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   ]);
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(7);
+  // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it.
   await expect(rows.nth(0)).toHaveText(
-    '1Sara Al QahtaniNew68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+    '1Sara Al QahtaniNew1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
   );
   await expect(rows.nth(1)).toHaveText(/^2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/);
   await expect(rows.nth(2)).toHaveText(/^3Tarek MansourNew63up to 80 if claims hold/);
   await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+});
+
+test('Scenario: Exact duplicates merge automatically: the row shows "1 duplicate merged", and undo previews first', async ({
+  page,
+}) => {
+  await signIn(page, { email: AP });
+  const table = await openCandidates(page);
+  const sara = bodyRows(table).nth(0);
+  await expect(sara.getByText('1 duplicate merged')).toBeVisible();
+  // Nine applicants still: the merged record's application joined Sara's, it did not add a row.
+  await expect(page.getByRole('button', { name: 'Show all 9' })).toBeVisible();
+  await sara.getByRole('button', { name: 'Undo merge' }).click();
+  const card = page.getByRole('dialog', { name: 'Preview: undo the merge of Sara Al Qahtani' });
+  await expect(card).toContainText('Nothing changes until you confirm.');
+  await expect(card.getByRole('button', { name: 'Undo merge' })).toBeDisabled();
+  await expectAccessible(page);
+  await page.keyboard.press('Escape');
+  await expect(card).toBeHidden();
+  await expect(sara.getByText('1 duplicate merged')).toBeVisible();
 });
 
 test('Scenario: Show all', async ({ page }) => {
