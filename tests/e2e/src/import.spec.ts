@@ -141,6 +141,8 @@ for (const theme of themes) {
     await openFromJobs(page, 'Senior AI Engineer');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
+    // For comparing with docs/01-design/artboards/Import.dc.html (AGENTS.md section 4).
+    await expect(page).toHaveScreenshot(`import-${theme}.png`, { fullPage: true });
     await page.getByRole('button', { name: 'Upload files' }).click();
     await expect(page.getByRole('dialog', { name: 'Add applicants' })).toBeVisible();
     await expectAccessible(page);

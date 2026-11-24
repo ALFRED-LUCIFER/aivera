@@ -75,7 +75,7 @@ export function JobHeader({
           {view.stages.map(({ page, line, done }) => {
             const isCurrent = page === current;
             return (
-              <li key={page} className="min-w-0 flex-[1_1_170px]">
+              <li key={page} className="min-w-0 flex-[1_1_150px]">
                 <Link
                   href={jobPageHref(view.jobId, page) as Route}
                   aria-current={isCurrent ? 'page' : undefined}
