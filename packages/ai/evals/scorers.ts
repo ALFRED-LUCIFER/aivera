@@ -96,7 +96,7 @@ export function contract(task: string, output: unknown, sources: Sources): Ratio
 }
 
 /** Values at a dotted path; a `[*]` segment fans out over an array. */
-function valuesAt(value: unknown, path: string): unknown[] {
+export function valuesAt(value: unknown, path: string): unknown[] {
   return path.split('.').reduce<unknown[]>(
     (values, segment) =>
       values.flatMap((current) => {
@@ -109,17 +109,28 @@ function valuesAt(value: unknown, path: string): unknown[] {
   );
 }
 
-/** One point per expected value: a `[*]` path expects each listed value among the found ones, any other path equality. */
-export function fieldMatch(output: unknown, match: Json): Ratio {
-  const points = Object.entries(match).flatMap(([path, expected]) =>
+type Point = { path: string; value: unknown };
+const pointsOf = (match: Json): Point[] =>
+  Object.entries(match).flatMap(([path, expected]) =>
     path.includes('[*]') && Array.isArray(expected)
       ? expected.map((value) => ({ path, value }))
       : [{ path, value: expected }],
   );
-  const failures = points
-    .filter(({ path, value }) => !valuesAt(output, path).some((found) => isDeepStrictEqual(found, value)))
+
+/** The expected points the output does not hold exactly. */
+export const missedPoints = (output: unknown, match: Json): Point[] =>
+  pointsOf(match).filter(({ path, value }) => !valuesAt(output, path).some((found) => isDeepStrictEqual(found, value)));
+
+/**
+ * One point per expected value: a `[*]` path expects each listed value among the found ones, any other path equality.
+ * `sameMeaning` may pass a missed point whose value the output names in other words (AIV-P2-083); exact by default.
+ */
+export function fieldMatch(output: unknown, match: Json, sameMeaning: (point: Point) => boolean = () => false): Ratio {
+  const total = pointsOf(match).length;
+  const failures = missedPoints(output, match)
+    .filter((point) => !sameMeaning(point))
     .map(({ path, value }) => `${path}: missing ${JSON.stringify(value)}`);
-  return { n: points.length - failures.length, total: points.length, failures };
+  return { n: total - failures.length, total, failures };
 }
 
 /** `phrase` in `text` from a word start, case-insensitive; `wholeWord` also requires a word end. */

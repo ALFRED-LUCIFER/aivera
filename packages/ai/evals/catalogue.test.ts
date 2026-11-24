@@ -3,6 +3,7 @@ import { AiUnavailable, type AiClient } from '../src/client.ts';
 import { evaluateCatalogue, recordedClient, runBudget, uncoveredKeys } from './catalogue.ts';
 import { domainCatalogue, liveTokenCap } from './config.ts';
 import { loadGolden } from './golden.ts';
+import { matchPrompt } from './run.ts';
 
 // Feature: Run the eval set on a catalogue draft (AIV-P2-048). Recorded answers only: no model call in CI.
 
@@ -51,6 +52,22 @@ describe('a run with recorded answers', () => {
     expect(result.outcome).toBe('failed');
     expect(result.tasks[1]).toMatchObject({ task: 'jobs.draftCompetencies', passed: false });
     expect(result.tasks[1]?.failedCases).toContain('software-engineer');
+  });
+
+  // SAFETY: mutation check: answered every miss with null (no recorded verdicts) -> this test failed
+  it('answers a meaning request with a recorded verdict that is one of its options, else null (AIV-P2-083)', async () => {
+    const [[expected, match]] = Object.entries(
+      golden.get('evidence.parseCv')?.find((c) => c.recorded.matches)?.recorded.matches ?? {},
+    ) as [[string, string]];
+    const ask = (candidates: string[]) =>
+      recordedClient().generateStructured({
+        task: 'evals.judge',
+        promptVersion: matchPrompt.id,
+        prompt: JSON.stringify([{ expected, candidates }]),
+        sources: [],
+      } as unknown as Parameters<AiClient['generateStructured']>[0]);
+    expect(await ask(['another statement', match])).toEqual({ matches: [{ expected, match }] });
+    expect(await ask(['another statement'])).toEqual({ matches: [{ expected, match: null }] });
   });
 
   it('Scenario: The AI deployment is unavailable', async () => {

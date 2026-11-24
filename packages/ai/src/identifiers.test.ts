@@ -129,6 +129,62 @@ describe('the replacer', () => {
     expect(sources[0]?.text).toBe('[CANDIDATE] · sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer');
     expect(CONTACT_EXTRACTION_TASKS).toEqual(['evidence.parseCv']);
   });
+
+  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test failed
+  // ("[CANDIDATE].alqahtani@example.com" on every separator)
+  it.each(['\n', ' ', ' - ', '\t', ' · '])(
+    'never lets a name eat the email after it (separator %j, AIV-P2-081)',
+    (separator) => {
+      const cv = `Sara Al Qahtani${separator}sara.alqahtani@example.com`;
+      expect(redactSources([source(cv, 'cv')], sara, true).sources[0]?.text).toBe(
+        `[CANDIDATE]${separator}sara.alqahtani@example.com`,
+      );
+      expect(redactSources([source(cv, 'cv')], sara, false).sources[0]?.text).toBe(`[CANDIDATE]${separator}[EMAIL_1]`);
+    },
+  );
+
+  // SAFETY: mutation check: let an email domain go without a dot ((?:\.[\w-]+)*) -> this test failed ("Qahtani@Acme")
+  it('still replaces a name next to an "@" that is not an email', () => {
+    expect(redact('Sara Al Qahtani@Acme')).toBe('[CANDIDATE]@Acme');
+    expect(redact('Sara Al Qahtani\nsara@localhost')).toBe('[CANDIDATE]@localhost');
+    expect(redact('Ask Sara@acme')).toBe('Ask [CANDIDATE]@acme');
+  });
+
+  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test failed (the kept email)
+  it('never sends a name that sits in an email beside a phone (AIV-P2-081)', () => {
+    expect(redact('Call 050 123 4567-qahtani@example.com')).not.toMatch(/qahtani/i);
+    expect(redact('Call +971 50 123 4567.sara.qahtani@example.com')).not.toMatch(/sara|qahtani/i);
+    // Under the CV-parse exception the candidate's own email goes whole, so only masking keeps the name out of it.
+    expect(redact('Sara Al Qahtani sara.qahtani@example.com', true)).toBe('[CANDIDATE] sara.qahtani@example.com');
+  });
+
+  // SAFETY: mutation check: masked every email with MASK (no NAMED_MASK) -> this test failed (Arabic name kept)
+  it('removes an Arabic name line next to an email that holds the name (AIV-P2-081)', () => {
+    for (const keep of [false, true]) {
+      const above = 'Curriculum Vitae\nsara.alqahtani@example.com · +971 50 123 4567\nسارة القحطاني\nEngineer';
+      const below = 'Engineer\nسارة القحطاني\nsara.alqahtani@example.com';
+      for (const cv of [above, below])
+        expect(redactSources([source(cv, 'cv')], sara, keep).sources[0]?.text, `${keep}`).not.toContain('سارة');
+    }
+  });
+
+  // SAFETY: mutation check: an ASCII-only email local part ([\w.%+-]) again -> this test failed ("Zoë@acme.com" whole)
+  it('treats a non-ASCII local part as an email, so the name never reaches the model inside it', () => {
+    const zoe = { names: ['Zoë Müller'], emails: [], phones: [] };
+    const text = 'Write to Zoë@acme.com or Müller@acme.com, or zoë.müller@example.com.';
+    expect(redactSources([source(text)], zoe, false).sources[0]?.text).toBe(
+      'Write to [EMAIL_1] or [EMAIL_2], or [EMAIL_3].',
+    );
+  });
+
+  it('keeps a name split across lines or by a no-break space as one placeholder', () => {
+    expect(redactSources([source('Sara Al\nQahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
+      '[CANDIDATE] led it',
+    );
+    expect(redactSources([source('Sara Al Qahtani led it', 'cv')], sara, false).sources[0]?.text).toBe(
+      '[CANDIDATE] led it',
+    );
+  });
 });
 
 /** A client whose model answers `outputs` in turn and records every request. */
@@ -417,11 +473,21 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(cvText(text, 'cv', [name])).toBe(text),
   );
 
-  // SAFETY: mutation check: dropped the (?<![\w.%+-]) lookbehind from EMAIL -> this test timed out (quadratic scan)
+  // SAFETY: mutation check: dropped the (?<!${LOCAL}) lookbehind from EMAIL -> this test timed out (quadratic scan)
   it('scans a long unbroken run once, so it finishes', () => {
     const run = 'a'.repeat(120_000);
     expect(cvText(run)).toBe(run);
     expect(cvText('Write to a+b@example.com', 'document')).toBe('Write to [EMAIL_1]');
+  });
+
+  // SAFETY: mutation check: put back a per-name-part email lookahead (${own}(?!${LOCAL}*@…)) -> this test took
+  // seconds instead of milliseconds and failed its time limit (AIV-P2-081)
+  it('redacts a long run of repeated name parts in linear time', () => {
+    const arabic = 'ليلى-'.repeat(12_000);
+    const started = performance.now();
+    cvText(arabic, 'cv', ['ليلى حداد']);
+    cvText('Layla.'.repeat(10_000), 'document');
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it('Scenario: An Arabic-script name the record holds is removed anywhere, and a document title stays', () => {

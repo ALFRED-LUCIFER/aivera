@@ -777,7 +777,10 @@ describe('Feature: Applicants carry their real name, and the model never sees it
     models.length = 0;
     await parse('unused', OKOYE, okoyeAnswer, { candidateId });
     expect(await nameOf(candidateId)).toBe('Sara O.');
-    expect(promptText()).not.toMatch(/okoye/i);
+    // ADR-006 CV-parse exception: the candidate's own email goes as written, name parts and all, so the contact can be
+    // extracted (AIV-P2-081); the name itself never reaches the model.
+    expect(promptText().replaceAll('sara.okoye@example.com', '')).not.toMatch(/okoye/i);
+    expect(promptText()).toContain('sara.okoye@example.com');
     expect([...(await renames(candidateId))]).toEqual([]);
   });
 

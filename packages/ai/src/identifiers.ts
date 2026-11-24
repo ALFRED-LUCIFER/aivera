@@ -31,8 +31,10 @@ const EDGE = /[\s.,;:!?·•|،–-]/;
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // An alternation, not one class: V8 compiles the merged class about twice as slowly, once per use, per call.
 const letter = String.raw`(?:\p{L}|\p{M}|\p{N}|_)`;
+// An email's local part may hold any letter ("Zoë@acme.com"), so a name inside it is always part of the email.
+const LOCAL = String.raw`[\p{L}\p{M}\p{N}_.%+-]`;
 // Starts only at the start of a run, so a long run with no @ is scanned once, not from every position.
-const EMAIL = String.raw`(?<![\w.%+-])[\w.%+-]+@[\w-]+(?:\.[\w-]+)+`;
+const EMAIL = String.raw`(?<!${LOCAL})${LOCAL}+@[\w-]+(?:\.[\w-]+)+`;
 // Never after a letter, a digit, a dot or a comma, so a decimal (0.82) or a dotted date (06.2020) never starts one.
 const DIAL = String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?`;
 const END = String.raw`(?![\w]|[.,]\d)`;
@@ -44,8 +46,9 @@ const DOTTED = String.raw`(?<![\w+(.,])(?:(?:\+|00)\d{1,4}(?:\.\d{1,4}){2,5}|0\d
 const phoneShaped = (value: string) => /^\(?(?:\+|0)/.test(value) || /\d{4}/.test(value);
 const yearsOrDate = /^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/;
 // shortcut: a bare run of 8 to 15 digits with a four-digit group (an id, a count) is replaced too, while a login handle
-// (sara_alqahtani), Arabic-Indic digits and a dial code without + or 0 (971 50 123 456) are not matched; widen from
-// pilot sources if one reaches a prompt.
+// (sara_alqahtani), Arabic-Indic digits and a dial code without + or 0 (971 50 123 456) are not matched; a phone that
+// runs straight into an email ("050 123 4567-x@…") loses its tail to the email and its first digits stay (no number can
+// be rebuilt from them); widen from pilot sources if one reaches a prompt.
 // Particles that are a name part only next to another part: "Al Qahtani" is the candidate, "Al Ain" is a place.
 const PARTICLES = new Set(['al', 'el', 'bin', 'bint', 'ibn', 'abu', 'de', 'da', 'di', 'van', 'von', 'le', 'la']);
 
@@ -102,7 +105,8 @@ const TRAIT = [
 // of the first line, the value of a "Name:" or "الاسم:" label (on its line or the next), or a whole line next to a line
 // the record's name matched.
 // shortcut: an Arabic name elsewhere, or past the first 300 characters of its line, is removed only when the record
-// holds it; widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
+// holds it, and an email counts as a line the name matched only when a name part stands alone in it
+// (sara.qahtani@, not alqahtani@); widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
 const ARABIC_WORDS = String.raw`\p{sc=Arabic}+(?:[ \t]+\p{sc=Arabic}+){1,3}`;
 const FIELD_END = String.raw`(?=${GAP}(?:$|[\n·•|,،;–-]))`;
 const arabicNameOf = (recordName: string) =>
@@ -117,8 +121,20 @@ const arabicNameOf = (recordName: string) =>
       : []),
   ].join('|')})`;
 
-/** One pattern per source kind: `traits` for TRAIT_KINDS, and `cv` adds the Arabic name. */
-function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv: boolean): RegExp {
+// Stands in for each character of an email while names, phones and traits are matched: a private-use character, never
+// a letter, digit or separator, so no other pattern starts, ends or runs inside an email (AIV-P2-081). An email that
+// holds a part of the candidate's name gets NAMED_MASK, so the Arabic-name rule still sees "a line the name matched".
+// shortcut: a source that already holds U+E000 or U+E001 has it read as an email and replaced, and a stray U+E001
+// makes the next Arabic line count as next to the name; both over-remove, nothing leaks. Strip them if that matters.
+const MASK = '\uE000';
+const NAMED_MASK = '\uE001';
+
+/** Every email: the record's own (for any the generic shape would miss) and the generic shape. */
+const emailsOf = ({ emails }: Identifiers) =>
+  new RegExp([...emails.filter(Boolean).map(escape), EMAIL].join('|'), 'giu');
+
+/** The record's name parts as patterns: `own` matches a non-particle part, `ownWord` one standing alone. */
+function namePartsOf(names: readonly string[]) {
   const parts = [...new Set(names.flatMap((name) => name.trim().split(/[\s-]+/)))]
     .filter((part) => (part.match(/\p{L}/gu)?.length ?? 0) >= 2)
     .toSorted((a, b) => b.length - a.length);
@@ -129,21 +145,28 @@ function patternFor({ names, emails, phones }: Identifiers, traits: boolean, cv:
   // A whole name part, so "Ali" never matches in "Quality". Letter boundaries, not \b, which is ASCII-only.
   const ownWord = parts.length ? `(?<!${letter})${own}` : '';
   const lead = particles.length ? `(?:${word(particles)}[\\s-]+)*` : '';
-  // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's") is one placeholder; it starts and ends on a non-particle.
+  return { parts, own, ownWord, lead };
+}
+
+/** One pattern per source kind: `traits` for TRAIT_KINDS, and `cv` adds the Arabic name. */
+function patternFor({ names, phones }: Identifiers, traits: boolean, cv: boolean): RegExp {
+  const { parts, own, ownWord, lead } = namePartsOf(names);
+  // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's", split across lines) is one placeholder; it starts and ends
+  // on a non-particle. Emails are masked before this runs (redactSources), so a run never reaches into one.
   const name = parts.length ? `(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
   // The record's own phones match by their digits in any formatting, spaced dashes included, at any length.
   const record = phones
     .map((phone) => phone.replace(/\D/g, '').replace(/^00/, ''))
     .filter(Boolean)
     .map((digits) => `${DIAL}${[...digits].join(String.raw`[\s().\-–]{0,3}`)}${END}`);
-  // Order matters: an email holding a name part is one email, the record's own phones before the generic shape. The
-  // record's emails are listed for any the generic shape would miss.
+  // Order matters: the record's own phones before the generic shape. Emails are found first and masked (emailsOf), so
+  // here an email is one masked run and nothing else can match inside it.
   const alternatives = [
-    `(?<email>${[...emails.filter(Boolean).map(escape), EMAIL].join('|')})`,
+    `(?<email>[${MASK}${NAMED_MASK}]+)`,
     ...(record.length ? [`(?<own>${record.join('|')})`] : []),
     `(?<phone>${DOTTED}|${PHONE})`,
     ...(traits ? [`(?<trait>${TRAIT})`] : []),
-    ...(cv ? [`(?<arabicName>${arabicNameOf(ownWord)})`] : []),
+    ...(cv ? [`(?<arabicName>${arabicNameOf(ownWord && `(?:${ownWord}|${NAMED_MASK})`)})`] : []),
     ...(name ? [`(?<name>${name})`] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
@@ -179,6 +202,10 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
   const plain = patternFor(identifiers, false, false);
   const traits = patternFor(identifiers, true, false);
   const cv = patternFor(identifiers, true, true);
+  const emailPattern = emailsOf(identifiers);
+  const { ownWord } = namePartsOf(identifiers.names);
+  const named = ownWord ? new RegExp(ownWord, 'iu') : null;
+  const mask = (email: string) => (named?.test(email) ? NAMED_MASK : MASK).repeat(email.length);
   const patternOf = (kind: Source['kind']) => (kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
   const numbers = { EMAIL: new Map<string, string>(), PHONE: new Map<string, string>() };
   const numbered = (kind: keyof typeof numbers, key: string) => {
@@ -192,8 +219,9 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    for (const match of source.text.matchAll(patternOf(source.kind))) {
-      const value = match[0];
+    const masked = source.text.replace(emailPattern, mask);
+    for (const match of masked.matchAll(patternOf(source.kind))) {
+      const value = source.text.slice(match.index, match.index + match[0].length);
       const { email, own, phone, trait } = match.groups ?? {};
       let to = trait ? PROTECTED_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
       if (email || own || phone) {

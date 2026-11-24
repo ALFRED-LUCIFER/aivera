@@ -15,8 +15,11 @@ import {
   evaluateTask,
   judgePrompt,
   liveJudge,
+  liveMatcher,
+  matchPrompt,
   recordedAnswer,
   recordedJudge,
+  recordedMatcher,
   summaryTable,
   type TaskReport,
 } from './run.ts';
@@ -53,6 +56,7 @@ const tasks = [...golden].filter(([task]) => !values.task || task === values.tas
 
 let answer = recordedAnswer;
 let judge = recordedJudge;
+let matcher = recordedMatcher;
 if (values.live) {
   // Dev and local only: the golden set is synthetic, but a run must never spend a pilot workspace's model.
   if (process.env['APP_ENV'] !== 'dev' && process.env['APP_ENV'] !== 'local')
@@ -68,6 +72,7 @@ if (values.live) {
     return runner(ai, goldenCase, evalWorkspaceId);
   };
   judge = liveJudge(ai);
+  matcher = liveMatcher(ai);
 }
 
 const reports: TaskReport[] = [];
@@ -87,7 +92,7 @@ for (const [task, cases] of tasks) {
     console.log(`SKIP ${task}: served by the AI service and AI_SERVICE_URL is not set`);
     continue;
   }
-  const report = await evaluateTask(task, cases, answer, judge);
+  const report = await evaluateTask(task, cases, answer, judge, matcher);
   for (const line of caseLines(report)) console.log(line);
   reports.push(report);
 }
@@ -101,7 +106,7 @@ if (values.out) {
   const at = new Date().toISOString();
   const mode = values.live ? 'live' : 'recorded';
   // The judge's prompt id and the deployments' models, so a trend can tell a prompt change from a model change.
-  const versions = { judge: judgePrompt.id, deployments };
+  const versions = { judge: judgePrompt.id, match: matchPrompt.id, deployments };
   const results = { at, mode, commit: process.env['GITHUB_SHA'], versions, passed, reports };
   writeFileSync(values.out, `${JSON.stringify(results, null, 2)}\n`);
 }

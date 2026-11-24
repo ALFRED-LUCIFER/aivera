@@ -4,7 +4,17 @@ people: ['Sneha Iyer']
 sources:
   - id: S1
     kind: cv
-    text: "Sneha Iyer\nData Engineer, A payments startup, Feb 2022 - Oct 2024\nMoved nightly settlement reports from cron scripts to Airflow.\nB.Tech in Computer Science, 2021\nAWS Certified Data Engineer\nSkills: SQL, Airflow, Spark, Python"
+    text: 'Sneha Iyer
+
+      Data Engineer, A payments startup, Feb 2022 - Oct 2024
+
+      Moved nightly settlement reports from cron scripts to Airflow.
+
+      B.Tech in Computer Science, 2021
+
+      AWS Certified Data Engineer
+
+      Skills: SQL, Airflow, Spark, Python'
 expected:
   {
     'match':
@@ -14,46 +24,53 @@ expected:
       },
   }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': 'a5806d6103b5',
-    'output':
-      {
-        'contact': { 'emails': [], 'phones': [] },
-        'workHistory':
-          [
-            {
-              'role': 'Data Engineer, A payments startup',
-              'dates': 'Feb 2022 - Oct 2024',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Data Engineer, A payments startup, Feb 2022 - Oct 2024' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'SQL', 'citations': [{ 'sourceId': 'S1', 'quote': 'SQL' }], 'claim': true },
-            { 'skill': 'Airflow', 'citations': [{ 'sourceId': 'S1', 'quote': 'Airflow' }], 'claim': true },
-            { 'skill': 'Spark', 'citations': [{ 'sourceId': 'S1', 'quote': 'Spark' }], 'claim': true },
-            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Moved nightly settlement reports from cron scripts to Airflow',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Moved nightly settlement reports from cron scripts to Airflow' }],
-              'claim': true,
-            },
-            {
-              'text': 'B.Tech in Computer Science, 2021',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'B.Tech in Computer Science, 2021' }],
-              'claim': true,
-            },
-            {
-              'text': 'AWS Certified Data Engineer',
-              'citations': [{ 'sourceId': 'S1', 'quote': 'AWS Certified Data Engineer' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: ef073d1b618c
+  output:
+    contact:
+      emails: []
+      phones: []
+    workHistory:
+      - role: Data Engineer, A payments startup
+        dates: Feb 2022 - Oct 2024
+        citations:
+          - sourceId: S1
+            quote: Data Engineer, A payments startup, Feb 2022 - Oct 2024
+        claim: true
+    skills:
+      - skill: SQL
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Airflow, Spark, Python'
+        claim: true
+      - skill: Airflow
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Airflow, Spark, Python'
+        claim: true
+      - skill: Spark
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Airflow, Spark, Python'
+        claim: true
+      - skill: Python
+        citations:
+          - sourceId: S1
+            quote: 'Skills: SQL, Airflow, Spark, Python'
+        claim: true
+    statements:
+      - text: Moved nightly settlement reports from cron scripts to Airflow.
+        citations:
+          - sourceId: S1
+            quote: Moved nightly settlement reports from cron scripts to Airflow
+        claim: true
+      - text: B.Tech in Computer Science, 2021
+        citations:
+          - sourceId: S1
+            quote: B.Tech in Computer Science, 2021
+        claim: true
+      - text: AWS Certified Data Engineer
+        citations:
+          - sourceId: S1
+            quote: AWS Certified Data Engineer
+        claim: true

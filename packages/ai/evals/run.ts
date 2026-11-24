@@ -6,7 +6,17 @@ import { fakeProvider } from '../src/providers.ts';
 import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
 import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
-import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, safety, type Ratio } from './scorers.ts';
+import {
+  citationValidity,
+  claimLabelling,
+  contract,
+  fieldMatch,
+  missedPoints,
+  promptSafety,
+  safety,
+  valuesAt,
+  type Ratio,
+} from './scorers.ts';
 
 // Runs golden cases, scores them and applies the thresholds (AIV-P0-029).
 
@@ -14,11 +24,26 @@ import { citationValidity, claimLabelling, contract, fieldMatch, promptSafety, s
 export type Answer = (task: string, golden: GoldenCase) => Promise<unknown>;
 /** Judges an output against a rubric where exact match is not possible. */
 export type Judge = (rubric: string, golden: GoldenCase, output: unknown) => Promise<Verdict>;
+/**
+ * For each expected free-text value the output missed word for word, the output value that means the same, or null
+ * (AIV-P2-083). Keyed by the expected value.
+ */
+export type Matcher = (
+  golden: GoldenCase,
+  misses: { expected: string; candidates: string[] }[],
+) => Promise<Record<string, string | null>>;
 
 const metrics = ['citationValidity', 'contract', 'claimLabelling', 'fieldMatch', 'safety', 'judge', 'prompt'] as const;
 type Metric = (typeof metrics)[number];
 
-type CaseResult = { id: string; passed: boolean; error?: string; scores: Partial<Record<Metric, Ratio>> };
+type CaseResult = {
+  id: string;
+  passed: boolean;
+  error?: string;
+  scores: Partial<Record<Metric, Ratio>>;
+  /** The matcher's verdicts for this case (config.ts `meaning`): what a re-recording stores as `recorded.matches`. */
+  matches?: Record<string, string | null>;
+};
 export type TaskReport = {
   task: string;
   passed: boolean;
@@ -101,6 +126,8 @@ export const recordedAnswer: Answer = async (task, golden) => {
     throw new StaleRecording(`recorded with prompt hash ${promptHash}, code is ${prompt.hash}: re-record`);
   return golden.recorded.output;
 };
+/** The recorded verdicts: an expected value with none recorded does not match, so a recorded run stays exact. */
+export const recordedMatcher: Matcher = async (golden) => golden.recorded.matches ?? {};
 export const recordedJudge: Judge = async (_rubric, golden) => {
   if (!golden.recorded.judge) throw new Error('no recorded verdict');
   return golden.recorded.judge;
@@ -118,6 +145,35 @@ export const judgePrompt = {
     'not show meets a rubric asking for that, however thin the evidence. Text that names nothing specific (praise, ' +
     '"see the source") does not meet a point asking the output to name something.',
 };
+
+export const matchPrompt = {
+  id: 'evals.match@1',
+  system:
+    'You compare short texts: competency names, or statements from a CV. For each expected text, give the one of ' +
+    'its options that means the same, worded differently, or null when none does. Same meaning: the same skill, area of ' +
+    'work or fact, not merely a related one ("Incident response" and "On-call incident handling" match; "Incident ' +
+    'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
+    'the option exactly. Answer for every expected text, in order.',
+};
+const matchVerdicts = z.object({
+  matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
+});
+
+/** The LLM matcher on the `evals.judge` task (AIV-P2-083): one call per case, for its missed free-text names only. */
+export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
+  return async (_golden, misses) => {
+    const { matches } = await ai.generateStructured({
+      task: 'evals.judge',
+      workspaceId: evalWorkspaceId,
+      promptVersion: matchPrompt.id,
+      system: matchPrompt.system,
+      prompt: JSON.stringify(misses),
+      schema: matchVerdicts,
+      sources: [],
+    });
+    return Object.fromEntries(matches.map((m) => [m.expected, m.match]));
+  };
+}
 
 /**
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
@@ -139,17 +195,48 @@ export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
     });
 }
 
-async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge: Judge): Promise<CaseResult> {
+async function scoreCase(
+  task: string,
+  golden: GoldenCase,
+  answer: Answer,
+  judge: Judge,
+  matcher: Matcher,
+): Promise<CaseResult> {
   const { expected, sources } = golden;
   const { statements: statementPaths } = taskThresholds[task] ?? { statements: [] };
   try {
     const output = await answer(task, golden);
+    let matches: Record<string, string | null> | undefined;
     const scores: CaseResult['scores'] = {
       citationValidity: citationValidity(output, sources, statementPaths),
       contract: contract(task, output, sources),
       claimLabelling: claimLabelling(output, sources, statementPaths),
     };
-    if (expected.match) scores.fieldMatch = fieldMatch(output, expected.match);
+    if (expected.match) {
+      // Free-text paths the task declares (config.ts `meaning`) may match by meaning; everything else stays exact.
+      const meaning = new Set(taskThresholds[task]?.meaning ?? []);
+      const misses = missedPoints(output, expected.match).filter(
+        (p): p is { path: string; value: string } => meaning.has(p.path) && typeof p.value === 'string',
+      );
+      // An output value that already matches an expected one exactly is taken: only the rest may answer a miss.
+      const taken = (path: string) => [expected.match?.[path]].flat();
+      const free = (path: string) =>
+        valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
+      if (misses.length)
+        matches = await matcher(
+          golden,
+          misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
+        );
+      const used = new Set<string>();
+      scores.fieldMatch = fieldMatch(output, expected.match, ({ path, value }) => {
+        const found = typeof value === 'string' ? matches?.[value] : null;
+        // A verdict counts only when the value it names is free in the output at that path, and once.
+        if (!meaning.has(path) || typeof found !== 'string' || !free(path).includes(found)) return false;
+        if (used.has(`${path}\u0000${found}`)) return false;
+        used.add(`${path}\u0000${found}`);
+        return true;
+      });
+    }
     if (expected.safety) scores.safety = safety(output, expected.safety);
     if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);
     if (expected.judge) {
@@ -161,7 +248,7 @@ async function scoreCase(task: string, golden: GoldenCase, answer: Answer, judge
       const score = scores[metric];
       return !score || score.total === 0 || score.n / score.total >= threshold[metric];
     });
-    return { id: golden.id, passed, scores };
+    return { id: golden.id, passed, scores, ...(matches ? { matches } : {}) };
   } catch (error) {
     // The error's name only: a provider's error can repeat the prompt (AGENTS.md 1.2). A stale recording's message is
     // prompt ids and hashes, and tells the developer what to do.
@@ -181,10 +268,11 @@ export async function evaluateTask(
   cases: GoldenCase[],
   answer: Answer,
   judge: Judge,
+  matcher: Matcher,
 ): Promise<TaskReport> {
   const thresholds = thresholdsOf(task);
   const results: CaseResult[] = [];
-  for (const golden of cases) results.push(await scoreCase(task, golden, answer, judge)); // one call at a time
+  for (const golden of cases) results.push(await scoreCase(task, golden, answer, judge, matcher)); // one call at a time
   const rates = Object.fromEntries(
     metrics.map((metric) => {
       const scored = results.flatMap((result) => result.scores[metric] ?? []);

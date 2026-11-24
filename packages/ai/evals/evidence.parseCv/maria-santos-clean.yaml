@@ -4,7 +4,15 @@ people: ['Maria Santos']
 sources:
   - id: S1
     kind: cv
-    text: "Maria Santos, Senior AI Engineer.\nBuilt a document question-answering assistant for an insurance claims team.\nWrote the retrieval evaluation notebook the team ran before each release.\nMaintained the Python services that index policy documents.\nSkills: Python, LangGraph, Elasticsearch"
+    text: 'Maria Santos, Senior AI Engineer.
+
+      Built a document question-answering assistant for an insurance claims team.
+
+      Wrote the retrieval evaluation notebook the team ran before each release.
+
+      Maintained the Python services that index policy documents.
+
+      Skills: Python, LangGraph, Elasticsearch'
 expected:
   {
     'match':
@@ -14,57 +22,50 @@ expected:
       },
   }
 recorded:
-  {
-    'promptVersion': 'evidence.parseCv@3',
-    'promptHash': 'e2ee56fbbc33',
-    'output':
-      {
-        'contact': { 'emails': [], 'phones': [] },
-        'workHistory':
-          [
-            {
-              'role': 'Senior AI Engineer',
-              'dates': null,
-              'citations': [{ 'sourceId': 'S1', 'quote': 'Senior AI Engineer' }],
-              'claim': true,
-            },
-          ],
-        'skills':
-          [
-            { 'skill': 'Python', 'citations': [{ 'sourceId': 'S1', 'quote': 'Python' }], 'claim': true },
-            { 'skill': 'LangGraph', 'citations': [{ 'sourceId': 'S1', 'quote': 'LangGraph' }], 'claim': true },
-            { 'skill': 'Elasticsearch', 'citations': [{ 'sourceId': 'S1', 'quote': 'Elasticsearch' }], 'claim': true },
-          ],
-        'statements':
-          [
-            {
-              'text': 'Built a document question-answering assistant for an insurance claims team',
-              'citations':
-                [
-                  {
-                    'sourceId': 'S1',
-                    'quote': 'Built a document question-answering assistant for an insurance claims team',
-                  },
-                ],
-              'claim': true,
-            },
-            {
-              'text': 'Wrote the retrieval evaluation notebook the team ran before each release',
-              'citations':
-                [
-                  {
-                    'sourceId': 'S1',
-                    'quote': 'Wrote the retrieval evaluation notebook the team ran before each release',
-                  },
-                ],
-              'claim': true,
-            },
-            {
-              'text': 'Maintained the Python services that index policy documents',
-              'citations':
-                [{ 'sourceId': 'S1', 'quote': 'Maintained the Python services that index policy documents' }],
-              'claim': true,
-            },
-          ],
-      },
-  }
+  promptVersion: evidence.parseCv@4
+  promptHash: 1ca53acf3f21
+  output:
+    contact:
+      emails: []
+      phones: []
+    workHistory:
+      - role: Senior AI Engineer
+        dates: null
+        citations:
+          - sourceId: S1
+            quote: Senior AI Engineer
+        claim: true
+    skills:
+      - skill: Python
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, LangGraph, Elasticsearch'
+        claim: true
+      - skill: LangGraph
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, LangGraph, Elasticsearch'
+        claim: true
+      - skill: Elasticsearch
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Python, LangGraph, Elasticsearch'
+        claim: true
+    statements:
+      - text: Built a document question-answering assistant for an insurance claims team.
+        citations:
+          - sourceId: S1
+            quote: Built a document question-answering assistant for an insurance claims team
+        claim: true
+      - text: Wrote the retrieval evaluation notebook the team ran before each release.
+        citations:
+          - sourceId: S1
+            quote: Wrote the retrieval evaluation notebook the team ran before each release
+        claim: true
+      - text: Maintained the Python services that index policy documents.
+        citations:
+          - sourceId: S1
+            quote: Maintained the Python services that index policy documents
+        claim: true
+  matches:
+    Wrote the retrieval evaluation notebook the team ran before each release: Wrote the retrieval evaluation notebook the team ran before each release.

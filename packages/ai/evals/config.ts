@@ -51,9 +51,23 @@ export const hardGates = { citationValidity: 1, contract: 1, claimLabelling: 1, 
  */
 export const taskThresholds: Record<
   string,
-  { statements: string[]; fieldMatch: number; judge: number; groups?: Record<string, { label: string; min: number }> }
+  {
+    statements: string[];
+    fieldMatch: number;
+    judge: number;
+    groups?: Record<string, { label: string; min: number }>;
+    /** Free-text paths a missed value may match by meaning (run.ts Matcher); every other path is matched exactly. */
+    meaning?: string[];
+  }
 > = {
-  'jobs.draftCompetencies': { statements: ['competencies[*]', 'suggestions[*]'], fieldMatch: 0.9, judge: 1 },
+  // AIV-P2-083: a competency name is free text a live model never words like the golden case, so its names match by
+  // meaning (the LLM matcher, its verdicts recorded per case); enums, ids, emails and phones stay exact everywhere.
+  'jobs.draftCompetencies': {
+    statements: ['competencies[*]', 'suggestions[*]'],
+    fieldMatch: 0.9,
+    judge: 1,
+    meaning: ['competencies[*].name', 'suggestions[*].name'],
+  },
   // `industry` is a statement only when it names a domain (it then carries citations); `none` cites nothing.
   // AIV-P1-066: pack and near-miss cases (domain), descriptions with no industry (none) and fairness cases. A group
   // counts a case only when it passes every metric, so "domain accuracy" also needs the right regions.
@@ -85,7 +99,14 @@ export const taskThresholds: Record<
   // AIV-P1-025: every role, skill and statement must cite the CV and is a claim. Recorded answers are checked ones
   // (`claim: true` from code), as the runner returns them. Recall after the repair passes is the evidence module's
   // test over the same cases (modules/evidence/src/domain/cv.golden.test.ts).
-  'evidence.parseCv': { statements: ['workHistory[*]', 'skills[*]', 'statements[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P2-081: a statement is the CV's words, but the model trims or extends a sentence ("cut cost per request by 40%"
+  // inside a longer line), so statement text matches by meaning too; skills and contact stay exact.
+  'evidence.parseCv': {
+    statements: ['workHistory[*]', 'skills[*]', 'statements[*]'],
+    fieldMatch: 1,
+    judge: 1,
+    meaning: ['statements[*].text'],
+  },
   // AIV-P2-068: the assistant's answers through the Python AI service; every statement cites, a CV-only one is a claim,
   // and it never recommends rejecting anyone. Recorded answers are checked ones, as the client returns them.
   'assistant.answer': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
