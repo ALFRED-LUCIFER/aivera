@@ -37,7 +37,7 @@ export function createIntake(
         {
           action: 'intake.batch_confirmed',
           subject: { type: 'import_batch', id: batch.id },
-          after: { jobId: batch.jobId, wordingVersion: batch.wordingVersion, people: batch.people },
+          after: { jobId: batch.jobId, wordingVersion: batch.wordingVersion, cvs: batch.cvs },
         },
       ),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),

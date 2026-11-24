@@ -47,11 +47,11 @@ export const importBatch = intake
       confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
       wordingKey: text('wording_key').notNull(),
       wordingVersion: text('wording_version').notNull(),
-      people: integer().notNull(),
+      cvs: integer().notNull(),
     },
     (t) => [
       unique('import_batches_workspace_id_key').on(t.workspaceId, t.id),
-      check('import_batches_people_check', sql`${t.people} >= 1`),
+      check('import_batches_cvs_check', sql`${t.cvs} >= 1`),
       tenantPolicy('import_batches_tenant_isolation', t.workspaceId),
     ],
   )

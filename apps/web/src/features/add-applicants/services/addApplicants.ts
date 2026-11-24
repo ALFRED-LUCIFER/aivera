@@ -33,7 +33,8 @@ export async function addApplicants(input: AddApplicantsInput): Promise<AddAppli
   } catch (error) {
     // Thrown out of the transaction, so a refused job rolls back everything.
     if (error instanceof IntakeError) {
-      return { ok: false, error: error.code === 'confirmation_required' ? 'confirmationRequired' : 'jobNotFound' };
+      const refusals = { confirmation_required: 'confirmationRequired', job_not_found: 'jobNotFound' } as const;
+      return { ok: false, error: error.code in refusals ? refusals[error.code as keyof typeof refusals] : 'failed' };
     }
     // The schema's literal refuses a missing or false tick before anything is authorised or read.
     if (error instanceof ZodError && error.issues.some((i) => i.path[0] === 'rightToProcessConfirmed')) {

@@ -1,5 +1,5 @@
 {
-  "id": "3d6c4b16-34dd-4f18-af33-65c68164cf78",
+  "id": "0de8ee2e-1a5a-4d2f-8867-5c508287a05c",
   "prevId": "8bc54be9-0047-4efc-a0c4-5e7582a7eadd",
   "version": "7",
   "dialect": "postgresql",
@@ -305,8 +305,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "people": {
-          "name": "people",
+        "cvs": {
+          "name": "cvs",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -338,9 +338,9 @@
         }
       },
       "checkConstraints": {
-        "import_batches_people_check": {
-          "name": "import_batches_people_check",
-          "value": "\"intake\".\"import_batches\".\"people\" >= 1"
+        "import_batches_cvs_check": {
+          "name": "import_batches_cvs_check",
+          "value": "\"intake\".\"import_batches\".\"cvs\" >= 1"
         }
       },
       "isRLSEnabled": true

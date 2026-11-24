@@ -108,7 +108,7 @@ describe('receiveBatch', () => {
         jobId: JOB.jobId,
         confirmedBy: 'u1',
         wordingVersion: 'v1',
-        people: 3,
+        cvs: 3,
         confirmedAt: at,
       }),
     );

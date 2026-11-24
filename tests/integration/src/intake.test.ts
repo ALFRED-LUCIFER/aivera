@@ -86,7 +86,7 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
-  const audit = createAudit(app);
+  const audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
   intake = createIntake(
@@ -431,8 +431,13 @@ const CAST: [number, string][] = [
 ];
 const tables = ['intake.import_batches', 'intake.application', 'intake.application_source', 'intake.outbox'];
 const auditEntries = async (action: string) => [
-  ...(await admin.execute<{ actor_id: string; subject_id: string; after: Record<string, unknown> }>(
-    sql`select actor_id, subject_id, after from audit.entry where action = ${action} order by occurred_at, id`,
+  ...(await admin.execute<{
+    actor_id: string;
+    subject_id: string;
+    occurred_at: string;
+    after: Record<string, unknown>;
+  }>(
+    sql`select actor_id, subject_id, occurred_at, after from audit.entry where action = ${action} order by occurred_at, id`,
   )),
 ];
 
@@ -450,7 +455,7 @@ describe('AIV-P1-104: confirm once per imported batch', () => {
       confirmed_at: '2026-11-20 09:00:00+00',
       wording_key: 'import.rightToProcess.v1',
       wording_version: 'v1',
-      people: 3,
+      cvs: 3,
     });
     const [sources] = await admin.execute<{ n: number }>(
       sql`select count(*)::int as n from intake.application_source where batch_id = ${batchId}`,
@@ -461,7 +466,8 @@ describe('AIV-P1-104: confirm once per imported batch', () => {
     expect(entries.at(-1)).toEqual({
       actor_id: ALEX,
       subject_id: batchId,
-      after: { jobId, wordingVersion: 'v1', people: 3 },
+      occurred_at: '2026-11-20 09:00:00+00',
+      after: { jobId, wordingVersion: 'v1', cvs: 3 },
     });
   });
 
@@ -489,11 +495,11 @@ describe('AIV-P1-104: confirm once per imported batch', () => {
     );
     expect(second.batchId).not.toBe(first.batchId);
     const rows = await admin.execute(
-      sql`select id, wording_version, people from intake.import_batches where job_id = ${jobId} order by wording_version`,
+      sql`select id, wording_version, cvs from intake.import_batches where job_id = ${jobId} order by wording_version`,
     );
     expect([...rows]).toEqual([
-      { id: first.batchId, wording_version: 'v1', people: 3 },
-      { id: second.batchId, wording_version: 'v2', people: 1 },
+      { id: first.batchId, wording_version: 'v1', cvs: 3 },
+      { id: second.batchId, wording_version: 'v2', cvs: 1 },
     ]);
     await expect(
       as(ALEX, w1, (ctx) => intake.receiveBatch(ctx, batchOf(jobId, CAST, 'import.title'))),
@@ -537,7 +543,9 @@ describe('AIV-P1-104: confirm once per imported batch', () => {
   // SAFETY: mutation check: ALTER POLICY import_batches_tenant_isolation ON intake.import_batches USING (true) WITH CHECK (true) -> this test failed (the unfiltered read in W1 saw W2's batch)
   it("row-level security hides another workspace's batch from a read with no workspace filter", async () => {
     const theirs = await newJob(w2, 'Gulf Analyst job');
-    const { batchId } = await as(ALEX, w2, (ctx) => intake.receiveBatch(ctx, batchOf(theirs, [[420, 'Omar Khalid']])));
+    const { batchId } = await as(ALEX, w2, (ctx) =>
+      intake.receiveBatch(ctx, batchOf(theirs, [[420, 'Omar Al Suwaidi']])),
+    );
     const seen = await withWorkspace(app, w1, (tx) =>
       tx.execute(sql`select id from intake.import_batches where id = ${batchId}`),
     );

@@ -113,6 +113,7 @@ export function applicationUseCases({
     input: ReceiveApplicationInput,
     batchId: string | null,
   ): Promise<ReceiveApplicationResult> {
+    // shortcut: every arrival of a batch re-runs this authorize and a getJob read (200 CVs = 200 job reads in one transaction); hoist both into receiveBatch when a batch gets slow.
     await authorize(ctx, 'candidate.create');
     // Checked before the person is found or created, so a refused application writes nothing.
     if (!(await jobResource(ctx, input.jobId))) throw new IntakeError('job_not_found');
@@ -169,7 +170,7 @@ export function applicationUseCases({
         confirmedAt: now(),
         wordingKey: input.wordingKey,
         wordingVersion: version,
-        people: input.arrivals.length,
+        cvs: input.arrivals.length,
       };
       await storeFor(ctx.tx).insertBatch(batch);
       const applications = [];

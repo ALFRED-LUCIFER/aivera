@@ -53,7 +53,7 @@ export type ImportBatch = {
   wordingKey: string;
   /** The key's version suffix, e.g. `v1`. */
   wordingVersion: string;
-  people: number;
+  cvs: number;
 };
 
 const WORDING_KEY = /^import\.rightToProcess\.(v[1-9]\d{0,3})$/;
