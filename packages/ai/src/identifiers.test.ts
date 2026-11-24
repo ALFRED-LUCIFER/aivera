@@ -130,7 +130,7 @@ describe('the replacer', () => {
     expect(CONTACT_EXTRACTION_TASKS).toEqual(['evidence.parseCv']);
   });
 
-  // SAFETY: mutation check: removed the not-an-email lookahead on a name part -> this test failed
+  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test failed
   // ("[CANDIDATE].alqahtani@example.com" on every separator)
   it.each(['\n', ' ', ' - ', '\t', ' · '])(
     'never lets a name eat the email after it (separator %j, AIV-P2-081)',
@@ -143,20 +143,30 @@ describe('the replacer', () => {
     },
   );
 
-  // SAFETY: mutation check: widened the lookahead to any "@" ((?![\w.%+-]*@)) -> this test failed ("Qahtani@Acme")
+  // SAFETY: mutation check: let an email domain go without a dot ((?:\.[\w-]+)*) -> this test failed ("Qahtani@Acme")
   it('still replaces a name next to an "@" that is not an email', () => {
     expect(redact('Sara Al Qahtani@Acme')).toBe('[CANDIDATE]@Acme');
     expect(redact('Sara Al Qahtani\nsara@localhost')).toBe('[CANDIDATE]@localhost');
     expect(redact('Ask Sara@acme')).toBe('Ask [CANDIDATE]@acme');
   });
 
-  // SAFETY: mutation check: an ASCII-only email local part ([\w.%+-]) again -> this test failed ("Zoë@acme.com" whole)
   // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test and 13 others failed
   it('never sends a name that sits in an email beside a phone (AIV-P2-081)', () => {
     expect(redact('Call 050 123 4567-qahtani@example.com')).not.toMatch(/qahtani/i);
     expect(redact('Call +971 50 123 4567.sara.qahtani@example.com')).not.toMatch(/sara|qahtani/i);
   });
 
+  // SAFETY: mutation check: masked every email with MASK (no NAMED_MASK) -> this test failed (Arabic name kept)
+  it('removes an Arabic name line next to an email that holds the name (AIV-P2-081)', () => {
+    for (const keep of [false, true]) {
+      const above = 'Curriculum Vitae\nsara.alqahtani@example.com · +971 50 123 4567\nسارة القحطاني\nEngineer';
+      const below = 'Engineer\nسارة القحطاني\nsara.alqahtani@example.com';
+      for (const cv of [above, below])
+        expect(redactSources([source(cv, 'cv')], sara, keep).sources[0]?.text, `${keep}`).not.toContain('سارة');
+    }
+  });
+
+  // SAFETY: mutation check: an ASCII-only email local part ([\w.%+-]) again -> this test failed ("Zoë@acme.com" whole)
   it('treats a non-ASCII local part as an email, so the name never reaches the model inside it', () => {
     const zoe = { names: ['Zoë Müller'], emails: [], phones: [] };
     const text = 'Write to Zoë@acme.com or Müller@acme.com, or zoë.müller@example.com.';
