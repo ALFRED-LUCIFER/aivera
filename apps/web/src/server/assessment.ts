@@ -21,7 +21,8 @@ export const getAssessment = (): AssessmentContract =>
     createCandidateJobResolver(getJobs()),
     createApplicationReads().candidatesForJob,
     {
-      ai: getAi(),
+      // Lazy: building the module must not need AI configuration (an unconfigured app still lists rankings).
+      ai: { generateStructured: (input) => getAi().generateStructured(input) },
       approvedRubric: createApprovedRubricReads().approvedRubric,
       evidence: (ctx, candidateId, jobId) => getEvidence().listEvidenceForCandidate(ctx, candidateId, jobId),
       identifiersOf: async (ctx, candidateId) => {
