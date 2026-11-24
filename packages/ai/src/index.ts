@@ -3,6 +3,7 @@ export {
   AiUnavailable,
   BudgetExceeded,
   createAiClient,
+  memoryTokenBudget,
   MAX_CALL_SOURCE_CHARS,
   MAX_SOURCE_CHARS,
   SourceTooLong,
@@ -54,6 +55,13 @@ export {
   compareExcerptsRequest,
   flaggedPairs,
 } from './prompts/evidence.compareExcerpts.ts';
+export {
+  EXPLAIN_PLACEHOLDERS,
+  EXPLAIN_RANKING_SYSTEM,
+  EXPLAIN_RANKING_VERSION,
+  explainRankingRequest,
+  explainRankingSchema,
+} from './prompts/assessment.explainRanking.ts';
 export {
   ASSISTANT_ANSWER_SYSTEM,
   ASSISTANT_ANSWER_VERSION,

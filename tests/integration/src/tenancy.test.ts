@@ -412,8 +412,8 @@ async function seed(
     const draft = await evidence.createDraftRequest(ctx, { candidateId: personId, jobId: job.id });
     // This suite checks tenancy of the rows only; the email itself: evidence-requests.test.ts.
     await evidence.sendRequest(ctx, draft.id, async () => undefined);
-    // An assessment result (assessment.result, AIV-P1-030).
-    await assessment.assessCandidate(ctx, {
+    // An assessment result (assessment.result, AIV-P1-030) and its cached explanation (assessment.explanation, AIV-P1-033).
+    const scored = await assessment.assessCandidate(ctx, {
       candidateId: personId,
       jobId: job.id,
       rubric: {
@@ -422,6 +422,10 @@ async function seed(
       },
       evidence: await evidence.listEvidenceForCandidate(ctx, personId, job.id),
     });
+    await ctx.tx.execute(
+      sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
+          values (${scored.id}, 'assessment.explainRanking@1', ${ctx.workspaceId}, '[]'::jsonb, ${NOW.toISOString()})`,
+    );
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
       await evidence.recordEvidence(ctx, {

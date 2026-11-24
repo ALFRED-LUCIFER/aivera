@@ -171,12 +171,13 @@ afterAll(async () => {
 });
 
 describe('Migrations', () => {
-  it('assessment.result and assessment.inbox are owned by aivera_migrator with row-level security enabled and forced', async () => {
+  it('assessment.explanation, inbox and result are owned by aivera_migrator with row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'assessment' order by name`);
     expect([...tables]).toEqual([
+      { name: 'explanation', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'result', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
@@ -244,6 +245,32 @@ describe('Scenario: Assessments never cross workspaces', () => {
     await expect(
       withWorkspace(app, w1, (tx) => tx.execute(sql`update assessment.result set backed_score = 100`)),
     ).rejects.toThrow();
+  });
+});
+
+describe('Scenario: An explanation is cached per snapshot and never crosses workspaces (AIV-P1-033)', () => {
+  const RESULT = '0190d4a2-0000-7000-8000-00000000e501';
+  const insert = (workspaceId: string, version: string) =>
+    withWorkspace(app, w1, (tx) =>
+      tx.execute(
+        sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
+            values (${RESULT}, ${version}, ${workspaceId}, '[]'::jsonb, ${NOW.toISOString()})`,
+      ),
+    );
+
+  // SAFETY: mutation check: dropped the primary key on (result_id, prompt_version) -> this test failed (a second row for one snapshot)
+  it('keeps one row per snapshot and prompt version, and a new prompt version is a new row', async () => {
+    await insert(w1, 'assessment.explainRanking@1');
+    await expect(insert(w1, 'assessment.explainRanking@1')).rejects.toThrow();
+    await insert(w1, 'assessment.explainRanking@2');
+  });
+
+  // SAFETY: mutation check: ALTER POLICY explanation_tenant_isolation USING (true) WITH CHECK (true) -> this test failed
+  it("W2 reads none of W1's explanations, and W1 cannot write one for W2", async () => {
+    expect([...(await withWorkspace(app, w2, (tx) => tx.execute(sql`select * from assessment.explanation`)))]).toEqual(
+      [],
+    );
+    await expect(insert(w2, 'assessment.explainRanking@3')).rejects.toThrow();
   });
 });
 

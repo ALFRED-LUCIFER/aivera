@@ -7,6 +7,7 @@ import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import { assistantAnswerRequest } from '../src/prompts/assistant.answer.ts';
+import { explainRankingRequest } from '../src/prompts/assessment.explainRanking.ts';
 import { identifiersOf, type GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
@@ -121,6 +122,9 @@ export const taskThresholds: Record<
   // AIV-P2-068: the assistant's answers through the Python AI service; every statement cites, a CV-only one is a claim,
   // and it never recommends rejecting anyone. Recorded answers are checked ones, as the client returns them.
   'assistant.answer': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P1-033: a ranking explanation's statements each cite the facts source or an excerpt, hold no number (the schema
+  // rejects one; the cases' recorded answers use placeholders) and never recommend. Faithfulness is the judge's rubric.
+  'assessment.explainRanking': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
 };
 
 /**
@@ -178,6 +182,13 @@ export const runners: Record<string, Runner> = {
   'assistant.answer': (ai, golden, workspaceId) =>
     ai.generateStructured({
       ...assistantAnswerRequest(questionInput.parse(golden.input).question, golden.sources),
+      workspaceId,
+      identifiers: identifiersOf(golden),
+    }),
+  // AIV-P1-033: the snapshot's facts source (S1) and the cited excerpts, as the assessment module sends them.
+  'assessment.explainRanking': (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...explainRankingRequest(golden.sources),
       workspaceId,
       identifiers: identifiersOf(golden),
     }),

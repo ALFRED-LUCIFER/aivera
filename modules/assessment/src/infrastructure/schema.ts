@@ -1,8 +1,9 @@
 import { inboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { check, index, jsonb, pgSchema, smallint, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, jsonb, pgSchema, primaryKey, smallint, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { CompetencyResult } from '../domain/assess.ts';
+import type { ExplanationStatement } from '../domain/explain.ts';
 
 export const assessment = pgSchema('assessment');
 
@@ -39,6 +40,26 @@ export const result = assessment
       check('result_meets_need_check', sql`${t.meetsNeed} between 0 and ${t.competencyCount}`),
       check('result_confidence_check', sql`${t.confidence} in ('High', 'Medium', 'Low')`),
       tenantPolicy('result_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// The AI explanation of a stored result (AIV-P1-033), cached per result id and prompt version: a new result or a new
+// prompt writes a new row. Holds the statements with their quotes of the candidate's evidence, so it stays in the database
+// (AGENTS.md 1.2). Only AI answers are stored; the template is cheap and never cached.
+export const explanation = assessment
+  .table(
+    'explanation',
+    {
+      resultId: uuid('result_id').notNull(),
+      promptVersion: text('prompt_version').notNull(),
+      workspaceId: uuid('workspace_id').notNull(),
+      statements: jsonb().$type<ExplanationStatement[]>().notNull(),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.resultId, t.promptVersion] }),
+      tenantPolicy('explanation_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
