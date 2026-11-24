@@ -18,6 +18,7 @@ import {
   nameFromCv,
   mergeNotes,
   pageSpan,
+  profileLinks,
   repositoryLinks,
   type CvExtraction,
   type CvLayout,
@@ -26,6 +27,7 @@ import {
 } from '../domain/cv.ts';
 import type { EvidenceItem, EvidenceSource } from '../domain/evidence.ts';
 import type { Ports } from './evidence.ts';
+import type { queueProfileExpansion } from './profileExpansion.ts';
 import type { RequestRepositoryReadInput } from './repositoryRead.ts';
 
 /** Document Intelligence says the file is not a document it can read (a corrupt or unsupported file). */
@@ -179,6 +181,8 @@ export type ParsePorts = Pick<CvPorts, 'cvStoreFor' | 'newId' | 'now'> &
     nameApplicant(tx: Tx, workspaceId: string, candidateId: string, name: string): Promise<void>;
     /** `queueRepositoryRead` (AIV-P1-076): one pending read per candidate and link, as the system, in `tx`. */
     queueRead(tx: Tx, workspaceId: string, input: RequestRepositoryReadInput): Promise<unknown>;
+    /** `queueProfileExpansion` (AIV-P1-112): one pending expansion per candidate and profile, in `tx`. */
+    queueProfile(tx: Tx, workspaceId: string, input: Parameters<typeof queueProfileExpansion>[3]): Promise<unknown>;
     /** Adds the CV's emails and phones to the candidate record (the candidates module, in `tx`). */
     recordContact(
       tx: Tx,
@@ -225,6 +229,7 @@ export async function parseCv(
     nameApplicant,
     recordContact,
     queueRead,
+    queueProfile,
     newId,
     now,
   } = ports;
@@ -299,6 +304,13 @@ export async function parseCv(
       url,
       githubLogin: null,
       emails: [],
+      synthetic: source.synthetic,
+    });
+  // A profile the CV links is expanded on the worker, never fetched here; its repositories stay "Authorship unclear".
+  for (const url of profileLinks(layout.content, instructions))
+    await queueProfile(tx, workspaceId, {
+      candidateId: source.candidateId,
+      login: url.slice('https://github.com/'.length),
       synthetic: source.synthetic,
     });
   if (items.length)

@@ -5,7 +5,7 @@
 // `restore_skills_from_markdown` (Apache-2.0, modified): THIRD_PARTY_NOTICES.md.
 import type { UnusualContent } from '@credalent/ai';
 import type { EvidenceItem } from './evidence.ts';
-import { parseRepositoryUrl } from './repository.ts';
+import { isGitHubLogin, parseRepositoryUrl } from './repository.ts';
 
 /** `waiting`: the workspace's daily AI budget is spent and the parse is scheduled for the next UTC day (AIV-P1-089). */
 export const CV_PARSE_STATUSES = ['pending', 'waiting', 'parsed', 'unreadable', 'failed'] as const;
@@ -390,4 +390,39 @@ export function repositoryLinks(text: string, instructions: readonly { start: nu
       return repo ? [`https://github.com/${repo.owner}/${repo.name}`] : [];
     });
   return [...new Set(links)];
+}
+
+// A login followed by nothing that makes it a repository path: `github.com/<login>`, a trailing slash, a query or a fragment.
+const GITHUB_PROFILE = /\b(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/?(?![A-Za-z0-9_/-])/gi;
+// GitHub's own pages under github.com/<word>, which are not people.
+const GITHUB_SITE_PATHS = new Set([
+  'orgs',
+  'features',
+  'topics',
+  'marketplace',
+  'sponsors',
+  'settings',
+  'about',
+  'pricing',
+  'explore',
+  'collections',
+  'enterprise',
+  'apps',
+  'login',
+  'site',
+  'security',
+]);
+/** The most profile links one CV expands: its own few, never a list a CV could pad to spend GitHub's rate limit. */
+export const MAX_PROFILE_LINKS = 2;
+
+/**
+ * The GitHub profile links the CV writes, as https://github.com/<login>, once each, CV order, at most MAX_PROFILE_LINKS;
+ * a link inside text aimed at the AI (`instructions`) is left out, as for `repositoryLinks`.
+ */
+export function profileLinks(text: string, instructions: readonly { start: number; end: number }[]): string[] {
+  const logins = [...text.matchAll(GITHUB_PROFILE)]
+    .filter((m) => !instructions.some((i) => overlaps(i, { start: m.index, end: m.index + m[0].length })))
+    .map((m) => (m[1] ?? '').toLowerCase())
+    .filter((login) => isGitHubLogin(login) && !GITHUB_SITE_PATHS.has(login));
+  return [...new Set(logins)].slice(0, MAX_PROFILE_LINKS).map((login) => `https://github.com/${login}`);
 }
