@@ -1,7 +1,7 @@
 import { outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { SOURCES, STAGES } from '../domain/application.ts';
 
 export const intake = pgSchema('intake');
@@ -35,6 +35,28 @@ export const application = intake
   )
   .enableRLS();
 
+// One confirmation per save of "Add applicants" (AIV-P1-104). job_id and confirmed_by are opaque ids of other modules.
+export const importBatch = intake
+  .table(
+    'import_batches',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      jobId: uuid('job_id').notNull(),
+      confirmedBy: uuid('confirmed_by').notNull(),
+      confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
+      wordingKey: text('wording_key').notNull(),
+      wordingVersion: text('wording_version').notNull(),
+      people: integer().notNull(),
+    },
+    (t) => [
+      unique('import_batches_workspace_id_key').on(t.workspaceId, t.id),
+      check('import_batches_people_check', sql`${t.people} >= 1`),
+      tenantPolicy('import_batches_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
 // links and github_login are candidate personal data (PERSONAL_DATA_FIELDS): never log a row.
 export const applicationSource = intake
   .table(
@@ -48,8 +70,15 @@ export const applicationSource = intake
       fileIds: uuid('file_ids').array().notNull(),
       links: text().array().notNull(),
       githubLogin: text('github_login'),
+      // Null for an arrival with no confirmed batch; the database keeps a set value pointing at this workspace's batch.
+      batchId: uuid('batch_id'),
     },
     (t) => [
+      foreignKey({
+        name: 'application_source_batch_fk',
+        columns: [t.workspaceId, t.batchId],
+        foreignColumns: [importBatch.workspaceId, importBatch.id],
+      }),
       // Includes the workspace, so a source cannot point at another workspace's application (FK checks skip RLS).
       foreignKey({
         name: 'application_source_application_fk',

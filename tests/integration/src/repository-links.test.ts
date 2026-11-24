@@ -17,6 +17,7 @@ import type { EvidenceContract } from '@credalent/evidence';
 import { createApplicationReceivedHandler, createEvidence, EVIDENCE_QUEUE } from '@credalent/evidence/composition';
 import { ApplicationReceivedV1, type IntakeContract, type ReceiveApplicationInput } from '@credalent/intake';
 import { readFilePurposeAsSystem } from '@credalent/files/composition';
+import { receiveConfirmed } from './confirmedBatch.ts';
 import { createIntake, readApplicationSourceAsSystem } from '@credalent/intake/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
@@ -118,7 +119,7 @@ async function relayAndConsume(): Promise<string[]> {
 }
 
 const receive = async (input: ReceiveApplicationInput) => {
-  const received = await as(AP, demo, (ctx) => intake.receiveApplication(ctx, input));
+  const received = await as(AP, demo, (ctx) => receiveConfirmed(intake, ctx, input));
   await relayAndConsume();
   return received;
 };
@@ -162,6 +163,7 @@ beforeAll(async () => {
     createCandidates(workspaces, () => NOW),
     jobs,
     displayNamesInWorkspace,
+    audit,
     () => NOW,
   );
   evidence = createEvidence(workspaces, audit, () => NOW);
@@ -376,7 +378,7 @@ describe('Scenario Outline: Only people who can reach the job can add a link', (
 
   it('on a job they are granted, an interviewer can add a link', async () => {
     const qaApplicant = await as(AP, demo, (ctx) =>
-      intake.receiveApplication(ctx, arrival(qa, 'Hessa Al Mazrouei', [])),
+      receiveConfirmed(intake, ctx, arrival(qa, 'Hessa Al Mazrouei', [])),
     );
     await expect(
       as(RAMI, demo, (ctx) =>
@@ -398,7 +400,8 @@ describe('Scenario: Repository links never reach logs or telemetry', () => {
     });
     try {
       const layla = await as(AP, demo, (ctx) =>
-        intake.receiveApplication(
+        receiveConfirmed(
+          intake,
           ctx,
           arrival(
             sae,

@@ -22,7 +22,7 @@ const jobs: PickerJob[] = [
   },
 ];
 const header = (id: string, approvedVersion: number | null): JobHeader => ({
-  job: { id } as Job,
+  job: { id, title: jobs.find((j) => j.id === id)?.title ?? '' } as Job,
   approved: approvedVersion === null ? null : ({ version: approvedVersion } as RubricVersion),
   latest: null,
   publicSlug: null,
@@ -32,6 +32,7 @@ describe('Bring in candidates (AIV-P1-101)', () => {
   it('Scenario: The page for Senior AI Engineer: the picker is set to it with its approved version', () => {
     const view = importView(jobs, header(SAE, 2));
     expect(view.jobId).toBe(SAE);
+    expect(view.jobTitle).toBe('Senior AI Engineer');
     expect(view.options.map((o) => [o.label.key, o.label.values.title])).toEqual([
       ['approvedVersion', 'Senior AI Engineer'],
       // A newer draft does not unapprove the version in force.

@@ -1,4 +1,5 @@
 // Builds the intake module for an app (ADR-002: only apps import this).
+import type { AuditContract } from '@credalent/audit';
 import type { CandidatesContract } from '@credalent/candidates';
 import { enqueue } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
@@ -17,6 +18,7 @@ export function createIntake(
   jobs: Pick<JobsContract, 'getJob'>,
   /** The candidates composition's `displayNamesInWorkspace` (AIV-P1-086). */
   displayNames: Ports['displayNames'],
+  audit: Pick<AuditContract, 'record'>,
   now: () => Date = () => new Date(),
 ): IntakeContract {
   return applicationUseCases({
@@ -29,6 +31,15 @@ export function createIntake(
         occurredAt: source.receivedAt,
       }),
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
+    auditBatchConfirmed: (ctx, batch) =>
+      audit.record(
+        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
+        {
+          action: 'intake.batch_confirmed',
+          subject: { type: 'import_batch', id: batch.id },
+          after: { jobId: batch.jobId, wordingVersion: batch.wordingVersion, people: batch.people },
+        },
+      ),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),
     displayNames,
     jobResource: async (ctx, jobId) => {

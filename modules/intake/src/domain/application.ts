@@ -35,7 +35,31 @@ export type ApplicationSource = {
   links: string[];
   /** The GitHub login the candidate supplied, never one derived from their name, email or a repository owner. */
   githubLogin: string | null;
+  /**
+   * The confirmed batch a member added it in (AIV-P1-104); null for an arrival with none, which the worker never reads.
+   * Links later added to an application inherit its batch.
+   */
+  batchId: string | null;
 };
+
+/** One confirmation that the recruiter is responsible for the right to process the CVs added together (AIV-P1-104). */
+export type ImportBatch = {
+  id: string;
+  workspaceId: string;
+  jobId: string;
+  confirmedBy: string;
+  confirmedAt: Date;
+  /** The message key shown at confirmation, e.g. `import.rightToProcess.v1`: a new wording is a new key. */
+  wordingKey: string;
+  /** The key's version suffix, e.g. `v1`. */
+  wordingVersion: string;
+  people: number;
+};
+
+const WORDING_KEY = /^import\.rightToProcess\.(v[1-9]\d{0,3})$/;
+
+/** The version suffix of a confirmation wording key, or null when the key is not one (the key comes from the app, never the browser). */
+export const wordingVersion = (key: string): string | null => WORDING_KEY.exec(key)?.[1] ?? null;
 
 /**
  * Field names in this module's contract that hold candidate personal data (AGENTS.md 1.2), for the telemetry scrubber
@@ -46,6 +70,8 @@ export const PERSONAL_DATA_FIELDS = ['links', 'githubLogin'] as const;
 const MESSAGES = {
   job_not_found: 'Job not found',
   application_not_found: 'Application not found',
+  confirmation_required: 'Confirm you are responsible for the right to process these CVs.',
+  invalid_wording: 'Unknown confirmation wording',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;

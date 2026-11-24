@@ -13,7 +13,7 @@ const ctx = { userId: 'u1', workspaceId: W1, role: 'interviewer', status: 'activ
 const fake = vi.hoisted(() => ({
   authorize: vi.fn(),
   findCleanUpload: vi.fn(),
-  receiveApplication: vi.fn(),
+  receiveBatch: vi.fn(),
 }));
 vi.mock('@credalent/observability', () => ({
   annotateSpan: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock('@credalent/workspaces/composition', () => ({
   }),
 }));
 vi.mock('@/server/files', () => ({ getFiles: () => ({ files: { findCleanUpload: fake.findCleanUpload } }) }));
-vi.mock('@/server/intake', () => ({ getIntake: () => ({ receiveApplication: fake.receiveApplication }) }));
+vi.mock('@/server/intake', () => ({ getIntake: () => ({ receiveBatch: fake.receiveBatch }) }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');
@@ -41,24 +41,33 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
-const input = { jobId: JOB, source: 'linkedin' as const, fileIds: [F1] };
+const input = { jobId: JOB, rightToProcessConfirmed: true as const, source: 'linkedin' as const, fileIds: [F1] };
 
 beforeEach(() => {
   vi.resetAllMocks();
   fake.authorize.mockResolvedValue(undefined);
   fake.findCleanUpload.mockResolvedValue({ purpose: 'cv', sha256: SHA });
-  fake.receiveApplication.mockResolvedValue({ applicationId: 'a1', personId: 'p1', sourceId: 's1', created: true });
+  fake.receiveBatch.mockResolvedValue({
+    batchId: 'b1',
+    applications: [{ applicationId: 'a1', personId: 'p1', sourceId: 's1', created: true }],
+  });
 });
 
 describe('addApplicants', () => {
   it('files a clean CV as a synthetic unnamed applicant in a synthetic workspace', async () => {
     expect(await addApplicants(input)).toEqual({ ok: true, applications: [{ applicationId: 'a1', created: true }] });
     expect(fake.authorize).toHaveBeenCalledWith(ctx, 'candidate.create', undefined);
-    expect(fake.receiveApplication).toHaveBeenCalledWith(ctx, {
+    expect(fake.receiveBatch).toHaveBeenCalledWith(ctx, {
       jobId: JOB,
-      person: { displayName: 'Unnamed applicant', synthetic: true, identifiers: [{ type: 'cv_hash', value: SHA }] },
-      source: 'linkedin',
-      fileIds: [F1],
+      rightToProcessConfirmed: true,
+      wordingKey: 'import.rightToProcess.v1',
+      arrivals: [
+        {
+          person: { displayName: 'Unnamed applicant', synthetic: true, identifiers: [{ type: 'cv_hash', value: SHA }] },
+          source: 'linkedin',
+          fileIds: [F1],
+        },
+      ],
     });
   });
 
@@ -67,12 +76,24 @@ describe('addApplicants', () => {
     fake.authorize.mockRejectedValue(new ForbiddenError());
     await expect(addApplicants(input)).rejects.toThrow('NEXT_HTTP_ERROR_FALLBACK;403');
     expect(fake.findCleanUpload).not.toHaveBeenCalled();
-    expect(fake.receiveApplication).not.toHaveBeenCalled();
+    expect(fake.receiveBatch).not.toHaveBeenCalled();
   });
 
   it('a job outside the workspace is "jobNotFound"', async () => {
-    fake.receiveApplication.mockRejectedValue(new IntakeError('job_not_found'));
+    fake.receiveBatch.mockRejectedValue(new IntakeError('job_not_found'));
     expect(await addApplicants(input)).toEqual({ ok: false, error: 'jobNotFound' });
+  });
+
+  // AIV-P1-104. SAFETY: mutation check: removed the rightToProcessConfirmed literal from addApplicantsSchema -> this test failed (the batch was filed)
+  it('Scenario: The server refuses a batch without the confirmation: the message, nothing read or filed', async () => {
+    const { rightToProcessConfirmed: _, ...unconfirmed } = input;
+    expect(await addApplicants(unconfirmed as never)).toEqual({ ok: false, error: 'confirmationRequired' });
+    expect(await addApplicants({ ...input, rightToProcessConfirmed: false as never })).toEqual({
+      ok: false,
+      error: 'confirmationRequired',
+    });
+    expect(fake.findCleanUpload).not.toHaveBeenCalled();
+    expect(fake.receiveBatch).not.toHaveBeenCalled();
   });
 
   it('refuses input that is not a job, a source and file ids, before authorising', async () => {

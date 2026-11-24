@@ -443,6 +443,7 @@ export function createApplicationReceivedHandler(
     publishLinkReadRequested,
     newId: uuidv7,
     now: config.now ?? (() => new Date()),
+    logRefused: (ids) => log.info(ids, 'batch not confirmed'),
     logQueued: (kind, { queued, ...ids }) => log.info(ids, QUEUED_MESSAGES[kind][queued ? 0 : 1]),
   };
   return {

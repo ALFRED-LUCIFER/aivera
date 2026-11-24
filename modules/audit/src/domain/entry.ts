@@ -44,6 +44,7 @@ export const ACTIONS = [
   'job.hiring_owner_changed',
   'evidence.level_changed',
   'candidate.unmerged',
+  'intake.batch_confirmed',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

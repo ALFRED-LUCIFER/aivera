@@ -2,6 +2,7 @@
 
 import { UNNAMED_APPLICANT } from '@credalent/candidates';
 import { IntakeError } from '@credalent/intake';
+import { ZodError } from 'zod';
 import { getFiles } from '@/server/files';
 import { getIntake } from '@/server/intake';
 import { getWorkspaces, workspaceAction } from '@/server/workspace';
@@ -31,7 +32,13 @@ export async function addApplicants(input: AddApplicantsInput): Promise<AddAppli
     return await add(input);
   } catch (error) {
     // Thrown out of the transaction, so a refused job rolls back everything.
-    if (error instanceof IntakeError) return { ok: false, error: 'jobNotFound' };
+    if (error instanceof IntakeError) {
+      return { ok: false, error: error.code === 'confirmation_required' ? 'confirmationRequired' : 'jobNotFound' };
+    }
+    // The schema's literal refuses a missing or false tick before anything is authorised or read.
+    if (error instanceof ZodError && error.issues.some((i) => i.path[0] === 'rightToProcessConfirmed')) {
+      return { ok: false, error: 'confirmationRequired' };
+    }
     throw error;
   }
 }
