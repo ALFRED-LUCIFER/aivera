@@ -5,6 +5,9 @@ import type { CandidateStore } from '../application/people.ts';
 import { UNNAMED_APPLICANT, type IdentifierType, type Person } from '../domain/person.ts';
 import { merge, person, personIdentifier } from './schema.ts';
 
+// Thrown inside a locking round's savepoint to roll it back and lock a larger set (findPeople).
+const relock = new Error('relock');
+
 /**
  * The candidates store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
  * row-level security on the transaction's `app.workspace_id` is the second (ADR-005).
@@ -32,16 +35,25 @@ export function candidateStore(tx: Tx): CandidateStore & MergeStore {
         const next = (await store.getPerson(workspaceId, id))?.mergedIntoId;
         if (next) ids.add(next);
       }
-      let people = new Map<string, Person>();
-      // A merge that committed between the plain reads and the lock can point past the locked set: lock again with it.
-      for (let round = 0; round < 3; round++) {
-        people = new Map((await store.lockPeople(workspaceId, [...ids])).map((p) => [p.id, p]));
-        const outside = [...people.values()].flatMap((p) =>
-          p.mergedIntoId && !ids.has(p.mergedIntoId) ? [p.mergedIntoId] : [],
-        );
-        if (outside.length === 0) break;
-        for (const id of outside) ids.add(id);
+      // A merge that committed while this waited can point past the locked set. Each round locks in a savepoint, so
+      // such a round is rolled back, which releases its locks, and the larger set is locked afresh, still by id.
+      let people: Map<string, Person> | null = null;
+      for (let round = 0; !people && round < 5; round++) {
+        try {
+          people = await tx.transaction(async (sp) => {
+            const locked = new Map((await candidateStore(sp).lockPeople(workspaceId, [...ids])).map((p) => [p.id, p]));
+            const outside = [...locked.values()].flatMap((p) =>
+              p.mergedIntoId && !ids.has(p.mergedIntoId) ? [p.mergedIntoId] : [],
+            );
+            if (outside.length === 0) return locked;
+            for (const id of outside) ids.add(id);
+            throw relock;
+          });
+        } catch (error) {
+          if (error !== relock) throw error;
+        }
       }
+      if (!people) throw new Error('merge chain kept changing while it was being locked');
       const found = new Map<string, { person: Person; types: IdentifierType[] }>();
       for (const row of rows) {
         let current = people.get(row.personId);

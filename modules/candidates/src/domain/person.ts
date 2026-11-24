@@ -80,9 +80,12 @@ export function normaliseIdentifier({ type, value }: Identifier): Identifier {
   return { type, value: normalised };
 }
 
-/** Normalised and without repeats; throws `no_identifiers` when there are none. */
+/**
+ * Normalised, without repeats and in one fixed order, so two arrivals inserting the same identifiers take their
+ * locks in the same order; throws `no_identifiers` when there are none.
+ */
 export function normaliseIdentifiers(identifiers: Identifier[]): Identifier[] {
   const unique = new Map(identifiers.map(normaliseIdentifier).map((i) => [`${i.type}:${i.value}`, i]));
   if (unique.size === 0) throw new CandidateError('no_identifiers');
-  return [...unique.values()];
+  return [...unique].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, i]) => i);
 }

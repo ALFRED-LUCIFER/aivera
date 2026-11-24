@@ -473,8 +473,29 @@ describe('Arrivals, merges and undos of the same people at once', () => {
     expect((await later).personId).toBe(dup.personId);
   });
 
-  // Both queue on one id-ordered lock (lockPeople), the order merge and undo use too, so none of them can deadlock;
-  // the interleaving a deadlock needs cannot be forced from outside a transaction, so this proves the queueing only.
+  // SAFETY: mutation check: findPeople locked once and did not lock again when the chain left the locked set -> this test failed (identifier holder or merge chain not found)
+  it('an arrival that waited on a merge of its person is filed under the survivor', async () => {
+    clock = NOW;
+    const job = await newJob('Frontend Engineer');
+    const rana = await arrive(job, 'Rana Khoury', 'referral', { cv: 85 });
+    const dup = await arrive(await newJob('Design Engineer'), 'Rana Khoury', 'whatsapp', { cv: 86 });
+    const gate = Promise.withResolvers<void>();
+    const merged = Promise.withResolvers<void>();
+    const merge = as(MARIA, w1, async (ctx) => {
+      await candidates.mergePeople(ctx, rana.personId, dup.personId, 'Same Rana');
+      merged.resolve();
+      await gate.promise; // the arrival reads dup unmerged, then waits on the merge's locks
+    });
+    await merged.promise;
+    const later = arrive(await newJob('Mobile Engineer'), 'Rana Khoury', 'email', { cv: 86 });
+    await blockedOnLock();
+    gate.resolve();
+    await merge;
+    expect((await later).personId).toBe(rana.personId);
+  });
+
+  // Both queue on id-ordered locks (lockPeople, a re-lock starts afresh in a savepoint), the order merge and undo use
+  // too; the interleaving a deadlock needs cannot be forced from outside a transaction, so this proves the queueing only.
   it('two arrivals for the same person, each with a new CV, both land on them', async () => {
     clock = NOW;
     const job = await newJob('Backend Engineer');
