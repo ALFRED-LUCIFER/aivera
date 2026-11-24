@@ -1189,9 +1189,49 @@ describe('Feature: Cited ranking explanation', () => {
     expect(report.rates.citationValidity).toBe(1);
   });
 
-  // SAFETY: mutation check: removed the number refine from explainText -> this test failed (the 60% answer parsed)
+  // SAFETY: mutation check: removed the quotesItsFigures refine from explainRankingSchema -> this test failed (both parsed)
   it('Scenario: Numbers come from the snapshot: an answer holding a number is rejected by the schema', () => {
     expect(explainRankingSchema.safeParse(withText('60% of the weight')).success).toBe(false);
+    expect(explainRankingSchema.safeParse(withText('60 of the weight')).success).toBe(false);
     expect(explainRankingSchema.safeParse(withText('{checkedWeight} of the weight')).success).toBe(true);
   });
+
+  // AIV-P1-132, owner decision 24 Nov 2026. S1 is the facts source; a figure in it never counts.
+  // SAFETY: mutation check: dropped the facts-source filter in quotesItsFigures -> the "Python 3" row failed (it parsed)
+  // SAFETY: mutation check: removed the percent refine from explainText -> the "30% of the work" row failed (it parsed)
+  // SAFETY: mutation check: removed ABOUT_THE_SCORE from figuresQuoted -> the "64 of the weight" rows failed (they parsed)
+  // SAFETY: mutation check: FIGURE no longer keeps a separator between digits -> the "4,120" and "2.3" rows failed
+  it.each([
+    ['The candidate authored 412 of 460 commits.', 'S2', 'authored 412 of 460 commits between March and October', true],
+    ['The work cut p95 latency in the benchmark suite.', 'S2', 'cutting p95 latency in the benchmark suite', true],
+    ['The work cut p99 latency in the benchmark suite.', 'S2', 'cutting p95 latency in the benchmark suite', false],
+    ['The cited repository shows 70 of 80 commits.', 'S2', 'authored 64 of 80 commits', false],
+    ['The candidate authored 12 commits.', 'S2', 'authored 412 of 460 commits', false],
+    // A figure of the work never reads as the score's: no placeholder and no word for what the snapshot measures.
+    ['{checkedCompetencies} carry 64 of the weight.', 'S2', 'authored 64 of 80 commits', false],
+    ['The checked work carries 64 of the weight.', 'S2', 'authored 64 of 80 commits', false],
+    ['The candidate scores 64 on the rubric.', 'S2', 'authored 64 of 80 commits', false],
+    // A separator between digits is part of the figure.
+    ['The candidate authored 4,120 commits.', 'S2', 'authored 4 of 120 commits', false],
+    ['Latency fell by 2.3 s.', 'S2', 'from 3 s to 2 s', false],
+    ['Latency fell to 2.3 s.', 'S2', 'latency fell to 2.3 s', true],
+    [
+      'The candidate wrote 3 services.',
+      'S1',
+      'Independently checked work backs this competency: Python 3 services',
+      false,
+    ],
+    [
+      'The candidate authored 64 of 80 commits, 30% of the work.',
+      'S2',
+      'authored 64 of 80 commits, 30% of the work',
+      false,
+    ],
+  ])(
+    'Scenario Outline: a figure only where the statement quotes it from evidence: %j citing %s',
+    (text, sourceId, quote, ok) => {
+      const said = { statements: [{ text, citations: [{ sourceId, quote }] }] };
+      expect(explainRankingSchema.safeParse(said).success).toBe(ok);
+    },
+  );
 });
