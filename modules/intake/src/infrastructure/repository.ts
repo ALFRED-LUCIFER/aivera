@@ -215,9 +215,12 @@ export const applicationRecords = {
   },
 
   /**
-   * Moves back exactly what `move` moved. A source that arrived on a moved application after the merge matched the
-   * survivor, so it stays theirs: it goes to the survivor's application for that job, made as a new arrival's would be.
+   * Moves back exactly what `move` moved. A source that arrived on a moved application after the merge, by either
+   * person's identifiers, was filed under the survivor, so it stays theirs: it goes to the survivor's application for
+   * that job, made as a new arrival's would be (stage `new`).
    */
+  // shortcut: an arrival after the merge by the merged person's own identifiers also stays with the survivor on undo;
+  // record the person each arrival matched and split here when recruiters see it (AIV-P1-018 follow-up).
   async restore(tx: Tx, workspaceId: string, fromId: string, toId: string, stored: unknown) {
     const moved = movedSchema.parse(stored);
     const back =

@@ -453,6 +453,25 @@ describe('Undo moves back exactly what the merge moved (intake applicationRecord
     ]);
   });
 
+  // Pins the `shortcut:` on intake's applicationRecords.restore: the arrival matched the merged person's own CV.
+  it("an arrival after the merge by the merged person's own identifiers also stays with the survivor on undo", async () => {
+    clock = NOW;
+    const first = await newJob('Data Engineer');
+    const second = await newJob('Analytics Engineer');
+    const tarek = await arrive(first, 'Tarek Mansour', 'referral', { cv: 65 });
+    const dup = await arrive(second, 'Tarek Mansour', 'whatsapp', { cv: 66 });
+    const { mergeId } = await as(MARIA, w1, (ctx) =>
+      candidates.mergePeople(ctx, tarek.personId, dup.personId, 'Same person, two CVs'),
+    );
+    const later = await arrive(second, 'Tarek Mansour', 'email', { cv: 66 });
+    expect([later.personId, later.applicationId]).toEqual([tarek.personId, dup.applicationId]);
+    await as(ALEX, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'Two different people'));
+    expect(await applicationsOf(dup.personId)).toEqual([
+      { id: dup.applicationId, job_id: second, sources: ['whatsapp'] },
+    ]);
+    expect((await applicationsOf(tarek.personId)).map((a) => a.sources)).toEqual([['referral'], ['email']]);
+  });
+
   it('a merge stored before applicationSourceIds still undoes: its applications move back whole', async () => {
     clock = NOW;
     const job = await newJob('Applied Scientist');

@@ -22,11 +22,20 @@ export function candidateStore(tx: Tx): CandidateStore & MergeStore {
           ),
         );
       const found = new Map<string, { person: Person; types: IdentifierType[] }>();
+      // FOR SHARE waits on a merge or undo holding these people FOR UPDATE (lockPeople) and then reads its result, so
+      // an arrival is never filed under a merge that an undo running at the same time is taking apart.
+      const locked = async (id: string) =>
+        (
+          await tx
+            .select()
+            .from(person)
+            .where(and(eq(person.workspaceId, workspaceId), eq(person.id, id)))
+            .for('share')
+        )[0] ?? null;
       for (const row of rows) {
-        let current = await store.getPerson(workspaceId, row.personId);
+        let current = await locked(row.personId);
         // A merged person's identifiers stay with them, so follow the merges to the person they are part of now.
-        for (let hops = 0; current?.mergedIntoId && hops < 20; hops++)
-          current = await store.getPerson(workspaceId, current.mergedIntoId);
+        for (let hops = 0; current?.mergedIntoId && hops < 20; hops++) current = await locked(current.mergedIntoId);
         if (!current || current.mergedIntoId) throw new Error('identifier holder or merge chain not found');
         const entry = found.get(current.id) ?? { person: current, types: [] };
         entry.types.push(row.type);
