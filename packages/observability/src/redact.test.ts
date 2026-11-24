@@ -83,6 +83,20 @@ describe('Scenario Outline: Personal data is redacted', () => {
     expect(exportSpan(attributes as unknown as Record<string, string>)?.attributes).toEqual(attributes);
   });
 
+  it('AIV-P1-112: a profile expansion log keeps its ids, count and outcome, and any other evidence key is redacted', () => {
+    const kept = {
+      'evidence.expansion_id': '01a20d75-b369-7185-a61a-4e3ab9b09af0',
+      'evidence.candidate_id': '01a20d75-b369-7185-a61a-4e3ab9b09af1',
+      'credalent.evidence.profile_queued': 5,
+      'credalent.evidence.profile_outcome': 'expanded',
+    };
+    const leaky = { 'credalent.evidence.profile_login': 'maria-credalent-example' };
+    expect(exportLog({ ...kept, ...leaky } as unknown as Record<string, string>)?.attributes).toEqual({
+      ...kept,
+      'credalent.evidence.profile_login': REDACTED,
+    });
+  });
+
   it('AI call telemetry keeps its values, and any other AI key is redacted', () => {
     const attributes = {
       'credalent.ai.operation': 'chat',

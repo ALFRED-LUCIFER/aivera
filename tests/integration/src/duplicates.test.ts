@@ -166,7 +166,7 @@ beforeAll(async () => {
     applications: applicationRecords,
     evidence: createEvidenceRecords(now),
   });
-  intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, now);
+  intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, now);
   evidence = createEvidence(workspaces, audit, now);
   const newWorkspace = async (name: string) =>
     (await workspaces.createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId: ALEX }))

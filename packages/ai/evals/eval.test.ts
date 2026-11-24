@@ -17,6 +17,7 @@ import {
   draftCompetenciesSchema,
 } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
+import { explainRankingSchema } from '../src/prompts/assessment.explainRanking.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
@@ -1165,5 +1166,32 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
     await expect(
       suggestionJudgeOf(JSON.stringify({ verdicts: [{ ...judged('A'), implied: 'yes' }] }))(pair, {}),
     ).rejects.toMatchObject({ name: 'SchemaMismatch' });
+  });
+});
+
+// Feature: Cited ranking explanation (AIV-P1-033). Synthetic data only.
+const withText = (text: string) => ({ statements: [{ text, citations: [{ sourceId: 'S1', quote: 'q' }] }] });
+describe('Feature: Cited ranking explanation', () => {
+  const cases = golden.get('assessment.explainRanking') ?? [];
+
+  it('Scenario: 10 synthetic snapshots, each recorded answer on the schema, every statement cited, and the runner passes the gates', async () => {
+    expect(cases).toHaveLength(10);
+    for (const c of cases) {
+      const parsed = explainRankingSchema.safeParse(c.recorded.output);
+      expect(parsed.error, c.id).toBeUndefined();
+      expect(
+        parsed.data?.statements.every((s) => s.citations.length > 0),
+        c.id,
+      ).toBe(true);
+    }
+    const report = await run('assessment.explainRanking', cases);
+    expect(report.passed).toBe(true);
+    expect(report.rates.citationValidity).toBe(1);
+  });
+
+  // SAFETY: mutation check: removed the number refine from explainText -> this test failed (the 60% answer parsed)
+  it('Scenario: Numbers come from the snapshot: an answer holding a number is rejected by the schema', () => {
+    expect(explainRankingSchema.safeParse(withText('60% of the weight')).success).toBe(false);
+    expect(explainRankingSchema.safeParse(withText('{checkedWeight} of the weight')).success).toBe(true);
   });
 });

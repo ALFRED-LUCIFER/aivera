@@ -37,14 +37,14 @@ for (const [file, payload] of refused) {
     await signIn(page, { email: AP });
     const dialog = await openDialog(page);
     await expect(dialog.getByRole('radio', { name: 'LinkedIn' })).toBeChecked();
-    await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Add people to this job' })).toBeDisabled();
 
     const chooser = page.waitForEvent('filechooser');
     await dialog.getByRole('button', { name: 'Upload CV' }).click();
     // The picker's `accept` only filters the browser's dialog; a file chosen anyway is still refused.
     await (await chooser).setFiles({ ...payload, buffer: Buffer.from(payload.buffer) });
     await expect(dialog.locator('p').filter({ hasText: 'PDF or Word, up to 10 MB.' })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Add applicants' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Add people to this job' })).toBeDisabled();
   });
 }
 
@@ -60,6 +60,32 @@ test('the dialog is keyboard operable: source, upload, then close with Escape ba
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('button', { name: 'Upload files' })).toBeFocused();
+});
+
+// AIV-P1-104: the confirmation above the add button. No CV can be stored in this harness, so the button stays disabled for
+// that reason too; the batch, its audit entry and the worker guard are proven against PostgreSQL in
+// tests/integration/src/intake.test.ts and cv-intake.test.ts.
+const CONFIRMATION = 'I am responsible for having the right to process these CVs for Senior AI Engineer.';
+
+test('Scenario: The add button waits for the confirmation: an unticked box, with its hint, from the keyboard', async ({
+  page,
+}) => {
+  await signIn(page, { email: AP });
+  const dialog = await openDialog(page);
+  const box = dialog.getByRole('checkbox', { name: CONFIRMATION });
+  await expect(box).not.toBeChecked();
+  const add = dialog.getByRole('button', { name: 'Add people to this job' });
+  await expect(add).toBeDisabled();
+  await expect(add).toHaveAccessibleDescription('Confirm the line above to add these people.');
+  // Source radios, Upload CV, then the box: Space ticks it and the hint goes.
+  await dialog.getByRole('button', { name: 'Upload CV' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(box).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(box).toBeChecked();
+  await expect(dialog.getByText('Confirm the line above to add these people.')).toBeHidden();
+  // No consent column and nobody "not yet given": nobody is held back one by one.
+  await expect(dialog).not.toContainText('Consent');
 });
 
 // AIV-P1-034: the ranked candidates, replacing AIV-P1-086's plain list. seed.ts files nine applicants on Senior AI
@@ -236,8 +262,11 @@ for (const theme of themes) {
   test(`axe passes on the Add applicants dialog (${theme})`, async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: AP });
-    await openDialog(page);
+    const dialog = await openDialog(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expectAccessible(page);
+    // And with the confirmation ticked.
+    await dialog.getByRole('checkbox', { name: CONFIRMATION }).check();
     await expectAccessible(page);
   });
 }

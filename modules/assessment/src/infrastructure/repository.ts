@@ -1,7 +1,8 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { AssessmentStore } from '../application/assessment.ts';
-import { result } from './schema.ts';
+import type { ExplanationStore } from '../application/explain.ts';
+import { explanation, result } from './schema.ts';
 
 /**
  * The assessment store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -50,6 +51,29 @@ export function assessmentStore(tx: Tx): AssessmentStore {
       const assessed = new Map<string, string[]>();
       for (const r of rows) assessed.set(r.jobId, [...(assessed.get(r.jobId) ?? []), r.candidateId]);
       return assessed;
+    },
+  };
+}
+
+/** The explanation cache over a workspace-scoped transaction: the same two layers as `assessmentStore`. */
+export function explanationStore(tx: Tx): ExplanationStore {
+  return {
+    async get(workspaceId, resultId, promptVersion) {
+      const [row] = await tx
+        .select({ statements: explanation.statements })
+        .from(explanation)
+        .where(
+          and(
+            eq(explanation.workspaceId, workspaceId),
+            eq(explanation.resultId, resultId),
+            eq(explanation.promptVersion, promptVersion),
+          ),
+        );
+      return row?.statements ?? null;
+    },
+    async put(row) {
+      // Two requests may explain the same snapshot at once: the first answer stands, the other is dropped.
+      await tx.insert(explanation).values(row).onConflictDoNothing();
     },
   };
 }

@@ -30,6 +30,8 @@ export const generateTasks = {
   'evidence.parseCv': { deployment: 'gpt-main', timeoutMs: 90_000, maxOutputTokens: 8_000, temperature: 0 },
   // The unsettled pairs of one candidate and job in one call, each flag two short quotes (AIV-P1-078).
   'evidence.compareExcerpts': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 3_000, temperature: 0 },
+  // Three short statements on a ranking, each citing the facts or an excerpt (AIV-P1-033).
+  'assessment.explainRanking': { deployment: 'gpt-main', timeoutMs: 45_000, maxOutputTokens: 1_200, temperature: 0 },
   // A recruiter's question answered from the page's sources (AIV-P2-068), through the Python AI service.
   'assistant.answer': {
     deployment: 'gpt-main',

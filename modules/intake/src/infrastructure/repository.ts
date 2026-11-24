@@ -1,10 +1,10 @@
 import type { Tx } from '@credalent/db/client';
 import { uuidv7 } from '@credalent/db/uuidv7';
-import { and, asc, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { IntakeStore } from '../application/applications.ts';
 import type { Source, Stage } from '../domain/application.ts';
-import { application, applicationSource } from './schema.ts';
+import { application, applicationSource, importBatch } from './schema.ts';
 
 /**
  * The intake store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer; row-level
@@ -36,6 +36,24 @@ export function intakeStore(tx: Tx): IntakeStore {
     async insertSource(values) {
       await tx.insert(applicationSource).values(values);
     },
+    async insertBatch(values) {
+      await tx.insert(importBatch).values(values);
+    },
+    async batchOfApplication(workspaceId, applicationId) {
+      const [row] = await tx
+        .select({ batchId: applicationSource.batchId })
+        .from(applicationSource)
+        .where(
+          and(
+            eq(applicationSource.workspaceId, workspaceId),
+            eq(applicationSource.applicationId, applicationId),
+            isNotNull(applicationSource.batchId),
+          ),
+        )
+        .orderBy(asc(applicationSource.receivedAt), asc(applicationSource.id))
+        .limit(1);
+      return row?.batchId ?? null;
+    },
     async findSource(workspaceId, sourceId) {
       const [row] = await tx
         .select({
@@ -43,6 +61,7 @@ export function intakeStore(tx: Tx): IntakeStore {
           links: applicationSource.links,
           githubLogin: applicationSource.githubLogin,
           fileIds: applicationSource.fileIds,
+          batchId: applicationSource.batchId,
         })
         .from(applicationSource)
         .innerJoin(

@@ -8,5 +8,5 @@ import { useImportController } from '@/features/import/hooks/useImportController
 export function ImportClient({ view }: { view: ImportView }) {
   const { onPick } = useImportController();
   const upload = useAddApplicantsController(view.jobId);
-  return <ImportSources view={view} onPick={onPick} upload={upload} />;
+  return <ImportSources view={view} onPick={onPick} upload={{ ...upload, jobTitle: view.jobTitle }} />;
 }

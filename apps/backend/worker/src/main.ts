@@ -70,6 +70,7 @@ const {
   EvidenceMappedV1,
   EvidenceMappingRequestedV1,
   EvidenceRecordedV1,
+  GitHubProfileExpandRequestedV1,
   LinkReadRequestedV1,
   RepositoryReadRequestedV1,
   RepositoryRefreshRequestedV1,
@@ -79,6 +80,7 @@ const {
   createEvidenceMappingHandlers,
   createFileReadHandlers,
   createLinkReadHandler,
+  createProfileExpansionHandler,
   createRepositoryReadHandler,
   createRepositoryRefreshHandler,
   EVIDENCE_QUEUE,
@@ -140,6 +142,7 @@ const QUEUES: Record<string, string> = {
   ...(githubApp && {
     [RepositoryReadRequestedV1.type]: EVIDENCE_QUEUE,
     [RepositoryRefreshRequestedV1.type]: EVIDENCE_QUEUE,
+    [GitHubProfileExpandRequestedV1.type]: EVIDENCE_QUEUE,
   }),
   // Arrivals queue repository reads (AIV-P1-076) and CV parses (AIV-P1-079), so they are consumed once either is; the
   // other kind's requests wait in evidence.outbox until its integration is configured.
@@ -263,6 +266,7 @@ if (env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_INSTALLATI
   };
   evidenceHandlers.push(
     createRepositoryReadHandler({ github, scheduler, now }),
+    createProfileExpansionHandler({ github, scheduler, now }),
     createRepositoryRefreshHandler({ github, scheduler, now, ...createApprovedRubricReads() }),
   );
 }

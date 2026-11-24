@@ -8,6 +8,7 @@
     "playwright.production.config.ts",
     "mock-oidc.ts",
     "seed.ts",
+    "confirmedBatch.ts",
     "warm.ts"
   ]
 }

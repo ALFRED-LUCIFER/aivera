@@ -209,6 +209,9 @@ importers:
 
   modules/assessment:
     dependencies:
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@credalent/audit':
         specifier: workspace:*
         version: link:../audit
@@ -221,6 +224,9 @@ importers:
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../jobs
+      '@credalent/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces
@@ -450,6 +456,9 @@ importers:
 
   modules/intake:
     dependencies:
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@credalent/candidates':
         specifier: workspace:*
         version: link:../candidates

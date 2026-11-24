@@ -5,8 +5,10 @@ import {
   IntakeError,
   type Application,
   type ApplicationSource,
+  type ImportBatch,
   type Source,
   type Stage,
+  wordingVersion,
 } from '../domain/application.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
@@ -14,12 +16,21 @@ export type IntakeStore = {
   /** Inserts the application, or returns the one this person already has for this job (unique per person and job). */
   insertOrGetApplication(application: Application): Promise<Application>;
   insertSource(source: ApplicationSource): Promise<void>;
+  insertBatch(batch: ImportBatch): Promise<void>;
+  /** The batch of any source of the application (links added later inherit it), or null when none has one. */
+  batchOfApplication(workspaceId: string, applicationId: string): Promise<string | null>;
   findApplication(workspaceId: string, applicationId: string): Promise<Application | null>;
   /** An arrival with its application's person, or null when the workspace has no such source. */
   findSource(
     workspaceId: string,
     sourceId: string,
-  ): Promise<{ personId: string; links: string[]; githubLogin: string | null; fileIds: string[] } | null>;
+  ): Promise<{
+    personId: string;
+    links: string[];
+    githubLogin: string | null;
+    fileIds: string[];
+    batchId: string | null;
+  } | null>;
   /** The job's applications, newest first, each with the source of its first arrival. */
   listForJob(
     workspaceId: string,
@@ -34,6 +45,8 @@ export type Ports = {
   /** Writes `ApplicationReceived.v1` to the outbox in `tx`, so it commits only with the source (AIV-P0-014). */
   publishApplicationReceived(tx: Tx, source: ApplicationSource): Promise<void>;
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
+  /** Appends `intake.batch_confirmed` to the audit log in `ctx.tx` (the audit module's `record`). */
+  auditBatchConfirmed(ctx: WorkspaceContext, batch: ImportBatch): Promise<void>;
   /** The candidates contract's `findOrCreatePerson`. */
   findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<{ personId: string }>;
   /**
@@ -59,6 +72,18 @@ export type ReceiveApplicationInput = {
   githubLogin?: string;
 };
 
+/**
+ * The CVs of one save of "Add applicants": added together, under one confirmation. `rightToProcessConfirmed` is the
+ * recruiter's tick; the command refuses anything else (AIV-P1-104).
+ */
+export type ReceiveBatchInput = {
+  jobId: string;
+  rightToProcessConfirmed: true;
+  /** The app's message key for the wording shown, e.g. `import.rightToProcess.v1`; its version is stored. */
+  wordingKey: string;
+  arrivals: Omit<ReceiveApplicationInput, 'jobId'>[];
+};
+
 export type ReceiveApplicationResult = { applicationId: string; personId: string; sourceId: string; created: boolean };
 
 /** One row of a job's applicant list (AIV-P1-086). `displayName` is null only if the person record is gone. */
@@ -76,44 +101,85 @@ export function applicationUseCases({
   storeFor,
   publishApplicationReceived,
   authorize,
+  auditBatchConfirmed,
   findOrCreatePerson,
   displayNames,
   jobResource,
   newId,
   now,
 }: Ports) {
+  async function receive(
+    ctx: WorkspaceContext,
+    input: ReceiveApplicationInput,
+    batchId: string | null,
+  ): Promise<ReceiveApplicationResult> {
+    // shortcut: every arrival of a batch re-runs this authorize and a getJob read (200 CVs = 200 job reads in one transaction); hoist both into receiveBatch when a batch gets slow.
+    await authorize(ctx, 'candidate.create');
+    // Checked before the person is found or created, so a refused application writes nothing.
+    if (!(await jobResource(ctx, input.jobId))) throw new IntakeError('job_not_found');
+    const { personId } = await findOrCreatePerson(ctx, input.person);
+    const store = storeFor(ctx.tx);
+    const receivedAt = now();
+    const id = newId();
+    const application = await store.insertOrGetApplication({
+      id,
+      workspaceId: ctx.workspaceId,
+      personId,
+      jobId: input.jobId,
+      stage: 'new',
+      receivedAt,
+      submittedToClientAt: null,
+    });
+    const source: ApplicationSource = {
+      id: newId(),
+      workspaceId: ctx.workspaceId,
+      applicationId: application.id,
+      source: input.source,
+      receivedAt,
+      fileIds: input.fileIds ?? [],
+      links: input.links ?? [],
+      githubLogin: input.githubLogin ?? null,
+      batchId,
+    };
+    await store.insertSource(source);
+    // Every arrival can bring new files, so every arrival triggers ingestion.
+    await publishApplicationReceived(ctx.tx, source);
+    return { applicationId: application.id, personId, sourceId: source.id, created: application.id === id };
+  }
+
   return {
-    async receiveApplication(ctx: WorkspaceContext, input: ReceiveApplicationInput): Promise<ReceiveApplicationResult> {
+    // shortcut: an arrival with no batch is stored but never read by the worker; candidate-site applications carry the
+    // applicant's own consent and need their own exemption (AIV-P3-008).
+    receiveApplication: (ctx: WorkspaceContext, input: ReceiveApplicationInput) => receive(ctx, input, null),
+
+    async receiveBatch(
+      ctx: WorkspaceContext,
+      input: ReceiveBatchInput,
+    ): Promise<{ batchId: string; applications: ReceiveApplicationResult[] }> {
+      // Checked first, at runtime too: the type is no control for a caller from the browser (AGENTS.md 3.7).
+      if ((input.rightToProcessConfirmed as unknown) !== true) throw new IntakeError('confirmation_required');
+      const version = wordingVersion(input.wordingKey);
+      if (!version) throw new IntakeError('invalid_wording');
       await authorize(ctx, 'candidate.create');
-      // Checked before the person is found or created, so a refused application writes nothing.
       if (!(await jobResource(ctx, input.jobId))) throw new IntakeError('job_not_found');
-      const { personId } = await findOrCreatePerson(ctx, input.person);
-      const store = storeFor(ctx.tx);
-      const receivedAt = now();
-      const id = newId();
-      const application = await store.insertOrGetApplication({
-        id,
-        workspaceId: ctx.workspaceId,
-        personId,
-        jobId: input.jobId,
-        stage: 'new',
-        receivedAt,
-        submittedToClientAt: null,
-      });
-      const source: ApplicationSource = {
+      const batch: ImportBatch = {
         id: newId(),
         workspaceId: ctx.workspaceId,
-        applicationId: application.id,
-        source: input.source,
-        receivedAt,
-        fileIds: input.fileIds ?? [],
-        links: input.links ?? [],
-        githubLogin: input.githubLogin ?? null,
+        jobId: input.jobId,
+        confirmedBy: ctx.userId,
+        confirmedAt: now(),
+        wordingKey: input.wordingKey,
+        wordingVersion: version,
+        cvs: input.arrivals.length,
       };
-      await store.insertSource(source);
-      // Every arrival can bring new files, so every arrival triggers ingestion.
-      await publishApplicationReceived(ctx.tx, source);
-      return { applicationId: application.id, personId, sourceId: source.id, created: application.id === id };
+      await storeFor(ctx.tx).insertBatch(batch);
+      const applications = [];
+      for (const arrival of input.arrivals) {
+        applications.push(await receive(ctx, { ...arrival, jobId: input.jobId }, batch.id));
+      }
+      // The last statement before commit (AGENTS.md 3.6).
+      await auditBatchConfirmed(ctx, batch);
+      return { batchId: batch.id, applications };
     },
 
     // shortcut: no paging; the ranked table (AIV-P1-034) shows the first 7 in the browser, page here past ~500 applicants.
@@ -153,6 +219,8 @@ export function applicationUseCases({
         fileIds: [],
         links: [url],
         githubLogin: null,
+        // shortcut: an application from before batches (AIV-P1-104) has none, so its new links are stored but not read; backfill a system batch if pilot data needs it.
+        batchId: await store.batchOfApplication(ctx.workspaceId, applicationId),
       };
       await store.insertSource(source);
       await publishApplicationReceived(ctx.tx, source);

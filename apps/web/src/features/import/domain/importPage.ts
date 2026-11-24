@@ -16,6 +16,8 @@ export type PickerOption = {
 export type ImportView = {
   /** The job being imported into: the picker's value. */
   jobId: string;
+  /** Named in the add dialog's confirmation line (AIV-P1-104). */
+  jobTitle: string;
   options: PickerOption[];
 };
 
@@ -36,6 +38,7 @@ const rubricKey = ({ approved, latest }: RubricState) =>
 export function importView(jobs: PickerJob[], { job, approved }: JobHeader): ImportView {
   return {
     jobId: job.id,
+    jobTitle: job.title,
     options: jobs.map(({ id, title, rubric }) => ({
       id,
       label:

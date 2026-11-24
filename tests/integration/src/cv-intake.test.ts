@@ -30,6 +30,7 @@ import {
   type BlobStore,
 } from '@credalent/files/composition';
 import { ApplicationReceivedV1, type IntakeContract } from '@credalent/intake';
+import { receiveConfirmed } from './confirmedBatch.ts';
 import { createIntake, readApplicationSourceAsSystem } from '@credalent/intake/composition';
 import { createJobs } from '@credalent/jobs/composition';
 import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
@@ -149,7 +150,7 @@ async function upload({ purpose = 'cv', settle = 'clean' }: Upload = {}): Promis
 
 const apply = (name: string, fileIds: string[]) =>
   as(w1, (ctx) =>
-    intake.receiveApplication(ctx, {
+    receiveConfirmed(intake, ctx, {
       jobId: job,
       person: {
         displayName: name,
@@ -259,6 +260,7 @@ beforeAll(async () => {
     createCandidates(workspaces, () => NOW),
     jobs,
     displayNamesInWorkspace,
+    audit,
     () => NOW,
   );
   evidence = createEvidence(workspaces, audit, () => NOW);
@@ -461,5 +463,32 @@ describe('Scenario: No CV text or file names reach logs or telemetry', () => {
     } finally {
       write.mockRestore();
     }
+  });
+});
+
+describe('Scenario: The worker refuses an arrival with no confirmed batch (AIV-P1-104)', () => {
+  // SAFETY: mutation check: removed the batchId guard in queueArrivalReads -> this test failed (a cv source and a parse request were created)
+  it('an arrival added with no batch queues no CV parse, repository read or link read', async () => {
+    const fileId = await upload();
+    const arrival = {
+      jobId: job,
+      person: {
+        displayName: 'Hessa Al Mazrouei',
+        identifiers: [{ type: 'email' as const, value: 'hessa.almazrouei@example.com' }],
+        synthetic: true,
+      },
+      source: 'linkedin' as const,
+      fileIds: [fileId],
+      links: ['https://github.com/hessa-credalent-example/checkout-e2e', 'https://portfolio.credalent.example/hessa'],
+    };
+    await as(w1, (ctx) => intake.receiveApplication(ctx, arrival));
+    await consume(await relay());
+    await drain();
+    expect(await cvSources(fileId)).toEqual([]);
+    expect(await parseRows(fileId)).toBe(0);
+    const [seen] = await admin.execute<{ n: number }>(
+      sql`select count(*)::int as n from evidence.repository_read where url like '%hessa-credalent-example%'`,
+    );
+    expect(seen?.n).toBe(0);
   });
 });

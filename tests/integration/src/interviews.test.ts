@@ -136,6 +136,7 @@ beforeAll(async () => {
     createCandidates(workspaces, () => NOW),
     jobs,
     displayNamesInWorkspace,
+    audit,
     () => NOW,
   );
   interviews = createInterviews(

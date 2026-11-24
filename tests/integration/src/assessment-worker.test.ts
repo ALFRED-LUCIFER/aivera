@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { createAiClient, fakeProvider, memoryTokenBudget } from '@credalent/ai';
 import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment, createAssessmentHandlers } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
@@ -438,6 +439,78 @@ describe('Who sees the ranking', () => {
     expect(await count(HEAD, [sae])).toEqual({ [sae]: rows });
     // SAFETY: mutation check: dropped the `if (!job) throw new ForbiddenError()` and authorize in countAssessed -> this test failed
     await expect(count(DESIGN, [sae])).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+const applied = async (_ctx: WorkspaceContext, candidateId: string, jobId: string) =>
+  (applications.get(candidateId) ?? []).includes(jobId) ? { jobId, clientId: null } : null;
+
+const stored = async () =>
+  (await admin.execute<{ n: number }>(sql`select count(*)::int as n from assessment.explanation`))[0]?.n;
+
+describe('Scenario: Who may read a ranking explanation, and the cache (AIV-P1-033)', () => {
+  const NOGRANT = '0190d4a2-0000-7000-8000-0000000052ff'; // interviewer with no grant on any job
+  // Sara's latest snapshot is on version 3: her one corroborated item carries all of its weight (70%).
+  const answer = {
+    statements: [
+      {
+        text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.',
+        citations: [{ sourceId: 'S1', quote: 'Independently checked work backs' }],
+      },
+      {
+        text: 'The cited repository shows the candidate wrote most of its commits.',
+        citations: [{ sourceId: 'S2', quote: '412 of 460 commits' }],
+      },
+    ],
+  };
+  const calls = { model: 0 };
+  const real = createAiClient({
+    provider: fakeProvider({ completion: JSON.stringify(answer) }),
+    budget: memoryTokenBudget(),
+  });
+  const explaining = () =>
+    createAssessment(workspaces, audit, jobs, () => NOW, applied, undefined, {
+      ai: { generateStructured: (input) => (calls.model++, real.generateStructured(input)) },
+      approvedRubric: createApprovedRubricReads().approvedRubric,
+      evidence: (ctx, candidateId, jobId) =>
+        createEvidence(workspaces, audit, () => NOW, applied).listEvidenceForCandidate(ctx, candidateId, jobId),
+      identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
+    });
+  const explain = (userId: string) => as(userId, w1, (ctx) => explaining().explainRanking(ctx, SARA, sae));
+
+  it('an interviewer with no grant on the job is refused before and after the cache is warm; the recruiter warms it once', async () => {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${NOGRANT}, 'interviewer', 'active')`,
+      ),
+    );
+    // SAFETY: mutation check: removed the authorize call in explainRanking -> this test failed (the warm cache answered a user with no grant)
+    await expect(explain(NOGRANT)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(explain(DESIGN)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(calls.model).toBe(0);
+
+    const first = await explain(RANA);
+    expect(first).toMatchObject({ source: 'ai' });
+    expect(first?.statements[0]?.text).toBe(
+      'Work that was independently checked backs one competency, 70% of the weight, the heaviest.',
+    );
+    expect(calls.model).toBe(1);
+
+    await expect(explain(NOGRANT)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(explain(DESIGN)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(calls.model).toBe(1);
+  });
+
+  it("the job's hiring owner gets the explanation, from the stored row: one row, one model call, the same text back from jsonb", async () => {
+    const first = await explain(RANA);
+    const owner = await explain(HEAD);
+    expect(owner).toEqual(first);
+    expect(owner?.statements[1]?.citations[0]).toMatchObject({
+      label: 'llm-eval-harness',
+      quote: '412 of 460 commits',
+    });
+    expect(calls.model).toBe(1);
+    expect(await stored()).toBe(1);
   });
 });
 

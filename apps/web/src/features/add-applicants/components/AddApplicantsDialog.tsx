@@ -1,9 +1,9 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { Button, Dialog, DialogClose, FilePicker, RadioGroup, SuccessBanner } from '@credalent/ui';
-import type { ReactNode } from 'react';
-import { SOURCE_OPTIONS, type AddApplicantsResult } from '../domain/addApplicants.ts';
+import { Button, Checkbox, Dialog, DialogClose, FilePicker, RadioGroup, SuccessBanner } from '@credalent/ui';
+import { useId, type ReactNode } from 'react';
+import { RIGHT_TO_PROCESS_KEY, SOURCE_OPTIONS, type AddApplicantsResult } from '../domain/addApplicants.ts';
 import type { DirectUpload } from '@/features/files';
 
 // AIV-P1-019: "Add applicants" (job, source, one or more CVs). No artboard draws this dialog: the Inbox and Candidates
@@ -12,6 +12,11 @@ import type { DirectUpload } from '@/features/files';
 // - CVs are added one at a time with the FilePicker's single-file button, each listed once the files module has it clean;
 // - the result is listed in the dialog ("Unnamed applicant · CV received"); the Candidates tab's applicant list
 //   (AIV-P1-086) shows the new rows behind it.
+// AIV-P1-104: the confirmation checkbox above the add button, from the Import artboard's "Check before adding" footer. Not
+// built from that artboard (AIV-P1-102 builds the check): its Consent column ("Consent recorded", "Consent not yet
+// given"), the summary clause "1 has not given consent yet" and the footnote "People without consent are added but not
+// assessed until they agree" are dropped, because nobody is held back one by one. The button says "Add N people to this
+// job" as the artboard does.
 
 export type AddApplicantsDialogProps = {
   open: boolean;
@@ -22,6 +27,10 @@ export type AddApplicantsDialogProps = {
   accept: string;
   onSelectCv: (file: File) => void;
   cvs: { fileId: string; name: string }[];
+  /** The job's title, named in the confirmation line. */
+  jobTitle: string;
+  confirmed: boolean;
+  onConfirmedChange: (confirmed: boolean) => void;
   canSubmit: boolean;
   pending: boolean;
   result: AddApplicantsResult | null;
@@ -36,6 +45,8 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
   const t = useTranslations('addApplicants');
   const tf = useTranslations('files');
   const ta = useTranslations('access');
+  const tc = useTranslations();
+  const hintId = useId();
   const { upload, result, cvs } = props;
   const status =
     upload.phase === 'uploading'
@@ -48,8 +59,8 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
   const error = props.failure
     ? ta(props.failure)
     : result && !result.ok
-      ? result.error === 'jobNotFound'
-        ? t('jobNotFound')
+      ? result.error === 'jobNotFound' || result.error === 'confirmationRequired'
+        ? t(result.error)
         : tf(result.error)
       : null;
   return (
@@ -126,11 +137,30 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
             </>
           )}
         </SuccessBanner>
+        <div className="flex flex-col gap-1">
+          <Checkbox
+            checked={props.confirmed}
+            onChange={(event) => props.onConfirmedChange(event.target.checked)}
+            disabled={props.pending}
+            label={tc(RIGHT_TO_PROCESS_KEY, { title: props.jobTitle })}
+          />
+          {!props.confirmed && (
+            <p id={hintId} className="text-meta text-text-2">
+              {t('confirmHint')}
+            </p>
+          )}
+        </div>
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild>
             <Button>{t('done')}</Button>
           </DialogClose>
-          <Button type="submit" variant="primary" disabled={!props.canSubmit} aria-busy={props.pending || undefined}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!props.canSubmit}
+            aria-busy={props.pending || undefined}
+            aria-describedby={props.confirmed ? undefined : hintId}
+          >
             {t('submit', { count: cvs.length })}
           </Button>
         </div>

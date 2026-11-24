@@ -14,6 +14,7 @@ import type { IntakeContract } from '@credalent/intake';
 import { applicationRecords, createIntake, findApplication } from '@credalent/intake/composition';
 import type { InterviewsContract } from '@credalent/interviews';
 import { createInterviews } from '@credalent/interviews/composition';
+import { receiveConfirmed } from './confirmedBatch.ts';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
@@ -283,7 +284,7 @@ const modulesOn = (db: Db): Modules => {
     evidence: createEvidence(workspaces, audit, () => NOW),
     assessment: createAssessment(workspaces, audit, jobs, () => NOW),
     jobs,
-    intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => NOW),
+    intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, () => NOW),
     interviews: createInterviews(
       workspaces,
       jobs,
@@ -376,8 +377,8 @@ async function seed(
       jobIds: [job.id],
       clientIds: [],
     });
-    // An application (intake.application and .application_source, AIV-P1-017); it finds or creates the person.
-    const { personId, applicationId } = await intake.receiveApplication(ctx, {
+    // An application under a confirmed batch (intake.application, .application_source and .import_batches, AIV-P1-017, AIV-P1-104); it finds or creates the person.
+    const { personId, applicationId } = await receiveConfirmed(intake, ctx, {
       jobId: job.id,
       person: {
         displayName: person,
@@ -431,8 +432,8 @@ async function seed(
     const draft = await evidence.createDraftRequest(ctx, { candidateId: personId, jobId: job.id });
     // This suite checks tenancy of the rows only; the email itself: evidence-requests.test.ts.
     await evidence.sendRequest(ctx, draft.id, async () => undefined);
-    // An assessment result (assessment.result, AIV-P1-030).
-    await assessment.assessCandidate(ctx, {
+    // An assessment result (assessment.result, AIV-P1-030) and its cached explanation (assessment.explanation, AIV-P1-033).
+    const scored = await assessment.assessCandidate(ctx, {
       candidateId: personId,
       jobId: job.id,
       rubric: {
@@ -441,6 +442,10 @@ async function seed(
       },
       evidence: await evidence.listEvidenceForCandidate(ctx, personId, job.id),
     });
+    await ctx.tx.execute(
+      sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
+          values (${scored.id}, 'assessment.explainRanking@1', ${ctx.workspaceId}, '[]'::jsonb, ${NOW.toISOString()})`,
+    );
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
       await evidence.recordEvidence(ctx, {
@@ -535,6 +540,10 @@ async function seed(
       label: 'Shipped product: merchant help assistant',
       synthetic: true,
     });
+    // A GitHub profile a CV links, waiting to be expanded (evidence.profile_expansion, AIV-P1-112).
+    await ctx.tx
+      .execute(sql`insert into evidence.profile_expansion (workspace_id, id, candidate_id, login, synthetic, status)
+      values (${workspaceId}, ${crypto.randomUUID()}, ${personId}, 'maria-credalent-example', true, 'pending')`);
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),

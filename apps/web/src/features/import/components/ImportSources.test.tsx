@@ -20,6 +20,7 @@ const SAE = '0190d4a2-0000-7000-9000-000000001031';
 const SPD = '0190d4a2-0000-7000-9000-000000001035';
 const view: ImportView = {
   jobId: SAE,
+  jobTitle: 'Senior AI Engineer',
   options: [
     { id: SAE, label: { key: 'approvedVersion', values: { title: 'Senior AI Engineer', version: 2 } } },
     { id: SPD, label: { key: 'waiting', values: { title: 'Senior Product Designer' } } },
@@ -33,6 +34,9 @@ const upload: Extract<ImportSourcesProps, { view: ImportView }>['upload'] = {
   upload: { phase: 'idle' },
   accept: '.pdf,.docx',
   onSelectCv: () => {},
+  jobTitle: 'Senior AI Engineer',
+  confirmed: false,
+  onConfirmedChange: () => {},
   cvs: [],
   canSubmit: false,
   pending: false,

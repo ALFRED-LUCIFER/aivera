@@ -7,9 +7,10 @@ import { ContradictionResolvedV1, EvidenceMappedV1, EvidenceRecordedV1 } from '@
 import { RubricApprovedV1, type JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { assessmentUseCases, type Ports } from './application/assessment.ts';
+import { explainUseCases, type ExplainPorts } from './application/explain.ts';
 import { assessForJob, type WorkerPorts } from './application/worker.ts';
 import type { AssessmentContract } from './contracts/index.ts';
-import { assessmentStore } from './infrastructure/repository.ts';
+import { assessmentStore, explanationStore } from './infrastructure/repository.ts';
 import { inbox } from './infrastructure/schema.ts';
 
 /** The queue the relay sends evidence and rubric changes to for scoring (infra/modules/messaging.bicep). */
@@ -39,8 +40,10 @@ export function createAssessment(
   candidateJob: Ports['candidateJob'] = async () => null,
   // Intake's candidatesForJob, so the ranking lists only current applicants (AIV-P1-018).
   applicants?: Ports['applicants'],
+  // The model, rubric names, evidence and identifiers behind `explainRanking` (AIV-P1-033); without them it throws.
+  explain?: Pick<ExplainPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf'>,
 ): AssessmentContract {
-  return assessmentUseCases({
+  const base: Ports = {
     storeFor: assessmentStore,
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     candidateJob,
@@ -54,7 +57,15 @@ export function createAssessment(
     auditScoreChange: auditWith(audit),
     newId: () => uuidv7(),
     now,
-  });
+  };
+  return {
+    ...assessmentUseCases(base),
+    explainRanking: explain
+      ? explainUseCases({ ...base, ...explain, explanationsFor: explanationStore }).explainRanking
+      : async () => {
+          throw new Error('Ranking explanations are not wired in this app');
+        },
+  };
 }
 
 /** Who applied to what, read in the worker's transaction (the intake module's `createApplicationReads`). */

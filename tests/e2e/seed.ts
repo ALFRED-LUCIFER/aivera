@@ -6,6 +6,7 @@ import { createDb } from '@credalent/db/client';
 import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
 import { createEvidenceRecords } from '@credalent/evidence/composition';
+import { receiveConfirmed } from './confirmedBatch.ts';
 import { applicationRecords, createIntake } from '@credalent/intake/composition';
 import type { Source } from '@credalent/intake';
 import type { Competency } from '@credalent/jobs';
@@ -331,7 +332,7 @@ export default async function seed() {
       applications: applicationRecords,
       evidence: createEvidenceRecords(),
     });
-    const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, () => received);
+    const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, createAudit(db), () => received);
     const rubric = await withWorkspace(db, workspaceId, (tx) =>
       createApprovedRubricReads().approvedRubric(tx, workspaceId, sae),
     );
@@ -372,7 +373,7 @@ export default async function seed() {
     for (const [i, [name, source, ...score]] of cast.entries()) {
       received = new Date(Date.UTC(2026, 10, 14, 8, i));
       const { personId } = await as((ctx) =>
-        intake.receiveApplication(ctx, {
+        receiveConfirmed(intake, ctx, {
           jobId: sae,
           person: {
             displayName: name,
@@ -394,7 +395,7 @@ export default async function seed() {
           ],
         ])
           await as((ctx) =>
-            intake.receiveApplication(ctx, {
+            receiveConfirmed(intake, ctx, {
               jobId: sae,
               person: { displayName: name, identifiers, synthetic: true },
               source: 'email',

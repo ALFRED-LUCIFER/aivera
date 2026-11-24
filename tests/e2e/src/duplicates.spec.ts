@@ -3,6 +3,7 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import { createDb } from '@credalent/db/client';
 import { createEvidenceRecords } from '@credalent/evidence/composition';
 import type { Source } from '@credalent/intake';
+import { receiveConfirmed } from '../confirmedBatch.ts';
 import { applicationRecords, createIntake } from '@credalent/intake/composition';
 import { createJobs } from '@credalent/jobs/composition';
 import type { Locator } from '@playwright/test';
@@ -38,7 +39,7 @@ test.beforeAll(async () => {
       applications: applicationRecords,
       evidence: createEvidenceRecords(),
     });
-    const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace);
+    const intake = createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit);
     const as = <T>(fn: (ctx: WorkspaceContext) => Promise<T>) =>
       workspaces.withWorkspace({ userId: creatorUserId }, workspaceId, fn);
     jobId = await as(
@@ -54,7 +55,7 @@ test.beforeAll(async () => {
     );
     const arrive = (displayName: string, source: Source, identifiers: { email?: string; cv?: number }) =>
       as((ctx) =>
-        intake.receiveApplication(ctx, {
+        receiveConfirmed(intake, ctx, {
           jobId,
           person: {
             displayName,

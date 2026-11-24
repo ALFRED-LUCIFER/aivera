@@ -18,6 +18,8 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<UploadSource>('linkedin');
   const [cvs, setCvs] = useState<UploadedCv[]>([]);
+  // Unticked every time: each save is its own batch and its own confirmation (AIV-P1-104).
+  const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<AddApplicantsResult | null>(null);
   // The save threw (a 403, the network): the CVs and source stay chosen (AIV-P2-064).
   const [failure, setFailure] = useState<SaveFailure | null>(null);
@@ -39,6 +41,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       if (!next) {
         setSource('linkedin');
         setCvs([]);
+        setConfirmed(false);
         setResult(null);
         setFailure(null);
         upload.reset();
@@ -55,7 +58,9 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       void upload.onSelect(file);
     },
     cvs,
-    canSubmit: cvs.length > 0 && !busy && !pending,
+    confirmed,
+    onConfirmedChange: setConfirmed,
+    canSubmit: cvs.length > 0 && confirmed && !busy && !pending,
     pending,
     result,
     failure,
@@ -64,13 +69,19 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
         setFailure(null);
         let outcome;
         try {
-          outcome = await services.addApplicants({ jobId, source, fileIds: cvs.map((cv) => cv.fileId) });
+          outcome = await services.addApplicants({
+            jobId,
+            rightToProcessConfirmed: true,
+            source,
+            fileIds: cvs.map((cv) => cv.fileId),
+          });
         } catch (error) {
           return setFailure(saveFailure(error));
         }
         setResult(outcome);
         if (!outcome.ok) return;
         setCvs([]);
+        setConfirmed(false);
         // The job header's "Bring in candidates" count, and the ranking, read the new applicants (AIV-P1-101).
         router.refresh();
       });

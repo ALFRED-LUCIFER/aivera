@@ -20,6 +20,8 @@ import {
   normaliseLogin,
   parseRepositoryUrl,
   strengthCapOf,
+  type OwnedRepository,
+  type RepositoryVia,
   type AuthorshipClass,
   type Commit,
   type MergedPullRequest,
@@ -77,6 +79,10 @@ export type GitHubPort = {
   /** Pull requests `login` authored that were merged, from search (`author:<login> is:pr is:merged`). */
   mergedPullRequests(login: string): Promise<{ owner: string; name: string; number: number }[]>;
   pullRequest(owner: string, name: string, number: number): Promise<{ mergedAt: Date; mergedBy: string | null } | null>;
+  /** The account's type (`User`, `Organization`), or null when GitHub answers 404 (AIV-P1-112). */
+  user(login: string): Promise<{ type: string } | null>;
+  /** The user's first page of own repositories, newest push first, as GitHub lists them; empty on 404. */
+  ownedRepositories(login: string): Promise<OwnedRepository[]>;
 };
 
 /** A repository read: what to match commits to, and what was measured. Measured fields are null until read. */
@@ -89,6 +95,8 @@ export type RepositoryRead = {
   /** Null when the candidate supplied none: commits then match by their emails only. */
   githubLogin: string | null;
   emails: string[];
+  /** Set when a GitHub profile in a CV led to the read, which never changes its authorship rules. */
+  via: RepositoryVia | null;
   status: RepositoryReadStatus;
   totalCommits: number | null;
   authoredCommits: number | null;
@@ -196,6 +204,7 @@ export type RequestRepositoryReadInput = {
   /** Emails the candidate verified with us, zod-checked by the caller; commits by these count as theirs. */
   emails: string[];
   synthetic: boolean;
+  via?: RepositoryVia;
 };
 
 export type RepositoryReadView = Omit<RepositoryRead, 'githubLogin' | 'emails' | 'url'> & {
@@ -261,6 +270,7 @@ export async function queueRepositoryRead(
     url,
     githubLogin,
     emails: [...new Set(input.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))],
+    via: input.via ?? null,
     status: 'pending',
     totalCommits: null,
     authoredCommits: null,
@@ -283,7 +293,14 @@ export async function queueRepositoryRead(
 }
 
 /** An application's arrival as the intake module stores it. */
-export type Arrival = { personId: string; links: string[]; githubLogin: string | null; fileIds: string[] };
+export type Arrival = {
+  personId: string;
+  links: string[];
+  githubLogin: string | null;
+  fileIds: string[];
+  /** The confirmed batch it was added in (AIV-P1-104); null when it has none. */
+  batchId: string | null;
+};
 
 export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRequested' | 'newId' | 'now'> &
   Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> &
@@ -302,6 +319,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
     ): Promise<{ identifierEmails: string[]; synthetic: boolean } | null>;
     /** A workspace file's purpose (the files module), or null when there is no such file. */
     readFilePurpose(tx: Tx, workspaceId: string, fileId: string): Promise<string | null>;
+    /** An arrival with no confirmed batch was not read: the source id only (AIV-P1-104). */
+    logRefused(ids: { sourceId: string }): void;
     /** Opaque ids only, never the link, login, emails, file name or content type (AGENTS.md 1.2). */
     logQueued(
       kind: 'repository' | 'cv' | 'link',
@@ -318,6 +337,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
 export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId: string, sourceId: string) {
   const arrival = await ports.readArrival(tx, workspaceId, sourceId);
   if (!arrival) return;
+  // SAFETY: nothing of a recruiter-added CV is read, parsed or sent to the model before its batch was confirmed.
+  if (!arrival.batchId) return ports.logRefused({ sourceId });
   const links = arrival.links.filter((link) => parseRepositoryUrl(link));
   if (arrival.links.length === 0 && arrival.fileIds.length === 0) return;
   const person = await ports.readPerson(tx, workspaceId, arrival.personId);

@@ -86,7 +86,7 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
-  const audit = createAudit(app);
+  const audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
   intake = createIntake(
@@ -94,6 +94,7 @@ beforeAll(async () => {
     createCandidates(workspaces, () => NOW),
     jobs,
     displayNamesInWorkspace,
+    audit,
     () => NOW,
   );
   const newWorkspace = async (name: string) =>
@@ -124,6 +125,7 @@ describe('Migrations', () => {
     expect([...tables]).toEqual([
       { name: 'application', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'application_source', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'import_batches', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'outbox', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });
@@ -408,5 +410,147 @@ describe('AIV-P1-101: countApplications', () => {
     );
     expect(seen?.n).toBe(0);
     expect(await as(ALEX, w2, (ctx) => intake.countApplications(ctx, w2Job))).toEqual(1);
+  });
+});
+
+// AIV-P1-104: one confirmation per batch. Synthetic cast only.
+const cvArrival = (n: number, name: string): Omit<ReceiveApplicationInput, 'jobId'> => {
+  const { jobId: _, ...rest } = arrival('', name, n, 'linkedin');
+  return rest;
+};
+const batchOf = (jobId: string, people: [number, string][], wordingKey = 'import.rightToProcess.v1') => ({
+  jobId,
+  rightToProcessConfirmed: true as const,
+  wordingKey,
+  arrivals: people.map(([n, name]) => cvArrival(n, name)),
+});
+const CAST: [number, string][] = [
+  [400, 'Fatima Al Hammadi'],
+  [401, 'Sneha Iyer'],
+  [402, 'Paolo Garcia'],
+];
+const tables = ['intake.import_batches', 'intake.application', 'intake.application_source', 'intake.outbox'];
+const auditEntries = async (action: string) => [
+  ...(await admin.execute<{
+    actor_id: string;
+    subject_id: string;
+    occurred_at: string;
+    after: Record<string, unknown>;
+  }>(
+    sql`select actor_id, subject_id, occurred_at, after from audit.entry where action = ${action} order by occurred_at, id`,
+  )),
+];
+
+describe('AIV-P1-104: confirm once per imported batch', () => {
+  it('Scenario: A confirmed batch is recorded: one batch row, every source carries it, one audit entry', async () => {
+    const jobId = await newJob(w1, 'Senior AI Engineer');
+    const before = (await auditEntries('intake.batch_confirmed')).length;
+    const { batchId, applications } = await as(ALEX, w1, (ctx) => intake.receiveBatch(ctx, batchOf(jobId, CAST)));
+    expect(applications).toHaveLength(3);
+    const [row] = await admin.execute(sql`select * from intake.import_batches where id = ${batchId}`);
+    expect(row).toMatchObject({
+      workspace_id: w1,
+      job_id: jobId,
+      confirmed_by: ALEX,
+      confirmed_at: '2026-11-20 09:00:00+00',
+      wording_key: 'import.rightToProcess.v1',
+      wording_version: 'v1',
+      cvs: 3,
+    });
+    const [sources] = await admin.execute<{ n: number }>(
+      sql`select count(*)::int as n from intake.application_source where batch_id = ${batchId}`,
+    );
+    expect(sources?.n).toBe(3);
+    const entries = await auditEntries('intake.batch_confirmed');
+    expect(entries).toHaveLength(before + 1);
+    expect(entries.at(-1)).toEqual({
+      actor_id: ALEX,
+      subject_id: batchId,
+      occurred_at: '2026-11-20 09:00:00+00',
+      after: { jobId, wordingVersion: 'v1', cvs: 3 },
+    });
+  });
+
+  // SAFETY: mutation check: removed the rightToProcessConfirmed check from receiveBatch -> this test failed (a batch and three applications were written)
+  it('Scenario: The server refuses a batch without the confirmation: nothing is added, queued or audited', async () => {
+    const jobId = await newJob(w1, 'Staff Backend Engineer');
+    const before = [...(await Promise.all(tables.map(count))), (await auditEntries('intake.batch_confirmed')).length];
+    for (const confirmed of [false, undefined]) {
+      await expect(
+        as(ALEX, w1, (ctx) =>
+          intake.receiveBatch(ctx, { ...batchOf(jobId, CAST), rightToProcessConfirmed: confirmed as never }),
+        ),
+      ).rejects.toMatchObject({ code: 'confirmation_required' });
+    }
+    expect([...(await Promise.all(tables.map(count))), (await auditEntries('intake.batch_confirmed')).length]).toEqual(
+      before,
+    );
+  });
+
+  it('Scenario: Each save is its own batch, and a new wording is a new version', async () => {
+    const jobId = await newJob(w1, 'Data Analyst');
+    const first = await as(ALEX, w1, (ctx) => intake.receiveBatch(ctx, batchOf(jobId, CAST)));
+    const second = await as(ALEX, w1, (ctx) =>
+      intake.receiveBatch(ctx, batchOf(jobId, [[403, 'Anna Schmidt']], 'import.rightToProcess.v2')),
+    );
+    expect(second.batchId).not.toBe(first.batchId);
+    const rows = await admin.execute(
+      sql`select id, wording_version, cvs from intake.import_batches where job_id = ${jobId} order by wording_version`,
+    );
+    expect([...rows]).toEqual([
+      { id: first.batchId, wording_version: 'v1', cvs: 3 },
+      { id: second.batchId, wording_version: 'v2', cvs: 1 },
+    ]);
+    await expect(
+      as(ALEX, w1, (ctx) => intake.receiveBatch(ctx, batchOf(jobId, CAST, 'import.title'))),
+    ).rejects.toMatchObject({ code: 'invalid_wording' });
+  });
+
+  it.each([
+    ['the job’s hiring owner', HUDA],
+    ['an interviewer granted the job', LINA],
+  ])('Scenario Outline: Only recruiters and admins add people: %s is refused, no batch recorded', async (_, user) => {
+    const jobId = await newJob(w1, 'Product Analyst');
+    await as(ALEX, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: user, jobId }));
+    const before = await count('intake.import_batches');
+    await expect(as(user, w1, (ctx) => intake.receiveBatch(ctx, batchOf(jobId, CAST)))).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(await count('intake.import_batches')).toBe(before);
+  });
+
+  it("Scenario Outline: another workspace's job is not found, no batch recorded", async () => {
+    const theirs = await newJob(w2, 'Gulf Recruiter job');
+    const before = [await count('intake.import_batches'), await count('intake.application')];
+    await expect(as(ALEX, w1, (ctx) => intake.receiveBatch(ctx, batchOf(theirs, CAST)))).rejects.toBeInstanceOf(
+      IntakeError,
+    );
+    expect([await count('intake.import_batches'), await count('intake.application')]).toEqual(before);
+  });
+
+  it('a link added later to an application inherits its batch', async () => {
+    const jobId = await newJob(w1, 'ML Engineer');
+    const { batchId, applications } = await as(ALEX, w1, (ctx) =>
+      intake.receiveBatch(ctx, batchOf(jobId, [[410, 'Sara Al Qahtani']])),
+    );
+    const { sourceId } = await as(ALEX, w1, (ctx) =>
+      intake.addLink(ctx, applications[0]?.applicationId ?? '', 'https://portfolio.credalent.example/sara'),
+    );
+    const [row] = await admin.execute(sql`select batch_id from intake.application_source where id = ${sourceId}`);
+    expect(row).toEqual({ batch_id: batchId });
+  });
+
+  // SAFETY: mutation check: ALTER POLICY import_batches_tenant_isolation ON intake.import_batches USING (true) WITH CHECK (true) -> this test failed (the unfiltered read in W1 saw W2's batch)
+  it("row-level security hides another workspace's batch from a read with no workspace filter", async () => {
+    const theirs = await newJob(w2, 'Gulf Analyst job');
+    const { batchId } = await as(ALEX, w2, (ctx) =>
+      intake.receiveBatch(ctx, batchOf(theirs, [[420, 'Omar Al Suwaidi']])),
+    );
+    const seen = await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`select id from intake.import_batches where id = ${batchId}`),
+    );
+    expect([...seen]).toEqual([]);
+    const all = await admin.execute(sql`select id from intake.import_batches where id = ${batchId}`);
+    expect([...all]).toHaveLength(1);
   });
 });

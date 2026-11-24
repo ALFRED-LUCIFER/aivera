@@ -91,21 +91,21 @@ const addApplicants = (userId: string, source: Source, fileIds: string[], job = 
       if (clean?.purpose !== 'cv') return null;
       cvs.push({ fileId, sha256: clean.sha256 });
     }
-    const results = [];
-    for (const cv of cvs)
-      results.push(
-        await intake.receiveApplication(ctx, {
-          jobId: job(),
-          person: {
-            displayName: 'Unnamed applicant',
-            identifiers: [{ type: 'cv_hash', value: cv.sha256 }],
-            synthetic: true,
-          },
-          source,
-          fileIds: [cv.fileId],
-        }),
-      );
-    return results;
+    const { applications } = await intake.receiveBatch(ctx, {
+      jobId: job(),
+      rightToProcessConfirmed: true,
+      wordingKey: 'import.rightToProcess.v1',
+      arrivals: cvs.map((cv) => ({
+        person: {
+          displayName: 'Unnamed applicant',
+          identifiers: [{ type: 'cv_hash' as const, value: cv.sha256 }],
+          synthetic: true,
+        },
+        source,
+        fileIds: [cv.fileId],
+      })),
+    });
+    return applications;
   });
 
 /** Defender's verdict on a quarantined upload, as Event Grid delivers it. */
@@ -157,6 +157,7 @@ beforeAll(async () => {
     createCandidates(workspaces, () => NOW),
     jobs,
     displayNamesInWorkspace,
+    audit,
     () => NOW,
   );
   w1 = (
