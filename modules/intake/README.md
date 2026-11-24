@@ -10,5 +10,6 @@ Applications per job and where each one came from (AIV-P1-017). An application l
 - **Event:** `ApplicationReceived.v1` (`{ applicationId, sourceId }`, strict, opaque ids only) is written to `intake.outbox` in the same transaction, on every arrival (each can bring new files) and every member's link. The worker relays it to the `evidence` queue.
 - **Row-level security (ADR-005):** every table `ENABLE` + `FORCE ROW LEVEL SECURITY` with `tenantPolicy` on `workspace_id`; the repository also filters by workspace.
 - **Personal data (AGENTS.md 1.2):** `links` and `githubLogin` are personal data (`PERSONAL_DATA_FIELDS`); the module never logs.
-- **Not here:** merging duplicate people (AIV-P1-018), the email and upload channels and their zod validation (AIV-P1-019), careers-page applications from the candidate site (AIV-P3-008).
+- **Duplicate merge (AIV-P1-018):** `applicationRecords` from the composition (unauthorised; apps wire it into `createCandidates`, whose merge authorises) lists, moves and restores a person's applications. When both people applied to the same job, the merged person's sources join the survivor's application and their emptied application is kept for the undo; `jobsForCandidate`, `candidatesForJob` and `listApplicationsForJob` skip an application with no source.
+- **Not here:** the email and upload channels and their zod validation (AIV-P1-019), careers-page applications from the candidate site (AIV-P3-008).
 - **Tests:** stage enum in `src/domain/application.test.ts`; database scenarios in `tests/integration/src/intake.test.ts`.
