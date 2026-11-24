@@ -8,17 +8,20 @@ import { deployments, generateTasks } from '../src/config.ts';
 import { providerFromEnv } from '../src/providers.ts';
 import { aiServiceFromEnv } from '../src/service.ts';
 import { liveTokenCap, runners, taskThresholds } from './config.ts';
-import { loadGolden } from './golden.ts';
+import { loadGolden, loadJudgeCases } from './golden.ts';
 import {
   caseLines,
   evalWorkspaceId,
+  evaluateJudge,
   evaluateTask,
   judgePrompt,
   liveJudge,
+  liveJudgeVerdict,
   liveMatcher,
   matchPrompt,
   recordedAnswer,
   recordedJudge,
+  recordedJudgeVerdict,
   recordedMatcher,
   summaryTable,
   type TaskReport,
@@ -38,9 +41,12 @@ const { values } = parseArgs({
   },
 });
 
-const golden = (() => {
+// AIV-P2-084: the judge's own golden cases run as the pseudo-task evals.judge.
+const JUDGE = 'evals.judge';
+const { golden, judgeCases } = (() => {
   try {
-    return loadGolden(values.dir);
+    const loaded = loadGolden(values.dir);
+    return { golden: loaded, judgeCases: loadJudgeCases(values.dir, loaded) };
   } catch (error) {
     return usage(error instanceof Error ? error.message : 'invalid golden set');
   }
@@ -51,12 +57,14 @@ for (const [task, cases] of golden)
   for (const c of cases)
     if (c.group !== undefined && !taskThresholds[task]?.groups?.[c.group])
       usage(`${task}/${c.id}: no group ${c.group} in evals/config.ts`);
-if (values.task && !golden.has(values.task)) usage(`No golden cases for task ${values.task}`);
+if (values.task && !golden.has(values.task) && !(values.task === JUDGE && judgeCases.length))
+  usage(`No golden cases for task ${values.task}`);
 const tasks = [...golden].filter(([task]) => !values.task || task === values.task);
 
 let answer = recordedAnswer;
 let judge = recordedJudge;
 let matcher = recordedMatcher;
+let judgeVerdict = recordedJudgeVerdict;
 if (values.live) {
   // Dev and local only: the golden set is synthetic, but a run must never spend a pilot workspace's model.
   if (process.env['APP_ENV'] !== 'dev' && process.env['APP_ENV'] !== 'local')
@@ -73,6 +81,7 @@ if (values.live) {
   };
   judge = liveJudge(ai);
   matcher = liveMatcher(ai);
+  judgeVerdict = liveJudgeVerdict(judge);
 }
 
 const reports: TaskReport[] = [];
@@ -93,6 +102,11 @@ for (const [task, cases] of tasks) {
     continue;
   }
   const report = await evaluateTask(task, cases, answer, judge, matcher);
+  for (const line of caseLines(report)) console.log(line);
+  reports.push(report);
+}
+if (judgeCases.length && (!values.task || values.task === JUDGE)) {
+  const report = await evaluateJudge(judgeCases, judgeVerdict);
   for (const line of caseLines(report)) console.log(line);
   reports.push(report);
 }

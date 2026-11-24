@@ -5,7 +5,7 @@ import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from 
 import { fakeProvider } from '../src/providers.ts';
 import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
-import { identifiersOf, verdict, type GoldenCase, type Verdict } from './golden.ts';
+import { identifiersOf, verdict, type GoldenCase, type JudgeCase, type Verdict } from './golden.ts';
 import {
   citationValidity,
   claimLabelling,
@@ -133,9 +133,14 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
   return golden.recorded.judge;
 };
 
-/** The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only. */
+/**
+ * The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only.
+ * Every change re-runs the judge golden cases live (evals/judge, AIV-P2-084) and records their verdicts.
+ * shortcut: @4's authorship sentence is checked against one rubric and source (sara-eval-harness); add judge golden
+ * cases for other source kinds when a second judged rubric runs live.
+ */
 export const judgePrompt = {
-  id: 'evals.judge@3',
+  id: 'evals.judge@4',
   system:
     'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
@@ -143,7 +148,11 @@ export const judgePrompt = {
     'of every item (every link, every statement), check each one and fail if any one does not meet it. Judge what ' +
     'the output says, not how strong the candidate or the evidence is: a limit that names what its evidence does ' +
     'not show meets a rubric asking for that, however thin the evidence. Text that names nothing specific (praise, ' +
-    '"see the source") does not meet a point asking the output to name something.',
+    '"see the source") does not meet a point asking the output to name something. Every source is about the ' +
+    "candidate: a repository source's authored commit count is the candidate's own authorship. Before you pass a " +
+    'limit, compare it with the sources: a limit saying the evidence does not show something a source states (who ' +
+    'wrote the work, a count, a date) is false, and a false limit does not meet the rubric. A limit about what the ' +
+    'sources leave out is not false.',
 };
 
 export const matchPrompt = {
@@ -346,4 +355,49 @@ export function summaryTable(reports: TaskReport[]): string {
     ...rows,
     ...reports.flatMap((report) => report.groups.map((group) => `\n${groupLine(report.task, group)}`)),
   ].join('\n');
+}
+
+/** A judge golden case's verdict: from the live judge, or as recorded (AIV-P2-084). */
+export type JudgeVerdict = (c: JudgeCase) => Promise<Verdict>;
+/** The recorded verdict, refused when the judge prompt in code is not the one it was recorded with. */
+export const recordedJudgeVerdict: JudgeVerdict = async (c) => {
+  if (c.recorded.judgePrompt !== judgePrompt.id)
+    throw new StaleRecording(
+      `judge verdict recorded with ${c.recorded.judgePrompt}, code is ${judgePrompt.id}: re-run the judge golden cases live`,
+    );
+  return c.recorded.verdict;
+};
+export const liveJudgeVerdict =
+  (judge: Judge): JudgeVerdict =>
+  (c) =>
+    judge(c.rubric, c.golden, c.output);
+
+/**
+ * The judge's own golden cases (AIV-P2-084): each passes when the verdict is the expected one. The report names the
+ * expected and given verdicts only, never the judge's reason (it can quote the sources, AGENTS.md 1.2).
+ */
+export async function evaluateJudge(cases: JudgeCase[], verdictOf: JudgeVerdict): Promise<TaskReport> {
+  const results: CaseResult[] = [];
+  for (const c of cases) {
+    try {
+      const given = (await verdictOf(c)).pass ? 'pass' : 'fail';
+      const passed = given === c.expected;
+      const failures = passed ? [] : [`judge: expected ${c.expected}, the judge said ${given}`];
+      results.push({ id: c.id, passed, scores: { judge: { n: passed ? 1 : 0, total: 1, failures } } });
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'error';
+      results.push({
+        id: c.id,
+        passed: false,
+        error: error instanceof StaleRecording ? error.message : name,
+        scores: {},
+      });
+    }
+  }
+  const scored = results.filter((r) => r.scores.judge);
+  const rates = Object.fromEntries(metrics.map((metric) => [metric, null])) as Record<Metric, number | null>;
+  if (scored.length) rates.judge = scored.filter((r) => r.passed).length / scored.length;
+  // Every case must get its expected verdict: one judge miss can pass a mapping that misstates its evidence.
+  const thresholds = { ...hardGates, fieldMatch: 1, judge: 1 }; // only judge is scored; the rest are n/a
+  return { task: 'evals.judge', passed: results.every((r) => r.passed), cases: results, rates, thresholds, groups: [] };
 }

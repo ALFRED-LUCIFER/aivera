@@ -1,0 +1,14 @@
+# AIV-P2-084: a limit that praises the evidence names no gap, so it fails.
+id: praise
+case: evidence.mapToCompetency/sara-eval-harness
+limit: Strong, convincing evidence of excellent engineering.
+expected: fail
+recorded:
+  judgePrompt: evals.judge@4
+  verdict:
+    pass: false
+    reason: >-
+      The output fails the rubric because each link's limit does not name what its evidence does not show; for
+      example, the limit for the 'c-llm' link states 'Strong, convincing evidence of excellent engineering' but does
+      not specify what the evidence does not show, such as who reviewed the work or its effect on product decisions,
+      violating the rubric requirement.
