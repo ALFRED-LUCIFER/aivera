@@ -218,6 +218,7 @@ export function applicationUseCases({
         fileIds: [],
         links: [url],
         githubLogin: null,
+        // shortcut: an application from before batches (AIV-P1-104) has none, so its new links are stored but not read; backfill a system batch if pilot data needs it.
         batchId: await store.batchOfApplication(ctx.workspaceId, applicationId),
       };
       await store.insertSource(source);

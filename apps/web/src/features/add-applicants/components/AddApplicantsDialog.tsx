@@ -2,7 +2,7 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Checkbox, Dialog, DialogClose, FilePicker, RadioGroup, SuccessBanner } from '@credalent/ui';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { RIGHT_TO_PROCESS_KEY, SOURCE_OPTIONS, type AddApplicantsResult } from '../domain/addApplicants.ts';
 import type { DirectUpload } from '@/features/files';
 
@@ -46,6 +46,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
   const tf = useTranslations('files');
   const ta = useTranslations('access');
   const tc = useTranslations();
+  const hintId = useId();
   const { upload, result, cvs } = props;
   const status =
     upload.phase === 'uploading'
@@ -144,7 +145,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
             label={tc(RIGHT_TO_PROCESS_KEY, { title: props.jobTitle })}
           />
           {!props.confirmed && (
-            <p id="add-applicants-confirm-hint" className="text-meta text-text-2">
+            <p id={hintId} className="text-meta text-text-2">
               {t('confirmHint')}
             </p>
           )}
@@ -158,7 +159,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
             variant="primary"
             disabled={!props.canSubmit}
             aria-busy={props.pending || undefined}
-            aria-describedby={props.confirmed ? undefined : 'add-applicants-confirm-hint'}
+            aria-describedby={props.confirmed ? undefined : hintId}
           >
             {t('submit', { count: cvs.length })}
           </Button>
