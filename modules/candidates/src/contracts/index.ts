@@ -16,7 +16,7 @@ export {
 export type { CandidateErrorCode, Identifier, IdentifierType, Person } from '../domain/person.ts';
 export type { LikelyReason } from '../domain/duplicates.ts';
 export type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
-export type { DuplicateReport, MergePreview, PersonMergeSummary, PersonRecords } from '../application/merge.ts';
+export type { DuplicateReport, MergePreview, PersonMergeSummary } from '../application/merge.ts';
 
 /**
  * Written to `candidates.outbox` in the transaction that creates a person, and sent to the `candidates` queue.
@@ -37,7 +37,8 @@ export interface CandidatesContract {
    * The workspace's person holding any of the identifiers (normalised first), or a new person holding all of them.
    * When the identifiers match several people, the earliest is returned and every other one that is an exact duplicate
    * (the same email, phone or CV file; a GitHub login only with the same name) is merged into it automatically, audited
-   * as the system with "merged automatically: same CV file" and the like (AIV-P1-018).
+   * as the system with "merged automatically: same CV file" and the like (AIV-P1-018), provided the arrival is an exact
+   * duplicate of the earliest person too; otherwise nothing merges.
    * Admins and recruiters. Throws `CandidateError` (`invalid_identifier`, `no_identifiers`, `display_name`).
    */
   findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<FindOrCreatePersonResult>;

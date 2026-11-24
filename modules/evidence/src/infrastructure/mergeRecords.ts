@@ -12,12 +12,17 @@ const movedSchema = z.strictObject({ sourceIds: z.array(z.uuid()), requestIds: z
 // pull request, or a near-duplicate flag joins it to the survivor's own source.
 const kept = (error: unknown) => error instanceof DbQueryError && (error.code === '23505' || error.code === '23514');
 
-/** Moves one source to `toId`; its items, reads, notes and flags follow by ON UPDATE CASCADE (0028). */
+/**
+ * Moves one source to `toId`; its items, reads, notes and flags follow by ON UPDATE CASCADE (0028). False when the
+ * source is not `fromId`'s (nothing moved).
+ */
 async function moveSource(tx: Tx, workspaceId: string, sourceId: string, fromId: string, toId: string) {
-  await tx
+  const moved = await tx
     .update(source)
     .set({ candidateId: toId })
-    .where(and(eq(source.workspaceId, workspaceId), eq(source.id, sourceId), eq(source.candidateId, fromId)));
+    .where(and(eq(source.workspaceId, workspaceId), eq(source.id, sourceId), eq(source.candidateId, fromId)))
+    .returning({ id: source.id });
+  if (moved.length === 0) return false;
   // Merged pull requests name the candidate beside their item; they follow the item's source.
   await tx
     .update(mergedPullRequest)
@@ -34,6 +39,7 @@ async function moveSource(tx: Tx, workspaceId: string, sourceId: string, fromId:
         ),
       ),
     );
+  return true;
 }
 
 const sourcesOf = async (tx: Tx, workspaceId: string, candidateId: string) =>
@@ -97,8 +103,7 @@ export function createEvidenceRecords(now: () => Date = () => new Date()) {
       for (const id of await sourcesOf(tx, workspaceId, fromId)) {
         try {
           // A savepoint, so a source that must stay leaves the merge's transaction usable.
-          await tx.transaction((sp) => moveSource(sp, workspaceId, id, fromId, toId));
-          sourceIds.push(id);
+          if (await tx.transaction((sp) => moveSource(sp, workspaceId, id, fromId, toId))) sourceIds.push(id);
         } catch (error) {
           if (!kept(error)) throw error;
         }

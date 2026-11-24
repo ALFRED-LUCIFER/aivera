@@ -2,7 +2,7 @@ import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { IntakeStore } from '../application/applications.ts';
-import type { Source } from '../domain/application.ts';
+import type { Source, Stage } from '../domain/application.ts';
 import { application, applicationSource } from './schema.ts';
 
 /**
@@ -147,7 +147,12 @@ const movedSchema = z.strictObject({
 export const applicationRecords = {
   async list(tx: Tx, workspaceId: string, personId: string) {
     const rows = await tx
-      .select({ applicationId: application.id, jobId: application.jobId, source: applicationSource.source })
+      .select({
+        applicationId: application.id,
+        jobId: application.jobId,
+        stage: application.stage,
+        source: applicationSource.source,
+      })
       .from(application)
       .innerJoin(
         applicationSource,
@@ -158,9 +163,9 @@ export const applicationRecords = {
       )
       .where(and(eq(application.workspaceId, workspaceId), eq(application.personId, personId)))
       .orderBy(asc(application.receivedAt), asc(application.id), asc(applicationSource.receivedAt));
-    const byApplication = new Map<string, { jobId: string; sources: Source[] }>();
+    const byApplication = new Map<string, { jobId: string; stage: Stage; sources: Source[] }>();
     for (const r of rows) {
-      const entry = byApplication.get(r.applicationId) ?? { jobId: r.jobId, sources: [] };
+      const entry = byApplication.get(r.applicationId) ?? { jobId: r.jobId, stage: r.stage, sources: [] };
       if (!entry.sources.includes(r.source)) entry.sources.push(r.source);
       byApplication.set(r.applicationId, entry);
     }
@@ -197,6 +202,9 @@ export const applicationRecords = {
     return { moved, count: moved.applicationIds.length + new Set(moved.sources.map((s) => s.from)).size };
   },
 
+  // shortcut: a whole application moves back with every source it holds, so one that arrived on it after the merge by
+  // the survivor's own identifiers goes to the merged person too (pinned in duplicates.test.ts); record which person
+  // each arrival matched and split them here if recruiters see it happen.
   async restore(tx: Tx, workspaceId: string, fromId: string, toId: string, stored: unknown) {
     const moved = movedSchema.parse(stored);
     if (moved.applicationIds.length > 0)

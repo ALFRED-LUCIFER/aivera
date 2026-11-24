@@ -113,6 +113,8 @@ export function candidateStore(tx: Tx): CandidateStore & MergeStore {
         .where(and(eq(person.workspaceId, workspaceId), eq(person.synthetic, false)))
         .limit(1);
       if (real) return false;
+      // Merges name both people by foreign key, so they go first.
+      await tx.delete(merge).where(eq(merge.workspaceId, workspaceId));
       await tx.delete(personIdentifier).where(eq(personIdentifier.workspaceId, workspaceId));
       await tx.delete(person).where(eq(person.workspaceId, workspaceId));
       return true;

@@ -170,13 +170,19 @@ afterAll(async () => {
 });
 
 describe('Scenario: Exact duplicates merge automatically', () => {
+  let job: string;
+  let linkedin: Awaited<ReturnType<typeof arrive>>;
+  let email: Awaited<ReturnType<typeof arrive>>;
+  let sourceId: string;
+
   it('Sneha via LinkedIn and via Email with the same CV file is one person with both sources, audited as the system', async () => {
-    const job = await newJob('Senior AI Engineer');
+    clock = NOW;
+    job = await newJob('Senior AI Engineer');
     // Two arrivals with nothing in common make two people; a third carrying her email and that CV file proves it.
-    const linkedin = await arrive(job, 'Sneha Iyer', 'linkedin', { email: 'sneha.iyer@example.com' });
-    const email = await arrive(job, 'Sneha Iyer', 'email', { cv: 1 });
+    linkedin = await arrive(job, 'Sneha Iyer', 'linkedin', { email: 'sneha.iyer@example.com' });
+    email = await arrive(job, 'Sneha Iyer', 'email', { cv: 1 });
     expect(email.personId).not.toBe(linkedin.personId);
-    const { sourceId } = await repository(email.personId, 'sneha-rag');
+    ({ sourceId } = await repository(email.personId, 'sneha-rag'));
 
     const proof = await arrive(job, 'Sneha Iyer', 'email', { email: 'sneha.iyer@example.com', cv: 1 });
 
@@ -188,8 +194,9 @@ describe('Scenario: Exact duplicates merge automatically', () => {
       { id: linkedin.applicationId, job_id: job, sources: ['linkedin', 'email', 'email'] },
     ]);
     expect(await sourcesOf(linkedin.personId)).toEqual([sourceId]);
+    // Her emptied application is kept for the undo, but is no longer an application of the job.
     const listed = await as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, job));
-    expect(listed.map((a) => a.personId)).toEqual([linkedin.personId]);
+    expect(listed.map((a) => [a.applicationId, a.personId])).toEqual([[linkedin.applicationId, linkedin.personId]]);
     const [report] = await as(ALEX, w1, (ctx) => candidates.detectDuplicates(ctx, [linkedin.personId]));
     expect(report?.merged).toMatchObject([{ displayName: 'Sneha Iyer', automatic: true, undoable: true }]);
     expect(await auditFor(email.personId)).toMatchObject([
@@ -200,6 +207,26 @@ describe('Scenario: Exact duplicates merge automatically', () => {
       await rows(sql`select 1 from evidence.outbox where type = 'EvidenceRecorded.v1'
         and payload->>'candidateId' = ${linkedin.personId} and dedupe_key like 'merge:%'`),
     ).toHaveLength(1);
+  });
+
+  // SAFETY: mutation check: skipped evidence.restore in unmergePeople (application/merge.ts) -> this test failed (the repository stayed with the survivor)
+  it('undoing it gives the emptied application its sources back; the arrival that proved it stays with the survivor', async () => {
+    const [report] = await as(ALEX, w1, (ctx) => candidates.detectDuplicates(ctx, [linkedin.personId]));
+    const mergeId = report?.merged[0]?.mergeId ?? '';
+    await as(ALEX, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'Two different people'));
+    expect(await applicationsOf(email.personId)).toEqual([
+      { id: email.applicationId, job_id: job, sources: ['email'] },
+    ]);
+    // The proof arrived after the merge, as the survivor: it is not one of the sources the merge moved.
+    expect(await applicationsOf(linkedin.personId)).toEqual([
+      { id: linkedin.applicationId, job_id: job, sources: ['linkedin', 'email'] },
+    ]);
+    expect(await sourcesOf(email.personId)).toEqual([sourceId]);
+    expect(await sourcesOf(linkedin.personId)).toEqual([]);
+    const listed = await as(ALEX, w1, (ctx) => intake.listApplicationsForJob(ctx, job));
+    expect(listed.map((a) => a.applicationId).toSorted()).toEqual(
+      [linkedin.applicationId, email.applicationId].toSorted(),
+    );
   });
 });
 
@@ -251,19 +278,19 @@ describe('Scenario: Merge preview, confirm and undo', () => {
       );
   });
 
-  it('the preview lists which applications, sources and evidence combine; nothing changes until confirmed', async () => {
+  it('the preview lists which applications, at which stage, sources and evidence combine; nothing changes until confirmed', async () => {
     const preview = await as(MARIA, w1, (ctx) => candidates.previewMerge(ctx, layla.personId, dup.personId));
     expect(preview).toEqual({
       survivor: {
         personId: layla.personId,
         displayName: 'Layla Haddad',
-        applications: [{ jobId: job, sources: ['referral'] }],
+        applications: [{ jobId: job, stage: 'new', sources: ['referral'] }],
         evidenceSources: 2,
       },
       merged: {
         personId: dup.personId,
         displayName: 'Layla  Haddad',
-        applications: [{ jobId: other, sources: ['whatsapp'] }],
+        applications: [{ jobId: other, stage: 'new', sources: ['whatsapp'] }],
         evidenceSources: 2,
       },
     });
@@ -395,6 +422,32 @@ describe('Scenario: Interviewers cannot merge', () => {
       ForbiddenError,
     );
     await expect(as(LINA, w1, (ctx) => candidates.detectDuplicates(ctx, [b.personId]))).rejects.toThrow(ForbiddenError);
-    expect((await as(ALEX, w1, (ctx) => candidates.getPerson(ctx, b.personId)))?.mergedIntoId).toBeNull();
+    const { mergeId } = await as(MARIA, w1, (ctx) =>
+      candidates.mergePeople(ctx, a.personId, b.personId, 'Same Daniel'),
+    );
+    await expect(as(LINA, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'x'))).rejects.toThrow(ForbiddenError);
+    expect((await as(ALEX, w1, (ctx) => candidates.getPerson(ctx, b.personId)))?.mergedIntoId).toBe(a.personId);
+  });
+});
+
+describe('shortcut: undo moves a moved application back whole (application/merge.ts, intake applicationRecords)', () => {
+  it("a source that arrived on it after the merge, by the survivor's identifiers, goes back with it", async () => {
+    clock = NOW;
+    const first = await newJob('Data Scientist');
+    const second = await newJob('Forward Deployed Engineer');
+    const fatima = await arrive(first, 'Fatima Al Hammadi', 'referral', { cv: 61 });
+    const dup = await arrive(second, 'Fatima Al Hammadi', 'whatsapp', { cv: 62 });
+    const { mergeId } = await as(MARIA, w1, (ctx) =>
+      candidates.mergePeople(ctx, fatima.personId, dup.personId, 'Same person, two CVs'),
+    );
+    const later = await arrive(second, 'Fatima Al Hammadi', 'email', { cv: 61 });
+    expect([later.personId, later.applicationId]).toEqual([fatima.personId, dup.applicationId]);
+    await as(ALEX, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'Two different people'));
+    expect(await applicationsOf(dup.personId)).toEqual([
+      { id: dup.applicationId, job_id: second, sources: ['whatsapp', 'email'] },
+    ]);
+    expect(await applicationsOf(fatima.personId)).toEqual([
+      { id: fatima.applicationId, job_id: first, sources: ['referral'] },
+    ]);
   });
 });

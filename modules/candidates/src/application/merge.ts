@@ -45,11 +45,11 @@ export type PersonRecords = {
   restore(tx: Tx, workspaceId: string, fromId: string, toId: string, moved: unknown, mergeId: string): Promise<void>;
 };
 
-/** What a merge combines, as the preview lists it. Source channels are intake's (`linkedin`, `email`, ...). */
+/** What a merge combines, as the preview lists it. Stages and source channels are intake's (`new`, `linkedin`, ...). */
 export type PersonMergeSummary = {
   personId: string;
   displayName: string;
-  applications: { jobId: string; sources: string[] }[];
+  applications: { jobId: string; stage: string; sources: string[] }[];
   evidenceSources: number;
 };
 export type MergePreview = { survivor: PersonMergeSummary; merged: PersonMergeSummary };
@@ -95,27 +95,29 @@ const validReason = (reason: string) => {
 export function mergeUseCases(ports: MergePorts) {
   const { storeFor, authorize, applications, evidence, audit, newId, now } = ports;
 
-  /** Two different, unmerged people of the workspace, locked; refused otherwise. */
-  async function lockPair(ctx: WorkspaceContext, survivorId: string, mergedId: string) {
-    const people = await storeFor(ctx.tx).lockPeople(ctx.workspaceId, [survivorId, mergedId]);
-    const survivor = people.find((p) => p.id === survivorId);
-    const merged = people.find((p) => p.id === mergedId);
-    if (survivorId === mergedId || !survivor || !merged || survivor.mergedIntoId || merged.mergedIntoId)
-      throw new CandidateError('merge_people');
-    return { survivor, merged };
-  }
-
   /**
    * Folds `mergedId` into `survivorId` in `ctx.tx`: their applications and evidence move by the modules' own calls,
-   * nothing is deleted, the merge records what moved, and the audit entry is written last.
+   * nothing is deleted, the merge records what moved, and the audit entry is written last. Refused unless both are
+   * different, unmerged people of the workspace; an automatic merge of a pair merged meanwhile is skipped (null).
    */
+  // shortcut: candidate-accounts' workspace_link still names the merged person, so their portal shows that record; move
+  // it with the merge once candidate accounts link to workspaces (AIV-P3-007).
   async function merge(
     ctx: WorkspaceContext,
     survivorId: string,
     mergedId: string,
     { reason, automatic }: { reason: string; automatic: boolean },
-  ): Promise<{ mergeId: string }> {
-    await lockPair(ctx, survivorId, mergedId);
+  ): Promise<{ mergeId: string } | null> {
+    const people = await storeFor(ctx.tx).lockPeople(ctx.workspaceId, [survivorId, mergedId]);
+    const survivor = people.find((p) => p.id === survivorId);
+    const merged = people.find((p) => p.id === mergedId);
+    if (survivorId === mergedId || !survivor || !merged) throw new CandidateError('merge_people');
+    if (survivor.mergedIntoId || merged.mergedIntoId) {
+      // findPeople reads without a lock, so two arrivals bridging the same pair both get here; the second waited for
+      // the first's lock and now sees the pair merged. Its upload must not fail for that.
+      if (automatic) return null;
+      throw new CandidateError('merge_people');
+    }
     const store = storeFor(ctx.tx);
     const id = newId();
     const apps = await applications.move(ctx.tx, ctx.workspaceId, mergedId, survivorId, id);
@@ -156,6 +158,8 @@ export function mergeUseCases(ports: MergePorts) {
   return {
     merge,
 
+    // shortcut: "not the same person" is not built, so a likely duplicate a recruiter rejects keeps its prompt; store
+    // the dismissal per pair when recruiters ask to clear it (AIV-P1-018 follow-up).
     // shortcut: reads every unmerged person of the workspace and compares in memory; store a name key with an index
     // once a workspace holds more than ~5,000 people.
     async detectDuplicates(ctx: WorkspaceContext, personIds: string[]): Promise<DuplicateReport[]> {
@@ -204,7 +208,9 @@ export function mergeUseCases(ports: MergePorts) {
       reason: string,
     ): Promise<{ mergeId: string }> {
       await authorize(ctx, 'candidate.merge');
-      return merge(ctx, survivorId, mergedId, { reason: validReason(reason), automatic: false });
+      const done = await merge(ctx, survivorId, mergedId, { reason: validReason(reason), automatic: false });
+      if (!done) throw new CandidateError('merge_people'); // only an automatic merge is skipped
+      return done;
     },
 
     async unmergePeople(ctx: WorkspaceContext, mergeId: string, reason: string): Promise<void> {

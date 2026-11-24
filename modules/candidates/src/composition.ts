@@ -15,7 +15,7 @@ import { outbox } from './infrastructure/schema.ts';
  * What merging duplicates (AIV-P1-018) needs from other modules, wired by the app: the audit log, and intake's and
  * evidence's records about a person (their compositions' `applicationRecords` and `evidenceRecords`).
  */
-export type MergeWiring = {
+type MergeWiring = {
   audit: Pick<AuditContract, 'record'>;
   applications: MergePorts['applications'];
   evidence: MergePorts['evidence'];

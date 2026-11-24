@@ -379,7 +379,7 @@ async function seed(
     // The same person arriving again under another address, merged by a recruiter (candidates.merge, AIV-P1-018).
     const duplicate = await candidates.findOrCreatePerson(ctx, {
       displayName: person,
-      identifiers: [{ type: 'email', value: `${person.toLowerCase().replaceAll(' ', '.')}@example.net` }],
+      identifiers: [{ type: 'email', value: `second.${person.toLowerCase().replaceAll(' ', '.')}@example.com` }],
       synthetic: true,
     });
     await candidates.mergePeople(ctx, personId, duplicate.personId, 'Same person, second address');
