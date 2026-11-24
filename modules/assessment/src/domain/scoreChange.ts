@@ -15,13 +15,16 @@ const TARGET: Record<Rating, 'claim' | 'medium' | 'strong' | null> = {
   strongly_shown: 'strong',
 };
 
-/** How an interview-sourced link is confirmed: the interviewer's word, "Candidate-submitted" at most, never corroborated. */
+/**
+ * How an interview-sourced link is scored: like submitted work, never corroborated. The candidate submitted nothing:
+ * it is labelled the interviewer's word, not "Candidate-submitted".
+ */
 export const INTERVIEW_PROVENANCE = 'submitted' satisfies Provenance;
 
 /**
  * One applied change, as stored. `claim` weakens the items named in `itemIds` (the competency's evidence when the
- * interview was held; evidence added later is untouched). `medium` and `strong` add one link citing the interview
- * (`sourceId`) at `level`.
+ * interview was held that no second source had checked; evidence added later is untouched). `medium` and `strong` add
+ * one link citing the interview (`sourceId`) at `level`, the level the job needs.
  */
 export type InterviewChange = {
   competencyId: string;
@@ -32,13 +35,16 @@ export type InterviewChange = {
   itemIds: string[];
 };
 
-/** The links `assess` scores once the interview changes (oldest first) are applied; the latest per competency stands. */
+/**
+ * The links `assess` scores once the interview changes (oldest first) are applied. The latest change per competency
+ * and interview stands, so a later interview never removes what another interview showed.
+ */
 export function withInterviewChanges(
   links: readonly EvidenceLink[],
   changes: readonly InterviewChange[],
 ): EvidenceLink[] {
   let out = [...links];
-  for (const change of new Map(changes.map((c) => [c.competencyId, c])).values()) {
+  for (const change of new Map(changes.map((c) => [`${c.competencyId}:${c.sourceId}`, c])).values()) {
     if (change.strength === 'claim')
       out = out.map((l) =>
         l.competencyId === change.competencyId && change.itemIds.includes(l.itemId) ? { ...l, strength: 'claim' } : l,
@@ -104,12 +110,18 @@ export function previewRatings(
         competencyId,
         sourceId,
         strength,
-        // The interview confirms what the evidence states; for a gap, what the job needs. Nothing to raise when weakening.
-        level: strength === 'claim' ? 0 : competency.claimedLevel || competency.levelNeeded,
+        // The level the job needs, whatever the candidate claimed: an uninspected claim never sets a backed level (1.6).
+        level: strength === 'claim' ? 0 : competency.levelNeeded,
         itemIds:
           strength === 'claim'
-            ? links
-                .filter((l) => l.competencyId === competencyId && l.provenance !== 'contradictory')
+            ? // One interviewer's word never overrides work a second source checked.
+              links
+                .filter(
+                  (l) =>
+                    l.competencyId === competencyId &&
+                    l.provenance !== 'contradictory' &&
+                    l.provenance !== 'corroborated',
+                )
                 .map((l) => l.itemId)
             : [],
       },

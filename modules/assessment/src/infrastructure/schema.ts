@@ -78,7 +78,7 @@ export const explanation = assessment
   .enableRLS();
 
 // A person's applied interview-based change to one competency (AIV-P1-117): every later assessment re-applies it, so
-// the interviewer's word stands until another interview changes it. Append-only (0008). `reason` is the person's own
+// the interviewer's word stands until another interview changes it. Append-only (0008_force_rls_interview_change). `reason` is the person's own
 // words about a candidate, so it stays here and in the audit note (AGENTS.md 1.2); a result's erasure deletes its changes.
 export const interviewChange = assessment
   .table(
@@ -103,6 +103,8 @@ export const interviewChange = assessment
       appliedBy: uuid('applied_by').notNull(),
       appliedAt: timestamp('applied_at', { withTimezone: true }).notNull(),
       idempotencyKey: uuid('idempotency_key').notNull(),
+      // The preview the person confirmed: a retry under the same key must carry the same one.
+      previewId: text('preview_id').notNull(),
     },
     (t) => [
       index('interview_change_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.appliedAt),

@@ -22,13 +22,13 @@ export type AssessmentStore = {
   /** The candidate's applied interview changes for the job, oldest first (AIV-P1-117). */
   interviewChanges(workspaceId: string, candidateId: string, jobId: string): Promise<InterviewChange[]>;
   insertInterviewChanges(rows: InterviewChangeRow[]): Promise<void>;
-  /** The snapshot an apply with this idempotency key stored for the candidate and job, or null. */
-  appliedResult(
+  /** What an apply with this idempotency key stored for the candidate and job, or null. */
+  applied(
     workspaceId: string,
     candidateId: string,
     jobId: string,
     idempotencyKey: string,
-  ): Promise<StoredAssessment | null>;
+  ): Promise<{ result: StoredAssessment; previewId: string; reason: string } | null>;
   insert(row: StoredAssessment): Promise<void>;
   /** Every result of the job, any rubric version, oldest first. */
   listForJob(workspaceId: string, jobId: string): Promise<StoredAssessment[]>;
@@ -170,6 +170,10 @@ export async function recordAssessment(
   // older; only tests call it today (the worker scores); lock before the read if a screen ever calls it.
   await store.lock(scope.workspaceId, input.candidateId, input.jobId);
   // A person's applied interview changes stand in every later run (AIV-P1-117); read under the lock.
+  // shortcut: changes are keyed by competency id, which belongs to one rubric version, so a newly approved version scores
+  // without them; carry them across versions (competency lineage in the jobs module) before a pilot job re-approves its
+  // rubric after interviews. They are also keyed by candidate id: a candidate merged into another (AIV-P1-018) keeps
+  // theirs on the old id; move them with the merge when a merged candidate has been interviewed.
   const next = assess(
     input.rubric,
     withInterviewChanges(

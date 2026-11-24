@@ -12,14 +12,38 @@ const RUBRIC: RubricInput = {
     { id: 'c-cost', weightPercent: 25, levelNeeded: 3, type: 'desirable' },
   ],
 };
-const LINKS: EvidenceLink[] = [
-  { itemId: 'i-repo', competencyId: 'c-python', level: 5, strength: 'strong', provenance: 'corroborated' },
-  { itemId: 'i-cv', competencyId: 'c-retrieval', level: 4, strength: 'supporting', provenance: 'claim' },
-];
+const REPO: EvidenceLink = {
+  itemId: 'i-repo',
+  competencyId: 'c-python',
+  level: 5,
+  strength: 'strong',
+  provenance: 'corroborated',
+};
+const cvClaim = (level: number): EvidenceLink => ({
+  itemId: 'i-cv',
+  competencyId: 'c-retrieval',
+  level,
+  strength: 'supporting',
+  provenance: 'claim',
+});
+const LINKS: EvidenceLink[] = [REPO, cvClaim(4)];
+// An incident review he submitted himself: Medium, Candidate-submitted, so it counts until an interview weakens it.
+const DOC: EvidenceLink = {
+  itemId: 'i-doc',
+  competencyId: 'c-cost',
+  level: 3,
+  strength: 'medium',
+  provenance: 'submitted',
+};
 const INTERVIEW = 'interview-1';
 
-const preview = (competencyId: string, rating: Rating, links = LINKS, stored: InterviewChange[] = []) =>
-  previewRatings(RUBRIC, links, stored, [{ competencyId, rating }], INTERVIEW);
+const preview = (
+  competencyId: string,
+  rating: Rating,
+  links = LINKS,
+  stored: InterviewChange[] = [],
+  sourceId = INTERVIEW,
+) => previewRatings(RUBRIC, links, stored, [{ competencyId, rating }], sourceId);
 
 describe('Scenario: Preview shows the strength and backed score before and after', () => {
   it('starts from a backed score of 55 with Retrieval at Supporting', () => {
@@ -28,19 +52,22 @@ describe('Scenario: Preview shows the strength and backed score before and after
   });
 
   it.each([
-    ['clearly_shown', 'medium', 71],
-    ['strongly_shown', 'strong', 71],
-  ] as const)('%s: Supporting to %s, cited to the interview, backed score 55 to %i', (rating, strength, backed) => {
-    const { before, after, changes } = preview('c-retrieval', rating);
-    expect([before.backedScore, after.backedScore]).toEqual([55, backed]);
-    expect(changes.map((c) => [c.from, c.to])).toEqual([
-      [
-        { strength: 'supporting', provenLevel: 0 },
-        { strength, provenLevel: 4 },
-      ],
-    ]);
-    expect(after.competencies[1]?.proven.itemIds).toEqual([INTERVIEW]);
-  });
+    ['clearly_shown', 'medium'],
+    ['strongly_shown', 'strong'],
+  ] as const)(
+    '%s: Supporting to %s at the level the job needs, cited to the interview, 55 to 67',
+    (rating, strength) => {
+      const { before, after, changes } = preview('c-retrieval', rating);
+      expect([before.backedScore, after.backedScore]).toEqual([55, 67]);
+      expect(changes.map((c) => [c.from, c.to])).toEqual([
+        [
+          { strength: 'supporting', provenLevel: 0 },
+          { strength, provenLevel: 3 },
+        ],
+      ]);
+      expect(after.competencies[1]?.proven.itemIds).toEqual([INTERVIEW]);
+    },
+  );
 
   it('partly_shown changes nothing', () => {
     const { before, after, changes } = preview('c-retrieval', 'partly_shown');
@@ -48,11 +75,11 @@ describe('Scenario: Preview shows the strength and backed score before and after
     expect(changes).toEqual([]);
   });
 
-  it('not_shown weakens evidence that counted to Claim only: backed score 55 to 0, the claim range kept', () => {
-    const { before, after, changes } = preview('c-python', 'not_shown');
-    expect([before.backedScore, after.backedScore, after.upperBound]).toEqual([55, 0, before.upperBound]);
+  it('not_shown weakens submitted work that counted to Claim only: backed score 70 to 55, the claim range kept', () => {
+    const { before, after, changes } = preview('c-cost', 'not_shown', [...LINKS, DOC]);
+    expect([before.backedScore, after.backedScore, after.upperBound]).toEqual([70, 55, before.upperBound]);
     expect(changes.map((c) => [c.from, c.to, c.change.itemIds])).toEqual([
-      [{ strength: 'strong', provenLevel: 5 }, { strength: 'claim', provenLevel: 0 }, ['i-repo']],
+      [{ strength: 'medium', provenLevel: 3 }, { strength: 'claim', provenLevel: 0 }, ['i-doc']],
     ]);
   });
 
@@ -74,7 +101,7 @@ describe('Scenario: Preview shows the strength and backed score before and after
 
 describe("Scenario: The interviewer's word is not verification", () => {
   // SAFETY: mutation check: withInterviewChanges also marked the competency's other links 'corroborated' -> this test failed (the CV claim was cited as proven)
-  it('the interview counts as its own Candidate-submitted source and corroborates nothing else', () => {
+  it('the interview counts as its own source, scored like submitted work, and corroborates nothing else', () => {
     const { after, changes } = preview('c-retrieval', 'strongly_shown');
     const links = withInterviewChanges(
       LINKS,
@@ -83,50 +110,88 @@ describe("Scenario: The interviewer's word is not verification", () => {
     expect(links.at(-1)).toEqual({
       itemId: INTERVIEW,
       competencyId: 'c-retrieval',
-      level: 4,
+      level: 3,
       strength: 'strong',
       provenance: 'submitted',
     });
     expect(links.filter((l) => l.provenance === 'corroborated').map((l) => l.itemId)).toEqual(['i-repo']);
     // The CV claim is still a claim beside it: cited as a claim, never as proven.
     expect(after.competencies[1]).toMatchObject({
-      proven: { level: 4, itemIds: [INTERVIEW] },
+      proven: { level: 3, itemIds: [INTERVIEW] },
       claimItemIds: ['i-cv'],
     });
   });
 
-  // SAFETY: mutation check: counts() let a claim-strength link count -> this test failed (backed score 55, not 0)
+  // SAFETY: mutation check: removed the `corroborated` exclusion from the items a not_shown weakens -> this test failed (backed score 55 to 0)
+  it('not_shown never weakens work a second source checked, alone or beside submitted work at the same level', () => {
+    const alone = preview('c-python', 'not_shown');
+    expect(alone.changes).toEqual([]);
+    expect(alone.after.backedScore).toBe(55);
+
+    const beside: EvidenceLink = { ...DOC, itemId: 'i-writeup', competencyId: 'c-python', level: 5 };
+    const { after, changes } = preview('c-python', 'not_shown', [...LINKS, beside]);
+    // The corroborated repository still proves level 5 at Strong, so the rating moves nothing and nothing is stored.
+    expect(changes).toEqual([]);
+    expect(after.competencies[0]?.proven).toEqual({ level: 5, itemIds: ['i-repo', 'i-writeup'] });
+    expect(after.backedScore).toBe(55);
+  });
+
+  // SAFETY: mutation check: level was `claimedLevel || levelNeeded` again -> this test failed (proven 2, 3 and 5 for one rating)
+  it('the same rating backs the same level whatever the candidate claimed', () => {
+    const proven = [[REPO], [REPO, cvClaim(2)], [REPO, cvClaim(5)]].map(
+      (links) => preview('c-retrieval', 'clearly_shown', links).after.competencies[1]?.proven.level,
+    );
+    expect(proven).toEqual([3, 3, 3]);
+  });
+
+  // SAFETY: mutation check: counts() let a claim-strength link count -> this test failed (backed score 70, not 55)
   it('a claim with nothing to inspect still counts zero after an interview weakened it', () => {
-    const weakened = preview('c-python', 'not_shown').after;
-    expect(weakened.competencies[0]?.proven).toEqual({ level: 0, itemIds: [] });
-    expect(weakened.backedScore).toBe(0);
+    const weakened = preview('c-cost', 'not_shown', [...LINKS, DOC]).after;
+    expect(weakened.competencies[2]?.proven).toEqual({ level: 0, itemIds: [] });
+    expect(weakened.backedScore).toBe(55);
   });
 });
 
 describe('Stored changes stand in later assessments', () => {
-  const weakened = preview('c-python', 'not_shown').changes.map((c) => c.change);
+  const withDoc = [...LINKS, DOC];
+  const weakened = preview('c-cost', 'not_shown', withDoc).changes.map((c) => c.change);
 
   it('evidence added after the interview is not weakened by it', () => {
-    const later: EvidenceLink[] = [
-      ...LINKS,
-      { itemId: 'i-new', competencyId: 'c-python', level: 4, strength: 'medium', provenance: 'submitted' },
-    ];
-    expect(assess(RUBRIC, withInterviewChanges(later, weakened)).competencies[0]?.proven).toEqual({
-      level: 4,
+    const later: EvidenceLink[] = [...withDoc, { ...DOC, itemId: 'i-new', level: 2 }];
+    expect(assess(RUBRIC, withInterviewChanges(later, weakened)).competencies[2]?.proven).toEqual({
+      level: 2,
       itemIds: ['i-new'],
     });
   });
 
-  it('the latest change to a competency stands', () => {
-    const { after, changes } = previewRatings(
-      RUBRIC,
-      LINKS,
-      weakened,
-      [{ competencyId: 'c-python', rating: 'clearly_shown' }],
-      'interview-2',
-    );
-    expect(changes[0]?.from).toEqual({ strength: 'claim', provenLevel: 0 });
-    expect(after.competencies[0]?.proven).toEqual({ level: 5, itemIds: ['i-repo', 'interview-2'] });
+  // SAFETY: mutation check: withInterviewChanges kept only the latest change per competency -> this test failed (interview-1's link was gone)
+  it("a later interview never removes another interview's shown link, whatever it rates", () => {
+    const strongly = preview('c-retrieval', 'strongly_shown').changes.map((c) => c.change);
+    for (const rating of ['clearly_shown', 'not_shown'] as const) {
+      const { after, changes } = preview('c-retrieval', rating, LINKS, strongly, 'interview-2');
+      expect(changes).toEqual([]);
+      expect(after.competencies[1]?.proven).toEqual({ level: 3, itemIds: [INTERVIEW] });
+    }
+    const second: InterviewChange = {
+      ...(strongly[0] as InterviewChange),
+      sourceId: 'interview-2',
+      strength: 'medium',
+    };
+    expect(
+      withInterviewChanges(LINKS, [...strongly, second])
+        .filter((l) => l.competencyId === 'c-retrieval')
+        .map((l) => [l.itemId, l.strength]),
+    ).toEqual([
+      ['i-cv', 'supporting'],
+      [INTERVIEW, 'strong'],
+      ['interview-2', 'medium'],
+    ]);
+  });
+
+  it('the same interview rated again replaces its own earlier change', () => {
+    const strongly = preview('c-retrieval', 'strongly_shown').changes.map((c) => c.change);
+    const { changes } = preview('c-retrieval', 'clearly_shown', LINKS, strongly);
+    expect(changes.map((c) => [c.from.strength, c.to.strength])).toEqual([['strong', 'medium']]);
   });
 
   it('is deterministic: the same input gives the same result', () => {

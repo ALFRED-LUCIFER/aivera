@@ -28,7 +28,12 @@ export type EvidenceLink = {
   provenance: Provenance;
 };
 
-/** A proven level above 0 always cites at least one item: the type makes an uncited level impossible. */
+/**
+ * A proven level above 0 always cites at least one item: the type makes an uncited level impossible. An id is an
+ * evidence item's or, after an interview-based change (AIV-P1-117), an interview's (`assessment.interview_change.source_id`).
+ */
+// shortcut: nothing reads the stored changes yet, so a screen cannot tell an interview id from an item id or show the
+// change's limit ("the interviewer's word, not inspected work"); #120 adds that read with the profile's score history.
 export type Proven = { level: 0; itemIds: [] } | { level: Exclude<Level, 0>; itemIds: [string, ...string[]] };
 
 export type CompetencyResult = {

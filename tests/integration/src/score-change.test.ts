@@ -3,30 +3,36 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { ScoreChangeError, type AssessmentContract, type RubricInput } from '@credalent/assessment';
+import { ScoreChangeError, type AssessmentContract, type Rating, type RubricInput } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
+import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { EvidenceContract, RecordEvidenceInput } from '@credalent/evidence';
 import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
+import type { IntakeContract } from '@credalent/intake';
+import { createApplicationReads, createCandidateJobResolver, createIntake } from '@credalent/intake/composition';
+import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { receiveConfirmed } from './confirmedBatch.ts';
 
-// AIV-P1-117 against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005). Synthetic cast only.
-// The numbers follow the scoring formula, not the scorecard artboard's illustrative ones (owner decision, 20 Nov 2026).
+// AIV-P1-117 against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005), with real jobs and
+// applications so the job scope is the stored one. Synthetic cast only. The numbers follow the scoring formula, not the
+// scorecard artboard's illustrative ones (owner decision, 20 Nov 2026).
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');
 
 const id = (n: number) => `0190d4a2-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const AYESHA = id(0xa1); // the recruiter who creates the workspace (its admin)
-const LINA = id(0xa2); // an interviewer with no grant on the job
+const LINA = id(0xa2); // an interviewer granted the Senior AI Engineer job
+const NOOR = id(0xa3); // an interviewer granted only the Senior Product Designer job
 const NOW = new Date('2026-11-24T09:00:00.000Z');
-const JOB = id(0xb01);
 const [PYTHON, RETRIEVAL, COST] = [id(0xc01), id(0xc02), id(0xc03)] as const;
 const RUBRIC: RubricInput = {
   versionId: id(0xb02),
@@ -41,13 +47,17 @@ let container: StartedPostgreSqlContainer;
 let admin: Db;
 let app: Db;
 let workspaces: WorkspacesContract;
+let jobs: JobsContract;
+let intake: IntakeContract;
 let audit: AuditContract;
 let evidence: EvidenceContract;
 let assessment: AssessmentContract;
 let w1: string;
 let w2: string;
-// The interviews contract's `getInterview`, stubbed: interview id to its candidate and job.
-const interviews = new Map<string, { candidateId: string; jobId: string }>();
+let sae: string; // Senior AI Engineer
+// The interviews contract's `getInterview`, stubbed: what an interview id resolves to for anyone who may see it.
+type Interview = { candidateId: string; jobId: string; competencyIds: string[]; status: string };
+const interviews = new Map<string, Interview>();
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -79,53 +89,83 @@ const item = (
       strength: kind === 'cv' ? 'supporting' : 'strong',
       limit:
         kind === 'cv' ? 'A claim until a second source supports it.' : 'Shows the code, not its use in production.',
-      competencies: [{ jobId: JOB, competencyId, level }],
+      competencies: [{ jobId: sae, competencyId, level }],
     },
   ],
   synthetic: true,
 });
 
-const assess = (workspaceId: string, candidateId: string, rubric = RUBRIC) =>
-  as(AYESHA, workspaceId, async (ctx) =>
+const assess = (candidateId: string, rubric = RUBRIC) =>
+  as(AYESHA, w1, async (ctx) =>
     assessment.assessCandidate(ctx, {
       candidateId,
-      jobId: JOB,
+      jobId: sae,
       rubric,
-      evidence: await evidence.listEvidenceForCandidate(ctx, candidateId, JOB),
+      evidence: await evidence.listEvidenceForCandidate(ctx, candidateId, sae),
     }),
   );
 
 let next = 0x1000;
-/** A fresh Daniel Novak (synthetic): backed score 55, "Retrieval and evaluation" Supporting on a CV claim, one interview. */
-const daniel = async (workspaceId = w1) => {
-  const candidateId = id(next++);
-  const interviewId = id(next++);
-  interviews.set(interviewId, { candidateId, jobId: JOB });
-  await as(AYESHA, workspaceId, async (ctx) => {
+/**
+ * A fresh Daniel Novak (synthetic) applying to Senior AI Engineer: backed score 55, "Retrieval and evaluation"
+ * Supporting on a CV claim, and one interview in progress that investigates retrieval and cost.
+ */
+const daniel = async (interview: Partial<Interview> = {}) => {
+  const n = next++;
+  const { personId: candidateId } = await as(AYESHA, w1, (ctx) =>
+    receiveConfirmed(intake, ctx, {
+      jobId: sae,
+      person: {
+        displayName: 'Daniel Novak',
+        identifiers: [{ type: 'cv_hash', value: n.toString(16).padStart(64, '0') }],
+        synthetic: true,
+      },
+      source: 'linkedin',
+      fileIds: [crypto.randomUUID()],
+    }),
+  );
+  const interviewId = id(n);
+  interviews.set(interviewId, {
+    candidateId,
+    jobId: sae,
+    competencyIds: [RETRIEVAL, COST],
+    status: 'in_progress',
+    ...interview,
+  });
+  await as(AYESHA, w1, async (ctx) => {
     await evidence.recordEvidence(ctx, item(candidateId, PYTHON, 5, 'repository'));
     await evidence.recordEvidence(ctx, item(candidateId, RETRIEVAL, 4, 'cv'));
   });
-  const snapshot = await assess(workspaceId, candidateId);
+  const snapshot = await assess(candidateId);
   expect(snapshot.backedScore).toBe(55);
   return { candidateId, interviewId, snapshot };
 };
+type Daniel = { interviewId: string; snapshot: { id: string } };
 
-const clearly = (d: { interviewId: string; snapshot: { id: string } }) => ({
+const ratings = (d: Daniel, changes: [string, Rating][] = [[RETRIEVAL, 'clearly_shown']]) => ({
   assessmentId: d.snapshot.id,
   interviewId: d.interviewId,
-  changes: [{ competencyId: RETRIEVAL, rating: 'clearly_shown' as const }],
+  changes: changes.map(([competencyId, rating]) => ({ competencyId, rating })),
 });
 
-const preview = (d: Parameters<typeof clearly>[0], userId = AYESHA, workspaceId = w1) =>
-  as(userId, workspaceId, (ctx) => assessment.previewScoreChange(ctx, clearly(d)));
+const preview = (
+  d: Daniel,
+  { userId = AYESHA, workspaceId = w1, changes = undefined as [string, Rating][] | undefined } = {},
+) => as(userId, workspaceId, (ctx) => assessment.previewScoreChange(ctx, ratings(d, changes)));
 
 const apply = (
-  d: Parameters<typeof clearly>[0],
+  d: Daniel,
   previewId: string,
-  { key = crypto.randomUUID(), userId = AYESHA, workspaceId = w1, reason = 'Defended the design in detail' } = {},
+  {
+    key = crypto.randomUUID(),
+    userId = AYESHA,
+    workspaceId = w1,
+    reason = 'Defended the design in detail',
+    changes = undefined as [string, Rating][] | undefined,
+  } = {},
 ) =>
   as(userId, workspaceId, (ctx) =>
-    assessment.applyScoreChange(ctx, { ...clearly(d), previewId, reason, idempotencyKey: key }),
+    assessment.applyScoreChange(ctx, { ...ratings(d, changes), previewId, reason, idempotencyKey: key }),
   );
 
 /** Everything a score change may write, counted for one candidate. */
@@ -136,7 +176,7 @@ const written = async (candidateId: string, workspaceId = w1) => {
              (select count(*)::int from assessment.interview_change where candidate_id = ${candidateId}) as changes`),
   );
   const entries = await audit.listFor(workspaceId, { type: 'candidate', id: candidateId });
-  return { ...rows, audited: entries.length };
+  return { ...rows, audited: entries.filter((e) => e.action === 'score.changed').length };
 };
 
 beforeAll(async () => {
@@ -149,14 +189,18 @@ beforeAll(async () => {
   app = createDb(urlFor('aivera_app'), { max: 1 });
   audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
-  evidence = createEvidence(workspaces, audit, () => NOW);
+  jobs = createJobs(workspaces, audit, () => NOW);
+  // The app's resolver (apps/web/src/server/assessment.ts): a job-named call is authorised against the stored application.
+  const applied = createCandidateJobResolver(jobs);
+  intake = createIntake(workspaces, createCandidates(workspaces), jobs, displayNamesInWorkspace, audit, () => NOW);
+  evidence = createEvidence(workspaces, audit, () => NOW, applied);
   assessment = createAssessment(
     workspaces,
     audit,
-    createJobs(workspaces, audit, () => NOW),
+    jobs,
     () => NOW,
-    undefined,
-    undefined,
+    applied,
+    createApplicationReads().candidatesForJob,
     undefined,
     {
       evidenceForJob: readEvidenceForJobAsSystem,
@@ -167,13 +211,31 @@ beforeAll(async () => {
     workspaces
       .createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId: AYESHA })
       .then((w) => w.id);
+  const job = (title: string) =>
+    as(AYESHA, w1, (ctx) =>
+      jobs.createJob(ctx, {
+        title,
+        jobType: 'ai_llm_engineering',
+        hiringOwnerUserId: null,
+        description: `${title}, synthetic demo job.`,
+        synthetic: true,
+      }),
+    ).then((j) => j.id);
   w1 = await workspace('Demo hiring team');
   w2 = await workspace('Gulf Talent Partners');
-  await withWorkspace(app, w1, (tx) =>
-    tx.execute(
-      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${LINA}, 'interviewer', 'active')`,
-    ),
-  );
+  sae = await job('Senior AI Engineer');
+  const spd = await job('Senior Product Designer');
+  for (const [userId, jobId] of [
+    [LINA, sae],
+    [NOOR, spd],
+  ] as const) {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${userId}, 'interviewer', 'active')`,
+      ),
+    );
+    await as(AYESHA, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId, jobId }));
+  }
 });
 
 afterAll(async () => {
@@ -190,18 +252,18 @@ describe('Scenario: Preview changes nothing', () => {
     expect(shown).toMatchObject({
       assessmentId: d.snapshot.id,
       label: 'interviewer_word',
-      backedScore: { from: 55, to: 71 },
+      backedScore: { from: 55, to: 67 },
       changes: [
         {
           competencyId: RETRIEVAL,
           rating: 'clearly_shown',
           from: { strength: 'supporting', provenLevel: 0 },
-          to: { strength: 'medium', provenLevel: 4 },
+          to: { strength: 'medium', provenLevel: 3 },
         },
       ],
     });
     expect(await written(d.candidateId)).toEqual(before);
-    expect((await as(AYESHA, w1, (ctx) => assessment.getLatestAssessment(ctx, d.candidateId, JOB)))?.id).toBe(
+    expect((await as(AYESHA, w1, (ctx) => assessment.getLatestAssessment(ctx, d.candidateId, sae)))?.id).toBe(
       d.snapshot.id,
     );
   });
@@ -213,17 +275,18 @@ describe('Scenario: Apply with a reason', () => {
     const d = await daniel();
     const stored = await apply(d, (await preview(d)).previewId);
     expect(stored.id).not.toBe(d.snapshot.id);
-    expect([stored.backedScore, stored.assessedAt]).toEqual([71, NOW]);
+    expect([stored.backedScore, stored.assessedAt]).toEqual([67, NOW]);
     expect(stored.competencies.find((c) => c.competencyId === RETRIEVAL)?.proven).toEqual({
-      level: 4,
+      level: 3,
       itemIds: [d.interviewId],
     });
-    expect(await as(AYESHA, w1, (ctx) => assessment.getLatestAssessment(ctx, d.candidateId, JOB))).toEqual(stored);
+    expect(await as(AYESHA, w1, (ctx) => assessment.getLatestAssessment(ctx, d.candidateId, sae))).toEqual(stored);
 
-    const entries = await audit.listFor(w1, { type: 'candidate', id: d.candidateId });
+    const entries = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).filter(
+      (e) => e.action === 'score.changed',
+    );
     expect(entries).toHaveLength(2); // the first assessment, then the one changed competency
     expect(entries[1]).toMatchObject({
-      action: 'score.changed',
       actor: { type: 'user', id: AYESHA },
       note: 'Defended the design in detail',
       before: {
@@ -237,8 +300,8 @@ describe('Scenario: Apply with a reason', () => {
         resultId: stored.id,
         competencyId: RETRIEVAL,
         strength: 'medium',
-        provenLevel: 4,
-        backedScore: 71,
+        provenLevel: 3,
+        backedScore: 67,
         rating: 'clearly_shown',
         interviewId: d.interviewId,
       },
@@ -246,24 +309,63 @@ describe('Scenario: Apply with a reason', () => {
     expect(entries[1]?.occurredAt).toBeInstanceOf(Date);
   });
 
-  it('a later assessment from the same evidence keeps the change, and stores nothing new', async () => {
+  // SAFETY: mutation check: audited only the first changed competency -> this test failed (one entry, not two)
+  it('two competencies changed in one apply give one snapshot and two audit entries, each with its own competency, before and after', async () => {
+    const d = await daniel();
+    const changes: [string, Rating][] = [
+      [RETRIEVAL, 'clearly_shown'],
+      [COST, 'strongly_shown'],
+    ];
+    const before = await written(d.candidateId);
+    const stored = await apply(d, (await preview(d, { changes })).previewId, { changes });
+    expect(stored.backedScore).toBe(82);
+    expect(await written(d.candidateId)).toEqual({
+      results: (before.results ?? 0) + 1,
+      changes: 2,
+      audited: before.audited + 2,
+    });
+    const entries = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).slice(-2);
+    expect(entries.map((e) => [e.note, e.before, e.after])).toEqual([
+      [
+        'Defended the design in detail',
+        { resultId: d.snapshot.id, competencyId: RETRIEVAL, strength: 'supporting', provenLevel: 0, backedScore: 55 },
+        {
+          resultId: stored.id,
+          competencyId: RETRIEVAL,
+          strength: 'medium',
+          provenLevel: 3,
+          backedScore: 82,
+          rating: 'clearly_shown',
+          interviewId: d.interviewId,
+        },
+      ],
+      [
+        'Defended the design in detail',
+        { resultId: d.snapshot.id, competencyId: COST, strength: null, provenLevel: 0, backedScore: 55 },
+        {
+          resultId: stored.id,
+          competencyId: COST,
+          strength: 'strong',
+          provenLevel: 3,
+          backedScore: 82,
+          rating: 'strongly_shown',
+          interviewId: d.interviewId,
+        },
+      ],
+    ]);
+  });
+
+  it('a later assessment from the same evidence on the same rubric version keeps the change, and stores nothing new', async () => {
     const d = await daniel();
     const stored = await apply(d, (await preview(d)).previewId);
-    expect((await assess(w1, d.candidateId)).id).toBe(stored.id);
+    expect((await assess(d.candidateId)).id).toBe(stored.id);
   });
 
   it('a rating that changes nothing stores and audits nothing', async () => {
     const d = await daniel();
-    const input = { ...clearly(d), changes: [{ competencyId: RETRIEVAL, rating: 'partly_shown' as const }] };
+    const changes: [string, Rating][] = [[RETRIEVAL, 'partly_shown']];
     const before = await written(d.candidateId);
-    const same = await as(AYESHA, w1, async (ctx) =>
-      assessment.applyScoreChange(ctx, {
-        ...input,
-        previewId: (await assessment.previewScoreChange(ctx, input)).previewId,
-        reason: 'Answered in outline only',
-        idempotencyKey: crypto.randomUUID(),
-      }),
-    );
+    const same = await apply(d, (await preview(d, { changes })).previewId, { changes });
     expect(same.id).toBe(d.snapshot.id);
     expect(await written(d.candidateId)).toEqual(before);
   });
@@ -278,15 +380,28 @@ describe('Scenario: Apply with a reason', () => {
     await expect(apply({ ...d, interviewId: other.interviewId }, previewId)).rejects.toMatchObject({
       code: 'source_not_found',
     });
-    await expect(
-      as(AYESHA, w1, (ctx) =>
-        assessment.previewScoreChange(ctx, {
-          ...clearly(d),
-          changes: [{ competencyId: id(0xdead), rating: 'clearly_shown' }],
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'competency_not_in_rubric' });
+    interviews.get(d.interviewId)?.competencyIds.push(id(0xdead));
+    await expect(preview(d, { changes: [[id(0xdead), 'clearly_shown']] })).rejects.toMatchObject({
+      code: 'competency_not_in_rubric',
+    });
     expect(await written(d.candidateId)).toEqual(before);
+  });
+
+  // SAFETY: mutation check: removed the competencyIds check from prepare -> this test failed (a competency the interview never investigated was changed)
+  it('refuses a rating for a competency the interview does not investigate', async () => {
+    const d = await daniel({ competencyIds: [RETRIEVAL] });
+    const changes: [string, Rating][] = [[COST, 'strongly_shown']];
+    await expect(preview(d, { changes })).rejects.toMatchObject({ code: 'competency_not_in_interview' });
+    await expect(apply(d, 'any', { changes })).rejects.toMatchObject({ code: 'competency_not_in_interview' });
+    expect((await written(d.candidateId)).changes).toBe(0);
+  });
+
+  // SAFETY: mutation check: removed the HELD check from prepare -> this test failed (a cancelled interview changed the score)
+  it.each(['scheduled', 'cancelled'])('refuses an interview that was not held: %s', async (status) => {
+    const d = await daniel({ status });
+    await expect(preview(d)).rejects.toMatchObject({ code: 'interview_not_held' });
+    await expect(apply(d, 'any')).rejects.toMatchObject({ code: 'interview_not_held' });
+    expect((await written(d.candidateId)).changes).toBe(0);
   });
 });
 
@@ -295,8 +410,11 @@ describe('Scenario: A stale preview is refused', () => {
   it('applies nothing once the assessment changed after the preview, and asks to preview again', async () => {
     const d = await daniel();
     const { previewId } = await preview(d);
-    // The same evidence scored again on a newly approved rubric version: a new latest snapshot.
-    const changed = await assess(w1, d.candidateId, { ...RUBRIC, versionId: id(0xb03) });
+    // Scored again on a newly approved rubric version, whose competencies have new ids as in production: a new latest snapshot.
+    const changed = await assess(d.candidateId, {
+      versionId: id(0xb03),
+      competencies: RUBRIC.competencies.map((c, i) => ({ ...c, id: id(0xd01 + i) })),
+    });
     expect(changed.id).not.toBe(d.snapshot.id);
     const before = await written(d.candidateId);
     const refusal = await apply(d, previewId).catch((error: unknown) => error);
@@ -310,17 +428,9 @@ describe('Scenario: A stale preview is refused', () => {
     const d = await daniel();
     const { previewId } = await preview(d);
     const before = await written(d.candidateId);
-    const strongly = { ...clearly(d), changes: [{ competencyId: RETRIEVAL, rating: 'strongly_shown' as const }] };
-    await expect(
-      as(AYESHA, w1, (ctx) =>
-        assessment.applyScoreChange(ctx, {
-          ...strongly,
-          previewId,
-          reason: 'Defended the design in detail',
-          idempotencyKey: crypto.randomUUID(),
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'stale' });
+    await expect(apply(d, previewId, { changes: [[RETRIEVAL, 'strongly_shown']] })).rejects.toMatchObject({
+      code: 'stale',
+    });
     expect(await written(d.candidateId)).toEqual(before);
   });
 
@@ -328,12 +438,12 @@ describe('Scenario: A stale preview is refused', () => {
   it('refuses evidence the worker has not scored yet, so no unaudited change rides along', async () => {
     const d = await daniel();
     await as(AYESHA, w1, (ctx) => evidence.recordEvidence(ctx, item(d.candidateId, COST, 3, 'repository')));
-    await expect(preview(d)).rejects.toMatchObject({ code: 'stale' });
+    await expect(preview(d)).rejects.toMatchObject({ code: 'not_yet_scored' });
   });
 });
 
 describe('Scenario: Applying twice is safe', () => {
-  // SAFETY: mutation check: removed the appliedResult lookup from applyScoreChange -> this test failed (the retry was refused as stale)
+  // SAFETY: mutation check: removed the idempotency lookup from applyScoreChange -> this test failed (the retry was refused as stale)
   it('the same apply sent twice with one idempotency key leaves one snapshot and one set of audit entries', async () => {
     const d = await daniel();
     const { previewId } = await preview(d);
@@ -349,6 +459,22 @@ describe('Scenario: Applying twice is safe', () => {
     });
   });
 
+  // SAFETY: mutation check: removed the previewId and reason comparison on an idempotency hit -> this test failed (the first result was returned for a different change)
+  it('the same key with another reason or other ratings is a conflict, and writes nothing', async () => {
+    const d = await daniel();
+    const { previewId } = await preview(d);
+    const key = crypto.randomUUID();
+    await apply(d, previewId, { key });
+    const before = await written(d.candidateId);
+    await expect(apply(d, previewId, { key, reason: 'Another reason' })).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+    });
+    await expect(apply(d, 'another-preview', { key, changes: [[RETRIEVAL, 'strongly_shown']] })).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+    });
+    expect(await written(d.candidateId)).toEqual(before);
+  });
+
   // SAFETY: mutation check: dropped the unique index interview_change_idempotency_idx -> this test failed (a second row was stored)
   it('the database refuses a second change of one competency under one idempotency key, and any rewrite', async () => {
     const d = await daniel();
@@ -358,7 +484,7 @@ describe('Scenario: Applying twice is safe', () => {
         tx.execute(sql`
           insert into assessment.interview_change
           select ${crypto.randomUUID()}::uuid, workspace_id, candidate_id, job_id, result_id, competency_id, source_id,
-                 strength, level, item_ids, reason, applied_by, applied_at, idempotency_key
+                 strength, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id
           from assessment.interview_change where candidate_id = ${d.candidateId}`),
       ),
     ).rejects.toThrow();
@@ -375,7 +501,7 @@ describe("Scenario: The interviewer's word is not verification", () => {
     expect(shown.label).toBe('interviewer_word');
     const stored = await apply(d, shown.previewId);
     const retrieval = stored.competencies.find((c) => c.competencyId === RETRIEVAL);
-    const [cv] = (await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, JOB))).filter(
+    const [cv] = (await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, sae))).filter(
       (i) => i.source.kind === 'cv',
     );
     // The CV claim is not corroborated by the interview: still cited as a claim, and still a claim in the evidence.
@@ -383,15 +509,22 @@ describe("Scenario: The interviewer's word is not verification", () => {
     expect(retrieval?.claimItemIds).toEqual([cv?.id]);
     expect(cv?.provenance).toBe('claim');
     const [row] = await withWorkspace(app, w1, (tx) =>
-      tx.execute(sql`select source_id, strength, applied_by, reason from assessment.interview_change
+      tx.execute(sql`select source_id, strength, level, applied_by, reason from assessment.interview_change
                      where candidate_id = ${d.candidateId}`),
     );
     expect(row).toEqual({
       source_id: d.interviewId,
       strength: 'medium',
+      level: 3,
       applied_by: AYESHA,
       reason: 'Defended the design in detail',
     });
+  });
+
+  it('Not shown leaves independently corroborated work as it is', async () => {
+    const d = await daniel({ competencyIds: [PYTHON] });
+    const shown = await preview(d, { changes: [[PYTHON, 'not_shown']] });
+    expect(shown).toMatchObject({ backedScore: { from: 55, to: 55 }, changes: [] });
   });
 });
 
@@ -402,7 +535,7 @@ describe('Scenario: Another workspace', () => {
     const d = await daniel();
     const { previewId } = await preview(d);
     const before = await written(d.candidateId);
-    await expect(preview(d, AYESHA, w2)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(preview(d, { workspaceId: w2 })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(apply(d, previewId, { workspaceId: w2 })).rejects.toBeInstanceOf(ForbiddenError);
     expect(await written(d.candidateId)).toEqual(before);
     expect(await written(d.candidateId, w2)).toEqual({ results: 0, changes: 0, audited: 0 });
@@ -424,7 +557,7 @@ describe('Scenario: Another workspace', () => {
         tx.execute(sql`
           insert into assessment.interview_change
           select ${crypto.randomUUID()}::uuid, ${w2}::uuid, candidate_id, job_id, result_id, competency_id, source_id,
-                 strength, level, item_ids, reason, applied_by, applied_at, ${crypto.randomUUID()}::uuid
+                 strength, level, item_ids, reason, applied_by, applied_at, ${crypto.randomUUID()}::uuid, preview_id
           from assessment.interview_change limit 1`),
       ),
     ).rejects.toThrow();
@@ -432,13 +565,25 @@ describe('Scenario: Another workspace', () => {
 });
 
 describe('Who may preview and apply', () => {
-  // SAFETY: mutation check: removed the authorize call from scoreChange.ts `authorised` -> this test failed (the interviewer previewed and applied)
-  it('an interviewer with no grant on the job can neither preview nor apply', async () => {
+  // SAFETY: mutation check: granted LINA the other job instead -> this test failed (ForbiddenError)
+  it('an interviewer granted the job previews and applies, and the audit entry names her', async () => {
+    const d = await daniel();
+    const shown = await preview(d, { userId: LINA });
+    const stored = await apply(d, shown.previewId, { userId: LINA });
+    expect(stored.backedScore).toBe(67);
+    const entries = await audit.listFor(w1, { type: 'candidate', id: d.candidateId });
+    expect(entries.at(-1)).toMatchObject({ action: 'score.changed', actor: { type: 'user', id: LINA } });
+  });
+
+  // SAFETY: mutation check: removed the authorize call from scoreChange.ts `authorised` -> this test failed (she previewed and applied).
+  // grantsCover covering any job (modules/workspaces/src/domain/permissions.ts) -> still passed: the jobs module hides the
+  // job from her, so no job is named and a job-scoped role with no job is refused (the second layer).
+  it('an interviewer granted only another job can neither preview nor apply', async () => {
     const d = await daniel();
     const { previewId } = await preview(d);
     const before = await written(d.candidateId);
-    await expect(preview(d, LINA)).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(apply(d, previewId, { userId: LINA })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(preview(d, { userId: NOOR })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(apply(d, previewId, { userId: NOOR })).rejects.toBeInstanceOf(ForbiddenError);
     expect(await written(d.candidateId)).toEqual(before);
   });
 

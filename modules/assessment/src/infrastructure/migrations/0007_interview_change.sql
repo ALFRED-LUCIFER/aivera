@@ -13,6 +13,7 @@ CREATE TABLE "assessment"."interview_change" (
 	"applied_by" uuid NOT NULL,
 	"applied_at" timestamp with time zone NOT NULL,
 	"idempotency_key" uuid NOT NULL,
+	"preview_id" text NOT NULL,
 	CONSTRAINT "interview_change_strength_check" CHECK ("assessment"."interview_change"."strength" in ('claim', 'medium', 'strong')),
 	CONSTRAINT "interview_change_level_check" CHECK ("assessment"."interview_change"."level" between 0 and 5),
 	CONSTRAINT "interview_change_reason_check" CHECK (length(trim("assessment"."interview_change"."reason")) > 0)

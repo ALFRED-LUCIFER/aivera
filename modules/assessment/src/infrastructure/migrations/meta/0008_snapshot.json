@@ -1,6 +1,6 @@
 {
-  "id": "6e9c3df3-f65f-4ccb-a4c0-e99a79ef618c",
-  "prevId": "53661d74-821e-4900-b3e1-d538efab423e",
+  "id": "bbac5574-e469-4362-b103-bfa0d1b18f43",
+  "prevId": "de8fa095-6927-4690-8127-340c375b8fd8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -222,6 +222,12 @@
         "idempotency_key": {
           "name": "idempotency_key",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "preview_id": {
+          "name": "preview_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         }

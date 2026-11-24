@@ -12,6 +12,10 @@ const MESSAGES = {
   stale: 'The assessment changed since this preview. Preview the change again.',
   competency_not_in_rubric: "This competency is not in the assessment's rubric version",
   source_not_found: 'Interview not found',
+  interview_not_held: 'This interview has not been held',
+  competency_not_in_interview: 'This competency is not one the interview investigates',
+  not_yet_scored: 'New evidence is still being scored. Try again shortly.',
+  idempotency_conflict: 'This idempotency key was used for a different change',
 } as const;
 
 export type ScoreChangeErrorCode = keyof typeof MESSAGES;
@@ -68,6 +72,7 @@ export type InterviewChangeRow = CompetencyChange['change'] & {
   /** The snapshot stored with the change. */
   resultId: string;
   idempotencyKey: string;
+  previewId: string;
   reason: string;
   appliedBy: string;
   appliedAt: Date;
@@ -79,11 +84,18 @@ export type ScoreChangePorts = Pick<
 > &
   Pick<WorkerPorts, 'evidenceForJob'> & {
     /**
-     * The interview's candidate and job as the context may see it, or null (the interviews contract's `getInterview`:
-     * an interviewer sees only their own).
+     * The interview as the context may see it, or null (the interviews contract's `getInterview`: an interviewer sees
+     * only their own): its candidate and job, the competencies it investigates and the status to show now.
      */
-    interviewOf(ctx: WorkspaceContext, interviewId: string): Promise<{ candidateId: string; jobId: string } | null>;
+    interviewOf(
+      ctx: WorkspaceContext,
+      interviewId: string,
+    ): Promise<{ candidateId: string; jobId: string; competencyIds: readonly string[]; status: string } | null>;
   };
+
+// shortcut: `to_schedule` counts as held, because the pilot records results without scheduling (owner decision, 24 Nov
+// 2026); only a future `scheduled` time and `cancelled` are refused. #118 narrows it when the scorecard starts interviews.
+const HELD: readonly string[] = ['to_schedule', 'in_progress', 'scorecard_due', 'completed'];
 
 export function scoreChangeUseCases(ports: ScoreChangePorts) {
   const { storeFor, authorize, candidateJob, evidenceForJob, interviewOf, auditScoreChange, newId, now } = ports;
@@ -101,6 +113,9 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
     const interview = await interviewOf(ctx, input.interviewId);
     if (interview?.candidateId !== candidateId || interview.jobId !== jobId)
       throw new ScoreChangeError('source_not_found');
+    if (!HELD.includes(interview.status)) throw new ScoreChangeError('interview_not_held');
+    if (input.changes.some((c) => !interview.competencyIds.includes(c.competencyId)))
+      throw new ScoreChangeError('competency_not_in_interview');
     const store = storeFor(ctx.tx);
     if ((await store.latest(ctx.workspaceId, candidateId, jobId))?.id !== snapshot.id)
       throw new ScoreChangeError('stale');
@@ -120,7 +135,7 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
     const stored = await store.interviewChanges(ctx.workspaceId, candidateId, jobId);
     const result = previewRatings(rubric, links, stored, input.changes, input.interviewId);
     // Evidence the worker has not scored yet would ride along unaudited: refused until its snapshot is stored.
-    if (!sameResult(result.before, pickAssessment(snapshot))) throw new ScoreChangeError('stale');
+    if (!sameResult(result.before, pickAssessment(snapshot))) throw new ScoreChangeError('not_yet_scored');
     const previewId = createHash('sha256')
       .update(canonical([snapshot.id, input.interviewId, input.changes, result.after, result.changes]))
       .digest('hex');
@@ -148,13 +163,12 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
       const store = storeFor(ctx.tx);
       await store.lock(ctx.workspaceId, snapshot.candidateId, snapshot.jobId);
       // A retry of an apply that committed: the snapshot stored then, and nothing written again.
-      const applied = await store.appliedResult(
-        ctx.workspaceId,
-        snapshot.candidateId,
-        snapshot.jobId,
-        input.idempotencyKey,
-      );
-      if (applied) return applied;
+      const applied = await store.applied(ctx.workspaceId, snapshot.candidateId, snapshot.jobId, input.idempotencyKey);
+      if (applied) {
+        if (applied.previewId !== input.previewId || applied.reason !== input.reason)
+          throw new ScoreChangeError('idempotency_conflict');
+        return applied.result;
+      }
       const { before, after, changes, previewId } = await prepare(ctx, snapshot, input);
       if (previewId !== input.previewId) throw new ScoreChangeError('stale');
       if (changes.length === 0) return snapshot;
@@ -176,6 +190,7 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
           jobId: row.jobId,
           resultId: row.id,
           idempotencyKey: input.idempotencyKey,
+          previewId,
           reason: input.reason,
           appliedBy: ctx.userId,
           appliedAt: row.assessedAt,

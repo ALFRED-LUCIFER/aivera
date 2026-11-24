@@ -449,10 +449,10 @@ async function seed(
     // An applied interview change on that result (assessment.interview_change, AIV-P1-117).
     await ctx.tx.execute(
       sql`insert into assessment.interview_change (id, workspace_id, candidate_id, job_id, result_id, competency_id,
-            source_id, strength, level, item_ids, reason, applied_by, applied_at, idempotency_key)
+            source_id, strength, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id)
           values (${crypto.randomUUID()}, ${ctx.workspaceId}, ${personId}, ${job.id}, ${scored.id}, ${competencyId},
             ${crypto.randomUUID()}, 'medium', 3, '[]'::jsonb, 'Defended the design in detail', ${ctx.userId},
-            ${NOW.toISOString()}, ${crypto.randomUUID()})`,
+            ${NOW.toISOString()}, ${crypto.randomUUID()}, 'preview')`,
     );
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
