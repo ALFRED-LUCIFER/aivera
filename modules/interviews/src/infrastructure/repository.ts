@@ -40,5 +40,8 @@ export function interviewStore(tx: Tx): InterviewStore {
         )
         .orderBy(sql`${interview.scheduledAt} asc nulls last`, asc(interview.createdAt), asc(interview.id));
     },
+    async deleteAll(workspaceId) {
+      await tx.delete(interview).where(eq(interview.workspaceId, workspaceId));
+    },
   };
 }

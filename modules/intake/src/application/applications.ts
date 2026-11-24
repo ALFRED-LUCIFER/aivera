@@ -38,6 +38,8 @@ export type IntakeStore = {
   ): Promise<{ applicationId: string; personId: string; stage: Stage; receivedAt: Date; source: Source }[]>;
   /** How many applications the job has, from every source. */
   countForJob(workspaceId: string, jobId: string): Promise<number>;
+  /** Deletes every application, source and batch of the workspace. */
+  deleteAll(workspaceId: string): Promise<void>;
 };
 
 export type Ports = {
@@ -56,6 +58,7 @@ export type Ports = {
   displayNames(tx: Tx, workspaceId: string, personIds: string[]): Promise<{ id: string; displayName: string }[]>;
   /** The job and its client, or null when the context cannot see it (the jobs contract's `getJob`, under RLS). */
   jobResource(ctx: WorkspaceContext, jobId: string): Promise<JobResource | null>;
+  isSyntheticWorkspace(ctx: WorkspaceContext): Promise<boolean>;
   newId(): string;
   now(): Date;
 };
@@ -105,6 +108,7 @@ export function applicationUseCases({
   findOrCreatePerson,
   displayNames,
   jobResource,
+  isSyntheticWorkspace,
   newId,
   now,
 }: Ports) {
@@ -225,6 +229,13 @@ export function applicationUseCases({
       await store.insertSource(source);
       await publishApplicationReceived(ctx.tx, source);
       return { sourceId: source.id };
+    },
+
+    /** The demo seed's reset (AIV-P2-001): admins; refuses unless the workspace is flagged synthetic. */
+    async purgeSyntheticApplications(ctx: WorkspaceContext): Promise<void> {
+      await authorize(ctx, 'workspace.settings');
+      if (!(await isSyntheticWorkspace(ctx))) throw new IntakeError('not_synthetic');
+      await storeFor(ctx.tx).deleteAll(ctx.workspaceId);
     },
   };
 }

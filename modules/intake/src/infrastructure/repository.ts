@@ -108,6 +108,12 @@ export function intakeStore(tx: Tx): IntakeStore {
         );
     },
 
+    async deleteAll(workspaceId) {
+      // Sources first: they reference both the application and the batch.
+      await tx.delete(applicationSource).where(eq(applicationSource.workspaceId, workspaceId));
+      await tx.delete(application).where(eq(application.workspaceId, workspaceId));
+      await tx.delete(importBatch).where(eq(importBatch.workspaceId, workspaceId));
+    },
     async countForJob(workspaceId, jobId) {
       // The inner join drops only an application a duplicate merge emptied (AIV-P1-018), which no longer counts.
       const [row] = await tx

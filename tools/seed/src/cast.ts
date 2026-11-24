@@ -1,8 +1,9 @@
 // The synthetic demo cast (docs/00-product/personas.md, AIV-P0-031). Every person here is invented: emails are on the
 // reserved example.com domain and phones are in Ofcom's drama range +44 7700 900000–900999, which never rings anyone.
-// Module tickets seed from this file: candidates, industry jobs and the design jobs now; applications, evidence,
-// interviews and packs when they land.
+// Module tickets seed from this file: candidates, industry jobs, the design jobs, evidence and the ongoing interviews
+// with their applications now; the other applications and packs when they land.
 import type { Provenance, SourceKind, Strength } from '@credalent/evidence';
+import type { Round } from '@credalent/interviews';
 import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@credalent/jobs';
 
 type Synthetic = { synthetic: true };
@@ -742,5 +743,72 @@ export const EVIDENCE: CastEvidence[] = [
         limit: 'A claim until a document or a reference supports it.',
       },
     ],
+  },
+];
+
+/**
+ * One ongoing interview of the Interviews artboard (AIV-P2-001); the candidate's application to the job is seeded with it.
+ * `day` counts from the day the seed runs and `time` is Gulf time (UTC+4), so the list reads as the artboard does on
+ * that day: "today", in two days, a scorecard two days overdue.
+ */
+export type CastInterview = {
+  candidate: string;
+  job: string;
+  round: Round;
+  /** `key` of the interviewer in `HIRING_OWNERS`; the recruiter ("You") when absent. */
+  interviewer?: string;
+  day: number;
+  time: string;
+  /** Started by the interviewer: "In progress". */
+  started?: true;
+  /** Names in the job's approved rubric. */
+  competencies: string[];
+};
+
+// Deviations from the artboard, whose payments rows name competencies the seeded rubric (personas.md) does not have:
+// Karim Nasser's "Payments domain" is left out, and Anjali Iyer's "Stakeholder communication" is the rubric's
+// "Working with engineering and design". Her "16 Nov" has no time on the artboard; 11:00 is synthetic.
+export const INTERVIEWS: CastInterview[] = [
+  {
+    candidate: 'Daniel Novak',
+    job: 'Senior AI Engineer',
+    round: 'structured_screen',
+    day: 0,
+    time: '14:00',
+    started: true,
+    competencies: ['Retrieval and evaluation', 'Cost and reliability'],
+  },
+  {
+    candidate: 'Priya Nair',
+    job: 'Senior AI Engineer',
+    round: 'structured_screen',
+    day: 2,
+    time: '10:30',
+    competencies: ['LLM systems in production'],
+  },
+  {
+    candidate: 'Rana Khoury',
+    job: 'Senior Product Manager, Payments',
+    round: 'structured_screen',
+    day: 2,
+    time: '15:00',
+    competencies: ['Outcomes with metrics'],
+  },
+  {
+    candidate: 'Karim Nasser',
+    job: 'Senior Product Manager, Payments',
+    round: 'evidence_defence',
+    interviewer: 'cpo.payments',
+    day: 3,
+    time: '11:00',
+    competencies: ['Prioritisation'],
+  },
+  {
+    candidate: 'Anjali Iyer',
+    job: 'Senior Product Manager, Payments',
+    round: 'structured_screen',
+    day: -2,
+    time: '11:00',
+    competencies: ['Working with engineering and design'],
   },
 ];

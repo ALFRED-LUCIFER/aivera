@@ -19,7 +19,7 @@ import { outbox } from './infrastructure/schema.ts';
 
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createIntake(
-  workspaces: Pick<WorkspacesContract, 'authorize'>,
+  workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace'>,
   candidates: Pick<CandidatesContract, 'findOrCreatePerson'>,
   jobs: Pick<JobsContract, 'getJob'>,
   /** The candidates composition's `displayNamesInWorkspace` (AIV-P1-086). */
@@ -52,6 +52,7 @@ export function createIntake(
       const job = await jobs.getJob(ctx, jobId);
       return job && { jobId: job.id, clientId: job.clientId };
     },
+    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),
     now,
   });

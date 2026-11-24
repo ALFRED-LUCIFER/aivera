@@ -15,7 +15,7 @@ import { outbox } from './infrastructure/schema.ts';
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one.
  */
 export function createInterviews(
-  workspaces: Pick<WorkspacesContract, 'authorize' | 'listMembers' | 'listJobGrants'>,
+  workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace' | 'listMembers' | 'listJobGrants'>,
   jobs: Pick<JobsContract, 'getJob'>,
   approvedRubric: ApprovedRubricReads['approvedRubric'],
   findApplication: Ports['findApplication'],
@@ -45,6 +45,7 @@ export function createInterviews(
       const grants = (await workspaces.listJobGrants(ctx)).filter((g) => g.userId === userId);
       return grantsCover(grants, job);
     },
+    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
     newId: () => uuidv7(),
     now,
   });
