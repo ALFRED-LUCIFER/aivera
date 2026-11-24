@@ -36,7 +36,10 @@ export const approvalRow = (page: Page, name: string) =>
  * makes the cast. Through the screens, the sign-up and the approval took half of a 30 s spec on a CI runner;
  * ops-approvals.spec.ts proves those screens. The creator lands in it on sign-in.
  */
-export async function approvedWorkspace(creatorEmail: string, name: string): Promise<void> {
+export async function approvedWorkspace(
+  creatorEmail: string,
+  name: string,
+): Promise<{ workspaceId: string; creatorUserId: string }> {
   const db = createDb(databaseUrl, { max: 1 });
   try {
     const identity = createIdentity(db, { trustedIssuer: 'e2e-seed' });
@@ -52,15 +55,17 @@ export async function approvedWorkspace(creatorEmail: string, name: string): Pro
           displayName: email.slice(0, email.indexOf('@')),
         })
       ).id;
+    const creatorUserId = await person(creatorEmail);
     const { id } = await workspaces.createWorkspace({
       name,
       company: name,
       hiringFocus: 'AI and LLM engineering',
       synthetic: true,
       needsApproval: true,
-      creatorUserId: await person(creatorEmail),
+      creatorUserId,
     });
     await workspaces.changeStatus({ operatorId: await person(PIA), workspaceId: id, change: 'approve', reason: '' });
+    return { workspaceId: id, creatorUserId };
   } finally {
     await db.$client.end();
   }
