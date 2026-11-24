@@ -17,8 +17,8 @@ export type UploadSource = (typeof SOURCE_OPTIONS)[number];
 export const addApplicantsSchema = z.strictObject({
   jobId: z.uuid(),
   source: z.enum(SOURCE_OPTIONS),
-  // One upload per CV; the same file twice would only add an empty second source. Up to 200 at a time, as "Bring in
-  // candidates" says (AIV-P1-101); the files module limits each file, not a batch.
+  // One upload per CV; the same file twice would only add an empty second source. Up to 200 per save (AIV-P1-101, the
+  // Import artboard's batch size); the files module limits each file, not a batch.
   // shortcut: every CV is filed in turn in one transaction (about ten queries each); queue the batch if 200 gets slow.
   fileIds: z
     .array(z.uuid())

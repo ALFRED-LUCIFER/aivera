@@ -15,5 +15,5 @@ export default async function ImportPage({ params }: PageProps<'/app/jobs/[jobId
   // No workspace, or not found or forbidden: the layout renders that instead.
   if (!loaded || 'missing' in loaded) return null;
   if (!loaded.canImport) return <ImportSources readOnly />;
-  return <ImportClient view={importView(await loadImportJobs(), loaded.header, loaded.applications.careersPage)} />;
+  return <ImportClient view={importView(await loadImportJobs(), loaded.header)} />;
 }

@@ -61,3 +61,5 @@ export type { LevelMeterProps } from './LevelMeter.tsx';
 // AIV-P0-016: the upload control of the Portal and CApply artboards
 export { FilePicker } from './FilePicker.tsx';
 export type { FilePickerProps } from './FilePicker.tsx';
+// AIV-P1-101: its upload arrow, for "Import candidates" and the "Upload CVs" card too
+export { UploadIcon } from './UploadIcon.tsx';

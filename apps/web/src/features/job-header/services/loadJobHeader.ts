@@ -20,16 +20,16 @@ export async function loadJobHeader(id: string) {
     // Composed here, not in jobs, which cannot import assessment; the same transaction (AIV-P1-099).
     const assessed = header ? ((await getAssessment().countAssessed(ctx, [id]))[id] ?? 0) : 0;
     // Intake's count, composed here for the same reason (AIV-P1-101): jobs never imports intake.
-    const applications = header ? await getIntake().countApplications(ctx, id) : { total: 0, careersPage: 0 };
+    const imported = header ? await getIntake().countApplications(ctx, id) : 0;
     // The picker is the admin's alone (`job.change_owner`); their members are read here, in the same transaction.
     const members =
       header && ctx.role === 'admin'
         ? (await getWorkspaces().listMembers(ctx)).filter((m) => m.status === 'active' && m.role === 'hiring_owner')
         : null;
-    return { header, assessed, applications, members, jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter' };
+    return { header, assessed, imported, members, jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter' };
   });
   if (!result) return null;
-  const { header, assessed, applications, members, jobScoped } = result.value;
+  const { header, assessed, imported, members, jobScoped } = result.value;
   if (!header) return { missing: jobScoped ? ('forbidden' as const) : ('notFound' as const) };
   const owner = header.job.hiringOwnerUserId && (await getIdentity().getUser(header.job.hiringOwnerUserId));
   // shortcut: one identity read per hiring-owner member, as the members screen does; batch it with identity.
@@ -45,7 +45,7 @@ export async function loadJobHeader(id: string) {
   return {
     header,
     assessed,
-    applications,
+    imported,
     ownerChange,
     hiringOwner: owner ? (owner.displayName ?? owner.email) : null,
     // Adding candidates is `candidate.create`: admins and recruiters; the action checks it again (AIV-P1-019).

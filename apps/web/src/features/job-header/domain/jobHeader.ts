@@ -38,9 +38,9 @@ export function jobHeaderView(
   { job, approved, latest }: JobHeader,
   hiringOwner: string | null,
   assessed: number,
-  ownerChange: OwnerChange | null = null,
+  ownerChange: OwnerChange | null,
   /** The job's applications from every source, intake's count (AIV-P1-101). */
-  imported = 0,
+  imported: number,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds

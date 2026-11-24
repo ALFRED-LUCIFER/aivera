@@ -1,6 +1,6 @@
 import type { JobHeader, RubricState } from '@credalent/jobs';
 
-// "Bring in candidates" (AIV-P1-101): the job picker and the footer, as plain data for the browser.
+// "Bring in candidates" (AIV-P1-101): the job picker, as plain data for the browser.
 
 /** A job the member may import into: only what the picker shows. */
 export type PickerJob = { id: string; title: string; rubric: RubricState };
@@ -10,22 +10,30 @@ export type PickerOption = {
   id: string;
   label:
     | { key: 'approvedVersion'; values: { title: string; version: number } }
-    | { key: 'approved' | 'waiting'; values: { title: string } };
+    | { key: 'approved' | 'waiting' | 'draft' | 'returned' | 'none'; values: { title: string } };
 };
 
 export type ImportView = {
   /** The job being imported into: the picker's value. */
   jobId: string;
   options: PickerOption[];
-  /** Applications from the published job listing so far; null while the job is not published. */
-  fromListing: number | null;
 };
 
+/** What a job's rubric is doing, in the picker's words: only a version sent for approval is "waiting". */
+const rubricKey = ({ approved, latest }: RubricState) =>
+  approved
+    ? 'approved'
+    : latest === 'awaiting_approval'
+      ? 'waiting'
+      : latest === 'draft' || latest === 'returned'
+        ? latest
+        : 'none';
+
 /**
- * The open job names its approved version, as the job header has it; the others say only whether a version is approved
- * (the Import artboard). Any rubric not approved is waiting: people are added now and assessed once it is.
+ * The open job names its approved version, as the job header has it; the others say only where their rubric stands (the
+ * Import artboard). People are added to any job now and assessed once its rubric is approved.
  */
-export function importView(jobs: PickerJob[], { job, approved }: JobHeader, careersPage: number): ImportView {
+export function importView(jobs: PickerJob[], { job, approved }: JobHeader): ImportView {
   return {
     jobId: job.id,
     options: jobs.map(({ id, title, rubric }) => ({
@@ -33,8 +41,7 @@ export function importView(jobs: PickerJob[], { job, approved }: JobHeader, care
       label:
         id === job.id && approved
           ? { key: 'approvedVersion', values: { title, version: approved.version } }
-          : { key: rubric.approved ? 'approved' : 'waiting', values: { title } },
+          : { key: rubricKey(rubric), values: { title } },
     })),
-    fromListing: job.published ? careersPage : null,
   };
 }

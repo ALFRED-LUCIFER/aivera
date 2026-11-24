@@ -1,5 +1,5 @@
 import { useTranslations } from '@credalent/i18n/react';
-import { buttonClassName, StatusBadge } from '@credalent/ui';
+import { buttonClassName, StatusBadge, UploadIcon } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -64,6 +64,8 @@ export function JobHeader({
             />
             {importLink && (
               <Link href={jobPageHref(view.jobId, 'import') as Route} className={buttonClassName('secondary')}>
+                {/* The Rubric artboard draws the upload arrow; the Candidates artboard's "Add candidates" has none. */}
+                {importLink === 'importCandidates' && <UploadIcon />}
                 {t(`jobHeader.${importLink}`)}
               </Link>
             )}

@@ -9,6 +9,7 @@ import {
   Label,
   Select,
   StatusBadge,
+  UploadIcon,
   ValueBasis,
   type DataTableColumn,
 } from '@credalent/ui';
@@ -60,7 +61,7 @@ export function JobsList({ view, canImport = false }: { view: JobsListView; canI
     .map((column) => ({
       ...column,
       header: t(`columns.${column.id}`),
-      ...(canImport && column.id === 'nextAction' && { cell: importCell }),
+      cell: canImport && column.id === 'nextAction' ? importCell : column.cell,
     }));
 
   return (
@@ -175,6 +176,7 @@ function NextActionAndImport({ row }: { row: JobRow }) {
       <div className="mt-2">
         {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
         <Link href={jobPageHref(row.id, 'import') as Route} className={buttonClassName('secondary', 'compact')}>
+          <UploadIcon className="size-3.5" />
           {t('import')}
         </Link>
       </div>

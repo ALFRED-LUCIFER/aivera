@@ -13,7 +13,7 @@ const header = (more: Partial<JobHeader>): JobHeader => ({
   ...more,
 });
 const lines = (h: JobHeader, assessed = 0) =>
-  Object.fromEntries(jobHeaderView(h, null, assessed).stages.map((s) => [s.page, s.line]));
+  Object.fromEntries(jobHeaderView(h, null, assessed, null, 0).stages.map((s) => [s.page, s.line]));
 
 describe('Job header stage lines (AIV-P1-011)', () => {
   it('Senior AI Engineer, version 2 approved with 64 assessed', () => {
@@ -21,6 +21,8 @@ describe('Job header stage lines (AIV-P1-011)', () => {
       header({ approved: version(2, 'approved'), latest: version(2, 'approved') }),
       'Head of Engineering',
       64,
+      null,
+      0,
     );
     expect(view).toMatchObject({ hiringOwner: 'Head of Engineering', assessed: 64, rubric: { approved: true } });
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toEqual({
@@ -43,7 +45,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   });
 
   it('a draft rubric: evidence and ranking starts after approval, and the rubric is not done', () => {
-    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0);
+    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0, null, 0);
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toMatchObject({
       rubric: { key: 'draft', values: { version: 1 } },
       candidates: { key: 'afterApproval' },

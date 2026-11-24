@@ -1687,18 +1687,24 @@
     "title": "Bring in candidates",
     "intro": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
     "picker": "Import into this job",
+    "pickerHint": "Choosing a job opens its page.",
     "option": {
       "approvedVersion": "{title} · rubric approved, version {version}",
       "approved": "{title} · rubric approved",
-      "waiting": "{title} · rubric waiting for approval"
+      "waiting": "{title} · rubric waiting for approval",
+      "draft": "{title} · rubric draft, needs approval",
+      "returned": "{title} · rubric returned, needs changes",
+      "none": "{title} · no rubric yet"
     },
     "note": "Everyone you import is assessed against this job's rubric. For a job whose rubric is still waiting, people are added now and assessed once it is approved. The same person can be imported into more than one job. They keep one profile.",
     "upload": {
       "title": "Upload CVs",
-      "body": "PDF or Word, up to 200 at a time. Links to repositories, portfolios and write-ups are found automatically.",
+      "body": "PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.",
       "button": "Upload files"
     },
-    "fromListing": "Applications from the published job listing arrive here on their own: {count, number} so far."
+    "loading": "Loading Bring in candidates",
+    "failed": "We could not load this page. Try again.",
+    "retry": "Try again"
   },
   "ranking": {
     "duplicates": {

@@ -14,13 +14,7 @@ export default async function JobLayout({ children, params }: LayoutProps<'/app/
   return (
     <>
       <JobHeaderNav
-        view={jobHeaderView(
-          loaded.header,
-          loaded.hiringOwner,
-          loaded.assessed,
-          loaded.ownerChange,
-          loaded.applications.total,
-        )}
+        view={jobHeaderView(loaded.header, loaded.hiringOwner, loaded.assessed, loaded.ownerChange, loaded.imported)}
         canImport={loaded.canImport}
       />
       {children}

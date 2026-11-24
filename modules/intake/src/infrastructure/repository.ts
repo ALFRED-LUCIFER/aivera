@@ -91,13 +91,7 @@ export function intakeStore(tx: Tx): IntakeStore {
     async countForJob(workspaceId, jobId) {
       // The inner join drops only an application a duplicate merge emptied (AIV-P1-018), which no longer counts.
       const [row] = await tx
-        .select({
-          total: sql<number>`count(distinct ${application.id})`.mapWith(Number),
-          careersPage:
-            sql<number>`count(distinct ${application.id}) filter (where ${applicationSource.source} = 'careers_page')`.mapWith(
-              Number,
-            ),
-        })
+        .select({ total: sql<number>`count(distinct ${application.id})`.mapWith(Number) })
         .from(application)
         .innerJoin(
           applicationSource,
@@ -107,7 +101,7 @@ export function intakeStore(tx: Tx): IntakeStore {
           ),
         )
         .where(and(eq(application.workspaceId, workspaceId), eq(application.jobId, jobId)));
-      return { total: row?.total ?? 0, careersPage: row?.careersPage ?? 0 };
+      return row?.total ?? 0;
     },
   };
 }

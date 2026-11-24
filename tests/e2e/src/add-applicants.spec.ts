@@ -4,9 +4,9 @@ import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-019: "Add applicants", opened by "Upload files" on a job's Bring in candidates page (AIV-P1-101), as AP, admin
-// of "Demo" (seed.ts). This harness has no Blob
-// storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the upload-to-application path is proven against
-// Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts. This spec covers the dialog itself.
+// of "Demo" (seed.ts). This harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the
+// upload-to-application path is proven against Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts.
+// This spec covers the dialog itself.
 const AP = 'ap@example.com';
 
 async function openDialog(page: Page) {

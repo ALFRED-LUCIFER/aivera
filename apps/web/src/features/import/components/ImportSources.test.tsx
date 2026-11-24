@@ -3,9 +3,10 @@ import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { ImportView } from '../domain/importPage.ts';
-import { ImportSources, type ImportSourcesProps } from './ImportSources.tsx';
+import { ImportFailed, ImportLoading, ImportSources, type ImportSourcesProps } from './ImportSources.tsx';
 
 // AIV-P1-101: every state of "Bring in candidates" from plain props. Synthetic opaque ids only.
 afterEach(cleanup);
@@ -23,7 +24,6 @@ const view: ImportView = {
     { id: SAE, label: { key: 'approvedVersion', values: { title: 'Senior AI Engineer', version: 2 } } },
     { id: SPD, label: { key: 'waiting', values: { title: 'Senior Product Designer' } } },
   ],
-  fromListing: 38,
 };
 const upload: Extract<ImportSourcesProps, { view: ImportView }>['upload'] = {
   open: false,
@@ -41,12 +41,8 @@ const upload: Extract<ImportSourcesProps, { view: ImportView }>['upload'] = {
   onSubmit: () => {},
 };
 
-const show = (props: ImportSourcesProps) =>
-  render(
-    <IntlProvider {...intl}>
-      <ImportSources {...props} />
-    </IntlProvider>,
-  );
+const wrap = (ui: ReactNode) => render(<IntlProvider {...intl}>{ui}</IntlProvider>);
+const show = (props: ImportSourcesProps) => wrap(<ImportSources {...props} />);
 
 describe('Bring in candidates', () => {
   it('Scenario: The page for Senior AI Engineer', () => {
@@ -54,15 +50,18 @@ describe('Bring in candidates', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Bring in candidates');
     const picker = screen.getByRole('combobox', { name: 'Import into this job' }) as HTMLSelectElement;
     expect(picker.selectedOptions[0]?.textContent).toBe('Senior AI Engineer · rubric approved, version 2');
+    // WCAG 3.2.2: the picker says before it is used that choosing a job opens its page.
+    expect(document.getElementById(picker.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Choosing a job opens its page.',
+    );
     expect(screen.getByRole('heading', { level: 3, name: 'Upload CVs' })).toBeTruthy();
     expect(
       screen.getByText(
-        'PDF or Word, up to 200 at a time. Links to repositories, portfolios and write-ups are found automatically.',
+        'PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.',
       ),
     ).toBeTruthy();
-    expect(
-      screen.getByText('Applications from the published job listing arrive here on their own: 38 so far.'),
-    ).toBeTruthy();
+    // Hidden until candidate-site applications arrive (AIV-P3-008).
+    expect(screen.queryByText(/published job listing/)).toBeNull();
     expect(
       screen.getByText(
         'For a job whose rubric is still waiting, people are added now and assessed once it is approved.',
@@ -95,9 +94,16 @@ describe('Bring in candidates', () => {
       expect(screen.queryByRole('button', { name })).toBeNull();
   });
 
-  it('a job that is not published has no line about its listing', () => {
-    show({ view: { ...view, fromListing: null }, onPick: () => {}, upload });
-    expect(screen.queryByText(/published job listing/)).toBeNull();
+  it('loading and error keep the frame: the load is announced, and a failure offers to try again', async () => {
+    wrap(<ImportLoading />);
+    expect(screen.getByRole('status').textContent).toBe('Loading Bring in candidates');
+    cleanup();
+    const onRetry = vi.fn();
+    wrap(<ImportFailed onRetry={onRetry} />);
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Bring in candidates');
+    expect(screen.getByRole('alert').textContent).toContain('We could not load this page.');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalled();
   });
 
   it('Scenario: An interviewer cannot bring candidates in: the message, and no upload control or picker', () => {

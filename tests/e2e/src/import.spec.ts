@@ -4,9 +4,10 @@ import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-101: "Bring in candidates", as AP, admin of "Demo" (seed.ts): Senior AI Engineer has version 2 approved and is
-// not published; Senior Product Designer has a draft. This harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so
-// no CV is stored here: CV to application is proven against Azurite and PostgreSQL in
-// tests/integration/src/add-applicants.test.ts, and the published listing's count in tests/integration/src/intake.test.ts.
+// not published; Senior Product Designer has a draft, never sent for approval.
+// shortcut: this harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here and upload to
+// ranking is proven against Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts; add the step here
+// when Azurite joins the e2e harness.
 const AP = 'ap@example.com';
 const IMPORT_PATH = /^\/app\/jobs\/[0-9a-f-]{36}\/import$/;
 
@@ -30,10 +31,10 @@ test('Scenario: The page for Senior AI Engineer', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 3, name: 'Upload CVs' })).toBeVisible();
   await expect(
     page.getByText(
-      'PDF or Word, up to 200 at a time. Links to repositories, portfolios and write-ups are found automatically.',
+      'PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.',
     ),
   ).toBeVisible();
-  // Not published in this seed: no line about the listing.
+  // Hidden until candidate-site applications arrive (AIV-P3-008).
   await expect(page.getByText(/published job listing/)).toHaveCount(0);
   const stages = page.getByRole('navigation', { name: 'Stages of this job' });
   await expect(stages.getByRole('link', { name: /^Bring in candidates/ })).toHaveAttribute('aria-current', 'page');
@@ -42,11 +43,13 @@ test('Scenario: The page for Senior AI Engineer', async ({ page }) => {
   );
 });
 
+// The seed has no rubric sent for approval in "Demo": a draft is the not-yet-approved case here; the "waiting" label is
+// importPage.test.ts.
 test('Scenario: Importing into a job whose rubric is waiting', async ({ page }) => {
   await signIn(page, { email: AP });
   await openFromJobs(page, 'Senior AI Engineer');
   const from = new URL(page.url()).pathname;
-  await picker(page).selectOption({ label: 'Senior Product Designer · rubric waiting for approval' });
+  await picker(page).selectOption({ label: 'Senior Product Designer · rubric draft, needs approval' });
   await expect(page).toHaveTitle('Senior Product Designer: Bring in candidates · Credalent');
   // Scenario: No candidate data in the URL: the opaque job id, nothing else.
   const url = new URL(page.url());
@@ -54,13 +57,31 @@ test('Scenario: Importing into a job whose rubric is waiting', async ({ page }) 
   expect(url.pathname).not.toBe(from);
   expect(url.search).toBe('');
   await expect(picker(page).locator('option:checked')).toHaveText(
-    'Senior Product Designer · rubric waiting for approval',
+    'Senior Product Designer · rubric draft, needs approval',
   );
   await expect(
     page.getByText('For a job whose rubric is still waiting, people are added now and assessed once it is approved.', {
       exact: false,
     }),
   ).toBeVisible();
+});
+
+// WCAG 3.2.2: Chromium on Linux and Windows changes a closed select's value on ArrowDown, which opens that job's page;
+// the picker says so before it is used, as its description.
+test('The picker says that choosing a job opens its page, and ArrowDown does', async ({ page }) => {
+  await signIn(page, { email: AP });
+  await openFromJobs(page, 'Senior AI Engineer');
+  const from = new URL(page.url()).pathname;
+  await expect(picker(page)).toHaveAccessibleDescription('Choosing a job opens its page.');
+  const next = await picker(page).evaluate((select: HTMLSelectElement) => {
+    const option = select.options[select.selectedIndex + 1];
+    return option ? option.text.split(' · ')[0] : null;
+  });
+  if (!next) throw new Error('Senior AI Engineer is the last job in the picker.');
+  await picker(page).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(page).toHaveTitle(`${next}: Bring in candidates · Credalent`);
+  expect(new URL(page.url()).pathname).not.toBe(from);
 });
 
 test('Scenario: Entry points: Jobs, the ranking and the rubric open the same page', async ({ page }) => {
