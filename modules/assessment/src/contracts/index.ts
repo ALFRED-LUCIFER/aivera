@@ -52,8 +52,8 @@ export interface AssessmentContract {
    * snapshot fact or an evidence item, with every number filled from the snapshot and none written by the model. A
    * statement with no citation is dropped; when the model is unavailable or its answer is rejected, a template from the
    * same facts is returned with `source: 'template'` ("Summary generated without AI"). Cached per snapshot. Null with
-   * no snapshot, or one not on the approved rubric version. Admins and recruiters; hiring owners and interviewers get
-   * `ForbiddenError`. It rejects, advances and contacts nobody (AGENTS.md 1.5).
+   * no snapshot, or one not on the approved rubric version. `candidate.view` on the job, as `getLatestAssessment`: admins and recruiters, hiring owners and
+   * interviewers on a granted job only. It rejects, advances and contacts nobody (AGENTS.md 1.5).
    */
   explainRanking(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<RankingExplanation | null>;
 }

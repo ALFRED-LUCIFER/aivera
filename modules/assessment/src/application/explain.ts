@@ -90,7 +90,7 @@ export function explainUseCases(ports: ExplainPorts) {
      * evidence item. Numbers are filled from the snapshot; a statement with no citation, or with a placeholder the
      * snapshot has no fact for, is dropped; an answer off the schema or citing a source it was not given is rejected
      * and the template shown. Cached per snapshot and prompt version. Null with no snapshot, or one on a rubric
-     * version that is no longer the approved one (it is being scored again). Admins and recruiters.
+     * version that is no longer the approved one (it is being scored again). `candidate.view` on the job, as `getLatestAssessment`.
      */
     // shortcut: the model is called inside the request's transaction, and two requests for one snapshot may both call
     // it (the first answer is kept); lock per snapshot or move the call to a worker if pilot traffic shows either.
@@ -141,7 +141,9 @@ export function explainUseCases(ports: ExplainPorts) {
             const source = byId.get(c.sourceId);
             return source ? [citationOf(source, c.quote)] : [];
           });
-          return filled === null || cites.length === 0 ? [] : [{ text: filled, citations: cites }];
+          // "heaviest" is true only when the facts say so (the model is told, code decides).
+          const untrue = /heaviest/i.test(filled ?? '') && !facts.heaviest;
+          return filled === null || untrue || cites.length === 0 ? [] : [{ text: filled, citations: cites }];
         });
       } catch (error) {
         if (!unusable(error)) throw error;

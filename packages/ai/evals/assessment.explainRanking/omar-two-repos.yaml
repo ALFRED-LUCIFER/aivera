@@ -27,10 +27,10 @@ expected:
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
   promptVersion: assessment.explainRanking@1
-  promptHash: 'f7ef79517d76'
+  promptHash: '6f5ef7434e7f'
   output:
     statements:
-      - text: 'The {checkedCount} heaviest competencies, {checkedWeight} of the weight, are backed by work that was independently checked.'
+      - text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest and are backed by work that was independently checked.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs the heaviest competencies'

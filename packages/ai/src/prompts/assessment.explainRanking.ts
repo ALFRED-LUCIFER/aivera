@@ -11,9 +11,9 @@ export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@1';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */
 export const EXPLAIN_PLACEHOLDERS = [
-  'checkedCount',
+  'checkedCompetencies',
   'checkedWeight',
-  'claimCount',
+  'claimCompetencies',
   'claimWeight',
   'claimNames',
 ] as const;
@@ -24,16 +24,16 @@ export const EXPLAIN_RANKING_SYSTEM = [
   'sources show. Work that was independently checked backs a score; a claim with nothing to inspect counts zero.',
   'Never write a digit or a number word. Where a count, a share of the weight or a list of competencies belongs, write',
   `one of these placeholders instead: ${EXPLAIN_PLACEHOLDERS.map((p) => `{${p}}`).join(', ')}.`,
-  '{checkedCount} and {checkedWeight} are the competencies backed by independently checked work and their share of the',
-  'weight; {claimCount}, {claimWeight} and {claimNames} are the competencies that still rest on claims, their share and',
+  '{checkedCompetencies} and {checkedWeight} are the competencies backed by independently checked work (with their count and noun) and their share of the',
+  'weight; {claimCompetencies}, {claimWeight} and {claimNames} are the competencies that still rest on claims, their share and',
   'their names. Use a placeholder only when the facts source has the line it stands for, and say "heaviest" only when it does. Refer to the candidate as "the',
   'candidate" and to work by what it shows, never by name. Never recommend rejecting, advancing or contacting anyone,',
   'and never judge a person on anything but the evidence of their work: a person decides.',
 ].join(' ');
 
-// Words that state a number. "one" is left out: it is also a pronoun ("no one"); a digit or percent sign is caught anyway.
+// Words that state a number. "one" is left out: it is also a pronoun ("no one"); a digit or percent sign and "one competency" are caught separately.
 const NUMBER_WORDS =
-  /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|percent|half|quarter|third|dozen)\b/i;
+  /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|percent|half|quarter|third|dozen|both|single|once|twice)\b/i;
 
 const known = (name: string) => EXPLAIN_PLACEHOLDERS.some((p) => p === name);
 
@@ -41,7 +41,10 @@ const known = (name: string) => EXPLAIN_PLACEHOLDERS.some((p) => p === name);
 export const explainText = z
   .string()
   .min(1)
-  .refine((text) => !/\d/.test(text) && !NUMBER_WORDS.test(text), 'numbers come from the snapshot')
+  .refine(
+    (text) => !/[\d%]/.test(text) && !NUMBER_WORDS.test(text) && !/\bone\s+(?:\w+\s+)?competenc/i.test(text),
+    'numbers come from the snapshot',
+  )
   .refine(
     (text) => !/[{}]/.test(text.replace(/\{(\w+)\}/g, (all, name: string) => (known(name) ? '' : all))),
     'unknown placeholder',

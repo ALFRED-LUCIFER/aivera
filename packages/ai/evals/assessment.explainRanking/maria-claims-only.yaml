@@ -18,10 +18,10 @@ expected:
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
   promptVersion: assessment.explainRanking@1
-  promptHash: '33bd9279a90e'
+  promptHash: 'f3d405a130b2'
   output:
     statements:
-      - text: '{claimCount} competencies, {claimWeight} of the weight, still rest on claims: {claimNames}.'
+      - text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.'
         citations:
           - sourceId: S1
             quote: 'Still resting on claims'

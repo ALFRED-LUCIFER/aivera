@@ -99,10 +99,10 @@ const EVIDENCE = [
   item('e5', 'c-cost', 'cv', 'CV', 'Cut cost per request by 40%.', 'supporting', 'claim', 2),
   item('e6', 'c-arabic', 'cv', 'CV', 'Shipped Arabic query handling.', 'supporting', 'claim', 2),
 ];
-const snapshot = (id: string): StoredAssessment => ({
+const snapshot = (id: string, items = EVIDENCE): StoredAssessment => ({
   ...assess(
     RUBRIC,
-    EVIDENCE.map((e) => ({
+    items.map((e) => ({
       itemId: e.id,
       competencyId: e.competencies[0]?.competencyId ?? '',
       level: e.competencies[0]?.level ?? 0,
@@ -122,7 +122,11 @@ const ctx = { userId: 'ap', workspaceId: 'w1', role: 'recruiter', tx: {} } as un
 /** The explanation over in-memory ports; `answer` is the model's raw output, `failure` a provider status for every attempt. */
 function setup(
   answer: unknown,
-  { failure, latest = snapshot('r1') }: { failure?: number; latest?: StoredAssessment | null } = {},
+  {
+    failure,
+    evidence = EVIDENCE,
+    latest = snapshot('r1', evidence),
+  }: { failure?: number; latest?: StoredAssessment | null; evidence?: EvidenceItemView[] } = {},
 ) {
   const cache = new Map<string, unknown>();
   const calls = { model: 0 };
@@ -145,7 +149,7 @@ function setup(
     explanationsFor: () => store,
     ai,
     approvedRubric: async () => ({ id: 'rubric-v2', competencies: NAMES.map(([id, name]) => ({ id, name })) }),
-    evidence: async () => EVIDENCE,
+    evidence: async () => evidence,
     identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
   } as unknown as ExplainPorts & Ports);
   return { useCases, calls, state };
@@ -156,12 +160,12 @@ const cite = (sourceId: string, quote: string) => ({ sourceId, quote });
 const GOOD = {
   statements: [
     {
-      text: 'The {checkedCount} heaviest competencies, {checkedWeight} of the weight, are backed by work that was independently checked.',
+      text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest and are backed by work that was independently checked.',
       citations: [cite('S1', 'Independently checked work backs the heaviest competencies')],
     },
     { text: 'The candidate authored most of the evaluation harness.', citations: [cite('S2', '412 of 460 commits')] },
     {
-      text: '{claimCount} competencies, {claimWeight} of the weight, still rest on claims: {claimNames}.',
+      text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.',
       citations: [cite('S1', 'Still resting on claims')],
     },
   ],
@@ -173,7 +177,7 @@ describe("Scenario: Sara's explanation", () => {
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('ai');
     expect(explained?.statements.map((s) => s.text)).toEqual([
-      'The two heaviest competencies, 45% of the weight, are backed by work that was independently checked.',
+      'The two competencies, 45% of the weight, are the heaviest and are backed by work that was independently checked.',
       'The candidate authored most of the evaluation harness.',
       'Two competencies, 25% of the weight, still rest on claims: Cost and reliability, and Arabic NLP.',
     ]);
@@ -186,15 +190,45 @@ describe("Scenario: Sara's explanation", () => {
 
 describe('Scenario: Numbers come from the snapshot', () => {
   // SAFETY: mutation check: removed the digit and number-word refine from explainText -> this test failed (the 60% text was shown)
-  it.each(['60% of the weight', 'sixty percent of the weight', 'Two competencies rest on claims', 'A {madeUp} share'])(
-    'rejects the model text %j and shows the template',
-    async (text) => {
-      const { useCases } = setup({ statements: [{ text, citations: [cite('S1', 'Still resting on claims')] }] });
-      const explained = await useCases.explainRanking(ctx, 'sara', JOB);
-      expect(explained?.source).toBe('template');
-      expect(JSON.stringify(explained)).not.toContain('60%');
-    },
-  );
+  it.each([
+    '60% of the weight',
+    'sixty percent of the weight',
+    'Two competencies rest on claims',
+    'One competency rests on claims',
+    'Both rest on claims',
+    '{checkedWeight}% of the weight',
+    'A {madeUp} share',
+  ])('rejects the model text %j and shows the template', async (text) => {
+    const { useCases } = setup({ statements: [{ text, citations: [cite('S1', 'Still resting on claims')] }] });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(JSON.stringify(explained)).not.toContain('60%');
+  });
+});
+
+describe('Statements the facts do not support are dropped', () => {
+  // SAFETY: mutation check: removed the `untrue` heaviest check in explainRanking -> this test failed (the false claim was shown)
+  it('drops "heaviest" when the checked competencies are not the heaviest, and counts one claim as "one competency"', async () => {
+    // Retrieval (25%) is only candidate-submitted here, so the checked LLM work (20%) is not the heaviest; Arabic NLP is no claim.
+    const evidence = EVIDENCE.filter((e) => e.id !== 'e6').map((e) =>
+      e.id === 'e1' ? { ...e, provenance: 'submitted' as const } : e,
+    );
+    const { useCases } = setup(
+      {
+        statements: [
+          {
+            text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest.',
+            citations: [cite('S1', 'Independently checked work backs')],
+          },
+          { text: '{claimCompetencies} still rest on claims.', citations: [cite('S1', 'Still resting on claims')] },
+        ],
+      },
+      { evidence },
+    );
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('ai');
+    expect(explained?.statements.map((s) => s.text)).toEqual(['One competency still rest on claims.']);
+  });
 });
 
 describe('Scenario: A statement without a citation is dropped', () => {
@@ -224,7 +258,7 @@ describe('Scenario: Model unavailable', () => {
     expect(explained?.source).toBe('template');
     expect(explained?.statements.map((s) => s.text)).toEqual([
       'Competencies carrying 45% of the weight are backed by work that was independently checked.',
-      'The strongest cited work is llm-eval-harness.',
+      'The cited work behind the heaviest competency is llm-eval-harness.',
       'Competencies carrying 25% of the weight still rest on claims: Cost and reliability, and Arabic NLP.',
     ]);
     expect(explained?.statements.every((s) => s.citations.length > 0)).toBe(true);

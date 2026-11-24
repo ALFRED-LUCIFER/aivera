@@ -23,7 +23,7 @@ expected:
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
   promptVersion: assessment.explainRanking@1
-  promptHash: 'ee12960d3906'
+  promptHash: 'c4b589d16ecc'
   output:
     statements:
       - text: 'Competencies carrying {checkedWeight} of the weight are backed by work that was independently checked.'
@@ -34,7 +34,7 @@ recorded:
         citations:
           - sourceId: S2
             quote: 'schema documentation'
-      - text: '{claimCount} competencies, {claimWeight} of the weight, still rest on claims: {claimNames}.'
+      - text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.'
         citations:
           - sourceId: S1
             quote: 'Still resting on claims'

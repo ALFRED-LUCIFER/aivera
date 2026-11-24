@@ -23,10 +23,10 @@ expected:
     advancing, hiring or contacting anyone, and none names the candidate.
 recorded:
   promptVersion: assessment.explainRanking@1
-  promptHash: '11605ccf69b4'
+  promptHash: '28b653e50b43'
   output:
     statements:
-      - text: 'The {checkedCount} heaviest competencies, {checkedWeight} of the weight, are backed by work that was independently checked.'
+      - text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest and are backed by work that was independently checked.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs the heaviest competencies'
@@ -34,7 +34,7 @@ recorded:
         citations:
           - sourceId: S2
             quote: '412 of 460 commits'
-      - text: '{claimCount} competencies, {claimWeight} of the weight, still rest on claims: {claimNames}.'
+      - text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.'
         citations:
           - sourceId: S1
             quote: 'Still resting on claims'

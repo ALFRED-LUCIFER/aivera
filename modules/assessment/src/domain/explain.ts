@@ -21,6 +21,8 @@ export type ExplainSource = {
 export type Facts = {
   /** Placeholder to the text that replaces it; a placeholder with no entry has no fact behind it. */
   values: Record<string, string>;
+  /** The checked competencies are the heaviest of the rubric: the only case a statement may say "heaviest". */
+  heaviest: boolean;
   /** The facts source, one line per fact; null when the snapshot has nothing to explain. */
   factsText: string | null;
   /** The evidence items the backed score rests on, heaviest competency first. */
@@ -34,7 +36,7 @@ const MAX_ITEMS = 8;
 const weight = (cs: { weightPercent: number }[]) => cs.reduce((sum, c) => sum + c.weightPercent, 0);
 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-const countText = (n: number) => WORDS[n] ?? String(n);
+const competenciesText = (n: number) => `${WORDS[n] ?? String(n)} ${n === 1 ? 'competency' : 'competencies'}`;
 // A name that holds an "and" ("Cost and reliability") is followed by ", and" even for two names, so the list reads clearly.
 const listText = (names: string[]) =>
   names.length < 3 && !names.some((n) => n.includes(' and '))
@@ -59,12 +61,13 @@ export function factsOf(
   const claims = assessment.competencies.filter((c) => c.claimedLevel > c.proven.level);
 
   const values: Record<string, string> = {};
+  let heaviest = false;
   const lines: string[] = [];
   if (checked.length > 0) {
-    values['checkedCount'] = countText(checked.length);
+    values['checkedCompetencies'] = competenciesText(checked.length);
     values['checkedWeight'] = `${weight(checked)}%`;
     const others = assessment.competencies.filter((c) => !checked.includes(c));
-    const heaviest =
+    heaviest =
       others.length === 0 ||
       Math.min(...checked.map((c) => c.weightPercent)) >= Math.max(...others.map((c) => c.weightPercent));
     lines.push(
@@ -72,7 +75,7 @@ export function factsOf(
     );
   }
   if (claims.length > 0) {
-    values['claimCount'] = countText(claims.length);
+    values['claimCompetencies'] = competenciesText(claims.length);
     values['claimWeight'] = `${weight(claims)}%`;
     values['claimNames'] = listText(claims.map(nameOf));
     lines.push(`Still resting on claims: ${values['claimNames']}, ${values['claimWeight']} of the weight.`);
@@ -90,7 +93,7 @@ export function factsOf(
     })
     .slice(0, MAX_ITEMS);
 
-  return { values, factsText: lines.length > 0 ? lines.join('\n') : null, items };
+  return { values, heaviest, factsText: lines.length > 0 ? lines.join('\n') : null, items };
 }
 
 /**
@@ -108,6 +111,8 @@ export function fill(text: string, values: Readonly<Record<string, string>>): st
 }
 
 /** What a statement cites for a source of the explanation: the facts line (no item id) or the evidence item. */
+// shortcut: a citation keeps its quote, not its offsets or claim flag; the profile (AIV-P1-043) finds the quote in the
+// item's excerpt to highlight it. Carry start, end and claim through if that search proves wrong or slow.
 export const citationOf = (source: ExplainSource, quote: string): ExplanationCitation => ({
   itemId: source.id === FACTS_ID ? null : source.id,
   label: source.label,
@@ -134,7 +139,12 @@ export function templateStatements(facts: Facts): ExplanationStatement[] {
       stated('Independently'),
     ),
     ...(first
-      ? [{ text: `The strongest cited work is ${first.label}.`, citations: [citationOf(first, first.text)] }]
+      ? [
+          {
+            text: `The cited work behind the heaviest competency is ${first.label}.`,
+            citations: [citationOf(first, first.text)],
+          },
+        ]
       : []),
     ...statement(
       'Competencies carrying {claimWeight} of the weight still rest on claims: {claimNames}.',
