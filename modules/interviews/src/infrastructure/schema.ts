@@ -16,8 +16,9 @@ export const interview = interviews
       workspaceId: uuid('workspace_id').notNull(),
       applicationId: uuid('application_id').notNull(),
       jobId: uuid('job_id').notNull(),
-      // shortcut: copied from the application when created; a duplicate merge afterwards (AIV-P1-018) leaves the merged
-      // person's id here. Move it in the merge, as evidence's records are, when interviews show names (AIV-P2-002).
+      // shortcut: candidate_id and application_id are copied when the interview is created; a duplicate merge afterwards
+      // (AIV-P1-018) leaves the merged person's id here, and, when both applied to the job, the emptied application's id.
+      // Move both in the merge, as evidence's records are, when interviews show names (AIV-P2-002).
       candidateId: uuid('candidate_id').notNull(),
       round: text({ enum: ROUNDS }).notNull(),
       interviewerUserId: uuid('interviewer_user_id').notNull(),
@@ -31,6 +32,7 @@ export const interview = interviews
     },
     (t) => [
       unique('interview_workspace_id_key').on(t.workspaceId, t.id),
+      // No one-per-application-and-round constraint: a panel round can hold several interviews, one per interviewer.
       index('interview_status_idx').on(t.workspaceId, t.status, t.scheduledAt),
       // Must list exactly ROUNDS and STATUSES (domain/interview.ts); changing either needs a migration.
       check('interview_round_check', sql`${t.round} in ('structured_screen', 'evidence_defence', 'panel')`),

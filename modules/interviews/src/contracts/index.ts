@@ -5,17 +5,8 @@ import { z } from 'zod';
 import type { CreateInterviewInput, InterviewFilter } from '../application/interviews.ts';
 import type { Interview } from '../domain/interview.ts';
 
-export {
-  canMove,
-  effectiveStatus,
-  InterviewError,
-  ONGOING,
-  ROUNDS,
-  scorecardDueDays,
-  STATUSES,
-} from '../domain/interview.ts';
-export type { Interview, InterviewErrorCode, InterviewStatus, Round } from '../domain/interview.ts';
-export { createInterviewInputSchema } from '../application/interviews.ts';
+export { InterviewError, scorecardDueDays } from '../domain/interview.ts';
+export type { Interview, InterviewStatus, Round } from '../domain/interview.ts';
 export type { CreateInterviewInput, InterviewFilter } from '../application/interviews.ts';
 
 const interviewEvent = z.strictObject({ interviewId: z.uuid(), applicationId: z.uuid() });

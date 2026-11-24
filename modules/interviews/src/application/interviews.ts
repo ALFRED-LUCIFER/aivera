@@ -138,6 +138,8 @@ export function interviewUseCases(ports: Ports) {
 
     // shortcut: no paging; a pilot workspace holds tens of interviews, page here past ~500.
     async listInterviews(ctx: WorkspaceContext, filter: InterviewFilter): Promise<Interview[]> {
+      // Workspace-wide roles are checked here; job-scoped ones per job below (with no job they fail closed).
+      if (!JOB_SCOPED_ROLES.includes(ctx.role)) await authorize(ctx, 'interview.view');
       const rows = await storeFor(ctx.tx).list(
         ctx.workspaceId,
         filter === 'ongoing' ? ONGOING : ['completed'],

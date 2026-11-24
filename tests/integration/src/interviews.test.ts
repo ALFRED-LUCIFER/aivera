@@ -26,6 +26,7 @@ const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src
 const AYESHA = '0190d4a2-0000-7000-8000-0000000a1e5a'; // recruiter, creator of both workspaces ("you")
 const LINA = '0190d4a2-0000-7000-8000-0000000011aa'; // interviewer granted Senior AI Engineer
 const HUDA = '0190d4a2-0000-7000-8000-00000000d0da'; // interviewer with no grant
+const FAISAL = '0190d4a2-0000-7000-8000-0000000fa15a'; // hiring owner granted Senior AI Engineer
 const NOW = new Date('2026-11-18T05:00:00.000Z'); // 18 Nov, 09:00 in Dubai
 const TODAY_1400 = new Date('2026-11-18T10:00:00.000Z'); // today, 14:00 in Dubai
 const ROUND1 = 'structured_screen';
@@ -405,6 +406,37 @@ describe('Who interviews and who sees interviews', () => {
         }),
       ),
     ).rejects.toThrow('Forbidden');
+  });
+
+  // The jobs module's job-scope row-level security hides an ungranted job, so its interviews drop out (not a 403).
+  // SAFETY: mutation check: made the interviews jobResource port return every job ({ jobId, clientId: null }) -> this test failed (Staff Backend interview listed)
+  it('a hiring owner granted Senior AI Engineer lists only its interviews, reads none of another job, starts none they do not hold', async () => {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${FAISAL}, 'hiring_owner', 'active')`,
+      ),
+    );
+    await as(AYESHA, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: FAISAL, jobId: seniorAi.jobId }));
+    const backend = await newJob(w1, 'Staff Backend Engineer');
+    const v = await approvedVersion(w1, backend, [competency('Distributed systems', 100)]);
+    const rana = await apply(w1, backend, 'Rana Khoury');
+    const { interviewId: other } = await as(AYESHA, w1, (ctx) =>
+      interviews.createInterview(ctx, {
+        applicationId: rana,
+        round: ROUND1,
+        interviewerUserId: AYESHA,
+        scheduledAt: TODAY_1400,
+        competencyIds: [...v.values()],
+      }),
+    );
+    const listed = await as(FAISAL, w1, (ctx) => interviews.listInterviews(ctx, 'ongoing'));
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every((i) => i.jobId === seniorAi.jobId)).toBe(true);
+    expect(await as(FAISAL, w1, (ctx) => interviews.getInterview(ctx, other))).toBeNull();
+    const ayeshas = listed.find((i) => i.interviewerUserId === AYESHA && i.status !== 'in_progress');
+    await expect(as(FAISAL, w1, (ctx) => interviews.startInterview(ctx, ayeshas?.id ?? ''))).rejects.toThrow(
+      'Forbidden',
+    );
   });
 });
 
