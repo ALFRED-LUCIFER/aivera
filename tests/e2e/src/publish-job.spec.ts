@@ -17,8 +17,7 @@ async function openRubric(page: Page, title: string) {
 const publishThis = (page: Page) => page.getByRole('button', { name: 'Publish this job' });
 
 test('Scenarios: preview, cancel, publish, view the listing, unpublish', async ({ page, context, baseURL }) => {
-  // One journey with five reloads, four axe scans and two sites the dev server compiles on first visit: on a slow CI
-  // runner it passed every step and still ran out of the default 30 s at the last one (red `main`, 24 Nov 2026).
+  // One journey of five reloads and four axe scans takes about 30 s on a CI runner: longer than the default.
   // shortcut: a retry starts with the job already published if the first attempt stopped before Unpublish, so it
   // fails at "Not published"; reset the job in a beforeEach if this spec turns red again.
   test.setTimeout(90_000);
