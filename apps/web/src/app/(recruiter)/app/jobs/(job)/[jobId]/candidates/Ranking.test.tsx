@@ -29,6 +29,7 @@ const JOB = '0190d4a2-0000-7000-9000-000000001031';
 const assessedAt = new Date('2026-11-14T22:30:00.000Z');
 const scoredRow = (n: number, name: string, backed: number, upTo: number, missing: string[]): CandidateRow => ({
   id: `a${n}`,
+  personId: `p${n}`,
   name,
   stage: 'new',
   score: {
@@ -49,7 +50,7 @@ const nine = [
   ...['Daniel Novak', 'Priya Nair', 'Omar Al Suwaidi', 'Maria Santos', 'Youssef Aziz'].map((name, i) =>
     scoredRow(i + 4, name, 50 - i * 5, 60, []),
   ),
-  { id: 'a9', name: 'Huda Rahman', stage: 'new', score: null } satisfies CandidateRow,
+  { id: 'a9', personId: 'p9', name: 'Huda Rahman', stage: 'new', score: null } satisfies CandidateRow,
 ];
 
 const showRanking = (rows: CandidateRow[], awaitingRubric = false) =>
@@ -86,6 +87,10 @@ describe('Scenario: The ranking for Senior AI Engineer', () => {
     ]);
     expect(bodyRows()[0]?.textContent).toBe(
       '1Sara Al QahtaniNew68up to 84 if claims hold4 of 6HighProduct judgement15 NovNot yet available',
+    );
+    // AIV-P1-043: the name opens the candidate's profile for this job.
+    expect(screen.getByRole('link', { name: 'Sara Al Qahtani' }).getAttribute('href')).toBe(
+      `/app/candidates/p1?job=${JOB}`,
     );
     // The bar's text equivalent is the full caption.
     expect(screen.getByRole('img', { name: '68 backed by evidence · up to 84 if claims hold' })).toBeTruthy();
@@ -157,7 +162,7 @@ describe('Scenario: Filter by missing evidence', () => {
 
 describe('Scenario: Job without an approved rubric', () => {
   it('says "Starts after rubric approval" with a link "Send rubric for approval" to the rubric, and keeps applicants listed', () => {
-    showRanking([{ id: 'a9', name: 'Huda Rahman', stage: 'new', score: null }], true);
+    showRanking([{ id: 'a9', personId: 'p9', name: 'Huda Rahman', stage: 'new', score: null }], true);
     expect(screen.getByText('Starts after rubric approval')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Send rubric for approval' }).getAttribute('href')).toBe(
       `/app/jobs/${JOB}/rubric`,
@@ -218,6 +223,7 @@ const possibleOmar: RowDuplicates = {
 };
 const omarRow: CandidateRow = {
   id: 'a20',
+  personId: OMAR_2,
   name: 'Omar Alsuwaidi',
   stage: 'new',
   score: null,
@@ -280,6 +286,7 @@ describe('Scenario: Merge preview', () => {
 
 const sneha = (undo: RowDuplicates['undo']): CandidateRow => ({
   id: 'a30',
+  personId: OMAR_1,
   name: 'Sneha Iyer',
   stage: 'new',
   score: null,

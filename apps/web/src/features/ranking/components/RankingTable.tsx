@@ -20,6 +20,7 @@ import {
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import type { DuplicatesView } from '../domain/duplicates.ts';
 import {
@@ -36,7 +37,6 @@ import { DuplicateActions } from './DuplicateActions.tsx';
 // - no "Who is ahead, and how sure are we?" proof map chart: AIV-P1-035 (#99);
 // - no compare checkboxes, "3 selected" bulk bar, bulk evidence request preview or "Compare 3 selected" button:
 //   selection and bulk actions are AIV-P1-036 (#100);
-// - the name is plain text, not a link: the candidate profile is AIV-P1-043;
 // - the line under each name is the application's intake stage ("New"), not the interview round ("Round 1 complete"),
 //   which interviews and scorecards record (AIV-P2-E01, #18);
 // - "Last review" is "Last scored" (owner's decision): when the stored result last changed (an unchanged re-run stores nothing), in the workspace time zone
@@ -108,7 +108,7 @@ export function RankingTable({ view, duplicates }: { view: RankingTableView; dup
     .filter((column) => !(ready && isHideable(column.id) && ready.hidden.includes(column.id)))
     .map((column) => ({
       ...column,
-      ...(column.id === 'candidate' && { cell: nameCell(duplicates) }),
+      ...(column.id === 'candidate' && ready && { cell: nameCell(ready.jobId, duplicates) }),
       // The date column names the workspace time zone it shows (AGENTS.md 3.9).
       header: column.id === 'lastScored' ? t('lastScoredIn', { timeZone }) : t(`columns.${column.id}`),
     }));
@@ -273,14 +273,36 @@ function NotYet() {
   return <ValueBasis basis="not-available" label={t('notYetAvailable')} />;
 }
 
-// The candidate cell with the rows' duplicate actions, built outside render's component definitions.
-const nameCell = (duplicates?: DuplicatesView) => (row: CandidateRow) => <NameCell row={row} duplicates={duplicates} />;
+// The candidate cell with the job its profile link opens for and the rows' duplicate actions, built outside render's
+// component definitions.
+const nameCell = (jobId: string, duplicates?: DuplicatesView) => (row: CandidateRow) => (
+  <NameCell row={row} jobId={jobId} duplicates={duplicates} />
+);
 
-function NameCell({ row, duplicates }: { row: CandidateRow; duplicates?: DuplicatesView | undefined }) {
+function NameCell({
+  row,
+  jobId,
+  duplicates,
+}: {
+  row: CandidateRow;
+  jobId?: string;
+  duplicates?: DuplicatesView | undefined;
+}) {
   const t = useTranslations('ranking');
+  const name = row.name ?? t('unnamed');
   return (
     <>
-      <span className="font-semibold">{row.name ?? t('unnamed')}</span>
+      {jobId ? (
+        // profileHref builds the path from opaque ids, which typed routes cannot check.
+        <Link
+          href={profileHref(row.personId, jobId) as Route}
+          className="font-semibold underline underline-offset-3 hover:text-text"
+        >
+          {name}
+        </Link>
+      ) : (
+        <span className="font-semibold">{name}</span>
+      )}
       <span className="block text-meta text-text-2">{t(`stages.${row.stage}`)}</span>
       {row.duplicates && duplicates && (
         <DuplicateActions rowId={row.id} duplicates={row.duplicates} view={duplicates} />

@@ -84,7 +84,7 @@ describe('loadRanking', () => {
     expect(await loadRanking(JOB)).toEqual({
       jobId: JOB,
       awaitingRubric: true,
-      rows: [{ id: 'a1', name: 'Sara Al Qahtani', stage: 'new', score: null }],
+      rows: [{ id: 'a1', personId: 'p1', name: 'Sara Al Qahtani', stage: 'new', score: null }],
     });
     expect(fake.rubric).not.toHaveBeenCalled();
   });
