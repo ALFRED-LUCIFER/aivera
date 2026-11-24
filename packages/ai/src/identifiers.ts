@@ -105,7 +105,8 @@ const TRAIT = [
 // of the first line, the value of a "Name:" or "الاسم:" label (on its line or the next), or a whole line next to a line
 // the record's name matched.
 // shortcut: an Arabic name elsewhere, or past the first 300 characters of its line, is removed only when the record
-// holds it; widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
+// holds it, and an email counts as a line the name matched only when a name part stands alone in it
+// (sara.qahtani@, not alqahtani@); widen if pilot CVs need. The bound and the leading Arabic check keep the lookbehinds linear on long lines.
 const ARABIC_WORDS = String.raw`\p{sc=Arabic}+(?:[ \t]+\p{sc=Arabic}+){1,3}`;
 const FIELD_END = String.raw`(?=${GAP}(?:$|[\n·•|,،;–-]))`;
 const arabicNameOf = (recordName: string) =>
@@ -123,8 +124,8 @@ const arabicNameOf = (recordName: string) =>
 // Stands in for each character of an email while names, phones and traits are matched: a private-use character, never
 // a letter, digit or separator, so no other pattern starts, ends or runs inside an email (AIV-P2-081). An email that
 // holds a part of the candidate's name gets NAMED_MASK, so the Arabic-name rule still sees "a line the name matched".
-// shortcut: a source that already holds U+E000 or U+E001 has it read as an email and replaced; nothing leaks, but the
-// placeholder numbering shifts. Strip them from sources if that ever matters.
+// shortcut: a source that already holds U+E000 or U+E001 has it read as an email and replaced, and a stray U+E001
+// makes the next Arabic line count as next to the name; both over-remove, nothing leaks. Strip them if that matters.
 const MASK = '\uE000';
 const NAMED_MASK = '\uE001';
 

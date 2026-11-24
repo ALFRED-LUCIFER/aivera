@@ -150,10 +150,12 @@ describe('the replacer', () => {
     expect(redact('Ask Sara@acme')).toBe('Ask [CANDIDATE]@acme');
   });
 
-  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test and 13 others failed
+  // SAFETY: mutation check: matched names on the unmasked text (no email masking) -> this test failed (the kept email)
   it('never sends a name that sits in an email beside a phone (AIV-P2-081)', () => {
     expect(redact('Call 050 123 4567-qahtani@example.com')).not.toMatch(/qahtani/i);
     expect(redact('Call +971 50 123 4567.sara.qahtani@example.com')).not.toMatch(/sara|qahtani/i);
+    // Under the CV-parse exception the candidate's own email goes whole, so only masking keeps the name out of it.
+    expect(redact('Sara Al Qahtani sara.qahtani@example.com', true)).toBe('[CANDIDATE] sara.qahtani@example.com');
   });
 
   // SAFETY: mutation check: masked every email with MASK (no NAMED_MASK) -> this test failed (Arabic name kept)
