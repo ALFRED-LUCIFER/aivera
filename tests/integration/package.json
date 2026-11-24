@@ -35,7 +35,7 @@
     "@testcontainers/azurite": "12.2.1",
     "@testcontainers/postgresql": "12.2.1",
     "@types/node": "24.19.2",
-    "ai": "7.0.162",
+    "ai": "7.0.166",
     "drizzle-kit": "0.31.11",
     "drizzle-orm": "0.45.4",
     "msw": "2.15.0",
