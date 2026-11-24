@@ -11,12 +11,14 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { IntakeContract } from '@credalent/intake';
-import { applicationRecords, createIntake } from '@credalent/intake/composition';
+import { applicationRecords, createIntake, findApplication } from '@credalent/intake/composition';
+import type { InterviewsContract } from '@credalent/interviews';
+import { createInterviews } from '@credalent/interviews/composition';
 import { receiveConfirmed } from './confirmedBatch.ts';
 import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import type { JobsContract } from '@credalent/jobs';
-import { createJobs } from '@credalent/jobs/composition';
+import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
 import { createFiles, type BlobStore } from '@credalent/files/composition';
 import { createNotifications } from '@credalent/notifications/composition';
 import { createDb, DbQueryError, withCandidateAccount, withWorkspace, type Db, type Tx } from '@credalent/db';
@@ -263,6 +265,7 @@ type Modules = {
   assessment: AssessmentContract;
   jobs: JobsContract;
   intake: IntakeContract;
+  interviews: InterviewsContract;
   audit: AuditContract;
 };
 const modulesOn = (db: Db): Modules => {
@@ -282,6 +285,13 @@ const modulesOn = (db: Db): Modules => {
     assessment: createAssessment(workspaces, audit, jobs, () => NOW),
     jobs,
     intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, () => NOW),
+    interviews: createInterviews(
+      workspaces,
+      jobs,
+      createApprovedRubricReads().approvedRubric,
+      findApplication,
+      () => NOW,
+    ),
   };
 };
 
@@ -305,7 +315,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, evidence, assessment, jobs, intake }: Modules,
+  { workspaces, candidates, evidence, assessment, jobs, intake, interviews }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -368,7 +378,7 @@ async function seed(
       clientIds: [],
     });
     // An application under a confirmed batch (intake.application, .application_source and .import_batches, AIV-P1-017, AIV-P1-104); it finds or creates the person.
-    const { personId } = await receiveConfirmed(intake, ctx, {
+    const { personId, applicationId } = await receiveConfirmed(intake, ctx, {
       jobId: job.id,
       person: {
         displayName: person,
@@ -376,6 +386,15 @@ async function seed(
         synthetic: true,
       },
       source: 'email',
+    });
+    // A Round 1 interview with a time, so its InterviewScheduled.v1 is in the outbox (interviews.*, AIV-P2-001).
+    const approved = await createApprovedRubricReads().approvedRubric(ctx.tx, workspaceId, job.id);
+    await interviews.createInterview(ctx, {
+      applicationId,
+      round: 'structured_screen',
+      interviewerUserId: creator,
+      scheduledAt: NOW,
+      competencyIds: approved?.competencies.map((c) => c.id) ?? [],
     });
     // The same person arriving again under another address, merged by a recruiter (candidates.merge, AIV-P1-018).
     const duplicate = await candidates.findOrCreatePerson(ctx, {

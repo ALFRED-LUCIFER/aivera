@@ -32,6 +32,7 @@ export const MODULES: MigratableModule[] = [
   'ops',
   'notifications',
   'files',
+  'interviews',
 ]
   .map(moduleAt)
   // search.chunk (AIV-P0-030) is owned by the AI platform package, not a module.

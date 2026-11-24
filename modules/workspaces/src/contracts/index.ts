@@ -59,7 +59,7 @@ export {
   settingsSchema,
 } from '../domain/settings.ts';
 export type { NumberSetting, SettingsPatch, WorkspaceSettings } from '../domain/settings.ts';
-export { ForbiddenError, WorkspacePausedError } from '../domain/permissions.ts';
+export { ForbiddenError, grantsCover, JOB_SCOPED_ROLES, WorkspacePausedError } from '../domain/permissions.ts';
 export type { Action, JobResource } from '../domain/permissions.ts';
 export type { Session } from '../application/context.ts';
 export type { ChangeRoleInput, CreateWorkspaceInput } from '../application/workspaces.ts';

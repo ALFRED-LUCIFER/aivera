@@ -20,6 +20,7 @@
     "@credalent/files": "workspace:*",
     "@credalent/identity": "workspace:*",
     "@credalent/intake": "workspace:*",
+    "@credalent/interviews": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/notifications": "workspace:*",
     "@credalent/observability": "workspace:*",

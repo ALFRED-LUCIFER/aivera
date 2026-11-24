@@ -10,6 +10,8 @@ export const FORBIDDEN_MODULE_IMPORTS: Record<string, string[]> = {
   jobs: ['billing', 'portfolio', 'ops'],
   evidence: ['billing', 'portfolio', 'ops'],
   intake: ['billing', 'portfolio', 'ops'],
+  // Scorecards feed the backed score (AIV-P2-004).
+  interviews: ['billing', 'portfolio', 'ops'],
 };
 
 /** Recruiter-side modules never import candidate-accounts, so none can tell a recruiter is also a candidate (ADR-009). */
