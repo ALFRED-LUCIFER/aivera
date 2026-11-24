@@ -50,13 +50,14 @@ describe('findOrCreatePerson merges only exact duplicates of the arrival', () =>
     expect(merges).toEqual([[ctx, 'a', 'b', 'merged automatically: same CV file']]);
   });
 
-  // SAFETY: mutation check: dropped the exactReason check on the earliest match in useMatches -> this test failed (b merged into a)
-  it('merges nothing when the earliest match is only a GitHub login under another name', async () => {
+  // SAFETY: mutation check: treated every match as exact in useMatches -> this test failed (found a, b merged into it)
+  // SAFETY: mutation check: targeted matches[0] instead of the earliest exact match -> this test failed (found a)
+  it('joins the person the arrival exactly duplicates, not an earlier one that shares only a GitHub login under another name', async () => {
     const { found, merges } = await arrive([
       [person('a', 'Omar Al Suwaidi'), ['github_login']],
       [person('b', 'Karim Nasser'), ['cv_hash']],
     ]);
-    expect(found).toEqual({ personId: 'a', created: false });
+    expect(found).toEqual({ personId: 'b', created: false });
     expect(merges).toEqual([]);
   });
 });

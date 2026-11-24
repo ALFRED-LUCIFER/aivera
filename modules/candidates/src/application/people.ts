@@ -47,7 +47,7 @@ export type Ports = {
   now(): Date;
   /**
    * The merge use cases' `merge` (AIV-P1-018), so an arrival that proves two records are one person merges them. Apps
-   * that never merge (the seed) leave it out: the earliest match is then used and the others stay as they are.
+   * that never merge (the seed) leave it out: the earliest exact match is then used and the others stay as they are.
    */
   autoMerge?: (ctx: WorkspaceContext, survivorId: string, mergedId: string, reason: string) => Promise<unknown>;
 };
@@ -73,10 +73,10 @@ export function peopleUseCases({
   autoMerge,
 }: Ports) {
   /**
-   * The earliest person the identifiers match gets the identifiers no one holds (one another person holds is never
-   * attached); every other match that is an exact duplicate (domain/duplicates.ts) is merged into it, as the system,
-   * with the reason as the audit note. A merge stands on both halves: the arrival must be exactly the earliest person
-   * too, or nothing merges and the likely-duplicate prompt leaves it to a person (AGENTS.md 1.5).
+   * The earliest person the arrival exactly duplicates (domain/duplicates.ts), or the earliest match when it exactly
+   * duplicates none, gets the identifiers no one holds (one another person holds is never attached); every later exact
+   * duplicate is merged into it, as the system, with the reason as the audit note. A merge stands on both halves: the
+   * arrival is exactly both people, or nothing merges and the likely-duplicate prompt leaves it to a person (AGENTS.md 1.5).
    */
   // shortcut: an undone automatic merge merges again when a later arrival bridges the same two people; record a
   // "not the same person" decision and skip that pair once a recruiter needs undo to stick (AIV-P1-018 follow-up).
@@ -84,16 +84,19 @@ export function peopleUseCases({
     ctx: WorkspaceContext,
     displayName: string,
     identifiers: Identifier[],
-    [first, ...others]: { person: Person; types: IdentifierType[] }[],
+    matches: { person: Person; types: IdentifierType[] }[],
   ): Promise<FindOrCreatePersonResult | null> {
-    if (!first) return null;
-    await storeFor(ctx.tx).attachIdentifiers(ctx.workspaceId, first.person.id, identifiers);
-    if (autoMerge && exactReason(first.types, displayName, first.person.displayName))
-      for (const other of others) {
-        const reason = exactReason(other.types, displayName, other.person.displayName);
-        if (reason) await autoMerge(ctx, first.person.id, other.person.id, AUTO_MERGE_NOTES[reason]);
-      }
-    return { personId: first.person.id, created: false };
+    const exact = matches.flatMap(({ person, types }) => {
+      const reason = exactReason(types, displayName, person.displayName);
+      return reason ? [{ person, reason }] : [];
+    });
+    const target = exact[0] ?? matches[0];
+    if (!target) return null;
+    await storeFor(ctx.tx).attachIdentifiers(ctx.workspaceId, target.person.id, identifiers);
+    if (autoMerge)
+      for (const other of exact.slice(1))
+        await autoMerge(ctx, target.person.id, other.person.id, AUTO_MERGE_NOTES[other.reason]);
+    return { personId: target.person.id, created: false };
   }
 
   return {

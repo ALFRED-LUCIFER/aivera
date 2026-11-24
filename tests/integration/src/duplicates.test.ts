@@ -430,8 +430,9 @@ describe('Scenario: Interviewers cannot merge', () => {
   });
 });
 
-describe('shortcut: undo moves a moved application back whole (application/merge.ts, intake applicationRecords)', () => {
-  it("a source that arrived on it after the merge, by the survivor's identifiers, goes back with it", async () => {
+describe('Undo moves back exactly what the merge moved (intake applicationRecords)', () => {
+  // SAFETY: mutation check: restore ignored applicationSourceIds (moved the application back whole) -> this test failed (email went to the merged person)
+  it("a source that arrived on a moved application after the merge stays with the survivor, in the survivor's application for that job", async () => {
     clock = NOW;
     const first = await newJob('Data Scientist');
     const second = await newJob('Forward Deployed Engineer');
@@ -444,10 +445,50 @@ describe('shortcut: undo moves a moved application back whole (application/merge
     expect([later.personId, later.applicationId]).toEqual([fatima.personId, dup.applicationId]);
     await as(ALEX, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'Two different people'));
     expect(await applicationsOf(dup.personId)).toEqual([
-      { id: dup.applicationId, job_id: second, sources: ['whatsapp', 'email'] },
+      { id: dup.applicationId, job_id: second, sources: ['whatsapp'] },
     ]);
     expect(await applicationsOf(fatima.personId)).toEqual([
       { id: fatima.applicationId, job_id: first, sources: ['referral'] },
+      { id: expect.any(String), job_id: second, sources: ['email'] },
     ]);
+  });
+
+  it('a merge stored before applicationSourceIds still undoes: its applications move back whole', async () => {
+    clock = NOW;
+    const job = await newJob('Applied Scientist');
+    const anna = await arrive(job, 'Anna Schmidt', 'linkedin', { cv: 63 });
+    const other = await newJob('Research Engineer');
+    const dup = await arrive(other, 'Anna Schmidt', 'referral', { cv: 64 });
+    const { mergeId } = await as(MARIA, w1, (ctx) =>
+      candidates.mergePeople(ctx, anna.personId, dup.personId, 'Same Anna'),
+    );
+    await admin.execute(
+      sql`update candidates.merge set moved = moved #- '{applications,applicationSourceIds}' where id = ${mergeId}`,
+    );
+    await as(ALEX, w1, (ctx) => candidates.unmergePeople(ctx, mergeId, 'Two different people'));
+    expect(await applicationsOf(dup.personId)).toEqual([
+      { id: dup.applicationId, job_id: other, sources: ['referral'] },
+    ]);
+  });
+
+  // SAFETY: mutation check: dropped eq(source.candidateId, fromId) from evidence's moveSource -> this test failed (Mark's repository went to Youssef)
+  it("evidence moves only what it finds where the merge left it: a stale record moves nothing, so another person's evidence stays", async () => {
+    clock = NOW;
+    const job = await newJob('ML Platform Engineer');
+    const mark = await arrive(job, 'Mark Reyes', 'linkedin', { cv: 71 });
+    const youssef = await arrive(job, 'Youssef Aziz', 'referral', { cv: 72 });
+    const { sourceId } = await repository(mark.personId, 'mark-ocr');
+    await withWorkspace(app, w1, (tx) =>
+      createEvidenceRecords(now).restore(
+        tx,
+        w1,
+        youssef.personId,
+        crypto.randomUUID(),
+        { sourceIds: [sourceId], requestIds: [] },
+        crypto.randomUUID(),
+      ),
+    );
+    expect(await sourcesOf(mark.personId)).toEqual([sourceId]);
+    expect(await sourcesOf(youssef.personId)).toEqual([]);
   });
 });

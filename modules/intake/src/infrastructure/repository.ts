@@ -1,5 +1,6 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { uuidv7 } from '@credalent/db/uuidv7';
+import { and, asc, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { IntakeStore } from '../application/applications.ts';
 import type { Source, Stage } from '../domain/application.ts';
@@ -135,6 +136,8 @@ export const candidatesForJob = async (tx: Tx, workspaceId: string, jobId: strin
 const movedSchema = z.strictObject({
   /** Applications now the survivor's. */
   applicationIds: z.array(z.uuid()),
+  /** The sources those applications held when they moved; absent on merges stored before it, whose undo moves them whole. */
+  applicationSourceIds: z.array(z.uuid()).optional(),
   /** Sources moved into the survivor's application for a job both applied to, each with the application it left. */
   sources: z.array(z.strictObject({ id: z.uuid(), from: z.uuid() })),
 });
@@ -181,7 +184,11 @@ export const applicationRecords = {
         .orderBy(asc(application.id))
         .for('update');
     const survivors = new Map((await ofPerson(toId)).map((a) => [a.jobId, a.id]));
-    const moved: z.infer<typeof movedSchema> = { applicationIds: [], sources: [] };
+    const moved: z.infer<typeof movedSchema> & { applicationSourceIds: string[] } = {
+      applicationIds: [],
+      applicationSourceIds: [],
+      sources: [],
+    };
     for (const app of await ofPerson(fromId)) {
       const into = survivors.get(app.jobId);
       if (!into) {
@@ -190,6 +197,11 @@ export const applicationRecords = {
           .set({ personId: toId })
           .where(and(eq(application.workspaceId, workspaceId), eq(application.id, app.id)));
         moved.applicationIds.push(app.id);
+        const held = await tx
+          .select({ id: applicationSource.id })
+          .from(applicationSource)
+          .where(and(eq(applicationSource.workspaceId, workspaceId), eq(applicationSource.applicationId, app.id)));
+        moved.applicationSourceIds.push(...held.map((s) => s.id));
         continue;
       }
       const sources = await tx
@@ -202,22 +214,64 @@ export const applicationRecords = {
     return { moved, count: moved.applicationIds.length + new Set(moved.sources.map((s) => s.from)).size };
   },
 
-  // shortcut: a whole application moves back with every source it holds, so one that arrived on it after the merge by
-  // the survivor's own identifiers goes to the merged person too (pinned in duplicates.test.ts); record which person
-  // each arrival matched and split them here if recruiters see it happen.
+  /**
+   * Moves back exactly what `move` moved. A source that arrived on a moved application after the merge matched the
+   * survivor, so it stays theirs: it goes to the survivor's application for that job, made as a new arrival's would be.
+   */
   async restore(tx: Tx, workspaceId: string, fromId: string, toId: string, stored: unknown) {
     const moved = movedSchema.parse(stored);
-    if (moved.applicationIds.length > 0)
+    const back =
+      moved.applicationIds.length === 0
+        ? []
+        : await tx
+            .update(application)
+            .set({ personId: fromId })
+            .where(
+              and(
+                eq(application.workspaceId, workspaceId),
+                eq(application.personId, toId),
+                inArray(application.id, moved.applicationIds),
+              ),
+            )
+            .returning({ id: application.id, jobId: application.jobId });
+    const later =
+      back.length === 0 || !moved.applicationSourceIds
+        ? []
+        : await tx
+            .select({
+              id: applicationSource.id,
+              applicationId: applicationSource.applicationId,
+              receivedAt: applicationSource.receivedAt,
+            })
+            .from(applicationSource)
+            .where(
+              and(
+                eq(applicationSource.workspaceId, workspaceId),
+                inArray(
+                  applicationSource.applicationId,
+                  back.map((a) => a.id),
+                ),
+                notInArray(applicationSource.id, moved.applicationSourceIds),
+              ),
+            )
+            .orderBy(asc(applicationSource.receivedAt), asc(applicationSource.id));
+    for (const source of later) {
+      const jobId = back.find((a) => a.id === source.applicationId)?.jobId;
+      if (!jobId) continue;
+      const theirs = await intakeStore(tx).insertOrGetApplication({
+        id: uuidv7(),
+        workspaceId,
+        personId: toId,
+        jobId,
+        stage: 'new',
+        receivedAt: source.receivedAt,
+        submittedToClientAt: null,
+      });
       await tx
-        .update(application)
-        .set({ personId: fromId })
-        .where(
-          and(
-            eq(application.workspaceId, workspaceId),
-            eq(application.personId, toId),
-            inArray(application.id, moved.applicationIds),
-          ),
-        );
+        .update(applicationSource)
+        .set({ applicationId: theirs.id })
+        .where(and(eq(applicationSource.workspaceId, workspaceId), eq(applicationSource.id, source.id)));
+    }
     for (const { id, from } of moved.sources)
       await tx
         .update(applicationSource)
