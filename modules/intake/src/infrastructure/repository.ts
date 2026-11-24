@@ -89,7 +89,7 @@ export function intakeStore(tx: Tx): IntakeStore {
     },
 
     async countForJob(workspaceId, jobId) {
-      // Every application has a source (they are written together), so the inner join drops none.
+      // The inner join drops only an application a duplicate merge emptied (AIV-P1-018), which no longer counts.
       const [row] = await tx
         .select({
           total: sql<number>`count(distinct ${application.id})`.mapWith(Number),
