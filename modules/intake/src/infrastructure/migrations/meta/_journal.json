@@ -22,6 +22,20 @@
       "when": 1795173845668,
       "tag": "0002_cool_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795525045927,
+      "tag": "0003_past_frog_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795525059624,
+      "tag": "0004_force_rls_import_batches",
+      "breakpoints": true
     }
   ]
 }

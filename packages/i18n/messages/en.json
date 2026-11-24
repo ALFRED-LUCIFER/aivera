@@ -1678,7 +1678,9 @@
     "checking": "Checking the file…",
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
     "readyCv": "{name} · ready",
-    "submit": "{count, plural, =0 {Add applicants} one {Add # applicant} other {Add # applicants}}",
+    "submit": "{count, plural, =0 {Add people to this job} one {Add # person to this job} other {Add # people to this job}}",
+    "confirmHint": "Confirm the line above to add these people.",
+    "confirmationRequired": "Confirm you are responsible for the right to process these CVs.",
     "done": "Done",
     "unnamed": "Unnamed applicant",
     "received": "Unnamed applicant · CV received",
@@ -1687,6 +1689,9 @@
     "jobNotFound": "This job does not exist or you do not have access."
   },
   "import": {
+    "rightToProcess": {
+      "v1": "I am responsible for having the right to process these CVs for {title}."
+    },
     "title": "Bring in candidates",
     "intro": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
     "picker": "Import into this job",

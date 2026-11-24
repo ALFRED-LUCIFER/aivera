@@ -293,7 +293,14 @@ export async function queueRepositoryRead(
 }
 
 /** An application's arrival as the intake module stores it. */
-export type Arrival = { personId: string; links: string[]; githubLogin: string | null; fileIds: string[] };
+export type Arrival = {
+  personId: string;
+  links: string[];
+  githubLogin: string | null;
+  fileIds: string[];
+  /** The confirmed batch it was added in (AIV-P1-104); null when it has none. */
+  batchId: string | null;
+};
 
 export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRequested' | 'newId' | 'now'> &
   Pick<CvPorts, 'cvStoreFor' | 'publishParseRequested'> &
@@ -312,6 +319,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
     ): Promise<{ identifierEmails: string[]; synthetic: boolean } | null>;
     /** A workspace file's purpose (the files module), or null when there is no such file. */
     readFilePurpose(tx: Tx, workspaceId: string, fileId: string): Promise<string | null>;
+    /** An arrival with no confirmed batch was not read: the source id only (AIV-P1-104). */
+    logRefused(ids: { sourceId: string }): void;
     /** Opaque ids only, never the link, login, emails, file name or content type (AGENTS.md 1.2). */
     logQueued(
       kind: 'repository' | 'cv' | 'link',
@@ -328,6 +337,8 @@ export type ArrivalPorts = Pick<RepositoryPorts, 'readStoreFor' | 'publishReadRe
 export async function queueArrivalReads(ports: ArrivalPorts, tx: Tx, workspaceId: string, sourceId: string) {
   const arrival = await ports.readArrival(tx, workspaceId, sourceId);
   if (!arrival) return;
+  // SAFETY: nothing of a recruiter-added CV is read, parsed or sent to the model before its batch was confirmed.
+  if (!arrival.batchId) return ports.logRefused({ sourceId });
   const links = arrival.links.filter((link) => parseRepositoryUrl(link));
   if (arrival.links.length === 0 && arrival.fileIds.length === 0) return;
   const person = await ports.readPerson(tx, workspaceId, arrival.personId);

@@ -1,13 +1,13 @@
 import type { FilesContract } from '@credalent/files';
 import type { IntakeContract } from '@credalent/intake';
 import type { WorkspaceContext } from '@credalent/workspaces';
-import type { AddApplicantsInput, AddApplicantsResult } from '../domain/addApplicants.ts';
+import { RIGHT_TO_PROCESS_KEY, type AddApplicantsInput, type AddApplicantsResult } from '../domain/addApplicants.ts';
 
 // Not a 'use server' file: every async export there becomes a callable action, and this one trusts its ports.
 
 export type LinkPorts = {
   files: Pick<FilesContract, 'findCleanUpload'>;
-  intake: Pick<IntakeContract, 'receiveApplication'>;
+  intake: Pick<IntakeContract, 'receiveBatch'>;
 };
 
 /**
@@ -29,15 +29,16 @@ export async function linkCleanCvs(
     if (clean?.purpose !== 'cv') return { ok: false, error: 'notAccepted' };
     cvs.push({ fileId, sha256: clean.sha256 });
   }
-  const applications = [];
-  for (const cv of cvs) {
-    const { applicationId, created } = await intake.receiveApplication(ctx, {
-      jobId: input.jobId,
-      person: { ...person, identifiers: [{ type: 'cv_hash', value: cv.sha256 }] },
+  // One save is one batch, whatever its size (AIV-P1-104).
+  const { applications } = await intake.receiveBatch(ctx, {
+    jobId: input.jobId,
+    rightToProcessConfirmed: input.rightToProcessConfirmed,
+    wordingKey: RIGHT_TO_PROCESS_KEY,
+    arrivals: cvs.map((cv) => ({
+      person: { ...person, identifiers: [{ type: 'cv_hash' as const, value: cv.sha256 }] },
       source: input.source,
       fileIds: [cv.fileId],
-    });
-    applications.push({ applicationId, created });
-  }
-  return { ok: true, applications };
+    })),
+  });
+  return { ok: true, applications: applications.map(({ applicationId, created }) => ({ applicationId, created })) };
 }

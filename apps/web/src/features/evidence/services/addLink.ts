@@ -25,6 +25,7 @@ export async function addLink(input: unknown): Promise<AddLinkResult> {
     log.error({ area: 'evidence', 'error.type': error instanceof Error ? error.name : 'unknown' }, 'add link failed');
     return { ok: false, error: 'failed' };
   }
+  // shortcut: an application with no confirmed batch (from before AIV-P1-104) stores the link but the worker never reads it; the ticket that wires the add-link UI must not report `read: true` for it (refuse, or say to add their CV again to confirm).
   return parseRepositoryUrl(url)
     ? { ok: true, read: true }
     : { ok: true, read: false, message: 'repositoryStatus.plainLink' };

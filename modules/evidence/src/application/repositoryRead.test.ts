@@ -14,9 +14,10 @@ import type { EvidenceSource } from '../domain/evidence.ts';
 // AIV-P1-076: which links an arrival queues, and who the commits are matched to. Synthetic cast only.
 const W = '0190d4a2-0000-7000-8000-000000000001';
 const MARIA = '0190d4a2-0000-7000-8000-0000000000a5';
+const BATCH = '0190d4a2-0000-7000-8000-0000000000b1';
 
 async function queue(
-  arrival: Omit<Arrival, 'fileIds'> & { fileIds?: string[] },
+  arrival: Omit<Arrival, 'fileIds' | 'batchId'> & { fileIds?: string[]; batchId?: string | null },
   purposes: Record<string, string> = {},
 ) {
   const reads: RepositoryRead[] = [];
@@ -26,7 +27,7 @@ async function queue(
   const logs: unknown[][] = [];
   let n = 0;
   const ports: ArrivalPorts = {
-    readArrival: async () => ({ fileIds: [], ...arrival }),
+    readArrival: async () => ({ fileIds: [], batchId: BATCH, ...arrival }),
     readPerson: async () => ({ identifierEmails: [' Maria.Santos@example.com '], synthetic: true }),
     readFilePurpose: async (_tx, _w, fileId) => purposes[fileId] ?? null,
     // Only insertOrGet is reached when queueing.
@@ -50,6 +51,7 @@ async function queue(
     publishReadRequested: async () => undefined,
     publishParseRequested: async (_tx, source) => void published.push(source.id),
     logQueued: (...args) => void logs.push(args),
+    logRefused: (...args) => void logs.push(['refused', ...args]),
     newId: () => `0190d4a2-0000-7000-8000-${String(++n).padStart(12, '0')}`,
     now: () => new Date('2026-11-20T09:00:00Z'),
   };
@@ -57,9 +59,25 @@ async function queue(
   return { reads, parses, links, published, logs };
 }
 
-const run = async (arrival: Omit<Arrival, 'fileIds'>) => (await queue(arrival)).reads;
+const run = async (arrival: Omit<Arrival, 'fileIds' | 'batchId'>) => (await queue(arrival)).reads;
 
 describe('queueing the reads an arrival brings', () => {
+  // AIV-P1-104. SAFETY: mutation check: removed the batchId guard in queueArrivalReads -> this test failed (a repository read, a link read and a CV parse were queued)
+  it('Scenario: The worker refuses an arrival with no confirmed batch: nothing is queued, the log holds the source id only', async () => {
+    const { reads, parses, links, published, logs } = await queue(
+      {
+        personId: MARIA,
+        githubLogin: null,
+        links: ['https://github.com/maria-credalent-example/ledger-sync', 'https://portfolio.maria.credalent.example'],
+        fileIds: ['cv'],
+        batchId: null,
+      },
+      { cv: 'cv' },
+    );
+    expect([reads, parses, links, published]).toEqual([[], [], [], []]);
+    expect(logs).toEqual([['refused', { sourceId: 'arrival' }]]);
+  });
+
   it('queues one read per repository, whatever the spelling, and a link read for every other link', async () => {
     const { reads, links } = await queue({
       personId: MARIA,
