@@ -61,6 +61,7 @@ import {
   EvidenceRequestOpenedV1,
   EvidenceRequestQuietV1,
   EvidenceRequestSentV1,
+  GitHubProfileExpandRequestedV1,
   LinkReadRequestedV1,
   RepositoryReadRequestedV1,
   RepositoryRefreshRequestedV1,
@@ -72,7 +73,9 @@ import { documentReadStore } from './infrastructure/documentReadStore.ts';
 import { createGitHub, type GitHubConfig } from './infrastructure/github.ts';
 import { createLinkFetcher } from './infrastructure/linkFetch.ts';
 import { linkReadStore } from './infrastructure/linkReadStore.ts';
+import { profileExpansionStore } from './infrastructure/profileExpansionStore.ts';
 import { mappingStore } from './infrastructure/mappingStore.ts';
+import { expandProfile, queueProfileExpansion, type ExpansionQueuePorts } from './application/profileExpansion.ts';
 import { evidenceStore } from './infrastructure/repository.ts';
 import { repositoryReadStore } from './infrastructure/repositoryReadStore.ts';
 import { requestStore } from './infrastructure/requestStore.ts';
@@ -99,6 +102,14 @@ const publishParseRequested: CvPorts['publishParseRequested'] = (tx, source) =>
     payload: { candidateId: source.candidateId, sourceId: source.id },
     dedupeKey: `cv-parse:${source.id}`,
     occurredAt: source.createdAt,
+  });
+
+const publishExpandRequested: ExpansionQueuePorts['publishExpandRequested'] = (tx, expansion, occurredAt) =>
+  enqueue(tx, outbox, GitHubProfileExpandRequestedV1, {
+    workspaceId: expansion.workspaceId,
+    payload: { candidateId: expansion.candidateId, expansionId: expansion.id },
+    dedupeKey: `profile-expand:${expansion.id}`,
+    occurredAt,
   });
 
 const publishLinkReadRequested: LinkPorts['publishLinkReadRequested'] = (tx, source) =>
@@ -417,6 +428,53 @@ export function createRepositoryRefreshHandler(config: {
   };
 }
 
+/**
+ * The worker job `evidence.github.profile-expand` on the evidence queue (AIV-P1-112): lists a CV's GitHub profile and
+ * queues an ordinary repository read for its best few own repositories. A rate limit reschedules it for just after the
+ * reset and settles nothing. The log line carries ids, the number queued and the outcome: never the login or a name.
+ */
+export function createProfileExpansionHandler(config: {
+  github: GitHubConfig;
+  scheduler: Scheduler;
+  now?: () => Date;
+}): Handler<{ candidateId: string; expansionId: string }> {
+  const now = config.now ?? (() => new Date());
+  const ports = {
+    profileStoreFor: profileExpansionStore,
+    github: createGitHub({ now, ...config.github }),
+    queueRead: (tx: Tx, workspaceId: string, input: Parameters<typeof queueRepositoryRead>[3]) =>
+      queueRepositoryRead(
+        { readStoreFor: repositoryReadStore, publishReadRequested, newId: uuidv7, now },
+        tx,
+        workspaceId,
+        input,
+      ),
+  };
+  return {
+    event: GitHubProfileExpandRequestedV1,
+    inbox,
+    consumer: 'evidence.github.profile-expand',
+    async handle(tx, payload, envelope) {
+      try {
+        const result = await expandProfile(ports, tx, envelope.workspaceId, payload.expansionId);
+        if (result)
+          log.info(
+            {
+              'evidence.expansion_id': payload.expansionId,
+              'evidence.candidate_id': result.candidateId,
+              'credalent.evidence.profile_queued': result.queued,
+              'credalent.evidence.profile_outcome': result.status,
+            },
+            'github profile expanded',
+          );
+      } catch (error) {
+        if (!(error instanceof GitHubRateLimited)) throw error;
+        await reschedule(config.scheduler, GitHubProfileExpandRequestedV1, envelope, payload, error.resetAt, now);
+      }
+    },
+  };
+}
+
 const QUEUED_MESSAGES = {
   repository: ['repository read queued', 'repository read already queued'],
   cv: ['cv parse queued', 'cv parse already queued'],
@@ -677,6 +735,13 @@ export function createFileReadHandlers(config: {
     queueRead: (tx, workspaceId, input) =>
       queueRepositoryRead(
         { readStoreFor: repositoryReadStore, publishReadRequested, newId: uuidv7, now },
+        tx,
+        workspaceId,
+        input,
+      ),
+    queueProfile: (tx, workspaceId, input) =>
+      queueProfileExpansion(
+        { profileStoreFor: profileExpansionStore, publishExpandRequested, newId: uuidv7, now },
         tx,
         workspaceId,
         input,

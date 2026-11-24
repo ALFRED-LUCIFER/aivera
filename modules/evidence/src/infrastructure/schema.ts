@@ -25,7 +25,7 @@ import { COMPARISON_METHODS, COMPARISON_OUTCOMES } from '../domain/corroboration
 import { PROVENANCES, SOURCE_KINDS, STRENGTHS } from '../domain/evidence.ts';
 import { DUPLICATE_RESOLUTIONS } from '../domain/fingerprint.ts';
 import { GAP_KINDS, type StoredChange } from '../domain/mapping.ts';
-import { REPOSITORY_READ_STATUSES } from '../domain/repository.ts';
+import { PROFILE_EXPANSION_STATUSES, REPOSITORY_READ_STATUSES, REPOSITORY_VIAS } from '../domain/repository.ts';
 import { DEFAULT_FOLLOW_UP, REQUEST_STATUSES } from '../domain/request.ts';
 import {
   type Citation,
@@ -258,6 +258,8 @@ export const repositoryRead = evidence
       // Null when the candidate supplied no login (AIV-P1-076): commits then match by the emails only.
       githubLogin: text('github_login'),
       emails: text().array().notNull(),
+      // Set when a GitHub profile in a CV led to the read (AIV-P1-112); it never changes how authorship is judged.
+      via: text({ enum: REPOSITORY_VIAS }),
       status: text({ enum: REPOSITORY_READ_STATUSES }).notNull(),
       totalCommits: integer('total_commits'),
       authoredCommits: integer('authored_commits'),
@@ -296,7 +298,34 @@ export const repositoryRead = evidence
         sql`${t.coverageGap} in ('unreadable', 'rate_limited', 'truncated_listing', 'file_cap', 'oversized_file')`,
       ),
       check('repository_read_files_inspected_check', sql`${t.filesInspected} >= 0`),
+      // Must list exactly REPOSITORY_VIAS (domain/repository.ts); changing it needs a new migration.
+      check('repository_read_via_check', sql`${t.via} in ('cv_profile')`),
       tenantPolicy('repository_read_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A GitHub profile a CV links (AIV-P1-112), expanded by the worker into repository reads. The login is candidate
+// personal data: never in an event or a log line. No foreign keys across modules: opaque ids.
+export const profileExpansion = evidence
+  .table(
+    'profile_expansion',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      id: uuid().notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      login: text().notNull(),
+      synthetic: boolean().notNull(),
+      status: text({ enum: PROFILE_EXPANSION_STATUSES }).notNull(),
+      queued: integer(),
+    },
+    (t) => [
+      primaryKey({ name: 'profile_expansion_pkey', columns: [t.workspaceId, t.id] }),
+      // One expansion per candidate and profile, so a re-parse or a redelivery expands it once.
+      unique('profile_expansion_candidate_login_key').on(t.workspaceId, t.candidateId, t.login),
+      // Must list exactly PROFILE_EXPANSION_STATUSES (domain/repository.ts); changing it needs a new migration.
+      check('profile_expansion_status_check', sql`${t.status} in ('pending', 'expanded', 'not_expandable')`),
+      tenantPolicy('profile_expansion_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

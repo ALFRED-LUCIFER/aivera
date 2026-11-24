@@ -15,6 +15,10 @@ export type CommitIdentity = { login: string | null; emails: readonly string[] }
 /** One commit on the default branch as the reader sees it. The message is read for trailers only, never stored. */
 export type Commit = { sha: string; authorLogin: string | null; authorEmail: string | null; message: string };
 
+/** How a repository read came about: from a GitHub profile the CV links (AIV-P1-112). Null: a link to the repository. */
+export const REPOSITORY_VIAS = ['cv_profile'] as const;
+export type RepositoryVia = (typeof REPOSITORY_VIAS)[number];
+
 const GITHUB_LOGIN = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 
 export const normaliseLogin = (login: string) => login.trim().replace(/^@/, '').toLowerCase();
@@ -171,3 +175,42 @@ export const isStale = (source: { checkedAt: Date | null }, now: Date, latestPus
   source.checkedAt === null ||
   now.getTime() - source.checkedAt.getTime() > STALE_AFTER_MS ||
   (latestPushedAt !== null && latestPushedAt > source.checkedAt);
+
+/**
+ * pending until the worker has run the expansion; `not_expandable` for an organisation or a profile GitHub does not have;
+ * `expanded` with 0 queued also means the candidate's 5 repositories were already used (or none qualified).
+ */
+export const PROFILE_EXPANSION_STATUSES = ['pending', 'expanded', 'not_expandable'] as const;
+export type ProfileExpansionStatus = (typeof PROFILE_EXPANSION_STATUSES)[number];
+
+/** The most repositories read from the profiles of one candidate, all together. */
+export const PROFILE_REPOSITORY_CAP = 5;
+
+/** A repository GitHub lists for a user, as the reader sees it. */
+export type OwnedRepository = {
+  name: string;
+  fork: boolean;
+  archived: boolean;
+  private: boolean;
+  /** In KB, 0 for an empty repository. */
+  size: number;
+  pushedAt: Date | null;
+};
+
+const REPOSITORY_NAME = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,100}$/;
+
+/** A profile's own public work, newest push first: no fork, no archived, no empty or private repository. */
+export const chooseProfileRepositories = (repositories: readonly OwnedRepository[]): string[] =>
+  repositories
+    .filter(
+      (r) =>
+        !r.fork &&
+        !r.archived &&
+        !r.private &&
+        r.size > 0 &&
+        r.pushedAt !== null &&
+        REPOSITORY_NAME.test(r.name) &&
+        !r.name.endsWith('.git'),
+    )
+    .toSorted((a, b) => (b.pushedAt?.getTime() ?? 0) - (a.pushedAt?.getTime() ?? 0))
+    .map((r) => r.name);

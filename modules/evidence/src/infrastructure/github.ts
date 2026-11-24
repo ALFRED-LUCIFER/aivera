@@ -3,7 +3,7 @@
 import { createSign } from 'node:crypto';
 import { z } from 'zod';
 import { GitHubRateLimited, type GitHubPort } from '../application/repositoryRead.ts';
-import type { Commit } from '../domain/repository.ts';
+import type { Commit, OwnedRepository } from '../domain/repository.ts';
 
 /** The app id, its PEM private key and the installation id (Key Vault in Azure; names in .env.example). */
 export type GitHubConfig = {
@@ -21,6 +21,15 @@ const repositorySchema = z.object({
   fork: z.boolean(),
   private: z.boolean(),
   default_branch: z.string().min(1),
+  pushed_at: z.iso.datetime().nullable(),
+});
+const userSchema = z.object({ type: z.string() });
+const ownedSchema = z.object({
+  name: z.string().min(1),
+  fork: z.boolean(),
+  archived: z.boolean(),
+  private: z.boolean(),
+  size: z.number().int().min(0),
   pushed_at: z.iso.datetime().nullable(),
 });
 const commitSchema = z.object({
@@ -162,6 +171,20 @@ export function createGitHub(config: GitHubConfig): GitHubPort {
         const match = /\/repos\/([^/]+)\/([^/]+)$/.exec(new URL(pr.repository_url).pathname);
         return match?.[1] && match[2] ? [{ owner: match[1], name: match[2], number: pr.number }] : [];
       });
+    },
+    async user(account) {
+      return get(`/users/${encodeURIComponent(account)}`, userSchema);
+    },
+    async ownedRepositories(account) {
+      // One page: the 30 most recently pushed, which is all the choice of five can use.
+      const owned = await get(
+        `/users/${encodeURIComponent(account)}/repos?type=owner&sort=pushed&per_page=30`,
+        z.array(ownedSchema),
+      );
+      return (owned ?? []).map((r): OwnedRepository => ({
+        ...r,
+        pushedAt: r.pushed_at ? new Date(r.pushed_at) : null,
+      }));
     },
     async pullRequest(owner, name, number) {
       const pr = await get(`${repo(owner, name)}/pulls/${number}`, pullSchema);

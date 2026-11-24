@@ -520,6 +520,10 @@ async function seed(
       label: 'Shipped product: merchant help assistant',
       synthetic: true,
     });
+    // A GitHub profile a CV links, waiting to be expanded (evidence.profile_expansion, AIV-P1-112).
+    await ctx.tx
+      .execute(sql`insert into evidence.profile_expansion (workspace_id, id, candidate_id, login, synthetic, status)
+      values (${workspaceId}, ${crypto.randomUUID()}, ${personId}, 'maria-credalent-example', true, 'pending')`);
     // An evidence request email (notifications.message and .outbox, AIV-P0-017) and a handled message (.inbox).
     const { messageId } = await createNotifications({
       encryptionKey: randomBytes(32).toString('base64'),
