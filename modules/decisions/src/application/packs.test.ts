@@ -1,0 +1,264 @@
+import { ForbiddenError, type Role, type WorkspaceContext } from '@credalent/workspaces';
+import { describe, expect, it, vi } from 'vitest';
+import type { Decision, DecisionPack, PackMember } from '../domain/pack.ts';
+import { packUseCases, type PackStore, type Ports } from './packs.ts';
+
+// AIV-P2-009: the pack use cases over faked ports; the database scenarios are in
+// tests/integration/src/decisions.test.ts. Synthetic cast and opaque ids only.
+const id = (n: number) => `0190d4a2-0000-7000-9000-${String(n).padStart(12, '0')}`;
+const AYESHA = id(1); // recruiter
+const FAISAL = id(2); // the job's hiring owner
+const JOB = { jobId: id(10), clientId: null, hiringOwnerUserId: FAISAL };
+const V2 = id(11);
+const [SARA, ARJUN, HUDA] = [id(20), id(21), id(22)] as const;
+const PACK = id(30);
+const NOW = new Date('2026-11-17T08:00:00.000Z');
+const ctxAs = (role: Role, userId = AYESHA) => ({ workspaceId: 'w1', userId, role, tx: {} }) as WorkspaceContext;
+
+const pack = (over: Partial<DecisionPack> = {}): DecisionPack => ({
+  id: PACK,
+  workspaceId: 'w1',
+  jobId: JOB.jobId,
+  rubricVersionId: V2,
+  name: 'Round 2 shortlist: Senior AI Engineer',
+  preparedBy: AYESHA,
+  preparedAt: NOW,
+  status: 'ready',
+  ...over,
+});
+const member = (candidateId: string, position: number, backedScore = 68, upperBound = 84): PackMember => ({
+  workspaceId: 'w1',
+  packId: PACK,
+  candidateId,
+  assessmentId: `a-${candidateId}`,
+  backedScore,
+  upperBound,
+  recommendation: null,
+  position,
+});
+
+function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), members: PackMember[] = []) {
+  const store = {
+    insertPack: vi.fn<PackStore['insertPack']>(async () => undefined),
+    findPack: vi.fn<PackStore['findPack']>(async (_w, packId) => (stored?.id === packId ? stored : null)),
+    setStatus: vi.fn<PackStore['setStatus']>(async () => undefined),
+    insertMembers: vi.fn<PackStore['insertMembers']>(async () => undefined),
+    listMembers: vi.fn<PackStore['listMembers']>(async () => members),
+    insertDecisions: vi.fn<PackStore['insertDecisions']>(async () => undefined),
+    listDecisions: vi.fn<PackStore['listDecisions']>(async () => []),
+  };
+  const ports: Ports = {
+    storeFor: () => store,
+    publishPackReady: vi.fn(async () => undefined),
+    publishDecisionsRecorded: vi.fn(async () => undefined),
+    authorize: vi.fn(async () => undefined),
+    job: async (_ctx, jobId) => (jobId === JOB.jobId ? JOB : null),
+    ranking: async () => ({ rubricVersionId: V2, candidateIds: [SARA, ARJUN, HUDA] }),
+    latestAssessment: vi.fn(async (_ctx, candidateId: string) => ({
+      id: `a-${candidateId}`,
+      rubricVersionId: V2,
+      backedScore: 68,
+      upperBound: 84,
+    })),
+    auditDecision: vi.fn(async () => undefined),
+    newId: () => PACK,
+    now: () => NOW,
+    ...over,
+  };
+  return { useCases: packUseCases(ports), store, ports };
+}
+
+const shortlist = (over: Record<string, unknown> = {}) => ({
+  jobId: JOB.jobId,
+  name: 'Round 2 shortlist: Senior AI Engineer',
+  members: [{ candidateId: SARA, recommendation: 'advance' as const }, { candidateId: ARJUN }, { candidateId: HUDA }],
+  ...over,
+});
+const advanceAll = (candidates: readonly string[] = [SARA, ARJUN, HUDA]) => ({
+  packId: PACK,
+  decisions: candidates.map((candidateId) => ({
+    candidateId,
+    decision: 'advance' as const,
+    note: 'Strong on the two heaviest competencies.',
+  })),
+});
+
+describe('createPack', () => {
+  it('stores a ready pack on the approved rubric version with a snapshot per member, and announces it', async () => {
+    const { useCases, store, ports } = setup();
+    expect(await useCases.createPack(ctxAs('recruiter'), shortlist())).toEqual({ packId: PACK });
+    const written = store.insertPack.mock.calls[0]?.[0];
+    expect(written).toEqual(pack());
+    expect(store.insertMembers.mock.calls[0]?.[0]).toEqual([
+      { ...member(SARA, 0), recommendation: 'advance' },
+      member(ARJUN, 1),
+      member(HUDA, 2),
+    ]);
+    expect(ports.authorize).toHaveBeenCalledWith(ctxAs('recruiter'), 'pack.prepare', JOB);
+    expect(ports.publishPackReady).toHaveBeenCalledWith({}, written);
+  });
+
+  it('a candidate named twice is a member once', async () => {
+    const { useCases, store } = setup();
+    await useCases.createPack(
+      ctxAs('recruiter'),
+      shortlist({ members: [{ candidateId: SARA }, { candidateId: SARA }] }),
+    );
+    expect(store.insertMembers.mock.calls[0]?.[0]).toEqual([member(SARA, 0)]);
+  });
+
+  // SAFETY: mutation check: removed the rubric version comparison from snapshot() -> the "older version" row failed (pack stored)
+  it.each<[string, Partial<Ports>, string]>([
+    ['a job the context cannot see', { job: async () => null }, 'job_not_found'],
+    ['no approved rubric', { ranking: async () => null }, 'rubric_not_approved'],
+    [
+      'a candidate not ranked on the job',
+      { ranking: async () => ({ rubricVersionId: V2, candidateIds: [SARA] }) },
+      'candidate_not_assessed',
+    ],
+    ['a candidate with no assessment', { latestAssessment: async () => null }, 'candidate_not_assessed'],
+    [
+      'a latest assessment on an older version',
+      { latestAssessment: async () => ({ id: id(40), rubricVersionId: id(12), backedScore: 1, upperBound: 2 }) },
+      'candidate_not_assessed',
+    ],
+  ])('%s: refused (%s) and nothing is stored', async (_label, over, code) => {
+    const { useCases, store, ports } = setup(over);
+    await expect(useCases.createPack(ctxAs('recruiter'), shortlist())).rejects.toMatchObject({ code });
+    expect(store.insertPack).not.toHaveBeenCalled();
+    expect(ports.publishPackReady).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'pack.prepare', job) from createPack -> this test failed (pack stored)
+  it('a refused pack.prepare reads no assessment and stores nothing', async () => {
+    const { useCases, store, ports } = setup({ authorize: async () => Promise.reject(new ForbiddenError()) });
+    await expect(useCases.createPack(ctxAs('hiring_owner', FAISAL), shortlist())).rejects.toThrow(ForbiddenError);
+    expect(ports.latestAssessment).not.toHaveBeenCalled();
+    expect(store.insertPack).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['no member', { members: [] }],
+    ['a blank name', { name: '   ' }],
+    ['an unknown recommendation', { members: [{ candidateId: SARA, recommendation: 'reject' }] }],
+  ])('a malformed input (%s) is refused before anything is read', async (_label, over) => {
+    const { useCases, store } = setup();
+    await expect(useCases.createPack(ctxAs('recruiter'), shortlist(over))).rejects.toThrow();
+    expect(store.insertPack).not.toHaveBeenCalled();
+  });
+});
+
+describe('addMembers', () => {
+  // SAFETY: mutation check: replaced newMembers(...) with `adding` in addMembers -> this test failed (Sara read and inserted again)
+  it('a candidate already in the pack is ignored and keeps the snapshot she has; a new one joins after the last', async () => {
+    const { useCases, store, ports } = setup({}, pack(), [member(SARA, 0, 58, 80)]);
+    expect(
+      await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }, { candidateId: ARJUN }]),
+    ).toEqual({
+      added: 1,
+    });
+    expect(ports.latestAssessment).toHaveBeenCalledTimes(1);
+    expect(store.insertMembers.mock.calls).toEqual([[[member(ARJUN, 1)]]]);
+  });
+
+  it('adding only candidates already in the pack writes nothing', async () => {
+    const { useCases, store } = setup({}, pack(), [member(SARA, 0)]);
+    expect(await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }])).toEqual({ added: 0 });
+    expect(store.insertMembers).not.toHaveBeenCalled();
+  });
+
+  it('locks the pack, and refuses a decided one', async () => {
+    const { useCases, store } = setup({}, pack({ status: 'decided' }), [member(SARA, 0)]);
+    await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }])).rejects.toMatchObject({
+      code: 'pack_decided',
+    });
+    expect(store.findPack).toHaveBeenCalledWith('w1', PACK, true);
+    expect(store.insertMembers).not.toHaveBeenCalled();
+  });
+
+  it("nobody joins once the job's approved rubric version is no longer the pack's", async () => {
+    const { useCases, store } = setup({ ranking: async () => ({ rubricVersionId: id(12), candidateIds: [ARJUN] }) });
+    await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }])).rejects.toMatchObject({
+      code: 'candidate_not_assessed',
+    });
+    expect(store.insertMembers).not.toHaveBeenCalled();
+  });
+});
+
+describe('recordDecisions', () => {
+  const members = [member(SARA, 0), member(ARJUN, 1), member(HUDA, 2)];
+
+  it('the hiring owner records all three: stored with who and when, decided, one event, each audited last', async () => {
+    const { useCases, store, ports } = setup({}, pack(), members);
+    await useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), advanceAll());
+    const written = store.insertDecisions.mock.calls[0]?.[0] as Decision[];
+    expect(written).toHaveLength(3);
+    expect(written.every((d) => d.decidedBy === FAISAL && d.decidedAt === NOW && d.decision === 'advance')).toBe(true);
+    expect(store.setStatus).toHaveBeenCalledWith('w1', PACK, 'decided');
+    expect(ports.publishDecisionsRecorded).toHaveBeenCalledTimes(1);
+    expect(ports.auditDecision).toHaveBeenCalledTimes(3);
+    // The audit writes come after every other write (AGENTS.md 3.6).
+    const lastOther = Math.max(
+      ...[store.insertDecisions, store.setStatus, vi.mocked(ports.publishDecisionsRecorded)].map(
+        (f) => f.mock.invocationCallOrder[0] ?? 0,
+      ),
+    );
+    expect(Math.min(...vi.mocked(ports.auditDecision).mock.invocationCallOrder)).toBeGreaterThan(lastOther);
+  });
+
+  // SAFETY: mutation check: removed the mayDecide check from recordDecisions -> this test failed (decisions stored)
+  it('a recruiter, allowed decision.record by role, is not the hiring owner of this job: 403 and nothing is stored', async () => {
+    const { useCases, store, ports } = setup({}, pack(), members);
+    await expect(useCases.recordDecisions(ctxAs('recruiter'), advanceAll())).rejects.toThrow(ForbiddenError);
+    expect(store.insertDecisions).not.toHaveBeenCalled();
+    expect(store.setStatus).not.toHaveBeenCalled();
+    expect(ports.publishDecisionsRecorded).not.toHaveBeenCalled();
+    expect(ports.auditDecision).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'decision.record', job) from recordDecisions -> this test failed (decisions stored)
+  it('a refused decision.record stores nothing, even for the named owner', async () => {
+    const { useCases, store } = setup({ authorize: async () => Promise.reject(new ForbiddenError()) }, pack(), members);
+    await expect(useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), advanceAll())).rejects.toThrow(ForbiddenError);
+    expect(store.insertDecisions).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a member left out', advanceAll([SARA, ARJUN]), pack(), 'decisions_incomplete'],
+    ['a candidate not in the pack', advanceAll([SARA, ARJUN, id(23)]), pack(), 'decisions_incomplete'],
+    ['a pack already decided', advanceAll(), pack({ status: 'decided' }), 'pack_decided'],
+    ['a draft pack', advanceAll(), pack({ status: 'draft' }), 'pack_not_ready'],
+    ['an unknown pack', { ...advanceAll(), packId: id(31) }, pack(), 'pack_not_found'],
+  ] as const)('%s: refused (%s) and nothing is stored', async (_label, input, stored, code) => {
+    const { useCases, store, ports } = setup({}, stored, members);
+    await expect(useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), input)).rejects.toMatchObject({ code });
+    expect(store.insertDecisions).not.toHaveBeenCalled();
+    expect(ports.publishDecisionsRecorded).not.toHaveBeenCalled();
+  });
+
+  it('a decision with no reason is refused before anything is read', async () => {
+    const { useCases, store } = setup({}, pack(), members);
+    const input = { packId: PACK, decisions: [{ candidateId: SARA, decision: 'hold' as const, note: ' ' }] };
+    await expect(useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), input)).rejects.toThrow();
+    expect(store.findPack).not.toHaveBeenCalled();
+  });
+});
+
+describe('getPack', () => {
+  it('returns the pack with its members and decisions', async () => {
+    const { useCases, ports } = setup({}, pack(), [member(SARA, 0)]);
+    expect(await useCases.getPack(ctxAs('hiring_owner', FAISAL), PACK)).toEqual({
+      ...pack(),
+      members: [member(SARA, 0)],
+      decisions: [],
+    });
+    expect(ports.authorize).toHaveBeenCalledWith(ctxAs('hiring_owner', FAISAL), 'pack.view', JOB);
+  });
+
+  // SAFETY: mutation check: made visible() ignore a null job -> this test failed (pack returned)
+  it('is null for a pack on a job the context cannot see, and for an id that is not one', async () => {
+    const { useCases } = setup({ job: async () => null });
+    expect(await useCases.getPack(ctxAs('hiring_owner', FAISAL), PACK)).toBeNull();
+    expect(await setup().useCases.getPack(ctxAs('recruiter'), 'not-an-id')).toBeNull();
+  });
+});
