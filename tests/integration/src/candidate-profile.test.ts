@@ -21,12 +21,14 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { receiveConfirmed } from './confirmedBatch.ts';
 
-// AIV-P1-043: the candidate profile's read against real PostgreSQL, as the non-owner aivera_app role, from seeded data:
-// applications through intake, evidence through its contract, and scores from `assessCandidate` (the formula's 63 up to
-// 83 for Sara, not the design's illustrative 68 up to 84; owner decision in modules/assessment/README.md). Keep
-// `readProfile` below in step with apps/web/src/features/evidence-profile/services/loadProfile.ts: a test package may
-// not import the app (AGENTS.md 9.4); its unit test covers the same branches with fakes. The modules are built as the
-// app's composition root builds them (apps/web/src/server). Synthetic cast only (docs/00-product/personas.md).
+// AIV-P1-043: the module contracts the candidate profile reads, against real PostgreSQL as the non-owner aivera_app
+// role, from seeded data: row-level security, the job scope, applications through intake, evidence through its contract,
+// and scores from `assessCandidate` (the formula's 63 up to 83 for Sara, not the design's illustrative 68 up to 84; owner
+// decision in modules/assessment/README.md). It does not run the shipped `loadProfile`: a test package may not import
+// the app (AGENTS.md 9.4), so `readProfile` below repeats its steps. `loadProfile` itself is proven by its unit test
+// (apps/web/src/features/evidence-profile/services/loadProfile.test.ts) and, on a real database, by
+// tests/e2e/src/candidate-profile.spec.ts. The modules are built as the app's composition root builds them
+// (apps/web/src/server). Synthetic cast only (docs/00-product/personas.md).
 
 const rolesSql = readFileSync(createRequire(import.meta.url).resolve('@credalent/db/sql/roles.sql'), 'utf8');
 const dbCli = join(import.meta.dirname, '..', '..', '..', 'packages', 'db', 'src', 'cli.ts');

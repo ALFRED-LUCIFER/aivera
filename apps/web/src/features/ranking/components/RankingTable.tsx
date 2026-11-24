@@ -296,7 +296,7 @@ function NameCell({
         // profileHref builds the path from opaque ids, which typed routes cannot check.
         <Link
           href={profileHref(row.personId, jobId) as Route}
-          className="font-semibold underline underline-offset-3 hover:text-text"
+          className="font-semibold text-text underline-offset-2 hover:underline"
         >
           {name}
         </Link>

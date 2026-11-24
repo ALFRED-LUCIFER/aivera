@@ -1,3 +1,4 @@
+import { JOB_SCOPED_ROLES } from '@credalent/workspaces';
 import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
 import { getIntake } from '@/server/intake';
@@ -26,7 +27,7 @@ export async function loadProfile(
   const result = await inActiveWorkspace(async (ctx): Promise<ProfileData | 'notFound' | 'forbidden'> => {
     const found = await getJobs().getJob(ctx, job);
     // Row-level security hides an ungranted job, so a job-scoped member learns nothing about a job they cannot see.
-    if (!found) return ctx.role === 'admin' || ctx.role === 'recruiter' ? 'notFound' : 'forbidden';
+    if (!found) return JOB_SCOPED_ROLES.includes(ctx.role) ? 'forbidden' : 'notFound';
     // shortcut: reads the job's whole applicant list to find one; add a single-application read to intake past ~500.
     const applicant = (await getIntake().listApplicationsForJob(ctx, job)).find((a) => a.personId === candidateId);
     // Not an applicant of this job (or another workspace's person): nothing about them is read.

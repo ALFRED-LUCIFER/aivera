@@ -32,6 +32,8 @@ import type { Fit, ProfileData } from '../domain/profile.ts';
 // - a line under the fit gives the figures' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
 // - the big score is the 28 px title size, not 40 px, and the card's padding is the shared Card's 16 px, not 24 px:
 //   the tokens and @credalent/ui have neither;
+// - the subtitle is the 14/20 px body size, not 15/22 px, and the "Why" heading the 16 px card size, not 15 px: the
+//   tokens have no 15 px step;
 // - a candidate not yet scored on the approved rubric shows "Not yet scored", basis "Not yet available" (AGENTS.md 1.7);
 // - no "Against what the job needs" chart and competency bars: AIV-P1-044 (#108);
 // - no "Competency by competency" evidence cards: AIV-P1-045 (#109);
@@ -128,9 +130,12 @@ function FitBlock({ fit }: { fit: Fit }) {
     <>
       <div className="flex items-start gap-3.5">
         {/* The line beside the bar says the number again, with its meaning, so this one is for the eye only. */}
-        <span aria-hidden="true" className="font-display text-title tracking-tight text-text tabular-nums">
-          {fit.backedScore}
-        </span>
+        {/* Drawn only for values ScoreWithUncertainty accepts, so no number ever stands beside "Score unavailable". */}
+        {fit.backedScore >= 0 && fit.backedScore <= fit.upperBound && fit.upperBound <= 100 && (
+          <span aria-hidden="true" className="font-display text-title tracking-tight text-text tabular-nums">
+            {fit.backedScore}
+          </span>
+        )}
         <span className="min-w-0 flex-1 pt-2">
           <ScoreWithUncertainty
             backed={fit.backedScore}
@@ -157,8 +162,9 @@ function Why({ explanation }: { explanation: ProfileData['explanation'] }) {
   return (
     <>
       <ul className="flex list-disc flex-col gap-1.5 ps-4.5 text-body text-text">
-        {explanation.statements.map((statement) => (
-          <li key={statement.text}>
+        {explanation.statements.map((statement, i) => (
+          // The model may repeat a sentence, and statements are never reordered.
+          <li key={`${i}:${statement.text}`}>
             {statement.text}
             {/* A citation with no item is the snapshot's own figures, which the statement already states. */}
             {statement.citations.map(

@@ -15,7 +15,8 @@ const pages = globSync('**/page.tsx', { cwd: appDir }).map((file) => ({
     .join('/')}`,
 }));
 /** The candidate profile for a job: guarded by the job scope, not by a section's entry (see its test below). */
-const PROFILE = 'candidates/[candidateId]';
+// SAFETY: mutation check: added an unguarded candidates/[candidateId]/history/page.tsx -> the "guards itself" test failed
+const PROFILE = '(recruiter)/app/candidates/[candidateId]/page.tsx';
 const appPages = pages.filter(({ path }) => path === '/app' || path.startsWith('/app/'));
 
 describe('navigation map (ADR-002 item 4)', () => {
@@ -36,7 +37,7 @@ describe('navigation map (ADR-002 item 4)', () => {
   // A page inside a section (/app/jobs/new) guards itself with its section's entry.
   it('every page under /app guards itself with its own map entry', () => {
     for (const { file, path } of appPages.filter(
-      (page) => !page.file.includes('/(job)/[jobId]/') && !page.file.includes(PROFILE),
+      (page) => !page.file.includes('/(job)/[jobId]/') && page.file !== PROFILE,
     )) {
       const id = activeScreen(path) ?? '?';
       const source = readFileSync(join(appDir, file), 'utf8');
@@ -60,7 +61,7 @@ describe('navigation map (ADR-002 item 4)', () => {
   // A candidate's profile for a job (AIV-P1-043) is open to that job's granted hiring owners and interviewers too, so it
   // has no screen entry either: loadProfile decides through the member's job scope, and the page renders its refusals.
   it("the candidate profile page loads through the member's job scope and renders 403 and 404", () => {
-    const source = readFileSync(join(appDir, '(recruiter)/app', PROFILE, 'page.tsx'), 'utf8');
+    const source = readFileSync(join(appDir, PROFILE), 'utf8');
     expect(source).toMatch(/await loadProfile\(/);
     expect(source).toMatch(/=== 'forbidden'\) forbidden\(\)/);
     expect(source).toMatch(/=== 'notFound'\) notFound\(\)/);

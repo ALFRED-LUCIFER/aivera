@@ -115,6 +115,13 @@ describe('loadProfile', () => {
     },
   );
 
+  // The page has no section guard so that these two roles reach a job they are granted (navigation.test.ts).
+  it.each(['interviewer', 'hiring_owner'])('a member with role %s granted the job gets the profile', async (role) => {
+    assessed();
+    ctx.role = role;
+    expect(await loadProfile(SARA, JOB)).toMatchObject({ name: 'Sara Al Qahtani', fit: { status: 'scored', rank: 1 } });
+  });
+
   it.each([
     ['not-a-uuid', JOB],
     [SARA, undefined],
