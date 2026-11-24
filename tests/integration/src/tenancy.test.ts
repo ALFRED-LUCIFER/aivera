@@ -789,8 +789,8 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       ).toEqual([w1.workspaceId]);
 
       // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only; the app
-      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030; a pack member's
-      // snapshot and a recorded decision are never rewritten, AIV-P2-009).
+      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030; of a decision pack the
+      // app may update only the status column, and never a member's snapshot or a recorded decision, AIV-P2-009).
       const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
@@ -798,7 +798,9 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
         (error: unknown) => (error instanceof DbQueryError ? error.code : String(error)),
       );
       const noUpdate =
-        ['audit.entry', 'assessment.result', 'decisions.pack_member', 'decisions.decision'].includes(name) ||
+        name === 'audit.entry' ||
+        name === 'assessment.result' ||
+        name.startsWith('decisions.') ||
         name.endsWith('.outbox');
       expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);
     }

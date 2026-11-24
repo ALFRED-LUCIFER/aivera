@@ -9,8 +9,13 @@ ALTER TABLE "decisions"."decision" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE "decisions"."outbox" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
--- A member's assessment snapshot is written once: no later score change can rewrite it (AIV-P2-009).
-REVOKE UPDATE, TRUNCATE ON "decisions"."pack_member" FROM aivera_app;
+-- A pack stays on its job and rubric version: the app may change only its status (AIV-P2-009).
+REVOKE UPDATE, TRUNCATE ON "decisions"."pack" FROM aivera_app;
+--> statement-breakpoint
+GRANT UPDATE (status) ON "decisions"."pack" TO aivera_app;
+--> statement-breakpoint
+-- A member's assessment snapshot is written once: no later score change can rewrite it, and no member can be dropped.
+REVOKE UPDATE, DELETE, TRUNCATE ON "decisions"."pack_member" FROM aivera_app;
 --> statement-breakpoint
 -- A recorded decision is append-only, as its audit entry is.
 REVOKE UPDATE, DELETE, TRUNCATE ON "decisions"."decision" FROM aivera_app;

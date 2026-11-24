@@ -33,7 +33,6 @@ const member = (candidateId: string, position: number, backedScore = 68, upperBo
   assessmentId: `a-${candidateId}`,
   backedScore,
   upperBound,
-  recommendation: null,
   position,
 });
 
@@ -71,7 +70,7 @@ function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), 
 const shortlist = (over: Record<string, unknown> = {}) => ({
   jobId: JOB.jobId,
   name: 'Round 2 shortlist: Senior AI Engineer',
-  members: [{ candidateId: SARA, recommendation: 'advance' as const }, { candidateId: ARJUN }, { candidateId: HUDA }],
+  members: [{ candidateId: SARA }, { candidateId: ARJUN }, { candidateId: HUDA }],
   ...over,
 });
 const advanceAll = (candidates: readonly string[] = [SARA, ARJUN, HUDA]) => ({
@@ -89,11 +88,7 @@ describe('createPack', () => {
     expect(await useCases.createPack(ctxAs('recruiter'), shortlist())).toEqual({ packId: PACK });
     const written = store.insertPack.mock.calls[0]?.[0];
     expect(written).toEqual(pack());
-    expect(store.insertMembers.mock.calls[0]?.[0]).toEqual([
-      { ...member(SARA, 0), recommendation: 'advance' },
-      member(ARJUN, 1),
-      member(HUDA, 2),
-    ]);
+    expect(store.insertMembers.mock.calls[0]?.[0]).toEqual([member(SARA, 0), member(ARJUN, 1), member(HUDA, 2)]);
     expect(ports.authorize).toHaveBeenCalledWith(ctxAs('recruiter'), 'pack.prepare', JOB);
     expect(ports.publishPackReady).toHaveBeenCalledWith({}, written);
   });
@@ -140,7 +135,7 @@ describe('createPack', () => {
   it.each([
     ['no member', { members: [] }],
     ['a blank name', { name: '   ' }],
-    ['an unknown recommendation', { members: [{ candidateId: SARA, recommendation: 'reject' }] }],
+    ['a recommendation, which no caller supplies', { members: [{ candidateId: SARA, recommendation: 'advance' }] }],
   ])('a malformed input (%s) is refused before anything is read', async (_label, over) => {
     const { useCases, store } = setup();
     await expect(useCases.createPack(ctxAs('recruiter'), shortlist(over))).rejects.toThrow();

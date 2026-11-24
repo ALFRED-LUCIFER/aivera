@@ -22,8 +22,8 @@ describe('mayDecide: only the authorised hiring owner decides', () => {
 
 describe('newMembers: a candidate appears once', () => {
   it('drops a candidate already in the pack and one named twice in the same add', () => {
-    const adding = [{ candidateId: SARA }, { candidateId: ARJUN, recommendation: 'advance' }, { candidateId: ARJUN }];
-    expect(newMembers([SARA], adding)).toEqual([{ candidateId: ARJUN, recommendation: 'advance' }]);
+    const adding = [{ candidateId: SARA }, { candidateId: ARJUN }, { candidateId: ARJUN }];
+    expect(newMembers([SARA], adding)).toEqual([{ candidateId: ARJUN }]);
     expect(newMembers([], [{ candidateId: SARA }, { candidateId: SARA }])).toEqual([{ candidateId: SARA }]);
   });
 });

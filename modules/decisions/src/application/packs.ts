@@ -55,11 +55,7 @@ export type Ports = {
   now(): Date;
 };
 
-const memberInput = z.strictObject({
-  candidateId: z.uuid(),
-  /** Credalent's recommendation, when the caller has one. */
-  recommendation: z.enum(DECISIONS).nullable().optional(),
-});
+const memberInput = z.strictObject({ candidateId: z.uuid() });
 const membersInput = z.array(memberInput).min(1).max(50);
 
 /** Validated in the use case, whatever the caller checked (AGENTS.md 3.7). */
@@ -108,7 +104,7 @@ export function packUseCases(ports: Ports) {
     from: number,
   ): Promise<PackMember[]> {
     const members: PackMember[] = [];
-    for (const [i, { candidateId, recommendation }] of adding.entries()) {
+    for (const [i, { candidateId }] of adding.entries()) {
       // Ranked: assessed on the approved version and still applying to this job (a merged person is not).
       const latest = ranked.includes(candidateId) && (await ports.latestAssessment(ctx, candidateId, pack.jobId));
       if (!latest || latest.rubricVersionId !== pack.rubricVersionId) throw new PackError('candidate_not_assessed');
@@ -119,7 +115,6 @@ export function packUseCases(ports: Ports) {
         assessmentId: latest.id,
         backedScore: latest.backedScore,
         upperBound: latest.upperBound,
-        recommendation: recommendation ?? null,
         position: from + i,
       });
     }

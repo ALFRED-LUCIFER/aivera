@@ -20,8 +20,9 @@ export const PackReadyV1 = {
 } satisfies EventDefinition<z.infer<typeof packEvent>>;
 
 /**
- * Written once per `recordDecisions`, in its transaction, the same shape as `PackReady.v1`: a consumer reads the
- * decisions with `getPack`. It is not a notification: nothing here contacts a candidate (AGENTS.md 1.5).
+ * Written once per `recordDecisions`, in its transaction, the same shape as `PackReady.v1`. It carries no decision:
+ * the read a system consumer needs is not built (`getPack` is for members with `pack.view`) and belongs to the
+ * consumer's ticket. It is not a notification: nothing here contacts a candidate (AGENTS.md 1.5).
  */
 export const DecisionsRecordedV1 = {
   type: 'DecisionsRecorded.v1',

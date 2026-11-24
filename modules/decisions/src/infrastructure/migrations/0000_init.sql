@@ -51,20 +51,17 @@ CREATE TABLE "decisions"."pack_member" (
 	"assessment_id" uuid NOT NULL,
 	"backed_score" integer NOT NULL,
 	"upper_bound" integer NOT NULL,
-	"recommendation" text,
 	"position" integer NOT NULL,
 	CONSTRAINT "pack_member_pkey" PRIMARY KEY("workspace_id","pack_id","candidate_id"),
 	CONSTRAINT "pack_member_position_key" UNIQUE("workspace_id","pack_id","position"),
 	CONSTRAINT "pack_member_position_check" CHECK ("decisions"."pack_member"."position" >= 0),
-	CONSTRAINT "pack_member_score_check" CHECK ("decisions"."pack_member"."backed_score" >= 0 and "decisions"."pack_member"."backed_score" <= "decisions"."pack_member"."upper_bound" and "decisions"."pack_member"."upper_bound" <= 100),
-	CONSTRAINT "pack_member_recommendation_check" CHECK ("decisions"."pack_member"."recommendation" in ('advance', 'hold', 'do_not_advance'))
+	CONSTRAINT "pack_member_score_check" CHECK ("decisions"."pack_member"."backed_score" >= 0 and "decisions"."pack_member"."backed_score" <= "decisions"."pack_member"."upper_bound" and "decisions"."pack_member"."upper_bound" <= 100)
 );
 --> statement-breakpoint
 ALTER TABLE "decisions"."pack_member" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "decisions"."decision" ADD CONSTRAINT "decision_member_fk" FOREIGN KEY ("workspace_id","pack_id","candidate_id") REFERENCES "decisions"."pack_member"("workspace_id","pack_id","candidate_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "decisions"."pack_member" ADD CONSTRAINT "pack_member_pack_fk" FOREIGN KEY ("workspace_id","pack_id") REFERENCES "decisions"."pack"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "outbox_unsent_idx" ON "decisions"."outbox" USING btree ("next_attempt_at") WHERE "decisions"."outbox"."sent_at" is null;--> statement-breakpoint
-CREATE INDEX "pack_job_idx" ON "decisions"."pack" USING btree ("workspace_id","job_id");--> statement-breakpoint
 CREATE POLICY "decision_tenant_isolation" ON "decisions"."decision" AS PERMISSIVE FOR ALL TO public USING ("decisions"."decision"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK ("decisions"."decision"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid);--> statement-breakpoint
 CREATE POLICY "outbox_tenant_isolation" ON "decisions"."outbox" AS PERMISSIVE FOR ALL TO public USING ("decisions"."outbox"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK ("decisions"."outbox"."workspace_id" = nullif(current_setting('app.workspace_id', true), '')::uuid);--> statement-breakpoint
 CREATE POLICY "outbox_relay_read" ON "decisions"."outbox" AS PERMISSIVE FOR SELECT TO "aivera_relay" USING (true);--> statement-breakpoint

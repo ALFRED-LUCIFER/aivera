@@ -297,11 +297,7 @@ describe('Scenario: Create a pack with a snapshot', () => {
       decisions.createPack(ctx, {
         jobId: seniorAi.jobId,
         name: SHORTLIST,
-        members: [
-          { candidateId: sara, recommendation: 'advance' },
-          { candidateId: arjun, recommendation: 'advance' },
-          { candidateId: huda },
-        ],
+        members: [{ candidateId: sara }, { candidateId: arjun }, { candidateId: huda }],
       }),
     ));
     const pack = await as(ZAID, w1, (ctx) => decisions.getPack(ctx, shortlist));
@@ -315,10 +311,10 @@ describe('Scenario: Create a pack with a snapshot', () => {
       decisions: [],
     });
     expect((await as(ZAID, w1, (ctx) => jobs.getApprovedRubric(ctx, seniorAi.jobId)))?.version).toBe(2);
-    expect(pack?.members.map((m) => [m.candidateId, m.backedScore, m.upperBound, m.recommendation])).toEqual([
-      [sara, 68, 84, 'advance'],
-      [arjun, 64, 76, 'advance'],
-      [huda, 60, 76, null],
+    expect(pack?.members.map((m) => [m.candidateId, m.backedScore, m.upperBound])).toEqual([
+      [sara, 68, 84],
+      [arjun, 64, 76],
+      [huda, 60, 76],
     ]);
     expect(pack?.members[0]?.assessmentId).toBe(saraAt68);
     const events = await withWorkspace(app, w1, (tx) =>
@@ -342,6 +338,21 @@ describe('Scenario: Create a pack with a snapshot', () => {
     expect(await rawInW1(sql`update decisions.pack_member set backed_score = 84 where pack_id = ${shortlist}`)).toBe(
       '42501',
     );
+  });
+
+  // SAFETY: mutation check: GRANT DELETE ON decisions.pack_member TO aivera_app -> this test failed ('ok', members deleted)
+  it('the database refuses the app role the removal of a pack member', async () => {
+    expect(await rawInW1(sql`delete from decisions.pack_member where pack_id = ${shortlist}`)).toBe('42501');
+  });
+
+  // SAFETY: mutation check: GRANT UPDATE ON decisions.pack TO aivera_app -> this test failed ('ok' twice, pack moved)
+  it('the database refuses the app role a move of a pack to another job or rubric version', async () => {
+    expect(await rawInW1(sql`update decisions.pack set job_id = gen_random_uuid() where id = ${shortlist}`)).toBe(
+      '42501',
+    );
+    expect(
+      await rawInW1(sql`update decisions.pack set rubric_version_id = gen_random_uuid() where id = ${shortlist}`),
+    ).toBe('42501');
   });
 
   it('a candidate with no assessment on the approved rubric, or no approved rubric, is refused and nothing is stored', async () => {
@@ -578,7 +589,7 @@ describe('Scenario: Workspace isolation', () => {
     expect(await stored()).toEqual(before);
   });
 
-  // SAFETY: mutation check: DROP POLICY pack_tenant_isolation ON decisions.pack -> this suite failed (forced RLS with no policy denies every row: no pack is written or read)
+  // SAFETY: mutation check: CREATE POLICY leak ON decisions.pack USING (true) -> this test failed (W2 rows read in W1 and with no workspace)
   // SAFETY: mutation check: ALTER TABLE decisions.pack DISABLE ROW LEVEL SECURITY -> this test failed (W2 rows read)
   it('RLS alone: in W1 with no WHERE clause only W1 rows come back, and a query without a workspace returns no rows', async () => {
     for (const table of ['pack', 'pack_member', 'decision', 'outbox']) {

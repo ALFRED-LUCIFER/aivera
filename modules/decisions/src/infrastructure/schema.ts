@@ -1,18 +1,7 @@
 import { outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import {
-  check,
-  foreignKey,
-  index,
-  integer,
-  pgSchema,
-  primaryKey,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { check, foreignKey, integer, pgSchema, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { DECISIONS, STATUSES } from '../domain/pack.ts';
 
 export const decisions = pgSchema('decisions');
@@ -35,7 +24,6 @@ export const pack = decisions
     },
     (t) => [
       unique('pack_workspace_id_key').on(t.workspaceId, t.id),
-      index('pack_job_idx').on(t.workspaceId, t.jobId),
       // Must list exactly STATUSES (domain/pack.ts); changing it needs a migration.
       check('pack_status_check', sql`${t.status} in ('draft', 'ready', 'decided')`),
       // NAME_MAX (domain/pack.ts).
@@ -45,8 +33,8 @@ export const pack = decisions
   )
   .enableRLS();
 
-// A member is its candidate's assessment snapshot when the pack was prepared. The app role may not UPDATE this table
-// (0001_force_rls.sql), so a later score change cannot reach a snapshot.
+// A member is its candidate's assessment snapshot when the pack was prepared. The app role may not UPDATE or DELETE
+// this table (0001_force_rls_and_grants.sql), so a later score change cannot reach a snapshot and a member cannot be dropped.
 // shortcut: candidate_id is copied when the member is added; a duplicate merge afterwards (AIV-P1-018) leaves the
 // merged person's id here. Move it in the merge, as evidence's records are, when the pack page shows names (AIV-P2-011).
 export const packMember = decisions
@@ -59,7 +47,6 @@ export const packMember = decisions
       assessmentId: uuid('assessment_id').notNull(),
       backedScore: integer('backed_score').notNull(),
       upperBound: integer('upper_bound').notNull(),
-      recommendation: text({ enum: DECISIONS }),
       position: integer().notNull(),
     },
     (t) => [
@@ -77,8 +64,6 @@ export const packMember = decisions
         'pack_member_score_check',
         sql`${t.backedScore} >= 0 and ${t.backedScore} <= ${t.upperBound} and ${t.upperBound} <= 100`,
       ),
-      // Must list exactly DECISIONS (domain/pack.ts), here and in decision_decision_check.
-      check('pack_member_recommendation_check', sql`${t.recommendation} in ('advance', 'hold', 'do_not_advance')`),
       tenantPolicy('pack_member_tenant_isolation', t.workspaceId),
     ],
   )
@@ -107,6 +92,7 @@ export const decision = decisions
         columns: [t.workspaceId, t.packId, t.candidateId],
         foreignColumns: [packMember.workspaceId, packMember.packId, packMember.candidateId],
       }),
+      // Must list exactly DECISIONS (domain/pack.ts); changing it needs a migration.
       check('decision_decision_check', sql`${t.decision} in ('advance', 'hold', 'do_not_advance')`),
       // NOTE_MAX (domain/pack.ts).
       check('decision_note_check', sql`btrim(${t.note}) <> '' and char_length(${t.note}) <= 1000`),

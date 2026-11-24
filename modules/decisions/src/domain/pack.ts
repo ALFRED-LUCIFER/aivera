@@ -6,7 +6,7 @@
 export const STATUSES = ['draft', 'ready', 'decided'] as const;
 export type PackStatus = (typeof STATUSES)[number];
 
-/** The hiring owner's decision, and the values of Credalent's recommendation. */
+/** The hiring owner's decision. */
 export const DECISIONS = ['advance', 'hold', 'do_not_advance'] as const;
 export type DecisionValue = (typeof DECISIONS)[number];
 
@@ -37,8 +37,6 @@ export type PackMember = {
   backedScore: number;
   /** "up to N if claims hold". */
   upperBound: number;
-  /** Credalent's recommendation, a suggestion only; null when none was given. */
-  recommendation: DecisionValue | null;
   /** The order in the pack, from 0. */
   position: number;
 };

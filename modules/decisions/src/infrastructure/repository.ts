@@ -6,6 +6,8 @@ import { decision, pack, packMember } from './schema.ts';
 /**
  * The decisions store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
  * row-level security on the transaction's `app.workspace_id` is the second (ADR-005).
+ * shortcut: nothing deletes here (the app role cannot delete a member or a decision), so a pack's rows, the scores and
+ * the decision note among them, outlive a candidate's erasure; AIV-P3-014 (delete my data) adds the erasure path.
  */
 export function packStore(tx: Tx): PackStore {
   return {

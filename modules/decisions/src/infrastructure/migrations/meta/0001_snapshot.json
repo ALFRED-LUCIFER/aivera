@@ -1,6 +1,6 @@
 {
-  "id": "358cf499-cde7-4244-8d13-578d944fe1b5",
-  "prevId": "3b9eb6a8-7929-4276-b9ee-9addddd1de81",
+  "id": "63f39ccd-7c4d-4996-8071-7f3dd8b56709",
+  "prevId": "f7d148b7-e855-49e1-8674-95cc6bedfe33",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -290,29 +290,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "pack_job_idx": {
-          "name": "pack_job_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -389,12 +367,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "recommendation": {
-          "name": "recommendation",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "position": {
           "name": "position",
           "type": "integer",
@@ -462,10 +434,6 @@
         "pack_member_score_check": {
           "name": "pack_member_score_check",
           "value": "\"decisions\".\"pack_member\".\"backed_score\" >= 0 and \"decisions\".\"pack_member\".\"backed_score\" <= \"decisions\".\"pack_member\".\"upper_bound\" and \"decisions\".\"pack_member\".\"upper_bound\" <= 100"
-        },
-        "pack_member_recommendation_check": {
-          "name": "pack_member_recommendation_check",
-          "value": "\"decisions\".\"pack_member\".\"recommendation\" in ('advance', 'hold', 'do_not_advance')"
         }
       },
       "isRLSEnabled": true
