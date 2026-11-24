@@ -70,7 +70,8 @@ export const taskThresholds: Record<
   // the job, not a listed competency reworded, not a proxy, not a generic soft skill, and implied by the line it cites.
   // Each bad suggestion, or a repeated name, costs a point; a proxy also fails the safety hard gate. The bad-suggestion
   // fixtures (fixtures/failing) prove those fail. shortcut: the judge on gpt-main catches an obvious rewording of a
-  // listed competency, not every subtle one; upgrade with a stronger judge model or per-case acceptable answers.
+  // listed competency, not every subtle one; upgrade with a stronger judge model or per-case acceptable answers when
+  // the live eval shows one reaching a draft.
   'jobs.draftCompetencies': {
     statements: ['competencies[*]', 'suggestions[*]'],
     fieldMatch: 0.9,
