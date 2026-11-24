@@ -39,7 +39,8 @@ export interface AssessmentContract {
   listRanking(ctx: WorkspaceContext, jobId: string): Promise<JobRanking>;
   /**
    * How many candidates `listRanking` lists for each job (AIV-P1-099): the candidates with a result on the job's approved
-   * rubric version, 0 while none is approved. Job ids and counts only, from one grouped read. `candidate.view` on every
+   * rubric version who still apply to it (a person merged into another leaves with their application, AIV-P1-018), 0
+   * while none is approved. Job ids and counts only. `candidate.view` on every
    * job; a job the context cannot see throws `ForbiddenError`.
    */
   countAssessed(ctx: WorkspaceContext, jobIds: readonly string[]): Promise<Record<string, number>>;

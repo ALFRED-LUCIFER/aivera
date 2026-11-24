@@ -133,6 +133,29 @@ describe('The ranking of a job', () => {
   });
 });
 
+describe('A candidate merged into another leaves the ranking and its count (AIV-P1-018)', () => {
+  const ctx = { userId: 'ap', workspaceId: 'w1', role: 'recruiter', tx: {} } as unknown as WorkspaceContext;
+  // Daniel was merged into Sara: his result stays as history, but he no longer applies to the job.
+  const results = [result('sara', 'rubric-v2', 55, 70, 3), result('daniel', 'rubric-v2', 40, 60, 2)];
+  const useCases = assessmentUseCases({
+    storeFor: () =>
+      ({
+        listForJob: async () => results,
+        assessedOnVersions: async () => new Map([[JOB, ['daniel', 'sara']]]),
+      }) as never,
+    authorize: async () => {},
+    rankingJob: async () => ({ resource: { jobId: JOB, clientId: null }, approvedVersionId: 'rubric-v2' }),
+    applicants: async () => ['sara'],
+  } as unknown as Ports);
+
+  // SAFETY: mutation check: counted assessedOnVersions without the applicants filter in countAssessed -> this test failed (2, not 1)
+  it('"N assessed" equals the ranking count', async () => {
+    const ranking = await useCases.listRanking(ctx, JOB);
+    expect(ranking.status === 'ranked' && ranking.rows.map((r) => r.candidateId)).toEqual(['sara']);
+    expect(await useCases.countAssessed(ctx, [JOB])).toEqual({ [JOB]: 1 });
+  });
+});
+
 describe("getLatestAssessment authorises against the candidate's stored application (AIV-P1-091)", () => {
   const ctx = { userId: 'head', workspaceId: 'w1', role: 'hiring_owner', tx: {} } as unknown as WorkspaceContext;
   const read = async (candidateJob: Ports['candidateJob']) => {
