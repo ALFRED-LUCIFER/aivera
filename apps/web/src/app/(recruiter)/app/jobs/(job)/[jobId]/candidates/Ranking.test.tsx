@@ -203,12 +203,15 @@ const possibleOmar: RowDuplicates = {
     reason: 'same_name',
     survivor: {
       name: 'Omar Al Suwaidi',
-      applications: [{ job: 'Staff Backend Engineer', sources: ['linkedin'] }],
+      applications: [{ job: 'Staff Backend Engineer', stage: 'in_process', sources: ['linkedin'], keepsStage: null }],
       evidenceSources: 2,
     },
     merged: {
       name: 'Omar Alsuwaidi',
-      applications: [{ job: 'Senior AI Engineer', sources: ['email'] }],
+      applications: [
+        { job: 'Senior AI Engineer', stage: 'new', sources: ['email'], keepsStage: null },
+        { job: 'Staff Backend Engineer', stage: 'new', sources: ['whatsapp'], keepsStage: 'in_process' },
+      ],
       evidenceSources: 1,
     },
   },
@@ -237,14 +240,20 @@ describe('Scenario: A likely duplicate needs a person (AIV-P1-018)', () => {
 
 describe('Scenario: Merge preview', () => {
   // SAFETY: mutation check: dropped confirmDisabled from the merge card -> this test failed (Merge pressed with no reason)
-  it('"Merge?" previews the applications, sources and evidence that combine and "Nothing is deleted"; Confirm sends the reason', async () => {
+  it('"Merge?" previews the applications, their stages, sources and evidence that combine and "Nothing is deleted"; Confirm sends the reason', async () => {
     fake.merge.mockResolvedValue({ ok: true });
     showRanking([omarRow]);
     await userEvent.click(screen.getByRole('button', { name: 'Merge?' }));
     const dialog = screen.getByRole('dialog', { name: 'Preview: merge Omar Alsuwaidi into Omar Al Suwaidi' });
     expect(dialog.textContent).toContain('Same name on both records.');
-    expect(dialog.textContent).toContain('Omar Al Suwaidi (stays)Staff Backend EngineerLinkedIn2 evidence sources');
-    expect(dialog.textContent).toContain('Omar Alsuwaidi (merged in)Senior AI EngineerEmail1 evidence source');
+    expect(dialog.textContent).toContain(
+      'Omar Al Suwaidi (stays)Staff Backend EngineerStage: In processLinkedIn2 evidence sources',
+    );
+    // A job both applied to keeps one application, at the stage of the one that stays.
+    expect(dialog.textContent).toContain(
+      'Omar Alsuwaidi (merged in)Senior AI EngineerStage: NewEmailStaff Backend EngineerStage: New. Both applied to ' +
+        'this job: the applications combine at the stage of the one that stays, In process.WhatsApp1 evidence source',
+    );
     expect(dialog.textContent).toContain('Nothing is deleted.');
     expect(dialog.textContent).toContain('Nothing changes until you confirm.');
     const confirm = within(dialog).getByRole('button', { name: 'Merge' });

@@ -111,15 +111,15 @@ describe('loadRanking', () => {
         merged: [{ mergeId: 'm1', displayName: 'Sara Al Qahtani', mergedAt: at, automatic: true, undoable: true }],
       },
     ]);
-    const side = (personId: string, displayName: string) => ({
+    const side = (personId: string, displayName: string, stage: string) => ({
       personId,
       displayName,
-      applications: [{ jobId: JOB, sources: ['linkedin'] }],
+      applications: [{ jobId: JOB, stage, sources: ['linkedin'] }],
       evidenceSources: 1,
     });
     fake.preview.mockResolvedValueOnce({
-      survivor: side('p0', 'Sara Al-Qahtani'),
-      merged: side('p1', 'Sara Al Qahtani'),
+      survivor: side('p0', 'Sara Al-Qahtani', 'in_process'),
+      merged: side('p1', 'Sara Al Qahtani', 'new'),
     });
     fake.jobs.mockResolvedValueOnce([{ id: JOB, title: 'Senior AI Engineer' }]);
     const data = await loadRanking(JOB);
@@ -136,12 +136,13 @@ describe('loadRanking', () => {
         reason: 'same_name',
         survivor: {
           name: 'Sara Al-Qahtani',
-          applications: [{ job: 'Senior AI Engineer', sources: ['linkedin'] }],
+          applications: [{ job: 'Senior AI Engineer', stage: 'in_process', sources: ['linkedin'], keepsStage: null }],
           evidenceSources: 1,
         },
+        // Both applied to the job: the merged side says the survivor's stage remains.
         merged: {
           name: 'Sara Al Qahtani',
-          applications: [{ job: 'Senior AI Engineer', sources: ['linkedin'] }],
+          applications: [{ job: 'Senior AI Engineer', stage: 'new', sources: ['linkedin'], keepsStage: 'in_process' }],
           evidenceSources: 1,
         },
       },

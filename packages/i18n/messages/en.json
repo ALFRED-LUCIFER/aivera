@@ -1721,14 +1721,8 @@
       "noApplications": "No applications",
       "noJob": "A job you cannot see",
       "evidence": "{count, plural, =0 {No evidence sources} one {# evidence source} other {# evidence sources}}",
-      "sources": {
-        "linkedin": "LinkedIn",
-        "careers_page": "Careers page",
-        "referral": "Referral",
-        "email": "Email",
-        "whatsapp": "WhatsApp",
-        "recruiter": "Recruiter"
-      },
+      "stage": "Stage: {stage}",
+      "stageKept": "Stage: {stage}. Both applied to this job: the applications combine at the stage of the one that stays, {kept}.",
       "nothingDeleted": "Nothing is deleted. The applications, sources and evidence combine on {name}, and an admin can undo the merge.",
       "reason": "Reason, recorded in the audit log",
       "confirm": "Merge",

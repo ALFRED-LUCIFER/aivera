@@ -2,9 +2,8 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Chip, Label, PreviewConfirmCard, Textarea } from '@credalent/ui';
-import { MERGE_REASON_MAX } from '@credalent/candidates';
 import { useId } from 'react';
-import type { DuplicatesView, MergeSide, RowDuplicates } from '../domain/duplicates.ts';
+import { MERGE_REASON_MAX, type DuplicatesView, type MergeSide, type RowDuplicates } from '../domain/duplicates.ts';
 
 // AIV-P1-018: duplicate applicants on the ranked table's candidate cell, from the Inbox artboard's flag chip
 // (docs/01-design/artboards/Inbox.dc.html) and the shared preview-confirm card. Deviations:
@@ -14,8 +13,8 @@ import type { DuplicatesView, MergeSide, RowDuplicates } from '../domain/duplica
 //   required reason, as the job header's "Change hiring owner" does;
 // - "Undo merge" undoes the row's newest merge still inside the workspace's undo window, admins only; listing every
 //   merge with its own undo waits for the candidate profile (AIV-P1-043);
-// - the preview names each application's job and its sources as chips, and counts evidence sources; it does not list
-//   each evidence item (the evidence profile is AIV-P1-043).
+// - the preview names each application's job, its stage and its sources as chips, and counts evidence sources; it
+//   does not list each evidence item (the evidence profile is AIV-P1-043).
 
 /** The row's duplicate flags and actions; renders nothing for a row without duplicates or a viewer who cannot merge. */
 export function DuplicateActions({
@@ -108,9 +107,11 @@ export function DuplicateActions({
 
 function Side({ heading, side }: { heading: string; side: MergeSide }) {
   const t = useTranslations('ranking.duplicates');
+  const tStage = useTranslations('ranking.stages');
+  const tSource = useTranslations('addApplicants.sources');
   return (
     <section className="flex flex-col gap-2 rounded-card border border-border p-3">
-      <h4 className="text-body font-semibold text-text">{heading}</h4>
+      <h3 className="text-body font-semibold text-text">{heading}</h3>
       {side.applications.length === 0 ? (
         <p className="text-meta text-text-2">{t('noApplications')}</p>
       ) : (
@@ -118,9 +119,14 @@ function Side({ heading, side }: { heading: string; side: MergeSide }) {
           {side.applications.map((application, i) => (
             <li key={i} className="flex flex-col gap-1">
               <span>{application.job || t('noJob')}</span>
+              <span className="text-meta text-text-2">
+                {application.keepsStage
+                  ? t('stageKept', { stage: tStage(application.stage), kept: tStage(application.keepsStage) })
+                  : t('stage', { stage: tStage(application.stage) })}
+              </span>
               <span className="flex flex-wrap gap-1">
                 {application.sources.map((source) => (
-                  <Chip key={source}>{t(`sources.${source}`)}</Chip>
+                  <Chip key={source}>{tSource(source)}</Chip>
                 ))}
               </span>
             </li>

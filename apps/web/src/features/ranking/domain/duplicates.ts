@@ -1,9 +1,19 @@
 import { MERGE_REASON_MAX, type LikelyReason } from '@credalent/candidates';
-import type { Source } from '@credalent/intake';
+import type { Source, Stage } from '@credalent/intake';
 import { z } from 'zod';
 
-/** One side of a merge as the preview lists it: the person's applications by job title, and their evidence count. */
-export type MergeSide = { name: string; applications: { job: string; sources: Source[] }[]; evidenceSources: number };
+/** The longest merge or undo reason, re-exported so components need not import the candidates module. */
+export { MERGE_REASON_MAX };
+
+/**
+ * One side of a merge as the preview lists it: the person's applications by job title with their stage and sources,
+ * and their evidence count. `keepsStage` is set on the merged side for a job both applied to: the survivor's stage.
+ */
+export type MergeSide = {
+  name: string;
+  applications: { job: string; stage: Stage; sources: Source[]; keepsStage: Stage | null }[];
+  evidenceSources: number;
+};
 
 /**
  * A row's duplicates (AIV-P1-018), sent only to admins and recruiters: how many records were merged into this one,

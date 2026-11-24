@@ -1,5 +1,5 @@
 import type { PersonMergeSummary } from '@credalent/candidates';
-import { IntakeError, type Source } from '@credalent/intake';
+import { IntakeError, type Source, type Stage } from '@credalent/intake';
 import { log } from '@credalent/observability';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
@@ -20,12 +20,23 @@ async function duplicatesOf(ctx: WorkspaceContext, personIds: string[]) {
   if (ctx.role !== 'admin' && ctx.role !== 'recruiter') return found;
   const candidates = getCandidates();
   let titles: Map<string, string> | undefined;
-  const side = async ({ displayName, applications, evidenceSources }: PersonMergeSummary): Promise<MergeSide> => {
+  /** One side of the preview; `survivor` is the other side's applications, for the jobs both applied to. */
+  const side = async (
+    { displayName, applications, evidenceSources }: PersonMergeSummary,
+    survivor?: PersonMergeSummary,
+  ): Promise<MergeSide> => {
     titles ??= new Map((await getJobs().listJobs(ctx)).map((j) => [j.id, j.title]));
     return {
       name: displayName,
-      // Intake's channels are its SOURCES; the summary keeps them as plain strings across the module boundary.
-      applications: applications.map((a) => ({ job: titles?.get(a.jobId) ?? '', sources: a.sources as Source[] })),
+      // Intake's stages and channels are its STAGES and SOURCES; the summary keeps them as plain strings across the
+      // module boundary.
+      applications: applications.map((a) => ({
+        job: titles?.get(a.jobId) ?? '',
+        stage: a.stage as Stage,
+        sources: a.sources as Source[],
+        // Both applied to this job: the applications become the survivor's one, at the survivor's stage.
+        keepsStage: (survivor?.applications.find((s) => s.jobId === a.jobId)?.stage as Stage | undefined) ?? null,
+      })),
       evidenceSources,
     };
   };
@@ -45,7 +56,7 @@ async function duplicatesOf(ctx: WorkspaceContext, personIds: string[]) {
               name: possible.displayName,
               reason: possible.reason,
               survivor: await side(preview.survivor),
-              merged: await side(preview.merged),
+              merged: await side(preview.merged, preview.survivor),
             }
           : null,
     });
