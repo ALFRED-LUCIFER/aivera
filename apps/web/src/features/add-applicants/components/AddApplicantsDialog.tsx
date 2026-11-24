@@ -2,6 +2,7 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Dialog, DialogClose, FilePicker, RadioGroup, SuccessBanner } from '@credalent/ui';
+import type { ReactNode } from 'react';
 import { SOURCE_OPTIONS, type AddApplicantsResult } from '../domain/addApplicants.ts';
 import type { DirectUpload } from '@/features/files';
 
@@ -27,6 +28,8 @@ export type AddApplicantsDialogProps = {
   /** The save threw; the CVs and source stay. A key under `access`. */
   failure: 'saveFailed' | 'saveForbidden' | null;
   onSubmit: () => void;
+  /** The button that opens the dialog; "Add applicants" by default. Bring in candidates' card says "Upload files". */
+  trigger?: ReactNode;
 };
 
 export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
@@ -56,7 +59,7 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
       title={t('title')}
       description={t('description')}
       closeLabel={t('close')}
-      trigger={<Button>{t('open')}</Button>}
+      trigger={props.trigger ?? <Button>{t('open')}</Button>}
     >
       <form
         noValidate

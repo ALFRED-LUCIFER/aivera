@@ -362,3 +362,51 @@ describe('AIV-P1-086: listApplicationsForJob', () => {
     expect(all?.n).toBe(1); // the row exists, so the empty read above is row-level security
   });
 });
+
+describe('AIV-P1-101: countApplications', () => {
+  it('Scenario: The page for Senior AI Engineer: every source counts, and the careers page once per application', async () => {
+    const sae = await newJob(w1, 'Senior AI Engineer');
+    const other = await newJob(w1, 'Staff Backend Engineer');
+    const empty = await newJob(w1, 'Empty job');
+    await as(ALEX, w1, async (ctx) => {
+      // Sara's CV twice through the careers page and once by email: one application, counted once.
+      await intake.receiveApplication(ctx, arrival(sae, 'Sara Al Qahtani', 300, 'careers_page'));
+      await intake.receiveApplication(ctx, arrival(sae, 'Sara Al Qahtani', 300, 'careers_page'));
+      await intake.receiveApplication(ctx, arrival(sae, 'Sara Al Qahtani', 300, 'email'));
+      // First by LinkedIn, then through the careers page: it came from the published listing too.
+      await intake.receiveApplication(ctx, arrival(sae, 'Arjun Menon', 301, 'linkedin'));
+      await intake.receiveApplication(ctx, arrival(sae, 'Arjun Menon', 301, 'careers_page'));
+      await intake.receiveApplication(ctx, arrival(sae, 'Layla Haddad', 302, 'referral'));
+      // Another job's applications are not this job's.
+      await intake.receiveApplication(ctx, arrival(other, 'Daniel Novak', 303, 'careers_page'));
+    });
+    expect(await as(ALEX, w1, (ctx) => intake.countApplications(ctx, sae))).toEqual({ total: 3, careersPage: 2 });
+    expect(await as(ALEX, w1, (ctx) => intake.countApplications(ctx, other))).toEqual({ total: 1, careersPage: 1 });
+    expect(await as(ALEX, w1, (ctx) => intake.countApplications(ctx, empty))).toEqual({ total: 0, careersPage: 0 });
+  });
+
+  // SAFETY: mutation check: jobResource lookup and authorize dropped from countApplications -> this test failed (Huda counted the ungranted job)
+  it('a hiring owner not granted the job is refused, and counts the job she is granted', async () => {
+    const analyst = await newJob(w1, 'Data Analyst');
+    const backend = await newJob(w1, 'Senior Backend Engineer');
+    await as(ALEX, w1, (ctx) => workspaces.grantJobAccess(ctx, { userId: HUDA, jobId: analyst }));
+    await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(analyst, 'Arjun Menon', 310, 'careers_page')));
+    await as(ALEX, w1, (ctx) => intake.receiveApplication(ctx, arrival(backend, 'Layla Haddad', 311, 'email')));
+    await expect(as(HUDA, w1, (ctx) => intake.countApplications(ctx, backend))).rejects.toThrow('Job not found');
+    expect(await as(HUDA, w1, (ctx) => intake.countApplications(ctx, analyst))).toEqual({ total: 1, careersPage: 1 });
+  });
+
+  // SAFETY: mutation check: ALTER POLICY application_tenant_isolation and application_source_tenant_isolation USING (true) WITH CHECK (true) -> this test failed (the unfiltered count in W1 saw W2's application); the job-scope mutation above failed it too (no "Job not found")
+  it("Scenario: Another workspace's job: refused, and row-level security hides its applications from the count", async () => {
+    const w2Job = await newJob(w2, 'Gulf job');
+    await as(ALEX, w2, (ctx) => intake.receiveApplication(ctx, arrival(w2Job, 'Sara Al Qahtani', 320, 'careers_page')));
+    await expect(as(ALEX, w1, (ctx) => intake.countApplications(ctx, w2Job))).rejects.toThrow('Job not found');
+    // The count's query with the repository's workspace filter removed, inside W1: row-level security alone hides it.
+    const [seen] = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ n: number }>(sql`select count(distinct a.id)::int as n from intake.application a
+        join intake.application_source s on s.application_id = a.id where a.job_id = ${w2Job}`),
+    );
+    expect(seen?.n).toBe(0);
+    expect(await as(ALEX, w2, (ctx) => intake.countApplications(ctx, w2Job))).toEqual({ total: 1, careersPage: 1 });
+  });
+});

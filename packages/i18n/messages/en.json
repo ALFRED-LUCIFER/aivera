@@ -571,6 +571,7 @@
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after a version is approved.",
     "add": "Add a job",
+    "import": "Import candidates",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
     "filters": {
@@ -1280,6 +1281,8 @@
   "jobHeader": {
     "breadcrumb": "Breadcrumb",
     "stagesLabel": "Stages of this job",
+    "importCandidates": "Import candidates",
+    "addCandidates": "Add candidates",
     "hiringOwner": "Hiring owner: {name}",
     "noHiringOwner": "Hiring owner: not assigned",
     "owner": {
@@ -1306,6 +1309,7 @@
     "stages": {
       "description": "Job description",
       "rubric": "Competencies and rubric",
+      "import": "Bring in candidates",
       "candidates": "Evidence and ranking",
       "interviews": "Interviews",
       "pack": "Decision"
@@ -1317,6 +1321,7 @@
       "awaiting_approval": "Awaiting approval, version {version}",
       "returned": "Returned, version {version}",
       "assessed": "{count, number} assessed",
+      "imported": "{count, number} imported",
       "afterApproval": "Starts after rubric approval",
       "notStarted": "Not started"
     },
@@ -1677,6 +1682,23 @@
     "sourceAdded": "Same CV as an existing application · source added",
     "added": "{count, plural, =0 {No new applications: each CV was already filed for this job.} one {# application added.} other {# applications added.}}",
     "jobNotFound": "This job does not exist or you do not have access."
+  },
+  "import": {
+    "title": "Bring in candidates",
+    "intro": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
+    "picker": "Import into this job",
+    "option": {
+      "approvedVersion": "{title} · rubric approved, version {version}",
+      "approved": "{title} · rubric approved",
+      "waiting": "{title} · rubric waiting for approval"
+    },
+    "note": "Everyone you import is assessed against this job's rubric. For a job whose rubric is still waiting, people are added now and assessed once it is approved. The same person can be imported into more than one job. They keep one profile.",
+    "upload": {
+      "title": "Upload CVs",
+      "body": "PDF or Word, up to 200 at a time. Links to repositories, portfolios and write-ups are found automatically.",
+      "button": "Upload files"
+    },
+    "fromListing": "Applications from the published job listing arrive here on their own: {count, number} so far."
   },
   "ranking": {
     "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",

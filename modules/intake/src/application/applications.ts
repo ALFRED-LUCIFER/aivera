@@ -25,6 +25,8 @@ export type IntakeStore = {
     workspaceId: string,
     jobId: string,
   ): Promise<{ applicationId: string; personId: string; stage: Stage; receivedAt: Date; source: Source }[]>;
+  /** The job's applications, and how many of them arrived at least once through the careers page. */
+  countForJob(workspaceId: string, jobId: string): Promise<ApplicationCounts>;
 };
 
 export type Ports = {
@@ -69,6 +71,9 @@ export type ApplicationListItem = {
   receivedAt: Date;
   source: Source;
 };
+
+/** A job's applications from every source, and those from the published job listing (`careers_page`, AIV-P1-101). */
+export type ApplicationCounts = { total: number; careersPage: number };
 
 export function applicationUseCases({
   storeFor,
@@ -124,6 +129,14 @@ export function applicationUseCases({
       const people = await displayNames(ctx.tx, ctx.workspaceId, [...new Set(rows.map((r) => r.personId))]);
       const names = new Map(people.map((p) => [p.id, p.displayName]));
       return rows.map((r) => ({ ...r, displayName: names.get(r.personId) ?? null }));
+    },
+
+    async countApplications(ctx: WorkspaceContext, jobId: string): Promise<ApplicationCounts> {
+      // As listApplicationsForJob: an ungranted job is not found, so a count never says it exists.
+      const job = await jobResource(ctx, jobId);
+      if (!job) throw new IntakeError('job_not_found');
+      await authorize(ctx, 'candidate.view', job);
+      return storeFor(ctx.tx).countForJob(ctx.workspaceId, jobId);
     },
 
     async addLink(ctx: WorkspaceContext, applicationId: string, url: string): Promise<{ sourceId: string }> {

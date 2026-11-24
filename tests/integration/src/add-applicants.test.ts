@@ -278,6 +278,8 @@ describe('Scenario: Only clean files are linked to an application source', () =>
 describe('Scenario: Only recruiters upload', () => {
   // SAFETY: mutation check: findCleanUpload without `p.authorize(ctx, 'file.upload')` -> this test failed (resolved null instead of 403). The action's own candidate.create gate: apps/web addApplicants.test.ts.
   it('an interviewer is refused (403) before any file is read or anything is filed', async () => {
+    // AIV-P1-101: even on the job she interviews for, whose Bring in candidates page she can open.
+    await as(ALEX, (ctx) => workspaces.grantJobAccess(ctx, { userId: LINA, jobId }));
     const { fileId } = await upload(cvOf(9));
     await expect(as(LINA, (ctx) => files.findCleanUpload(ctx, fileId))).rejects.toBeInstanceOf(ForbiddenError);
     await expect(addApplicants(LINA, 'linkedin', [fileId])).rejects.toBeInstanceOf(ForbiddenError);

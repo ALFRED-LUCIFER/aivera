@@ -1,8 +1,11 @@
 import type { JobHeader, RubricState } from '@credalent/jobs';
 import type { OwnerChange } from './hiringOwner.ts';
 
-/** The five stages of a job, in order; each is a page under /app/jobs/[jobId] (AIV-P1-011). */
-export const JOB_PAGES = ['description', 'rubric', 'candidates', 'interviews', 'pack'] as const;
+/**
+ * The stages of a job, in order; each is a page under /app/jobs/[jobId] (AIV-P1-011). "Bring in candidates" (AIV-P1-101)
+ * is the first of AIV-P1-100's seven-stage strip to ship; that ticket renames and adds the rest.
+ */
+export const JOB_PAGES = ['description', 'rubric', 'import', 'candidates', 'interviews', 'pack'] as const;
 export type JobPage = (typeof JOB_PAGES)[number];
 
 export const parseJobPage = (segment: string | null): JobPage | null =>
@@ -14,7 +17,7 @@ export const jobPageHref = (jobId: string, page: JobPage) => `/app/jobs/${jobId}
 export type StageLine =
   | { key: 'saved'; values: { date: Date } }
   | { key: 'approved' | 'draft' | 'awaiting_approval' | 'returned'; values: { version: number } }
-  | { key: 'assessed'; values: { count: number } }
+  | { key: 'assessed' | 'imported'; values: { count: number } }
   | { key: 'afterApproval' | 'notStarted' };
 
 /** The header as the layout hands it to the browser: plain data, only what it shows. */
@@ -36,6 +39,8 @@ export function jobHeaderView(
   hiringOwner: string | null,
   assessed: number,
   ownerChange: OwnerChange | null = null,
+  /** The job's applications from every source, intake's count (AIV-P1-101). */
+  imported = 0,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -46,6 +51,8 @@ export function jobHeaderView(
       : latest && latest.status !== 'superseded'
         ? { key: latest.status, values: { version: latest.version } }
         : { key: 'notStarted' },
+    // People can be added before the rubric is approved; they are assessed once it is.
+    import: imported === 0 ? { key: 'notStarted' } : { key: 'imported', values: { count: imported } },
     // Nothing is assessed before the rubric is approved (by a recruiter, or the hiring owner it was sent to).
     candidates: !approved
       ? { key: 'afterApproval' }

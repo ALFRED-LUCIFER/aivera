@@ -1,5 +1,5 @@
 import { useTranslations } from '@credalent/i18n/react';
-import { StatusBadge } from '@credalent/ui';
+import { buttonClassName, StatusBadge } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -12,18 +12,29 @@ const check = (
   </svg>
 );
 
-/** Every job page's header (AIV-P1-011): breadcrumb, title, where the job stands, and its five stages as links. */
+// The way into "Bring in candidates" (AIV-P1-101): the Rubric artboard's "Import candidates" and the Candidates
+// artboard's "Add candidates", in the header's actions.
+const IMPORT_LINKS: Partial<Record<JobPage, 'importCandidates' | 'addCandidates'>> = {
+  rubric: 'importCandidates',
+  candidates: 'addCandidates',
+};
+
+/** Every job page's header (AIV-P1-011): breadcrumb, title, where the job stands, and its stages as links. */
 export function JobHeader({
   view,
   current,
   ownerAction,
+  canImport = false,
 }: {
   view: JobHeaderView;
   current: JobPage | null;
   /** The admin's "Change hiring owner" control, shown beside the meta line (AIV-P1-097). */
   ownerAction?: ReactNode;
+  /** Admins and recruiters may bring candidates in; the add-applicants action checks it again. */
+  canImport?: boolean;
 }) {
   const t = useTranslations();
+  const importLink = canImport && current ? IMPORT_LINKS[current] : undefined;
   const meta = [
     view.team,
     view.location,
@@ -46,10 +57,17 @@ export function JobHeader({
             <p className="max-w-[72ch] text-body text-text-2">{meta.join(' · ')}</p>
             {ownerAction}
           </div>
-          <StatusBadge
-            status={view.rubric.approved ? 'supported' : 'needsValidation'}
-            label={t(`jobsList.rubric.${rubricLabel(view.rubric)}`)}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge
+              status={view.rubric.approved ? 'supported' : 'needsValidation'}
+              label={t(`jobsList.rubric.${rubricLabel(view.rubric)}`)}
+            />
+            {importLink && (
+              <Link href={jobPageHref(view.jobId, 'import') as Route} className={buttonClassName('secondary')}>
+                {t(`jobHeader.${importLink}`)}
+              </Link>
+            )}
+          </div>
         </div>
       </div>
       <nav aria-label={t('jobHeader.stagesLabel')}>

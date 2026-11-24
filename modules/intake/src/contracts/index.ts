@@ -4,6 +4,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type {
+  ApplicationCounts,
   ApplicationListItem,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
@@ -12,6 +13,7 @@ import type {
 export { IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
 export type { Source, Stage } from '../domain/application.ts';
 export type {
+  ApplicationCounts,
   ApplicationListItem,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
@@ -48,6 +50,12 @@ export interface IntakeContract {
    * job the context cannot see (another workspace's, or not granted), revealing nothing about its applicants.
    */
   listApplicationsForJob(ctx: WorkspaceContext, jobId: string): Promise<ApplicationListItem[]>;
+  /**
+   * How many applications the job has from every source, and how many arrived through the published job listing
+   * (`careers_page`), for the job's "Bring in candidates" stage (AIV-P1-101). Counts only, from one grouped read. Same
+   * access and `IntakeError('job_not_found')` as `listApplicationsForJob`.
+   */
+  countApplications(ctx: WorkspaceContext, jobId: string): Promise<ApplicationCounts>;
 }
 
 /**

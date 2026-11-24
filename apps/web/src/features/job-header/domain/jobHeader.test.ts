@@ -26,6 +26,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toEqual({
       description: { key: 'saved', values: { date: saved } },
       rubric: { key: 'approved', values: { version: 2 } },
+      import: { key: 'notStarted' },
       candidates: { key: 'assessed', values: { count: 64 } },
       interviews: { key: 'notStarted' },
       pack: { key: 'notStarted' },
@@ -55,7 +56,15 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(lines(header({}))).toMatchObject({ rubric: { key: 'notStarted' }, candidates: { key: 'afterApproval' } });
   });
 
-  it('only the five stage segments are a current page', () => {
+  it('AIV-P1-101: "Bring in candidates" counts applications from every source, before the rubric is approved too', () => {
+    const draft = header({ latest: version(1, 'draft') });
+    const line = (imported: number) => jobHeaderView(draft, null, 0, null, imported).stages[2];
+    expect(line(212)).toEqual({ page: 'import', line: { key: 'imported', values: { count: 212 } }, done: false });
+    expect(line(0)?.line).toEqual({ key: 'notStarted' });
+  });
+
+  it('only the stage segments are a current page', () => {
+    expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');
     expect(parseJobPage('settings')).toBeNull();
     expect(parseJobPage(null)).toBeNull();

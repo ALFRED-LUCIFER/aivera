@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { IntakeStore } from '../application/applications.ts';
 import { application, applicationSource } from './schema.ts';
 
@@ -84,6 +84,28 @@ export function intakeStore(tx: Tx): IntakeStore {
           asc(applicationSource.receivedAt),
           asc(applicationSource.id),
         );
+    },
+
+    async countForJob(workspaceId, jobId) {
+      // Every application has a source (they are written together), so the inner join drops none.
+      const [row] = await tx
+        .select({
+          total: sql<number>`count(distinct ${application.id})`.mapWith(Number),
+          careersPage:
+            sql<number>`count(distinct ${application.id}) filter (where ${applicationSource.source} = 'careers_page')`.mapWith(
+              Number,
+            ),
+        })
+        .from(application)
+        .innerJoin(
+          applicationSource,
+          and(
+            eq(applicationSource.workspaceId, application.workspaceId),
+            eq(applicationSource.applicationId, application.id),
+          ),
+        )
+        .where(and(eq(application.workspaceId, workspaceId), eq(application.jobId, jobId)));
+      return { total: row?.total ?? 0, careersPage: row?.careersPage ?? 0 };
     },
   };
 }

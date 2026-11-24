@@ -113,3 +113,52 @@ describe("AIV-P1-056: an agency sees each job's client", () => {
     expect(onClientChange).toHaveBeenCalledWith('Dune Logistics');
   });
 });
+
+// AIV-P1-101: one approved job, as an admin or recruiter (canImport) or anyone else.
+const withImport = (canImport: boolean) =>
+  render(
+    <IntlProvider {...intl}>
+      <JobsList
+        canImport={canImport}
+        view={{
+          status: 'ready',
+          total: 1,
+          filter: 'all',
+          counts: { all: 1, needsAction: 0, rubricNotApproved: 0 },
+          onFilterChange: () => {},
+          rows: [
+            {
+              id: '0190d4a2-0000-7000-9000-000000001031',
+              title: 'Senior AI Engineer',
+              team: null,
+              location: null,
+              stage: 'round_1',
+              rubric: { approved: true, latest: 'approved' },
+              assessed: 64,
+              coveragePercent: null,
+              nextAction: null,
+              hiringOwner: null,
+              client: null,
+            },
+          ],
+          clients: null,
+          client: '',
+          onClientChange: () => {},
+        }}
+      />
+    </IntlProvider>,
+  );
+
+describe('AIV-P1-101: "Import candidates" on each row', () => {
+  it("links an admin or recruiter to the job's Bring in candidates page, by its opaque id", () => {
+    withImport(true);
+    expect(screen.getByRole('link', { name: 'Import candidates' }).getAttribute('href')).toBe(
+      '/app/jobs/0190d4a2-0000-7000-9000-000000001031/import',
+    );
+  });
+
+  it('is not offered to a hiring owner or interviewer', () => {
+    withImport(false);
+    expect(screen.queryByRole('link', { name: 'Import candidates' })).toBeNull();
+  });
+});

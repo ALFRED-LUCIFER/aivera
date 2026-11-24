@@ -56,7 +56,7 @@ export default async function JobsPage() {
   return (
     <>
       <JobsHeader title={t('shell.nav.jobs')} intro={t('jobsList.intro')} add={canAdd ? t('jobsList.add') : null} />
-      <JobsListClient rows={rows} agency={agency} />
+      <JobsListClient rows={rows} agency={agency} canImport={canAdd} />
     </>
   );
 }

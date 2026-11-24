@@ -28,6 +28,8 @@ test('Scenario: Senior AI Engineer header', async ({ page }) => {
   await expect(stages(page)).toHaveText([
     'Job descriptionSaved 3 Nov',
     'Competencies and rubricApproved, version 2',
+    // Intake's count (AIV-P1-101); other specs on this database may add applicants, so any number.
+    /^Bring in candidates(Not started|\d+ imported)$/,
     /^Evidence and ranking(Not started|\d+ assessed)$/,
     'InterviewsNot started',
     'DecisionNot started',
@@ -38,14 +40,16 @@ test('Scenario: A job waiting for approval', async ({ page }) => {
   await signIn(page, { email: AP });
   await openJob(page, 'Senior Product Designer');
   await expect(page.getByText('Draft, needs approval', { exact: true })).toBeVisible();
-  await expect(stages(page).nth(2)).toHaveText('Evidence and rankingStarts after rubric approval');
+  // People can be brought in before approval (AIV-P1-101); seed.ts gives this job none.
+  await expect(stages(page).nth(2)).toHaveText('Bring in candidatesNot started');
+  await expect(stages(page).nth(3)).toHaveText('Evidence and rankingStarts after rubric approval');
   // A stage not reached stays reachable and says why it is empty.
-  await stages(page).nth(2).click();
+  await stages(page).nth(3).click();
   await expect(page).toHaveURL(/\/candidates$/);
   await expect(page.getByText('No ranking yet.', { exact: false })).toBeVisible();
 });
 
-// mutation check: aria-current set on every stage link -> this test failed (5 current links)
+// mutation check: aria-current set on every stage link -> this test failed (6 current links)
 test('Scenario: The current stage is marked, and the stages are keyboard reachable', async ({ page }) => {
   await signIn(page, { email: AP });
   const id = await openJob(page, 'Senior Product Designer');
@@ -55,6 +59,8 @@ test('Scenario: The current stage is marked, and the stages are keyboard reachab
   await stages(page).first().focus();
   await page.keyboard.press('Tab');
   await expect(stages(page).nth(1)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(stages(page).nth(2)).toBeFocused();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(`/app/jobs/${id}/candidates`);
