@@ -148,9 +148,21 @@ export function recordedClient(
       return { matches: misses.map((m) => ({ expected: m.expected, match: pick(m) })) };
     }
     if (request.promptVersion === suggestionPrompt.id) {
-      const found = cases.get(JSON.stringify(['jobs.draftCompetencies', request.sources]));
-      const recorded = Object.entries(found?.golden.recorded.suggestions?.verdicts ?? {});
-      return { verdicts: recorded.map(([name, fault]) => ({ name, pointsTo: '', breaks: fault ?? 'none' })) };
+      const recorded = cases.get(JSON.stringify(['jobs.draftCompetencies', request.sources]))?.golden.recorded
+        .suggestions?.verdicts;
+      if (!recorded) throw new Error('no recorded suggestion verdicts for this request');
+      return {
+        verdicts: Object.entries(recorded).map(([name, fault]) => ({
+          name,
+          pointsTo: '',
+          closestListed: '',
+          sameWorkAsClosest: fault === 'listed',
+          aboutThePerson: fault === 'proxy',
+          softSkillAnyJobAsks: fault === 'generic',
+          implied: fault !== 'unrelated',
+          citedLineImplies: fault !== 'citation',
+        })),
+      };
     }
     const judged = request.task === 'evals.judge';
     const key = judged ? (JSON.parse(request.prompt) as { rubric: string }).rubric : request.task;

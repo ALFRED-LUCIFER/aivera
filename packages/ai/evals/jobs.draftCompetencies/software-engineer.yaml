@@ -92,7 +92,7 @@ recorded:
     Code quality and testing: Writing tested code and code review
     Reliability and operations: Incident response and on-call support
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Payment systems domain knowledge: null
       Production monitoring and alerting: null

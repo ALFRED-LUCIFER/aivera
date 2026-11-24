@@ -136,7 +136,7 @@ export function fieldMatch(output: unknown, match: Json, sameMeaning: (point: Po
 /**
  * AIV-P2-085: one point per expected suggestion, scored by what the output suggests rather than by the golden names: a
  * suggestion is good when it cites a line and the judge's verdict on it (keyed by name) finds no fault. Every bad one
- * costs a point, so a bad suggestion fails even beside enough good ones; a suggestion with no verdict is bad.
+ * costs a point, so a bad suggestion fails even beside enough good ones; one with no verdict, or a repeated name, is bad.
  */
 export function suggestionMatch(
   output: unknown,
@@ -144,9 +144,13 @@ export function suggestionMatch(
   expected: number,
   verdicts: Record<string, SuggestionFault | null>,
 ): Ratio {
+  const seen = new Set<unknown>();
   const faults = valuesAt(output, path).map((item) => {
     if (!isRecord(item) || citationsOf(item).length === 0) return 'cites nothing';
     const name = item['name'];
+    // Verdicts are keyed by name, so a second suggestion of the same name has none of its own.
+    if (seen.has(name)) return 'duplicate';
+    seen.add(name);
     return typeof name === 'string' && Object.hasOwn(verdicts, name) ? verdicts[name] : 'no verdict';
   });
   const bad = faults.filter((fault) => fault !== null).length;

@@ -68,7 +68,7 @@ recorded:
         why: Every customer must be able to finish checkout, but the description does not mention accessibility.
         citations: []
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Arabic and right-to-left design: null
-      Accessibility: unrelated
+      Accessibility: citation

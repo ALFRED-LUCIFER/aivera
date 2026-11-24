@@ -112,7 +112,7 @@ recorded:
     Understanding the product: Product Knowledge Acquisition
     Information structure: Help Centre Content Organization
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       User Interface Understanding: null
       Information Architecture: null

@@ -73,7 +73,7 @@ recorded:
   matches:
     Code quality and testing: Testing and code quality
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Banking and payments domain: null
       Working under regulation: null

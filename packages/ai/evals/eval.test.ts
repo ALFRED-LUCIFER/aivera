@@ -22,7 +22,7 @@ import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { domainCatalogue, hardGates, runners, taskThresholds } from './config.ts';
-import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase, type SuggestionFault } from './golden.ts';
+import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase } from './golden.ts';
 import {
   caseLines,
   evaluateJudge,
@@ -1031,30 +1031,34 @@ const fixture = (dir: string, id: string) => {
 };
 type Suggested = { suggestions: { name: string }[] };
 const namesOf = (c: GoldenCase) => (c.recorded.output as Suggested).suggestions.map((s) => s.name);
-const judgedWith = (c: GoldenCase, verdicts: Record<string, SuggestionFault | null>): GoldenCase => ({
-  ...c,
-  recorded: { ...c.recorded, suggestions: { judge: suggestionPrompt.id, verdicts } },
-});
 const citedAs = (name: string) => ({ name, citations: [cite('S1', 'q')] });
 const suggestionJudgeOf = (completion: string) =>
   liveSuggestionJudge(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
+/** A judge answer for one suggestion: every question answered as a good suggestion, then the given changes. */
+const judged = (name: string, change: Record<string, unknown> = {}) => ({
+  name,
+  pointsTo: 'x',
+  implied: true,
+  closestListed: 'y',
+  sameWorkAsClosest: false,
+  aboutThePerson: false,
+  softSkillAnyJobAsks: false,
+  citedLineImplies: true,
+  ...change,
+});
 describe('Feature: The live eval scores drafted competency suggestions by what they are', () => {
   it('Scenario: A plausible suggestion that differs from the golden pair passes', async () => {
-    const pair = fixture('passing', 'golden-pair');
-    const output = structuredClone(pair.recorded.output) as Suggested;
-    const [first, second] = output.suggestions;
-    if (!first || !second) throw new Error('the case has two suggestions');
-    first.name = 'Multilingual NLP';
-    const c = judgedWith(
-      { ...pair, recorded: { ...pair.recorded, output } },
-      { 'Multilingual NLP': null, [second.name]: null },
-    );
-    expect(await failuresOf('jobs.draftCompetencies', c)).toEqual([]);
-    // The golden case keeps its pair: it sets how many suggestion points there are, not which names pass.
-    expect(caseOf('jobs.draftCompetencies', 'senior-ai-engineer').expected.match?.['suggestions[*].name']).toEqual([
+    const plausible = fixture('passing', 'plausible-suggestion');
+    const goldenCase = caseOf('jobs.draftCompetencies', 'senior-ai-engineer');
+    expect(goldenCase.expected.match?.['suggestions[*].name']).toEqual([
       'Arabic and bilingual NLP',
       'Product judgement',
     ]);
+    expect(plausible.expected).toEqual(goldenCase.expected);
+    expect(namesOf(plausible)).toContain('Multilingual NLP');
+    // The live judge's recorded verdict, not one written by hand.
+    expect(plausible.recorded.suggestions?.verdicts['Multilingual NLP']).toBeNull();
+    expect(await failuresOf('jobs.draftCompetencies', plausible)).toEqual([]);
   });
 
   // SAFETY: mutation check: suggestionMatch made to count every suggestion as good -> every row below, the scorer and CLI
@@ -1077,7 +1081,15 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
     expect(caseLines(report)[0]).toMatch(new RegExp(`^FAIL jobs\\.draftCompetencies ${id}: `));
   });
 
-  it('a bad suggestion costs a point even beside enough good ones, and a missing one costs a point', () => {
+  // SAFETY: mutation check: the proxy safety failure removed from scoreCase -> this test failed
+  it('a proxy suggestion fails the safety hard gate, not only a field-match point', async () => {
+    const report = await run('jobs.draftCompetencies', [fixture('failing', 'proxy')]);
+    expect(report.cases[0]?.scores.safety?.failures).toContain('suggestions[0]: proxy');
+    expect(report.rates.safety).toBe(0);
+  });
+
+  // SAFETY: mutation check: the repeated-name check removed from suggestionMatch -> this test failed
+  it('a bad suggestion costs a point even beside enough good ones; a missing one and a repeated name cost one too', () => {
     const verdicts = { Good: null, Bad: 'proxy' } as const;
     expect(suggestionMatch({ suggestions: [citedAs('Good'), citedAs('Bad')] }, 'suggestions[*]', 1, verdicts)).toEqual({
       n: 0,
@@ -1089,6 +1101,13 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
       total: 2,
       failures: ['suggestions[*]: 1 missing'],
     });
+    expect(suggestionMatch({ suggestions: [citedAs('Good'), citedAs('Good')] }, 'suggestions[*]', 2, verdicts)).toEqual(
+      {
+        n: 1,
+        total: 2,
+        failures: ['suggestions[1]: duplicate'],
+      },
+    );
   });
 
   it('Scenario: The golden pair still passes', async () => {
@@ -1116,20 +1135,35 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
     expect((await run('jobs.draftCompetencies', [stale])).cases[0]?.error).toBe(
       `suggestions judged with evals.suggestion@0, code is ${suggestionPrompt.id}: re-record`,
     );
-    // Every golden draft carries the verdicts of the judge in code, so the recorded run never asks a model.
+    // Every golden draft carries the verdicts of the judge in code, so the recorded run never asks a model, and the
+    // run reports the verdicts it scored, as a re-recording stores them.
     for (const c of golden.get('jobs.draftCompetencies') ?? [])
       expect(c.recorded.suggestions?.judge, c.id).toBe(suggestionPrompt.id);
+    expect((await run('jobs.draftCompetencies', [pair])).cases[0]?.suggestions).toEqual(
+      pair.recorded.suggestions?.verdicts,
+    );
   });
 
-  it('the live suggestion judge reads a verdict per suggestion, and rejects one that fails its schema', async () => {
+  it('the live suggestion judge turns each answer into the first rule it breaks, and rejects one off its schema', async () => {
     const pair = fixture('passing', 'golden-pair');
     const verdicts = [
-      { name: 'A', pointsTo: 'x', breaks: 'none' },
-      { name: 'B', pointsTo: 'nothing', breaks: 'generic' },
+      judged('Good'),
+      judged('Person', { aboutThePerson: true, softSkillAnyJobAsks: true }),
+      judged('Soft', { softSkillAnyJobAsks: true }),
+      judged('Same', { sameWorkAsClosest: true }),
+      judged('Far', { implied: false }),
+      judged('Uncited', { citedLineImplies: false }),
     ];
-    expect(await suggestionJudgeOf(JSON.stringify({ verdicts }))(pair, {})).toEqual({ A: null, B: 'generic' });
+    expect(await suggestionJudgeOf(JSON.stringify({ verdicts }))(pair, {})).toEqual({
+      Good: null,
+      Person: 'proxy',
+      Soft: 'generic',
+      Same: 'listed',
+      Far: 'unrelated',
+      Uncited: 'citation',
+    });
     await expect(
-      suggestionJudgeOf('{"verdicts":[{"name":"A","pointsTo":"x","breaks":"fine"}]}')(pair, {}),
+      suggestionJudgeOf(JSON.stringify({ verdicts: [{ ...judged('A'), implied: 'yes' }] }))(pair, {}),
     ).rejects.toMatchObject({ name: 'SchemaMismatch' });
   });
 });

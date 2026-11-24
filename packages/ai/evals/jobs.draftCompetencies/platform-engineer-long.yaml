@@ -143,7 +143,7 @@ recorded:
     Incident response: Incident Management and On-Call Leadership
     Cloud cost management: Cloud Cost Management
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Cloud Platform Expertise: null
       Multi-Region Service Reliability: null

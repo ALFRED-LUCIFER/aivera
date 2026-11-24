@@ -90,9 +90,9 @@ recorded:
   matches:
     Infrastructure as code: Cloud Infrastructure as Code Management
     Incident response: Incident Response Leadership
-    Observability: null
+    Observability: Dashboard and Alert Development
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Monitoring and Observability Tools Expertise: null
       Cloud Security Best Practices: null

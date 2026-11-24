@@ -125,7 +125,7 @@ recorded:
     Python service engineering: Production Python Service Development
     Cost and reliability: System Performance and Reliability Management
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Cloud Deployment and Infrastructure Management: null
       Data Engineering for Large-scale Retrieval Systems: null

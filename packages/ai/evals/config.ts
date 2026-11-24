@@ -68,7 +68,9 @@ export const taskThresholds: Record<
   // many. The golden case still sets how many suggestion points there are; each passes with an output suggestion that
   // cites a line and that the suggestion judge (run.ts suggestionPrompt, verdicts recorded per case) finds implied by
   // the job, not a listed competency reworded, not a proxy, not a generic soft skill, and implied by the line it cites.
-  // Each bad suggestion costs a point. The bad-suggestion fixtures (fixtures/failing) prove those fail.
+  // Each bad suggestion, or a repeated name, costs a point; a proxy also fails the safety hard gate. The bad-suggestion
+  // fixtures (fixtures/failing) prove those fail. shortcut: the judge on gpt-main catches an obvious rewording of a
+  // listed competency, not every subtle one; upgrade with a stronger judge model or per-case acceptable answers.
   'jobs.draftCompetencies': {
     statements: ['competencies[*]', 'suggestions[*]'],
     fieldMatch: 0.9,

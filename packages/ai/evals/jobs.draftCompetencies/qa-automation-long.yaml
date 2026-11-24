@@ -171,7 +171,7 @@ recorded:
     Bug reporting and code review: null
     Mentoring testers: Mentoring junior testers
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Web application security testing: null
-      JavaScript/TypeScript programming for test automation: null
+      JavaScript/TypeScript programming for test automation: listed

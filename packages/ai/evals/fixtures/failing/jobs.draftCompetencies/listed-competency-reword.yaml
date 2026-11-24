@@ -70,7 +70,7 @@ recorded:
           - sourceId: S1
             quote: design the checkout flows our customers use
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Arabic and right-to-left design: null
       Interaction design skills: listed

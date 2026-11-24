@@ -97,7 +97,7 @@ recorded:
     Integration engineering: System Integration Development
     Working with AI systems: AI Agent Deployment and Tuning
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Logistics Domain Knowledge: null
       API Design and Documentation: null

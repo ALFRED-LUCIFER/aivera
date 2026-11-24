@@ -88,7 +88,7 @@ recorded:
   matches:
     Test automation: Test Automation for End-to-End Scenarios
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       E-commerce Domain Knowledge: null
       Programming Skills in Test Automation Frameworks: null

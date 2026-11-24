@@ -98,7 +98,7 @@ recorded:
     Prospecting and pipeline: Prospect Pipeline Development
     Negotiation: Contract Negotiation with Procurement
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Retail Industry Knowledge: null
       CRM and Sales Tools Proficiency: null

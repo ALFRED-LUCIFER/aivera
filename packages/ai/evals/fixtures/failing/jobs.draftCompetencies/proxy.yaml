@@ -68,7 +68,7 @@ recorded:
           - sourceId: S1
             quote: open a store on our marketplace
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Native Arabic speaker: proxy
-      Marketplace seller tools: unrelated
+      Marketplace seller tools: null

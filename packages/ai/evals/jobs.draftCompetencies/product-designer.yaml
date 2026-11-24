@@ -102,7 +102,7 @@ recorded:
     Research to decisions: User Research Integration
     Prototyping: Prototyping and Testing
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       E-commerce User Experience Design: null
       Localization and Cultural Adaptation: null

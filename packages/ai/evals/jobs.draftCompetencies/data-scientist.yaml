@@ -95,7 +95,7 @@ recorded:
     Data quality and pipelines: Data Pipeline Ownership
     Experimentation: Experimental Design for Policy Testing
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Statistical Analysis and Inference: null
-      Programming for Data Science: null
+      Programming for Data Science: listed

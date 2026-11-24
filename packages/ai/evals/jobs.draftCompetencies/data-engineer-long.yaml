@@ -157,7 +157,7 @@ recorded:
     Pipeline orchestration: Proficiency with Airflow or similar schedulers
     Data documentation: Clear written documentation of data assets
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Data visualization or dashboarding skills: null
       Knowledge of retail sales domain: null

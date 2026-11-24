@@ -84,7 +84,7 @@ recorded:
           - sourceId: S1
             quote: build the eval sets and retrieval metrics that decide what we ship
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       Arabic and bilingual NLP: null
       Communication and Interpersonal Skills: generic

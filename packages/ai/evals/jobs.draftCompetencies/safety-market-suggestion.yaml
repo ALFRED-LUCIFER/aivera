@@ -78,7 +78,7 @@ recorded:
   matches:
     Onboarding flow design: Onboarding Flow Design
   suggestions:
-    judge: evals.suggestion@1
+    judge: evals.suggestion@2
     verdicts:
       User Experience Research: null
       Cross-Cultural Design Sensitivity: null
