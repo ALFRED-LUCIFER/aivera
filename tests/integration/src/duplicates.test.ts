@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -65,9 +66,11 @@ const arrive = (
   source: Source,
   identifiers: { email?: string; cv?: number },
   workspaceId = w1,
+  // Runs in the arrival's transaction after it is recorded, to hold it open for the concurrent cases.
+  hold?: () => Promise<void>,
 ) =>
-  as(ALEX, workspaceId, (ctx) =>
-    intake.receiveApplication(ctx, {
+  as(ALEX, workspaceId, async (ctx) => {
+    const result = await intake.receiveApplication(ctx, {
       jobId,
       person: {
         displayName,
@@ -79,8 +82,23 @@ const arrive = (
       },
       source,
       fileIds: [crypto.randomUUID()],
-    }),
-  );
+    });
+    await hold?.();
+    return result;
+  });
+
+// Waits until another connection is blocked on a row lock; gives up after 2 s, so a lock the code under test fails to
+// take shows as a wrong result instead of a hung test.
+const blockedOnLock = async () => {
+  for (let tries = 0; tries < 100; tries++) {
+    // admin's own connection: both app connections are in the transactions being watched.
+    const [row] = await admin.execute<{ n: string }>(
+      sql`select count(*) as n from pg_stat_activity where wait_event_type = 'Lock'`,
+    );
+    if (Number(row?.n) > 0) return;
+    await sleep(20);
+  }
+};
 
 const repository = (candidateId: string, name: string) =>
   as(ALEX, w1, (ctx) =>
@@ -139,7 +157,7 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 1 });
+  app = createDb(urlFor('aivera_app'), { max: 2 }); // two connections, for the concurrent cases
   const audit = createAudit(app, now);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, now);
@@ -430,6 +448,52 @@ describe('Scenario: Interviewers cannot merge', () => {
   });
 });
 
+describe('Arrivals, merges and undos of the same people at once', () => {
+  // SAFETY: mutation check: findPeople followed merges with plain reads and no lockPeople -> this test failed (the arrival was filed under the survivor while the undo was taking the merge apart)
+  it("an arrival on the merged person's CV during an undo waits for it and is filed under them", async () => {
+    clock = NOW;
+    const tarek = await arrive(await newJob('Platform Engineer'), 'Tarek Mansour', 'referral', { cv: 81 });
+    const dup = await arrive(await newJob('Infrastructure Engineer'), 'Tarek Mansour', 'whatsapp', { cv: 82 });
+    const { mergeId } = await as(MARIA, w1, (ctx) =>
+      candidates.mergePeople(ctx, tarek.personId, dup.personId, 'Same person, two CVs'),
+    );
+    const gate = Promise.withResolvers<void>();
+    const undone = Promise.withResolvers<void>();
+    const undo = as(ALEX, w1, async (ctx) => {
+      await candidates.unmergePeople(ctx, mergeId, 'Two different people');
+      undone.resolve();
+      await gate.promise; // holds the undo's locks until the arrival is waiting on them
+    });
+    await undone.promise;
+    const third = await newJob('Site Reliability Engineer');
+    const later = arrive(third, 'Tarek Mansour', 'email', { cv: 82 });
+    await blockedOnLock();
+    gate.resolve();
+    await undo;
+    expect((await later).personId).toBe(dup.personId);
+  });
+
+  // Both queue on one id-ordered lock (lockPeople), the order merge and undo use too, so none of them can deadlock;
+  // the interleaving a deadlock needs cannot be forced from outside a transaction, so this proves the queueing only.
+  it('two arrivals for the same person, each with a new CV, both land on them', async () => {
+    clock = NOW;
+    const job = await newJob('Backend Engineer');
+    const karim = await arrive(job, 'Karim Nasser', 'referral', { email: 'karim.nasser@example.com' });
+    const gate = Promise.withResolvers<void>();
+    const firstIn = Promise.withResolvers<void>();
+    const first = arrive(job, 'Karim Nasser', 'email', { email: 'karim.nasser@example.com', cv: 83 }, w1, async () => {
+      firstIn.resolve();
+      await gate.promise;
+    });
+    await firstIn.promise;
+    const second = arrive(job, 'Karim Nasser', 'linkedin', { email: 'karim.nasser@example.com', cv: 84 });
+    await blockedOnLock();
+    gate.resolve();
+    const [a, b] = await Promise.all([first, second]);
+    expect([a.personId, b.personId]).toEqual([karim.personId, karim.personId]);
+  });
+});
+
 describe('Undo moves back exactly what the merge moved (intake applicationRecords)', () => {
   // SAFETY: mutation check: restore ignored applicationSourceIds (moved the application back whole) -> this test failed (email went to the merged person)
   it("a source that arrived on a moved application after the merge stays with the survivor, in the survivor's application for that job", async () => {
@@ -469,7 +533,10 @@ describe('Undo moves back exactly what the merge moved (intake applicationRecord
     expect(await applicationsOf(dup.personId)).toEqual([
       { id: dup.applicationId, job_id: second, sources: ['whatsapp'] },
     ]);
-    expect((await applicationsOf(tarek.personId)).map((a) => a.sources)).toEqual([['referral'], ['email']]);
+    expect((await applicationsOf(tarek.personId)).map((a) => [a.job_id === second, a.sources])).toEqual([
+      [false, ['referral']],
+      [true, ['email']],
+    ]);
   });
 
   it('a merge stored before applicationSourceIds still undoes: its applications move back whole', async () => {

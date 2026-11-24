@@ -113,8 +113,8 @@ export function mergeUseCases(ports: MergePorts) {
     const merged = people.find((p) => p.id === mergedId);
     if (survivorId === mergedId || !survivor || !merged) throw new CandidateError('merge_people');
     if (survivor.mergedIntoId || merged.mergedIntoId) {
-      // findPeople reads without a lock, so two arrivals bridging the same pair both get here; the second waited for
-      // the first's lock and now sees the pair merged. Its upload must not fail for that.
+      // A manual merge of a pair an arrival has just merged, or an arrival that read the pair before a merge committed:
+      // an automatic merge skips it so the upload does not fail; a person's merge is refused.
       if (automatic) return null;
       throw new CandidateError('merge_people');
     }
