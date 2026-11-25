@@ -451,6 +451,14 @@ async function seed(
       sql`insert into assessment.explanation (result_id, prompt_version, workspace_id, statements, created_at)
           values (${scored.id}, 'assessment.explainRanking@1', ${ctx.workspaceId}, '[]'::jsonb, ${NOW.toISOString()})`,
     );
+    // An applied interview change on that result (assessment.interview_change, AIV-P1-117).
+    await ctx.tx.execute(
+      sql`insert into assessment.interview_change (id, workspace_id, candidate_id, job_id, result_id, competency_id,
+            source_id, rating, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id)
+          values (${crypto.randomUUID()}, ${ctx.workspaceId}, ${personId}, ${job.id}, ${scored.id}, ${competencyId},
+            ${crypto.randomUUID()}, 'clearly_shown', 3, '[]'::jsonb, 'Defended the design in detail', ${ctx.userId},
+            ${NOW.toISOString()}, ${crypto.randomUUID()}, 'preview')`,
+    );
     // A decision pack with that candidate's snapshot and its PackReady.v1 (decisions.pack, .pack_member, .outbox,
     // AIV-P2-009). The job has no hiring owner to record a decision, so its row is written as recordDecisions does.
     const { packId } = await decisions.createPack(ctx, {
@@ -800,6 +808,7 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       const noUpdate =
         name === 'audit.entry' ||
         name === 'assessment.result' ||
+        name === 'assessment.interview_change' ||
         name.startsWith('decisions.') ||
         name.endsWith('.outbox');
       expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);

@@ -19,7 +19,8 @@
     "@credalent/jobs": "workspace:*",
     "@credalent/observability": "workspace:*",
     "@credalent/workspaces": "workspace:*",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@credalent/config": "workspace:*",

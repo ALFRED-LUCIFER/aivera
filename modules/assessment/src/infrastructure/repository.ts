@@ -2,7 +2,7 @@ import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { AssessmentStore } from '../application/assessment.ts';
 import type { ExplanationStore } from '../application/explain.ts';
-import { explanation, result } from './schema.ts';
+import { explanation, interviewChange, result } from './schema.ts';
 
 /**
  * The assessment store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -28,6 +28,44 @@ export function assessmentStore(tx: Tx): AssessmentStore {
     },
     async insert(row) {
       await tx.insert(result).values(row);
+    },
+    async byId(workspaceId, id) {
+      const [row] = await tx
+        .select()
+        .from(result)
+        .where(and(eq(result.workspaceId, workspaceId), eq(result.id, id)));
+      return row ?? null;
+    },
+    interviewChanges(workspaceId, candidateId, jobId) {
+      return tx
+        .select({
+          competencyId: interviewChange.competencyId,
+          sourceId: interviewChange.sourceId,
+          rating: interviewChange.rating,
+          level: interviewChange.level,
+          itemIds: interviewChange.itemIds,
+        })
+        .from(interviewChange)
+        .where(
+          and(
+            eq(interviewChange.workspaceId, workspaceId),
+            eq(interviewChange.candidateId, candidateId),
+            eq(interviewChange.jobId, jobId),
+          ),
+        )
+        .orderBy(asc(interviewChange.appliedAt), asc(interviewChange.id));
+    },
+    async insertInterviewChanges(rows) {
+      await tx.insert(interviewChange).values(rows);
+    },
+    async applied(workspaceId, idempotencyKey) {
+      const [row] = await tx
+        .select({ result, previewId: interviewChange.previewId, reason: interviewChange.reason })
+        .from(interviewChange)
+        .innerJoin(result, and(eq(result.id, interviewChange.resultId), eq(result.workspaceId, workspaceId)))
+        .where(and(eq(interviewChange.workspaceId, workspaceId), eq(interviewChange.idempotencyKey, idempotencyKey)))
+        .limit(1);
+      return row ?? null;
     },
     listForJob(workspaceId, jobId) {
       return tx

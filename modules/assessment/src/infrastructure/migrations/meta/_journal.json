@@ -50,6 +50,20 @@
       "when": 1795524899040,
       "tag": "0006_explanation_follows_result",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795574518576,
+      "tag": "0007_interview_change",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795574519072,
+      "tag": "0008_force_rls_interview_change",
+      "breakpoints": true
     }
   ]
 }

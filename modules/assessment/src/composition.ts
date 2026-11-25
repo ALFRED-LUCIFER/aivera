@@ -8,6 +8,7 @@ import { RubricApprovedV1, type JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { assessmentUseCases, type Ports } from './application/assessment.ts';
 import { explainUseCases, type ExplainPorts } from './application/explain.ts';
+import { scoreChangeUseCases, type ScoreChangePorts } from './application/scoreChange.ts';
 import { assessForJob, type WorkerPorts } from './application/worker.ts';
 import type { AssessmentContract } from './contracts/index.ts';
 import { assessmentStore, explanationStore } from './infrastructure/repository.ts';
@@ -24,11 +25,15 @@ const auditWith =
       {
         action: 'score.changed',
         subject: { type: 'candidate', id: change.candidateId },
-        note: 'Assessed from the evidence against the approved rubric version.',
+        note: change.note ?? 'Assessed from the evidence against the approved rubric version.',
         ...(change.before && { before: change.before }),
         after: change.after,
       },
     );
+
+const notWired = async (): Promise<never> => {
+  throw new Error('Interview-based score changes are not wired in this app');
+};
 
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createAssessment(
@@ -42,6 +47,8 @@ export function createAssessment(
   applicants?: Ports['applicants'],
   // The model, rubric names, evidence and identifiers behind `explainRanking` (AIV-P1-033); without them it throws.
   explain?: Pick<ExplainPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf'>,
+  // The evidence read and the interview lookup behind interview-based score changes (AIV-P1-117); without them they throw.
+  scoreChange?: Pick<ScoreChangePorts, 'evidenceForJob' | 'interviewOf'>,
 ): AssessmentContract {
   const base: Ports = {
     storeFor: assessmentStore,
@@ -65,6 +72,9 @@ export function createAssessment(
       : async () => {
           throw new Error('Ranking explanations are not wired in this app');
         },
+    ...(scoreChange
+      ? scoreChangeUseCases({ ...base, ...scoreChange })
+      : { previewScoreChange: notWired, applyScoreChange: notWired }),
   };
 }
 
