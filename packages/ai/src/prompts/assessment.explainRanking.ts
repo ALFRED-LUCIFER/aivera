@@ -8,7 +8,7 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // decision 24 Nov 2026). Versioned here so every change runs the eval set (evals/assessment.explainRanking/). It
 // explains an order; it never advises on anyone (AGENTS.md 1.5).
 
-/** Bump with any change to the system prompt, the prompt or the schema. */
+/** Bump with any change to the request the model is sent (its prompt hash): the system prompt, the prompt or the JSON schema. */
 export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@7';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */
@@ -87,8 +87,10 @@ export const figuresQuoted = (text: string, quotes: readonly string[]): boolean 
  * Every figure in a statement is one it quotes from an evidence excerpt it cites; the facts source never counts, so a
  * score, weight or count can only be a placeholder (AGENTS.md 1.6, 1.7). The client then checks each quote is in its source.
  */
-// shortcut: a competency whose name holds a digit ("Python 3") makes the facts line fail when copied, so that job's
-// explanation is the template; give the checked names a placeholder if a pilot rubric has one.
+// shortcut: a statement citing the facts source must copy one of its lines, and the checked line lists names as they
+// are, so a checked competency whose name holds a digit ("Python 3"), a number word ("Single sign-on") or a word
+// statementAllowed refuses ("Test and verification") makes that job's explanation the template; give the checked names
+// a placeholder if a pilot rubric has one.
 // shortcut: figures are matched one by one, so "460 of 412 commits" passes on a quote of "412 of 460 commits", and
 // nothing at run time catches it (the judge only runs in the eval). Match the quoted phrase if a pilot answer does it.
 // This runs on the quotes as the model wrote them; the assessment module runs `figuresQuoted` again on the quotes it
@@ -111,16 +113,25 @@ export const explainRankingSchema = z.object({
 
 /**
  * The schema for one request: a statement that cites the facts source is one of its lines, exactly, so a paraphrase
- * cannot say more than the snapshot (AIV-P1-132, owner decision 25 Nov 2026). A refine only: the schema the model is
- * given does not change.
+ * cannot say more than the snapshot (AIV-P1-132, owner decision 25 Nov 2026). A refine only: the JSON schema the model
+ * is given, and so the prompt hash, do not change.
  */
-// The lines as given here; a line that redaction changed for the model then fails, and the template is shown.
-export const explainRankingSchemaFor = (factsText: string) => {
+// The lines as given here: a line the model saw changed (a redacted name, `<` sent as `&lt;`) fails, and the template
+// is shown.
+// shortcut: a statement citing only an excerpt may still hold {checkedCompetencies} or {claimCompetencies}, which no
+// facts line holds; statementAllowed checks its wording, nothing checks it against the snapshot. Hold a statement with a
+// placeholder to a facts line too if the owner asks or a pilot answer does it.
+const schemaFor = (factsText: string) => {
   const lines = factsText.split('\n');
   return explainRankingSchema.superRefine(({ statements }, ctx) =>
     statements.forEach(({ text, citations }, i) => {
       if (citations.some((c) => c.sourceId === FACTS_LABEL) && !lines.includes(text))
-        ctx.addIssue({ code: 'custom', path: ['statements', i, 'text'], message: 'a facts line, copied exactly' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['statements', i, 'text'],
+          message: 'a facts line, copied exactly',
+          params: { reason: 'facts_line_reworded' },
+        });
     }),
   );
 };
@@ -131,6 +142,6 @@ export const explainRankingRequest = (sources: readonly Source[]) => ({
   promptVersion: EXPLAIN_RANKING_VERSION,
   system: EXPLAIN_RANKING_SYSTEM,
   prompt: 'Explain the ranking from the facts source and the excerpts.',
-  schema: explainRankingSchemaFor(sources[0]?.text ?? ''),
+  schema: schemaFor(sources[0]?.text ?? ''),
   sources,
 });

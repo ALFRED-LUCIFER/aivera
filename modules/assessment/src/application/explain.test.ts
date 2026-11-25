@@ -346,7 +346,7 @@ describe('Scenario: The facts line holds placeholders, and a line copied from it
 });
 
 describe('Statements the facts do not support are dropped', () => {
-  // SAFETY: mutation check: removed the `untrue` heaviest check in explainRanking -> this test failed (the false claim was shown)
+  // SAFETY: mutation check: removed the heaviest check in statementAllowed -> this test failed (the false claim was shown)
   it('drops "heaviest" when the checked competencies are not the heaviest, and counts one claim as "one competency"', async () => {
     // Retrieval (25%) is only candidate-submitted here, so the checked LLM work (20%) is not the heaviest; Arabic NLP is no claim.
     const evidence = EVIDENCE.filter((e) => e.id !== 'e6').map((e) =>
