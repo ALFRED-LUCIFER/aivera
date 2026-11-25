@@ -53,9 +53,10 @@ export const generateTasks = {
     temperature: 0.2,
     service: { tokenCap: 30_000 },
   },
-  // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows. A stronger model than
-  // the one it grades (AIV-P1-075): on gpt-main it passed a limit its sources contradict.
-  'evals.judge': { deployment: 'gpt-judge', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
+  // The eval harness's LLM judge (AIV-P0-029), as repeatable as the model allows, on a stronger model than the one it
+  // grades (AIV-P1-075). From evals.judge@5 it writes one check per item, each quoting its source, before the verdict:
+  // room for ten items, so a long output is judged, not cut off into a SchemaMismatch.
+  'evals.judge': { deployment: 'gpt-judge', timeoutMs: 60_000, maxOutputTokens: 1_500, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;
 
 export const embedTasks = {

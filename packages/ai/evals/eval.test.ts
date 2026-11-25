@@ -678,8 +678,16 @@ describe('Feature: AI eval harness with a golden set', () => {
         recordedMatcher,
         recordedSuggestionJudge,
       );
-    expect((await judged('{"checks":[],"pass":true,"reason":"ok"}')).rates.judge).toBe(1);
-    const fail = await judged('{"checks":[],"pass":false,"reason":"no limit"}');
+    expect(
+      (
+        await judged(
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"ok"}',
+        )
+      ).rates.judge,
+    ).toBe(1);
+    const fail = await judged(
+      '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no limit"}',
+    );
     expect(fail.cases[0]?.scores.judge?.failures).toEqual(['judge: no limit']);
     expect(fail.passed).toBe(false);
     const garbled = await judged('{"pass":"yes"}');
@@ -1024,7 +1032,11 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
   it('Scenario: A judge that misses a bad case fails the live eval, naming the case', async () => {
     const lenient = await evaluateJudge(
       judgeCases,
-      liveJudgeVerdict(judgeWith('{"checks":[],"pass":true,"reason":"fine"}')),
+      liveJudgeVerdict(
+        judgeWith(
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"fine"}',
+        ),
+      ),
     );
     expect(lenient.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual([
       'contradicted-limit',
@@ -1040,7 +1052,11 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
 
     const strict = await evaluateJudge(
       judgeCases,
-      liveJudgeVerdict(judgeWith('{"checks":[],"pass":false,"reason":"no"}')),
+      liveJudgeVerdict(
+        judgeWith(
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no"}',
+        ),
+      ),
     );
     expect(strict.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual(['good']);
   });

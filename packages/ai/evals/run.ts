@@ -173,7 +173,8 @@ export const judgePrompt = {
 // contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
 // schema's order is the order it writes), and code fails the output when any item does not meet the rubric.
 const judgeAnswer = z.object({
-  checks: z.array(z.object({ item: z.string(), sourceSays: z.string(), meetsRubric: z.boolean() }).strict()),
+  // At least one: an empty list is the bare verdict this replaced.
+  checks: z.array(z.object({ item: z.string(), sourceSays: z.string(), meetsRubric: z.boolean() }).strict()).min(1),
   pass: z.boolean(),
   reason: z.string().min(1),
 });
@@ -279,7 +280,7 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
 
 /**
  * The LLM judge on the `evals.judge` task, through the structured-output contract: a verdict that is not the schema
- * fails with SchemaMismatch, never patched (AGENTS.md 3.7).
+ * fails with SchemaMismatch, never patched (AGENTS.md 3.7); a pass with a failed check of its own is a fail.
  */
 export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
   return async (rubric, golden, output) => {
