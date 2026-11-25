@@ -87,7 +87,7 @@ const {
   readEvidenceForJobAsSystem,
 } = await import('@credalent/evidence/composition');
 const { createIdentity } = await import('@credalent/identity/composition');
-const { MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
+const { InterviewCompletedV1, InterviewScheduledV1, MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
 const { createSummaryHandlers, SUMMARY_QUEUE } = await import('@credalent/interviews/composition');
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
 const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
@@ -117,9 +117,7 @@ const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_
 // on arrival, while an unmapped one waits in its outbox (retried by the relay) until the owner configures it.
 const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
-// shortcut: `interviews` is relayed for MeetingSummarySubmitted.v1 (AIV-P1-115). Its InterviewScheduled.v1 and
-// InterviewCompleted.v1 (AIV-P2-001) have no queue until something consumes them (the scorecard submit, AIV-P2-006):
-// unmapped, each fails alone and is retried with back-off, as the evidence request events are.
+// `interviews` is relayed for MeetingSummarySubmitted.v1 (AIV-P1-115); its other two events are parked in QUEUES below.
 // shortcut: `decisions` (PackReady.v1, DecisionsRecorded.v1, AIV-P2-009) is left out the same way: they wait unsent in
 // decisions.outbox until their consumers exist (the stage change in intake, the decision email drafts in notifications).
 const OUTBOXES = [
@@ -151,6 +149,10 @@ const QUEUES: Record<string, string> = {
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
+  // shortcut: nothing consumes InterviewScheduled.v1 or InterviewCompleted.v1 (AIV-P2-001) yet, and seeded interviews write
+  // them, so they are parked the same way rather than retried for ever unmapped; the scorecard submit (AIV-P2-006) maps them.
+  [InterviewScheduledV1.type]: 'candidates',
+  [InterviewCompletedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   // The catalogue draft eval (AIV-P2-048) runs only with a model and CATALOGUE_EVAL=on; otherwise its requests wait in
   // jobs.outbox, and the page says the run could not run once it times out.
