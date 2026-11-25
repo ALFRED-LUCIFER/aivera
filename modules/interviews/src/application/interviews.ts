@@ -110,6 +110,7 @@ export async function scorecardHolder(
   await ports.authorize(ctx, 'scorecard.submit', job);
   return interview;
 }
+
 const open = (interview: Interview) => interview.status !== 'completed' && interview.status !== 'cancelled';
 
 export function interviewUseCases(ports: Ports) {

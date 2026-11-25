@@ -41,7 +41,7 @@ export function ScoreEffect({ state, first }: { state: EffectState; first: strin
           state.lines.map((line) => (
             <div key={line.competencyId} className="flex flex-col gap-1.5">
               <span className="font-semibold text-text">{t(`scorecard.effect.${line.direction}`)}</span>
-              <span className="text-body text-text-2">
+              <span className="text-meta text-text-2">
                 {line.from === line.to
                   ? t('scorecard.effect.stays', { name: line.name, strength: strength(line.to) })
                   : t('scorecard.effect.change', { name: line.name, from: strength(line.from), to: strength(line.to) })}
@@ -50,7 +50,7 @@ export function ScoreEffect({ state, first }: { state: EffectState; first: strin
           ))}
         <div className="flex flex-wrap items-center gap-2">
           {/* Stays mounted so the new score line is announced. */}
-          <p aria-live="polite" className="text-body font-semibold text-text tabular-nums">
+          <p aria-live="polite" className="text-meta font-semibold text-text tabular-nums">
             {state.status === 'ready'
               ? state.backedScore.from === state.backedScore.to
                 ? t('scorecard.effect.scoreStays', { score: state.backedScore.to })

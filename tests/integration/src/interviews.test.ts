@@ -533,7 +533,7 @@ describe('Scorecard drafts (AIV-P2-004)', () => {
 
   // Huda is an interviewer with no grant on Senior AI Engineer. The contract never makes her an interviewer of it
   // (interviewer_not_on_job), so the row is written past it: the grant is checked again when the draft is saved.
-  // SAFETY: mutation check: removed the job-grant check from saveScorecardDraft (the jobResource read, `if (!job) throw new ForbiddenError()` and the authorize call) -> this test failed (the promise resolved: Huda's draft was stored)
+  // SAFETY: mutation check: removed the job-grant check from scorecardHolder (the jobResource read, `if (!job) throw new ForbiddenError()` and the authorize call) -> this test failed (the promise resolved: Huda's draft was stored)
   it('Scenario Outline: an interviewer with no grant on Senior AI Engineer is refused, and nothing is stored', async () => {
     const { interviewId } = await as(AYESHA, w1, (ctx) =>
       interviews.createInterview(ctx, {
