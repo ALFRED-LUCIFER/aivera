@@ -619,7 +619,7 @@ describe("The interview's write-up and a reason per competency (AIV-P1-115)", ()
     expect((await assess(d.candidateId)).id).toBe(stored.id);
   });
 
-  // SAFETY: mutation check: removed the `write_up_moves_score` guard from prepare -> this test failed (applied at 71, not the previewed 67)
+  // SAFETY: mutation check: removed the `write_up_moves_score` guard from prepare -> this test failed (the apply went through)
   it('a write-up that would move the score beyond the preview is refused, and nothing is stored', async () => {
     const d = await daniel();
     const { previewId } = await preview(d);

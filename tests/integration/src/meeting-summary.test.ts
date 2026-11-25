@@ -377,8 +377,8 @@ describe('Scenario: Analysing a summary proposes a change and applies nothing', 
     expect(await written(d.candidateId)).toEqual(before);
   });
 
-  // SAFETY: mutation check: createConsumer ran the handler on a duplicate, and `analyseSummary` no longer left an
-  // analysed summary alone -> this test failed (the second delivery hit the proposals' primary key and was abandoned)
+  // SAFETY: mutation check: `analyseSummary` no longer left an analysed summary alone (its status check removed and
+  // `proposed` allowed in its claim) -> this test failed (the replayed message hit the proposals' primary key: abandoned)
   it('a duplicated message stores one proposal set', async () => {
     const d = await daniel();
     const summaryId = await submit(d.interviewId);
@@ -627,6 +627,8 @@ describe('"Already changed by the scorecard"', () => {
 });
 
 describe('Scenario Outline: Only people on the interview analyse or apply', () => {
+  // SAFETY: mutation check: removed the `onInterview` check in `acting` -> the unassigned interviewer's row failed (her
+  // summary was stored); the hiring owner's still passed, refused by the job grant, the second layer.
   it.each([
     ['an interviewer not assigned to this interview', NOOR],
     ['a hiring owner without a grant on "Senior AI Engineer"', FAISAL],
@@ -680,8 +682,8 @@ describe('Scenario Outline: Only people on the interview analyse or apply', () =
 
 describe('Row-level security', () => {
   // SAFETY: mutation check: replaced the tenant condition of `meeting_summaries_tenant_isolation` with `true` in
-  // migration 0004 (the policy no longer isolates) -> this test failed (W2 read W1's summaries); with the CREATE POLICY
-  // statement removed altogether, the first insert of this file is refused instead.
+  // migration 0004 (the policy no longer isolates) -> this test failed for meeting_summaries (W2 read W1's rows); with
+  // the CREATE POLICY statement removed altogether -> this test and every test that stores a summary failed (17 of 20).
   it.each(['meeting_summaries', 'summary_proposals', 'inbox'])(
     'interviews.%s: another workspace reads nothing, with no repository filter at all',
     async (table) => {
