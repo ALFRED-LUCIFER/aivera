@@ -101,6 +101,7 @@ describe('evidenceCards', () => {
         },
         { key: 's-llm-eval-harness:checked', kind: 'check', method: 'Commit history', at: CHECKED },
       ],
+      claimOnly: false,
       limits: ['Shows the tooling, not how results changed product decisions.'],
     });
   });
@@ -111,6 +112,7 @@ describe('evidenceCards', () => {
       lead: { strength: 'claim', provenance: 'awaiting-defence' },
       items: [{ id: 'arabic', excerpt: 'built a Gulf Arabic evaluation set', highlighted: false, own: null }],
       sources: [{ kind: 'text', text: 'Round 1 notes' }],
+      claimOnly: true,
       limits: [],
     });
   });
@@ -165,10 +167,12 @@ describe('evidenceCards', () => {
       'Shows the tooling, not how results changed product decisions.',
       'A claim until a document or a second source supports it.',
     ]);
-    expect(empty).toMatchObject({ lead: null, items: [], sources: [], limits: [] });
+    expect(mixed?.claimOnly).toBe(false);
+    expect(empty).toMatchObject({ lead: null, items: [], sources: [], claimOnly: false, limits: [] });
   });
 
-  it('a row resting only on a claim highlights nothing, even a claim stored as Supporting, and a claim among the proven ids is not highlighted either', () => {
+  // SAFETY: mutation check: `claimOnly` computed from the lead's strength (`lead?.strength === 'claim'`) -> this test failed (the Supporting claim row was not claim only)
+  it('a row resting only on a claim stored as Supporting is claim only and highlights nothing; a claim among the proven ids is not highlighted either', () => {
     const [claimed, wrong] = evidenceCards(
       [result('cost', 15, [], ['cost']), result('llm', 25, ['cost'])],
       names,
@@ -178,6 +182,8 @@ describe('evidenceCards', () => {
     expect(claimed).toMatchObject({
       lead: { strength: 'supporting', provenance: 'claim' },
       items: [{ id: 'cost', highlighted: false, own: null }],
+      claimOnly: true,
+      limits: ['A claim until a document or a second source supports it.'],
     });
     expect(wrong?.items).toMatchObject([{ id: 'cost', highlighted: false }]);
   });

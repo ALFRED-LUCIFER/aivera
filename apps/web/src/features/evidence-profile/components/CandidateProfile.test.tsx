@@ -112,6 +112,7 @@ const retrieval: EvidenceCard = {
     { key: 's2:', kind: 'file', text: 'Incident review, March (PDF)', fileId: FILE },
     { key: 's3:', kind: 'text', text: 'Reference call, 11 Nov' },
   ],
+  claimOnly: false,
   limits: ['Shows the tooling, not how results changed product decisions.'],
 };
 const arabic: EvidenceCard = {
@@ -121,6 +122,7 @@ const arabic: EvidenceCard = {
   lead: { strength: 'claim', provenance: 'awaiting-defence' },
   items: [{ id: 'i2', excerpt: 'States they built a Gulf Arabic evaluation set.', highlighted: false, own: null }],
   sources: [{ key: 's4:', kind: 'text', text: 'Round 1 notes, 14 Nov' }],
+  claimOnly: true,
   limits: [],
 };
 const uncited: EvidenceCard = {
@@ -128,6 +130,7 @@ const uncited: EvidenceCard = {
   competencyId: 'cost',
   name: 'Cost and reliability',
   lead: null,
+  claimOnly: false,
   items: [],
   sources: [],
 };
@@ -228,6 +231,27 @@ describe('CandidateProfile: competency by competency', () => {
       'cited evidence authored 412 of 460 commits',
       'cited evidence contract tests on every endpoint',
     ]);
+  });
+
+  // SAFETY: mutation check: the limit line drawn from `card.lead?.strength === 'claim'` again -> this test failed (no "counts as zero" line on the Supporting row)
+  it('a row resting only on a CV claim stored as Supporting still says it counts as zero', () => {
+    const cost: EvidenceCard = {
+      ...arabic,
+      competencyId: 'cost',
+      name: 'Cost and reliability',
+      lead: { strength: 'supporting', provenance: 'claim' },
+      items: [{ id: 'i5', excerpt: 'cut cost per request by 40%', highlighted: false, own: null }],
+      limits: ['A claim until a document or a second source supports it.'],
+    };
+    show(ready(scored, null, { competencies: [cost] }));
+    const card = cardOf('Cost and reliability');
+    expect(card.getByText('Supporting')).toBeTruthy();
+    expect(card.getByText('Claim awaiting validation')).toBeTruthy();
+    expect(card.getAllByText(/^Limit:/).map((el) => el.parentElement?.textContent)).toEqual([
+      'Limit: A claim until a document or a second source supports it.',
+      'Limit: Claim only. Counts as zero in the backed score.',
+    ]);
+    expect(marks()).toEqual([]);
   });
 
   it('a competency the assessment cites nothing for says so, with no strength, tag or limit', () => {

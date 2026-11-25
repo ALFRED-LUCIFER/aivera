@@ -457,9 +457,16 @@ export default async function seed() {
                 provenance,
                 strength,
                 limit: 'Shows the tooling, not how results changed product decisions.',
-                competencies: levels
-                  .filter(([, , , source]) => source === label)
-                  .map(([c, level]) => ({ jobId: sae, competencyId: competency(c), level })),
+                competencies: [
+                  ...levels
+                    .filter(([, , , source]) => source === label)
+                    .map(([c, level]) => ({ jobId: sae, competencyId: competency(c), level })),
+                  // The submitted repository also shows LLM systems in production, below the checked one's level:
+                  // the mixed card further down cites both.
+                  ...(label === 'fastapi-ml-serve'
+                    ? [{ jobId: sae, competencyId: competency('LLM systems in production'), level: 3 }]
+                    : []),
+                ],
               },
             ],
             synthetic: true,

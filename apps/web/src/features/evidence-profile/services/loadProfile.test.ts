@@ -65,6 +65,7 @@ const card = {
   lead: { strength: 'medium', provenance: 'submitted' },
   items: [{ id: 'i1', excerpt: 'led retrieval and the refusal path', highlighted: true, own: null }],
   sources: [{ key: 's-cv:page 2', kind: 'file', text: 'CV, page 2', fileId: FILE }],
+  claimOnly: false,
   limits: ['CV supplied, authorship unverified.'],
 };
 const statements = [{ text: 'Two competencies still rest on claims.', citations: [] }];

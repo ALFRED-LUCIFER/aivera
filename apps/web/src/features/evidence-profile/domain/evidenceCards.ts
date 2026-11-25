@@ -32,7 +32,12 @@ export type EvidenceCard = {
    */
   items: { id: string; excerpt: string; highlighted: boolean; own: EvidenceCard['lead'] }[];
   sources: SourceChip[];
-  /** What the cited evidence does not show. A claim-only item states none here: it counts zero, which the card says. */
+  /**
+   * Nothing behind the proven level, only claims: the competency is backed at zero, whatever strength a claim is
+   * stored with, and the card says so (AGENTS.md 1.6).
+   */
+  claimOnly: boolean;
+  /** What the cited evidence does not show. A Claim only item states none here: nothing was inspected. */
   limits: string[];
 };
 
@@ -128,6 +133,7 @@ export function evidenceCards(
         lead: lead ? { strength: lead.strength, provenance: lead.provenance } : null,
         items: [...proven.map((i) => view(i, true)), ...claims.map((i) => view(i, false))],
         sources: chips(items, canOpenFiles),
+        claimOnly: proven.length === 0 && claims.length > 0,
         limits: [...new Set(items.filter((i) => i.strength !== 'claim').map((i) => i.limit))],
       };
     });

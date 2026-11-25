@@ -169,13 +169,12 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                 ))}
               </ul>
             )}
-            {[...card.limits, ...(card.lead?.strength === 'claim' ? [t('candidateProfile.claimLimit')] : [])].map(
-              (limit) => (
-                <p key={limit} className="text-meta text-text-2">
-                  <strong className="font-semibold text-text">{t('candidateProfile.limit')}</strong> {limit}
-                </p>
-              ),
-            )}
+            {/* SAFETY: a row resting only on claims says it counts zero, whatever strength the claim is stored with. */}
+            {[...card.limits, ...(card.claimOnly ? [t('candidateProfile.claimLimit')] : [])].map((limit) => (
+              <p key={limit} className="text-meta text-text-2">
+                <strong className="font-semibold text-text">{t('candidateProfile.limit')}</strong> {limit}
+              </p>
+            ))}
           </article>
         ))}
         {notes.length > 0 && (
