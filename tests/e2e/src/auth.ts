@@ -8,6 +8,11 @@ type SignInOptions = {
   verified?: boolean;
   /** The sign-in page URL, e.g. one with `?next=`. */
   from?: string;
+  /**
+   * The name the mocked provider sends; by default the email's local part. A sign-in replaces the stored name, so a
+   * person seed.ts names, whose name other specs assert while this one runs, passes that name.
+   */
+  name?: string;
 };
 
 /** Signs in through /sign-in and the mocked tenant, or the mocked Google (tests/e2e/mock-oidc.ts). Synthetic people only. */
@@ -18,6 +23,7 @@ export async function signIn(page: Page, options: SignInOptions = {}) {
   await page.getByRole('button', { name: button, exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(email);
+  if (options.name) await page.getByLabel('Name', { exact: true }).fill(options.name);
   if (!verified) await page.getByLabel('Email verified').uncheck();
   // The mocked Google plays the same page; its "Sign in with Google" marks the method.
   const tenantButton = button === 'Continue with Google' ? 'Sign in with Google' : 'Continue';

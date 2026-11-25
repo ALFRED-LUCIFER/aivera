@@ -12,7 +12,15 @@ const issuer = `http://localhost:${port}`;
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const kid = 'mock-oidc-key';
 
-type Grant = { clientId: string; nonce: string; challenge: string; email: string; verified: boolean; idp: string };
+type Grant = {
+  clientId: string;
+  nonce: string;
+  challenge: string;
+  email: string;
+  verified: boolean;
+  idp: string;
+  name: string;
+};
 const grants = new Map<string, Grant>();
 
 const b64 = (value: string | Buffer) => Buffer.from(value).toString('base64url');
@@ -31,7 +39,8 @@ function idToken(grant: Grant): string {
     email: grant.email,
     // Like External ID: a verified email sends no email_verified claim at all; only the refusal case sends false.
     ...(sendsEmailVerified || !grant.verified ? { email_verified: grant.verified } : {}),
-    name: grant.email.split('@')[0],
+    // A sign-in replaces the stored name, so a seeded person signs in with their seeded name (auth.ts `name`).
+    name: grant.name || grant.email.split('@')[0],
     idp: grant.idp,
   };
   const body = `${header}.${b64(JSON.stringify(claims))}`;
@@ -48,6 +57,7 @@ const signInPage = (query: URLSearchParams) => `<!doctype html>
     .map((name) => `<input type="hidden" name="${name}" value="${escape(query.get(name) ?? '')}">`)
     .join('')}
   <label>Email <input name="email" type="email" value="${escape(query.get('login_hint') ?? '')}" required></label>
+  <label>Name <input name="name"></label>
   <label><input name="verified" type="checkbox" checked> Email verified</label>
   <button type="submit">Continue</button>
   <button type="submit" name="idp" value="google">Sign in with Google</button>
@@ -100,6 +110,7 @@ createServer(async (request, response) => {
       email: form.get('email') ?? '',
       verified: form.has('verified'),
       idp: form.get('idp') || 'email',
+      name: form.get('name') ?? '',
     });
     const back = new URL(form.get('redirect_uri') ?? '');
     back.searchParams.set('code', code);

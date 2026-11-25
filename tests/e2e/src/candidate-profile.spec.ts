@@ -347,7 +347,7 @@ test('a hiring owner granted the job reads the evidence cards, and no "Unusual c
   const maria = new URL(page.url());
   await context.clearCookies({ name: '__Host-credalent-session' });
   // The Head of Engineering is the hiring owner of Senior AI Engineer in "Demo", granted the job (seed.ts).
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: 'head.engineering@example.com', name: 'Head of Engineering' });
   await page.goto(sara);
   const retrieval = page.getByRole('article', { name: /^Retrieval and evaluation/ });
   await expect(retrieval.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');

@@ -102,7 +102,7 @@ test('a hiring owner granted the job reads the stored questions', async ({ page,
   const sara = new URL(page.url());
   await context.clearCookies({ name: '__Host-credalent-session' });
   // The Head of Engineering is the hiring owner of Senior AI Engineer in "Demo", granted the job (seed.ts).
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: 'head.engineering@example.com', name: 'Head of Engineering' });
   await page.goto(sara.pathname + sara.search);
   await expectQuestions(page);
 });

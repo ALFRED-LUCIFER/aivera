@@ -196,7 +196,7 @@ test('Scenario: Only the assigned interviewer or an admin edits: a hiring owner 
   const { pathname } = new URL(page.url());
   await context.clearCookies({ name: '__Host-credalent-session' });
   // The Head of Engineering is the hiring owner of Senior AI Engineer in "Demo", granted the job, not its interviewer.
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: 'head.engineering@example.com', name: 'Head of Engineering' });
   await page.goto(pathname);
   await expect(page.getByText(/^You can read this scorecard but not change it\./)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save and close' })).toHaveCount(0);
