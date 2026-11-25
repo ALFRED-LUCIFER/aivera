@@ -7,8 +7,9 @@
 export const deployments = {
   'gpt-main': { model: 'gpt-4.1-mini', inputPerMillion: 400_000, outputPerMillion: 1_600_000 },
   'embedding-main': { model: 'text-embedding-3-large', inputPerMillion: 130_000, outputPerMillion: 0 },
-  // The eval judge only (infra/modules/ai.bicep): gpt-4.1 on dev; the pilot's runs gpt-4.1-mini under this name (its
-  // cost estimate there reads high) until gpt-4.1 is on regional Standard in UAE North.
+  // The eval judge only (infra/modules/ai.bicep): gpt-4.1 on dev.
+  // shortcut: the pilot's runs gpt-4.1-mini under this name, so its model and cost estimate here read about 5x high there;
+  // move the pilot to gpt-4.1 when UAE North offers it on regional Standard.
   'gpt-judge': { model: 'gpt-4.1', inputPerMillion: 2_000_000, outputPerMillion: 8_000_000 },
 } as const;
 

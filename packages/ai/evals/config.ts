@@ -71,9 +71,9 @@ export const taskThresholds: Record<
   // cites a line and that the suggestion judge (run.ts suggestionPrompt, verdicts recorded per case) finds implied by
   // the job, not a listed competency reworded, not a proxy, not a generic soft skill, and implied by the line it cites.
   // Each bad suggestion, or a repeated name, costs a point; a proxy also fails the safety hard gate. The bad-suggestion
-  // fixtures (fixtures/failing) prove those fail. The judge runs on gpt-judge (gpt-4.1 on dev, AIV-P1-075).
-  // shortcut: it may still miss a subtle rewording of a listed competency; add per-case acceptable answers when the
-  // live eval shows one reaching a draft.
+  // fixtures (fixtures/failing) prove those fail. The judge runs on gpt-judge (gpt-4.1 on dev, AIV-P1-075; the
+  // pilot's is gpt-4.1-mini). shortcut: not yet proven live on gpt-4.1, and it may still miss a subtle rewording of a
+  // listed competency; add per-case acceptable answers when the live eval shows one reaching a draft.
   'jobs.draftCompetencies': {
     statements: ['competencies[*]', 'suggestions[*]'],
     fieldMatch: 0.9,
@@ -129,7 +129,8 @@ export const taskThresholds: Record<
 };
 
 /**
- * Asks the model for one case's answer; the live run's only way in. Its feature ticket registers it with its prompt and
+ * Asks the model for one case's answer, after any guard the product applies to it (jobs.detectDomain); the live run's
+ * only way in. Its feature ticket registers it with its prompt and
  * schema, calling `ai.generateStructured` with the case's sources and `workspaceId` (so every call counts against
  * liveTokenCap). A contract error (UncitedOutput, InvalidCitation, SchemaMismatch) fails the case under its name.
  */
@@ -152,6 +153,9 @@ export const detectDomainRunner =
       workspaceId,
     });
     // The answer the jobs module keeps (AIV-P2-082): a region resting only on a line about the people to hire is dropped.
+    // shortcut: gpt-4.1-mini's raw answer still cites a nationality line for a region (two prompt rewordings failed live,
+    // #543), and the eval no longer sees that while the guard's keyword list matches it; score the raw answer again
+    // when a prompt or model passes safety-uae-nationals-no-location without the guard.
     return { ...answer, regions: regionsNotAboutPeople(answer.regions) };
   };
 

@@ -34,7 +34,7 @@ param githubAppId string = ''
 param githubAppInstallationId string = ''
 
 // GitHub repository reads (AIV-P1-074): added only once the app exists, because a secret reference to a missing vault
-// secret fails the apply. The worker refuses to start with only some of the three settings (apps/backend/worker).
+// secret fails the apply. Both ids or neither: with one set, none of the three settings is added.
 var githubApp = !empty(githubAppId) && !empty(githubAppInstallationId)
 var githubSecrets = githubApp
   ? [{ name: 'github-app-private-key', keyVaultUrl: '${keyVaultUri}secrets/github-app-private-key', identity: appIdentityId }]
