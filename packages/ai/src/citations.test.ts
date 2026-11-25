@@ -395,6 +395,19 @@ describe('schemaRules (AIV-P1-082)', () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ path: ['competencies', i, 'name'], code: 'too_big' }));
     expect(schemaRules(many)).toHaveLength(5);
   });
+
+  // AIV-P1-113: a refinement names its rule in the schema; a name that could hold text is dropped like any other.
+  // SAFETY: mutation check: used `params.reason` unchecked (no RULE filter) -> this test failed (the sentence was kept)
+  it("a custom rule's name from the schema stands for `custom`, pattern-checked like a code", () => {
+    expect(
+      schemaRules([
+        { path: ['gaps', 0, 'questions', 1, 'text'], code: 'custom', params: { reason: 'question_too_long' } },
+        { path: ['gaps', 0, 'competencyId'], code: 'custom', params: { reason: 'Sara said hi' } },
+        { path: ['gaps'], code: 'too_big', params: { reason: 'ignored_unless_custom' } },
+        { path: [], code: 'custom', params: { reason: 7 } },
+      ]),
+    ).toEqual(['gaps.0.questions.1.text:question_too_long', 'gaps:too_big', ':custom']);
+  });
 });
 
 // The rules part 2 of AIV-P1-082 is looking for, on the real draft schema (no citations needed to reach them).

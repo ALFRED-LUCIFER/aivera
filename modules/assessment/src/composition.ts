@@ -8,10 +8,11 @@ import { RubricApprovedV1, type JobsContract } from '@credalent/jobs';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { assessmentUseCases, type Ports } from './application/assessment.ts';
 import { explainUseCases, type ExplainPorts } from './application/explain.ts';
+import { questionUseCases, type QuestionPorts } from './application/questions.ts';
 import { scoreChangeUseCases, type ScoreChangePorts } from './application/scoreChange.ts';
 import { assessForJob, type WorkerPorts } from './application/worker.ts';
 import type { AssessmentContract } from './contracts/index.ts';
-import { assessmentStore, explanationStore } from './infrastructure/repository.ts';
+import { assessmentStore, explanationStore, questionStore } from './infrastructure/repository.ts';
 import { inbox } from './infrastructure/schema.ts';
 
 /** The queue the relay sends evidence and rubric changes to for scoring (infra/modules/messaging.bicep). */
@@ -35,6 +36,10 @@ const notWired = async (): Promise<never> => {
   throw new Error('Interview-based score changes are not wired in this app');
 };
 
+const questionsNotWired = async (): Promise<never> => {
+  throw new Error('Suggested interview questions are not wired in this app');
+};
+
 /** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
 export function createAssessment(
   workspaces: Pick<WorkspacesContract, 'authorize'>,
@@ -49,6 +54,8 @@ export function createAssessment(
   explain?: Pick<ExplainPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf'>,
   // The evidence read and the interview lookup behind interview-based score changes (AIV-P1-117); without them they throw.
   scoreChange?: Pick<ScoreChangePorts, 'evidenceForJob' | 'interviewOf'>,
+  // The model, rubric meanings, evidence, identifiers, mapping checks and job behind the suggested questions (AIV-P1-113); without them they throw.
+  questions?: Pick<QuestionPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf' | 'changes' | 'jobOf'>,
 ): AssessmentContract {
   const base: Ports = {
     storeFor: assessmentStore,
@@ -75,6 +82,9 @@ export function createAssessment(
     ...(scoreChange
       ? scoreChangeUseCases({ ...base, ...scoreChange })
       : { previewScoreChange: notWired, applyScoreChange: notWired }),
+    ...(questions
+      ? questionUseCases({ ...base, ...questions, questionsFor: questionStore })
+      : { getSuggestedQuestions: questionsNotWired, suggestInterviewQuestions: questionsNotWired }),
   };
 }
 

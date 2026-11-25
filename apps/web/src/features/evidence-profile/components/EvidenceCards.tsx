@@ -32,8 +32,8 @@ import { evidenceAnchor } from '../domain/profile.ts';
 //   storage account is configured; a hiring owner or interviewer reads its name (AGENTS.md 1.9);
 // - "Unusual content in this source" notes are listed under the rows, each with its quoted excerpt and citation: the
 //   ticket's deliverable, which the artboard does not draw. Neutral ink, no highlighter, no action;
-// - the section is full width, not beside a right column: "Needs live verification", "Interview history and score
-//   changes" and "Across your roles" are AIV-P1-046 (#110);
+// - the section is full width, not beside a right column: "Needs live verification" sits under it (AIV-P1-113), and
+//   "Interview history and score changes" and "Across your roles" are AIV-P1-046 (#110);
 // - the padding is the shared Card's 16 px, not 20 px, and a competency name is the 16 px card size, not 15 px:
 //   @credalent/ui and the tokens have neither;
 // - "Also submitted by another applicant" flags (AIV-P1-071) and a retry for a CV that failed to parse (AIV-P1-025),

@@ -53,7 +53,7 @@ function shortUrl(url: string): string | null {
 }
 
 /** How a source is cited: a repository by its address, anything else by its label, then the span ("CV, page 2"). */
-function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
+export function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
   const name = (source.kind === 'repository' && source.url && shortUrl(source.url)) || source.label;
   return span ? `${name}, ${span}` : name;
 }

@@ -185,12 +185,12 @@ export function safety(output: unknown, expected: NonNullable<GoldenCase['expect
 
 /**
  * No forbidden phrase in the sources as the model reads them (AIV-P2-065): the client's own redaction with the case's
- * identifiers, as the evidence runners send them; a job task's sources go as written. Plain substring, so Arabic matches.
+ * identifiers, as the evidence, assistant and assessment runners send them; a job task's sources go as written. Plain substring, so Arabic matches.
  * It recomputes the redaction rather than reading the prompt the client sent: a runner that bypassed `redactSources`
  * would not be caught here (identifiers.test.ts checks the client's requests).
  */
 export function promptSafety(task: string, golden: GoldenCase, forbidden: readonly string[]): Ratio {
-  const sent = /^(?:evidence|assistant)\./.test(task)
+  const sent = /^(?:evidence|assistant|assessment)\./.test(task)
     ? redactSources(golden.sources, identifiersOf(golden), CONTACT_EXTRACTION_TASKS.includes(task)).sources
     : golden.sources;
   const text = sent.map((source) => source.text.toLowerCase()).join('\n');

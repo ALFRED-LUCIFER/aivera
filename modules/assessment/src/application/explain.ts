@@ -64,7 +64,7 @@ export type ExplainPorts = Pick<Ports, 'storeFor' | 'authorize' | 'candidateJob'
 };
 
 // The kinds the client's citation contract knows (citations.ts SourceKind), for each evidence source kind.
-const KIND: Record<EvidenceItemView['source']['kind'], Source['kind']> = {
+export const KIND: Record<EvidenceItemView['source']['kind'], Source['kind']> = {
   cv: 'cv',
   repository: 'repo',
   document: 'document',
@@ -76,7 +76,7 @@ const KIND: Record<EvidenceItemView['source']['kind'], Source['kind']> = {
 
 // The model could not give a usable answer: the template is shown instead. Anything else (a bug, a database error)
 // still throws. Errors carry the task and a reason, never output or candidate values (AGENTS.md 1.2).
-const unusable = (error: unknown) =>
+export const unusable = (error: unknown): error is Error =>
   error instanceof AiUnavailable ||
   error instanceof BudgetExceeded ||
   error instanceof SourceTooLong ||

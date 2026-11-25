@@ -45,9 +45,22 @@ export type Checked<T> = T extends { citations: unknown[] }
 // than logged (AGENTS.md 1.2).
 const RULE = /^(?:[a-z][A-Za-z]{0,40}|\d{1,3})(?:\.(?:[a-z][A-Za-z]{0,40}|\d{1,3})){0,8}:[a-z_]{1,40}$|^:[a-z_]{1,40}$/;
 
-/** Which schema rules an answer broke, as `suggestions.0.weight:too_big` or `:custom` (a whole-answer rule), at most 5. */
-export const schemaRules = (issues: readonly { path: readonly PropertyKey[]; code: string }[]): string[] =>
-  [...new Set(issues.map((issue) => `${issue.path.map(String).join('.')}:${issue.code}`))]
+/**
+ * Which schema rules an answer broke, as `suggestions.0.weight:too_big` or `:custom` (a whole-answer rule), at most 5.
+ * A refinement may name its rule in the schema (`params: { reason: 'question_too_long' }`, AIV-P1-113): the name stands
+ * for `custom`. It is the schema author's word, never the model's, and passes the same pattern check.
+ */
+export const schemaRules = (
+  issues: readonly { path: readonly PropertyKey[]; code: string; params?: Record<string, unknown> | undefined }[],
+): string[] =>
+  [
+    ...new Set(
+      issues.map((issue) => {
+        const reason = issue.code === 'custom' ? issue.params?.['reason'] : undefined;
+        return `${issue.path.map(String).join('.')}:${typeof reason === 'string' ? reason : issue.code}`;
+      }),
+    ),
+  ]
     .filter((rule) => RULE.test(rule))
     .slice(0, 5);
 
