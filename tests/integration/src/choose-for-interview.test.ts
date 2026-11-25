@@ -147,6 +147,12 @@ beforeAll(async () => {
       (${w1}, ${ZAID}, 'recruiter', 'active'), (${w1}, ${FAISAL}, 'hiring_owner', 'active'),
       (${w1}, ${LINA}, 'interviewer', 'active')`),
   );
+  // Zaid is a recruiter in W2 too: "a recruiter in another workspace".
+  await withWorkspace(app, w2, (tx) =>
+    tx.execute(
+      sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w2}, ${ZAID}, 'recruiter', 'active')`,
+    ),
+  );
   const newJob = async (workspaceId: string, title: string) => {
     const job = await as(AYESHA, workspaceId, (ctx) =>
       jobs.createJob(ctx, {
@@ -323,7 +329,7 @@ describe('Scenario Outline: Only recruiters and admins on the job choose', () =>
   });
 
   it('a recruiter in another workspace: the job is not found, and nothing changes', async () => {
-    await expect(choose(AYESHA, w2, seniorAi, ['Arjun Menon'])).rejects.toMatchObject({ code: 'job_not_found' });
+    await expect(choose(ZAID, w2, seniorAi, ['Arjun Menon'])).rejects.toMatchObject({ code: 'job_not_found' });
     expect(await stageOf('Arjun Menon')).toBe('new');
   });
 });

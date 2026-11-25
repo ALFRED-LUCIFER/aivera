@@ -216,11 +216,11 @@ export async function seedDemo(
   // shortcut: a cancelled interview is in neither list, so its application would get a second one; nothing cancels yet.
   await asRecruiter(async (ctx) => {
     const jobIds = new Map((await jobs.listJobs(ctx)).map((j) => [j.title, j.id]));
-    const planned = new Set(
+    const planned = new Map(
       [
         ...(await interviews.listInterviews(ctx, 'ongoing')),
         ...(await interviews.listInterviews(ctx, 'completed')),
-      ].map((i) => i.applicationId),
+      ].map((i) => [i.applicationId, i.id]),
     );
     for (const i of INTERVIEWS) {
       const jobId = jobIds.get(i.job);
@@ -232,25 +232,39 @@ export async function seedDemo(
       if (!interviewerUserId) throw new Error(`No hiring owner ${i.interviewer}`);
       const applied = (await intake.listApplicationsForJob(ctx, jobId)).find((a) => a.displayName === i.candidate);
       // No batch: the worker never reads the arrival, so the demo's applications cost no AI call.
-      const applicationId =
+      const applicationId: string =
         applied?.applicationId ??
         (await intake.receiveApplication(ctx, { jobId, person: personOf(candidate), source: 'linkedin' }))
           .applicationId;
-      if (planned.has(applicationId)) continue;
-      const { interviewId } = await interviews.createInterview(ctx, {
-        applicationId,
-        round: i.round,
-        interviewerUserId,
-        scheduledAt: new Date(`${gulfDay(now, i.day)}T${i.time}:00+04:00`),
-        competencyIds: i.competencies.map((name) => {
-          const found = rubric.competencies.find((c) => c.name === name);
-          if (!found) throw new Error(`No competency ${name} in the approved rubric`);
-          return found.id;
-        }),
-      });
-      if (i.started) await interviews.startInterview(ctx, interviewId);
-      // As choosing for interview would (AIV-P1-114), so the demo ranking never offers to choose them twice.
-      await markInterviewStageForSeed(ctx.tx, ctx.workspaceId, applicationId, applied?.stage ?? 'new');
+      let interviewId = planned.get(applicationId);
+      if (!interviewId) {
+        ({ interviewId } = await interviews.createInterview(ctx, {
+          applicationId,
+          round: i.round,
+          interviewerUserId,
+          scheduledAt: new Date(`${gulfDay(now, i.day)}T${i.time}:00+04:00`),
+          competencyIds: i.competencies.map((name) => {
+            const found = rubric.competencies.find((c) => c.name === name);
+            if (!found) throw new Error(`No competency ${name} in the approved rubric`);
+            return found.id;
+          }),
+        }));
+        if (i.started) await interviews.startInterview(ctx, interviewId);
+      }
+      // As choosing for interview would (AIV-P1-114): the stage and its audit entry, so the demo ranking never offers to
+      // choose them twice. It also repairs a workspace seeded before; once at `interview`, a rerun moves nothing.
+      const from = applied?.stage ?? 'new';
+      if (from !== 'interview' && (await markInterviewStageForSeed(ctx.tx, ctx.workspaceId, applicationId, from)))
+        await audit.record(
+          { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
+          {
+            action: 'application.stage_changed',
+            subject: { type: 'application', id: applicationId },
+            note: 'Demo seed',
+            before: { stage: from },
+            after: { stage: 'interview', jobId, interviewId },
+          },
+        );
     }
   });
   return workspaceId;

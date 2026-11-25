@@ -119,7 +119,7 @@ export type ReceiveBatchInput = {
 };
 
 /** Validated in the use case whatever the caller checked (AGENTS.md 3.7); the reason is checked after trimming. */
-export const chooseForInterviewInputSchema = z.strictObject({
+const chooseForInterviewInputSchema = z.strictObject({
   jobId: z.uuid(),
   applicationIds: z.array(z.uuid()).min(1).max(50),
   reason: z.string(),

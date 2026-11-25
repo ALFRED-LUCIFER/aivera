@@ -96,8 +96,8 @@ export { findApplication };
 
 /**
  * The demo seed's interviews (AIV-P1-114): moves an application the seed gave an interview to `interview`, as
- * `chooseForInterview` would, so the demo ranking never offers to choose them twice. Not authorised and not audited:
- * tools/seed only, in a synthetic workspace's transaction.
+ * `chooseForInterview` would, so the demo ranking never offers to choose them twice. Not authorised, and it writes no
+ * audit entry: tools/seed records `application.stage_changed` itself when this returns true. tools/seed only.
  */
 export const markInterviewStageForSeed = (tx: Tx, workspaceId: string, applicationId: string, from: Stage) =>
   intakeStore(tx).moveStage(workspaceId, applicationId, from, 'interview');
