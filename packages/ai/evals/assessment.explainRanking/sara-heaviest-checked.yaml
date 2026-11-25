@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: 6977e9d7e53d
+  promptVersion: assessment.explainRanking@5
+  promptHash: '269412763902'
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competencies: Retrieval and evaluation, and LLM systems in production, {checkedWeight} of the weight.'
@@ -36,10 +36,10 @@ recorded:
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
-      - text: The candidate authored 412 of 460 commits between March and October, showing significant contribution to the work.
+      - text: The candidate authored 412 of 460 commits between March and October, showing extensive contribution to the llm-eval-harness project.
         citations:
           - sourceId: S2
             quote: 'llm-eval-harness: authored 412 of 460 commits between March and October'
   judge:
     pass: true
-    reason: All statements accurately reflect the content of their cited sources without adding unsupported information, numerical values are presented as placeholders consistent with the source text, and no recommendations or candidate names are included.
+    reason: Every statement is supported by a quote from its cited source, uses only what the source shows, and does not include unsupported numbers, recommendations, or candidate names.

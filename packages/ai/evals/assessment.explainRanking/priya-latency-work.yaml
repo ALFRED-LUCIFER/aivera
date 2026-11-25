@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: e322c5741243
+  promptVersion: assessment.explainRanking@5
+  promptHash: 10e0a84fdf73
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Performance engineering, {checkedWeight} of the weight.'
@@ -36,10 +36,10 @@ recorded:
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
-      - text: The candidate's work shows significant contribution to latency reduction by authoring 150 of 170 commits, cutting p95 latency in the benchmark suite.
+      - text: The candidate authored 150 of 170 commits, cutting p95 latency in the benchmark suite.
         citations:
           - sourceId: S2
             quote: 'latency-budget: authored 150 of 170 commits, cutting p95 latency in the benchmark suite'
   judge:
     pass: true
-    reason: All statements accurately quote their respective sources without adding unsupported information, use placeholders as required, and do not make any recommendations or name the candidate, thus meeting every point of the rubric.
+    reason: Every statement is supported by a direct quote from its cited source, uses only what the source shows, and does not include any unsupported numbers, recommendations, or candidate names.

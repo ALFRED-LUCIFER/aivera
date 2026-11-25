@@ -23,18 +23,18 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: 1b47374d15bc
+  promptVersion: assessment.explainRanking@5
+  promptHash: 4b8bc6979a02
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Model evaluation, {checkedWeight} of the weight.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs the heaviest competency: Model evaluation, {checkedWeight} of the weight'
-      - text: The candidate authored 88 of 120 commits in the evaluation suite, showing significant contribution to model evaluation.
+      - text: The candidate authored 88 of 120 commits in the eval-suite, which includes a CI gate on regressions.
         citations:
           - sourceId: S2
             quote: 'eval-suite: authored 88 of 120 commits, with a CI gate on regressions'
   judge:
     pass: true
-    reason: 'The output meets all rubric points: each statement quotes exactly what its source shows (S1 and S2), uses placeholders for weights and counts as in the source, includes a figure only when directly quoted (88 of 120 commits from S2), and contains no recommendations or candidate names.'
+    reason: Every statement is directly supported by a quote from its cited source, uses only what the source shows, and does not include any recommendations or unsupported figures.

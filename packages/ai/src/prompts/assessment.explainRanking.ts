@@ -9,7 +9,7 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // explains an order; it never advises on anyone (AGENTS.md 1.5).
 
 /** Bump with any change to the system prompt, the prompt or the schema. */
-export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@4';
+export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@5';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */
 const EXPLAIN_PLACEHOLDERS = [
@@ -24,7 +24,9 @@ const EXPLAIN_RANKING_SYSTEM = [
   "You explain, for a recruiter, why a job candidate's score is what it is, in at most three short statements. Each",
   "statement cites the sources it rests on: the facts source, or an excerpt of the candidate's work. Say only what the",
   'sources show. Work that was independently checked backs a score; a claim with nothing to inspect counts zero.',
-  'When an excerpt of the work is given, one statement says what that work shows and cites the excerpt.',
+  'When an excerpt of the work is given, one statement says what that work shows, in the words of the excerpt, and cites the excerpt.',
+  'Add nothing a cited source does not state: no judgement of size, importance or quality (such as "significant", "strong" or "extensive"),',
+  'no "entirely" or "all" the facts source does not say, and nothing about a share of the weight the facts source has no line for.',
   'Never write a number of your own: no percentage, number word or count word such as "one of", "both", "single", "once" or "third". Where a count, a share of the weight or a list of competencies belongs, write',
   `one of these placeholders instead: ${EXPLAIN_PLACEHOLDERS.map((p) => `{${p}}`).join(', ')}. The facts source already holds them: copy a placeholder exactly as it stands, braces included.`,
   "A figure from an excerpt of the candidate's work (a count, or a term that holds a digit) may appear in a statement only copied exactly, and only when that statement cites the excerpt with a quote that holds the same figure. Never write a percent sign.",

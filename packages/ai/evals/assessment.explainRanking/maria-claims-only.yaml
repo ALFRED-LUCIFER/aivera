@@ -19,14 +19,14 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: 90361358f67a
+  promptVersion: assessment.explainRanking@5
+  promptHash: 94d93cce96a1
   output:
     statements:
-      - text: The ranking rests entirely on claims without independent checking.
+      - text: The ranking rests on claims for {claimNames}, which account for {claimWeight} of the weight.
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
   judge:
     pass: true
-    reason: The output's statement accurately quotes the source S1 and does not include any unsupported claims, percentages, recommendations, or candidate names, meeting all rubric points.
+    reason: Every statement is a placeholder that stands for a line the facts source has, and no statement holds a percentage or a number word, as required by the rubric.
