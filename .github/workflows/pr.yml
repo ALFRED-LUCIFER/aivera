@@ -31,7 +31,8 @@ jobs:
       - run: pnpm typecheck
       # AIV-P2-061: a schema change without its generated migration leaves new or changed files here, and fails.
       - run: pnpm db:generate && git status --porcelain && test -z "$(git status --porcelain)"
-      # Unit, architecture and integration tests (Testcontainers starts PostgreSQL on the runner's Docker).
+      # Unit, architecture and integration tests (Testcontainers starts PostgreSQL on the runner's Docker). One package
+      # at a time (root package.json): each Vitest run already starts a worker per core (AIV-P0-936).
       - run: pnpm test
       - run: pnpm build
       - run: pnpm check:links
