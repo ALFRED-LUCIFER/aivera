@@ -1,4 +1,6 @@
-import { scorecardDraftSchema, type Round, type ScorecardDraft } from '@credalent/interviews';
+import type { CompetencyState } from '@credalent/assessment';
+import type { Strength } from '@credalent/evidence';
+import { RATINGS, scorecardDraftSchema, type Round, type ScorecardDraft } from '@credalent/interviews';
 import { z } from 'zod';
 import type { EvidenceCard } from '@/features/evidence-profile/domain/evidenceCards.ts';
 import type { QuestionView } from '@/features/evidence-profile/domain/questions.ts';
@@ -8,6 +10,71 @@ import type { QuestionView } from '@/features/evidence-profile/domain/questions.
 
 /** What the browser sends to save a draft, checked again in the interviews module (AGENTS.md 3.7). */
 export const saveDraftInput = z.strictObject({ interviewId: z.uuid(), draft: scorecardDraftSchema });
+
+/** What the browser sends to preview its ratings (AIV-P2-005), checked again by the assessment (AGENTS.md 3.7). */
+export const previewInput = z.strictObject({
+  interviewId: z.uuid(),
+  ratings: z
+    .array(z.strictObject({ competencyId: z.uuid(), rating: z.enum(RATINGS) }))
+    .min(1)
+    .max(50),
+});
+export type PreviewRatings = z.infer<typeof previewInput>['ratings'];
+
+/** The assessment's preview of the ratings (`previewScoreChange`), as far as the panel shows it. */
+export type ScoreEffect = {
+  backedScore: { from: number; to: number };
+  changes: { competencyId: string; from: CompetencyState; to: CompetencyState }[];
+};
+
+/** One rated competency in "Effect on the assessment". */
+export type EffectLine = {
+  competencyId: string;
+  name: string;
+  direction: 'weakened' | 'unchanged' | 'strengthened';
+  from: Strength | null;
+  to: Strength | null;
+};
+
+/** The panel's states: nothing rated yet, the first preview on its way, not previewable now, or the preview. */
+export type EffectState =
+  | { status: 'empty' | 'pending' | 'unavailable' }
+  | { status: 'ready'; lines: EffectLine[]; backedScore: ScoreEffect['backedScore'] };
+
+// Weakest first; no evidence (null) below them all. Not the evidence module's STRENGTHS: its entry is server-only.
+const WEAKEST_FIRST: readonly (Strength | null)[] = [null, 'claim', 'supporting', 'medium', 'strong'];
+const order = (strength: Strength | null) => WEAKEST_FIRST.indexOf(strength);
+
+/** Weakened or strengthened by the strength, then by the proven level; nothing moved is "No change", whatever the rating. */
+const directionOf = (from: CompetencyState, to: CompetencyState): EffectLine['direction'] => {
+  const moved = order(to.strength) - order(from.strength) || to.provenLevel - from.provenLevel;
+  return moved < 0 ? 'weakened' : moved > 0 ? 'strengthened' : 'unchanged';
+};
+
+/**
+ * One line per previewed rating, in the scorecard's order. A Partly shown that moves nothing is not in the preview
+ * (AIV-P1-117): it stays at the strength the latest assessment cites for it.
+ */
+export const effectLines = (
+  rated: PreviewRatings,
+  effect: ScoreEffect,
+  competencies: readonly (Pick<ScorecardCompetency, 'competencyId' | 'name'> & {
+    evidence: { lead: { strength: Strength } | null } | null;
+  })[],
+): EffectLine[] =>
+  rated.flatMap(({ competencyId }) => {
+    const competency = competencies.find((c) => c.competencyId === competencyId);
+    if (!competency) return [];
+    const change = effect.changes.find((c) => c.competencyId === competencyId);
+    const stays = competency.evidence?.lead?.strength ?? null;
+    return {
+      competencyId,
+      name: competency.name,
+      direction: change ? directionOf(change.from, change.to) : 'unchanged',
+      from: change ? change.from.strength : stays,
+      to: change ? change.to.strength : stays,
+    };
+  });
 
 export type ScorecardCompetency = {
   competencyId: string;

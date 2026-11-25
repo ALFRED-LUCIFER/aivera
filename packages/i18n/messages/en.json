@@ -1983,7 +1983,21 @@
     "failed": "We could not save your draft. Try again.",
     "readOnly": "You can read this scorecard but not change it. Only the interviewer or a workspace admin fills it in, while the interview is open.",
     "loading": "Loading the scorecard…",
-    "error": "We could not load this scorecard. Try again."
+    "error": "We could not load this scorecard. Try again.",
+    "effect": {
+      "title": "Effect on the assessment",
+      "empty": "Rate {name} to preview how the backed score would change. Nothing is applied until you submit.",
+      "pending": "Previewing…",
+      "weakened": "Evidence weakened",
+      "unchanged": "No change",
+      "strengthened": "Evidence strengthened",
+      "change": "{name}: {from} to {to}.",
+      "stays": "{name} stays at {strength}.",
+      "score": "Backed score {from} to {to}.",
+      "scoreStays": "Backed score stays {score}.",
+      "unavailable": "Preview unavailable. Your rating is kept and will be applied when you submit.",
+      "logged": "Every change is logged with your name, the time and your note."
+    }
   },
   "interviewSummary": {
     "title": "Meeting summary",
