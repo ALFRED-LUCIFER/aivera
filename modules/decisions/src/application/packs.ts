@@ -32,7 +32,7 @@ export type PackStore = {
 };
 
 /** A pack as the ranking needs it (AIV-P2-010): which packs the job has and who is in each. */
-export type PackSummary = Pick<DecisionPack, 'id' | 'name' | 'status' | 'preparedAt'> & { candidateIds: string[] };
+export type PackSummary = Pick<DecisionPack, 'id' | 'name' | 'status'> & { candidateIds: string[] };
 
 /** The job a pack belongs to, as the context may see it, with the member who owns its hiring decision. */
 export type PackJob = JobResource & { hiringOwnerUserId: string | null };

@@ -520,10 +520,22 @@ describe('Scenario: An application from another job is refused (AIV-P1-114)', ()
 // AIV-P2-010: a recruiter adds candidates to a decision pack, after a preview. The server action is faked: these tests
 // check what is shown and sent; the pack writes are in tests/integration/src/decisions.test.ts.
 const PACK = '0190d4a2-0000-7000-9000-000000000300';
-const packable = (rows = nine, packs: { id: string; name: string; candidateIds: string[] }[] = []) =>
+// The action's input is checked whole, so these rows carry application ids shaped as the server's are.
+const uid = (id: string) => `0190d4a2-0000-7000-9000-${id.padStart(12, '0')}`;
+const packable = (
+  rows = nine,
+  packs: { id: string; name: string; candidateIds: string[] }[] = [],
+  bulkActions: BulkActionId[] = ['addToPack'],
+) =>
   render(
     <IntlProvider {...intl}>
-      <Ranking jobId={JOB} awaitingRubric={false} rows={rows} bulkActions={['addToPack']} packs={packs} />
+      <Ranking
+        jobId={JOB}
+        awaitingRubric={false}
+        rows={rows.map((row) => ({ ...row, id: uid(row.id) }))}
+        bulkActions={bulkActions}
+        packs={packs}
+      />
     </IntlProvider>,
   );
 const openPack = async (...names: string[]) => {
@@ -557,7 +569,7 @@ describe('Scenario: Preview, then add (AIV-P2-010)', () => {
     await userEvent.click(confirm);
     expect(fake.pack).toHaveBeenCalledExactlyOnceWith({
       jobId: JOB,
-      applicationIds: ['a1', 'a2', 'a3'],
+      applicationIds: ['a1', 'a2', 'a3'].map(uid),
       pack: { name: 'Round 2 shortlist' },
     });
     expect(fake.refresh).toHaveBeenCalledOnce();
@@ -583,7 +595,11 @@ describe('Scenario: Add to an existing pack (AIV-P2-010)', () => {
     expect(preview().textContent).toContain('Sara Al QahtaniIn shortlist pack');
     expect(preview().textContent).toContain("Huda RahmanNot yet scored, so not added: a pack holds each candidate's");
     await userEvent.click(within(preview()).getByRole('button', { name: 'Add 1 to the pack' }));
-    expect(fake.pack).toHaveBeenCalledExactlyOnceWith({ jobId: JOB, applicationIds: ['a4'], pack: { packId: PACK } });
+    expect(fake.pack).toHaveBeenCalledExactlyOnceWith({
+      jobId: JOB,
+      applicationIds: [uid('a4')],
+      pack: { packId: PACK },
+    });
   });
 });
 
@@ -598,6 +614,21 @@ describe('Scenario: Cannot add from another job (AIV-P2-010)', () => {
       'This candidate has not applied to this job. Nothing was changed.',
     );
     expect(fake.refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('One preview at a time (AIV-P2-010)', () => {
+  // SAFETY: mutation check: dropped the onCancel of the other preview in RankingTable's onPreview -> this test failed (2 previews)
+  it('opening one bulk preview closes the other, so only one Confirm shows', async () => {
+    packable(nine, [], ['chooseForInterview', 'addToPack']);
+    await pick('Sara Al Qahtani');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Add to decision pack' }));
+    expect(screen.getAllByRole('region', { name: /^Preview: / })).toHaveLength(1);
+    expect(preview().textContent).toContain('decision pack');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(screen.getAllByRole('region', { name: /^Preview: / })).toHaveLength(1);
+    expect(preview().textContent).toContain('chosen for interview');
   });
 });
 

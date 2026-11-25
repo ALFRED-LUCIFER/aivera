@@ -1731,7 +1731,15 @@
   },
   "decisionPack": {
     "title": "{name}: {job}",
-    "members": "{count, plural, one {# candidate} other {# candidates}}, with the scores they joined with"
+    "prepared": "Decision pack · prepared {date, date, ::d MMM yyyy}",
+    "preparedOn": "Decision pack · prepared {date, date, ::d MMM yyyy} · rubric v{version}",
+    "members": "{count, plural, one {# candidate} other {# candidates}}",
+    "basis": "Backed scores are observed from inspected evidence, as they were when each candidate joined the pack.",
+    "others": "{count, plural, =0 {Everyone who applied is in this pack.} one {# other candidate stays in the ranking and can be added to a later pack.} other {# other candidates stay in the ranking and can be added to a later pack.}}",
+    "back": "Back to ranking",
+    "list": "Decision packs",
+    "loading": "Loading the decision pack…",
+    "error": "We could not load the decision pack. Try again."
   },
   "ranking": {
     "duplicates": {
@@ -1843,7 +1851,6 @@
     },
     "pack": {
       "title": "{count, plural, =0 {Preview: nobody new to add to a decision pack} one {Preview: add # candidate to a decision pack} other {Preview: add # candidates to a decision pack}}",
-      "unnamed": "Unnamed applicant",
       "inPack": "In shortlist pack",
       "notScored": "Not yet scored, so not added: a pack holds each candidate's assessment",
       "legend": "Decision pack",

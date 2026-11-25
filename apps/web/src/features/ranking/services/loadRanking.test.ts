@@ -178,8 +178,8 @@ describe('loadRanking', () => {
     fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [ranked] });
     fake.rubric.mockResolvedValue(rubric(VERSION));
     fake.packs.mockResolvedValueOnce([
-      { id: 'k1', name: 'Round 2 shortlist', status: 'ready', preparedAt: at, candidateIds: ['p1'] },
-      { id: 'k0', name: 'Round 1 shortlist', status: 'decided', preparedAt: at, candidateIds: ['p9'] },
+      { id: 'k1', name: 'Round 2 shortlist', status: 'ready', candidateIds: ['p1'] },
+      { id: 'k0', name: 'Round 1 shortlist', status: 'decided', candidateIds: ['p9'] },
     ]);
     const data = await loadRanking(JOB);
     expect(data !== 'notFound' && data?.packs).toEqual([{ id: 'k1', name: 'Round 2 shortlist', candidateIds: ['p1'] }]);

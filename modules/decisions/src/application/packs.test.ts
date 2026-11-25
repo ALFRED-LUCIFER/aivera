@@ -46,7 +46,7 @@ function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), 
     insertDecisions: vi.fn<PackStore['insertDecisions']>(async () => undefined),
     listDecisions: vi.fn<PackStore['listDecisions']>(async () => []),
     listForJob: vi.fn<PackStore['listForJob']>(async () => [
-      { id: PACK, name: 'Round 2 shortlist', status: 'ready', preparedAt: NOW, candidateIds: [SARA] },
+      { id: PACK, name: 'Round 2 shortlist', status: 'ready', candidateIds: [SARA] },
     ]),
   };
   const ports: Ports = {
@@ -266,7 +266,7 @@ describe('listPacks', () => {
   it("lists the job's packs with their members, after pack.view on the job", async () => {
     const { useCases, ports, store } = setup();
     expect(await useCases.listPacks(ctxAs('recruiter'), JOB.jobId)).toEqual([
-      { id: PACK, name: 'Round 2 shortlist', status: 'ready', preparedAt: NOW, candidateIds: [SARA] },
+      { id: PACK, name: 'Round 2 shortlist', status: 'ready', candidateIds: [SARA] },
     ]);
     expect(ports.authorize).toHaveBeenCalledWith(ctxAs('recruiter'), 'pack.view', JOB);
     expect(store.listForJob).toHaveBeenCalledWith('w1', JOB.jobId);

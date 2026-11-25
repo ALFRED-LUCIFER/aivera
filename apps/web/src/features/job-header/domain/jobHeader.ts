@@ -8,8 +8,9 @@ import type { OwnerChange } from './hiringOwner.ts';
 export const JOB_PAGES = ['description', 'rubric', 'import', 'candidates', 'interviews', 'pack'] as const;
 export type JobPage = (typeof JOB_PAGES)[number];
 
+/** The stage a route segment belongs to; a pack's own page (`packs/[packId]`, AIV-P2-010) is under the Decision stage. */
 export const parseJobPage = (segment: string | null): JobPage | null =>
-  JOB_PAGES.find((page) => page === segment) ?? null;
+  segment === 'packs' ? 'pack' : (JOB_PAGES.find((page) => page === segment) ?? null);
 
 export const jobPageHref = (jobId: string, page: JobPage) => `/app/jobs/${jobId}/${page}`;
 
@@ -59,7 +60,8 @@ export function jobHeaderView(
       : assessed === 0
         ? { key: 'notStarted' }
         : { key: 'assessed', values: { count: assessed } },
-    // shortcut: interviews (AIV-P2-001) and decision packs (AIV-P2-010) do not exist yet; they report these two.
+    // shortcut: the interviews (AIV-P2-002) and the job's packs (listed on the Decision tab since AIV-P2-010) report no
+    // stage line yet; the pack page with decisions (AIV-P2-011, #125) adds "Shortlist ready" here.
     interviews: { key: 'notStarted' },
     pack: { key: 'notStarted' },
   };

@@ -8,19 +8,24 @@ import type { Competency } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import type { Page } from '@playwright/test';
+import { sql } from 'drizzle-orm';
 import { receiveConfirmed } from '../confirmedBatch.ts';
 import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
-import { approvedWorkspace } from './workspaces.ts';
+import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 
 // AIV-P2-010, a step of J3: the recruiter builds a decision pack from the ranking, after a preview, and opens it. This
 // spec has a workspace of its own, so a pack changes nothing another spec reads: a Senior AI Engineer job with an
 // approved rubric, Sara Al Qahtani, Arjun Menon, Huda Al Mansoori and Daniel Novak assessed from real evidence at 55
-// each (the formula's numbers, not the ticket's illustrative 68, 64 and 61), and Maria Santos not yet scored.
+// each (the formula's numbers, not the ticket's illustrative 68, 64 and 61), and Maria Santos not yet scored; and an
+// interviewer granted the job, who may not see its packs. Serial: the later tests open the pack the first one builds.
+test.describe.configure({ mode: 'serial' });
 
 let creator: string;
+let interviewer: string;
+let jobId: string;
 const ASSESSED = ['Sara Al Qahtani', 'Arjun Menon', 'Huda Al Mansoori', 'Daniel Novak'];
 
 const competency = (name: string, weightPercent: number, levelNeeded: number): Competency => ({
@@ -35,9 +40,11 @@ const competency = (name: string, weightPercent: number, levelNeeded: number): C
 test.beforeAll(async () => {
   const stamp = Date.now();
   creator = `alex+pack-${stamp}@example.com`;
+  interviewer = `rami+pack-${stamp}@example.com`;
   const made = await approvedWorkspace(creator, `Pack ${stamp}`);
   const db = createDb(databaseUrl, { max: 1 });
   try {
+    const interviewerId = await syntheticUser(db, interviewer);
     const audit = createAudit(db);
     const workspaces = createWorkspaces(db, audit);
     const jobs = createJobs(workspaces, audit);
@@ -53,6 +60,12 @@ test.beforeAll(async () => {
         description: 'Senior AI Engineer, synthetic e2e job for building a decision pack.',
         synthetic: true,
       });
+      jobId = job.id;
+      await ctx.tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status)
+          values (${made.workspaceId}, ${interviewerId}, 'interviewer', 'active')`,
+      );
+      await workspaces.grantJobAccess(ctx, { userId: interviewerId, jobId: job.id });
       const saved = await jobs.saveRubric(ctx, job.id, {
         successStatement: 'Ships reliable AI features.',
         competencies: [
@@ -177,9 +190,15 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await expect(page.getByText('3 candidates added to Round 2 shortlist.')).toBeVisible();
   for (const name of ['Sara Al Qahtani', 'Arjun Menon', 'Huda Al Mansoori'])
     await expect(row(page, name)).toContainText('In shortlist pack');
-  // Candidates outside the pack stay visible, unchanged.
-  for (const name of ['Daniel Novak', 'Maria Santos'])
+  // Candidates outside the pack stay visible, unchanged: Daniel at 55, Maria not yet scored.
+  for (const name of ['Daniel Novak', 'Maria Santos']) {
+    await expect(row(page, name)).toBeVisible();
     await expect(row(page, name)).not.toContainText('In shortlist pack');
+  }
+  await expect(
+    row(page, 'Daniel Novak').getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ }),
+  ).toBeVisible();
+  await expect(row(page, 'Maria Santos')).toContainText('Not yet scored');
 
   // Add to an existing pack: Daniel joins the undecided one, offered first.
   await tick(page, 'Daniel Novak');
@@ -190,9 +209,37 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
 
   await page.getByRole('link', { name: 'Open the pack' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
-  await expect(page.getByText('4 candidates, with the scores they joined with')).toBeVisible();
-  for (const name of ASSESSED) await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(1);
-  await expectAccessible(page);
+  await expect(page.getByText(/^Decision pack · prepared \d{1,2} [A-Z][a-z]{2} \d{4} · rubric v1$/)).toBeVisible();
+  for (const name of ASSESSED) await expect(page.getByRole('link', { name })).toHaveCount(1);
+  await expect(
+    page.getByText('1 other candidate stays in the ranking and can be added to a later pack.'),
+  ).toBeVisible();
+  // The Decision stage is current on the pack's page, and its tab lists the pack.
+  await expect(page.getByRole('link', { name: /^Decision/ })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('link', { name: /^Decision/ }).click();
+  await page.getByRole('link', { name: 'Round 2 shortlist' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to ranking' }).click();
+  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
+});
+
+for (const theme of themes) {
+  test(`axe passes on the decision pack page (${theme})`, async ({ page, context, baseURL }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: creator });
+    await page.goto(`/app/jobs/${jobId}/pack`);
+    await page.getByRole('link', { name: 'Round 2 shortlist' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expectAccessible(page);
+  });
+}
+
+test('an interviewer granted the job gets the 403 page on its Decision tab, not its packs', async ({ page }) => {
+  await signIn(page, { email: interviewer });
+  await page.goto(`/app/jobs/${jobId}/pack`);
+  await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
+  await expect(page.getByText('Round 2 shortlist')).toHaveCount(0);
 });
 
 for (const theme of themes) {

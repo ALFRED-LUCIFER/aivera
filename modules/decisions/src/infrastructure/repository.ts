@@ -43,7 +43,7 @@ export function packStore(tx: Tx): PackStore {
     },
     async listForJob(workspaceId, jobId) {
       const packs = await tx
-        .select({ id: pack.id, name: pack.name, status: pack.status, preparedAt: pack.preparedAt })
+        .select({ id: pack.id, name: pack.name, status: pack.status })
         .from(pack)
         .where(and(eq(pack.workspaceId, workspaceId), eq(pack.jobId, jobId)))
         .orderBy(desc(pack.preparedAt), desc(pack.id));

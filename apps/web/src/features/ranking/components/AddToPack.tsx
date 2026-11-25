@@ -19,6 +19,7 @@ const focusOnMount = (element: HTMLElement | null) => element?.focus();
 
 export function AddToPack({ view }: { view: PackView }) {
   const t = useTranslations('ranking.pack');
+  const unnamed = useTranslations('ranking')('unnamed');
   const nameId = useId();
   const { preview } = view;
   if (!preview) return null;
@@ -39,7 +40,7 @@ export function AddToPack({ view }: { view: PackView }) {
       <ul className="flex flex-col divide-y divide-border">
         {preview.people.map(({ row, status }) => (
           <li key={row.id} className="flex flex-col gap-1 py-2">
-            <span className="font-semibold">{row.name ?? t('unnamed')}</span>
+            <span className="font-semibold">{row.name ?? unnamed}</span>
             {status === 'add' ? <ScoreCell row={row} /> : <span className="text-meta text-text-2">{t(status)}</span>}
           </li>
         ))}

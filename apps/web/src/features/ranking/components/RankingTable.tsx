@@ -224,14 +224,13 @@ export function RankingTable({
                 ]
               : []),
           ]}
-          // Compare changes nothing: it opens the comparison of the selected candidates. The others open their previews.
-          onPreview={({ action, ids }) =>
-            action === 'choose'
-              ? choose?.onPreview(ids)
-              : action === 'pack'
-                ? pack?.onPreview(ids)
-                : selection.onCompare()
-          }
+          // Compare changes nothing: it opens the comparison of the selected candidates. The others open their previews,
+          // one at a time, so the view never has two Confirm buttons (AGENTS.md 4: one primary button per view).
+          onPreview={({ action, ids }) => {
+            if (action === 'compare') return selection.onCompare();
+            (action === 'choose' ? pack : choose)?.onCancel();
+            (action === 'choose' ? choose : pack)?.onPreview(ids);
+          }}
         />
       )}
       <DataTable

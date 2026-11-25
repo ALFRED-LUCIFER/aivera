@@ -618,14 +618,20 @@ describe('listPacks', () => {
       id: packId,
       name: 'Round 3 shortlist',
       status: 'ready',
-      preparedAt: NOW,
       candidateIds: [arjun, sara],
     });
     expect(packs.map((p) => p.id)).toContain(shortlist);
+    // The hiring owner named on the job reads them too (pack.view).
+    expect((await as(HASSAN, w1, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).map((p) => p.id)).toContain(
+      packId,
+    );
   });
 
-  it('an interviewer is refused, and another workspace’s member finds no such job', async () => {
+  it('an interviewer is refused; a hiring owner not granted the job, and another workspace’s member, find no such job', async () => {
     await expect(as(LINA, w1, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toThrow(ForbiddenError);
+    await expect(as(FAISAL, w1, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toMatchObject({
+      code: 'job_not_found',
+    });
     await expect(as(OMAR, w2, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toMatchObject({
       code: 'job_not_found',
     });

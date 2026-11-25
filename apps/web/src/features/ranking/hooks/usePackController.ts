@@ -42,8 +42,7 @@ export function usePackController(
     onTargetChange: setTarget,
     name,
     onNameChange: setName,
-    // What the person controls: someone to add, and a pack chosen or named. The server action checks the whole input.
-    canConfirm: input.applicationIds.length > 0 && addToPackSchema.shape.pack.safeParse(input.pack).success,
+    canConfirm: addToPackSchema.safeParse(input).success,
     error,
     done,
     async onConfirm() {
