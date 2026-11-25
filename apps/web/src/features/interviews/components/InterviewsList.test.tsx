@@ -109,7 +109,6 @@ describe('Row action by status', () => {
   it('in progress: "Open scorecard" links to the interview', () => {
     show(ready());
     expect(screen.getByRole('link', { name: 'Open scorecard' }).getAttribute('href')).toBe('/app/interviews/i1');
-    expect(screen.getAllByRole('link')).toHaveLength(1);
   });
 
   it('Scenario: Overdue scorecard: status "Scorecard due", the day alone and "Scorecard due, 2 days"', () => {
@@ -120,6 +119,9 @@ describe('Row action by status', () => {
       'Working with engineering and design',
       'Scorecard due, 2 days',
     ]);
+    // Nothing moves an interview to in progress yet, so the overdue row is how its scorecard is reached.
+    const due = screen.getByRole('link', { name: 'Scorecard due, 2 days' });
+    expect(due.getAttribute('href')).toMatch(/^\/app\/interviews\/./);
   });
 
   // SAFETY: mutation check: returned "Guide ready" for a scheduled row -> this test failed

@@ -34,7 +34,7 @@ export const scorecardHref = (interviewId: string) => `/app/interviews/${intervi
 
 export type RowAction =
   | { kind: 'openScorecard'; href: string }
-  | { kind: 'scorecardDue'; days: number }
+  | { kind: 'scorecardDue'; days: number; href: string }
   // shortcut: "Guide ready" needs the interview guide, which does not exist yet; AIV-P2-003 adds it and that state here.
   | { kind: 'noGuide' }
   | null;
@@ -42,7 +42,8 @@ export type RowAction =
 /** What the Action column offers for a row; nothing while there is no time, or once it is completed. */
 export function rowAction({ id, status, dueDays }: Pick<InterviewRow, 'id' | 'status' | 'dueDays'>): RowAction {
   if (status === 'in_progress') return { kind: 'openScorecard', href: scorecardHref(id) };
-  if (status === 'scorecard_due') return { kind: 'scorecardDue', days: dueDays ?? 0 };
+  // A scheduled interview whose time has passed reads as due, so this is how its scorecard is reached.
+  if (status === 'scorecard_due') return { kind: 'scorecardDue', days: dueDays ?? 0, href: scorecardHref(id) };
   if (status === 'scheduled') return { kind: 'noGuide' };
   return null;
 }

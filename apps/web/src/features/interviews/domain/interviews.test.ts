@@ -10,7 +10,11 @@ describe('rowAction (AIV-P2-002: action per status)', () => {
   });
 
   it('an overdue scorecard says how many days it is due', () => {
-    expect(rowAction({ id: 'i1', status: 'scorecard_due', dueDays: 2 })).toEqual({ kind: 'scorecardDue', days: 2 });
+    expect(rowAction({ id: 'i1', status: 'scorecard_due', dueDays: 2 })).toEqual({
+      kind: 'scorecardDue',
+      days: 2,
+      href: '/app/interviews/i1',
+    });
   });
 
   it('a scheduled interview never claims a guide: none exists until AIV-P2-003', () => {

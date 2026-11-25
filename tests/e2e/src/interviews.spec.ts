@@ -59,6 +59,10 @@ test('Scenario: Overdue scorecard', async ({ page }) => {
   const cells = row(page, 'Layla Haddad').getByRole('cell');
   await expect(cells.nth(4)).toHaveText('Scorecard due');
   await expect(cells.nth(6)).toHaveText('Scorecard due, 2 days');
+  await expect(cells.nth(6).getByRole('link', { name: 'Scorecard due, 2 days' })).toHaveAttribute(
+    'href',
+    /^\/app\/interviews\/[0-9a-f-]+$/,
+  );
 });
 
 // Where "Open scorecard" leads; scorecard.spec.ts (AIV-P2-004) follows the link.

@@ -10,7 +10,9 @@
 // - The summary line carries an "Observed" basis marker, which the artboard lacks (AGENTS.md 1.7), and is left out
 //   until an interview is completed rather than saying "0 interviews".
 // - An interview with no time ("Not scheduled yet", owner decision of 24 Nov 2026) is not on the artboard: it shows
-//   "No time yet" and no action. A completed row has no action either: its scorecard page is AIV-P2-004.
+//   "No time yet" and no action. A completed row has no action either.
+// - "Scorecard due, 2 days" is a link to the scorecard, not plain text: nothing moves an interview to "In progress"
+//   yet, so a scheduled interview goes straight to due once its time passes, and this is the way to its scorecard.
 // - No search field, "Ask Credalent" or assistant panel: the shell leaves them out until they work (AIV-P1-095).
 import type { InterviewStatus } from '@credalent/interviews';
 import type { Messages } from '@credalent/i18n';
@@ -169,19 +171,14 @@ function ActionCell({ row }: { row: InterviewRow }) {
   const t = useTranslations('interviews');
   const action = rowAction(row);
   if (!action) return null;
-  if (action.kind === 'openScorecard')
-    return (
-      // scorecardHref builds the path from the interview id, which typed routes cannot check.
-      <Link
-        href={action.href as Route}
-        className="font-semibold whitespace-nowrap text-text underline underline-offset-2"
-      >
-        {t('openScorecard')}
-      </Link>
-    );
+  if (action.kind === 'noGuide') return <span className="whitespace-nowrap text-text-2">{t('noGuide')}</span>;
   return (
-    <span className="whitespace-nowrap text-text-2">
-      {action.kind === 'scorecardDue' ? t('scorecardDueFor', { days: action.days }) : t('noGuide')}
-    </span>
+    // scorecardHref builds the path from the interview id, which typed routes cannot check.
+    <Link
+      href={action.href as Route}
+      className="font-semibold whitespace-nowrap text-text underline underline-offset-2"
+    >
+      {action.kind === 'openScorecard' ? t('openScorecard') : t('scorecardDueFor', { days: action.days })}
+    </Link>
   );
 }
