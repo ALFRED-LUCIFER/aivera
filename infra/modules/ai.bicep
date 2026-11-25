@@ -67,6 +67,24 @@ resource appCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// Cognitive Services User, for Document Intelligence on this same account (AIV-P1-135): the worker reads CVs and
+// documents with prebuilt-layout, which the OpenAI role's data actions do not cover. Scoped to this account only. It is
+// a superset of the OpenAI role above, which stays so that narrowing this one later takes nothing away.
+// shortcut: the built-in role grants every Cognitive Services data action on the account plus listKeys (unusable while
+// local auth is off), and the web app shares the identity; narrow to a custom role with the FormRecognizer data
+// actions when a security review asks for it (#606, "Not in this ticket").
+var cognitiveServicesUser = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
+
+resource appCanReadDocuments 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: account
+  name: guid(account.id, appIdentityPrincipalId, cognitiveServicesUser)
+  properties: {
+    roleDefinitionId: cognitiveServicesUser
+    principalId: appIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // The eval harness's live run (AIV-P0-029), with the same role: call deployments, nothing else. Dev only (foundation.bicep).
 resource evalCanCall 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiEvalIdentityPrincipalId)) {
   scope: account
