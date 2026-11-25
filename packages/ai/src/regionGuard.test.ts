@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aboutPeopleToHire, regionsNotAboutPeople } from './region-guard.ts';
+import { aboutPeopleToHire, regionsNotAboutPeople } from './regionGuard.ts';
 
 // AIV-P2-082: a region never rests on a line about the people to hire. Synthetic job text only.
 

@@ -1,5 +1,6 @@
 // A region the product stores never rests on a line about the people to hire (AIV-P2-082, AGENTS.md 1.5): a
-// nationality, residency, age or gender preference is a protected trait, never where the job is based.
+// nationality, residency, age or gender preference is a protected trait, never where the job is based. The jobs module
+// and the eval's jobs.detectDomain runner both apply it, so the live eval scores the answer the product keeps.
 
 // shortcut: an English keyword list, not a classifier; it also drops business lines such as "for Dubai residents" (the
 // safe side: a lost suggestion). Extend it when a live eval or an Arabic job text shows a miss.

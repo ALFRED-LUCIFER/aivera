@@ -63,3 +63,4 @@ export {
   assistantAnswerSchema,
 } from './prompts/assistant.answer.ts';
 export { aiServiceFromEnv } from './service.ts';
+export { regionsNotAboutPeople } from './regionGuard.ts';

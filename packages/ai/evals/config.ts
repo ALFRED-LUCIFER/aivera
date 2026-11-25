@@ -3,6 +3,7 @@ import type { AiClient } from '../src/client.ts';
 import { z } from 'zod';
 import { parseCvRequest } from '../src/prompts/evidence.parseCv.ts';
 import { detectDomainRequest } from '../src/prompts/jobs.detectDomain.ts';
+import { regionsNotAboutPeople } from '../src/regionGuard.ts';
 import { draftCompetenciesRequest } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.ts';
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
@@ -145,11 +146,14 @@ export type Runner = (
  */
 export const detectDomainRunner =
   (catalogue: { domains: [string, ...string[]]; regions: [string, ...string[]] }): Runner =>
-  (ai, golden, workspaceId) =>
-    ai.generateStructured({
+  async (ai, golden, workspaceId) => {
+    const answer = await ai.generateStructured({
       ...detectDomainRequest(jobInput.parse(golden.input), catalogue, golden.sources),
       workspaceId,
     });
+    // The answer the jobs module keeps (AIV-P2-082): a region resting only on a line about the people to hire is dropped.
+    return { ...answer, regions: regionsNotAboutPeople(answer.regions) };
+  };
 
 // shortcut: evidence.firstPass has no prompt yet; AIV-P1-020 adds its runner.
 export const runners: Record<string, Runner> = {
