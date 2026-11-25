@@ -49,7 +49,8 @@ import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts'
 //   (AGENTS.md 1.6, the merged rule of AIV-P1-045 and AIV-P1-113);
 // - a source backed by an uploaded file is a link for admins and recruiters only; an interviewer or hiring owner reads
 //   its name (AGENTS.md 1.9);
-// - no "Effect on the assessment" card: the live preview is AIV-P2-005 (#119);
+// - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
+//   its own controller and component, `ScoreEffect`;
 // - "Submit scorecard" checks that every competency is rated or marked as not tested, says which is not, and saves the
 //   draft. It applies nothing, and a line under it and its result say so: submitting, the score change, the
 //   `interview_note` evidence and "Scorecard submitted and logged" are AIV-P2-006 (#120);
@@ -112,10 +113,13 @@ const ROUNDS = ['structured_screen', 'evidence_defence', 'panel'] as const;
 export function Scorecard({
   view,
   children,
+  effect,
   quietSubmit = false,
 }: {
   view: ScorecardView;
   children?: ReactNode;
+  /** "Effect on the assessment" (AIV-P2-005), above "Your recommendation". */
+  effect?: ReactNode;
   /** A preview card with its own primary button is open beside the form. */
   quietSubmit?: boolean;
 }) {
@@ -182,6 +186,7 @@ export function Scorecard({
           {children}
         </div>
         <div className="flex min-w-0 flex-[4_1_320px] flex-col gap-6">
+          {effect}
           <Card>
             <section aria-labelledby="recommendation-title" className="flex flex-col gap-3">
               <h2 id="recommendation-title" className="font-display text-section text-text">

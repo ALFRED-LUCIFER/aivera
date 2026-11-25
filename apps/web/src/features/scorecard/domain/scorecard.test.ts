@@ -1,7 +1,7 @@
-import { RATINGS as APPLIED } from '@credalent/assessment';
+import { RATINGS as APPLIED, type CompetencyState } from '@credalent/assessment';
 import { RATINGS, type ScorecardDraft } from '@credalent/interviews';
 import { describe, expect, it } from 'vitest';
-import { saveDraftInput, startingDraft } from './scorecard.ts';
+import { effectLines, previewInput, saveDraftInput, startingDraft, type ScoreEffect } from './scorecard.ts';
 
 // AIV-P2-004. Synthetic cast and opaque ids only.
 const RETRIEVAL = '0190d4a2-0000-7000-9000-000000000040';
@@ -76,5 +76,98 @@ describe('saveDraftInput', () => {
     expect(saveDraftInput.safeParse({ interviewId: RETRIEVAL, draft: { ...draft, overallScore: 4 } }).success).toBe(
       false,
     );
+  });
+});
+
+// AIV-P2-005: Daniel Novak's "Retrieval and evaluation" rests on a CV claim stored as Supporting; his backed score is 55.
+// The states are the assessment's own preview (AIV-P1-117); here only how the panel reads them.
+const daniel = [
+  {
+    competencyId: RETRIEVAL,
+    name: 'Retrieval and evaluation',
+    evidence: { lead: { strength: 'supporting' as const } },
+  },
+  { competencyId: COST, name: 'Cost and reliability', evidence: null },
+];
+const state = (strength: CompetencyState['strength'], provenLevel: CompetencyState['provenLevel'] = 0) => ({
+  strength,
+  provenLevel,
+});
+const effect = (from: CompetencyState, to: CompetencyState, score: [number, number]): ScoreEffect => ({
+  backedScore: { from: score[0], to: score[1] },
+  changes: [{ competencyId: RETRIEVAL, from, to }],
+});
+const unchanged: ScoreEffect = { backedScore: { from: 55, to: 55 }, changes: [] };
+const line = (rating: (typeof RATINGS)[number], preview: ScoreEffect) =>
+  effectLines([{ competencyId: RETRIEVAL, rating }], preview, daniel);
+
+describe('effectLines', () => {
+  it.each([
+    ['not_shown', effect(state('supporting'), state('claim'), [55, 55]), 'weakened', 'supporting', 'claim'],
+    ['partly_shown', unchanged, 'unchanged', 'supporting', 'supporting'],
+    [
+      'clearly_shown',
+      effect(state('supporting'), state('medium', 3), [55, 67]),
+      'strengthened',
+      'supporting',
+      'medium',
+    ],
+    [
+      'strongly_shown',
+      effect(state('supporting'), state('medium', 3), [55, 67]),
+      'strengthened',
+      'supporting',
+      'medium',
+    ],
+  ] as const)('%s reads %s from %s to %s', (rating, preview, direction, from, to) => {
+    expect(line(rating, preview)).toEqual([
+      { competencyId: RETRIEVAL, name: 'Retrieval and evaluation', direction, from, to },
+    ]);
+  });
+
+  it('a rating that moves nothing reads "No change", and a level gained at the same strength is strengthened', () => {
+    expect(line('clearly_shown', effect(state('strong', 4), state('strong', 4), [70, 70]))[0]?.direction).toBe(
+      'unchanged',
+    );
+    expect(line('clearly_shown', effect(state('medium', 2), state('medium', 3), [55, 58]))[0]?.direction).toBe(
+      'strengthened',
+    );
+    expect(line('clearly_shown', effect(state(null), state('medium', 3), [55, 67]))[0]).toMatchObject({
+      direction: 'strengthened',
+      from: null,
+      to: 'medium',
+    });
+  });
+
+  it('lists every rating in the order sent, and a competency with no evidence stays at none', () => {
+    const preview: ScoreEffect = {
+      backedScore: { from: 55, to: 55 },
+      changes: [{ competencyId: RETRIEVAL, from: state('supporting'), to: state('claim') }],
+    };
+    expect(
+      effectLines(
+        [
+          { competencyId: COST, rating: 'partly_shown' },
+          { competencyId: RETRIEVAL, rating: 'not_shown' },
+        ],
+        preview,
+        daniel,
+      ).map((l) => [l.name, l.direction, l.from, l.to]),
+    ).toEqual([
+      ['Cost and reliability', 'unchanged', null, null],
+      ['Retrieval and evaluation', 'weakened', 'supporting', 'claim'],
+    ]);
+  });
+});
+
+describe('previewInput', () => {
+  it('takes an interview id and at least one rating of a competency, and nothing else', () => {
+    const ratings = [{ competencyId: RETRIEVAL, rating: 'strongly_shown' }];
+    expect(previewInput.safeParse({ interviewId: COST, ratings }).success).toBe(true);
+    expect(previewInput.safeParse({ interviewId: COST, ratings: [] }).success).toBe(false);
+    expect(previewInput.safeParse({ interviewId: COST, ratings: [{ ...ratings[0], rating: 'strong' }] }).success).toBe(
+      false,
+    );
+    expect(previewInput.safeParse({ interviewId: COST, ratings, assessmentId: RETRIEVAL }).success).toBe(false);
   });
 });
