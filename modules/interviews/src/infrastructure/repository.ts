@@ -1,7 +1,7 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { InterviewStore } from '../application/interviews.ts';
-import { interview } from './schema.ts';
+import { interview, scorecardDrafts } from './schema.ts';
 
 /**
  * The interviews store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -39,6 +39,24 @@ export function interviewStore(tx: Tx): InterviewStore {
           ),
         )
         .orderBy(sql`${interview.scheduledAt} asc nulls last`, asc(interview.createdAt), asc(interview.id));
+    },
+    async findDraft(workspaceId, interviewId) {
+      const [row] = await tx
+        .select({ competencies: scorecardDrafts.competencies, recommendation: scorecardDrafts.recommendation })
+        .from(scorecardDrafts)
+        .where(and(eq(scorecardDrafts.workspaceId, workspaceId), eq(scorecardDrafts.interviewId, interviewId)));
+      return row ?? null;
+    },
+    async saveDraft(row) {
+      const { interviewId: _id, workspaceId: _workspace, ...values } = row;
+      await tx
+        .insert(scorecardDrafts)
+        .values(row)
+        .onConflictDoUpdate({
+          target: scorecardDrafts.interviewId,
+          set: values,
+          setWhere: eq(scorecardDrafts.workspaceId, row.workspaceId),
+        });
     },
     async deleteAll(workspaceId) {
       await tx.delete(interview).where(eq(interview.workspaceId, workspaceId));

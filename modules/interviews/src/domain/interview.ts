@@ -47,7 +47,7 @@ export type Interview = {
 
 /**
  * The status to show at `now`: a scheduled interview whose time has passed with nobody starting it has its scorecard
- * due. One a person started stays in progress until its scorecard completes it (AIV-P2-004).
+ * due. One a person started stays in progress until its scorecard is submitted (AIV-P2-006).
  */
 export const effectiveStatus = (
   { status, scheduledAt }: Pick<Interview, 'status' | 'scheduledAt'>,
@@ -70,6 +70,8 @@ const MESSAGES = {
   competency_not_in_rubric: "This competency is not in the job's approved rubric",
   interviewer_not_on_job: 'The interviewer must be an active member who can see this job.',
   status_move: 'This interview cannot move to that status.',
+  scorecard_closed: 'This interview is completed or cancelled, so its scorecard cannot change.',
+  competency_not_in_interview: 'This competency is not one the interview tests.',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
 } as const;
 

@@ -1918,5 +1918,70 @@
       "cancelled": "Cancelled"
     },
     "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}"
+  },
+  "scorecard": {
+    "pageTitle": "Interview scorecard",
+    "title": {
+      "structured_screen": "Round 1 scorecard: {name}",
+      "evidence_defence": "Round 2 scorecard: {name}",
+      "panel": "Round 3 scorecard: {name}"
+    },
+    "crumb": {
+      "structured_screen": "{name}, Round 1",
+      "evidence_defence": "{name}, Round 2",
+      "panel": "{name}, Round 3"
+    },
+    "kind": {
+      "structured_screen": "structured screen",
+      "evidence_defence": "evidence defence",
+      "panel": "panel"
+    },
+    "interviewer": "interviewer: {name}",
+    "interviewerYou": "interviewer: you",
+    "saveAndClose": "Save and close",
+    "rounds": "Interview rounds",
+    "assessed": "Evidence assessed",
+    "assessedOn": "{at, date, ::dMMM} · backed score {score}",
+    "notAssessedYet": "No assessment on this rubric yet",
+    "current": "Current round",
+    "earlier": "Earlier round",
+    "later": "If shortlisted",
+    "questions": "Evidence-linked questions",
+    "noQuestions": "No questions are suggested for this competency yet. Ask your own.",
+    "suggestOnProfile": "Suggest questions on the evidence profile",
+    "ownQuestions": "Your own questions on this competency",
+    "question": "Question {number}",
+    "marks": {
+      "not_asked": "Not asked",
+      "not_answered": "Not answered"
+    },
+    "assessment": "Your assessment",
+    "ratings": {
+      "not_shown": "Not shown",
+      "partly_shown": "Partly shown",
+      "clearly_shown": "Clearly shown",
+      "strongly_shown": "Strongly shown"
+    },
+    "notAssessed": "Not assessed in this round · stays a gap",
+    "note": "What you saw or heard",
+    "notePlaceholder": "Evidence, not impressions",
+    "recommendation": "Your recommendation",
+    "recommendationGroup": "Next-stage recommendation",
+    "recommendations": {
+      "shortlist": "{round, select, structured_screen {Recommend for the Round 2 shortlist} evidence_defence {Recommend for the Round 3 panel} other {Recommend for the next stage}}",
+      "more_evidence": "Ask for more evidence first",
+      "not_recommended": "{round, select, structured_screen {Do not recommend for Round 2} evidence_defence {Do not recommend for Round 3} other {Do not recommend for the next stage}}"
+    },
+    "notADecision": "A recommendation, not a decision. The hiring owner decides in the decision pack.",
+    "submit": "Submit scorecard",
+    "submitHelp": "This checks that every competency is rated or marked as not tested, and saves your draft. Applying a scorecard to the assessment is not available yet.",
+    "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
+    "complete": "Your scorecard is complete and saved as a draft. It has not been submitted: the assessment, the stage and the ranking are unchanged.",
+    "saving": "Saving your draft…",
+    "saved": "Draft saved. Nothing changes the assessment until a scorecard is submitted.",
+    "failed": "We could not save your draft. Try again.",
+    "readOnly": "You can read this scorecard but not change it. Only the interviewer or a workspace admin fills it in, while the interview is open.",
+    "loading": "Loading the scorecard…",
+    "error": "We could not load this scorecard. Try again."
   }
 }

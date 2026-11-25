@@ -15,6 +15,20 @@
       "when": 1795522644605,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795592682051,
+      "tag": "0002_scorecard_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795592682396,
+      "tag": "0003_force_rls_scorecard_drafts",
+      "breakpoints": true
     }
   ]
 }
