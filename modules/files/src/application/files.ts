@@ -66,7 +66,6 @@ export type BlobStore = {
   write(path: string, data: Buffer, contentType: string): Promise<void>;
   /** Deletes the blob if it exists. */
   delete(path: string): Promise<void>;
-  stream(path: string): Promise<ReadableStream<Uint8Array>>;
 };
 
 export type Ports = {
@@ -91,7 +90,6 @@ export type Ports = {
 
 export type UploadTicket = { fileId: string; uploadUrl: string; expiresAt: Date };
 export type ReadLink = { url: string; expiresAt: Date };
-export type Download = { contentType: string; sizeBytes: number; body: ReadableStream<Uint8Array> };
 export type ScanVerdict = 'clean' | 'infected';
 
 const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex');
@@ -180,14 +178,6 @@ export function filesUseCases(p: Ports) {
       const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId, true);
       if (file?.uploadedBy !== ctx.userId) throw new FileError('not_found');
       return settle(ctx.tx, { workspaceId: ctx.workspaceId }, file, 'clean');
-    },
-
-    async openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null> {
-      await p.authorize(ctx, 'file.download');
-      const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
-      // SAFETY: only a clean file leaves storage; pending, infected and rejected files read as not found.
-      if (file?.status !== 'clean') return null;
-      return { contentType: file.contentType, sizeBytes: file.sizeBytes, body: await p.blobs.stream(file.blobPath) };
     },
 
     async issueReadLink(ctx: WorkspaceContext, fileId: string): Promise<ReadLink | null> {

@@ -63,7 +63,7 @@ const card = {
   name: 'LLM systems in production',
   weightPercent: 20,
   lead: { strength: 'medium', provenance: 'submitted' },
-  items: [{ id: 'i1', excerpt: 'led retrieval and the refusal path', highlighted: true }],
+  items: [{ id: 'i1', excerpt: 'led retrieval and the refusal path', highlighted: true, own: null }],
   sources: [{ key: 's-cv:page 2', kind: 'file', text: 'CV, page 2', fileId: FILE }],
   limits: ['CV supplied, authorship unverified.'],
 };

@@ -1,7 +1,7 @@
 import type { CompetencyResult } from '@credalent/assessment';
 import type { EvidenceItemView, Provenance, SourceKind, Strength } from '@credalent/evidence';
 import { describe, expect, it } from 'vitest';
-import { citation, evidenceCards, shortUrl, sourceNote } from './evidenceCards.ts';
+import { evidenceCards, sourceNote } from './evidenceCards.ts';
 
 // AIV-P1-045: the cards' shaping. Synthetic cast only (docs/00-product/personas.md): Sara Al Qahtani's evidence.
 const CHECKED = new Date('2026-11-12T08:00:00.000Z');
@@ -91,7 +91,7 @@ describe('evidenceCards', () => {
       name: 'Retrieval and evaluation',
       weightPercent: 20,
       lead: { strength: 'strong', provenance: 'corroborated' },
-      items: [{ id: 'harness', excerpt: 'authored 412 of 460 commits', highlighted: true }],
+      items: [{ id: 'harness', excerpt: 'authored 412 of 460 commits', highlighted: true, own: null }],
       sources: [
         {
           key: 's-llm-eval-harness:',
@@ -105,12 +105,11 @@ describe('evidenceCards', () => {
     });
   });
 
-  // SAFETY: mutation check: `highlighted: true` for every item -> this test failed (the claim was highlighted)
   it('Scenario: A claim counts zero: a claim-only card leads with the claim, highlights nothing and states no other limit', () => {
     const [card] = evidenceCards([result('arabic', 10, [], ['arabic'])], names, evidence, true);
     expect(card).toMatchObject({
       lead: { strength: 'claim', provenance: 'awaiting-defence' },
-      items: [{ id: 'arabic', excerpt: 'built a Gulf Arabic evaluation set', highlighted: false }],
+      items: [{ id: 'arabic', excerpt: 'built a Gulf Arabic evaluation set', highlighted: false, own: null }],
       sources: [{ kind: 'text', text: 'Round 1 notes' }],
       limits: [],
     });
@@ -134,7 +133,11 @@ describe('evidenceCards', () => {
     ).toEqual(['Cost and reliability', 'Arabic and bilingual NLP']);
   });
 
-  it('proven items come before claims, the lead is the strongest proven item, and a competency with nothing cited has no lead', () => {
+  // A mixed card as imported data gives: a submitted document, a checked repository, and a CV line stored as the CV
+  // parse stores a claim (Supporting, "Claim awaiting validation").
+  // SAFETY: mutation check: `highlighted: backs && i.provenance !== 'claim'` replaced by `i.strength !== 'claim'` -> this test failed (the CV claim was highlighted)
+  // SAFETY: mutation check: `own` always null -> this test failed (the submitted item and the claim read under "Strong, Independently corroborated")
+  it('a mixed card: only proven items are highlighted, and an item weaker than the lead carries its own strength and provenance', () => {
     const [mixed, empty] = evidenceCards(
       [result('llm', 25, ['review', 'harness'], ['cost']), result('cost', 15, [])],
       names,
@@ -142,13 +145,41 @@ describe('evidenceCards', () => {
       true,
     );
     expect(mixed?.lead).toEqual({ strength: 'strong', provenance: 'corroborated' });
-    expect(mixed?.items.map((i) => i.id)).toEqual(['review', 'harness', 'cost']);
+    expect(mixed?.items).toEqual([
+      {
+        id: 'review',
+        excerpt: 'led the March incident review',
+        highlighted: true,
+        own: { strength: 'medium', provenance: 'submitted' },
+      },
+      { id: 'harness', excerpt: 'authored 412 of 460 commits', highlighted: true, own: null },
+      {
+        id: 'cost',
+        excerpt: 'cut cost per request by 40%',
+        highlighted: false,
+        own: { strength: 'supporting', provenance: 'claim' },
+      },
+    ]);
     expect(mixed?.limits).toEqual([
       'review limit',
       'Shows the tooling, not how results changed product decisions.',
       'A claim until a document or a second source supports it.',
     ]);
     expect(empty).toMatchObject({ lead: null, items: [], sources: [], limits: [] });
+  });
+
+  it('a row resting only on a claim highlights nothing, even a claim stored as Supporting, and a claim among the proven ids is not highlighted either', () => {
+    const [claimed, wrong] = evidenceCards(
+      [result('cost', 15, [], ['cost']), result('llm', 25, ['cost'])],
+      names,
+      evidence,
+      true,
+    ).toReversed();
+    expect(claimed).toMatchObject({
+      lead: { strength: 'supporting', provenance: 'claim' },
+      items: [{ id: 'cost', highlighted: false, own: null }],
+    });
+    expect(wrong?.items).toMatchObject([{ id: 'cost', highlighted: false }]);
   });
 
   it('a cited item the evidence no longer lists, and a competency the approved rubric does not name, are left out', () => {
@@ -179,26 +210,31 @@ describe('evidenceCards', () => {
   });
 });
 
-describe('citation and shortUrl', () => {
+const chipText = (source: Parameters<typeof item>[4], span: string | null = null) => {
+  const cited = item('x', 'words', 'medium', 'submitted', source, span);
+  const [chip] = evidenceCards([result('llm', 25, ['x'])], names, [cited], true)[0]?.sources ?? [];
+  return chip && 'text' in chip ? chip.text : null;
+};
+
+describe('how a source is cited', () => {
   it('a repository is cited by its host and last path segment, anything else by its label and span', () => {
-    expect(shortUrl('https://code.credalent.example/sara/llm-eval-harness')).toBe(
+    const repo = (url?: string) => chipText({ label: 'llm-eval-harness', ...(url && { url }) });
+    expect(repo('https://code.credalent.example/sara/llm-eval-harness')).toBe(
       'code.credalent.example/…/llm-eval-harness',
     );
-    expect(shortUrl('https://code.credalent.example/llm-eval-harness')).toBe('code.credalent.example/llm-eval-harness');
-    expect(shortUrl('https://code.credalent.example/')).toBe('code.credalent.example');
-    expect(shortUrl('not a link')).toBeNull();
-    expect(citation({ kind: 'cv', label: 'CV', url: null }, 'page 2')).toBe('CV, page 2');
-    expect(citation({ kind: 'repository', label: 'llm-eval-harness', url: null }, null)).toBe('llm-eval-harness');
+    expect(repo('https://code.credalent.example/llm-eval-harness')).toBe('code.credalent.example/llm-eval-harness');
+    expect(repo('https://code.credalent.example/')).toBe('code.credalent.example');
+    // An address that does not parse, or none at all: the label.
+    expect(repo('not a link')).toBe('llm-eval-harness');
+    expect(repo()).toBe('llm-eval-harness');
+    expect(chipText({ kind: 'cv', label: 'CV' }, 'page 2')).toBe('CV, page 2');
     // A shipped product keeps its label: its address says less than its name.
     expect(
-      citation(
-        {
-          kind: 'shipped_product',
-          label: 'Shipped product: merchant help assistant',
-          url: 'https://shop.credalent.example/a/b',
-        },
-        null,
-      ),
+      chipText({
+        kind: 'shipped_product',
+        label: 'Shipped product: merchant help assistant',
+        url: 'https://shop.credalent.example/a/b',
+      }),
     ).toBe('Shipped product: merchant help assistant');
   });
 

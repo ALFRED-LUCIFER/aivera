@@ -1824,6 +1824,7 @@
     "newTab": "(opens in a new tab)",
     "limit": "Limit:",
     "claimLimit": "Claim only. Counts as zero in the backed score.",
+    "noteHidden": "{citation} · This text is hidden in the file",
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again."
   },

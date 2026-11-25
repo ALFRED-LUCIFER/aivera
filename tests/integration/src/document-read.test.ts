@@ -120,7 +120,6 @@ const blobs: BlobStore = {
   },
   write: async (path, data, contentType) => void stored.set(path, { data, contentType }),
   delete: async (path) => void stored.delete(path),
-  stream: async () => new ReadableStream(),
 };
 const spans = new InMemorySpanExporter();
 /** Every model the worker asks for, language or embeddings; each refuses, as during an AI outage (AIV-P1-088). */

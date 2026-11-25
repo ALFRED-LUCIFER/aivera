@@ -3,12 +3,12 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { Download, ReadLink, UploadTicket } from '../application/files.ts';
+import type { ReadLink, UploadTicket } from '../application/files.ts';
 import type { FileStatus, Purpose, UploadRequest } from '../domain/files.ts';
 
 export { checkUpload, contentTypeFor, FileError, PURPOSES, UPLOAD_LIMITS } from '../domain/files.ts';
 export type { FileErrorCode, FileStatus, LimitMessage, Purpose, UploadRequest } from '../domain/files.ts';
-export type { Download, ReadLink, UploadTicket } from '../application/files.ts';
+export type { ReadLink, UploadTicket } from '../application/files.ts';
 
 /** The ticket's "file.clean": a workspace's upload passed the scan and sits in its final container. Opaque ids only. */
 export const FileCleanV1 = {
@@ -25,7 +25,7 @@ export const FileRejectedV1 = {
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace`, so the workspace never comes from
  * client input (ADR-005). Uploading and reading one's own upload status is `file.upload` (admins and recruiters);
- * downloading is `file.download`, for admins and recruiters only: hiring owners and interviewers see summaries and
+ * opening a file (`issueReadLink`) is `file.download`, for admins and recruiters only: hiring owners and interviewers see summaries and
  * sources, not raw candidate files (AGENTS.md 1.9).
  */
 export interface FilesContract {
@@ -46,8 +46,6 @@ export interface FilesContract {
    * (or rejected) without a scan. Throws `FileError('scanning_required')` wherever malware scanning is on.
    */
   markCleanWithoutScan(ctx: WorkspaceContext, fileId: string): Promise<FileStatus>;
-  /** A clean file's bytes; null for another workspace's file, a missing one, or one not clean. */
-  openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null>;
   /**
    * A link that reads one clean file of the context's workspace for 5 minutes, as an attachment (AIV-P1-045): the way
    * a recruiter opens a candidate's uploaded evidence. `file.download`: admins and recruiters; a hiring owner or

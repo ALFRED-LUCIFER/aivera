@@ -493,6 +493,33 @@ export default async function seed() {
           synthetic: true,
         }),
       );
+      // A mixed card, as imported data gives: Product judgement rests on the submitted repository and the checked one,
+      // and a CV line, stored as the CV parse and mapping store a claim (Supporting, "Claim awaiting validation").
+      const cvClaim = await as((ctx) =>
+        evidence.recordEvidence(ctx, {
+          candidateId: personId,
+          source: {
+            kind: 'cv',
+            label: 'CV',
+            url: null,
+            blobFileId: null,
+            capturedAt: new Date('2026-11-14T08:00:00.000Z'),
+            checkedAt: null,
+            checkMethod: null,
+          },
+          items: [
+            {
+              excerpt: 'Argued against a fully automatic refund bot.',
+              excerptSpan: 'page 2',
+              provenance: 'claim',
+              strength: 'supporting',
+              limit: 'A claim until a document or a second source supports it.',
+              competencies: [{ jobId: sae, competencyId: competency('Product judgement'), level: 4 }],
+            },
+          ],
+          synthetic: true,
+        }),
+      );
       return levels.map(([c, proven, claimedLevel, source]) => {
         const found = rubric?.competencies.find((r) => r.name === c);
         return {
@@ -500,9 +527,16 @@ export default async function seed() {
           weightPercent: found?.weightPercent,
           levelNeeded: found?.levelNeeded,
           mandatory: found?.type === 'mandatory',
-          proven: { level: proven, itemIds: source ? [items.get(source)] : [] },
+          proven: {
+            level: proven,
+            itemIds: [
+              ...(source ? [items.get(source)] : []),
+              ...(c === 'Product judgement' ? [items.get('llm-eval-harness')] : []),
+            ],
+          },
           claimedLevel,
-          claimItemIds: c === 'Arabic and bilingual NLP' ? claim.itemIds : [],
+          claimItemIds:
+            c === 'Arabic and bilingual NLP' ? claim.itemIds : c === 'Product judgement' ? cvClaim.itemIds : [],
         };
       });
     }

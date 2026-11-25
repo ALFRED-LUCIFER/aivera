@@ -197,6 +197,20 @@ for (const theme of themes) {
     await expect(arabic.getByRole('list', { name: 'Sources' })).toHaveText('Round 1 notes, 14 Nov');
     await expect(arabic.locator('mark')).toHaveCount(0);
 
+    // A mixed card, as imported data gives (AGENTS.md 1.6): the row is labelled by its strongest proven item; the
+    // submitted repository and the CV claim each carry their own strength and tag, and the claim is not highlighted.
+    const product = page.getByRole('article', { name: /^Product judgement/ });
+    await expect(product.getByText('Independently corroborated')).toHaveCount(1);
+    const submitted = product.getByRole('listitem').filter({ hasText: 'contract tests on every endpoint' });
+    await expect(submitted.getByText('Medium', { exact: true })).toBeVisible();
+    await expect(submitted.getByText('Candidate-submitted')).toBeVisible();
+    await expect(submitted.locator('mark')).toHaveCount(1);
+    const cvClaim = product.getByRole('listitem').filter({ hasText: 'Argued against a fully automatic refund bot.' });
+    await expect(cvClaim.getByText('Supporting', { exact: true })).toBeVisible();
+    await expect(cvClaim.getByText('Claim awaiting validation')).toBeVisible();
+    await expect(cvClaim.locator('mark')).toHaveCount(0);
+    await expect(product.getByRole('list', { name: 'Sources' }).getByRole('listitem')).toContainText(['CV, page 2']);
+
     // Only cited text is highlighted: every mark is a cited excerpt, and nothing else on the page is painted with the
     // highlighter.
     for (const text of await page.locator('mark').allTextContents())

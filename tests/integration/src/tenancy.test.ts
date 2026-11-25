@@ -252,7 +252,6 @@ const stubBlobs: BlobStore = {
   read: unused,
   write: unused,
   delete: unused,
-  stream: unused,
 };
 
 let container: StartedPostgreSqlContainer;

@@ -108,7 +108,6 @@ const blobs: BlobStore = {
   },
   write: async (path, data, contentType) => void stored.set(path, { data, contentType }),
   delete: async (path) => void stored.delete(path),
-  stream: async () => new ReadableStream(),
 };
 const spans = new InMemorySpanExporter();
 

@@ -15,9 +15,18 @@ import { evidenceAnchor } from '../domain/profile.ts';
 //   sentence around them;
 // - a competency the assessment cites nothing for says "No evidence is cited for this competency yet.", with no
 //   strength or tag: the artboard draws no such row (AGENTS.md 1.6: a gap to close, never a reason to reject);
-// - "Awaiting live defence" reads "To check in interview": the catalogue's one label for that provenance
-//   (`evidence.provenance`), shared with the rubric and the gallery;
-// - "checked 12 Nov" carries the year, "checked 12 Nov 2026": the catalogue's one short date format;
+// - only an item behind the proven level is highlighted. The artboard highlights "cut cost per request by 40%" on a row
+//   that rests on a claim; here a claim is never highlighted, whatever its strength (AGENTS.md 1.6);
+// - an item whose strength or provenance differs from the row's (the strongest proven item's) carries its own
+//   strength and tag beside it, which the artboard, with one item a row, does not draw: no item borrows a stronger
+//   label;
+// - "Awaiting live defence" (the ticket's Gherkin and the artboard) reads "To check in interview": the catalogue's one
+//   label for that provenance (`evidence.provenance`), shared with the rubric and the gallery;
+// - "checked 12 Nov" (Gherkin and artboard) carries the year, "checked 12 Nov 2026": the catalogue's one short date
+//   format;
+// - "Commit history, checked …" is text where the artboard draws a link: a check has no page of its own to open;
+// - AIV-P1-043's "Cited reasons link to evidence" names the "Retrieval and evaluation" card; the phrase scrolls to the
+//   first card that cites its item, since one item can back two competencies and the citation names only the item;
 // - a source with no address and no uploaded file (a reference call, interview notes) is text, not a link: there is
 //   nothing to open. A source backed by an uploaded file is a link for admins and recruiters only, and only where a
 //   storage account is configured; a hiring owner or interviewer reads its name (AGENTS.md 1.9);
@@ -28,8 +37,8 @@ import { evidenceAnchor } from '../domain/profile.ts';
 // - the padding is the shared Card's 16 px, not 20 px, and a competency name is the 16 px card size, not 15 px:
 //   @credalent/ui and the tokens have neither;
 // - "Also submitted by another applicant" flags (AIV-P1-071) and a retry for a CV that failed to parse (AIV-P1-025),
-//   both carried to this ticket in its comments, are not shown: neither is in its scenarios, and each needs a contract
-//   read the evidence module does not have yet.
+//   both carried to this ticket in its comments, are not shown: neither is in its scenarios, each needs a contract
+//   read the evidence module does not have yet, and neither has a ticket of its own yet.
 
 const icon = (path: ReactNode) => (
   <svg
@@ -117,17 +126,29 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                   <li
                     key={item.id}
                     id={anchored.get(item.id) === card.competencyId ? evidenceAnchor(item.id) : undefined}
-                    className="scroll-mt-6"
+                    className="flex scroll-mt-6 flex-wrap items-center gap-x-3 gap-y-1"
                   >
-                    {/* SAFETY: the highlighter marks cited evidence only; a claim with nothing to inspect stays plain (AGENTS.md 1.6). */}
-                    {item.highlighted ? (
-                      <EvidenceHighlight
-                        text={item.excerpt}
-                        citations={[{ start: 0, end: item.excerpt.length, sourceId: item.id }]}
-                        markLabel={t('candidateProfile.markLabel')}
-                      />
-                    ) : (
-                      item.excerpt
+                    {/* SAFETY: the highlighter marks only what the proven level rests on; a claim stays plain (AGENTS.md 1.6). */}
+                    <span>
+                      {item.highlighted ? (
+                        <EvidenceHighlight
+                          text={item.excerpt}
+                          citations={[{ start: 0, end: item.excerpt.length, sourceId: item.id }]}
+                          markLabel={t('candidateProfile.markLabel')}
+                        />
+                      ) : (
+                        item.excerpt
+                      )}
+                    </span>
+                    {/* SAFETY: an item weaker than the row's lead says so itself; it never reads under the lead's tag. */}
+                    {item.own && (
+                      <>
+                        <StrengthMeter strength={item.own.strength} label={t(`rubric.strength.${item.own.strength}`)} />
+                        <ProvenanceTag
+                          provenance={item.own.provenance}
+                          label={t(`evidence.provenance.${item.own.provenance}`)}
+                        />
+                      </>
                     )}
                   </li>
                 ))}
@@ -169,8 +190,7 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                 <figure className="flex flex-col gap-1">
                   <blockquote className="max-w-[72ch] border-s-2 border-border-strong ps-3">{note.excerpt}</blockquote>
                   <figcaption className="font-mono text-meta text-text-2">
-                    {note.citation}
-                    {note.hidden && ` · ${t('evidence.unusualContent.hidden_text')}`}
+                    {note.hidden ? t('candidateProfile.noteHidden', { citation: note.citation }) : note.citation}
                   </figcaption>
                 </figure>
               </li>

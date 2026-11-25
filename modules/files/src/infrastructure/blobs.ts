@@ -1,4 +1,3 @@
-import { Readable } from 'node:stream';
 import { DefaultAzureCredential } from '@azure/identity';
 import {
   BlobSASPermissions,
@@ -79,10 +78,5 @@ export function createBlobStore({ url, clientId, sharedKey }: BlobStoreConfig): 
     write: async (path, data, contentType) =>
       void (await blob(path).uploadData(data, { blobHTTPHeaders: { blobContentType: contentType } })),
     delete: async (path) => void (await blob(path).deleteIfExists()),
-    async stream(path) {
-      const body = (await blob(path).download()).readableStreamBody;
-      if (!body) throw new Error('blob download returned no body');
-      return Readable.toWeb(body as Readable) as ReadableStream<Uint8Array>;
-    },
   };
 }

@@ -100,7 +100,7 @@ const retrieval: EvidenceCard = {
   name: 'Retrieval and evaluation',
   weightPercent: 20,
   lead: { strength: 'strong', provenance: 'corroborated' },
-  items: [{ id: 'i1', excerpt: 'authored 412 of 460 commits', highlighted: true }],
+  items: [{ id: 'i1', excerpt: 'authored 412 of 460 commits', highlighted: true, own: null }],
   sources: [
     {
       key: 's1:',
@@ -119,7 +119,7 @@ const arabic: EvidenceCard = {
   name: 'Arabic and bilingual NLP',
   weightPercent: 10,
   lead: { strength: 'claim', provenance: 'awaiting-defence' },
-  items: [{ id: 'i2', excerpt: 'States they built a Gulf Arabic evaluation set.', highlighted: false }],
+  items: [{ id: 'i2', excerpt: 'States they built a Gulf Arabic evaluation set.', highlighted: false, own: null }],
   sources: [{ key: 's4:', kind: 'text', text: 'Round 1 notes, 14 Nov' }],
   limits: [],
 };
@@ -191,6 +191,43 @@ describe('CandidateProfile: competency by competency', () => {
     expect(card.getByText('States they built a Gulf Arabic evaluation set.')).toBeTruthy();
     // The one highlighted text on the page is the cited excerpt: not the claim, a limit, a source or the note.
     expect(marks()).toEqual(['cited evidence authored 412 of 460 commits']);
+  });
+
+  // SAFETY: mutation check: removed the `item.own && (...)` block from EvidenceCards -> this test failed (the CV claim and the submitted item showed no label of their own)
+  it('a mixed card: each weaker item carries its own strength and tag, and the CV claim is not highlighted', () => {
+    const mixed: EvidenceCard = {
+      ...retrieval,
+      items: [
+        { id: 'i1', excerpt: 'authored 412 of 460 commits', highlighted: true, own: null },
+        {
+          id: 'i3',
+          excerpt: 'contract tests on every endpoint',
+          highlighted: true,
+          own: { strength: 'medium', provenance: 'submitted' },
+        },
+        {
+          id: 'i4',
+          excerpt: 'Argued against a fully automatic refund bot.',
+          highlighted: false,
+          own: { strength: 'supporting', provenance: 'claim' },
+        },
+      ],
+    };
+    show(ready(scored, null, { competencies: [mixed] }));
+    const card = cardOf('Retrieval and evaluation');
+    const row = (text: string) => within(card.getByText(text).closest('li') ?? document.body);
+    // The row's own label is the lead's, once; the two weaker items each say what they are.
+    expect(card.getAllByText('Independently corroborated')).toHaveLength(1);
+    expect(row('authored 412 of 460 commits').queryByText(/Strong|Medium|Supporting/)).toBeNull();
+    expect(row('contract tests on every endpoint').getByText('Medium')).toBeTruthy();
+    expect(row('contract tests on every endpoint').getByText('Candidate-submitted')).toBeTruthy();
+    const claim = row('Argued against a fully automatic refund bot.');
+    expect(claim.getByText('Supporting')).toBeTruthy();
+    expect(claim.getByText('Claim awaiting validation')).toBeTruthy();
+    expect(marks()).toEqual([
+      'cited evidence authored 412 of 460 commits',
+      'cited evidence contract tests on every endpoint',
+    ]);
   });
 
   it('a competency the assessment cites nothing for says so, with no strength, tag or limit', () => {

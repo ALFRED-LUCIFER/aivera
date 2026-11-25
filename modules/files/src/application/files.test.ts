@@ -42,7 +42,6 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
     }),
     write: vi.fn(async () => undefined),
     delete: vi.fn(async () => undefined),
-    stream: vi.fn(async () => new ReadableStream<Uint8Array>()),
   } satisfies BlobStore;
   const store = {
     insert: vi.fn(),

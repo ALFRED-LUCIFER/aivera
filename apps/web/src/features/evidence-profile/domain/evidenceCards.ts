@@ -25,8 +25,12 @@ export type EvidenceCard = {
   weightPercent: number;
   /** The strongest cited item's strength and provenance; null when the assessment cites nothing for the competency. */
   lead: { strength: Strength; provenance: Provenance } | null;
-  /** The cited items, those behind the proven level first. A claim-only item is not highlighted: nothing to inspect. */
-  items: { id: string; excerpt: string; highlighted: boolean }[];
+  /**
+   * The cited items, those behind the proven level first. Only an item behind the proven level is highlighted; one
+   * that counts toward the claimed level only never is. `own` is the item's strength and provenance when either
+   * differs from the lead's, so no item reads under a stronger label than its own (AGENTS.md 1.6).
+   */
+  items: { id: string; excerpt: string; highlighted: boolean; own: EvidenceCard['lead'] }[];
   sources: SourceChip[];
   /** What the cited evidence does not show. A claim-only item states none here: it counts zero, which the card says. */
   limits: string[];
@@ -36,7 +40,7 @@ export type EvidenceCard = {
 export type SourceNoteView = { key: string; citation: string; excerpt: string; hidden: boolean };
 
 /** "github.com/…/llm-eval-harness": the host and the last path segment. */
-export function shortUrl(url: string): string | null {
+function shortUrl(url: string): string | null {
   const parsed = URL.parse(url);
   if (!parsed) return null;
   const parts = parsed.pathname.split('/').filter(Boolean);
@@ -44,7 +48,7 @@ export function shortUrl(url: string): string | null {
 }
 
 /** How a source is cited: a repository by its address, anything else by its label, then the span ("CV, page 2"). */
-export function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
+function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
   const name = (source.kind === 'repository' && source.url && shortUrl(source.url)) || source.label;
   return span ? `${name}, ${span}` : name;
 }
@@ -106,12 +110,23 @@ export function evidenceCards(
       const claims = pick(result.claimItemIds);
       const items = [...proven, ...claims];
       const [lead] = (proven.length ? proven : claims).toSorted(stronger);
+      const view = (i: EvidenceItemView, backs: boolean) => ({
+        id: i.id,
+        excerpt: i.excerpt,
+        // SAFETY: the highlighter marks only what the proven level rests on; a claim is never highlighted, whatever
+        // its strength (a CV line is stored as Supporting, "Claim awaiting validation").
+        highlighted: backs && i.provenance !== 'claim',
+        own:
+          lead && (i.strength !== lead.strength || i.provenance !== lead.provenance)
+            ? { strength: i.strength, provenance: i.provenance }
+            : null,
+      });
       return {
         competencyId: result.competencyId,
         name,
         weightPercent: result.weightPercent,
         lead: lead ? { strength: lead.strength, provenance: lead.provenance } : null,
-        items: items.map((i) => ({ id: i.id, excerpt: i.excerpt, highlighted: i.strength !== 'claim' })),
+        items: [...proven.map((i) => view(i, true)), ...claims.map((i) => view(i, false))],
         sources: chips(items, canOpenFiles),
         limits: [...new Set(items.filter((i) => i.strength !== 'claim').map((i) => i.limit))],
       };
