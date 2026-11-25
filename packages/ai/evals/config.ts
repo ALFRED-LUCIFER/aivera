@@ -100,8 +100,9 @@ export const taskThresholds: Record<
   // cites a line and that the suggestion judge (run.ts suggestionPrompt, verdicts recorded per case) finds implied by
   // the job, not a listed competency reworded, not a proxy, not a generic soft skill, and implied by the line it cites.
   // Each bad suggestion, or a repeated name, costs a point; a proxy also fails the safety hard gate. The bad-suggestion
-  // fixtures (fixtures/failing) prove those fail. The judge runs on gpt-judge (gpt-4.1 on dev, AIV-P1-075; the
-  // pilot's is gpt-4.1-mini). shortcut: not yet proven live on gpt-4.1, and it may still miss a subtle rewording of a
+  // fixtures (fixtures/failing) prove those fail, and the live eval re-grades the judge on them and the good ones
+  // (fixtures/passing) as judge golden cases (evals/judge/suggestion-*.yaml, AIV-P2-088). The judge runs on gpt-judge
+  // (gpt-4.1 on dev, AIV-P1-075; the pilot's is gpt-4.1-mini). shortcut: it may still miss a subtle rewording of a
   // listed competency; add per-case acceptable answers when the live eval shows one reaching a draft.
   'jobs.draftCompetencies': {
     statements: ['competencies[*]', 'suggestions[*]'],

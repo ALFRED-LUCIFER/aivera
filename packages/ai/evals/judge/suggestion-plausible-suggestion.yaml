@@ -1,0 +1,8 @@
+# AIV-P2-088: a plausible suggestion that is not the golden pair; the suggestion judge must pass both.
+id: suggestion-plausible-suggestion
+judge: suggestion
+case: jobs.draftCompetencies/plausible-suggestion
+from: passing
+expected:
+  Multilingual NLP: null
+  Product judgement: null

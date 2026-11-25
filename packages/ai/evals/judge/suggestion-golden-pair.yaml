@@ -1,0 +1,8 @@
+# AIV-P2-088: the golden pair, each citing its line; the suggestion judge must pass both.
+id: suggestion-golden-pair
+judge: suggestion
+case: jobs.draftCompetencies/golden-pair
+from: passing
+expected:
+  Arabic and right-to-left design: null
+  Accessibility: null
