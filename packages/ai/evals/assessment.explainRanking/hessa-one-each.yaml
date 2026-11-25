@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: d5ae8e643e4e
+  promptVersion: assessment.explainRanking@7
+  promptHash: a7dd25fe568c
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Test automation, {checkedWeight} of the weight.'
@@ -36,10 +36,10 @@ recorded:
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
-      - text: The candidate's work includes a design review of the test harness, signed by the reviewing lead.
+      - text: Design review of the test harness, signed by the reviewing lead.
         citations:
           - sourceId: S2
             quote: Design review of the test harness, signed by the reviewing lead
   judge:
     pass: true
-    reason: All statements accurately quote their respective sources without adding unsupported information, use placeholders as required, and do not make any recommendations or name the candidate, thus meeting every point of the rubric.
+    reason: Every statement is supported by a quote from its cited source, uses only what the source shows, and does not include any unsupported figures, recommendations, or candidate names.

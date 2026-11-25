@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: 6c3530b2f77c
+  promptVersion: assessment.explainRanking@7
+  promptHash: a6faee34638e
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Distributed systems, {checkedWeight} of the weight.'
@@ -36,10 +36,10 @@ recorded:
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
-      - text: The candidate authored 77 of 90 commits in the saga-orchestrator repository, showing significant contribution to that work.
+      - text: The candidate authored 77 of 90 commits in saga-orchestrator.
         citations:
           - sourceId: S2
             quote: 'saga-orchestrator: authored 77 of 90 commits'
   judge:
     pass: true
-    reason: All statements accurately quote their respective sources without adding unsupported information, use placeholders as in the sources, and do not make recommendations or name the candidate, meeting every rubric point.
+    reason: Every statement says only what the source it cites shows, placeholders match the facts source, and no statement holds a percentage or number word unless quoted from the source.

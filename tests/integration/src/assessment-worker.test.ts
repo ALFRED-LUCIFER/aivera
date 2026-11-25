@@ -450,13 +450,11 @@ const stored = async () =>
 
 describe('Scenario: Who may read a ranking explanation, and the cache (AIV-P1-033)', () => {
   const NOGRANT = '0190d4a2-0000-7000-8000-0000000052ff'; // interviewer with no grant on any job
-  // Sara's latest snapshot is on version 3: her one corroborated item carries all of its weight (70%).
+  // Sara's latest snapshot is on version 3: her one corroborated item carries all of its weight (70%). No facts
+  // statement: it must copy a facts line (AIV-P1-132), and this rubric's "Competency 1" holds a digit, so the copy is
+  // rejected (the shortcut in assessment.explainRanking.ts).
   const answer = {
     statements: [
-      {
-        text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.',
-        citations: [{ sourceId: 'S1', quote: 'Independently checked work backs' }],
-      },
       {
         text: 'The cited repository shows the candidate wrote most of its commits.',
         citations: [{ sourceId: 'S2', quote: '412 of 460 commits' }],
@@ -491,9 +489,7 @@ describe('Scenario: Who may read a ranking explanation, and the cache (AIV-P1-03
 
     const first = await explain(RANA);
     expect(first).toMatchObject({ source: 'ai' });
-    expect(first?.statements[0]?.text).toBe(
-      'Work that was independently checked backs one competency, 70% of the weight, the heaviest.',
-    );
+    expect(first?.statements[0]?.text).toBe('The cited repository shows the candidate wrote most of its commits.');
     expect(calls.model).toBe(1);
 
     await expect(explain(NOGRANT)).rejects.toBeInstanceOf(ForbiddenError);
@@ -505,7 +501,7 @@ describe('Scenario: Who may read a ranking explanation, and the cache (AIV-P1-03
     const first = await explain(RANA);
     const owner = await explain(HEAD);
     expect(owner).toEqual(first);
-    expect(owner?.statements[1]?.citations[0]).toMatchObject({
+    expect(owner?.statements[0]?.citations[0]).toMatchObject({
       label: 'llm-eval-harness',
       quote: '412 of 460 commits',
     });

@@ -28,22 +28,22 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@4
-  promptHash: dd3d9266860e
+  promptVersion: assessment.explainRanking@7
+  promptHash: dbab176a3e73
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competencies: Fraud detection services and Stream processing, {checkedWeight} of the weight.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs the heaviest competencies: Fraud detection services and Stream processing, {checkedWeight} of the weight'
-      - text: The candidate authored 210 of 240 commits in fraud-scorer, showing significant contribution to Fraud detection services.
+      - text: 'fraud-scorer: authored 210 of 240 commits.'
         citations:
           - sourceId: S2
             quote: 'fraud-scorer: authored 210 of 240 commits'
-      - text: The candidate authored 96 of 130 commits in stream-join, showing significant contribution to Stream processing.
+      - text: 'stream-join: authored 96 of 130 commits.'
         citations:
           - sourceId: S3
             quote: 'stream-join: authored 96 of 130 commits'
   judge:
     pass: true
-    reason: 'All statements accurately reflect the source content: the first statement quotes S1 exactly, the second and third statements correctly report commit counts from S2 and S3 respectively, and no statement includes percentages, recommendations, or candidate names.'
+    reason: Every statement is directly supported by a quote from its cited source, uses only what the source shows, and does not include any numbers or recommendations not present in the sources.
