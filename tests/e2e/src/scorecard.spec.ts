@@ -125,7 +125,9 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type(NOTE);
 
-  // Mark both questions of "Cost and reliability" as not asked.
+  // Mark both questions of "Cost and reliability" as not asked. An earlier run (a retry, or a local database) saved both
+  // marks in "Demo": open the second again first, so the first mark alone leaves the rating enabled.
+  await setMark(page, notAsked(page, 2), false);
   await setMark(page, notAsked(page, 1), true);
   await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
   await setMark(page, notAsked(page, 2), true);
