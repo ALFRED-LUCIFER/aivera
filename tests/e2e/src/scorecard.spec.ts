@@ -20,7 +20,11 @@ async function openScorecard(page: Page) {
 }
 
 const card = (page: Page, name: string) => page.getByRole('region', { name: new RegExp(`^${name}`) });
-const rating = (page: Page, name: string) => page.getByRole('radiogroup', { name: `Your assessment: ${name}` });
+// The competency's name is a visually hidden span in the legend, which the browser's accessible name sets off with a space.
+const rating = (page: Page, name: string) =>
+  page.getByRole('radiogroup', { name: new RegExp(`^Your assessment ?: ${name}$`) });
+// Playwright does not read a disabled fieldset with role="radiogroup" as disabled, so the state is checked on a radio.
+const ratingRadio = (page: Page, name: string) => rating(page, name).getByRole('radio', { name: 'Not shown' });
 const notAsked = (page: Page, number: number) =>
   card(page, 'Cost and reliability')
     .getByRole('group', { name: `Question ${number}` })
@@ -117,9 +121,9 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
 
   // Mark both questions of "Cost and reliability" as not asked.
   await setMark(page, notAsked(page, 1), true);
-  await expect(rating(page, 'Cost and reliability')).toBeEnabled();
+  await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
   await setMark(page, notAsked(page, 2), true);
-  await expect(rating(page, 'Cost and reliability')).toBeDisabled();
+  await expect(ratingRadio(page, 'Cost and reliability')).toBeDisabled();
   await expect(card(page, 'Cost and reliability').getByText('Not assessed in this round · stays a gap')).toBeVisible();
 
   // A recommendation is not a decision.
@@ -142,7 +146,7 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
   await expect(card(page, 'Retrieval and evaluation').getByLabel('What you saw or heard')).toHaveValue(NOTE);
   await expect(notAsked(page, 1)).toHaveAttribute('aria-pressed', 'true');
   await expect(notAsked(page, 2)).toHaveAttribute('aria-pressed', 'true');
-  await expect(rating(page, 'Cost and reliability')).toBeDisabled();
+  await expect(ratingRadio(page, 'Cost and reliability')).toBeDisabled();
   await expect(card(page, 'Cost and reliability').getByText('Not assessed in this round · stays a gap')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Recommend for the Round 2 shortlist' })).toBeChecked();
   // Daniel's backed score is still 55, here and on the ranking; his stage is as it was.
@@ -161,7 +165,7 @@ test('Scenario: Submit needs every competency rated or marked not tested', async
   await openScorecard(page);
   // One question of "Cost and reliability" is open again: it is neither rated nor marked as not tested.
   await setMark(page, notAsked(page, 1), false);
-  await expect(rating(page, 'Cost and reliability')).toBeEnabled();
+  await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
   const submit = page.getByRole('button', { name: 'Submit scorecard' });
   await submit.focus();
   await page.keyboard.press('Enter');
@@ -170,6 +174,8 @@ test('Scenario: Submit needs every competency rated or marked not tested', async
 
   await setMark(page, notAsked(page, 1), true);
   await expect(page.getByText(BLOCKED)).toHaveCount(0);
+  // The button is disabled while the first submit's save is in flight; focus would stay on the mark.
+  await expect(submit).toBeEnabled();
   await submit.focus();
   await page.keyboard.press('Enter');
   // Submitting is AIV-P2-006: the page says plainly that nothing was submitted or changed.
@@ -195,7 +201,7 @@ test('Scenario: Only the assigned interviewer or an admin edits: a hiring owner 
   await expect(page.getByText(/^You can read this scorecard but not change it\./)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save and close' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Submit scorecard' })).toHaveCount(0);
-  await expect(rating(page, 'Retrieval and evaluation')).toBeDisabled();
+  await expect(ratingRadio(page, 'Retrieval and evaluation')).toBeDisabled();
   // AP's draft is not theirs to read.
   await expect(
     rating(page, 'Retrieval and evaluation').getByRole('radio', { name: 'Clearly shown' }),
@@ -217,6 +223,8 @@ for (const theme of themes) {
     await setMark(page, notAsked(page, 1), false);
     await page.getByRole('button', { name: 'Submit scorecard' }).click();
     await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(BLOCKED);
+    // Once the save has finished: while it runs the button is disabled and fading, which axe reads as low contrast.
+    await expect(page.getByRole('button', { name: 'Submit scorecard' })).toBeEnabled();
     await expectAccessible(page);
     // Left as the earlier tests saved it.
     await setMark(page, notAsked(page, 1), true);
