@@ -38,6 +38,10 @@ export const PERMISSIONS = {
   'interview.schedule': { scope: 'job', roles: ['admin', 'recruiter'] },
   'interview.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   'interview.conduct': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
+  // Decision packs (AIV-P2-009): recruiters prepare them; the decisions module narrows `decision.record` to the member
+  // named as the job's hiring owner.
+  'pack.prepare': { scope: 'job', roles: ['admin', 'recruiter'] },
+  'pack.view': { reads: true, scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
   'decision.record': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner'] },
   // Adding a work link on a candidate's application; a GitHub repository link is then read (AIV-P1-076).
   'application.add_link': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },

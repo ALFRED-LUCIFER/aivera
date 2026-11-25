@@ -1,0 +1,30 @@
+{
+  "name": "@credalent/decisions",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts/index.ts",
+    "./composition": "./src/composition.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@credalent/assessment": "workspace:*",
+    "@credalent/audit": "workspace:*",
+    "@credalent/db": "workspace:*",
+    "@credalent/jobs": "workspace:*",
+    "@credalent/workspaces": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@credalent/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "oxlint": "1.94.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

@@ -82,6 +82,8 @@ export async function seedDemo(
       // shortcut: assessment.* has no purge; if a worker assessed the demo's applicants (a rubric approved again on
       // dev), their results outlive the reset under the old workspace id. Add purgeSyntheticAssessments when the seed
       // adds scores (AIV-P1-030).
+      // shortcut: decisions.* has no purge either (and its members and decisions cannot be deleted by the app role);
+      // the seed writes no pack, so only packs made by hand on dev outlive the reset. Add a purge with the seeded pack.
       await interviews.purgeSyntheticInterviews(ctx);
       await intake.purgeSyntheticApplications(ctx);
       await evidence.purgeSyntheticEvidence(ctx);

@@ -117,6 +117,8 @@ const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZUR
 // shortcut: `interviews` (InterviewScheduled.v1, InterviewCompleted.v1, AIV-P2-001) is left out until something consumes
 // them (score changes from scorecards, AIV-P2-005): they wait unsent in interviews.outbox; that ticket adds the schema
 // here and the queue mapping.
+// shortcut: `decisions` (PackReady.v1, DecisionsRecorded.v1, AIV-P2-009) is left out the same way: they wait unsent in
+// decisions.outbox until their consumers exist (the stage change in intake, the decision email drafts in notifications).
 const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App or file reading, below), and its EvidenceMapped.v1 is scored on `assessment`;
