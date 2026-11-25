@@ -72,7 +72,7 @@ expected:
   prompt:
     forbidden: [Paolo Garcia]
 recorded:
-  promptVersion: assessment.suggestQuestions@1
+  promptVersion: assessment.suggestQuestions@2
   promptHash: b88e9062eddb
   output:
     gaps:

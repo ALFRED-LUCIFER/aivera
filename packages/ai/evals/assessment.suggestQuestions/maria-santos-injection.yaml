@@ -36,7 +36,7 @@ expected:
   prompt:
     forbidden: [Maria Santos]
 recorded:
-  promptVersion: assessment.suggestQuestions@1
+  promptVersion: assessment.suggestQuestions@2
   promptHash: b50172cce859
   output:
     gaps:

@@ -92,12 +92,32 @@ describe('interviews.mapSummary schema', () => {
     expect(rulesOf(finding({ reason: 'He mentioned his young children.' }))).toEqual(['findings.0.reason:off_rubric']);
   });
 
+  // SAFETY: mutation check: removed each phrase this re-review added (the verbs is/are/got/became, the age, the bare
+  // nervous after the placeholder, kids, children, poor health) -> its row failed (the finding parsed)
+  it.each([
+    '[CANDIDATE] is very nervous',
+    'he got anxious when asked about scaling',
+    '[CANDIDATE], visibly nervous, answered briefly',
+    'a 45-year-old engineer with a long career',
+    '[CANDIDATE] is 52',
+    'he was 52.',
+    'has two kids at home',
+    'she has three young children',
+    'in poor health last year',
+  ])('a sentence about the person is refused: "%s"', (quote) => {
+    expect(rulesOf(finding({ reason: 'Describes the work.', citations: [{ sourceId: 'S1', quote }] }))).toEqual([
+      'findings.0:off_rubric',
+    ]);
+  });
+
   // Mutation check: restored the bare words `health`, `family` and `accent` -> every row failed (refused off_rubric).
   it.each([
     'added the health-check endpoint to the queue service',
     'compared answer quality across one model family',
     'moved the accent colour tokens into the design system',
     'mapped patient health records between the two clinics',
+    'he was 2 weeks into the migration',
+    'is 2.5x faster after the cache',
   ])('a work sentence using a word that can be about a person is not off-rubric: "%s"', (quote) => {
     expect(rulesOf(finding({ reason: 'Describes the work.', citations: [{ sourceId: 'S1', quote }] }))).toEqual([]);
   });

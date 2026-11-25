@@ -66,7 +66,8 @@ export function corroboratedCompetencies(input: {
 }): Set<string> {
   const origin = originOf(input.originGroups);
   const independent = new Set(input.sources.filter((s) => isIndependent(s, input.logins)).map((s) => s.id));
-  // SAFETY: the interviewer's word is no second origin: other evidence is never corroborated on it (AGENTS.md 1.6).
+  // SAFETY: the interviewer's word is no second origin: other evidence is never corroborated on it (AGENTS.md 1.6). A
+  // backstop: the mapping run already keeps linked interview notes out, so only an unlinked note's links reach here.
   const notes = new Set(input.sources.filter((s) => s.kind === 'interview_note').map((s) => s.id));
   const result = new Set<string>();
   for (const competencyId of new Set(input.links.map((l) => l.competencyId))) {

@@ -43,7 +43,7 @@ expected:
   prompt:
     forbidden: [Daniel Novak]
 recorded:
-  promptVersion: assessment.suggestQuestions@1
+  promptVersion: assessment.suggestQuestions@2
   promptHash: 7d17c659bfe5
   output:
     gaps:

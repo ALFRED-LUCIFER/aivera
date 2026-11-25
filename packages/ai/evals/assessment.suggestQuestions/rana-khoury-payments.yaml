@@ -33,7 +33,7 @@ expected:
   prompt:
     forbidden: [Rana Khoury]
 recorded:
-  promptVersion: assessment.suggestQuestions@1
+  promptVersion: assessment.suggestQuestions@2
   promptHash: d744b1894fe2
   output:
     gaps:

@@ -134,7 +134,8 @@ export const ANALYSIS_BOUND_MS = 15 * 60_000;
  * asking and a new summary may be pasted.
  */
 // shortcut: a dead-lettered analysis reads failed only after the bound, and a `waiting` summary whose next-day run is
-// dead-lettered stays waiting; mark the summary failed on the consumer's last delivery when it offers that hook.
+// dead-lettered stays waiting; the bound starts at paste time, so a queue backlog longer than it shows "could not be
+// analysed" until the analysis lands. Mark the summary failed on the consumer's last delivery when it offers that hook.
 export const shownStatus = (summary: Pick<MeetingSummary, 'status' | 'createdAt'>, now: Date): SummaryStatus =>
   summary.status === 'analysing' && now.getTime() - summary.createdAt.getTime() > ANALYSIS_BOUND_MS
     ? 'failed'

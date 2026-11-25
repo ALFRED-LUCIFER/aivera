@@ -56,11 +56,11 @@ export const includedByDefault = (proposals: readonly SummaryProposal[]) =>
 
 /**
  * The model's reason as the person's starting text, with the placeholders the redaction put in ("[CANDIDATE]",
- * "[PERSON]", "[EMAIL_1]", "[PHONE_1]") taken out, so none reaches the audit note the reason becomes.
+ * "[PERSON]", "[EMAIL_1]", "[PHONE_1]", "[REMOVED]") taken out, so none reaches the audit note the reason becomes.
  */
 export const reasonDraft = (reason: string | null) =>
   (reason ?? '')
-    .replace(/\s*\[(?:CANDIDATE|PERSON|EMAIL_\d+|PHONE_\d+)\]/g, '')
+    .replace(/\s*\[(?:CANDIDATE|PERSON|REMOVED|EMAIL_\d+|PHONE_\d+)\]/g, '')
     .replace(/^\s*[,;:]?\s*/, '')
     .trim();
 

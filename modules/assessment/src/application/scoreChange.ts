@@ -152,11 +152,13 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
     const all = toLinks(candidateId, jobId, await evidenceForJob(ctx.tx, ctx.workspaceId, candidateId, jobId));
     const links = all.filter((l) => !writeUp.includes(l.itemId));
     const stored = await store.interviewChanges(ctx.workspaceId, candidateId, jobId);
-    const result = previewRatings(rubric, links, stored, input.changes, input.interviewId);
+    // In one order, so the preview id names the changes whatever order a caller sends them in.
+    const changes = input.changes.toSorted((a, b) => (a.competencyId < b.competencyId ? -1 : 1));
+    const result = previewRatings(rubric, links, stored, changes, input.interviewId);
     // Evidence the worker has not scored yet would ride along unaudited: refused until its snapshot is stored.
     if (!sameResult(result.before, pickAssessment(snapshot))) throw new ScoreChangeError('not_yet_scored');
     const previewId = createHash('sha256')
-      .update(canonical([snapshot.id, input.interviewId, input.changes, result.after, result.changes]))
+      .update(canonical([snapshot.id, input.interviewId, changes, result.after, result.changes]))
       .digest('hex');
     if (writeUp.length === 0) return { ...result, previewId };
     const after = assess(rubric, withInterviewChanges(all, [...stored, ...result.changes.map((c) => c.change)]));

@@ -109,6 +109,8 @@ describe('Row action by status', () => {
   it('in progress: "Open scorecard" links to the interview', () => {
     show(ready());
     expect(screen.getByRole('link', { name: 'Open scorecard' }).getAttribute('href')).toBe('/app/interviews/i1');
+    // The in-progress and the overdue rows link; a scheduled row does not.
+    expect(screen.getAllByRole('link')).toHaveLength(2);
   });
 
   it('Scenario: Overdue scorecard: status "Scorecard due", the day alone and "Scorecard due, 2 days"', () => {

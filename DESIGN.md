@@ -63,18 +63,18 @@ Text selection uses the highlighter. The marketing site's, the candidate home's 
 
 ## Domain components (all in `@credalent/ui`)
 
-| Component                | Rule                                                                                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Status chip**          | Subtle ground with its own text and border token, plus an icon and a word: Supported (ok), Needs validation (warn), Contradiction (err), Informational (info).           |
-| **Button**               | 40 px. **One primary per view.** Variants: primary (ink), secondary (outlined), ghost, disabled ("Unavailable").                                                         |
-| **Value-basis marker**   | Every metric carries one: Observed (solid square), Baseline (outlined square), Projection (dashed square), Not yet available (rule).                                     |
-| **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Claim awaiting validation · Contradictory · To check in interview.                 |
-| **Level meter**          | Five segments in neutral ink and the words "N of 5": the level a job needs, never read as a grade.                                                                       |
-| **Strength meter**       | Three segments in neutral ink, so it is not read as pass or fail: Strong · Medium · Supporting · Claim only.                                                             |
-| **Score bar**            | Solid fill for the backed score, hatched segment for the range still resting on claims, with the caption "62 backed by evidence · up to 78 if claims hold in interview". |
-| **Evidence highlight**   | `<mark>` in `--hl` on the exact text the assessment cites (in an email: what the recipient must do), plus an ink underline so it reads without colour (WCAG 1.4.1).      |
-| **Competency row**       | Name, weight and type ("Weight 20% · mandatory"), strength, provenance, source count link.                                                                               |
-| **Preview-confirm card** | Assistant and bulk actions: title "Preview: …", current versus proposed state, consequence text, Confirm / Edit / Cancel, and "Nothing changes until you confirm."       |
+| Component                | Rule                                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Status chip**          | Subtle ground with its own text and border token, plus an icon and a word: Supported (ok), Needs validation (warn), Contradiction (err), Informational (info).                |
+| **Button**               | 40 px. **One primary per view.** Variants: primary (ink), secondary (outlined), ghost, disabled ("Unavailable").                                                              |
+| **Value-basis marker**   | Every metric carries one: Observed (solid square), Baseline (outlined square), Projection (dashed square), Not yet available (rule).                                          |
+| **Provenance tag**       | Icon and word, never colour alone: Independently corroborated · Candidate-submitted · Interviewer's word · Claim awaiting validation · Contradictory · To check in interview. |
+| **Level meter**          | Five segments in neutral ink and the words "N of 5": the level a job needs, never read as a grade.                                                                            |
+| **Strength meter**       | Three segments in neutral ink, so it is not read as pass or fail: Strong · Medium · Supporting · Claim only.                                                                  |
+| **Score bar**            | Solid fill for the backed score, hatched segment for the range still resting on claims, with the caption "62 backed by evidence · up to 78 if claims hold in interview".      |
+| **Evidence highlight**   | `<mark>` in `--hl` on the exact text the assessment cites (in an email: what the recipient must do), plus an ink underline so it reads without colour (WCAG 1.4.1).           |
+| **Competency row**       | Name, weight and type ("Weight 20% · mandatory"), strength, provenance, source count link.                                                                                    |
+| **Preview-confirm card** | Assistant and bulk actions: title "Preview: …", current versus proposed state, consequence text, Confirm / Edit / Cancel, and "Nothing changes until you confirm."            |
 
 ## Screen layout
 

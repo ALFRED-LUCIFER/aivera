@@ -634,3 +634,63 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     expect(cited).toHaveLength(1);
   });
 });
+
+describe("Feature: A person's linked interview summary is never mapped again (AIV-P1-115)", () => {
+  // SAFETY: mutation check: skipped every interview_note item again (the competency-link condition removed) -> this test
+  // failed (the unlinked notes were never sent, so nothing linked them to Arabic)
+  it('Scenario: An unlinked interview note is mapped like any source, a linked summary is left as the person linked it', async () => {
+    approved = { [JOB]: V2 };
+    const layla = await newCandidate('Layla Haddad', 'layla.haddad@example.com');
+    const notes = 'built the Arabic OCR pipeline and its 300-page test set';
+    await as(ALEX, w1, (ctx) =>
+      evidence.recordEvidence(ctx, {
+        candidateId: layla,
+        source: {
+          kind: 'interview_note',
+          label: 'Round 1 notes',
+          url: null,
+          blobFileId: null,
+          capturedAt: NOW,
+          checkedAt: null,
+          checkMethod: null,
+        },
+        items: [{ excerpt: notes, excerptSpan: null, provenance: 'claim', strength: 'supporting', limit: CLAIM_LIMIT }],
+        synthetic: true,
+      }),
+    );
+    const summary = 'walked through the retrieval eval set she graded';
+    const { itemIds } = await as(ALEX, w1, (ctx) =>
+      evidence.recordInterviewSummary(ctx, {
+        candidateId: layla,
+        jobId: JOB,
+        writtenAt: NOW,
+        items: [{ competencyId: RETRIEVAL, excerpt: summary, strength: 'medium', level: 3 }],
+        synthetic: true,
+      }),
+    );
+    // Only the unlinked notes are sent, as S1.
+    completion = JSON.stringify({
+      links: [
+        {
+          competencyId: ARABIC,
+          strength: 'supporting',
+          label: 'claim',
+          level: 2,
+          limit: 'In the interview notes only.',
+          citations: cite('S1', notes),
+        },
+      ],
+      changes: [],
+    });
+    await mapNow(w1, layla, JOB);
+
+    const listed = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, layla, JOB));
+    expect(listed.filter((i) => i.excerpt === notes).flatMap((i) => i.competencies)).toEqual([
+      { jobId: JOB, competencyId: ARABIC, level: 2 },
+    ]);
+    // The summary keeps the one item and link the person confirmed.
+    expect(listed.filter((i) => i.excerpt === summary).map((i) => [i.id, i.competencies])).toEqual([
+      [itemIds[0], [{ jobId: JOB, competencyId: RETRIEVAL, level: 3 }]],
+    ]);
+  });
+});
