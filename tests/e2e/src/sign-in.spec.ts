@@ -32,6 +32,21 @@ test('Scenario: Email and password sign-in lands on My desk', async ({ page }) =
   await desk(page);
 });
 
+// The sign-in page's "Create a workspace" link is prefetched; on Azure dev a prefetch that landed after the form was
+// sent replaced the sign-in's state cookie and the callback failed (OAUTH_INVALID_RESPONSE).
+// SAFETY: mutation check: removed the sec-fetch-mode check from the /signup route -> this test failed
+test('a prefetch of /signup while at the tenant does not break the sign-in', async ({ page, context }) => {
+  await page.goto('/sign-in');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Mock tenant sign-in' })).toBeVisible();
+  const prefetch = await context.request.get('/signup', { headers: { 'sec-fetch-mode': 'cors' }, maxRedirects: 0 });
+  expect(prefetch.status()).toBe(204);
+  expect(prefetch.headers()['set-cookie']).toBeUndefined();
+  await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await desk(page);
+});
+
 // Email one-time code and Microsoft accounts are not offered: email with password on the tenant and Google directly
 // (owner decision on #241, AIV-P0-928; docs/runbooks/recruiter-sign-in.md).
 // SAFETY: mutation check: sent "Continue with Google" to the tenant (signIn('entra')) in startSignIn -> this test failed
