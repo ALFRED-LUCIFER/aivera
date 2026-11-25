@@ -467,7 +467,7 @@ async function seed(
     // That result's suggested interview questions (assessment.suggested_questions, AIV-P1-113).
     await ctx.tx.execute(
       sql`insert into assessment.suggested_questions (result_id, workspace_id, prompt_version, gaps, created_at)
-          values (${scored.id}, ${ctx.workspaceId}, 'assessment.suggestQuestions@1', '[]'::jsonb, ${NOW.toISOString()})`,
+          values (${scored.id}, ${ctx.workspaceId}, 'assessment.suggestQuestions@2', '[]'::jsonb, ${NOW.toISOString()})`,
     );
     // An applied interview change on that result (assessment.interview_change, AIV-P1-117).
     await ctx.tx.execute(

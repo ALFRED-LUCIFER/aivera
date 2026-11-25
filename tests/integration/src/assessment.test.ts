@@ -476,7 +476,7 @@ describe('Scenario: Questions are kept for the snapshot they were made from (AIV
       withWorkspace(app, w1, (tx) =>
         tx.execute(
           sql`insert into assessment.suggested_questions (result_id, workspace_id, prompt_version, gaps, created_at)
-              select id, ${w2}::uuid, 'assessment.suggestQuestions@1', '[]'::jsonb, ${NOW.toISOString()}
+              select id, ${w2}::uuid, 'assessment.suggestQuestions@2', '[]'::jsonb, ${NOW.toISOString()}
               from assessment.result where id not in (select result_id from assessment.suggested_questions) limit 1`,
         ),
       ),

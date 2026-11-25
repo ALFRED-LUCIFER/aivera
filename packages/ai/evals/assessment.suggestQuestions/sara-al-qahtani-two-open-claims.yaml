@@ -52,7 +52,7 @@ expected:
   prompt:
     forbidden: [Sara Al Qahtani]
 recorded:
-  promptVersion: assessment.suggestQuestions@1
+  promptVersion: assessment.suggestQuestions@2
   promptHash: b0e7f158b6b4
   output:
     gaps:

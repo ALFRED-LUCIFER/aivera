@@ -7,7 +7,7 @@ import { cited, sourceLabel, type Source } from '../citations.ts';
 // a person: they change no score, stage or rank (AGENTS.md 1.5). The interview guide (AIV-P2-003) reuses this prompt.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every question set. */
-export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@1';
+export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@2';
 
 export const MAX_QUESTION_WORDS = 30;
 export const MAX_NOTE_WORDS = 25;

@@ -436,7 +436,7 @@ export default async function seed() {
         if (daniel)
           await tx.execute(sql`insert into assessment.suggested_questions
               (result_id, workspace_id, prompt_version, gaps, created_at)
-            values (${resultId}, ${workspaceId}, 'assessment.suggestQuestions@1', ${JSON.stringify(daniel.gaps)}::jsonb,
+            values (${resultId}, ${workspaceId}, 'assessment.suggestQuestions@2', ${JSON.stringify(daniel.gaps)}::jsonb,
               '2026-11-15T08:00:00.000Z')`);
       });
     }
