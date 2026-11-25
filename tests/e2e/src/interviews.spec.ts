@@ -13,7 +13,8 @@ test('Scenario: Ongoing interviews', async ({ page }) => {
   await signIn(page, { email: AP });
   await page.goto('/app/interviews');
   await expect(page.getByRole('heading', { level: 1, name: 'Interviews' })).toBeVisible();
-  await expect(page.getByText('Each interview exists to test specific evidence.', { exact: false })).toBeVisible();
+  // In #content: while the page streams in, loading.tsx's copy of the header is still in the document, hidden.
+  await expect(page.locator('#content').getByText('Each interview exists to test specific evidence.')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Ongoing 4' })).toBeChecked();
   await expect(page.getByRole('radio', { name: 'Completed 1' })).toBeVisible();
   // The sidebar count is the ongoing interviews.
