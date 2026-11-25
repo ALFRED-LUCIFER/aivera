@@ -283,10 +283,6 @@ const faultOf = (v: SuggestionVerdict): SuggestionFault | null =>
             ? 'citation'
             : null;
 
-const drafted = z
-  .object({ suggestions: z.array(z.object({ name: z.string(), citations: z.array(z.unknown()).optional() }).loose()) })
-  .loose();
-
 /** The suggestion judge on the `evals.judge` task (AIV-P2-085): one call per case whose output suggests anything. */
 export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): SuggestionJudge {
   return async (golden, output) => {
@@ -299,11 +295,17 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
       schema: suggestionVerdicts,
       sources: golden.sources,
     });
-    const faults = Object.fromEntries(verdicts.map((v) => [v.name, faultOf(v)]));
-    // AIV-P2-088: citing nothing is a fact code sees, so it is decided here; the judge may skip such a suggestion. A
-    // graver fault the judge gave (a proxy) stays, as in faultOf.
-    for (const { name, citations } of drafted.safeParse(output).data?.suggestions ?? [])
-      if (!citations?.length) faults[name] = faults[name] ?? 'citation';
+    const faults: Record<string, SuggestionFault | null> = Object.fromEntries(
+      verdicts.map((v) => [v.name, faultOf(v)]),
+    );
+    // AIV-P2-088: citing nothing is a fact code sees, so it is decided here, item by item as suggestionMatch reads it;
+    // the judge may skip such a suggestion. A graver fault the judge gave (a proxy) stays, as in faultOf. Verdicts are
+    // keyed by name, so a name that one suggestion cites keeps the judge's verdict.
+    const items = valuesAt(output, 'suggestions[*]');
+    const cited = new Set(items.flatMap((s) => (valuesAt(s, 'citations[*]').length ? valuesAt(s, 'name') : [])));
+    for (const name of items.flatMap((s) => valuesAt(s, 'name')))
+      if (typeof name === 'string' && !cited.has(name))
+        faults[name] = (Object.hasOwn(faults, name) && faults[name]) || 'citation';
     return faults;
   };
 }

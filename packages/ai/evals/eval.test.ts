@@ -1394,8 +1394,9 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     expect(caseLines(dropped)).toContain('    suggestions[1]: expected pass, the judge said nothing');
   });
 
-  // SAFETY: mutation check: the no-citation rule removed from liveSuggestionJudge -> this test failed
-  it('Scenario: A suggestion citing nothing gets the citation fault in code, whatever the judge answers', async () => {
+  // SAFETY: mutation check: the no-citation rule removed from liveSuggestionJudge -> this test failed; the cited-name check
+  // dropped -> this test failed; the Object.hasOwn guard dropped -> this test failed
+  it('Scenario: A suggestion citing nothing gets the citation fault in code, unless the judge gives a graver one', async () => {
     const noCitation = suggestionCases.filter((c) => c.id === 'suggestion-no-citation');
     const gradedUncited = async (verdicts: unknown[]) =>
       (
@@ -1413,6 +1414,18 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
       'Arabic and right-to-left design': null,
       Accessibility: 'proxy',
     });
+    // Each item on its own, as suggestionMatch reads it: no citations key, a malformed one beside it, and a name that a
+    // cited suggestion also has keeps the judge's verdict.
+    const silent = suggestionJudgeOf(JSON.stringify({ verdicts: [judged('Shared')] }));
+    const pair = fixture('passing', 'golden-pair');
+    expect(
+      await silent(pair, {
+        suggestions: [{ name: 'Bare' }, { name: 'Null', citations: null }, { name: 'Shared', citations: [] }],
+      }),
+    ).toEqual({ Shared: 'citation', Bare: 'citation', Null: 'citation' });
+    expect(
+      await silent(pair, { suggestions: [{ name: 'Shared', citations: [] }, citedAs('Shared'), { name: 'toString' }] }),
+    ).toEqual({ Shared: null, toString: 'citation' });
   });
 
   // SAFETY: mutation check: the prompt id comparison removed from recordedJudgeVerdict.suggestion -> this test failed
