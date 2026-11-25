@@ -42,6 +42,7 @@ const FILE = '0190d4a2-0000-7000-8000-0000000000f1';
 const competency = (proven: number, claimedLevel: number, competencyId = 'other', itemIds: string[] = []) => ({
   competencyId,
   weightPercent: 20,
+  levelNeeded: 3,
   proven: { level: proven, itemIds },
   claimedLevel,
   claimItemIds: [],
@@ -117,6 +118,8 @@ describe('loadProfile', () => {
       },
       explanation: { source: 'template', statements },
       competencies: [card],
+      // AIV-P1-044: a row only for the competency the approved rubric names.
+      needs: [{ competencyId: 'llm', name: 'LLM systems in production', proven: 5, claimed: 5, needed: 3 }],
       notes: [{ key: 's-cv:0', citation: 'CV, page 1', excerpt: NOTE, hidden: false }],
     });
     expect(fake.explain).toHaveBeenCalledWith(ctx, SARA, JOB);
@@ -163,7 +166,7 @@ describe('loadProfile', () => {
   it('a result on another rubric version than the approved one shows no cards and counts no claims', async () => {
     assessed();
     fake.latest.mockResolvedValue({ rubricVersionId: 'older', competencies: [competency(1, 4, 'llm', ['i1'])] });
-    expect(await loadProfile(SARA, JOB)).toMatchObject({ fit: { openClaims: 0 }, competencies: [] });
+    expect(await loadProfile(SARA, JOB)).toMatchObject({ fit: { openClaims: 0 }, competencies: [], needs: [] });
   });
 
   it('Scenario: Candidate not assessed for this job: no approved rubric, and nothing else is read', async () => {
@@ -173,6 +176,7 @@ describe('loadProfile', () => {
       fit: { status: 'awaiting_rubric' },
       explanation: null,
       competencies: [],
+      needs: [],
       notes: [],
     });
     expect(fake.evidence).not.toHaveBeenCalled();

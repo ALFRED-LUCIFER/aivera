@@ -8,6 +8,7 @@ import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import { evidenceCards, sourceNote, type SourceNoteView } from '../domain/evidenceCards.ts';
+import { needRows } from '../domain/needs.ts';
 import type { Fit, ProfileData } from '../domain/profile.ts';
 
 const ids = z.object({ candidateId: z.uuid(), jobId: z.uuid() });
@@ -29,7 +30,7 @@ async function notesOf(ctx: WorkspaceContext, evidence: readonly EvidenceItemVie
 }
 
 /**
- * A candidate's evidence profile for one job (AIV-P1-043, AIV-P1-045): who they are, where the application stands, the
+ * A candidate's evidence profile for one job (AIV-P1-043, AIV-P1-044, AIV-P1-045): who they are, where the application stands, the
  * fit, why they rank there, and what each competency's score rests on. 'forbidden' when a job-scoped member (hiring
  * owner, interviewer) is not granted the job; 'notFound' for a job or candidate the workspace does not have, a
  * candidate who did not apply to the job, or a malformed id: none says whether the record exists elsewhere. Null with
@@ -55,7 +56,7 @@ export async function loadProfile(
     // Not an applicant of this job (or another workspace's person): nothing about them is read.
     if (!applicant) return 'notFound';
     const base = { jobId: job, jobTitle: found.title, name: applicant.displayName, stage: applicant.stage };
-    const none = { explanation: null, competencies: [], notes: [] };
+    const none = { explanation: null, competencies: [], needs: [], notes: [] };
     const ranking = await getAssessment().listRanking(ctx, job);
     if (ranking.status === 'awaiting_rubric') return { ...base, fit: { status: 'awaiting_rubric' }, ...none };
     const row = ranking.rows.find((r) => r.candidateId === candidateId);
@@ -90,6 +91,7 @@ export async function loadProfile(
       explanation: explanation && { source: explanation.source, statements: explanation.statements },
       // With no storage account no file can be opened, so no file link is drawn.
       competencies: evidenceCards(results, names, evidence, seesFiles && getFiles() !== null),
+      needs: needRows(results, names),
       notes: seesFiles ? await notesOf(ctx, evidence) : [],
     };
   });
