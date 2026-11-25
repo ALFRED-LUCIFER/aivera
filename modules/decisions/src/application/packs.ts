@@ -27,7 +27,12 @@ export type PackStore = {
   listMembers(workspaceId: string, packId: string): Promise<PackMember[]>;
   insertDecisions(decisions: Decision[]): Promise<void>;
   listDecisions(workspaceId: string, packId: string): Promise<Decision[]>;
+  /** The job's packs, newest first, each with its members' candidate ids in pack order. */
+  listForJob(workspaceId: string, jobId: string): Promise<PackSummary[]>;
 };
+
+/** A pack as the ranking needs it (AIV-P2-010): which packs the job has and who is in each. */
+export type PackSummary = Pick<DecisionPack, 'id' | 'name' | 'status' | 'preparedAt'> & { candidateIds: string[] };
 
 /** The job a pack belongs to, as the context may see it, with the member who owns its hiring decision. */
 export type PackJob = JobResource & { hiringOwnerUserId: string | null };
@@ -166,6 +171,13 @@ export function packUseCases(ports: Ports) {
       const ranked = ranking?.rubricVersionId === pack.rubricVersionId ? ranking.candidateIds : [];
       await store.insertMembers(await snapshot(ctx, pack, ranked, fresh, inPack.length));
       return { added: fresh.length };
+    },
+
+    async listPacks(ctx: WorkspaceContext, jobId: string): Promise<PackSummary[]> {
+      const job = z.uuid().safeParse(jobId).success ? await ports.job(ctx, jobId) : null;
+      if (!job) throw new PackError('job_not_found');
+      await authorize(ctx, 'pack.view', job);
+      return storeFor(ctx.tx).listForJob(ctx.workspaceId, job.jobId);
     },
 
     async getPack(ctx: WorkspaceContext, packId: string): Promise<PackView | null> {

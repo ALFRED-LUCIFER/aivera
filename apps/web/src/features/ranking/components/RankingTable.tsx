@@ -31,7 +31,9 @@ import {
   type RankingFilters,
 } from '../domain/ranking.ts';
 import type { ChooseView } from '../domain/choose.ts';
+import { packHref, type PackView } from '../domain/pack.ts';
 import type { CompareState } from '../domain/selection.ts';
+import { AddToPack } from './AddToPack.tsx';
 import { ChooseForInterview } from './ChooseForInterview.tsx';
 import { DuplicateActions } from './DuplicateActions.tsx';
 import { NotYet, ScoreCell } from './ScoreCell.tsx';
@@ -45,10 +47,10 @@ import { NotYet, ScoreCell } from './ScoreCell.tsx';
 //   not "Select <name> to compare", as it serves every bulk action;
 // - while fewer than 2 or more than 3 are selected, the disabled Compare button reads its reason ("Compare up to 3 at
 //   a time"), as a disabled Button does; the artboard draws only the 3-selected state;
-// - the bar has "Choose for interview" (AIV-P1-114, deviations in ChooseForInterview.tsx) and "Compare", which stays
-//   hidden behind the `compare` flag until the comparison page exists (AIV-P1-047, #111). "Request evidence" and its
-//   preview are AIV-P1-038 and AIV-P1-039 (#102, #103), "Message" waits for Message candidates, "Add to decision pack"
-//   is AIV-P2-010 (#124): each ticket adds its button (domain/selection.ts), so no button leads nowhere;
+// - the bar has "Choose for interview" (AIV-P1-114, deviations in ChooseForInterview.tsx), "Add to decision pack"
+//   (AIV-P2-010, deviations in AddToPack.tsx) and "Compare", which stays hidden behind the `compare` flag until the
+//   comparison page exists (AIV-P1-047, #111). "Request evidence" and its preview are AIV-P1-038 and AIV-P1-039 (#102,
+//   #103), "Message" waits for Message candidates: each ticket adds its button (domain/selection.ts);
 // - no "Compare 3 selected" primary button beside "Add candidates": the job header is shared by every job page
 //   (AIV-P1-011), and the bar's Compare does the same;
 // - only admins and recruiters select: interviewers and hiring owners get no checkboxes (the server decides);
@@ -56,9 +58,10 @@ import { NotYet, ScoreCell } from './ScoreCell.tsx';
 //   which interviews and scorecards record (AIV-P2-E01, #18);
 // - "Last review" is "Last scored" (owner's decision): when the stored result last changed (an unchanged re-run stores nothing), in the workspace time zone
 //   named in the header (AGENTS.md 3.9); it becomes "Last review" with scorecards (AIV-P2-006, #120);
-// - "Next action" says "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not yet available": its
-//   other sources are evidence requests (AIV-P1-039, #103), later interview rounds (AIV-P2-007, #121) and decision
-//   packs (AIV-P2-010, #124), none built yet, and no value is invented (AGENTS.md 1.7);
+// - "Next action" says "In shortlist pack" while they are in an undecided pack (AIV-P2-010), which comes after the
+//   interview in J3 and so wins, else "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not yet
+//   available": its other sources are evidence requests (AIV-P1-039, #103) and later interview rounds (AIV-P2-007,
+//   #121), not built yet, and no value is invented (AGENTS.md 1.7);
 // - "Stage: all" and "Missing evidence: any" are native selects, and the Columns menu a disclosure of checkboxes: no
 //   menu or popover component exists in @credalent/ui, and a native control keeps its keyboard path;
 // - a line under the filters gives the scores' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
@@ -104,8 +107,8 @@ export type RankingTableView =
 
 type ColumnId = keyof Messages['ranking']['columns'];
 
-/** What a bulk action hands the bar's onPreview: the ids to choose for interview, or null for Compare. */
-type BulkPreview = { choose: readonly string[] | null };
+/** What a bulk action hands the bar's onPreview: which action, and the ids it acts on. */
+type BulkPreview = { action: 'choose' | 'pack' | 'compare'; ids: readonly string[] };
 
 const scored = (render: (score: CandidateScore) => ReactNode) => (row: CandidateRow) =>
   row.score ? render(row.score) : <NotYet />;
@@ -120,24 +123,26 @@ const cells: (Omit<DataTableColumn<CandidateRow>, 'header'> & { id: ColumnId })[
   { id: 'missing', cell: scored((s) => <MissingCell score={s} />) },
   // shortcut: "Last scored" is the latest assessment; rename it "Last review" and add scorecards with AIV-P2-006 (#120).
   { id: 'lastScored', cell: scored((s) => <ScoredCell score={s} />) },
-  // shortcut: only "Chosen for interview" so far; evidence requests (AIV-P1-039), later rounds (AIV-P2-007) and packs
-  // (AIV-P2-010) add theirs.
+  // shortcut: only packs and "Chosen for interview" so far; evidence requests (AIV-P1-039) and later rounds
+  // (AIV-P2-007) add theirs.
   { id: 'nextAction', cell: (row) => <NextActionCell row={row} /> },
 ];
 
 /**
  * Who is ahead and how sure we are. Every applicant stays visible; ranking orders attention (AGENTS.md 1.5).
- * `duplicates` drives the rows' merge and undo previews (AIV-P1-018); `choose`, when this member may choose people for
- * interview, its preview (AIV-P1-114).
+ * `duplicates` drives the rows' merge and undo previews (AIV-P1-018); `choose` and `pack`, when this member may use
+ * them, the previews of "Choose for interview" (AIV-P1-114) and "Add to decision pack" (AIV-P2-010).
  */
 export function RankingTable({
   view,
   duplicates,
   choose,
+  pack,
 }: {
   view: RankingTableView;
   duplicates?: DuplicatesView;
   choose?: ChooseView | undefined;
+  pack?: PackView | undefined;
 }) {
   const t = useTranslations('ranking');
   const timeZone = useTimeZone();
@@ -168,6 +173,20 @@ export function RankingTable({
       {ready && ready.total > 0 && <Toolbar view={ready} />}
       {choose && <SuccessBanner>{choose.done !== null && t('choose.done', { count: choose.done })}</SuccessBanner>}
       {choose && <ChooseForInterview view={choose} />}
+      {pack && ready && (
+        <SuccessBanner>
+          {pack.done && (
+            <>
+              {t('pack.done', { count: pack.done.added, name: pack.done.name })}{' '}
+              {/* packHref builds the path from opaque ids, which typed routes cannot check. */}
+              <Link href={packHref(ready.jobId, pack.done.packId) as Route} className="underline underline-offset-3">
+                {t('pack.open')}
+              </Link>
+            </>
+          )}
+        </SuccessBanner>
+      )}
+      {pack && <AddToPack view={pack} />}
       {selection && (
         <BulkActionBar<BulkPreview>
           label={t('bulk.label')}
@@ -181,7 +200,16 @@ export function RankingTable({
                   {
                     id: 'chooseForInterview',
                     label: t('bulk.choose'),
-                    preview: (ids: readonly string[]) => ({ choose: ids }),
+                    preview: (ids: readonly string[]) => ({ action: 'choose' as const, ids }),
+                  },
+                ]
+              : []),
+            ...(pack
+              ? [
+                  {
+                    id: 'addToPack',
+                    label: t('bulk.pack'),
+                    preview: (ids: readonly string[]) => ({ action: 'pack' as const, ids }),
                   },
                 ]
               : []),
@@ -191,13 +219,19 @@ export function RankingTable({
                     id: 'compare',
                     label: t(`bulk.compare.${selection.compare}`),
                     disabled: selection.compare !== 'ready',
-                    preview: () => ({ choose: null }),
+                    preview: (ids: readonly string[]) => ({ action: 'compare' as const, ids }),
                   },
                 ]
               : []),
           ]}
-          // Compare changes nothing: it opens the comparison of the selected candidates. Choose opens its preview.
-          onPreview={(preview) => (preview.choose ? choose?.onPreview(preview.choose) : selection.onCompare())}
+          // Compare changes nothing: it opens the comparison of the selected candidates. The others open their previews.
+          onPreview={({ action, ids }) =>
+            action === 'choose'
+              ? choose?.onPreview(ids)
+              : action === 'pack'
+                ? pack?.onPreview(ids)
+                : selection.onCompare()
+          }
         />
       )}
       <DataTable
@@ -414,6 +448,7 @@ function MissingCell({ score }: { score: CandidateScore }) {
 
 function NextActionCell({ row }: { row: CandidateRow }) {
   const t = useTranslations('ranking');
+  if (row.inPack) return <span>{t('pack.inPack')}</span>;
   return row.stage === 'interview' ? <span>{t('stages.interview')}</span> : <NotYet />;
 }
 

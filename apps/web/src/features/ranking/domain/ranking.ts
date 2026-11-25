@@ -25,7 +25,12 @@ export type CandidateRow = {
   /** Null until the candidate is assessed: "Not yet scored", basis "Not yet available" (AGENTS.md 1.7). */
   score: CandidateScore | null;
   duplicates?: RowDuplicates;
+  /** In an undecided decision pack of this job (AIV-P2-010): the next action reads "In shortlist pack". */
+  inPack?: true;
 };
+
+/** An undecided decision pack of the job, for "Add to decision pack" (AIV-P2-010); its members by person id. */
+export type PackChoice = { id: string; name: string; candidateIds: string[] };
 
 /**
  * The page's data: the job, whether its rubric is approved yet, every applicant's row, and the bulk actions this
@@ -36,6 +41,8 @@ export type RankingData = {
   awaitingRubric: boolean;
   rows: CandidateRow[];
   bulkActions: BulkActionId[];
+  /** The job's undecided packs, for members who may add to one (AIV-P2-010). */
+  packs?: PackChoice[];
 };
 
 /**

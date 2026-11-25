@@ -602,3 +602,32 @@ describe('Scenario: Workspace isolation', () => {
     }
   });
 });
+
+// AIV-P2-010: the ranking reads the job's packs for "Add to decision pack" and "In shortlist pack".
+describe('listPacks', () => {
+  it("lists the job's packs, newest first, each with its status and members in pack order", async () => {
+    const { packId } = await as(ZAID, w1, (ctx) =>
+      decisions.createPack(ctx, {
+        jobId: seniorAi.jobId,
+        name: 'Round 3 shortlist',
+        members: [{ candidateId: arjun }, { candidateId: sara }],
+      }),
+    );
+    const packs = await as(ZAID, w1, (ctx) => decisions.listPacks(ctx, seniorAi.jobId));
+    expect(packs.find((p) => p.id === packId)).toEqual({
+      id: packId,
+      name: 'Round 3 shortlist',
+      status: 'ready',
+      preparedAt: NOW,
+      candidateIds: [arjun, sara],
+    });
+    expect(packs.map((p) => p.id)).toContain(shortlist);
+  });
+
+  it('an interviewer is refused, and another workspace’s member finds no such job', async () => {
+    await expect(as(LINA, w1, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toThrow(ForbiddenError);
+    await expect(as(OMAR, w2, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toMatchObject({
+      code: 'job_not_found',
+    });
+  });
+});

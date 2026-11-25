@@ -15,14 +15,14 @@ const on = new Set(['compare']);
 describe('bulkActionsFor', () => {
   // SAFETY: mutation check: dropped the role test from bulkActionsFor -> this test failed (an interviewer got 'compare')
   it('offers bulk actions to admins and recruiters only: interviewers and hiring owners get none', () => {
-    expect(bulkActionsFor('admin', on)).toEqual(['compare', 'chooseForInterview']);
-    expect(bulkActionsFor('recruiter', on)).toEqual(['compare', 'chooseForInterview']);
+    expect(bulkActionsFor('admin', on)).toEqual(['compare', 'chooseForInterview', 'addToPack']);
+    expect(bulkActionsFor('recruiter', on)).toEqual(['compare', 'chooseForInterview', 'addToPack']);
     expect(bulkActionsFor('interviewer', on)).toEqual([]);
     expect(bulkActionsFor('hiring_owner', on)).toEqual([]);
   });
 
   it('hides an action while its flag is off', () => {
-    expect(bulkActionsFor('recruiter', new Set())).toEqual(['chooseForInterview']);
+    expect(bulkActionsFor('recruiter', new Set())).toEqual(['chooseForInterview', 'addToPack']);
   });
 });
 

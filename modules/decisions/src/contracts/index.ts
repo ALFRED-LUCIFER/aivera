@@ -2,11 +2,24 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { CreatePackInput, MemberInput, PackView, RecordDecisionsInput } from '../application/packs.ts';
+import type {
+  CreatePackInput,
+  MemberInput,
+  PackSummary,
+  PackView,
+  RecordDecisionsInput,
+} from '../application/packs.ts';
 
 export { PackError } from '../domain/pack.ts';
 export type { Decision, DecisionPack, DecisionValue, PackMember, PackStatus } from '../domain/pack.ts';
-export type { CreatePackInput, MemberInput, PackView, RecordDecisionsInput } from '../application/packs.ts';
+export type {
+  CreatePackInput,
+  MemberInput,
+  PackSummary,
+  PackView,
+  RecordDecisionsInput,
+} from '../application/packs.ts';
+export { NAME_MAX } from '../domain/pack.ts';
 
 const packEvent = z.strictObject({ packId: z.uuid(), jobId: z.uuid() });
 
@@ -46,6 +59,13 @@ export interface DecisionsContract {
    * `pack_decided`, `candidate_not_assessed` (also once the job's approved rubric version is no longer the pack's).
    */
   addMembers(ctx: WorkspaceContext, packId: string, members: MemberInput[]): Promise<{ added: number }>;
+  /**
+   * The job's packs, newest first, each with its name, status and members' candidate ids in pack order (AIV-P2-010):
+   * the ranking's "Add to decision pack" and its "In shortlist pack". No scores or decisions. Admins, recruiters and
+   * hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer. Throws `PackError('job_not_found')`
+   * for a job the context cannot see.
+   */
+  listPacks(ctx: WorkspaceContext, jobId: string): Promise<PackSummary[]>;
   /**
    * The pack, its members in order and its decisions, or null when it does not exist or its job is hidden from the
    * context. Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.

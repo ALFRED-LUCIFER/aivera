@@ -16,6 +16,7 @@ import { Ranking } from './Ranking.tsx';
 const fake = vi.hoisted(() => ({
   merge: vi.fn(),
   choose: vi.fn(),
+  pack: vi.fn(),
   undo: vi.fn(),
   refresh: vi.fn(),
   push: vi.fn(),
@@ -40,6 +41,7 @@ window.history.replaceState = (...args) => {
 };
 vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
 vi.mock('@/features/ranking/services/chooseForInterview.ts', () => ({ chooseForInterview: fake.choose }));
+vi.mock('@/features/ranking/services/addToDecisionPack.ts', () => ({ addToDecisionPack: fake.pack }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -512,5 +514,98 @@ describe('Scenario: An application from another job is refused (AIV-P1-114)', ()
       'This candidate has not applied to this job. Nothing was changed.',
     );
     expect(fake.refresh).not.toHaveBeenCalled();
+  });
+});
+
+// AIV-P2-010: a recruiter adds candidates to a decision pack, after a preview. The server action is faked: these tests
+// check what is shown and sent; the pack writes are in tests/integration/src/decisions.test.ts.
+const PACK = '0190d4a2-0000-7000-9000-000000000300';
+const packable = (rows = nine, packs: { id: string; name: string; candidateIds: string[] }[] = []) =>
+  render(
+    <IntlProvider {...intl}>
+      <Ranking jobId={JOB} awaitingRubric={false} rows={rows} bulkActions={['addToPack']} packs={packs} />
+    </IntlProvider>,
+  );
+const openPack = async (...names: string[]) => {
+  for (const name of names) await pick(name);
+  await userEvent.click(within(bar()).getByRole('button', { name: 'Add to decision pack' }));
+};
+
+describe('Scenario: Preview, then add (AIV-P2-010)', () => {
+  // SAFETY: mutation check: made canConfirm ignore the pack name -> this test failed (sent with no name)
+  it('lists the three with their backed scores, needs a name for a new pack, and only Confirm sends', async () => {
+    fake.pack.mockResolvedValue({ ok: true, packId: PACK, added: 3 });
+    packable();
+    await openPack('Sara Al Qahtani', 'Arjun Menon', 'Layla Haddad');
+    expect(within(preview()).getByRole('heading').textContent).toBe('Preview: add 3 candidates to a decision pack');
+    for (const [backed, upTo] of [
+      [68, 84],
+      [64, 76],
+      [61, 82],
+    ])
+      expect(
+        within(preview()).getByRole('img', { name: `${backed} backed by evidence · up to ${upTo} if claims hold` }),
+      ).toBeTruthy();
+    expect(preview().textContent).toContain('Nothing changes until you confirm.');
+    expect(within(preview()).getByRole<HTMLInputElement>('radio', { name: 'New pack' }).checked).toBe(true);
+    const confirm = within(preview()).getByRole<HTMLButtonElement>('button', { name: 'Add 3 to the pack' });
+    expect(confirm.disabled).toBe(true);
+    await userEvent.click(confirm);
+    expect(fake.pack).not.toHaveBeenCalled();
+
+    await userEvent.type(within(preview()).getByRole('textbox', { name: 'Pack name' }), 'Round 2 shortlist');
+    await userEvent.click(confirm);
+    expect(fake.pack).toHaveBeenCalledExactlyOnceWith({
+      jobId: JOB,
+      applicationIds: ['a1', 'a2', 'a3'],
+      pack: { name: 'Round 2 shortlist' },
+    });
+    expect(fake.refresh).toHaveBeenCalledOnce();
+    expect(screen.getByText(/3 candidates added to Round 2 shortlist\./)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open the pack' }).getAttribute('href')).toBe(
+      `/app/jobs/${JOB}/packs/${PACK}`,
+    );
+  });
+});
+
+describe('Scenario: Add to an existing pack (AIV-P2-010)', () => {
+  it('offers the undecided pack first, marks who is in it already, and sends only the others', async () => {
+    fake.pack.mockResolvedValue({ ok: true, packId: PACK, added: 1 });
+    const rows = nine.map((row) => (row.name === 'Sara Al Qahtani' ? { ...row, inPack: true as const } : row));
+    packable(rows, [{ id: PACK, name: 'Round 2 shortlist', candidateIds: ['p1'] }]);
+    const sara = bodyRows().find((row) => row.textContent.includes('Sara Al Qahtani'));
+    expect(sara?.textContent).toContain('In shortlist pack');
+    await userEvent.click(screen.getByRole('button', { name: 'Show all 9' }));
+    await openPack('Sara Al Qahtani', 'Daniel Novak', 'Huda Rahman');
+    expect(
+      within(preview()).getByRole<HTMLInputElement>('radio', { name: 'Round 2 shortlist (1 candidate)' }).checked,
+    ).toBe(true);
+    expect(preview().textContent).toContain('Sara Al QahtaniIn shortlist pack');
+    expect(preview().textContent).toContain("Huda RahmanNot yet scored, so not added: a pack holds each candidate's");
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Add 1 to the pack' }));
+    expect(fake.pack).toHaveBeenCalledExactlyOnceWith({ jobId: JOB, applicationIds: ['a4'], pack: { packId: PACK } });
+  });
+});
+
+describe('Scenario: Cannot add from another job (AIV-P2-010)', () => {
+  it('says so, changes nothing and keeps the preview open', async () => {
+    fake.pack.mockResolvedValue({ ok: false, error: 'notOnJob' });
+    packable();
+    await openPack('Sara Al Qahtani');
+    await userEvent.type(within(preview()).getByRole('textbox', { name: 'Pack name' }), 'Shortlist');
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Add 1 to the pack' }));
+    expect(within(preview()).getByRole('alert').textContent).toContain(
+      'This candidate has not applied to this job. Nothing was changed.',
+    );
+    expect(fake.refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('Scenario: No selection (AIV-P2-010)', () => {
+  it('offers "Add to decision pack" only once someone is selected', async () => {
+    packable();
+    expect(screen.queryByRole('button', { name: 'Add to decision pack' })).toBeNull();
+    await pick('Sara Al Qahtani');
+    expect(within(bar()).getByRole('button', { name: 'Add to decision pack' })).toBeTruthy();
   });
 });

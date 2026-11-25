@@ -1729,6 +1729,10 @@
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
   },
+  "decisionPack": {
+    "title": "{name}: {job}",
+    "members": "{count, plural, one {# candidate} other {# candidates}}, with the scores they joined with"
+  },
   "ranking": {
     "duplicates": {
       "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
@@ -1837,12 +1841,32 @@
       "notOnJob": "This candidate has not applied to this job. Nothing was changed.",
       "done": "{count, plural, =0 {Nobody new was chosen for interview.} one {# person chosen for interview. They are on the Interviews page, not scheduled yet.} other {# people chosen for interview. They are on the Interviews page, not scheduled yet.}}"
     },
+    "pack": {
+      "title": "{count, plural, =0 {Preview: nobody new to add to a decision pack} one {Preview: add # candidate to a decision pack} other {Preview: add # candidates to a decision pack}}",
+      "unnamed": "Unnamed applicant",
+      "inPack": "In shortlist pack",
+      "notScored": "Not yet scored, so not added: a pack holds each candidate's assessment",
+      "legend": "Decision pack",
+      "existing": "{name} ({count, plural, one {# candidate} other {# candidates}})",
+      "new": "New pack",
+      "name": "Pack name",
+      "consequence": "The hiring owner decides from the pack. Nobody is contacted, and everyone else stays in the ranking unchanged.",
+      "confirm": "{count, plural, =0 {Nobody to add} one {Add # to the pack} other {Add # to the pack}}",
+      "pending": "Adding…",
+      "cancel": "Cancel",
+      "footer": "Nothing changes until you confirm.",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "notOnJob": "This candidate has not applied to this job. Nothing was changed.",
+      "done": "{count, plural, =0 {Nobody new was added to {name}.} one {# candidate added to {name}.} other {# candidates added to {name}.}}",
+      "open": "Open the pack"
+    },
     "bulk": {
       "label": "Bulk actions",
       "selected": "{count} selected",
       "notShown": "{count} not shown in the table",
       "previewNote": "Bulk actions always show a preview first.",
       "choose": "Choose for interview",
+      "pack": "Add to decision pack",
       "selectAll": "Select all {count} shown",
       "selectRow": "Select {name}",
       "compare": {

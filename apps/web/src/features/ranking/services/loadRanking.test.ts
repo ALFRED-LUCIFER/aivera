@@ -15,6 +15,7 @@ const fake = vi.hoisted(() => ({
   detect: vi.fn(async (): Promise<unknown[]> => []),
   preview: vi.fn(),
   jobs: vi.fn(),
+  packs: vi.fn(async (): Promise<unknown[]> => []),
 }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
@@ -23,6 +24,7 @@ vi.mock('@/server/workspace', () => ({
 vi.mock('@/server/flags', () => ({ enabledFlags: new Set(['compare']) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
+vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ listPacks: fake.packs }) }));
 vi.mock('@/server/jobs', () => ({
   getApprovedRubricReads: () => ({ approvedRubric: fake.rubric }),
   getJobs: () => ({ listJobs: fake.jobs }),
@@ -88,7 +90,8 @@ describe('loadRanking', () => {
       jobId: JOB,
       awaitingRubric: true,
       rows: [{ id: 'a1', personId: 'p1', name: 'Sara Al Qahtani', stage: 'new', score: null }],
-      bulkActions: ['compare', 'chooseForInterview'],
+      bulkActions: ['compare', 'chooseForInterview', 'addToPack'],
+      packs: [],
     });
     expect(fake.rubric).not.toHaveBeenCalled();
   });
@@ -165,6 +168,36 @@ describe('loadRanking', () => {
       expect(data !== 'notFound' && data?.rows[0]?.duplicates).toBeUndefined();
       expect(data !== 'notFound' && data?.bulkActions).toEqual([]);
       expect(fake.detect).not.toHaveBeenCalled();
+    } finally {
+      ctx.role = 'recruiter';
+    }
+  });
+
+  it('offers the undecided packs and marks their members "In shortlist pack" (AIV-P2-010)', async () => {
+    fake.list.mockResolvedValue([sara]);
+    fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [ranked] });
+    fake.rubric.mockResolvedValue(rubric(VERSION));
+    fake.packs.mockResolvedValueOnce([
+      { id: 'k1', name: 'Round 2 shortlist', status: 'ready', preparedAt: at, candidateIds: ['p1'] },
+      { id: 'k0', name: 'Round 1 shortlist', status: 'decided', preparedAt: at, candidateIds: ['p9'] },
+    ]);
+    const data = await loadRanking(JOB);
+    expect(data !== 'notFound' && data?.packs).toEqual([{ id: 'k1', name: 'Round 2 shortlist', candidateIds: ['p1'] }]);
+    expect(data !== 'notFound' && data?.rows[0]?.inPack).toBe(true);
+    expect(fake.packs).toHaveBeenCalledWith(ctx, JOB);
+  });
+
+  // SAFETY: mutation check: read the packs for every role -> this test failed (listPacks called for an interviewer)
+  it('a member with no pack action never reads the packs', async () => {
+    fake.list.mockResolvedValue([sara]);
+    fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [ranked] });
+    fake.rubric.mockResolvedValue(rubric(VERSION));
+    fake.packs.mockClear();
+    ctx.role = 'hiring_owner';
+    try {
+      const data = await loadRanking(JOB);
+      expect(data !== 'notFound' && data?.packs).toBeUndefined();
+      expect(fake.packs).not.toHaveBeenCalled();
     } finally {
       ctx.role = 'recruiter';
     }

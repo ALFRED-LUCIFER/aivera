@@ -5,12 +5,13 @@ import type { CandidateRow } from './ranking.ts';
 /**
  * The bulk actions, each with the feature flag that hides it until its target exists (as navigation.ts does for
  * screens, AIV-P1-095): the action's ticket sets its flag to null. Compare opens the comparison page (AIV-P1-047, #111);
- * Choose for interview moves people to Round 1 (AIV-P1-114). Request evidence (AIV-P1-038, #102), Message and Add to
- * decision pack (AIV-P2-010, #124) join this list with their tickets.
+ * Choose for interview moves people to Round 1 (AIV-P1-114); Add to decision pack (AIV-P2-010). Request evidence
+ * (AIV-P1-038, #102) and Message join this list with their tickets.
  */
 export const BULK_ACTIONS = [
   { id: 'compare', flag: 'compare' },
   { id: 'chooseForInterview', flag: null },
+  { id: 'addToPack', flag: null },
 ] as const satisfies readonly {
   id: string;
   flag: string | null;
