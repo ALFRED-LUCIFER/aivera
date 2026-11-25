@@ -1800,7 +1800,20 @@
     "emptyFiltered": "No candidates match these filters.",
     "loading": "Loading the ranking…",
     "error": "We could not load the ranking. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "bulk": {
+      "label": "Bulk actions",
+      "selected": "{count} selected",
+      "notShown": "{count} not shown in the table",
+      "previewNote": "Bulk actions always show a preview first.",
+      "selectAll": "Select all {count} shown",
+      "selectRow": "Select {name}",
+      "compare": {
+        "ready": "Compare",
+        "tooFew": "Choose 2 or 3 to compare",
+        "tooMany": "Compare up to 3 at a time"
+      }
+    }
   },
   "candidateProfile": {
     "title": "Candidate profile",

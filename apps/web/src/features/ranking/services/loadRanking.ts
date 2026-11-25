@@ -4,12 +4,14 @@ import { log } from '@credalent/observability';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
+import { enabledFlags } from '@/server/flags';
 import { getCandidates } from '@/server/people';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
 import type { MergeSide, RowDuplicates } from '../domain/duplicates.ts';
 import { toCandidateRows, type RankingData } from '../domain/ranking.ts';
+import { bulkActionsFor } from '../domain/selection.ts';
 
 /**
  * The applicants' duplicates (AIV-P1-018), for admins and recruiters only: the merged count, the newest undoable merge
@@ -77,18 +79,20 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
       const applicants = await getIntake().listApplicationsForJob(ctx, jobId);
       const ranking = await getAssessment().listRanking(ctx, jobId);
       const duplicates = await duplicatesOf(ctx, [...new Set(applicants.map((a) => a.personId))]);
+      // Decided here from the member's role, not in the browser (AGENTS.md 1.3).
+      const bulkActions = bulkActionsFor(ctx.role, enabledFlags);
       if (ranking.status === 'awaiting_rubric')
-        return { applicants, ranking, names: new Map<string, string>(), duplicates };
+        return { applicants, ranking, names: new Map<string, string>(), duplicates, bulkActions };
       // Read only after listRanking authorised the job. The ranking is on the approved version; names from another
       // version are never shown against it.
       const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
       const names = new Map(
         rubric?.id === ranking.rubricVersionId ? rubric.competencies.map((c) => [c.id, c.name] as const) : [],
       );
-      return { applicants, ranking, names, duplicates };
+      return { applicants, ranking, names, duplicates, bulkActions };
     });
     if (!result) return null;
-    const { applicants, ranking, names, duplicates } = result.value;
+    const { applicants, ranking, names, duplicates, bulkActions } = result.value;
     const ranked = ranking.status === 'ranked' ? ranking.rows : [];
     log.info(
       {
@@ -103,6 +107,7 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
       jobId,
       awaitingRubric: ranking.status === 'awaiting_rubric',
       rows: toCandidateRows(applicants, ranked, (id) => names.get(id), duplicates),
+      bulkActions,
     };
   } catch (error) {
     if (error instanceof IntakeError || error instanceof ForbiddenError) return 'notFound';

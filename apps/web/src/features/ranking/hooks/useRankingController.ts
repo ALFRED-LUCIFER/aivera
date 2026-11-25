@@ -1,3 +1,5 @@
+import type { Route } from 'next';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
   FIRST_ROWS,
@@ -9,13 +11,18 @@ import {
   type RankingData,
   type RankingFilters,
 } from '../domain/ranking.ts';
+import { compareHref, compareState, parseSelected } from '../domain/selection.ts';
+import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 
 /**
  * The ranked table's search, filters, Columns menu and "Show all". The rows arrive whole from the server; filtering
- * and the first-7 cut happen here.
+ * and the first-7 cut happen here. The selection (AIV-P1-036) lives in the URL, so it survives the filters, "Show all"
+ * and a reload; it is offered only when the server allows this member a bulk action.
  */
 // shortcut: filters live in state, not the URL; move them to the URL if recruiters ask to link a filtered ranking.
-export function useRankingController({ jobId, awaitingRubric, rows }: RankingData) {
+export function useRankingController({ jobId, awaitingRubric, rows, bulkActions }: RankingData) {
+  const router = useRouter();
+  const selectedIds = parseSelected(useSearchParams().get('selected'), rows);
   const [filters, setFilters] = useState<RankingFilters>(NO_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [hidden, setHidden] = useState<HideableColumn[]>([]);
@@ -39,5 +46,22 @@ export function useRankingController({ jobId, awaitingRubric, rows }: RankingDat
     hidden,
     onToggleColumn: (column: HideableColumn) =>
       setHidden(hidden.includes(column) ? hidden.filter((c) => c !== column) : [...hidden, column]),
+    selection: bulkActions.includes('compare')
+      ? {
+          selectedIds,
+          onSelectedIdsChange: replaceSelectedInUrl,
+          /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
+          notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,
+          compare: compareState(selectedIds.length),
+          // compareHref builds the path from opaque ids, which typed routes cannot check.
+          onCompare: () =>
+            router.push(
+              compareHref(
+                jobId,
+                rows.filter((row) => selectedIds.includes(row.id)).map((row) => row.personId),
+              ) as Route,
+            ),
+        }
+      : null,
   };
 }

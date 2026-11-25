@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useEffect, useReducer } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RankingTable, type RankingTableView } from '@/features/ranking/components/RankingTable.tsx';
 import type { RowDuplicates } from '@/features/ranking/domain/duplicates.ts';
@@ -11,12 +12,35 @@ import { Ranking } from './Ranking.tsx';
 
 // AIV-P1-034: the ranked table with its controller, as the page renders it. Synthetic cast only (docs/00-product/personas.md).
 // The merge and undo server actions (AIV-P1-018) are faked: these tests check what is shown and sent.
-const fake = vi.hoisted(() => ({ merge: vi.fn(), undo: vi.fn(), refresh: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: fake.refresh }) }));
+const fake = vi.hoisted(() => ({
+  merge: vi.fn(),
+  undo: vi.fn(),
+  refresh: vi.fn(),
+  push: vi.fn(),
+  urlListeners: new Set<() => void>(),
+}));
+// As Next does, useSearchParams follows window.history.replaceState, which is how the selection is kept (AIV-P1-036).
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: fake.refresh, push: fake.push }),
+  useSearchParams: () => {
+    const [, changed] = useReducer((n: number) => n + 1, 0);
+    useEffect(() => {
+      fake.urlListeners.add(changed);
+      return () => void fake.urlListeners.delete(changed);
+    }, []);
+    return new URLSearchParams(window.location.search);
+  },
+}));
+const replaceState = window.history.replaceState.bind(window.history);
+window.history.replaceState = (...args) => {
+  replaceState(...args);
+  act(() => fake.urlListeners.forEach((listener) => listener()));
+};
 vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  replaceState(null, '', '/');
 });
 
 let intl: Awaited<ReturnType<typeof intlConfig>>;
@@ -53,10 +77,10 @@ const nine = [
   { id: 'a9', personId: 'p9', name: 'Huda Rahman', stage: 'new', score: null } satisfies CandidateRow,
 ];
 
-const showRanking = (rows: CandidateRow[], awaitingRubric = false) =>
+const showRanking = (rows: CandidateRow[], awaitingRubric = false, bulkActions: 'compare'[] = []) =>
   render(
     <IntlProvider {...intl}>
-      <Ranking jobId={JOB} awaitingRubric={awaitingRubric} rows={rows} />
+      <Ranking jobId={JOB} awaitingRubric={awaitingRubric} rows={rows} bulkActions={bulkActions} />
     </IntlProvider>,
   );
 const show = (view: RankingTableView) =>
@@ -310,5 +334,71 @@ describe('Scenario: Exact duplicates merged, and undo for admins', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Undo merge' }));
     expect(fake.undo).toHaveBeenCalledExactlyOnceWith({ mergeId: MERGE, reason: 'Two different people' });
     expect(screen.getByText('Merge undone. Both people are separate again.')).toBeTruthy();
+  });
+});
+
+// AIV-P1-036: a recruiter the server allows Compare (the `compare` flag is on).
+const selectable = () => showRanking(nine, false, ['compare']);
+const pick = (name: string) => userEvent.click(screen.getByRole('checkbox', { name: `Select ${name}` }));
+const bar = () => screen.getByRole('region', { name: 'Bulk actions' });
+
+describe('Scenario: Compare three (AIV-P1-036)', () => {
+  it('three ticked rows show "3 selected", and "Compare" opens the comparison with those three person ids', async () => {
+    selectable();
+    expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull();
+    for (const name of ['Layla Haddad', 'Sara Al Qahtani', 'Arjun Menon']) await pick(name);
+    expect(within(bar()).getByRole('status').textContent).toBe('3 selected');
+    expect(bar().textContent).toContain('Bulk actions always show a preview first.');
+    // The selection is in the URL as opaque application ids; the comparison gets the person ids in rank order.
+    expect(new URLSearchParams(window.location.search).get('selected')?.split(',').toSorted()).toEqual([
+      'a1',
+      'a2',
+      'a3',
+    ]);
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Compare' }));
+    expect(fake.push).toHaveBeenCalledExactlyOnceWith(`/app/jobs/${JOB}/compare?ids=p1,p2,p3`);
+  });
+
+  it('the selection survives a filter and "Show all", and the bar says how many selected rows are not shown', async () => {
+    selectable();
+    await pick('Sara Al Qahtani');
+    await pick('Arjun Menon');
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search candidates' }), 'Sara');
+    expect(within(bar()).getByRole('status').textContent).toBe('2 selected · 1 not shown in the table');
+    await userEvent.clear(screen.getByRole('searchbox', { name: 'Search candidates' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Show all 9' }));
+    expect(within(bar()).getByRole('status').textContent).toBe('2 selected');
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Select Arjun Menon' }).checked).toBe(true);
+  });
+
+  it('a selection in the URL is restored, and ids that are not rows of this job are dropped', () => {
+    replaceState(null, '', '/?selected=a2,not-a-row,a1');
+    selectable();
+    expect(within(bar()).getByRole('status').textContent).toBe('2 selected');
+  });
+});
+
+describe('Scenario: Compare needs two or three (AIV-P1-036)', () => {
+  it('with four selected "Compare" is disabled and reads "Compare up to 3 at a time"; with one, "Choose 2 or 3 to compare"', async () => {
+    selectable();
+    await pick('Sara Al Qahtani');
+    const one = within(bar()).getByRole<HTMLButtonElement>('button', { name: 'Choose 2 or 3 to compare' });
+    expect(one.disabled).toBe(true);
+    for (const name of ['Arjun Menon', 'Layla Haddad', 'Daniel Novak']) await pick(name);
+    expect(within(bar()).getByRole('status').textContent).toBe('4 selected');
+    const four = within(bar()).getByRole<HTMLButtonElement>('button', { name: 'Compare up to 3 at a time' });
+    expect(four.disabled).toBe(true);
+    await userEvent.click(four);
+    expect(fake.push).not.toHaveBeenCalled();
+    expect(within(bar()).queryByRole('button', { name: 'Compare' })).toBeNull();
+  });
+});
+
+describe('Scenario: Interviewers cannot act in bulk (AIV-P1-036)', () => {
+  it('a member the server gives no bulk action sees no checkboxes and no bar, even with a selection in the URL', () => {
+    replaceState(null, '', '/?selected=a1,a2');
+    showRanking(nine);
+    expect(within(table()).queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull();
   });
 });

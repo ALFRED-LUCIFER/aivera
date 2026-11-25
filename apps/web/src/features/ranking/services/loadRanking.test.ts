@@ -19,6 +19,8 @@ const fake = vi.hoisted(() => ({
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
 }));
+// AIV-P1-036: the `compare` flag is on here, so the role alone decides the bulk actions.
+vi.mock('@/server/flags', () => ({ enabledFlags: new Set(['compare']) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
 vi.mock('@/server/jobs', () => ({
@@ -85,6 +87,7 @@ describe('loadRanking', () => {
       jobId: JOB,
       awaitingRubric: true,
       rows: [{ id: 'a1', personId: 'p1', name: 'Sara Al Qahtani', stage: 'new', score: null }],
+      bulkActions: ['compare'],
     });
     expect(fake.rubric).not.toHaveBeenCalled();
   });
@@ -150,7 +153,8 @@ describe('loadRanking', () => {
   });
 
   // SAFETY: mutation check: removed the role check from duplicatesOf -> this test failed (detectDuplicates called)
-  it('a hiring owner or interviewer is never sent duplicates', async () => {
+  // SAFETY: mutation check: passed 'recruiter' instead of ctx.role to bulkActionsFor -> this test failed (bulkActions was ['compare'])
+  it('a hiring owner or interviewer is never sent duplicates, nor offered a bulk action (AIV-P1-036)', async () => {
     fake.list.mockResolvedValue([sara]);
     fake.ranking.mockResolvedValue({ status: 'awaiting_rubric' });
     fake.detect.mockClear();
@@ -158,6 +162,7 @@ describe('loadRanking', () => {
     try {
       const data = await loadRanking(JOB);
       expect(data !== 'notFound' && data?.rows[0]?.duplicates).toBeUndefined();
+      expect(data !== 'notFound' && data?.bulkActions).toEqual([]);
       expect(fake.detect).not.toHaveBeenCalled();
     } finally {
       ctx.role = 'recruiter';
