@@ -1,7 +1,7 @@
 import { RATINGS as APPLIED } from '@credalent/assessment';
 import { RATINGS, type ScorecardDraft } from '@credalent/interviews';
 import { describe, expect, it } from 'vitest';
-import { effectLines, previewInput, saveDraftInput, startingDraft, type ScoreEffect } from './scorecard.ts';
+import { effectLines, previewInput, saveDraftInput, startingDraft, type EffectPreview } from './scorecard.ts';
 
 // AIV-P2-004. Synthetic cast and opaque ids only.
 const RETRIEVAL = '0190d4a2-0000-7000-9000-000000000040';
@@ -89,17 +89,17 @@ const daniel = [
   },
   { competencyId: COST, name: 'Cost and reliability', evidence: null },
 ];
-type CompetencyState = ScoreEffect['changes'][number]['from'];
+type CompetencyState = EffectPreview['changes'][number]['from'];
 const state = (strength: CompetencyState['strength'], provenLevel: CompetencyState['provenLevel'] = 0) => ({
   strength,
   provenLevel,
 });
-const effect = (from: CompetencyState, to: CompetencyState, score: [number, number]): ScoreEffect => ({
+const effect = (from: CompetencyState, to: CompetencyState, score: [number, number]): EffectPreview => ({
   backedScore: { from: score[0], to: score[1] },
   changes: [{ competencyId: RETRIEVAL, from, to }],
 });
-const unchanged: ScoreEffect = { backedScore: { from: 55, to: 55 }, changes: [] };
-const line = (rating: (typeof RATINGS)[number], preview: ScoreEffect) =>
+const unchanged: EffectPreview = { backedScore: { from: 55, to: 55 }, changes: [] };
+const line = (rating: (typeof RATINGS)[number], preview: EffectPreview) =>
   effectLines([{ competencyId: RETRIEVAL, rating }], preview, daniel);
 
 describe('effectLines', () => {
@@ -141,7 +141,7 @@ describe('effectLines', () => {
   });
 
   it('lists every rating in the order sent, and a competency with no evidence stays at none', () => {
-    const preview: ScoreEffect = {
+    const preview: EffectPreview = {
       backedScore: { from: 55, to: 55 },
       changes: [{ competencyId: RETRIEVAL, from: state('supporting'), to: state('claim') }],
     };

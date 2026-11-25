@@ -62,7 +62,11 @@ describe('previewScorecardRatings', () => {
 
   it('a malformed input or an interview the workspace does not have is not found', async () => {
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings: [] })).rejects.toThrow('404');
+    // Two ratings of one competency are invalid here, by the interviews module's own schema, not an unexpected error.
+    const twice = [...ratings, { competencyId: RETRIEVAL, rating: 'not_shown' }];
+    await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings: twice })).rejects.toThrow('404');
     expect(fake.preview).not.toHaveBeenCalled();
+    expect(fake.warn).not.toHaveBeenCalled();
     fake.preview.mockRejectedValueOnce(new InterviewError('interview_not_found'));
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).rejects.toThrow('404');
   });

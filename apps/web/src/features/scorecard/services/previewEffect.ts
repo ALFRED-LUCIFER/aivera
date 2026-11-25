@@ -5,7 +5,7 @@ import { log } from '@credalent/observability';
 import { forbidden, notFound, unstable_rethrow } from 'next/navigation';
 import { getInterviews } from '@/server/interviews';
 import { inActiveWorkspace } from '@/server/workspace';
-import { previewInput, type ScoreEffect } from '../domain/scorecard.ts';
+import { previewInput, type EffectPreview } from '../domain/scorecard.ts';
 
 /**
  * What the scorecard's ratings would do to the candidate's latest assessment (AIV-P2-005), through the interviews
@@ -15,7 +15,7 @@ import { previewInput, type ScoreEffect } from '../domain/scorecard.ts';
  * have, is not found. Null when it cannot be previewed now (no assessment yet, evidence still being scored, an
  * interview not held): the panel says so and the rating is kept.
  */
-export async function previewScorecardRatings(input: unknown): Promise<ScoreEffect | null> {
+export async function previewScorecardRatings(input: unknown): Promise<EffectPreview | null> {
   const parsed = previewInput.safeParse(input);
   if (!parsed.success) notFound();
   const { interviewId, ratings } = parsed.data;

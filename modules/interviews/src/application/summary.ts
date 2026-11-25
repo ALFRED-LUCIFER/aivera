@@ -5,7 +5,7 @@ import type { Tx } from '@credalent/db';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { effectiveStatus, InterviewError, type Interview, type InterviewErrorCode } from '../domain/interview.ts';
-import { RATINGS, type Rating } from '../domain/scorecard.ts';
+import { scorecardRatingsSchema, type Rating, type ScorecardRatings } from '../domain/scorecard.ts';
 import {
   budgetResetAt,
   changedByScorecard,
@@ -146,13 +146,6 @@ const applyInput = z.strictObject({
 });
 export type ApplySummaryInput = z.input<typeof applyInput>;
 
-/** A scorecard's ratings to preview (AIV-P2-005): one per competency. */
-const scorecardRatings = z
-  .array(z.strictObject({ competencyId: z.uuid(), rating: z.enum(RATINGS) }))
-  .min(1)
-  .max(50)
-  .refine((rs) => new Set(rs.map((r) => r.competencyId)).size === rs.length, 'One rating per competency');
-
 // The assessment refuses a preview or an apply with its own error; this module has no dependency on its package.
 const refusedByAssessment = (error: unknown) => error instanceof Error && error.name === 'ScoreChangeError';
 
@@ -236,9 +229,9 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
     async previewScorecardRatings(
       ctx: WorkspaceContext,
       interviewId: string,
-      raw: ScoreChange['changes'],
+      raw: ScorecardRatings,
     ): Promise<ScorePreview> {
-      const ratings = scorecardRatings.parse(raw);
+      const ratings = scorecardRatingsSchema.parse(raw);
       return previewRatings(ctx, await scorecardHolder(ports, ctx, interviewId), ratings);
     },
 

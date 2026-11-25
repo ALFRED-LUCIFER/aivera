@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
 import type { ApplySummaryInput, MeetingSummaryView, ScorePreview, SummaryPreview } from '../application/summary.ts';
 import type { Interview } from '../domain/interview.ts';
-import type { Rating, ScorecardDraft } from '../domain/scorecard.ts';
+import type { ScorecardDraft, ScorecardRatings } from '../domain/scorecard.ts';
 
 export { InterviewError, scorecardDueDays } from '../domain/interview.ts';
 export type { Interview, InterviewErrorCode, InterviewStatus, Round } from '../domain/interview.ts';
@@ -26,6 +26,7 @@ export {
   RATINGS,
   RECOMMENDATIONS,
   scorecardDraftSchema,
+  scorecardRatingsSchema,
   toInterviewNoteEvidence,
   unrated,
 } from '../domain/scorecard.ts';
@@ -36,6 +37,7 @@ export type {
   Rating,
   Recommendation,
   ScorecardDraft,
+  ScorecardRatings,
 } from '../domain/scorecard.ts';
 
 const interviewEvent = z.strictObject({ interviewId: z.uuid(), applicationId: z.uuid() });
@@ -114,11 +116,7 @@ export interface InterviewsContract {
    * `InterviewError` `interview_not_found`, `not_assessed` (no assessment yet) and `preview_changed` (the assessment
    * refused it: not the latest, evidence not yet scored, an interview not held); a zod error for malformed ratings.
    */
-  previewScorecardRatings(
-    ctx: WorkspaceContext,
-    interviewId: string,
-    ratings: { competencyId: string; rating: Rating }[],
-  ): Promise<ScorePreview>;
+  previewScorecardRatings(ctx: WorkspaceContext, interviewId: string, ratings: ScorecardRatings): Promise<ScorePreview>;
   /**
    * Stores a pasted meeting summary on the interview (plain text, 1 to 12,000 characters) and writes
    * `MeetingSummarySubmitted.v1`, so the worker proposes evidence changes from it. It changes no score, evidence or

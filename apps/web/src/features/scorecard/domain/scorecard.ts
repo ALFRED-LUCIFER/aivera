@@ -1,7 +1,7 @@
 import type { Strength } from '@credalent/evidence';
 import {
-  RATINGS,
   scorecardDraftSchema,
+  scorecardRatingsSchema,
   type Round,
   type ScorecardDraft,
   type ScorePreview,
@@ -20,17 +20,14 @@ export const saveDraftInput = z.strictObject({ interviewId: z.uuid(), draft: sco
 /** What the browser sends to preview its ratings (AIV-P2-005), checked again in the interviews module (AGENTS.md 3.7). */
 export const previewInput = z.strictObject({
   interviewId: z.uuid(),
-  ratings: z
-    .array(z.strictObject({ competencyId: z.uuid(), rating: z.enum(RATINGS) }))
-    .min(1)
-    .max(50),
+  ratings: scorecardRatingsSchema,
 });
 export type PreviewRatings = z.infer<typeof previewInput>['ratings'];
 
 type CompetencyState = ScorePreview['changes'][number]['from'];
 
 /** The assessment's preview of the ratings (`previewScorecardRatings`), as far as the panel shows it. */
-export type ScoreEffect = Pick<ScorePreview, 'backedScore'> & {
+export type EffectPreview = Pick<ScorePreview, 'backedScore'> & {
   changes: { competencyId: string; from: CompetencyState; to: CompetencyState }[];
 };
 
@@ -46,7 +43,7 @@ export type EffectLine = {
 /** The panel's states: nothing rated yet, the first preview on its way, not previewable now, or the preview. */
 export type EffectState =
   | { status: 'empty' | 'pending' | 'unavailable' }
-  | { status: 'ready'; lines: EffectLine[]; backedScore: ScoreEffect['backedScore'] };
+  | { status: 'ready'; lines: EffectLine[]; backedScore: EffectPreview['backedScore'] };
 
 // Strong 4, Medium 3, Supporting 2, Claim only 1, no evidence 0.
 const order = (strength: Strength | null) => (strength ? STRENGTHS.length - STRENGTHS.indexOf(strength) : 0);
@@ -63,7 +60,7 @@ const directionOf = (from: CompetencyState, to: CompetencyState): EffectLine['di
  */
 export const effectLines = (
   rated: PreviewRatings,
-  effect: ScoreEffect,
+  effect: EffectPreview,
   competencies: readonly (Pick<ScorecardCompetency, 'competencyId' | 'name'> & {
     evidence: { lead: { strength: Strength } | null } | null;
   })[],

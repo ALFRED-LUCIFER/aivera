@@ -4,7 +4,7 @@ import {
   effectLines,
   type EffectState,
   type PreviewRatings,
-  type ScoreEffect,
+  type EffectPreview,
   type ScorecardData,
 } from '../domain/scorecard.ts';
 import { previewScorecardRatings } from '../services/previewEffect.ts';
@@ -25,10 +25,11 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
     : [];
   // The ratings as a string: typing a note changes the draft, not what is previewed.
   const key = JSON.stringify(rated);
-  const [shown, setShown] = useState<{ key: string; effect: ScoreEffect | null } | null>(null);
+  const [shown, setShown] = useState<{ key: string; effect: EffectPreview | null } | null>(null);
   const { interviewId } = data;
 
   useEffect(() => {
+    // From the key, so the effect depends on what is previewed, not on a new array each render.
     const ratings = JSON.parse(key) as PreviewRatings;
     if (ratings.length === 0) return;
     let current = true;
