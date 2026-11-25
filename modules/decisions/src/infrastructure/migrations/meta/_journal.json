@@ -15,6 +15,13 @@
       "when": 1795550398751,
       "tag": "0001_force_rls_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795630260094,
+      "tag": "0002_busy_archangel",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 // prepared, and the hiring owner's decision per candidate (AIV-P2-009). A person decides; nothing here advances,
 // rejects or contacts anyone (AGENTS.md 1.5).
 
-/** `draft` is not written yet: a pack is created ready, with its members (AIV-P2-010 may save drafts from the ranking). */
+/** `draft` is not written: a pack is created ready, with its members, and the ranking adds to a ready one (AIV-P2-010). */
 export const STATUSES = ['draft', 'ready', 'decided'] as const;
 export type PackStatus = (typeof STATUSES)[number];
 
@@ -39,6 +39,9 @@ export type PackMember = {
   upperBound: number;
   /** The order in the pack, from 0. */
   position: number;
+  /** Who added the member and when (AIV-P1-139); null on members added before these were stored. */
+  addedBy: string | null;
+  addedAt: Date | null;
 };
 
 export type Decision = {

@@ -80,6 +80,8 @@ const ALLOWED = [
   'credalent.catalogue.eval_failed_cases',
   // How many applicants a job's Candidates tab listed (AIV-P1-086): a count, never a name.
   'credalent.intake.applications',
+  // How many people one confirmed choice moved to interview (AIV-P1-114): a count, never a name.
+  'credalent.intake.chosen',
   // How many of them the job's ranking listed as assessed (AIV-P1-034): a count, never a score.
   'credalent.assessment.ranked',
   // Why a sign-in failed: the cause's class name and code (AIV-P0-930). Trusted only because apps/web auth.ts

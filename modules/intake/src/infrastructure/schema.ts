@@ -28,7 +28,7 @@ export const application = intake
       // Must list exactly STAGES (domain/application.ts), which has no rejected stage; changing it needs a migration.
       check(
         'application_stage_check',
-        sql`${t.stage} in ('new', 'first_pass_done', 'assessing', 'in_process', 'in_pool', 'withdrawn')`,
+        sql`${t.stage} in ('new', 'first_pass_done', 'assessing', 'interview', 'in_process', 'in_pool', 'withdrawn')`,
       ),
       tenantPolicy('application_tenant_isolation', t.workspaceId),
     ],

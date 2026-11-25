@@ -2,11 +2,24 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { CreatePackInput, MemberInput, PackView, RecordDecisionsInput } from '../application/packs.ts';
+import type {
+  CreatePackInput,
+  MemberInput,
+  PackSummary,
+  PackView,
+  RecordDecisionsInput,
+} from '../application/packs.ts';
 
 export { PackError } from '../domain/pack.ts';
 export type { Decision, DecisionPack, DecisionValue, PackMember, PackStatus } from '../domain/pack.ts';
-export type { CreatePackInput, MemberInput, PackView, RecordDecisionsInput } from '../application/packs.ts';
+export type {
+  CreatePackInput,
+  MemberInput,
+  PackSummary,
+  PackView,
+  RecordDecisionsInput,
+} from '../application/packs.ts';
+export { NAME_MAX } from '../domain/pack.ts';
 
 const packEvent = z.strictObject({ packId: z.uuid(), jobId: z.uuid() });
 
@@ -34,18 +47,27 @@ export interface DecisionsContract {
   /**
    * A pack for one job on its approved rubric version, `ready`, with at least one member; each member carries a
    * snapshot of their latest assessment (its id, backed score and "up to N"), which later score changes never touch.
-   * A candidate named twice is taken once. Writes `PackReady.v1`. Admins and recruiters on the job (`pack.prepare`).
+   * A candidate named twice is taken once. Each member records who added it and when. Writes `PackReady.v1`, then
+   * audits `pack.created` and one `pack.member_added` per member. Admins and recruiters on the job (`pack.prepare`).
    * Throws, writing nothing: `PackError` `job_not_found` (unknown, or hidden from the context),
    * `rubric_not_approved`, `candidate_not_assessed` (not ranked on the approved version); `ForbiddenError` for any
    * other role; a zod error for a malformed input.
    */
   createPack(ctx: WorkspaceContext, input: CreatePackInput): Promise<{ packId: string }>;
   /**
-   * Adds candidates after the pack's last member, each with their snapshot taken now; one already in the pack is
-   * ignored and keeps the snapshot it has. Admins and recruiters on the job. Throws `PackError` `pack_not_found`,
-   * `pack_decided`, `candidate_not_assessed` (also once the job's approved rubric version is no longer the pack's).
+   * Adds candidates after the pack's last member, each with their snapshot taken now and who added them, and audits
+   * one `pack.member_added` per candidate added; one already in the pack is ignored and keeps the snapshot it has.
+   * Admins and recruiters on the job. Throws `PackError` `pack_not_found`, `pack_decided`, `candidate_not_assessed`
+   * (also once the job's approved rubric version is no longer the pack's).
    */
   addMembers(ctx: WorkspaceContext, packId: string, members: MemberInput[]): Promise<{ added: number }>;
+  /**
+   * The job's packs, newest first, each with its name, status and members' candidate ids in pack order (AIV-P2-010):
+   * the ranking's "Add to decision pack" and its "In shortlist pack". No scores or decisions. Admins, recruiters and
+   * hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer. Throws `PackError('job_not_found')`
+   * for a job the context cannot see.
+   */
+  listPacks(ctx: WorkspaceContext, jobId: string): Promise<PackSummary[]>;
   /**
    * The pack, its members in order and its decisions, or null when it does not exist or its job is hidden from the
    * context. Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.

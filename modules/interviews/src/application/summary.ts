@@ -5,7 +5,7 @@ import type { Tx } from '@credalent/db';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { effectiveStatus, InterviewError, type Interview, type InterviewErrorCode } from '../domain/interview.ts';
-import type { Rating } from '../domain/scorecard.ts';
+import { scorecardRatingsSchema, type Rating, type ScorecardRatings } from '../domain/scorecard.ts';
 import {
   budgetResetAt,
   changedByScorecard,
@@ -20,7 +20,7 @@ import {
   type SummaryFinding,
   type SummaryStatus,
 } from '../domain/summary.ts';
-import type { Ports } from './interviews.ts';
+import { scorecardHolder, type Ports } from './interviews.ts';
 
 /** The summaries store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type SummaryStore = {
@@ -197,15 +197,14 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
     return { summary, interview, proposals: await summariesFor(ctx.tx).proposals(ctx.workspaceId, summaryId) };
   }
 
-  async function preview(
+  /** The assessment's preview of `changes` on the interview's latest snapshot. Writes nothing. */
+  async function previewRatings(
     ctx: WorkspaceContext,
     interview: Interview,
-    proposals: readonly Proposal[],
-    competencyIds: readonly string[],
+    changes: ScoreChange['changes'],
   ): Promise<ScorePreview> {
     const latest = await ports.latestAssessment(ctx, interview.candidateId, interview.jobId);
     if (!latest) throw new InterviewError('not_assessed');
-    const changes = ratingsOf(proposals, competencyIds).map(({ competencyId, rating }) => ({ competencyId, rating }));
     try {
       return await ports.previewScoreChange(ctx, { assessmentId: latest.id, interviewId: interview.id, changes });
     } catch (error) {
@@ -214,7 +213,28 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
     }
   }
 
+  const preview = (
+    ctx: WorkspaceContext,
+    interview: Interview,
+    proposals: readonly Proposal[],
+    competencyIds: readonly string[],
+  ) =>
+    previewRatings(
+      ctx,
+      interview,
+      ratingsOf(proposals, competencyIds).map(({ competencyId, rating }) => ({ competencyId, rating })),
+    );
+
   return {
+    async previewScorecardRatings(
+      ctx: WorkspaceContext,
+      interviewId: string,
+      raw: ScorecardRatings,
+    ): Promise<ScorePreview> {
+      const ratings = scorecardRatingsSchema.parse(raw);
+      return previewRatings(ctx, await scorecardHolder(ports, ctx, interviewId), ratings);
+    },
+
     async submitMeetingSummary(
       ctx: WorkspaceContext,
       interviewId: string,

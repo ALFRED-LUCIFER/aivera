@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startingDraft, type ScorecardCompetency, type ScorecardData } from '@/features/scorecard/domain/scorecard.ts';
@@ -9,8 +9,9 @@ import { ScorecardClient } from './ScorecardClient.tsx';
 
 // AIV-P2-004: the scorecard form with its controller, the server action and the router faked. Daniel Novak's Round 1
 // on Senior AI Engineer, as the Interview artboard draws it (synthetic cast, personas.md).
-const fake = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn() }));
+const fake = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn(), preview: vi.fn() }));
 vi.mock('@/features/scorecard/services/saveDraft.ts', () => ({ saveScorecardDraft: fake.save }));
+vi.mock('@/features/scorecard/services/previewEffect.ts', () => ({ previewScorecardRatings: fake.preview }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fake.push, refresh: vi.fn() }) }));
 vi.mock('@/features/interview-summary/services/summaryActions.ts', () => ({}));
 vi.mock('next/link', () => ({
@@ -21,7 +22,10 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-beforeEach(() => fake.save.mockResolvedValue(true));
+beforeEach(() => {
+  fake.save.mockResolvedValue(true);
+  fake.preview.mockResolvedValue(null);
+});
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -357,5 +361,147 @@ describe('beside the meeting summary (AIV-P1-115)', () => {
     cleanup();
     withSummary('applied');
     expect(primary('Submit scorecard')).toBe(true);
+  });
+});
+
+// AIV-P2-005: "Effect on the assessment", with the assessment's preview faked as it answers for Daniel (55, Supporting).
+const EMPTY =
+  'Rate Retrieval and evaluation to preview how the backed score would change. Nothing is applied until you submit.';
+const UNAVAILABLE = 'Preview unavailable. Your rating is kept and will be applied when you submit.';
+const effectCard = () =>
+  screen.getByRole('heading', { level: 2, name: 'Effect on the assessment' }).parentElement as HTMLElement;
+const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
+const state = (strength: string | null, provenLevel = 0) => ({ strength, provenLevel });
+const answer = (from: ReturnType<typeof state>, to: ReturnType<typeof state>, score: [number, number]) => ({
+  backedScore: { from: score[0], to: score[1] },
+  changes: from === to ? [] : [{ competencyId: RETRIEVAL, from, to }],
+});
+const supporting = state('supporting');
+const RATED = {
+  // A claim already counts zero: weakening it to Claim only leaves the backed score where it was.
+  'Not shown': answer(supporting, state('claim'), [55, 55]),
+  'Partly shown': answer(supporting, supporting, [55, 55]),
+  'Clearly shown': answer(supporting, state('medium', 3), [55, 67]),
+  'Strongly shown': answer(supporting, state('medium', 3), [55, 67]),
+};
+
+describe('Scenario: Before any rating', () => {
+  it('names the first competency, says nothing is applied until submit, and previews nothing', async () => {
+    show();
+    expect(within(effectCard()).getByText(EMPTY)).toBeTruthy();
+    expect(
+      within(effectCard()).getByText('Every change is logged with your name, the time and your note.'),
+    ).toBeTruthy();
+    await wait(500);
+    expect(fake.preview).not.toHaveBeenCalled();
+  });
+});
+
+describe('Scenario Outline: Rating previews the change', () => {
+  it.each([
+    ['Not shown', 'Evidence weakened', 'Retrieval and evaluation: Supporting to Claim only.', 'Backed score stays 55.'],
+    ['Partly shown', 'No change', 'Retrieval and evaluation stays at Supporting.', 'Backed score stays 55.'],
+    [
+      'Clearly shown',
+      'Evidence strengthened',
+      'Retrieval and evaluation: Supporting to Medium.',
+      'Backed score 55 to 67.',
+    ],
+    [
+      'Strongly shown',
+      'Evidence strengthened',
+      'Retrieval and evaluation: Supporting to Medium.',
+      'Backed score 55 to 67.',
+    ],
+  ] as const)('%s: "%s", "%s", "%s"', async (label, heading, strengthLine, scoreLine) => {
+    fake.preview.mockResolvedValue(RATED[label]);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: label }));
+    // Scenario: Announced to assistive technology: the score line is a polite live region.
+    const score = await within(effectCard()).findByText(scoreLine);
+    expect(score.getAttribute('aria-live')).toBe('polite');
+    expect(within(effectCard()).getByText(heading)).toBeTruthy();
+    expect(within(effectCard()).getByText(strengthLine)).toBeTruthy();
+    expect(within(effectCard()).getByText('Before: Observed')).toBeTruthy();
+    expect(within(effectCard()).getByText('After: Projection')).toBeTruthy();
+    expect(fake.preview).toHaveBeenCalledWith({
+      interviewId: data().interviewId,
+      ratings: [{ competencyId: RETRIEVAL, rating: label.toLowerCase().replace(' ', '_') }],
+    });
+  });
+
+  it('a run of ratings is previewed once, for the last; a note typed previews nothing more', async () => {
+    fake.preview.mockResolvedValue(RATED['Clearly shown']);
+    const user = userEvent.setup();
+    show();
+    const group = rating('Retrieval and evaluation');
+    await user.click(within(group).getByRole('radio', { name: 'Not shown' }));
+    await user.click(within(group).getByRole('radio', { name: 'Clearly shown' }));
+    await within(effectCard()).findByText('Backed score 55 to 67.');
+    expect(fake.preview).toHaveBeenCalledTimes(1);
+    expect(fake.preview.mock.calls[0]?.[0].ratings).toEqual([{ competencyId: RETRIEVAL, rating: 'clearly_shown' }]);
+    await user.type(within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard'), 'Built the set');
+    await wait(500);
+    expect(fake.preview).toHaveBeenCalledTimes(1);
+  });
+
+  it('a new rating shows "Previewing…", never the previous rating\'s answer, until its own arrives', async () => {
+    const later = Promise.withResolvers();
+    fake.preview.mockResolvedValueOnce(RATED['Clearly shown']).mockReturnValueOnce(later.promise);
+    const user = userEvent.setup();
+    show();
+    const group = rating('Retrieval and evaluation');
+    await user.click(within(group).getByRole('radio', { name: 'Clearly shown' }));
+    await within(effectCard()).findByText('Backed score 55 to 67.');
+    await user.click(within(group).getByRole('radio', { name: 'Not shown' }));
+    expect(within(effectCard()).getByText('Previewing…')).toBeTruthy();
+    expect(within(effectCard()).queryByText('Evidence strengthened')).toBeNull();
+    expect(within(effectCard()).queryByText('Backed score 55 to 67.')).toBeNull();
+    await waitFor(() => expect(fake.preview).toHaveBeenCalledTimes(2));
+    await act(async () => later.resolve(RATED['Not shown']));
+    expect(within(effectCard()).getByText('Evidence weakened')).toBeTruthy();
+    expect(within(effectCard()).queryByText('Previewing…')).toBeNull();
+  });
+
+  it('a competency marked as not tested is not previewed, and with nothing rated the panel is empty again', async () => {
+    fake.preview.mockResolvedValue(RATED['Clearly shown']);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' }));
+    await within(effectCard()).findByText('Backed score 55 to 67.');
+    for (const button of within(card('Retrieval and evaluation')).getAllByRole('button', { name: 'Not asked' }))
+      await user.click(button);
+    expect(within(effectCard()).getByText(EMPTY)).toBeTruthy();
+    expect(within(effectCard()).queryByText('Backed score 55 to 67.')).toBeNull();
+  });
+});
+
+describe('Scenario: Preview service fails', () => {
+  it.each([
+    ['answers that it cannot preview now', () => fake.preview.mockResolvedValue(null)],
+    ['fails', () => fake.preview.mockRejectedValue(new Error('offline'))],
+  ])('when the preview %s, the panel says so and the rating is kept', async (_, fail) => {
+    fail();
+    const user = userEvent.setup();
+    show();
+    const strongly = within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Strongly shown' });
+    await user.click(strongly);
+    expect((await within(effectCard()).findByText(UNAVAILABLE)).getAttribute('aria-live')).toBe('polite');
+    expect((strongly as HTMLInputElement).checked).toBe(true);
+  });
+});
+
+describe('a member who may not change the scorecard (AIV-P2-005)', () => {
+  it('sees no preview panel, and nothing is previewed for them', async () => {
+    const draft = startingDraft(competencies, null);
+    const rated = {
+      ...draft,
+      competencies: draft.competencies.map((c) => ({ ...c, rating: 'clearly_shown' as const })),
+    };
+    show({ canEdit: false, draft: rated });
+    expect(screen.queryByRole('heading', { name: 'Effect on the assessment' })).toBeNull();
+    await wait(500);
+    expect(fake.preview).not.toHaveBeenCalled();
   });
 });

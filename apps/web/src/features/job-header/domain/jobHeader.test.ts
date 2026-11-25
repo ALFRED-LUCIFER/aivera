@@ -68,6 +68,8 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   it('only the stage segments are a current page', () => {
     expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');
+    // A pack's own page sits under the Decision stage (AIV-P2-010).
+    expect(parseJobPage('packs')).toBe('pack');
     expect(parseJobPage('settings')).toBeNull();
     expect(parseJobPage(null)).toBeNull();
   });

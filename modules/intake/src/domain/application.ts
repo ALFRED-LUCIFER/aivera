@@ -6,10 +6,22 @@ export type Source = (typeof SOURCES)[number];
 
 /**
  * Where an application stands. There is no rejected stage: nothing rejects a candidate automatically, and a person
- * who decides against one records it in the decision pack (AGENTS.md 1.5).
+ * who decides against one records it in the decision pack (AIV-P1-114: `interview` once a person chose them for
+ * interview; AGENTS.md 1.5).
  */
-export const STAGES = ['new', 'first_pass_done', 'assessing', 'in_process', 'in_pool', 'withdrawn'] as const;
+export const STAGES = [
+  'new',
+  'first_pass_done',
+  'assessing',
+  'interview',
+  'in_process',
+  'in_pool',
+  'withdrawn',
+] as const;
 export type Stage = (typeof STAGES)[number];
+
+/** The longest reason a recruiter may give for choosing people for interview (AIV-P1-114). */
+export const CHOICE_REASON_MAX = 500;
 
 export type Application = {
   id: string;
@@ -73,6 +85,8 @@ const MESSAGES = {
   confirmation_required: 'Confirm you are responsible for the right to process these CVs.',
   invalid_wording: 'Unknown confirmation wording',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
+  not_on_job: 'This candidate has not applied to this job',
+  reason_required: 'Give a reason for this choice',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;

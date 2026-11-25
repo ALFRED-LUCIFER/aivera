@@ -27,7 +27,12 @@ export type PackStore = {
   listMembers(workspaceId: string, packId: string): Promise<PackMember[]>;
   insertDecisions(decisions: Decision[]): Promise<void>;
   listDecisions(workspaceId: string, packId: string): Promise<Decision[]>;
+  /** The job's packs, newest first, each with its members' candidate ids in pack order. */
+  listForJob(workspaceId: string, jobId: string): Promise<PackSummary[]>;
 };
+
+/** A pack as the ranking needs it (AIV-P2-010): which packs the job has and who is in each. */
+export type PackSummary = Pick<DecisionPack, 'id' | 'name' | 'status'> & { candidateIds: string[] };
 
 /** The job a pack belongs to, as the context may see it, with the member who owns its hiring decision. */
 export type PackJob = JobResource & { hiringOwnerUserId: string | null };
@@ -51,6 +56,10 @@ export type Ports = {
   ): Promise<{ id: string; rubricVersionId: string; backedScore: number; upperBound: number } | null>;
   /** Writes `decision.recorded` to the audit log in `ctx.tx`: the last statements before commit (AGENTS.md 3.6). */
   auditDecision(ctx: WorkspaceContext, jobId: string, decision: Decision): Promise<void>;
+  /** Writes `pack.created` to the audit log in `ctx.tx`, after the pack's other writes (AGENTS.md 3.6). */
+  auditPackCreated(ctx: WorkspaceContext, pack: DecisionPack): Promise<void>;
+  /** Writes `pack.member_added` for one member to the audit log in `ctx.tx`, after the pack's other writes. */
+  auditMemberAdded(ctx: WorkspaceContext, jobId: string, member: PackMember): Promise<void>;
   newId(): string;
   now(): Date;
 };
@@ -102,6 +111,7 @@ export function packUseCases(ports: Ports) {
     ranked: readonly string[],
     adding: readonly z.output<typeof memberInput>[],
     from: number,
+    addedAt: Date,
   ): Promise<PackMember[]> {
     const members: PackMember[] = [];
     for (const [i, { candidateId }] of adding.entries()) {
@@ -116,6 +126,8 @@ export function packUseCases(ports: Ports) {
         backedScore: latest.backedScore,
         upperBound: latest.upperBound,
         position: from + i,
+        addedBy: ctx.userId,
+        addedAt,
       });
     }
     return members;
@@ -139,11 +151,20 @@ export function packUseCases(ports: Ports) {
         preparedAt: now(),
         status: 'ready',
       };
-      const members = await snapshot(ctx, pack, ranking.candidateIds, newMembers([], input.members), 0);
+      const members = await snapshot(
+        ctx,
+        pack,
+        ranking.candidateIds,
+        newMembers([], input.members),
+        0,
+        pack.preparedAt,
+      );
       const store = storeFor(ctx.tx);
       await store.insertPack(pack);
       await store.insertMembers(members);
       await ports.publishPackReady(ctx.tx, pack);
+      await ports.auditPackCreated(ctx, pack);
+      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member);
       return { packId: pack.id };
     },
 
@@ -164,8 +185,17 @@ export function packUseCases(ports: Ports) {
       // A pack is on one rubric version: once the job's approved version moves on, nobody ranked on it can join.
       const ranking = await ports.ranking(ctx, job.jobId);
       const ranked = ranking?.rubricVersionId === pack.rubricVersionId ? ranking.candidateIds : [];
-      await store.insertMembers(await snapshot(ctx, pack, ranked, fresh, inPack.length));
+      const members = await snapshot(ctx, pack, ranked, fresh, inPack.length, now());
+      await store.insertMembers(members);
+      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member);
       return { added: fresh.length };
+    },
+
+    async listPacks(ctx: WorkspaceContext, jobId: string): Promise<PackSummary[]> {
+      const job = z.uuid().safeParse(jobId).success ? await ports.job(ctx, jobId) : null;
+      if (!job) throw new PackError('job_not_found');
+      await authorize(ctx, 'pack.view', job);
+      return storeFor(ctx.tx).listForJob(ctx.workspaceId, job.jobId);
     },
 
     async getPack(ctx: WorkspaceContext, packId: string): Promise<PackView | null> {

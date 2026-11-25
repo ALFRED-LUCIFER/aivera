@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { PackStore } from '../application/packs.ts';
 import { decision, pack, packMember } from './schema.ts';
 
@@ -40,6 +40,31 @@ export function packStore(tx: Tx): PackStore {
     },
     async insertDecisions(decisions) {
       await tx.insert(decision).values(decisions);
+    },
+    async listForJob(workspaceId, jobId) {
+      const packs = await tx
+        .select({ id: pack.id, name: pack.name, status: pack.status })
+        .from(pack)
+        .where(and(eq(pack.workspaceId, workspaceId), eq(pack.jobId, jobId)))
+        .orderBy(desc(pack.preparedAt), desc(pack.id));
+      if (packs.length === 0) return [];
+      const members = await tx
+        .select({ packId: packMember.packId, candidateId: packMember.candidateId })
+        .from(packMember)
+        .where(
+          and(
+            eq(packMember.workspaceId, workspaceId),
+            inArray(
+              packMember.packId,
+              packs.map((p) => p.id),
+            ),
+          ),
+        )
+        .orderBy(asc(packMember.position));
+      return packs.map((p) => ({
+        ...p,
+        candidateIds: members.filter((m) => m.packId === p.id).map((m) => m.candidateId),
+      }));
     },
     listDecisions(workspaceId, packId) {
       return tx

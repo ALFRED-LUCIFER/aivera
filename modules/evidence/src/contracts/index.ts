@@ -115,7 +115,7 @@ export const GitHubProfileExpandRequestedV1 = {
 /**
  * Written to `evidence.outbox` and sent to the `evidence` queue, whose worker job `evidence.repository.refresh-stale`
  * re-reads the candidate's stale repository sources and grades their skill signals against the job's approved rubric
- * version (AIV-P1-072). AIV-P2-010 asks for it before it builds a decision pack. Strict, opaque ids only.
+ * version (AIV-P1-072). The pack page (AIV-P2-011, #125) asks for it before a hiring owner decides. Strict, opaque ids only.
  */
 export const RepositoryRefreshRequestedV1 = {
   type: 'RepositoryRefreshRequested.v1',

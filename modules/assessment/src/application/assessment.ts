@@ -2,6 +2,7 @@ import type { Tx } from '@credalent/db';
 import type { EvidenceItemView } from '@credalent/evidence';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
 import { assess, type Assessment, type Confidence, type EvidenceLink, type RubricInput } from '../domain/assess.ts';
+import { selectGaps } from '../domain/questions.ts';
 import { withInterviewChanges, type InterviewChange } from '../domain/scoreChange.ts';
 import type { InterviewChangeRow } from './scoreChange.ts';
 
@@ -50,6 +51,8 @@ export type RankingRow = {
   confidence: Confidence;
   /** As stored in `assessment.result`: mandatory competencies proven below the need, evidence to request. */
   missingCritical: string[];
+  /** The competencies a Round 1 interview should investigate (`selectGaps`), heaviest first (AIV-P1-114). */
+  gaps: string[];
   assessedAt: Date;
 };
 
@@ -231,6 +234,7 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
       competencyCount: r.competencyCount,
       confidence: r.confidence,
       missingCritical: r.missingCritical,
+      gaps: selectGaps(r).map((gap) => gap.competencyId),
       assessedAt: r.assessedAt,
     }));
 }
@@ -254,6 +258,15 @@ export function assessmentUseCases(ports: Ports) {
     async getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string) {
       await authorize(ctx, 'candidate.view', (await candidateJob(ctx, candidateId, jobId)) ?? undefined);
       return storeFor(ctx.tx).latest(ctx.workspaceId, candidateId, jobId);
+    },
+
+    async interviewGaps(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<string[]> {
+      await authorize(ctx, 'candidate.view', (await candidateJob(ctx, candidateId, jobId)) ?? undefined);
+      const job = await rankingJob(ctx, jobId);
+      const latest = await storeFor(ctx.tx).latest(ctx.workspaceId, candidateId, jobId);
+      // Only a result on the approved version: another version's competencies are not the interview's to test.
+      if (!latest || !job || latest.rubricVersionId !== job.approvedVersionId) return [];
+      return selectGaps(latest).map((gap) => gap.competencyId);
     },
 
     // shortcut: no paging; a pilot job has tens of applicants. Page with the ranked table once a job passes a few hundred.
