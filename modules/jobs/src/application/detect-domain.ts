@@ -5,10 +5,10 @@ import {
   UncitedOutput,
   type AiClient,
   type Citation,
+  regionsNotAboutPeople,
   type Source,
 } from '@credalent/ai';
 import type { CatalogueVersion } from '../domain/catalogue.ts';
-import { regionsNotAboutPeople } from '../domain/region-guard.ts';
 
 // "Detect the job's industry" (AIV-P1-063, ADR-006): runs beside "Draft competencies" (AIV-P1-008) under the same
 // citation contract. The industry is the hiring company's, read from the job's own text: never about a candidate.

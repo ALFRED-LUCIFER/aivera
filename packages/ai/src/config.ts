@@ -7,6 +7,10 @@
 export const deployments = {
   'gpt-main': { model: 'gpt-4.1-mini', inputPerMillion: 400_000, outputPerMillion: 1_600_000 },
   'embedding-main': { model: 'text-embedding-3-large', inputPerMillion: 130_000, outputPerMillion: 0 },
+  // The eval judge only (infra/modules/ai.bicep): gpt-4.1 on dev.
+  // shortcut: the pilot's runs gpt-4.1-mini under this name, so its model and cost estimate here read about 5x high there;
+  // move the pilot to gpt-4.1 when UAE North offers it on regional Standard.
+  'gpt-judge': { model: 'gpt-4.1', inputPerMillion: 2_000_000, outputPerMillion: 8_000_000 },
 } as const;
 
 export type Deployment = keyof typeof deployments;
@@ -49,8 +53,9 @@ export const generateTasks = {
     temperature: 0.2,
     service: { tokenCap: 30_000 },
   },
-  // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows.
-  'evals.judge': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
+  // The eval harness's LLM judge (AIV-P0-029): a short verdict, as repeatable as the model allows. A stronger model than
+  // the one it grades (AIV-P1-075): on gpt-main it passed a limit its sources contradict.
+  'evals.judge': { deployment: 'gpt-judge', timeoutMs: 60_000, maxOutputTokens: 300, temperature: 0 },
 } as const satisfies Record<string, TaskSettings>;
 
 export const embedTasks = {
