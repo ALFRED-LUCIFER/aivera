@@ -298,9 +298,7 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
     const faults: Record<string, SuggestionFault | null> = Object.fromEntries(
       verdicts.map((v) => [v.name, faultOf(v)]),
     );
-    // AIV-P2-088: citing nothing is a fact code sees, so it is decided here, item by item as suggestionMatch reads it;
-    // the judge may skip such a suggestion. A graver fault the judge gave (a proxy) stays, as in faultOf. Verdicts are
-    // keyed by name, so a name that one suggestion cites keeps the judge's verdict.
+    // AIV-P2-088: citing nothing is decided here (the judge may skip it); a judge fault stays, as does a cited name's.
     const items = valuesAt(output, 'suggestions[*]');
     const cited = new Set(items.flatMap((s) => (valuesAt(s, 'citations[*]').length ? valuesAt(s, 'name') : [])));
     for (const name of items.flatMap((s) => valuesAt(s, 'name')))
