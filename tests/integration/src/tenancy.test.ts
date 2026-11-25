@@ -22,6 +22,8 @@ import { createApprovedRubricReads, createJobs } from '@credalent/jobs/compositi
 import { createFiles, type BlobStore } from '@credalent/files/composition';
 import { createNotifications } from '@credalent/notifications/composition';
 import { createDb, DbQueryError, withCandidateAccount, withWorkspace, type Db, type Tx } from '@credalent/db';
+import type { DecisionsContract } from '@credalent/decisions';
+import { createDecisions } from '@credalent/decisions/composition';
 import { ForbiddenError, WorkspaceError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
@@ -266,6 +268,7 @@ type Modules = {
   jobs: JobsContract;
   intake: IntakeContract;
   interviews: InterviewsContract;
+  decisions: DecisionsContract;
   audit: AuditContract;
 };
 const modulesOn = (db: Db): Modules => {
@@ -277,12 +280,14 @@ const modulesOn = (db: Db): Modules => {
     evidence: createEvidenceRecords(() => NOW),
   });
   const jobs = createJobs(workspaces, audit, () => NOW);
+  const assessment = createAssessment(workspaces, audit, jobs, () => NOW);
   return {
     audit,
     workspaces,
     candidates,
     evidence: createEvidence(workspaces, audit, () => NOW),
-    assessment: createAssessment(workspaces, audit, jobs, () => NOW),
+    assessment,
+    decisions: createDecisions(workspaces, jobs, assessment, audit, () => NOW),
     jobs,
     intake: createIntake(workspaces, candidates, jobs, displayNamesInWorkspace, audit, () => NOW),
     interviews: createInterviews(
@@ -315,7 +320,7 @@ const urlFor = (role: string) =>
  * through the contracts. A new tenant table needs a line here (the per-table check says so).
  */
 async function seed(
-  { workspaces, candidates, evidence, assessment, jobs, intake, interviews }: Modules,
+  { workspaces, candidates, evidence, assessment, jobs, intake, interviews, decisions }: Modules,
   name: string,
   creator: string,
   person: string,
@@ -449,10 +454,21 @@ async function seed(
     // An applied interview change on that result (assessment.interview_change, AIV-P1-117).
     await ctx.tx.execute(
       sql`insert into assessment.interview_change (id, workspace_id, candidate_id, job_id, result_id, competency_id,
-            source_id, strength, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id)
+            source_id, rating, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id)
           values (${crypto.randomUUID()}, ${ctx.workspaceId}, ${personId}, ${job.id}, ${scored.id}, ${competencyId},
-            ${crypto.randomUUID()}, 'medium', 3, '[]'::jsonb, 'Defended the design in detail', ${ctx.userId},
+            ${crypto.randomUUID()}, 'clearly_shown', 3, '[]'::jsonb, 'Defended the design in detail', ${ctx.userId},
             ${NOW.toISOString()}, ${crypto.randomUUID()}, 'preview')`,
+    );
+    // A decision pack with that candidate's snapshot and its PackReady.v1 (decisions.pack, .pack_member, .outbox,
+    // AIV-P2-009). The job has no hiring owner to record a decision, so its row is written as recordDecisions does.
+    const { packId } = await decisions.createPack(ctx, {
+      jobId: job.id,
+      name: 'Round 2 shortlist',
+      members: [{ candidateId: personId }],
+    });
+    await ctx.tx.execute(
+      sql`insert into decisions.decision (workspace_id, pack_id, candidate_id, decision, decided_by, decided_at, note)
+          values (${ctx.workspaceId}, ${packId}, ${personId}, 'hold', ${creator}, ${NOW.toISOString()}, 'Synthetic')`,
     );
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
@@ -781,7 +797,8 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
       ).toEqual([w1.workspaceId]);
 
       // Either RLS hides the rows (0 updated) or the role has no UPDATE at all (audit.entry is append-only; the app
-      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030).
+      // cannot mark an outbox event, AIV-P0-014; an assessment result is history, AIV-P1-030; of a decision pack the
+      // app may update only the status column, and never a member's snapshot or a recorded decision, AIV-P2-009).
       const updated = await as(w1Modules, ALEX, w1.workspaceId, ({ tx }) =>
         tx.execute(sql`update ${from} set ${key} = ${key} where ${key} = ${w2.workspaceId}`),
       ).then(
@@ -792,6 +809,7 @@ describe("Scenario: The app role cannot read or write another workspace's rows, 
         name === 'audit.entry' ||
         name === 'assessment.result' ||
         name === 'assessment.interview_change' ||
+        name.startsWith('decisions.') ||
         name.endsWith('.outbox');
       expect(noUpdate ? [0, '42501'] : [0], name).toContain(updated);
     }
