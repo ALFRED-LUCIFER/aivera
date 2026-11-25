@@ -458,7 +458,7 @@ export async function readRepository(
 
 /**
  * The worker job `evidence.repository.refresh-stale` (AIV-P1-072), run before a decision pack rests on the candidate's
- * repository evidence (AIV-P2-010 enqueues it): re-reads each stale source (one metadata call per source decides), then
+ * repository evidence (the pack page, AIV-P2-011, enqueues it): re-reads each stale source (one metadata call per source decides), then
  * grades every read source against the job's approved rubric version. A rate limit anywhere throws GitHubRateLimited, so
  * nothing is written and the job is rescheduled.
  */

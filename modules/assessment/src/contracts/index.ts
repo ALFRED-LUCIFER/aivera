@@ -46,6 +46,12 @@ export interface AssessmentContract {
   /** The latest assessment of the candidate for the job, or null. Admins and recruiters; hiring owners and interviewers on a granted job the candidate applied to. */
   getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
   /**
+   * The competency ids a Round 1 interview should investigate (AIV-P1-114): the gaps of the candidate's latest result
+   * on the job's approved rubric version (`selectGaps`: proven below the need, or resting on a claim), heaviest first,
+   * at most 4; none without such a result. Writes nothing. Access as `getLatestAssessment`.
+   */
+  interviewGaps(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<string[]>;
+  /**
    * The job's ranking (AIV-P1-031): `awaiting_rubric` until a rubric version is approved; then each candidate's latest
    * result on the approved version, by backed score, then upper bound, then earliest first assessment, ranked from 1.
    * A candidate not yet assessed on that version is not listed. It orders attention only; it rejects and hides nobody

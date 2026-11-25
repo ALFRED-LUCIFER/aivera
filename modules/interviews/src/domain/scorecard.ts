@@ -35,6 +35,14 @@ export const scorecardDraftSchema = z.strictObject({
   recommendation: z.enum(RECOMMENDATIONS).nullable(),
 });
 export type ScorecardDraft = z.infer<typeof scorecardDraftSchema>;
+
+/** A scorecard's ratings to preview (AIV-P2-005): one per competency. */
+export const scorecardRatingsSchema = z
+  .array(z.strictObject({ competencyId: z.uuid(), rating: z.enum(RATINGS) }))
+  .min(1)
+  .max(50)
+  .refine((rs) => new Set(rs.map((r) => r.competencyId)).size === rs.length, 'One rating per competency');
+export type ScorecardRatings = z.infer<typeof scorecardRatingsSchema>;
 export type DraftCompetency = ScorecardDraft['competencies'][number];
 
 /** "Not assessed in this round · stays a gap": every question was not asked or not answered, so nothing was tested. */

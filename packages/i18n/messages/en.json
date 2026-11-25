@@ -1729,6 +1729,18 @@
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
   },
+  "decisionPack": {
+    "title": "{name}: {job}",
+    "prepared": "Decision pack · prepared {date, date, ::d MMM yyyy}",
+    "preparedOn": "Decision pack · prepared {date, date, ::d MMM yyyy} · rubric v{version}",
+    "members": "{count, plural, one {# candidate} other {# candidates}}",
+    "basis": "Backed scores are observed from inspected evidence, as they were when each candidate joined the pack.",
+    "others": "{count, plural, =0 {Everyone who applied is in this pack.} one {# other candidate stays in the ranking and can be added to a later pack.} other {# other candidates stay in the ranking and can be added to a later pack.}}",
+    "back": "Back to ranking",
+    "list": "Decision packs",
+    "loading": "Loading the decision pack…",
+    "error": "We could not load the decision pack. Try again."
+  },
   "ranking": {
     "duplicates": {
       "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
@@ -1793,6 +1805,7 @@
       "new": "New",
       "first_pass_done": "First pass done",
       "assessing": "Assessing",
+      "interview": "Chosen for interview",
       "in_process": "In process",
       "in_pool": "In talent pool",
       "withdrawn": "Withdrawn"
@@ -1816,11 +1829,51 @@
     "loading": "Loading the ranking…",
     "error": "We could not load the ranking. Try again.",
     "retry": "Try again",
+    "choose": {
+      "title": "{count, plural, =0 {Preview: everyone selected is already chosen for interview} one {Preview: # person chosen for interview} other {Preview: # people chosen for interview}}",
+      "unnamed": "Unnamed applicant",
+      "investigate": "To investigate: {names}",
+      "noGaps": "No evidence gap to investigate",
+      "alreadyChosen": "Already chosen for interview",
+      "round": "Round 1, structured screen",
+      "interviewer": "Interviewer: You",
+      "reason": "Reason",
+      "defaultReason": "First shortlist",
+      "reasonRequired": "Give a reason for this choice",
+      "consequence": "Each appears on the Interviews page as \"Not scheduled yet\". Nobody is contacted, and everyone else stays in the ranking unchanged.",
+      "confirm": "{count, plural, =0 {Nobody to choose} other {Choose # for interview}}",
+      "pending": "Choosing…",
+      "cancel": "Cancel",
+      "footer": "Nothing changes until you confirm.",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "notOnJob": "This candidate has not applied to this job. Nothing was changed.",
+      "done": "{count, plural, =0 {Nobody new was chosen for interview.} one {# person chosen for interview. They are on the Interviews page, not scheduled yet.} other {# people chosen for interview. They are on the Interviews page, not scheduled yet.}}"
+    },
+    "pack": {
+      "title": "{count, plural, =0 {Preview: nobody new to add to a decision pack} one {Preview: add # candidate to a decision pack} other {Preview: add # candidates to a decision pack}}",
+      "inPack": "In shortlist pack",
+      "notScored": "Not yet scored, so not added: a pack holds each candidate's assessment",
+      "legend": "Decision pack",
+      "existing": "{name} ({count, plural, one {# candidate} other {# candidates}})",
+      "new": "New pack",
+      "name": "Pack name",
+      "consequence": "The hiring owner decides from the pack. Nobody is contacted, and everyone else stays in the ranking unchanged.",
+      "confirm": "{count, plural, =0 {Nobody to add} one {Add # to the pack} other {Add # to the pack}}",
+      "pending": "Adding…",
+      "cancel": "Cancel",
+      "footer": "Nothing changes until you confirm.",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "notOnJob": "This candidate has not applied to this job. Nothing was changed.",
+      "done": "{count, plural, =0 {Nobody new was added to {name}.} one {# candidate added to {name}.} other {# candidates added to {name}.}}",
+      "open": "Open the pack"
+    },
     "bulk": {
       "label": "Bulk actions",
       "selected": "{count} selected",
       "notShown": "{count} not shown in the table",
       "previewNote": "Bulk actions always show a preview first.",
+      "choose": "Choose for interview",
+      "pack": "Add to decision pack",
       "selectAll": "Select all {count} shown",
       "selectRow": "Select {name}",
       "compare": {
@@ -1983,7 +2036,20 @@
     "failed": "We could not save your draft. Try again.",
     "readOnly": "You can read this scorecard but not change it. Only the interviewer or a workspace admin fills it in, while the interview is open.",
     "loading": "Loading the scorecard…",
-    "error": "We could not load this scorecard. Try again."
+    "error": "We could not load this scorecard. Try again.",
+    "effect": {
+      "empty": "Rate {name} to preview how the backed score would change. Nothing is applied until you submit.",
+      "pending": "Previewing…",
+      "weakened": "Evidence weakened",
+      "unchanged": "No change",
+      "strengthened": "Evidence strengthened",
+      "change": "{name}: {from} to {to}.",
+      "stays": "{name} stays at {strength}.",
+      "score": "Backed score {from} to {to}.",
+      "scoreStays": "Backed score stays {score}.",
+      "unavailable": "Preview unavailable. Your rating is kept and will be applied when you submit.",
+      "logged": "Every change is logged with your name, the time and your note."
+    }
   },
   "interviewSummary": {
     "title": "Meeting summary",

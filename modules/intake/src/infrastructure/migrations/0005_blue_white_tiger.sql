@@ -1,0 +1,2 @@
+ALTER TABLE "intake"."application" DROP CONSTRAINT "application_stage_check";--> statement-breakpoint
+ALTER TABLE "intake"."application" ADD CONSTRAINT "application_stage_check" CHECK ("intake"."application"."stage" in ('new', 'first_pass_done', 'assessing', 'interview', 'in_process', 'in_pool', 'withdrawn'));

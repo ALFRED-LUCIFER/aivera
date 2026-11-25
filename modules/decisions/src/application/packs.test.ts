@@ -45,6 +45,9 @@ function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), 
     listMembers: vi.fn<PackStore['listMembers']>(async () => members),
     insertDecisions: vi.fn<PackStore['insertDecisions']>(async () => undefined),
     listDecisions: vi.fn<PackStore['listDecisions']>(async () => []),
+    listForJob: vi.fn<PackStore['listForJob']>(async () => [
+      { id: PACK, name: 'Round 2 shortlist', status: 'ready', candidateIds: [SARA] },
+    ]),
   };
   const ports: Ports = {
     storeFor: () => store,
@@ -255,5 +258,37 @@ describe('getPack', () => {
     const { useCases } = setup({ job: async () => null });
     expect(await useCases.getPack(ctxAs('hiring_owner', FAISAL), PACK)).toBeNull();
     expect(await setup().useCases.getPack(ctxAs('recruiter'), 'not-an-id')).toBeNull();
+  });
+});
+
+// AIV-P2-010: the ranking reads which packs the job has, for "Add to decision pack" and "In shortlist pack".
+describe('listPacks', () => {
+  it("lists the job's packs with their members, after pack.view on the job", async () => {
+    const { useCases, ports, store } = setup();
+    expect(await useCases.listPacks(ctxAs('recruiter'), JOB.jobId)).toEqual([
+      { id: PACK, name: 'Round 2 shortlist', status: 'ready', candidateIds: [SARA] },
+    ]);
+    expect(ports.authorize).toHaveBeenCalledWith(ctxAs('recruiter'), 'pack.view', JOB);
+    expect(store.listForJob).toHaveBeenCalledWith('w1', JOB.jobId);
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'pack.view', job) from listPacks -> this test failed (packs read)
+  it('an interviewer is refused before anything is read', async () => {
+    const { useCases, store } = setup({
+      authorize: async () => {
+        throw new ForbiddenError();
+      },
+    });
+    await expect(useCases.listPacks(ctxAs('interviewer'), JOB.jobId)).rejects.toThrow(ForbiddenError);
+    expect(store.listForJob).not.toHaveBeenCalled();
+  });
+
+  it('a job the context cannot see, or a malformed id, is not found', async () => {
+    const { useCases, store } = setup();
+    await expect(useCases.listPacks(ctxAs('recruiter'), id(99))).rejects.toMatchObject({ code: 'job_not_found' });
+    await expect(useCases.listPacks(ctxAs('recruiter'), 'not-a-uuid')).rejects.toMatchObject({
+      code: 'job_not_found',
+    });
+    expect(store.listForJob).not.toHaveBeenCalled();
   });
 });

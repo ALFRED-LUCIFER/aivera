@@ -4,6 +4,7 @@ import { log } from '@credalent/observability';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
+import { getDecisions } from '@/server/decisions';
 import { enabledFlags } from '@/server/flags';
 import { getCandidates } from '@/server/people';
 import { getIntake } from '@/server/intake';
@@ -89,10 +90,19 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
       const names = new Map(
         rubric?.id === ranking.rubricVersionId ? rubric.competencies.map((c) => [c.id, c.name] as const) : [],
       );
-      return { applicants, ranking, names, duplicates, bulkActions };
+      // shortcut: only members who may add to a pack read the packs, so a hiring owner's rows do not say "In shortlist
+      // pack"; read them for `pack.view` too when the hiring owner's ranking needs it.
+      const packs = bulkActions.includes('addToPack')
+        ? (await getDecisions().listPacks(ctx, jobId))
+            .filter((p) => p.status === 'ready')
+            .map(({ id, name, candidateIds }) => ({ id, name, candidateIds }))
+        : [];
+      return { applicants, ranking, names, duplicates, bulkActions, packs };
     });
     if (!result) return null;
     const { applicants, ranking, names, duplicates, bulkActions } = result.value;
+    const packs = 'packs' in result.value ? result.value.packs : [];
+    const inPack = new Set(packs.flatMap((p) => p.candidateIds));
     const ranked = ranking.status === 'ranked' ? ranking.rows : [];
     log.info(
       {
@@ -106,8 +116,11 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
     return {
       jobId,
       awaitingRubric: ranking.status === 'awaiting_rubric',
-      rows: toCandidateRows(applicants, ranked, (id) => names.get(id), duplicates),
+      rows: toCandidateRows(applicants, ranked, (id) => names.get(id), duplicates).map((row) =>
+        inPack.has(row.personId) ? { ...row, inPack: true as const } : row,
+      ),
       bulkActions,
+      ...(bulkActions.includes('addToPack') && { packs }),
     };
   } catch (error) {
     if (error instanceof IntakeError || error instanceof ForbiddenError) return 'notFound';

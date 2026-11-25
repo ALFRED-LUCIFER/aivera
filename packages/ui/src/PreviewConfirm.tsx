@@ -172,10 +172,18 @@ export function PreviewConfirmCard({
 }
 
 /**
- * The inline preview (Inbox, Candidates, Candidate): a region named by its h3 title; Escape cancels. After onConfirm
- * resolves it stays pending until the caller replaces it, usually with a SuccessBanner message.
+ * The inline preview (Inbox, Candidates, Candidate): a region named by its title, an h3 unless `level` says 2 (a page
+ * with no h2 above it, such as a job's ranking); Escape cancels. After onConfirm resolves it stays pending until the
+ * caller replaces it, usually with a SuccessBanner message.
  */
-export function PreviewBanner({ title, onConfirm, onCancel, ...body }: PreviewConfirmProps) {
+export function PreviewBanner({
+  title,
+  level = 3,
+  onConfirm,
+  onCancel,
+  ...body
+}: PreviewConfirmProps & { level?: 2 | 3 }) {
+  const Heading = level === 2 ? 'h2' : 'h3';
   const state = usePreviewConfirm(onConfirm);
   const id = useId();
   const cancel = () => {
@@ -192,9 +200,9 @@ export function PreviewBanner({ title, onConfirm, onCancel, ...body }: PreviewCo
         cancel();
       }}
     >
-      <h3 id={id} className="mb-2 text-card text-text">
+      <Heading id={id} className="mb-2 text-card text-text">
         {title}
-      </h3>
+      </Heading>
       <PreviewBody {...body} {...state} onCancel={cancel} />
     </section>
   );

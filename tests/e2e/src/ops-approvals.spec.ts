@@ -121,7 +121,8 @@ test('Scenario: Changing the switch: the preview says pending workspaces stay pe
   await signIn(page, { email: PIA });
   await page.goto('/ops/approvals');
   await expect(page.getByRole('heading', { level: 2, name: 'New workspaces need approval' })).toBeVisible();
-  await expect(page.getByText('On', { exact: true })).toBeVisible();
+  // In #content: while the page streams in, its hidden copy is still in the document for a moment.
+  await expect(page.locator('#content').getByText('On', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Turn off' }).click();
   const dialog = page.getByRole('dialog', { name: 'Turn off approval for new workspaces?' });
   await expect(dialog).toContainText('Workspaces already waiting stay waiting until you decide each one.');
