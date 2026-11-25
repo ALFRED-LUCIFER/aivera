@@ -171,7 +171,7 @@ afterAll(async () => {
 });
 
 describe('Migrations', () => {
-  it('assessment.explanation, inbox and result are owned by aivera_migrator with row-level security enabled and forced', async () => {
+  it('assessment.explanation, inbox, interview_change and result are owned by aivera_migrator with row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
@@ -179,6 +179,7 @@ describe('Migrations', () => {
     expect([...tables]).toEqual([
       { name: 'explanation', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'interview_change', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'result', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });

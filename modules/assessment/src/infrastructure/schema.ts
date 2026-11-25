@@ -1,9 +1,21 @@
 import { inboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { check, index, jsonb, pgSchema, primaryKey, smallint, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  index,
+  jsonb,
+  pgSchema,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import type { CompetencyResult } from '../domain/assess.ts';
 import type { ExplanationStatement } from '../domain/explain.ts';
+import { RATINGS } from '../domain/scoreChange.ts';
 
 export const assessment = pgSchema('assessment');
 
@@ -62,6 +74,51 @@ export const explanation = assessment
     (t) => [
       primaryKey({ columns: [t.resultId, t.promptVersion] }),
       tenantPolicy('explanation_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A person's applied interview-based change to one competency (AIV-P1-117): every later assessment re-applies it, so
+// the interviewer's word stands until another interview changes it. Append-only (0008_force_rls_interview_change). `reason` is the person's own
+// words about a candidate, so it stays here and in the audit note (AGENTS.md 1.2); a result's erasure deletes its changes.
+export const interviewChange = assessment
+  .table(
+    'interview_change',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      jobId: uuid('job_id').notNull(),
+      // The snapshot stored with the change.
+      resultId: uuid('result_id')
+        .notNull()
+        .references(() => result.id, { onDelete: 'cascade' }),
+      competencyId: uuid('competency_id').notNull(),
+      // The interviews module's opaque interview id: the source the change cites.
+      sourceId: uuid('source_id').notNull(),
+      // The interviewer's rating as given; what it does to the score is the domain's mapping (scoreChange.ts).
+      rating: text({ enum: RATINGS }).notNull(),
+      level: smallint().notNull(),
+      // The evidence items a `claim` change weakens.
+      itemIds: jsonb('item_ids').$type<string[]>().notNull(),
+      reason: text().notNull(),
+      appliedBy: uuid('applied_by').notNull(),
+      appliedAt: timestamp('applied_at', { withTimezone: true }).notNull(),
+      idempotencyKey: uuid('idempotency_key').notNull(),
+      // The preview the person confirmed: a retry under the same key must carry the same one.
+      previewId: text('preview_id').notNull(),
+    },
+    (t) => [
+      index('interview_change_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.appliedAt),
+      // One apply per idempotency key: a retry can never store a second set of changes.
+      uniqueIndex('interview_change_idempotency_idx').on(t.workspaceId, t.idempotencyKey, t.competencyId),
+      check(
+        'interview_change_rating_check',
+        sql`${t.rating} in ('not_shown', 'partly_shown', 'clearly_shown', 'strongly_shown')`,
+      ),
+      check('interview_change_level_check', sql`${t.level} between 0 and 5`),
+      check('interview_change_reason_check', sql`length(trim(${t.reason})) > 0`),
+      tenantPolicy('interview_change_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
