@@ -15,7 +15,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The required check "web" (ruleset "Required CI on main"): green only when "checks" and "integration" both succeeded;
+  # a failed, cancelled or skipped one fails it (AIV-P0-936).
   web:
+    needs: [checks, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: test "${{ needs.checks.result }}" = success && test "${{ needs.integration.result }}" = success
+
+  checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,9 +41,9 @@ jobs:
       - run: pnpm typecheck
       # AIV-P2-061: a schema change without its generated migration leaves new or changed files here, and fails.
       - run: pnpm db:generate && git status --porcelain && test -z "$(git status --porcelain)"
-      # Unit, architecture and integration tests (Testcontainers starts PostgreSQL on the runner's Docker). One package
-      # at a time (root package.json): each Vitest run already starts a worker per core (AIV-P0-936).
-      - run: pnpm test
+      # Unit and architecture tests, one package at a time (root package.json): each Vitest run already starts a worker
+      # per core, and running them beside each other and the integration suite timed tests out at 5 s (AIV-P0-936).
+      - run: pnpm test --filter='!@credalent/tests-integration'
       - run: pnpm build
       - run: pnpm check:links
       - run: node --test 'infra/scripts/*.test.mjs'
@@ -52,7 +62,7 @@ jobs:
             az bicep build-params --file infra/pilot.bicepparam --stdout > /dev/null
 
   # The Python AI service (AIV-P2-068, AGENTS.md 3.15): lint, format, strict types and tests, from the committed uv.lock.
-  # Its contract drift check is a test on each side: tests/test_contract.py here, packages/ai service.test.ts in "web".
+  # Its contract drift check is a test on each side: tests/test_contract.py here, packages/ai service.test.ts in "checks".
   # Make "ai-service" a required check (owner setting, ruleset "Required CI on main") so a red run blocks a merge.
   ai-service:
     runs-on: ubuntu-latest
@@ -144,8 +154,23 @@ jobs:
     steps:
       - run: test "${{ needs.e2e-shard.result }}" = success
 
+  # The integration tests on PostgreSQL (Testcontainers on the runner's Docker), on a runner of their own so they do not
+  # share its cores with the unit tests in "checks" (AIV-P0-936). Required through "web".
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @credalent/tests-integration test
+
   # The cross-workspace leak suite on its own, so a tenancy failure is named in the checks list (AIV-P0-012). It also
-  # runs inside "web"; make "tenancy" a required check (owner setting).
+  # runs inside "integration"; make "tenancy" a required check (owner setting).
   tenancy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
