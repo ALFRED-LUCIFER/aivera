@@ -219,8 +219,11 @@ export interface WorkspacesContract {
   switchWorkspace(session: Session, workspaceId: string): Promise<void>;
 
   // The demo seed (AIV-P0-031). Both throw `WorkspaceError('not_synthetic')` unless the workspace is flagged synthetic.
-  /** Admins. Adds the user as an active member with `role`, without an invitation. Idempotent. */
-  addSyntheticMember(ctx: WorkspaceContext, userId: string, role: Role): Promise<void>;
+  /**
+   * Admins. Adds the user as an active member with `role` and, when given, the title shown for them in the app
+   * ("CPO, Payments"), without an invitation. Idempotent: an existing member keeps the title they have.
+   */
+  addSyntheticMember(ctx: WorkspaceContext, userId: string, role: Role, title?: string | null): Promise<void>;
   /** Admins. Deletes the workspace and its members, clients and grants; other modules purge first in `ctx.tx`. */
   purgeSyntheticWorkspace(ctx: WorkspaceContext): Promise<void>;
 

@@ -1,5 +1,5 @@
 // Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
-// No section counts (AGENTS.md 1.7, AIV-P1-094): no real count exists until each section's contract supplies one.
+// Section counts only where a contract supplies a real one (AGENTS.md 1.7, AIV-P1-094): Interviews (AIV-P2-002).
 import { useTranslations } from '@credalent/i18n/react';
 import { Button } from '@credalent/ui';
 import Image from 'next/image';
@@ -12,6 +12,8 @@ export type AppShellProps = {
   member: Member;
   /** The map entries this member may open. */
   screens: readonly NavigationEntry[];
+  /** A section's count beside its name: Interviews is the member's ongoing interviews. None, or zero, shows no count. */
+  counts: Partial<Record<ScreenId, number>>;
   activeId: ScreenId | undefined;
   navOpen: boolean;
   onToggleNav: () => void;
@@ -33,6 +35,7 @@ const icon = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strok
 export function AppShell({
   member,
   screens,
+  counts,
   activeId,
   navOpen,
   onToggleNav,
@@ -144,6 +147,13 @@ export function AppShell({
                 className={navLink}
               >
                 {t(`nav.${id}`)}
+                {counts[id] !== undefined && (
+                  // The space keeps the link's name "Interviews 5" for assistive technology.
+                  <>
+                    {' '}
+                    <span className="ms-auto text-meta tabular-nums">{counts[id]}</span>
+                  </>
+                )}
               </Link>
             </li>
           ))}

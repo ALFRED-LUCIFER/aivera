@@ -35,7 +35,13 @@ const built = navigation.filter((entry) => canOpen(entry, ['member', 'recruiter'
 
 const renderShell = ({ synthetic = true, status = 'active' as Member['workspace']['status'] } = {}) =>
   render(
-    <RecruiterShell intl={intl} theme="light" member={{ ...member, workspace: { synthetic, status } }} screens={built}>
+    <RecruiterShell
+      intl={intl}
+      theme="light"
+      member={{ ...member, workspace: { synthetic, status } }}
+      screens={built}
+      counts={{ interviews: 5 }}
+    >
       <p>Page body</p>
     </RecruiterShell>,
   );
@@ -48,9 +54,9 @@ const sectionNames = () =>
 
 describe('Recruiter app shell', () => {
   // SAFETY: mutation check: aria-current compared against undefined -> this test failed
-  it('Scenario: The sidebar shows the built sections, with no counts', () => {
+  it('Scenario: The sidebar shows the built sections, and a count only where one is supplied (AIV-P2-002)', () => {
     renderShell();
-    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Settings']);
+    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Interviews 5', 'Settings']);
     expect(within(sidebar()).getByRole('link', { name: 'My desk' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     // The Main artboard draws the Credalent mark beside the wordmark (AIV-P0-035).
