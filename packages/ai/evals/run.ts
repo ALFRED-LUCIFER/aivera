@@ -188,6 +188,19 @@ export const matchPrompt = {
     'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
     'the option exactly. Answer for every expected text, in order.',
 };
+/**
+ * AIV-P1-140: a CV statement the model copies word for word but ends with a period is the same text; the matcher model
+ * answered null for it, or named it without the period. Compares after case, surrounding space and trailing
+ * punctuation only; used on `meaning` paths only.
+ */
+const bare = (s: string) =>
+  s
+    .trim()
+    .replace(/[.,;:!?]+$/, '')
+    .trimEnd()
+    .toLowerCase();
+const sameText = (a: string, b: string) => bare(a) === bare(b);
+const key = (path: string, value: string) => `${path}\u0000${value}`;
 const matchVerdicts = z.object({
   matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
 });
@@ -328,27 +341,46 @@ async function scoreCase(
       const { [`${suggestionPath}.name`]: expectedSuggestions, ...match } = expected.match;
       // Free-text paths the task declares (config.ts `meaning`) may match by meaning; everything else stays exact.
       const meaning = new Set(taskThresholds[task]?.meaning ?? []);
-      const misses = missedPoints(output, match).filter(
-        (p): p is { path: string; value: string } => meaning.has(p.path) && typeof p.value === 'string',
-      );
       // An output value that already matches an expected one exactly is taken: only the rest may answer a miss.
       const taken = (path: string) => [match[path]].flat();
       const free = (path: string) =>
         valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
+      const used = new Set<string>();
+      const unused = (path: string) => free(path).filter((v) => !used.has(key(path, v)));
+      // Uses the first unused free output value at `path` that is `text` (sameText): each counts once.
+      const take = (path: string, text: unknown) => {
+        const found = typeof text === 'string' ? unused(path).find((v) => sameText(v, text)) : undefined;
+        if (found !== undefined) used.add(key(path, found));
+        return found !== undefined;
+      };
+      // A miss that is a free value's own text, bar case, space or trailing punctuation, matches in code with no model
+      // call. These settle first, so no matcher verdict can use a value one of them names.
+      const inCode: string[] = [];
+      const misses = missedPoints(output, match).filter((p): p is { path: string; value: string } => {
+        if (!meaning.has(p.path) || typeof p.value !== 'string') return false;
+        if (!take(p.path, p.value)) return true;
+        inCode.push(key(p.path, p.value));
+        return false;
+      });
       if (misses.length)
         matches = await matcher(
           golden,
-          misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
+          misses.map((p) => ({ expected: p.value, candidates: unused(p.path) })),
         );
-      const used = new Set<string>();
-      scores.fieldMatch = fieldMatch(output, match, ({ path, value }) => {
-        const found = typeof value === 'string' ? matches?.[value] : null;
-        // A verdict counts only when the value it names is free in the output at that path, and once.
-        if (!meaning.has(path) || typeof found !== 'string' || !free(path).includes(found)) return false;
-        if (used.has(`${path}\u0000${found}`)) return false;
-        used.add(`${path}\u0000${found}`);
-        return true;
-      });
+      // Spends one code match of this point (an expected value may repeat).
+      const settled = (k: string) => {
+        const i = inCode.indexOf(k);
+        if (i >= 0) inCode.splice(i, 1);
+        return i >= 0;
+      };
+      // Else a verdict counts when it names an unused free output value at that path; sameText, so a verdict that drops
+      // its option's period still names it.
+      scores.fieldMatch = fieldMatch(
+        output,
+        match,
+        ({ path, value }) =>
+          meaning.has(path) && typeof value === 'string' && (settled(key(path, value)) || take(path, matches?.[value])),
+      );
       if (suggestionPath && Array.isArray(expectedSuggestions)) {
         if (valuesAt(output, suggestionPath).length) suggestions = await suggestionJudge(golden, output);
         const judged = suggestionMatch(output, suggestionPath, expectedSuggestions.length, suggestions ?? {});
