@@ -18,7 +18,7 @@ export type WorkspaceStore = {
   /** Also adds it to the platform directory (ADR-012 point 6). */
   insertWorkspace(workspace: Omit<Workspace, 'createdAt'>): Promise<Workspace>;
   /** False, with nothing written, when the user is already a member. */
-  insertMember(member: Omit<Member, 'title'>): Promise<boolean>;
+  insertMember(member: Omit<Member, 'title'> & { title?: string | null }): Promise<boolean>;
   findWorkspace(workspaceId: string): Promise<Workspace | null>;
   /**
    * The workspace row under FOR KEY SHARE until commit: every request context holds it, so an operator's status change

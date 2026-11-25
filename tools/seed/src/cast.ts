@@ -7,7 +7,13 @@ import type { Round } from '@credalent/interviews';
 import { nameKey, packForJobType, type CatalogueVersion, type Competency } from '@credalent/jobs';
 
 type Synthetic = { synthetic: true };
-export type CastUser = Synthetic & { key: string; displayName: string; email: string };
+export type CastUser = Synthetic & {
+  key: string;
+  displayName: string;
+  email: string;
+  /** Their job title in the workspace, shown where the app names a member by role ("CPO, Payments", personas.md). */
+  title?: string;
+};
 export type CastCandidate = Synthetic & { displayName: string; email: string; phone: string; location: string };
 export type CastJob = {
   title: string;
@@ -104,19 +110,20 @@ export const RECRUITER: CastUser = {
   synthetic: true,
 };
 
-const owner = (key: string, displayName: string): CastUser => ({
+const owner = (key: string, displayName: string, title: string): CastUser => ({
   key,
   displayName,
+  title,
   email: `${key}@example.com`,
   synthetic: true,
 });
 
 export const HIRING_OWNERS: CastUser[] = [
-  owner('head.engineering', 'Hassan Barakat'),
-  owner('cpo.payments', 'Camille Fares'),
-  owner('head.quality', 'Rashid Al Nuaimi'),
-  owner('vp.engineering', 'Vikram Deshmukh'),
-  owner('design.director', 'Dina Sabbagh'),
+  owner('head.engineering', 'Hassan Barakat', 'Head of Engineering'),
+  owner('cpo.payments', 'Camille Fares', 'CPO, Payments'),
+  owner('head.quality', 'Rashid Al Nuaimi', 'Head of Quality'),
+  owner('vp.engineering', 'Vikram Deshmukh', 'VP Engineering'),
+  owner('design.director', 'Dina Sabbagh', 'Design Director'),
 ];
 
 // Evidence expected, levels and types from docs/01-design/artboards: Rubric.dc.html (Senior AI Engineer) and

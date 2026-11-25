@@ -1,7 +1,7 @@
 // ADR-002 item 4: the one map of recruiter screens. The sidebar and requireScreen() read it; navigation.test.ts fails
 // when an entry has no page or a page under /app has no entry.
 
-/** `member`: every role; `recruiter`: admins and recruiters. Hiring owners and interviewers open the desk and their jobs. */
+/** `member`: every role; `recruiter`: admins and recruiters. Hiring owners and interviewers open the desk, their jobs and interviews. */
 export type Capability = 'member' | 'recruiter';
 
 export type Screen = {
@@ -22,7 +22,8 @@ export const navigation = [
   { id: 'jobs', path: '/app/jobs', capability: 'member', flag: null },
   { id: 'candidates', path: '/app/candidates', capability: 'recruiter', flag: 'candidates' },
   { id: 'pool', path: '/app/pool', capability: 'recruiter', flag: 'pool' },
-  { id: 'interviews', path: '/app/interviews', capability: 'recruiter', flag: 'interviews' },
+  // AIV-P2-002: every role; the interviews contract lists only granted jobs and, to an interviewer, their own.
+  { id: 'interviews', path: '/app/interviews', capability: 'member', flag: null },
   { id: 'packs', path: '/app/packs', capability: 'recruiter', flag: 'packs' },
   { id: 'value', path: '/app/value', capability: 'recruiter', flag: 'value' },
   // AIV-P1-052: every recruiter reads; only an admin saves.

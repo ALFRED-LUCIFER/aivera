@@ -20,13 +20,18 @@ export function syntheticUseCases<Tx>({ storeFor, authorize }: SyntheticPorts<Tx
   return {
     /**
      * Admins. Adds an active member straight away, without an invitation: synthetic people cannot accept one.
-     * Idempotent: an existing member is left as they are and nothing is audited.
+     * Idempotent: an existing member is left as they are, title included, and nothing is audited.
      */
-    async addSyntheticMember(ctx: WorkspaceContext<Tx>, userId: string, role: Role): Promise<void> {
+    async addSyntheticMember(
+      ctx: WorkspaceContext<Tx>,
+      userId: string,
+      role: Role,
+      title: string | null = null,
+    ): Promise<void> {
       await authorize(ctx, 'member.invite');
       const store = storeFor(ctx.tx);
       await lockSynthetic(store, ctx.workspaceId);
-      if (!(await store.insertMember({ workspaceId: ctx.workspaceId, userId, role, status: 'active' }))) return;
+      if (!(await store.insertMember({ workspaceId: ctx.workspaceId, userId, role, status: 'active', title }))) return;
       await store.audit(ctx.workspaceId, ctx.userId, {
         action: 'member.added',
         subject: { type: 'member', id: userId },

@@ -7,7 +7,8 @@ import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
 import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import { receiveConfirmed } from './confirmedBatch.ts';
-import { applicationRecords, createIntake } from '@credalent/intake/composition';
+import { applicationRecords, createIntake, findApplication } from '@credalent/intake/composition';
+import { createInterviews } from '@credalent/interviews/composition';
 import type { Source } from '@credalent/intake';
 import type { Competency } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -18,6 +19,10 @@ import { sql } from 'drizzle-orm';
 // Playwright global setup (AIV-P0-010): the synthetic cast (docs/00-product/personas.md) gets its workspaces before the
 // browser signs in. Each run creates new workspaces, which become their creators' active workspaces, so a reused local
 // database works too. Huda signs in as she would before Gulf Talent Partners invites her (AIV-P1-003): no workspace.
+
+/** `time` in the Gulf (UTC+4), `days` from today there: the demo interviews count from the run (AIV-P2-002). */
+const gulfTime = (days: number, time: string) =>
+  new Date(`${new Date(Date.now() + (4 + 24 * days) * 3_600_000).toISOString().slice(0, 10)}T${time}:00+04:00`);
 
 export default async function seed() {
   // The same database as the dev server in playwright.config.ts.
@@ -417,6 +422,46 @@ export default async function seed() {
             6, ${JSON.stringify(missing.map(competency))}::jsonb, ${confidence}, ${JSON.stringify(results)}::jsonb,
             ${new Date(Date.UTC(2026, 10, 14, 10, i)).toISOString()})`),
       );
+    }
+
+    // AIV-P2-002: the Interviews list, on days counted from this run as tools/seed counts them: Daniel's Round 1 today
+    // and in progress, Priya's in two days, Arjun's Round 2 with the Head of Engineering in three, Layla's two days ago
+    // with no scorecard ("Scorecard due, 2 days"), and Sara's four days ago, completed. No contract completes an
+    // interview until the scorecard (AIV-P2-004), so Sara's status is hand-written, as the scores above are.
+    const interviews = createInterviews(workspaces, jobs, createApprovedRubricReads().approvedRubric, findApplication);
+    const applicationOf = new Map(
+      (await as((ctx) => intake.listApplicationsForJob(ctx, sae))).map((a) => [a.displayName, a.applicationId]),
+    );
+    for (const [name, round, interviewerUserId, at, tests, state] of [
+      [
+        'Daniel Novak',
+        'structured_screen',
+        recruiter,
+        gulfTime(0, '14:00'),
+        ['Retrieval and evaluation', 'Cost and reliability'],
+        'started',
+      ],
+      ['Priya Nair', 'structured_screen', recruiter, gulfTime(2, '10:30'), ['LLM systems in production'], null],
+      ['Arjun Menon', 'evidence_defence', head, gulfTime(3, '11:00'), ['Retrieval and evaluation'], null],
+      ['Layla Haddad', 'structured_screen', recruiter, gulfTime(-2, '11:00'), ['Product judgement'], null],
+      ['Sara Al Qahtani', 'structured_screen', recruiter, gulfTime(-4, '11:00'), ['Product judgement'], 'completed'],
+    ] as const) {
+      const applicationId = applicationOf.get(name);
+      if (!applicationId) throw new Error(`${name} has no Senior AI Engineer application.`);
+      const { interviewId } = await as((ctx) =>
+        interviews.createInterview(ctx, {
+          applicationId,
+          round,
+          interviewerUserId,
+          scheduledAt: at,
+          competencyIds: tests.map(competency),
+        }),
+      );
+      if (state === 'started') await as((ctx) => interviews.startInterview(ctx, interviewId));
+      if (state === 'completed')
+        await withWorkspace(db, workspaceId, (tx) =>
+          tx.execute(sql`update interviews.interview set status = 'completed' where id = ${interviewId}`),
+        );
     }
 
     /**

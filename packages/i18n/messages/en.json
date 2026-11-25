@@ -1829,6 +1829,40 @@
     "error": "We could not load this candidate. Try again."
   },
   "interviews": {
+    "intro": "Each interview exists to test specific evidence. Scorecards feed the backed score, with the reason recorded.",
+    "caption": "Interviews",
+    "viewsLabel": "Interview views",
+    "views": {
+      "ongoing": "Ongoing",
+      "completed": "Completed"
+    },
+    "columns": {
+      "candidate": "Candidate",
+      "round": "Round",
+      "interviewer": "Interviewer",
+      "when": "When",
+      "status": "Status",
+      "competencies": "Competencies to investigate",
+      "action": "Action"
+    },
+    "unnamed": "Unnamed applicant",
+    "you": "You",
+    "when": {
+      "today": "Today, {at, time, ::HHmm}",
+      "at": "{at, date, ::dMMM}, {at, time, ::HHmm}",
+      "day": "{at, date, ::dMMM}",
+      "none": "No time yet"
+    },
+    "openScorecard": "Open scorecard",
+    "noGuide": "No guide yet",
+    "summary": "{count, plural, one {# interview} other {# interviews}} completed with {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}} so far.",
+    "observed": "Observed",
+    "empty": "No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.",
+    "emptyOngoing": "No ongoing interviews.",
+    "emptyCompleted": "No completed interviews yet.",
+    "loading": "Loading interviews…",
+    "error": "We could not load the interviews. Try again.",
+    "retry": "Try again",
     "round": {
       "structured_screen": "Round 1, structured screen",
       "evidence_defence": "Round 2, evidence defence",
