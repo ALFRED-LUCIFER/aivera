@@ -1734,6 +1734,7 @@
     "prepared": "Decision pack · prepared {date, date, ::d MMM yyyy}",
     "preparedOn": "Decision pack · prepared {date, date, ::d MMM yyyy} · rubric v{version}",
     "members": "{count, plural, one {# candidate} other {# candidates}}",
+    "addedBy": "Added by {name} on {date, date, ::d MMM yyyy}",
     "basis": "Backed scores are observed from inspected evidence, as they were when each candidate joined the pack.",
     "others": "{count, plural, =0 {Everyone who applied is in this pack.} one {# other candidate stays in the ranking and can be added to a later pack.} other {# other candidates stay in the ranking and can be added to a later pack.}}",
     "back": "Back to ranking",

@@ -7,18 +7,21 @@ import { loadJobPacks, loadPack } from './loadPack.ts';
 const id = (n: number) => `0190d4a2-0000-7000-9000-${String(n).padStart(12, '0')}`;
 const [JOB, OTHER_JOB, PACK, V2] = [id(1), id(2), id(3), id(4)];
 const at = new Date('2026-11-17T08:00:00.000Z');
+const AYESHA = id(6);
 const fake = vi.hoisted(() => ({
   workspace: true,
   getPack: vi.fn(),
   listPacks: vi.fn(),
   header: vi.fn(),
   applicants: vi.fn(),
+  getUser: vi.fn(),
 }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: object) => Promise<unknown>) => (fake.workspace ? { value: await fn({}) } : null),
 }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ getPack: fake.getPack, listPacks: fake.listPacks }) }));
 vi.mock('@/server/jobs', () => ({ getJobs: () => ({ getJobHeader: fake.header }) }));
+vi.mock('@/server/auth', () => ({ getIdentity: () => ({ getUser: fake.getUser }) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.applicants }) }));
 vi.mock('next/navigation', () => ({
   forbidden: () => {
@@ -32,13 +35,14 @@ const stored = (jobId = JOB) => ({
   name: 'Round 2 shortlist',
   rubricVersionId: V2,
   preparedAt: at,
-  members: [{ candidateId: 'p1', backedScore: 68, upperBound: 84 }],
+  members: [{ candidateId: 'p1', backedScore: 68, upperBound: 84, addedBy: AYESHA, addedAt: at }],
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
   fake.workspace = true;
   fake.getPack.mockResolvedValue(stored());
+  fake.getUser.mockResolvedValue({ id: AYESHA, email: 'ap@example.com', displayName: 'Ayesha Perera' });
   fake.header.mockResolvedValue({ job: { title: 'Senior AI Engineer' }, approved: { id: V2, version: 2 } });
   fake.applicants.mockResolvedValue([
     { personId: 'p1', displayName: 'Sara Al Qahtani' },
@@ -54,9 +58,38 @@ describe('loadPack', () => {
       job: 'Senior AI Engineer',
       preparedAt: at,
       rubricVersion: 2,
-      members: [{ candidateId: 'p1', name: 'Sara Al Qahtani', backedScore: 68, upperBound: 84 }],
+      members: [
+        {
+          candidateId: 'p1',
+          name: 'Sara Al Qahtani',
+          backedScore: 68,
+          upperBound: 84,
+          added: { by: 'Ayesha Perera', at },
+        },
+      ],
       others: 1,
     });
+    expect(fake.getUser).toHaveBeenCalledWith(AYESHA);
+  });
+
+  it('who added a member: their email with no display name; no line once the account is gone, nor on older members', async () => {
+    fake.getPack.mockResolvedValue({
+      ...stored(),
+      members: [
+        { candidateId: 'p1', backedScore: 68, upperBound: 84, addedBy: AYESHA, addedAt: at },
+        { candidateId: 'p2', backedScore: 64, upperBound: 76, addedBy: id(7), addedAt: at },
+        { candidateId: 'p3', backedScore: 60, upperBound: 76, addedBy: null, addedAt: null },
+      ],
+    });
+    fake.getUser.mockImplementation(async (userId: string) =>
+      userId === AYESHA ? { id: AYESHA, email: 'ap@example.com', displayName: null } : null,
+    );
+    const page = await loadPack(JOB, PACK);
+    expect(page !== 'notFound' && page?.members.map((m) => m.added)).toEqual([
+      { by: 'ap@example.com', at },
+      null,
+      null,
+    ]);
   });
 
   it('no rubric version once the job has approved another', async () => {

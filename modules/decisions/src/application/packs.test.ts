@@ -13,6 +13,8 @@ const V2 = id(11);
 const [SARA, ARJUN, HUDA] = [id(20), id(21), id(22)] as const;
 const PACK = id(30);
 const NOW = new Date('2026-11-17T08:00:00.000Z');
+const LATER = new Date('2026-11-18T09:30:00.000Z');
+const ALEX = id(3); // admin
 const ctxAs = (role: Role, userId = AYESHA) => ({ workspaceId: 'w1', userId, role, tx: {} }) as WorkspaceContext;
 
 const pack = (over: Partial<DecisionPack> = {}): DecisionPack => ({
@@ -34,6 +36,8 @@ const member = (candidateId: string, position: number, backedScore = 68, upperBo
   backedScore,
   upperBound,
   position,
+  addedBy: AYESHA,
+  addedAt: NOW,
 });
 
 function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), members: PackMember[] = []) {
@@ -63,6 +67,8 @@ function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), 
       upperBound: 84,
     })),
     auditDecision: vi.fn(async () => undefined),
+    auditPackCreated: vi.fn(async () => undefined),
+    auditMemberAdded: vi.fn(async () => undefined),
     newId: () => PACK,
     now: () => NOW,
     ...over,
@@ -96,6 +102,25 @@ describe('createPack', () => {
     expect(ports.publishPackReady).toHaveBeenCalledWith({}, written);
   });
 
+  // SAFETY: mutation check: removed the auditMemberAdded loop from createPack -> this test failed (no member_added call)
+  it('audits the pack and each member who joins it, after every other write (AGENTS.md 3.6)', async () => {
+    const { useCases, store, ports } = setup();
+    await useCases.createPack(ctxAs('recruiter'), shortlist());
+    expect(ports.auditPackCreated).toHaveBeenCalledWith(ctxAs('recruiter'), pack());
+    expect(vi.mocked(ports.auditMemberAdded).mock.calls).toEqual(
+      [member(SARA, 0), member(ARJUN, 1), member(HUDA, 2)].map((m) => [ctxAs('recruiter'), JOB.jobId, m]),
+    );
+    const lastOther = Math.max(
+      ...[store.insertPack, store.insertMembers, vi.mocked(ports.publishPackReady)].map(
+        (f) => f.mock.invocationCallOrder[0] ?? 0,
+      ),
+    );
+    const audits = [ports.auditPackCreated, ports.auditMemberAdded].flatMap(
+      (f) => vi.mocked(f).mock.invocationCallOrder,
+    );
+    expect(Math.min(...audits)).toBeGreaterThan(lastOther);
+  });
+
   it('a candidate named twice is a member once', async () => {
     const { useCases, store } = setup();
     await useCases.createPack(
@@ -125,6 +150,8 @@ describe('createPack', () => {
     await expect(useCases.createPack(ctxAs('recruiter'), shortlist())).rejects.toMatchObject({ code });
     expect(store.insertPack).not.toHaveBeenCalled();
     expect(ports.publishPackReady).not.toHaveBeenCalled();
+    expect(ports.auditPackCreated).not.toHaveBeenCalled();
+    expect(ports.auditMemberAdded).not.toHaveBeenCalled();
   });
 
   // SAFETY: mutation check: removed authorize(ctx, 'pack.prepare', job) from createPack -> this test failed (pack stored)
@@ -159,19 +186,34 @@ describe('addMembers', () => {
     expect(store.insertMembers.mock.calls).toEqual([[[member(ARJUN, 1)]]]);
   });
 
+  // SAFETY: mutation check: removed the auditMemberAdded loop from addMembers -> this test failed (no member_added call)
+  it('records who added the new member and when, and audits only that member, after storing it', async () => {
+    const { useCases, store, ports } = setup({ now: () => LATER }, pack(), [member(SARA, 0)]);
+    await useCases.addMembers(ctxAs('admin', ALEX), PACK, [{ candidateId: SARA }, { candidateId: ARJUN }]);
+    const arjun = { ...member(ARJUN, 1), addedBy: ALEX, addedAt: LATER };
+    expect(store.insertMembers.mock.calls).toEqual([[[arjun]]]);
+    expect(vi.mocked(ports.auditMemberAdded).mock.calls).toEqual([[ctxAs('admin', ALEX), JOB.jobId, arjun]]);
+    expect(ports.auditPackCreated).not.toHaveBeenCalled();
+    expect(vi.mocked(ports.auditMemberAdded).mock.invocationCallOrder[0]).toBeGreaterThan(
+      store.insertMembers.mock.invocationCallOrder[0] ?? Infinity,
+    );
+  });
+
   it('adding only candidates already in the pack writes nothing', async () => {
-    const { useCases, store } = setup({}, pack(), [member(SARA, 0)]);
+    const { useCases, store, ports } = setup({}, pack(), [member(SARA, 0)]);
     expect(await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }])).toEqual({ added: 0 });
     expect(store.insertMembers).not.toHaveBeenCalled();
+    expect(ports.auditMemberAdded).not.toHaveBeenCalled();
   });
 
   it('locks the pack, and refuses a decided one', async () => {
-    const { useCases, store } = setup({}, pack({ status: 'decided' }), [member(SARA, 0)]);
+    const { useCases, store, ports } = setup({}, pack({ status: 'decided' }), [member(SARA, 0)]);
     await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }])).rejects.toMatchObject({
       code: 'pack_decided',
     });
     expect(store.findPack).toHaveBeenCalledWith('w1', PACK, true);
     expect(store.insertMembers).not.toHaveBeenCalled();
+    expect(ports.auditMemberAdded).not.toHaveBeenCalled();
   });
 
   it("nobody joins once the job's approved rubric version is no longer the pack's", async () => {

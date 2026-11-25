@@ -56,6 +56,24 @@ export function createDecisions(
           after: { packId: d.packId, jobId, decision: d.decision },
         },
       ),
+    auditPackCreated: (ctx, pack) =>
+      audit.record(
+        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: pack.preparedBy } },
+        {
+          action: 'pack.created',
+          subject: { type: 'pack', id: pack.id },
+          after: { jobId: pack.jobId, rubricVersionId: pack.rubricVersionId },
+        },
+      ),
+    auditMemberAdded: (ctx, jobId, m) =>
+      audit.record(
+        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
+        {
+          action: 'pack.member_added',
+          subject: { type: 'candidate', id: m.candidateId },
+          after: { packId: m.packId, jobId, assessmentId: m.assessmentId, position: m.position },
+        },
+      ),
     newId: () => uuidv7(),
     now,
   });
