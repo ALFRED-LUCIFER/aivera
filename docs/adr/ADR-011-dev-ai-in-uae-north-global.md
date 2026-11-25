@@ -15,7 +15,7 @@ AGENTS.md 1.10 forbids inference outside the region without an ADR.
 
 1. The dev AI resource `ai-aivera-dev-<6 chars>` (kind AIServices, S0) is in UAE North, in Credalent's own resource group `rg-aivera-ai-dev`, declared in `infra/modules/ai.bicep`. It is not in Medvya's group: that group's policy `allowed-locations-in` allows Central India and South India only, and the policy stays as it is.
 2. `gpt-main` is gpt-4.1-mini on **Global Standard**. This is an exception to AGENTS.md 1.10 for **dev only**. It is acceptable there because dev holds synthetic data only (AGENTS.md 1.1). `embedding-main` is text-embedding-3-large on regional Standard.
-3. There are no keys (`disableLocalAuth`). The web app's identity `id-aivera-dev` has Cognitive Services OpenAI User on this account only.
+3. There are no keys (`disableLocalAuth`). The web app's identity `id-aivera-dev` has Cognitive Services OpenAI User on this account only, and since AIV-P1-135 Cognitive Services User on it too, for Document Intelligence (shared with the worker).
 
 ## Consequences
 

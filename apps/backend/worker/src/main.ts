@@ -282,7 +282,7 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
       db: appDb,
       documentIntelligence: {
         endpoint: env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
-        // The app identity holds Cognitive Services User on the AI resource (owner to-do, AIV-P1-025 PR).
+        // The app identity holds Cognitive Services User on the AI resource (infra/modules/ai.bicep, AIV-P1-135).
         token: async () => {
           const token = await appCredential.getToken('https://cognitiveservices.azure.com/.default');
           if (!token) throw new Error('No Entra token for Document Intelligence');
@@ -304,8 +304,8 @@ if (fileReading && env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE
   );
 }
 // shortcut: without Document Intelligence, CV parses, document reads and link reads stay pending and their events wait unsent in
-// evidence.outbox and files.outbox until the owner sets AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT on the worker (AIV-P1-025
-// PR, owner to-dos).
+// evidence.outbox and files.outbox until AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT is set (Azure: infra/modules/worker.bicep,
+// AIV-P1-135; local: .env.local).
 else log.warn('Document Intelligence not configured: CV parses, document reads and link reads are not consumed');
 if (evidenceHandlers.length) CONSUMERS[EVIDENCE_QUEUE] = evidenceHandlers;
 

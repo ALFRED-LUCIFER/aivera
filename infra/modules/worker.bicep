@@ -79,6 +79,12 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_STORAGE_BLOB_URL', value: blobUrl }
             { name: 'MALWARE_SCANNING', value: malwareScanning ? 'on' : 'off' }
             { name: 'AZURE_OPENAI_RESOURCE_NAME', value: aiResourceName }
+            // CV parses, document reads and link reads (AIV-P1-135): Document Intelligence on the same AI resource, signed
+            // in with the app identity (modules/ai.bicep). Without it the worker leaves those events in the outbox.
+            {
+              name: 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT'
+              value: 'https://${aiResourceName}.cognitiveservices.azure.com'
+            }
             // The catalogue draft eval (AIV-P2-048): on with the `jobs` queue this same apply creates (modules/messaging.bicep).
             { name: 'CATALOGUE_EVAL', value: 'on' }
           ]
