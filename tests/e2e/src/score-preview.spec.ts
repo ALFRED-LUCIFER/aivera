@@ -133,12 +133,12 @@ test.beforeAll(async () => {
   }
 });
 
-/** The workspace's `score.changed` audit entries: a preview must add none. */
-async function scoreAudits() {
+/** Every audit entry of the workspace: a preview must add none. */
+async function auditEntries() {
   const db = createDb(databaseUrl, { max: 1 });
   try {
     const [row] = await withWorkspace(db, workspaceId, (tx) =>
-      tx.execute<{ n: number }>(sql`select count(*)::int as n from audit.entry where action = 'score.changed'`),
+      tx.execute<{ n: number }>(sql`select count(*)::int as n from audit.entry where workspace_id = ${workspaceId}`),
     );
     return row?.n;
   } finally {
@@ -183,7 +183,7 @@ for (const theme of themes) {
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: creator });
-    const audits = await scoreAudits();
+    const audits = await auditEntries();
     const ranked = await rankedRow(page, theme);
     await page.goto(`/app/interviews/${interviewOf.get(theme)}`);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
@@ -247,7 +247,7 @@ for (const theme of themes) {
     await expect(radio(page, 'Strongly shown')).toBeChecked();
     await expect(page.getByRole('list', { name: 'Interview rounds' })).toContainText('backed score 55');
     expect(await rankedRow(page, theme)).toBe(ranked);
-    expect(await scoreAudits()).toBe(audits);
+    expect(await auditEntries()).toBe(audits);
 
     // Scenario: Preview service fails: the rating is kept.
     await page.route('**/*', (route) =>

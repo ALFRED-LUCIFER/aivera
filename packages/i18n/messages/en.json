@@ -1985,7 +1985,6 @@
     "loading": "Loading the scorecard…",
     "error": "We could not load this scorecard. Try again.",
     "effect": {
-      "title": "Effect on the assessment",
       "empty": "Rate {name} to preview how the backed score would change. Nothing is applied until you submit.",
       "pending": "Previewing…",
       "weakened": "Evidence weakened",

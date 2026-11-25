@@ -1,9 +1,15 @@
-import type { CompetencyState } from '@credalent/assessment';
 import type { Strength } from '@credalent/evidence';
-import { RATINGS, scorecardDraftSchema, type Round, type ScorecardDraft } from '@credalent/interviews';
+import {
+  RATINGS,
+  scorecardDraftSchema,
+  type Round,
+  type ScorecardDraft,
+  type ScorePreview,
+} from '@credalent/interviews';
 import { z } from 'zod';
 import type { EvidenceCard } from '@/features/evidence-profile/domain/evidenceCards.ts';
 import type { QuestionView } from '@/features/evidence-profile/domain/questions.ts';
+import { STRENGTHS } from '@/features/rubric/domain/rubric.ts';
 
 // The interview scorecard (AIV-P2-004) as the page hands it to the browser. Pure. The rules (what counts as not
 // assessed, what blocks a submit, the draft's schema) are the interviews module's: `@credalent/interviews`.
@@ -11,7 +17,7 @@ import type { QuestionView } from '@/features/evidence-profile/domain/questions.
 /** What the browser sends to save a draft, checked again in the interviews module (AGENTS.md 3.7). */
 export const saveDraftInput = z.strictObject({ interviewId: z.uuid(), draft: scorecardDraftSchema });
 
-/** What the browser sends to preview its ratings (AIV-P2-005), checked again by the assessment (AGENTS.md 3.7). */
+/** What the browser sends to preview its ratings (AIV-P2-005), checked again in the interviews module (AGENTS.md 3.7). */
 export const previewInput = z.strictObject({
   interviewId: z.uuid(),
   ratings: z
@@ -21,9 +27,10 @@ export const previewInput = z.strictObject({
 });
 export type PreviewRatings = z.infer<typeof previewInput>['ratings'];
 
-/** The assessment's preview of the ratings (`previewScoreChange`), as far as the panel shows it. */
-export type ScoreEffect = {
-  backedScore: { from: number; to: number };
+type CompetencyState = ScorePreview['changes'][number]['from'];
+
+/** The assessment's preview of the ratings (`previewScorecardRatings`), as far as the panel shows it. */
+export type ScoreEffect = Pick<ScorePreview, 'backedScore'> & {
   changes: { competencyId: string; from: CompetencyState; to: CompetencyState }[];
 };
 
@@ -41,9 +48,8 @@ export type EffectState =
   | { status: 'empty' | 'pending' | 'unavailable' }
   | { status: 'ready'; lines: EffectLine[]; backedScore: ScoreEffect['backedScore'] };
 
-// Weakest first; no evidence (null) below them all. Not the evidence module's STRENGTHS: its entry is server-only.
-const WEAKEST_FIRST: readonly (Strength | null)[] = [null, 'claim', 'supporting', 'medium', 'strong'];
-const order = (strength: Strength | null) => WEAKEST_FIRST.indexOf(strength);
+// Strong 4, Medium 3, Supporting 2, Claim only 1, no evidence 0.
+const order = (strength: Strength | null) => (strength ? STRENGTHS.length - STRENGTHS.indexOf(strength) : 0);
 
 /** Weakened or strengthened by the strength, then by the proven level; nothing moved is "No change", whatever the rating. */
 const directionOf = (from: CompetencyState, to: CompetencyState): EffectLine['direction'] => {

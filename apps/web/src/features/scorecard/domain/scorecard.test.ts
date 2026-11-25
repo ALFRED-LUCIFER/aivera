@@ -1,4 +1,4 @@
-import { RATINGS as APPLIED, type CompetencyState } from '@credalent/assessment';
+import { RATINGS as APPLIED } from '@credalent/assessment';
 import { RATINGS, type ScorecardDraft } from '@credalent/interviews';
 import { describe, expect, it } from 'vitest';
 import { effectLines, previewInput, saveDraftInput, startingDraft, type ScoreEffect } from './scorecard.ts';
@@ -89,6 +89,7 @@ const daniel = [
   },
   { competencyId: COST, name: 'Cost and reliability', evidence: null },
 ];
+type CompetencyState = ScoreEffect['changes'][number]['from'];
 const state = (strength: CompetencyState['strength'], provenLevel: CompetencyState['provenLevel'] = 0) => ({
   strength,
   provenLevel,

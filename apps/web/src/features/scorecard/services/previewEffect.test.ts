@@ -1,24 +1,24 @@
+import { InterviewError } from '@credalent/interviews';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { previewScorecardRatings } from './previewEffect.ts';
 
-// AIV-P2-005: the preview action with the workspace context and both contracts faked; the preview itself is tested in
-// modules/assessment and against PostgreSQL in tests/integration/src/score-change.test.ts. Synthetic ids only.
-const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'recruiter', tx: {} };
+// AIV-P2-005: the preview action with the workspace context and the interviews contract faked. Who may preview and
+// that it writes nothing are proven in modules/interviews/src/application/summary.test.ts; the assessment's preview in
+// modules/assessment and tests/integration/src/score-change.test.ts. Synthetic ids only.
+const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'interviewer', tx: {} };
 const INTERVIEW = '0190d4a2-0000-7000-9000-000000000060';
-const SNAPSHOT = '0190d4a2-0000-7000-9000-000000000080';
 const RETRIEVAL = '0190d4a2-0000-7000-9000-000000000040';
-const fake = vi.hoisted(() => ({ interview: vi.fn(), latest: vi.fn(), preview: vi.fn() }));
+const fake = vi.hoisted(() => ({ preview: vi.fn(), warn: vi.fn() }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
 }));
-// SAFETY: each contract fake has its reads and nothing else: any write (applyScoreChange, assessCandidate,
-// saveScorecardDraft, ...) throws here, so the preview comes back unavailable and the first test fails.
-vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ getInterview: fake.interview }) }));
-vi.mock('@/server/assessment', () => ({
-  getAssessment: () => ({ getLatestAssessment: fake.latest, previewScoreChange: fake.preview }),
-}));
-vi.mock('@credalent/observability', () => ({ log: { warn: vi.fn() } }));
+// The contract fake has the preview and nothing else.
+vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ previewScorecardRatings: fake.preview }) }));
+vi.mock('@credalent/observability', () => ({ log: { warn: fake.warn } }));
 vi.mock('next/navigation', () => ({
+  forbidden: () => {
+    throw new Error('NEXT_HTTP_ERROR_FALLBACK;403');
+  },
   notFound: () => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;404');
   },
@@ -32,50 +32,38 @@ const states = { from: { strength: 'supporting', provenLevel: 0 }, to: { strengt
 
 beforeEach(() => {
   vi.resetAllMocks();
-  fake.interview.mockResolvedValue({ id: INTERVIEW, candidateId: 'p-daniel', jobId: 'j-ai' });
-  fake.latest.mockResolvedValue({ id: SNAPSHOT });
   fake.preview.mockResolvedValue({
     previewId: 'p-1',
-    assessmentId: SNAPSHOT,
-    label: 'interviewer_word',
     backedScore: { from: 55, to: 67 },
-    upperBound: { from: 71, to: 71 },
-    changes: [{ competencyId: RETRIEVAL, rating: 'strongly_shown', ...states, noChange: null, replaces: null }],
+    changes: [{ competencyId: RETRIEVAL, ...states, replaces: null }],
   });
 });
 
-describe('Scenario: Preview applies nothing', () => {
-  // SAFETY: mutation check: called getAssessment().applyScoreChange after the preview -> this test failed (null, not the effect)
-  it("previews the latest snapshot through the assessment's reads only, and returns what the panel shows", async () => {
+describe('previewScorecardRatings', () => {
+  it('passes the ratings to the interviews contract and returns what the panel shows, no preview id', async () => {
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).resolves.toEqual({
       backedScore: { from: 55, to: 67 },
       changes: [{ competencyId: RETRIEVAL, ...states }],
     });
-    expect(fake.latest).toHaveBeenCalledWith(ctx, 'p-daniel', 'j-ai');
-    expect(fake.preview).toHaveBeenCalledWith(ctx, {
-      assessmentId: SNAPSHOT,
-      interviewId: INTERVIEW,
-      changes: ratings,
-    });
-  });
-});
-
-describe('Scenario: Preview service fails', () => {
-  it('is unavailable, not an error page, when the assessment refuses or fails', async () => {
-    fake.preview.mockRejectedValue(new Error('not_yet_scored'));
-    await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).resolves.toBeNull();
+    expect(fake.preview).toHaveBeenCalledWith(ctx, INTERVIEW, ratings);
   });
 
-  it('is unavailable with no assessment yet, or an interview the member cannot see, and previews nothing', async () => {
-    fake.latest.mockResolvedValue(null);
+  it('an expected refusal is unavailable and not logged; anything else is unavailable and logged by name', async () => {
+    fake.preview.mockRejectedValueOnce(new InterviewError('not_assessed'));
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).resolves.toBeNull();
-    fake.interview.mockResolvedValue(null);
+    expect(fake.warn).not.toHaveBeenCalled();
+    fake.preview.mockRejectedValueOnce(new TypeError('connection reset'));
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).resolves.toBeNull();
-    expect(fake.preview).not.toHaveBeenCalled();
+    expect(fake.warn).toHaveBeenCalledWith(
+      { area: 'scorecard', 'error.type': 'TypeError' },
+      'preview scorecard ratings failed',
+    );
   });
 
-  it('a malformed input is not found', async () => {
+  it('a malformed input or an interview the workspace does not have is not found', async () => {
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings: [] })).rejects.toThrow('404');
-    expect(fake.interview).not.toHaveBeenCalled();
+    expect(fake.preview).not.toHaveBeenCalled();
+    fake.preview.mockRejectedValueOnce(new InterviewError('interview_not_found'));
+    await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).rejects.toThrow('404');
   });
 });
