@@ -1394,6 +1394,27 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     expect(caseLines(dropped)).toContain('    suggestions[1]: expected pass, the judge said nothing');
   });
 
+  // SAFETY: mutation check: the no-citation rule removed from liveSuggestionJudge -> this test failed
+  it('Scenario: A suggestion citing nothing gets the citation fault in code, whatever the judge answers', async () => {
+    const noCitation = suggestionCases.filter((c) => c.id === 'suggestion-no-citation');
+    const gradedUncited = async (verdicts: unknown[]) =>
+      (
+        await evaluateJudge(
+          noCitation,
+          liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts }))),
+        )
+      ).cases[0];
+    const cited = judged('Arabic and right-to-left design');
+    // The judge skips the uncited suggestion, or passes it: code still fails it on citation.
+    expect(await gradedUncited([cited])).toMatchObject({ passed: true, suggestions: { Accessibility: 'citation' } });
+    expect(await gradedUncited([cited, judged('Accessibility')])).toMatchObject({ passed: true });
+    // A graver fault the judge finds stays.
+    expect((await gradedUncited([cited, judged('Accessibility', { aboutThePerson: true })]))?.suggestions).toEqual({
+      'Arabic and right-to-left design': null,
+      Accessibility: 'proxy',
+    });
+  });
+
   // SAFETY: mutation check: the prompt id comparison removed from recordedJudgeVerdict.suggestion -> this test failed
   it('Scenario: A verdict stamped with another suggestion judge prompt is refused', async () => {
     const stale = suggestionCases.map((c) => {

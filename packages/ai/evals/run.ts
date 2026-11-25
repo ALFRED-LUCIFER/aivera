@@ -283,6 +283,10 @@ const faultOf = (v: SuggestionVerdict): SuggestionFault | null =>
             ? 'citation'
             : null;
 
+const drafted = z
+  .object({ suggestions: z.array(z.object({ name: z.string(), citations: z.array(z.unknown()).optional() }).loose()) })
+  .loose();
+
 /** The suggestion judge on the `evals.judge` task (AIV-P2-085): one call per case whose output suggests anything. */
 export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): SuggestionJudge {
   return async (golden, output) => {
@@ -295,7 +299,12 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
       schema: suggestionVerdicts,
       sources: golden.sources,
     });
-    return Object.fromEntries(verdicts.map((v) => [v.name, faultOf(v)]));
+    const faults = Object.fromEntries(verdicts.map((v) => [v.name, faultOf(v)]));
+    // AIV-P2-088: citing nothing is a fact code sees, so it is decided here; the judge may skip such a suggestion. A
+    // graver fault the judge gave (a proxy) stays, as in faultOf.
+    for (const { name, citations } of drafted.safeParse(output).data?.suggestions ?? [])
+      if (!citations?.length) faults[name] = faults[name] ?? 'citation';
+    return faults;
   };
 }
 

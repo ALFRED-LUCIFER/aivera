@@ -1,7 +1,4 @@
-# AIV-P2-088: a suggestion citing nothing; the suggestion judge must find no cited line that implies it.
-# shortcut: evals.suggestion@2 on gpt-judge (gpt-4.1) gave no verdict at all for the uncited suggestion in 3 of 3 live
-# runs (25 Nov 2026), so the recorded run replays a citation verdict the current judge does not reproduce while
-# ai-eval-live fails this case. Upgrade with a suggestion prompt fix, on the owner's word (#562 stays open until then).
+# AIV-P2-088: a suggestion citing nothing; the suggestion judge must give it the citation fault (decided in code).
 id: suggestion-no-citation
 judge: suggestion
 case: jobs.draftCompetencies/no-citation
