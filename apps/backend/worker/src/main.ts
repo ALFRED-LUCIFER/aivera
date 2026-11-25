@@ -319,6 +319,7 @@ const scanResults =
           db: appDb,
           // Scan results carry no member: every request-context call is refused here.
           workspaces: { authorize: () => Promise.reject(new Error('no request context in the worker')) },
+          audit: createAudit(appDb, now),
           blobs: createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID }),
           malwareScanning: true,
           now,

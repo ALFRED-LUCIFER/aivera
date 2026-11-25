@@ -439,6 +439,9 @@ importers:
       '@azure/storage-blob':
         specifier: 12.34.0
         version: 12.34.0
+      '@credalent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db

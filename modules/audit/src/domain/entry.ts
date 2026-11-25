@@ -45,6 +45,7 @@ export const ACTIONS = [
   'evidence.level_changed',
   'candidate.unmerged',
   'intake.batch_confirmed',
+  'file.link_issued',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

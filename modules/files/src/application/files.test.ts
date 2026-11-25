@@ -29,6 +29,7 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
   let row = pending();
   const blobs = {
     uploadUrl: vi.fn(),
+    readUrl: vi.fn(async (path: string) => `https://blob.credalent.example/${path}?sig=test`),
     read: vi.fn(async (path: string, maxBytes: number) => {
       const blob = path.startsWith('uploads-quarantine/') ? uploaded : moved;
       return (
@@ -41,7 +42,6 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
     }),
     write: vi.fn(async () => undefined),
     delete: vi.fn(async () => undefined),
-    stream: vi.fn(async () => new ReadableStream<Uint8Array>()),
   } satisfies BlobStore;
   const store = {
     insert: vi.fn(),
@@ -51,17 +51,20 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
     ),
   };
   const published: FileStatus[] = [];
+  const authorize = vi.fn(async (_ctx: WorkspaceContext, _action: string) => undefined);
+  const audit = vi.fn(async () => undefined);
   const useCases = filesUseCases({
     storeFor: () => store,
     blobs,
     inScope: (_owner, work) => work({} as Tx),
     publishSettled: async (_tx, _file, status) => void published.push(status),
-    authorize: async () => undefined,
+    authorize,
+    audit,
     malwareScanning,
     newId: () => F,
     now: () => new Date('2026-11-20T09:00:00Z'),
   });
-  return { useCases, blobs, store, published, row: () => row };
+  return { useCases, blobs, store, published, authorize, audit, row: () => row };
 }
 
 const pdf = { data: Buffer.from('%PDF'), contentType: 'application/pdf' };
@@ -116,5 +119,52 @@ describe('the server-side re-check of what was uploaded', () => {
     await useCases.applyScanResult({ owner: { workspaceId: W }, fileId: F }, 'clean');
     expect(await useCases.applyScanResult({ owner: { workspaceId: W }, fileId: F }, 'infected')).toBe('clean');
     expect(blobs.delete).toHaveBeenCalledTimes(1);
+  });
+});
+
+const clean = async () => {
+  const made = setup(false, pdf);
+  await made.useCases.markCleanWithoutScan(ctx, F);
+  return made;
+};
+
+describe('Scenario: Opening an uploaded file (AIV-P1-045)', () => {
+  it('a clean file opens through a link valid for 5 minutes, and the access is audited after the link is made', async () => {
+    const { useCases, blobs, audit } = await clean();
+    const expiresAt = new Date('2026-11-20T09:05:00Z');
+    expect(await useCases.issueReadLink(ctx, F)).toEqual({
+      url: `https://blob.credalent.example/evidence/w/${W}/${F}?sig=test`,
+      expiresAt,
+    });
+    expect(blobs.readUrl).toHaveBeenCalledWith(`evidence/w/${W}/${F}`, expiresAt, 'application/pdf');
+    expect(audit.mock.calls).toEqual([[ctx, { action: 'file.link_issued', subject: { type: 'file', id: F } }]]);
+    expect(audit.mock.invocationCallOrder[0]).toBeGreaterThan(blobs.readUrl.mock.invocationCallOrder[0] ?? Infinity);
+  });
+
+  // SAFETY: mutation check: removed `if (file?.status !== 'clean') return null` from issueReadLink -> this test failed (a link to the pending file)
+  it('a file that is not clean gets no link and no audit entry', async () => {
+    const { useCases, blobs, audit } = setup(true, pdf);
+    expect(await useCases.issueReadLink(ctx, F)).toBeNull();
+    expect(blobs.readUrl).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: removed `await p.audit(...)` from issueReadLink -> this test failed (the link was returned)
+  it('when the audit entry cannot be written, no link is returned', async () => {
+    const { useCases, audit } = await clean();
+    audit.mockRejectedValueOnce(new Error('audit down'));
+    await expect(useCases.issueReadLink(ctx, F)).rejects.toThrow('audit down');
+  });
+
+  // SAFETY: mutation check: removed `await p.authorize(ctx, 'file.download')` from issueReadLink -> this test failed (resolved a link)
+  it('Scenario: Interviewer not on the job: a refused member gets no link, and nothing is read or audited', async () => {
+    const { useCases, blobs, store, authorize, audit } = await clean();
+    store.find.mockClear();
+    authorize.mockRejectedValueOnce(new Error('forbidden'));
+    await expect(useCases.issueReadLink({ ...ctx, role: 'interviewer' }, F)).rejects.toThrow('forbidden');
+    expect(authorize).toHaveBeenLastCalledWith(expect.anything(), 'file.download');
+    expect(store.find).not.toHaveBeenCalled();
+    expect(blobs.readUrl).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
   });
 });

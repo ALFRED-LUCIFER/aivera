@@ -46,7 +46,7 @@ const urlFor = (role: string) =>
 const as = <T>(userId: string, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>) =>
   workspaces.withWorkspace({ userId }, workspaceId, fn);
 const filesWith = (malwareScanning: boolean, now?: () => Date) =>
-  createFiles({ db: app, workspaces, blobs, malwareScanning, ...(now && { now }) });
+  createFiles({ db: app, workspaces, audit: createAudit(app), blobs, malwareScanning, ...(now && { now }) });
 
 /** A synthetic PDF of `size` bytes. */
 const pdfOf = (size: number) => Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(size - 9, 0x20)]);
@@ -153,14 +153,15 @@ describe('Scenario: A clean PDF is uploaded and becomes usable', () => {
     await files.handleScanResult(scanResult(blobUri, 'Malicious'));
     expect([(await row(w1, fileId))?.status, (await outbox(w1, fileId)).length]).toEqual(['clean', 1]);
 
-    const download = await as(ALEX, w1, (ctx) => files.openDownload(ctx, fileId));
-    expect(download).toMatchObject({ contentType: PDF, sizeBytes: body.length });
-    expect(Buffer.from(await new Response(download?.body).arrayBuffer()).equals(body)).toBe(true);
+    const link = await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId));
+    const download = await fetch(link?.url ?? '');
+    expect(download.headers.get('content-type')).toBe(PDF);
+    expect(Buffer.from(await download.arrayBuffer()).equals(body)).toBe(true);
   });
 });
 
 describe('Scenario: An infected file never becomes evidence', () => {
-  // SAFETY: mutation check: openDownload without `file?.status !== 'clean'` (null only when missing) -> this test failed (streamed the infected file)
+  // SAFETY: mutation check: issueReadLink with `if (!file) return null` in place of `file?.status !== 'clean'` -> this test failed (a link to the infected file)
   it('reported "Malicious": deleted from quarantine, "infected", never downloadable, and file.rejected is published', async () => {
     const { fileId, blobUri } = await upload(w1, 'evidence', pdfOf(4096));
     await files.handleScanResult(scanResult(blobUri, 'Malicious'));
@@ -169,12 +170,12 @@ describe('Scenario: An infected file never becomes evidence', () => {
     expect(await exists(`uploads-quarantine/w/${w1}/${fileId}`)).toBe(false);
     expect(await exists(`evidence/w/${w1}/${fileId}`)).toBe(false);
     expect(await outbox(w1, fileId)).toEqual([{ type: 'FileRejected.v1', payload: { fileId, reason: 'infected' } }]);
-    expect(await as(ALEX, w1, (ctx) => files.openDownload(ctx, fileId))).toBeNull();
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId))).toBeNull();
   });
 
   it('a pending file is not downloadable either', async () => {
     const { fileId } = await upload(w1, 'evidence', pdfOf(4096));
-    expect(await as(ALEX, w1, (ctx) => files.openDownload(ctx, fileId))).toBeNull();
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId))).toBeNull();
   });
 
   it('a scan result that is neither verdict is retried; one for a blob outside quarantine is ignored', async () => {
@@ -285,14 +286,63 @@ describe('Scenario: Files from another workspace cannot be downloaded', () => {
   it("a W1 recruiter asking for W2's clean file gets nothing; W2's own admin gets it", async () => {
     const { fileId, blobUri } = await upload(w2, 'evidence', pdfOf(4096));
     await files.handleScanResult(scanResult(blobUri, 'No threats found'));
-    expect(await as(ALEX, w1, (ctx) => files.openDownload(ctx, fileId))).toBeNull();
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId))).toBeNull();
     expect(await as(ALEX, w1, (ctx) => files.getStatus(ctx, fileId))).toBeNull();
-    expect(await as(OMAR, w2, (ctx) => files.openDownload(ctx, fileId))).not.toBeNull();
+    expect(await as(OMAR, w2, (ctx) => files.issueReadLink(ctx, fileId))).not.toBeNull();
+  });
+});
+
+const linkEntries = async (fileId: string) =>
+  (await createAudit(app).listFor(w1, { type: 'file', id: fileId })).filter((e) => e.action === 'file.link_issued');
+const cleanFile = async (workspaceId = w1) => {
+  const { fileId, blobUri } = await upload(workspaceId, 'evidence', pdfOf(4096));
+  await files.handleScanResult(scanResult(blobUri, 'No threats found'));
+  return fileId;
+};
+
+describe('Scenario: Opening an uploaded file (AIV-P1-045)', () => {
+  it('a recruiter gets a link that reads that one file as an attachment for 5 minutes, and the access is audited', async () => {
+    const fileId = await cleanFile();
+    const before = Date.now();
+    const link = await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, fileId));
+    if (!link) throw new Error('no link');
+    expect(link.expiresAt.getTime() - before).toBeGreaterThanOrEqual(5 * 60_000 - 1000);
+    expect(link.expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(5 * 60_000);
+    // The signature itself ends then (`se`), to the second.
+    expect(new URL(link.url).searchParams.get('se')).toBe(link.expiresAt.toISOString().replace(/\.\d{3}Z$/, 'Z'));
+    const response = await fetch(link.url);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-disposition')).toBe('attachment');
+    expect(response.headers.get('content-type')).toBe(PDF);
+    expect((await response.arrayBuffer()).byteLength).toBe(4096);
+    // Read only: the same signature cannot overwrite or delete the blob.
+    expect((await put(link.url, pdfOf(16))).status).toBe(403);
+    expect((await fetch(link.url, { method: 'DELETE' })).status).toBe(403);
+    const entries = await linkEntries(fileId);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ actor: { type: 'user', id: ALEX }, subject: { type: 'file', id: fileId } });
   });
 
-  it('an interviewer (job-scoped, no job named) is refused', async () => {
-    const { fileId } = await upload(w1, 'evidence', pdfOf(4096));
-    await expect(as(LINA, w1, (ctx) => files.openDownload(ctx, fileId))).rejects.toBeInstanceOf(ForbiddenError);
+  it('the link stops working once its 5 minutes have passed', async () => {
+    const fileId = await cleanFile();
+    const sixMinutesAgo = filesWith(true, () => new Date(Date.now() - 6 * 60_000));
+    const link = await as(ALEX, w1, (ctx) => sixMinutesAgo.issueReadLink(ctx, fileId));
+    expect((await fetch(link?.url ?? '')).status).toBe(403);
+  });
+
+  // SAFETY: mutation check: removed `await p.authorize(ctx, 'file.download')` from issueReadLink -> this test failed (the interviewer got a link)
+  it('Scenario: Interviewer not on the job: an interviewer is refused and nothing is audited', async () => {
+    const fileId = await cleanFile();
+    await expect(as(LINA, w1, (ctx) => files.issueReadLink(ctx, fileId))).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await linkEntries(fileId)).toEqual([]);
+  });
+
+  it("another workspace's file, and a file not yet clean, get no link and no audit entry", async () => {
+    const theirs = await cleanFile(w2);
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, theirs))).toBeNull();
+    const { fileId: pending } = await upload(w1, 'evidence', pdfOf(4096));
+    expect(await as(ALEX, w1, (ctx) => files.issueReadLink(ctx, pending))).toBeNull();
+    expect([...(await linkEntries(theirs)), ...(await linkEntries(pending))]).toEqual([]);
   });
 });
 

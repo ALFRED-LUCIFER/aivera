@@ -250,10 +250,10 @@ const ACCOUNT = '0190d4a2-0000-7000-8000-0000000ca0a1';
 const unused = () => Promise.reject(new Error('not used by the tenancy suite'));
 const stubBlobs: BlobStore = {
   uploadUrl: async (path) => `https://storage.credalent.example/${path}?sig=test`,
+  readUrl: async (path) => `https://storage.credalent.example/${path}?sig=test`,
   read: unused,
   write: unused,
   delete: unused,
-  stream: unused,
 };
 
 let container: StartedPostgreSqlContainer;
@@ -592,6 +592,7 @@ async function seed(
     const { fileId } = await createFiles({
       db: app,
       workspaces,
+      audit: createAudit(app),
       blobs: stubBlobs,
       malwareScanning: true,
     }).requestUpload(ctx, {

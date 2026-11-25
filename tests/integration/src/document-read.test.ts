@@ -113,13 +113,13 @@ const stored = new Map<string, { data: Buffer; contentType: string }>();
 const BLOB = 'https://blob.credalent.example/';
 const blobs: BlobStore = {
   uploadUrl: async (path) => `${BLOB}${path}`,
+  readUrl: async (path) => `${BLOB}${path}`,
   read: async (path) => {
     const blob = stored.get(path);
     return blob ? { size: blob.data.length, contentType: blob.contentType, data: blob.data } : null;
   },
   write: async (path, data, contentType) => void stored.set(path, { data, contentType }),
   delete: async (path) => void stored.delete(path),
-  stream: async () => new ReadableStream(),
 };
 const spans = new InMemorySpanExporter();
 /** Every model the worker asks for, language or embeddings; each refuses, as during an AI outage (AIV-P1-088). */
@@ -259,7 +259,7 @@ beforeAll(async () => {
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
   evidence = createEvidence(workspaces, audit, () => NOW);
-  files = createFiles({ db: app, workspaces, blobs, malwareScanning: true, now: () => NOW });
+  files = createFiles({ db: app, workspaces, audit, blobs, malwareScanning: true, now: () => NOW });
   const create = (name: string) =>
     workspaces.createWorkspace({ name, company: name, hiringFocus: 'AI', synthetic: true, creatorUserId: ALEX });
   w1 = (await create('Demo hiring team')).id;

@@ -1,5 +1,6 @@
 // Builds the files module for an app (ADR-002: only apps and tests import this).
 // Not the @credalent/db index: it also exports the migrator, whose module paths do not resolve inside a Next.js bundle.
+import type { AuditContract } from '@credalent/audit';
 import type { Db, Tx } from '@credalent/db/client';
 import { enqueue } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
@@ -24,11 +25,13 @@ export const SCAN_RESULTS_QUEUE = 'malware-scan-results';
 export function createFiles(config: {
   db: Db;
   workspaces: Pick<WorkspacesContract, 'authorize'>;
+  /** Every read link issued is audited (AIV-P1-045); required, so no app can build the module without it. */
+  audit: Pick<AuditContract, 'record'>;
   blobs: BlobStore;
   malwareScanning: boolean;
   now?: () => Date;
 }): FilesContract {
-  const { db, workspaces, blobs, malwareScanning } = config;
+  const { db, workspaces, audit, blobs, malwareScanning } = config;
   const now = config.now ?? (() => new Date());
   const useCases = filesUseCases({
     storeFor: fileStore,
@@ -44,6 +47,8 @@ export function createFiles(config: {
         : enqueue(tx, outbox, FileRejectedV1, { ...input, payload: { fileId: file.id, reason: status } });
     },
     authorize: (ctx, action) => workspaces.authorize(ctx, action),
+    audit: (ctx, entry) =>
+      audit.record({ tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } }, entry),
     malwareScanning,
     newId: uuidv7,
     now,

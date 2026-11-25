@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { NewEntry } from '@credalent/audit';
 import type { Tx } from '@credalent/db/client';
 import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import {
@@ -7,6 +8,7 @@ import {
   FileError,
   finalContainer,
   QUARANTINE,
+  READ_LINK_TTL_MS,
   UPLOAD_TTL_MS,
   type FileStatus,
   type Owner,
@@ -49,6 +51,11 @@ export type BlobStore = {
    */
   uploadUrl(path: string, expiresOn: Date): Promise<string>;
   /**
+   * A URL that may read the one blob at `path` until `expiresOn`, and nothing else; the answer is an attachment of
+   * `contentType`, so the browser saves it and never renders it.
+   */
+  readUrl(path: string, expiresOn: Date, contentType: string): Promise<string>;
+  /**
    * The blob's size and stored content type, and its bytes when it is no bigger than `maxBytes` (null data otherwise,
    * so an oversized upload is never loaded into memory); null when there is no such blob.
    */
@@ -59,7 +66,6 @@ export type BlobStore = {
   write(path: string, data: Buffer, contentType: string): Promise<void>;
   /** Deletes the blob if it exists. */
   delete(path: string): Promise<void>;
-  stream(path: string): Promise<ReadableStream<Uint8Array>>;
 };
 
 export type Ports = {
@@ -74,6 +80,8 @@ export type Ports = {
     status: Exclude<FileStatus, 'pending'>,
   ): Promise<void>;
   authorize(ctx: WorkspaceContext, action: Action): Promise<void>;
+  /** Appends an audit entry in `ctx.tx`; the last statement before commit (AGENTS.md 3.6). */
+  audit(ctx: WorkspaceContext, entry: NewEntry): Promise<void>;
   /** True wherever the environment requires Defender's scan (the pilot and production); never configurable per call. */
   malwareScanning: boolean;
   newId(): string;
@@ -81,7 +89,7 @@ export type Ports = {
 };
 
 export type UploadTicket = { fileId: string; uploadUrl: string; expiresAt: Date };
-export type Download = { contentType: string; sizeBytes: number; body: ReadableStream<Uint8Array> };
+export type ReadLink = { url: string; expiresAt: Date };
 export type ScanVerdict = 'clean' | 'infected';
 
 const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex');
@@ -172,12 +180,17 @@ export function filesUseCases(p: Ports) {
       return settle(ctx.tx, { workspaceId: ctx.workspaceId }, file, 'clean');
     },
 
-    async openDownload(ctx: WorkspaceContext, fileId: string): Promise<Download | null> {
+    async issueReadLink(ctx: WorkspaceContext, fileId: string): Promise<ReadLink | null> {
+      // SAFETY: raw candidate files are for admins and recruiters; a hiring owner or interviewer is refused (AGENTS.md 1.9).
       await p.authorize(ctx, 'file.download');
       const file = await p.storeFor(ctx.tx).find({ workspaceId: ctx.workspaceId }, fileId);
       // SAFETY: only a clean file leaves storage; pending, infected and rejected files read as not found.
       if (file?.status !== 'clean') return null;
-      return { contentType: file.contentType, sizeBytes: file.sizeBytes, body: await p.blobs.stream(file.blobPath) };
+      const expiresAt = new Date(p.now().getTime() + READ_LINK_TTL_MS);
+      const url = await p.blobs.readUrl(file.blobPath, expiresAt, file.contentType);
+      // SAFETY: no link leaves without its audit entry: a failed write rolls back and the link is never returned.
+      await p.audit(ctx, { action: 'file.link_issued', subject: { type: 'file', id: file.id } });
+      return { url, expiresAt };
     },
 
     /** Applies one Defender scan result to the file its blob URL names; a URL naming no file is ignored. */

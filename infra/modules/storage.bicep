@@ -25,7 +25,8 @@ resource account 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   sku: { name: 'Standard_LRS' }
   properties: {
     accessTier: 'Hot'
-    // Never a public blob: downloads stream through the web app after its authorisation check.
+    // Never a public blob: an admin or recruiter opens a file through one short-lived (5 minutes), audited, read-only
+    // signed link the web app issues after its authorisation check (AIV-P1-045).
     allowBlobPublicAccess: false
     // Entra only: no account key exists to leak, so every SAS is a user-delegation SAS signed for the app identity.
     allowSharedKeyAccess: false
@@ -88,7 +89,7 @@ resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05
 }
 
 // Storage Blob Data Contributor: read, write and delete blobs. Storage Blob Delegator: get the user delegation key that
-// signs upload SAS. Both on this account only.
+// signs upload SAS and the read-only link to one file. Both on this account only.
 var blobRoles = ['ba92f5b4-2d11-453d-a403-e96b0029c9fe', 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a']
 
 resource appBlobRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
