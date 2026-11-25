@@ -211,6 +211,10 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
   await expect(page.getByText(/^Decision pack · prepared \d{1,2} [A-Z][a-z]{2} \d{4} · rubric v1$/)).toBeVisible();
   for (const name of ASSESSED) await expect(page.getByRole('link', { name })).toHaveCount(1);
+  // AIV-P1-139: who added each member and when, the three from the new pack and Daniel alike.
+  const addedBy = `Added by ${creator.slice(0, creator.indexOf('@'))} on `;
+  await expect(page.getByText(addedBy)).toHaveCount(4);
+  await expect(page.getByText(/^Added by .+ on \d{1,2} [A-Z][a-z]{2} \d{4}$/)).toHaveCount(4);
   await expect(
     page.getByText('1 other candidate stays in the ranking and can be added to a later pack.'),
   ).toBeVisible();

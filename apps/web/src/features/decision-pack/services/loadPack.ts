@@ -3,6 +3,7 @@ import { IntakeError } from '@credalent/intake';
 import { ForbiddenError } from '@credalent/workspaces';
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
+import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getJobs } from '@/server/jobs';
@@ -27,18 +28,31 @@ export async function loadPack(jobId: string, packId: string): Promise<PackPage 
       const header = await getJobs().getJobHeader(ctx, jobId);
       const applicants = await getIntake().listApplicationsForJob(ctx, jobId);
       const names = new Map(applicants.map((a) => [a.personId, a.displayName] as const));
+      // The workspace members who added someone, shown as the job header shows its hiring owner.
+      const adders = new Map(
+        await Promise.all(
+          [...new Set(pack.members.flatMap((m) => m.addedBy ?? []))].map(async (userId) => {
+            const user = await getIdentity().getUser(userId);
+            return [userId, user ? (user.displayName ?? user.email) : null] as const;
+          }),
+        ),
+      );
       return {
         jobId,
         name: pack.name,
         job: header?.job.title ?? '',
         preparedAt: pack.preparedAt,
         rubricVersion: header?.approved?.id === pack.rubricVersionId ? header.approved.version : null,
-        members: pack.members.map((m) => ({
-          candidateId: m.candidateId,
-          name: names.get(m.candidateId) ?? null,
-          backedScore: m.backedScore,
-          upperBound: m.upperBound,
-        })),
+        members: pack.members.map((m) => {
+          const by = m.addedBy && adders.get(m.addedBy);
+          return {
+            candidateId: m.candidateId,
+            name: names.get(m.candidateId) ?? null,
+            backedScore: m.backedScore,
+            upperBound: m.upperBound,
+            added: by && m.addedAt ? { by, at: m.addedAt } : null,
+          };
+        }),
         others: new Set(applicants.map((a) => a.personId)).size - pack.members.length,
       };
     });

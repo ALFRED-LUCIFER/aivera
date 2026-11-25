@@ -11,7 +11,10 @@ import type { DecisionPackView, PackPage } from '../domain/pack.ts';
 // AIV-P2-010: the decision pack a recruiter built from the ranking, from the Pack artboard
 // (docs/01-design/artboards/Pack.dc.html). Ported: the pack's name, "prepared <date> · rubric vN", each member with
 // their backed score and claim range (as snapshotted when they joined) and the basis "Observed" (AGENTS.md 1.7),
-// "Back to ranking", and "N other candidates stay in the ranking and can be added to a later pack.". Deviations:
+// "Back to ranking", and "N other candidates stay in the ranking and can be added to a later pack.". Added beyond the
+// artboard (AIV-P1-139): "Added by <who added them> on <date>" under each member, so the hiring owner sees who put a
+// candidate in front of them.
+// Deviations:
 // - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011);
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;
 // - no "What the role needs", strengths, risks, Round 1 findings, Credalent's recommendation, "Record decisions" or the
@@ -60,12 +63,19 @@ function Pack({ pack }: { pack: PackPage }) {
         {pack.members.map((m) => (
           <li key={m.candidateId} className="flex flex-wrap items-center justify-between gap-3 p-3">
             {/* profileHref builds the path from opaque ids, which typed routes cannot check. */}
-            <Link
-              href={profileHref(m.candidateId, pack.jobId) as Route}
-              className="font-semibold text-text underline-offset-2 hover:underline"
-            >
-              {m.name ?? t('ranking.unnamed')}
-            </Link>
+            <span className="flex flex-col">
+              <Link
+                href={profileHref(m.candidateId, pack.jobId) as Route}
+                className="font-semibold text-text underline-offset-2 hover:underline"
+              >
+                {m.name ?? t('ranking.unnamed')}
+              </Link>
+              {m.added && (
+                <span className="text-meta text-text-2">
+                  {t('decisionPack.addedBy', { name: m.added.by, date: m.added.at })}
+                </span>
+              )}
+            </span>
             <span className="min-w-44">
               <ScoreWithUncertainty
                 compact

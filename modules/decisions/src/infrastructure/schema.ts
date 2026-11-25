@@ -48,6 +48,9 @@ export const packMember = decisions
       backedScore: integer('backed_score').notNull(),
       upperBound: integer('upper_bound').notNull(),
       position: integer().notNull(),
+      // Who added the member, from the injected clock (AIV-P1-139); null on members added before these were stored.
+      addedBy: uuid('added_by'),
+      addedAt: timestamp('added_at', { withTimezone: true }),
     },
     (t) => [
       // A candidate appears once per pack.
@@ -60,6 +63,7 @@ export const packMember = decisions
       }),
       unique('pack_member_position_key').on(t.workspaceId, t.packId, t.position),
       check('pack_member_position_check', sql`${t.position} >= 0`),
+      check('pack_member_added_check', sql`(${t.addedBy} is null) = (${t.addedAt} is null)`),
       check(
         'pack_member_score_check',
         sql`${t.backedScore} >= 0 and ${t.backedScore} <= ${t.upperBound} and ${t.upperBound} <= 100`,

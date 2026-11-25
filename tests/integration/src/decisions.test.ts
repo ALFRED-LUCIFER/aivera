@@ -176,6 +176,12 @@ const stored = () =>
 const decisionAudits = async (candidateId: string) =>
   (await audit.listFor(w1, { type: 'candidate', id: candidateId })).filter((e) => e.action === 'decision.recorded');
 
+const packAudits = async (packId: string) => audit.listFor(w1, { type: 'pack', id: packId });
+const memberAudits = async (packId: string, candidateId: string) =>
+  (await audit.listFor(w1, { type: 'candidate', id: candidateId })).filter(
+    (e) => e.action === 'pack.member_added' && e.after?.packId === packId,
+  );
+
 const advance = (packId: string, candidateIds: string[]) => ({
   packId,
   decisions: candidateIds.map((candidateId) => ({ candidateId, decision: 'advance' as const, note: WHY })),
@@ -196,7 +202,8 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
-  audit = createAudit(app);
+  // The audit's clock is the same as the module's, so an entry's time is the member's `added_at` (AIV-P1-139).
+  audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
   intake = createIntake(
@@ -282,7 +289,7 @@ describe('Migrations', () => {
 
   it('applying the migrations again is a no-op', async () => {
     const applied = await count('migrations.decisions');
-    expect(applied).toBe(2);
+    expect(applied).toBe(3);
     execFileSync(process.execPath, [dbCli, 'migrate'], {
       env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
     });
@@ -635,5 +642,79 @@ describe('listPacks', () => {
     await expect(as(OMAR, w2, (ctx) => decisions.listPacks(ctx, seniorAi.jobId))).rejects.toMatchObject({
       code: 'job_not_found',
     });
+  });
+});
+
+// AIV-P1-139: who added each member and when, and the audit of a pack and its members (AGENTS.md 3.6).
+describe('Scenario: Pack creation and member additions are audited', () => {
+  let round4: string;
+
+  // SAFETY: mutation check: removed auditPackCreated and the auditMemberAdded loop from createPack -> this test failed (no entries)
+  // SAFETY: mutation check: added the pack's name to pack.created's after -> this test failed (after compared exactly; the
+  // audit module's own check catches emails and phone numbers only, not names)
+  it('Zaid creates a pack with Sara: one pack.created, one pack.member_added, and Sara added by Zaid at the time', async () => {
+    ({ packId: round4 } = await as(ZAID, w1, (ctx) =>
+      decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 4', members: [{ candidateId: sara }] }),
+    ));
+    const pack = await as(ZAID, w1, (ctx) => decisions.getPack(ctx, round4));
+    expect(pack?.members).toEqual([expect.objectContaining({ candidateId: sara, addedBy: ZAID, addedAt: NOW })]);
+    expect(await packAudits(round4)).toEqual([
+      expect.objectContaining({
+        action: 'pack.created',
+        actor: { type: 'user', id: ZAID },
+        occurredAt: NOW,
+        after: { jobId: seniorAi.jobId, rubricVersionId: seniorAi.rubric.versionId },
+      }),
+    ]);
+    expect(await memberAudits(round4, sara)).toEqual([
+      expect.objectContaining({
+        actor: { type: 'user', id: ZAID },
+        occurredAt: NOW,
+        after: { packId: round4, jobId: seniorAi.jobId, assessmentId: expect.any(String), position: 0 },
+      }),
+    ]);
+  });
+
+  // SAFETY: mutation check: removed the auditMemberAdded loop from addMembers -> this test failed (no entry for Arjun)
+  it('Alex adds Arjun and Sara again: only Arjun is added, by Alex, and only he is audited', async () => {
+    expect(
+      await as(ALEX, w1, (ctx) => decisions.addMembers(ctx, round4, [{ candidateId: sara }, { candidateId: arjun }])),
+    ).toEqual({ added: 1 });
+    const members = (await as(ALEX, w1, (ctx) => decisions.getPack(ctx, round4)))?.members ?? [];
+    expect(members.map((m) => [m.candidateId, m.addedBy])).toEqual([
+      [sara, ZAID],
+      [arjun, ALEX],
+    ]);
+    expect(await memberAudits(round4, arjun)).toEqual([
+      expect.objectContaining({ actor: { type: 'user', id: ALEX }, after: expect.objectContaining({ position: 1 }) }),
+    ]);
+    expect(await memberAudits(round4, sara)).toHaveLength(1);
+  });
+
+  it('a rolled-back add writes no member and no audit entry (same transaction)', async () => {
+    const before = [await stored(), (await memberAudits(round4, huda)).length];
+    await expect(
+      as(ZAID, w1, async (ctx) => {
+        await decisions.addMembers(ctx, round4, [{ candidateId: huda }]);
+        throw new Error('rolled back');
+      }),
+    ).rejects.toThrow('rolled back');
+    expect([await stored(), (await memberAudits(round4, huda)).length]).toEqual(before);
+  });
+
+  // SAFETY: mutation check: ALTER TABLE decisions.pack_member DROP CONSTRAINT pack_member_added_check -> this test failed ('ok')
+  it('the database refuses a member with who added it but not when, and keeps older members with neither', async () => {
+    expect(
+      await rawInW1(sql`insert into decisions.pack_member (workspace_id, pack_id, candidate_id, assessment_id,
+        backed_score, upper_bound, position, added_by) values (${w1}, ${round4}, ${huda}, gen_random_uuid(), 1, 2, 9, ${ZAID})`),
+    ).toBe('23514');
+    expect(
+      await rawInW1(sql`insert into decisions.pack_member (workspace_id, pack_id, candidate_id, assessment_id,
+        backed_score, upper_bound, position) values (${w1}, ${round4}, ${huda}, gen_random_uuid(), 1, 2, 9)`),
+    ).toBe('ok');
+    // Nor may the app role rewrite who added a member (0001_force_rls_and_grants.sql grants no UPDATE).
+    expect(await rawInW1(sql`update decisions.pack_member set added_by = ${ALEX} where pack_id = ${round4}`)).toBe(
+      '42501',
+    );
   });
 });

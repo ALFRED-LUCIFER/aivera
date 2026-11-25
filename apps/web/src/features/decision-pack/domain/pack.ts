@@ -6,7 +6,14 @@ export type PackPage = {
   preparedAt: Date;
   /** The approved rubric version the pack is on, or null once the job's approved version has moved on. */
   rubricVersion: number | null;
-  members: { candidateId: string; name: string | null; backedScore: number; upperBound: number }[];
+  members: {
+    candidateId: string;
+    name: string | null;
+    backedScore: number;
+    upperBound: number;
+    /** Who added the member and when; null on members added before this was stored, or once that account is gone. */
+    added: { by: string; at: Date } | null;
+  }[];
   /** The job's other applicants: they stay in the ranking and can be added to a later pack. */
   others: number;
 };

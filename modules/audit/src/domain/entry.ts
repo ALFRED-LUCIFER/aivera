@@ -47,6 +47,8 @@ export const ACTIONS = [
   'intake.batch_confirmed',
   'file.link_issued',
   'application.stage_changed',
+  'pack.created',
+  'pack.member_added',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

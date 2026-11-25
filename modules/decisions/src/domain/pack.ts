@@ -39,6 +39,9 @@ export type PackMember = {
   upperBound: number;
   /** The order in the pack, from 0. */
   position: number;
+  /** Who added the member and when (AIV-P1-139); null on members added before these were stored. */
+  addedBy: string | null;
+  addedAt: Date | null;
 };
 
 export type Decision = {
