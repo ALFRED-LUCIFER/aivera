@@ -1,8 +1,7 @@
 # Daniel Novak (AIV-P1-115): the summary describes the evaluation set he built, so "Retrieval and evaluation" is clearly
 # shown with the summary's own words; it says nothing on cost, so that competency is left out (not mentioned).
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task interviews.mapSummary --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
 id: daniel-novak-clear-evidence
 people: [Daniel Novak, Lina Panel]
 input:
@@ -29,13 +28,16 @@ expected:
   prompt:
     forbidden: [Daniel, Novak]
 recorded:
-  promptVersion: interviews.mapSummary@2
-  promptHash: 1080f912b49c
+  promptVersion: interviews.mapSummary@3
+  promptHash: dc3372bc75c9
   output:
     findings:
       - competencyId: C1
+        reason: The candidate built a 200-question evaluation set and showed how answers were graded, explaining the sampling from real support tickets.
         finding: clearly_shown
-        reason: Describes the evaluation set he built and how its answers were graded.
         citations:
           - sourceId: S1
-            quote: walked through the 200-question evaluation set he built
+            quote: asked how the questions were chosen and he explained the sampling from real support tickets
+            start: 110
+            end: 201
+        claim: false

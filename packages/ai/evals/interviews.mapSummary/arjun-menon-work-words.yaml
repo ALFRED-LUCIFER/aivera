@@ -1,9 +1,8 @@
 # Arjun Menon (AIV-P1-115): the summary's work sentences use words that can also be about a person ("health-check
 # endpoint", "model family"). They are about the work, so each gives a finding and the answer is not refused as
 # off-rubric.
-# The recorded answer was written by hand with the review fix, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task interviews.mapSummary --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
 id: arjun-menon-work-words
 people: [Arjun Menon, Lina Panel]
 input:
@@ -30,19 +29,25 @@ expected:
   prompt:
     forbidden: [Arjun, Menon]
 recorded:
-  promptVersion: interviews.mapSummary@2
-  promptHash: 4493a5c6825b
+  promptVersion: interviews.mapSummary@3
+  promptHash: 9e11739f72c9
   output:
     findings:
-      - competencyId: C2
-        finding: clearly_shown
-        reason: Describes the health check he added and how its alerts cut the time to spot a stalled worker.
-        citations:
-          - sourceId: S1
-            quote: showed the health-check endpoint he added to the queue service
       - competencyId: C1
+        reason: The candidate compared answer quality across one model family before choosing the smaller model, indicating evaluation of retrieval quality.
         finding: partly_shown
-        reason: Compared answer quality across models before choosing one, with no metric named.
         citations:
           - sourceId: S1
-            quote: compared answer quality across one model family
+            quote: He compared answer quality across one model family before choosing the smaller model
+            start: 127
+            end: 211
+        claim: false
+      - competencyId: C2
+        reason: The candidate showed the health-check endpoint and how its alerts cut the time to spot a stalled worker, indicating improved reliability through monitoring and alerting.
+        finding: clearly_shown
+        citations:
+          - sourceId: S1
+            quote: showed the health-check endpoint he added to the queue service and how its alerts cut the time to spot a stalled worker
+            start: 6
+            end: 125
+        claim: false

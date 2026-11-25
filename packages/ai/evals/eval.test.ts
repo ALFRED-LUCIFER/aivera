@@ -1347,7 +1347,10 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
 
   it('an excerpt that is not the summary word for word fails citation validity', async () => {
     const daniel = caseOf(task, 'daniel-novak-clear-evidence');
-    const output = JSON.parse(JSON.stringify(daniel.recorded.output).replace('200-question', '2,000-question'));
+    // Every quote altered, whichever words the recorded answer quotes.
+    const output = JSON.parse(JSON.stringify(daniel.recorded.output), (key, value) =>
+      key === 'quote' ? `${value} twice` : value,
+    );
     const report = await run(task, [withOutput(daniel, output)]);
     expect(report.passed).toBe(false);
     expect(report.rates.citationValidity).toBe(0);

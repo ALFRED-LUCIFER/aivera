@@ -279,7 +279,9 @@ describe('What the model reads for a gap', () => {
     expect(state.sources[4]?.text).toBe(
       'Limit: Shows the tooling only.\nWould change this: Ask for the evaluation set and its grading sheet.',
     );
-    expect(state.prompts[0]).toContain('Sources: S1 (supporting, claim), S5 (notes on this evidence, never cited).');
+    expect(state.prompts[0]).toContain(
+      'Cite only: S1 (supporting, claim). Notes to aim the questions, never cited: S5.',
+    );
     expect(state.prompts[0]).not.toContain('grading sheet');
     expect(JSON.stringify(state.sources)).not.toContain('never sent');
   });

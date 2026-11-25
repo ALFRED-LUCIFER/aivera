@@ -7,7 +7,7 @@ import { cited, type Source } from '../citations.ts';
 // it to a strength in code and nothing changes until a person confirms (AGENTS.md 1.5).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
-export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@2';
+export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@3';
 
 export const MAX_REASON_WORDS = 40;
 
@@ -18,10 +18,14 @@ export const SUMMARY_FINDINGS = ['not_shown', 'partly_shown', 'clearly_shown', '
 export const MAP_SUMMARY_SYSTEM = [
   "You read an interviewer's written summary of one interview. The prompt lists the competencies the interview",
   'tested; the summary is the one source. For each listed competency the summary says something about, give its',
-  'competencyId, copied exactly from the list; finding: not_shown when the summary says the candidate could not show',
-  'it, partly_shown when it was shown in part, clearly_shown when the summary describes what the candidate did, built',
-  `or explained, strongly_shown when it describes that in depth and detail; reason, at most ${MAX_REASON_WORDS} words on why,`,
-  'about the work only; and one citation quoting the words of the summary the finding rests on.',
+  `competencyId, copied exactly from the list; reason, at most ${MAX_REASON_WORDS} words, about the work only: what the`,
+  'summary says the candidate built, showed or measured for it, in its own words, never adding what it does not say;',
+  'then finding: not_shown when the summary says the candidate could not show it; partly_shown when the candidate',
+  'could explain only part of it, or the summary names only an activity (compared, reviewed, worked on, chose)',
+  'without the specific thing built, shown or measured; clearly_shown when it names a specific thing the candidate',
+  'built, showed or measured (an evaluation set, an endpoint, a figure), even if not everything the Meaning lists;',
+  'strongly_shown when it describes that in depth and detail; and one citation quoting the words of the summary the',
+  'finding rests on.',
   'Leave out every competency the summary does not cover, and never guess one from silence. Give at most one finding',
   'for a competency and none for a competency that is not listed.',
   'Judge only what the summary says the candidate did, built, explained or could not explain. A sentence about',
@@ -76,12 +80,17 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
         cited(
           z.object({
             competencyId: z.string().refine((id) => competencyIds.includes(id), rule('competency_not_listed')),
-            finding: z.enum(SUMMARY_FINDINGS),
+            // Before the finding, so the model weighs what the summary names before it rates (strict mode keeps order).
             reason: z
               .string()
               .min(1)
               .refine((text) => words(text) <= MAX_REASON_WORDS, rule('reason_too_long'))
               .refine((text) => !isOffRubric(text), rule('off_rubric')),
+            finding: z
+              .enum(SUMMARY_FINDINGS)
+              .describe(
+                'clearly_shown only when the reason names a specific set, metric, figure or system the candidate built, showed or measured; an activity alone (compared, reviewed, chose) is partly_shown',
+              ),
           }),
         )
           .refine((f) => f.citations.length <= 1, rule('one_excerpt'))

@@ -1,9 +1,8 @@
 # Daniel Novak (AIV-P1-113): "Retrieval and evaluation" rests on his CV line; "LLM systems in production" is checked
 # work and is not listed, so no question is for it. Each question cites the CV line it tests, never the notes (S2):
 # the limit of that line and what would change it.
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task assessment.suggestQuestions --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
 id: daniel-novak-accuracy-claim
 people: [Daniel Novak]
 input:
@@ -43,30 +42,36 @@ expected:
   prompt:
     forbidden: [Daniel Novak]
 recorded:
-  promptVersion: assessment.suggestQuestions@2
-  promptHash: 7d17c659bfe5
+  promptVersion: assessment.suggestQuestions@3
+  promptHash: da8044a514e1
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: How was the 71% measured, on which questions, and who built that set?
-            strongAnswer: Names the question set, who wrote it, how answers were graded and what was held out.
-            weakAnswer: Repeats the figure without saying how or on what it was measured.
-            claim: true
+          - text: Walk me through how you built the evaluation set for the support assistant and how you graded its answers.
+            strongAnswer: Details a rigorous process for creating and grading the evaluation set, showing deep involvement and impact on accuracy.
+            weakAnswer: Gives vague or generic steps without specifics on grading or personal contribution.
             citations:
               - sourceId: S1
-                quote: raised answer accuracy from 71% to 88%
-          - text: What did you change yourself to move accuracy from 71% to 88%, and what did not work?
-            strongAnswer: Describes specific retrieval or prompt changes, their measured effect and a failed attempt.
-            weakAnswer: Credits the team in general terms and names no change of their own.
+                quote: raised answer accuracy from 71% to 88% on the support assistant
+                start: 13
+                end: 76
             claim: true
+          - text: Describe which retrieval metrics you used to measure answer accuracy and how these influenced your decisions.
+            strongAnswer: Explains specific retrieval metrics used and how they guided improvements in the support assistant.
+            weakAnswer: Mentions metrics without linking them to decision-making or improvements.
             citations:
               - sourceId: S1
-                quote: from 71% to 88%
-          - text: Which decision about the support assistant changed because of that accuracy result?
-            strongAnswer: Links the measurement to a release or product decision and who made it.
-            weakAnswer: Cannot say what the number was used for.
+                quote: raised answer accuracy from 71% to 88% on the support assistant
+                start: 13
+                end: 76
             claim: true
+          - text: What changes did you make to the retrieval system based on evaluation results, and how did you measure their impact?
+            strongAnswer: Clearly connects evaluation results to system changes and quantifies impact on accuracy.
+            weakAnswer: Fails to connect evaluation to changes or lacks measurable impact details.
             citations:
               - sourceId: S1
-                quote: on the support assistant
+                quote: raised answer accuracy from 71% to 88% on the support assistant
+                start: 13
+                end: 76
+            claim: true

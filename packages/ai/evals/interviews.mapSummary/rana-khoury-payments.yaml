@@ -1,9 +1,8 @@
 # Rana Khoury, Senior Product Manager, Payments (AIV-P1-115): a product job's competencies. The summary shows one in
 # part and says she could not explain the other; "verified by her former manager" is the interviewer's word and
 # changes no finding.
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task interviews.mapSummary --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
 id: rana-khoury-payments
 people: [Rana Khoury, Lina Panel]
 input:
@@ -31,19 +30,25 @@ expected:
   prompt:
     forbidden: [Rana, Khoury]
 recorded:
-  promptVersion: interviews.mapSummary@2
-  promptHash: 4e1fdb83cc53
+  promptVersion: interviews.mapSummary@3
+  promptHash: f63f27f0c77a
   output:
     findings:
       - competencyId: C1
+        reason: Candidate described the settlement flow for merchant payouts but could not explain chargebacks.
         finding: partly_shown
-        reason: Outlined the settlement flow but could not say how chargebacks were handled.
         citations:
           - sourceId: S1
-            quote: described the settlement flow for merchant payouts in outline
+            quote: described the settlement flow for merchant payouts in outline but could not say how chargebacks were handled
+            start: 5
+            end: 113
+        claim: false
       - competencyId: C2
+        reason: Candidate could not explain how the checkout conversion metric was defined or what decision it changed.
         finding: not_shown
-        reason: Could not explain how the conversion metric was defined or what it changed.
         citations:
           - sourceId: S1
-            quote: could not explain how the checkout conversion metric was defined
+            quote: She could not explain how the checkout conversion metric was defined or what decision it changed
+            start: 115
+            end: 211
+        claim: false
