@@ -12,7 +12,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "turbo run test --concurrency=1",
     "e2e": "pnpm --filter @credalent/tests-e2e e2e",
     "e2e:update": "pnpm --filter @credalent/tests-e2e e2e:update",
     "ai:eval": "pnpm --filter @credalent/ai eval",
