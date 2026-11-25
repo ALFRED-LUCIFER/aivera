@@ -13,7 +13,7 @@ export type {
   ScoreChangePreview,
 } from '../application/scoreChange.ts';
 export { RATINGS } from '../domain/scoreChange.ts';
-export type { CompetencyState, Rating } from '../domain/scoreChange.ts';
+export type { CompetencyState, NoChange, Rating } from '../domain/scoreChange.ts';
 export type {
   Assessment,
   CompetencyResult,
@@ -67,23 +67,26 @@ export interface AssessmentContract {
    */
   explainRanking(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<RankingExplanation | null>;
   /**
-   * What an interviewer's ratings would change (AIV-P1-117): strength and proven level before and after per competency,
+   * What an interviewer's ratings would do (AIV-P1-117): strength and proven level before and after per rated competency,
    * and the backed score and upper bound, from the same scoring as `assessCandidate`. Not shown weakens the competency's
-   * present evidence to Claim only, except work a second source checked; Partly shown changes nothing; Clearly shown adds
-   * the interview as Medium and Strongly shown as Strong evidence at the level the job needs, scored like submitted work
-   * and labelled the interviewer's word: never verified, never a second independent source. Writes nothing.
-   * `candidate.view` on the snapshot's job. Throws `ForbiddenError` for a snapshot of another workspace or none;
-   * `ScoreChangeError` `stale` (not the latest snapshot), `not_yet_scored` (evidence the snapshot has not scored),
-   * `source_not_found` (no interview of this candidate and job the context can see), `interview_not_held`,
-   * `competency_not_in_interview`, `competency_not_in_rubric`; a zod error for a malformed input.
+   * present evidence to Claim only, except work a second source checked; Partly shown changes nothing; Clearly shown and
+   * Strongly shown both add the interview as Medium evidence at the level the job needs, scored like submitted work and
+   * labelled the interviewer's word: never Strong, never verified, never a second independent source. A rating that
+   * moves nothing now is listed with why (`noChange`). Writes nothing. `candidate.view` on the snapshot's job. Throws
+   * `ForbiddenError` for a snapshot of another workspace or none; `ScoreChangeError` `stale` (not the latest snapshot),
+   * `not_yet_scored` (evidence the snapshot has not scored), `source_not_found` (no interview of this candidate and job
+   * the context can see), `interview_not_held`, `competency_not_in_interview`, `competency_not_in_rubric`; a zod error
+   * for a malformed input.
    */
   previewScoreChange(ctx: WorkspaceContext, input: ScoreChangeInput): Promise<ScoreChangePreview>;
   /**
-   * Applies a preview a person confirmed, in the caller's transaction: one new snapshot citing the interview, the
-   * changes stored so every later assessment on the same rubric version keeps them, and one `score.changed` audit entry per changed competency
-   * (actor, time, reason, before and after) as the last statements. `stale`, storing nothing, unless `previewId` is
-   * what `previewScoreChange` returns now. The same `idempotencyKey` again returns the snapshot stored the first time
-   * and writes nothing; with another preview or reason it is `idempotency_conflict`. Ratings that change nothing store nothing and return the snapshot unchanged. No stage or
+   * Applies a preview a person confirmed, in the caller's transaction: every listed rating stored under its interview
+   * (replacing that interview's earlier rating of the competency) so every later assessment on the same rubric version
+   * applies it, a new snapshot citing the interview when the score or its citations change, and one `score.changed`
+   * audit entry per rating (actor, time, reason, rating, before and after, equal when nothing moved) as the last
+   * statements. `stale`, storing nothing, unless `previewId` is what `previewScoreChange` returns now. The same
+   * `idempotencyKey` again returns the snapshot of the first time and writes nothing; with another candidate, preview
+   * or reason it is `idempotency_conflict`. Only Partly shown ratings that change nothing store nothing. No stage or
    * contact changes. `scorecard.submit` on the snapshot's job; refusals as `previewScoreChange`.
    */
   applyScoreChange(ctx: WorkspaceContext, input: ApplyScoreChangeInput): Promise<StoredAssessment>;

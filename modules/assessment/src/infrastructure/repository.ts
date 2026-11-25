@@ -41,7 +41,7 @@ export function assessmentStore(tx: Tx): AssessmentStore {
         .select({
           competencyId: interviewChange.competencyId,
           sourceId: interviewChange.sourceId,
-          strength: interviewChange.strength,
+          rating: interviewChange.rating,
           level: interviewChange.level,
           itemIds: interviewChange.itemIds,
         })
@@ -58,19 +58,12 @@ export function assessmentStore(tx: Tx): AssessmentStore {
     async insertInterviewChanges(rows) {
       await tx.insert(interviewChange).values(rows);
     },
-    async applied(workspaceId, candidateId, jobId, idempotencyKey) {
+    async applied(workspaceId, idempotencyKey) {
       const [row] = await tx
         .select({ result, previewId: interviewChange.previewId, reason: interviewChange.reason })
         .from(interviewChange)
         .innerJoin(result, and(eq(result.id, interviewChange.resultId), eq(result.workspaceId, workspaceId)))
-        .where(
-          and(
-            eq(interviewChange.workspaceId, workspaceId),
-            eq(interviewChange.candidateId, candidateId),
-            eq(interviewChange.jobId, jobId),
-            eq(interviewChange.idempotencyKey, idempotencyKey),
-          ),
-        )
+        .where(and(eq(interviewChange.workspaceId, workspaceId), eq(interviewChange.idempotencyKey, idempotencyKey)))
         .limit(1);
       return row ?? null;
     },

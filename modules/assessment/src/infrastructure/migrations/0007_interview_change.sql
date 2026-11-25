@@ -6,7 +6,7 @@ CREATE TABLE "assessment"."interview_change" (
 	"result_id" uuid NOT NULL,
 	"competency_id" uuid NOT NULL,
 	"source_id" uuid NOT NULL,
-	"strength" text NOT NULL,
+	"rating" text NOT NULL,
 	"level" smallint NOT NULL,
 	"item_ids" jsonb NOT NULL,
 	"reason" text NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE "assessment"."interview_change" (
 	"applied_at" timestamp with time zone NOT NULL,
 	"idempotency_key" uuid NOT NULL,
 	"preview_id" text NOT NULL,
-	CONSTRAINT "interview_change_strength_check" CHECK ("assessment"."interview_change"."strength" in ('claim', 'medium', 'strong')),
+	CONSTRAINT "interview_change_rating_check" CHECK ("assessment"."interview_change"."rating" in ('not_shown', 'partly_shown', 'clearly_shown', 'strongly_shown')),
 	CONSTRAINT "interview_change_level_check" CHECK ("assessment"."interview_change"."level" between 0 and 5),
 	CONSTRAINT "interview_change_reason_check" CHECK (length(trim("assessment"."interview_change"."reason")) > 0)
 );

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { RubricInput } from '../domain/assess.ts';
-import { previewRatings, RATINGS, type CompetencyChange, type CompetencyState } from '../domain/scoreChange.ts';
+import { previewRatings, RATINGS, type CompetencyChange } from '../domain/scoreChange.ts';
 import { canonical, pickAssessment, sameResult, toLinks, type Ports, type StoredAssessment } from './assessment.ts';
 import type { WorkerPorts } from './worker.ts';
 
@@ -50,8 +50,9 @@ export type ScoreChangeInput = z.input<typeof changeInput>;
 export type ApplyScoreChangeInput = z.input<typeof applyInput>;
 
 /**
- * What the ratings would change. Interview-sourced evidence is the interviewer's own word (`label`): never
- * "verified", never a second independent source. A rating that changes nothing is not listed.
+ * What the ratings would do. Interview-sourced evidence is the interviewer's own word (`label`): never "verified",
+ * never a second independent source. Every rating is listed, a Partly shown that changes nothing aside; one that moves
+ * neither strength nor proven level now says why in `noChange`, and is still stored when applied.
  */
 export type ScoreChangePreview = {
   /** Send it back to `applyScoreChange`: it names exactly this result. */
@@ -60,7 +61,7 @@ export type ScoreChangePreview = {
   label: 'interviewer_word';
   backedScore: { from: number; to: number };
   upperBound: { from: number; to: number };
-  changes: { competencyId: string; rating: (typeof RATINGS)[number]; from: CompetencyState; to: CompetencyState }[];
+  changes: Omit<CompetencyChange, 'change'>[];
 };
 
 /** A stored interview change (`assessment.interview_change`): what `recordAssessment` re-applies on every later run. */
@@ -153,7 +154,7 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
         label: 'interviewer_word',
         backedScore: { from: before.backedScore, to: after.backedScore },
         upperBound: { from: before.upperBound, to: after.upperBound },
-        changes: changes.map(({ competencyId, rating, from, to }) => ({ competencyId, rating, from, to })),
+        changes: changes.map(({ change: _stored, ...shown }) => shown),
       };
     },
 
@@ -163,24 +164,27 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
       const store = storeFor(ctx.tx);
       await store.lock(ctx.workspaceId, snapshot.candidateId, snapshot.jobId);
       // A retry of an apply that committed: the snapshot stored then, and nothing written again.
-      const applied = await store.applied(ctx.workspaceId, snapshot.candidateId, snapshot.jobId, input.idempotencyKey);
+      const applied = await store.applied(ctx.workspaceId, input.idempotencyKey);
       if (applied) {
-        if (applied.previewId !== input.previewId || applied.reason !== input.reason)
+        // Another candidate's, another preview's or another reason's key: never that result, never a second write.
+        if (
+          applied.result.candidateId !== snapshot.candidateId ||
+          applied.result.jobId !== snapshot.jobId ||
+          applied.previewId !== input.previewId ||
+          applied.reason !== input.reason
+        )
           throw new ScoreChangeError('idempotency_conflict');
         return applied.result;
       }
       const { before, after, changes, previewId } = await prepare(ctx, snapshot, input);
       if (previewId !== input.previewId) throw new ScoreChangeError('stale');
       if (changes.length === 0) return snapshot;
-      const row: StoredAssessment = {
-        ...after,
-        id: newId(),
-        workspaceId: ctx.workspaceId,
-        candidateId: snapshot.candidateId,
-        jobId: snapshot.jobId,
-        assessedAt: now(),
-      };
-      await store.insert(row);
+      const appliedAt = now();
+      // Ratings that move nothing now are stored on the snapshot they leave as it is: no second, identical snapshot.
+      const row: StoredAssessment = sameResult(after, before)
+        ? snapshot
+        : { ...snapshot, ...after, id: newId(), assessedAt: appliedAt };
+      if (row !== snapshot) await store.insert(row);
       await store.insertInterviewChanges(
         changes.map(({ change }) => ({
           ...change,
@@ -193,10 +197,10 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
           previewId,
           reason: input.reason,
           appliedBy: ctx.userId,
-          appliedAt: row.assessedAt,
+          appliedAt,
         })),
       );
-      // One entry per changed competency, the last statements before commit (AGENTS.md 3.6).
+      // One entry per rating, moved or not, so the person's word is on record; the last statements before commit (3.6).
       for (const { competencyId, rating, from, to } of changes)
         await auditScoreChange(ctx, {
           candidateId: row.candidateId,

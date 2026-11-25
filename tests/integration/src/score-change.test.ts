@@ -345,7 +345,7 @@ describe('Scenario: Apply with a reason', () => {
         {
           resultId: stored.id,
           competencyId: COST,
-          strength: 'strong',
+          strength: 'medium',
           provenLevel: 3,
           backedScore: 82,
           rating: 'strongly_shown',
@@ -475,6 +475,18 @@ describe('Scenario: Applying twice is safe', () => {
     expect(await written(d.candidateId)).toEqual(before);
   });
 
+  // SAFETY: mutation check: looked the key up by candidate and job again -> this test failed (a raw unique violation, not the typed conflict)
+  it("a key already used for another candidate's change is a conflict", async () => {
+    const [d, other] = [await daniel(), await daniel()];
+    const key = crypto.randomUUID();
+    await apply(d, (await preview(d)).previewId, { key });
+    const before = await written(other.candidateId);
+    await expect(apply(other, (await preview(other)).previewId, { key })).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+    });
+    expect(await written(other.candidateId)).toEqual(before);
+  });
+
   // SAFETY: mutation check: dropped the unique index interview_change_idempotency_idx -> this test failed (a second row was stored)
   it('the database refuses a second change of one competency under one idempotency key, and any rewrite', async () => {
     const d = await daniel();
@@ -484,12 +496,12 @@ describe('Scenario: Applying twice is safe', () => {
         tx.execute(sql`
           insert into assessment.interview_change
           select ${crypto.randomUUID()}::uuid, workspace_id, candidate_id, job_id, result_id, competency_id, source_id,
-                 strength, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id
+                 rating, level, item_ids, reason, applied_by, applied_at, idempotency_key, preview_id
           from assessment.interview_change where candidate_id = ${d.candidateId}`),
       ),
     ).rejects.toThrow();
     await expect(
-      withWorkspace(app, w1, (tx) => tx.execute(sql`update assessment.interview_change set strength = 'strong'`)),
+      withWorkspace(app, w1, (tx) => tx.execute(sql`update assessment.interview_change set rating = 'not_shown'`)),
     ).rejects.toThrow();
   });
 });
@@ -509,22 +521,46 @@ describe("Scenario: The interviewer's word is not verification", () => {
     expect(retrieval?.claimItemIds).toEqual([cv?.id]);
     expect(cv?.provenance).toBe('claim');
     const [row] = await withWorkspace(app, w1, (tx) =>
-      tx.execute(sql`select source_id, strength, level, applied_by, reason from assessment.interview_change
+      tx.execute(sql`select source_id, rating, level, applied_by, reason from assessment.interview_change
                      where candidate_id = ${d.candidateId}`),
     );
     expect(row).toEqual({
       source_id: d.interviewId,
-      strength: 'medium',
+      rating: 'clearly_shown',
       level: 3,
       applied_by: AYESHA,
       reason: 'Defended the design in detail',
     });
   });
 
-  it('Not shown leaves independently corroborated work as it is', async () => {
+  // SAFETY: mutation check: applyScoreChange returned early when no rating moved the score -> this test failed (nothing stored or audited)
+  it('Not shown leaves independently corroborated work as it is, and is still stored and audited with no new snapshot', async () => {
     const d = await daniel({ competencyIds: [PYTHON] });
-    const shown = await preview(d, { changes: [[PYTHON, 'not_shown']] });
-    expect(shown).toMatchObject({ backedScore: { from: 55, to: 55 }, changes: [] });
+    const changes: [string, Rating][] = [[PYTHON, 'not_shown']];
+    const shown = await preview(d, { changes });
+    expect(shown).toMatchObject({
+      backedScore: { from: 55, to: 55 },
+      changes: [{ competencyId: PYTHON, rating: 'not_shown', noChange: 'outranked_by_checked_work' }],
+    });
+    const before = await written(d.candidateId);
+    const same = await apply(d, shown.previewId, { changes, reason: 'Could not explain the service design' });
+    expect(same.id).toBe(d.snapshot.id);
+    expect(await written(d.candidateId)).toEqual({ ...before, changes: 1, audited: before.audited + 1 });
+    const entry = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).at(-1);
+    const state = {
+      resultId: d.snapshot.id,
+      competencyId: PYTHON,
+      strength: 'strong',
+      provenLevel: 5,
+      backedScore: 55,
+    };
+    expect(entry).toMatchObject({
+      note: 'Could not explain the service design',
+      before: state,
+      after: { ...state, rating: 'not_shown', interviewId: d.interviewId },
+    });
+    // The stored rating does not make the next preview stale.
+    await expect(preview(d, { changes })).resolves.toMatchObject({ assessmentId: d.snapshot.id });
   });
 });
 
@@ -557,7 +593,7 @@ describe('Scenario: Another workspace', () => {
         tx.execute(sql`
           insert into assessment.interview_change
           select ${crypto.randomUUID()}::uuid, ${w2}::uuid, candidate_id, job_id, result_id, competency_id, source_id,
-                 strength, level, item_ids, reason, applied_by, applied_at, ${crypto.randomUUID()}::uuid, preview_id
+                 rating, level, item_ids, reason, applied_by, applied_at, ${crypto.randomUUID()}::uuid, preview_id
           from assessment.interview_change limit 1`),
       ),
     ).rejects.toThrow();

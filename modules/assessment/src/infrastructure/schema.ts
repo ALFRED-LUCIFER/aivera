@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { CompetencyResult } from '../domain/assess.ts';
 import type { ExplanationStatement } from '../domain/explain.ts';
+import { RATINGS } from '../domain/scoreChange.ts';
 
 export const assessment = pgSchema('assessment');
 
@@ -95,7 +96,8 @@ export const interviewChange = assessment
       competencyId: uuid('competency_id').notNull(),
       // The interviews module's opaque interview id: the source the change cites.
       sourceId: uuid('source_id').notNull(),
-      strength: text({ enum: ['claim', 'medium', 'strong'] }).notNull(),
+      // The interviewer's rating as given; what it does to the score is the domain's mapping (scoreChange.ts).
+      rating: text({ enum: RATINGS }).notNull(),
       level: smallint().notNull(),
       // The evidence items a `claim` change weakens.
       itemIds: jsonb('item_ids').$type<string[]>().notNull(),
@@ -110,7 +112,10 @@ export const interviewChange = assessment
       index('interview_change_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.appliedAt),
       // One apply per idempotency key: a retry can never store a second set of changes.
       uniqueIndex('interview_change_idempotency_idx').on(t.workspaceId, t.idempotencyKey, t.competencyId),
-      check('interview_change_strength_check', sql`${t.strength} in ('claim', 'medium', 'strong')`),
+      check(
+        'interview_change_rating_check',
+        sql`${t.rating} in ('not_shown', 'partly_shown', 'clearly_shown', 'strongly_shown')`,
+      ),
       check('interview_change_level_check', sql`${t.level} between 0 and 5`),
       check('interview_change_reason_check', sql`length(trim(${t.reason})) > 0`),
       tenantPolicy('interview_change_tenant_isolation', t.workspaceId),

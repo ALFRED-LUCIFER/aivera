@@ -22,11 +22,9 @@ export type AssessmentStore = {
   /** The candidate's applied interview changes for the job, oldest first (AIV-P1-117). */
   interviewChanges(workspaceId: string, candidateId: string, jobId: string): Promise<InterviewChange[]>;
   insertInterviewChanges(rows: InterviewChangeRow[]): Promise<void>;
-  /** What an apply with this idempotency key stored for the candidate and job, or null. */
+  /** What an apply with this idempotency key stored in the workspace, for whichever candidate, or null. */
   applied(
     workspaceId: string,
-    candidateId: string,
-    jobId: string,
     idempotencyKey: string,
   ): Promise<{ result: StoredAssessment; previewId: string; reason: string } | null>;
   insert(row: StoredAssessment): Promise<void>;

@@ -1,6 +1,6 @@
 {
-  "id": "bbac5574-e469-4362-b103-bfa0d1b18f43",
-  "prevId": "de8fa095-6927-4690-8127-340c375b8fd8",
+  "id": "8d19ca2e-9978-48cf-b7f6-a8c416a9847e",
+  "prevId": "2590c7aa-a5fc-4c42-b514-b6682f277e23",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -183,8 +183,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "strength": {
-          "name": "strength",
+        "rating": {
+          "name": "rating",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -325,9 +325,9 @@
         }
       },
       "checkConstraints": {
-        "interview_change_strength_check": {
-          "name": "interview_change_strength_check",
-          "value": "\"assessment\".\"interview_change\".\"strength\" in ('claim', 'medium', 'strong')"
+        "interview_change_rating_check": {
+          "name": "interview_change_rating_check",
+          "value": "\"assessment\".\"interview_change\".\"rating\" in ('not_shown', 'partly_shown', 'clearly_shown', 'strongly_shown')"
         },
         "interview_change_level_check": {
           "name": "interview_change_level_check",
