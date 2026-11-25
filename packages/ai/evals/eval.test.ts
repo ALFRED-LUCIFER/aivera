@@ -25,7 +25,14 @@ import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { mapSummarySchema } from '../src/prompts/interviews.mapSummary.ts';
 import { domainCatalogue, hardGates, questionsInput, runners, summaryInput, taskThresholds } from './config.ts';
-import { identifiersOf, loadGolden, loadJudgeCases, type GoldenCase } from './golden.ts';
+import {
+  identifiersOf,
+  loadGolden,
+  loadJudgeCases,
+  type EvidenceJudgeCase,
+  type GoldenCase,
+  type SuggestionJudgeCase,
+} from './golden.ts';
 import {
   caseLines,
   evaluateJudge,
@@ -1095,7 +1102,7 @@ describe('Feature: A statement that differs only by a trailing period matches', 
 
 // Feature: The live AI judge is pinned by golden good and bad outputs (AIV-P2-084). Synthetic data only.
 describe('Feature: The live AI judge is pinned by golden good and bad outputs', () => {
-  const judgeCases = loadJudgeCases(import.meta.dirname, golden);
+  const judgeCases = loadJudgeCases(import.meta.dirname, golden).filter((c): c is EvidenceJudgeCase => !('judge' in c));
   const contradicted = 'This evidence does not show who authored the repository.';
 
   it('holds the good output and every bad limit, each with its expected verdict', () => {
@@ -1128,6 +1135,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
         judgeWith(
           '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"fine"}',
         ),
+        recordedSuggestionJudge,
       ),
     );
     expect(lenient.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual([
@@ -1148,6 +1156,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
         judgeWith(
           '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no"}',
         ),
+        recordedSuggestionJudge,
       ),
     );
     expect(strict.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual(['good']);
@@ -1168,6 +1177,8 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
     () => {
       const { status, stdout } = cli(['--task', 'evals.judge']);
       expect(stdout).toContain('PASS evals.judge contradicted-limit: judge 1/1');
+      // AIV-P2-088: the suggestion judge's cases in the same run, from their recorded verdicts (no model configured).
+      expect(stdout).toContain('PASS evals.judge suggestion-proxy: judge 1/1');
       expect(status).toBe(0);
     },
     cliTimeout,
@@ -1318,6 +1329,105 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
     await expect(
       suggestionJudgeOf(JSON.stringify({ verdicts: [{ ...judged('A'), implied: 'yes' }] }))(pair, {}),
     ).rejects.toMatchObject({ name: 'SchemaMismatch' });
+  });
+});
+
+// Feature: The suggestion judge is re-graded live on its golden good and bad cases (AIV-P2-088). Synthetic data only.
+describe('Feature: The suggestion judge is re-graded live on its golden good and bad cases', () => {
+  const judgeCases = loadJudgeCases(import.meta.dirname, golden);
+  const suggestionCases = judgeCases.filter((c): c is SuggestionJudgeCase => 'judge' in c);
+  const proxyCase = suggestionCases.filter((c) => c.id === 'suggestion-proxy');
+  /** The proxy case graded by the live suggestion judge on a model that answers these verdicts. */
+  const graded = (verdicts: unknown[]) =>
+    evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts }))));
+
+  it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
+    expect(judgeCases.length).toBe(suggestionCases.length + 4); // the four evidence judge cases
+    expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
+      ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
+      ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
+      [
+        'suggestion-listed-competency-reword',
+        'failing',
+        'jobs.draftCompetencies/listed-competency-reword',
+        [null, 'listed'],
+      ],
+      ['suggestion-no-citation', 'failing', 'jobs.draftCompetencies/no-citation', [null, 'citation']],
+      ['suggestion-plausible-suggestion', 'passing', 'jobs.draftCompetencies/plausible-suggestion', [null, null]],
+      ['suggestion-proxy', 'failing', 'jobs.draftCompetencies/proxy', ['proxy', null]],
+    ]);
+    for (const c of suggestionCases) {
+      const draft = fixture(c.from, c.case.split('/')[1] ?? '');
+      expect([c.golden, c.output, Object.keys(c.expected)]).toEqual([draft, draft.recorded.output, namesOf(draft)]);
+    }
+  });
+
+  // SAFETY: mutation check: evaluateJudge skipped suggestion judge cases -> this test failed
+  // SAFETY: mutation check: recordedJudgeVerdict.suggestion answered pass for every suggestion -> this test failed
+  it('Scenario: The recorded run gives each bad case its fault and passes each good case, with no model call', async () => {
+    // recordedJudgeVerdict takes no client: there is no model to call.
+    const report = await evaluateJudge(suggestionCases, recordedJudgeVerdict);
+    expect(report.cases.map((c) => [c.id, c.passed])).toEqual(suggestionCases.map((c) => [c.id, true]));
+    expect(report.cases.map((c) => c.suggestions)).toEqual(suggestionCases.map((c) => c.expected));
+    expect(report.passed).toBe(true);
+  });
+
+  // SAFETY: mutation check: the expected-fault comparison removed from evaluateJudge's suggestion branch -> this test failed
+  it('Scenario: A judge that misses a case fails the live eval and names it, never the suggestion', async () => {
+    const strict = await graded([
+      judged('Native Arabic speaker', { aboutThePerson: true }),
+      judged('Marketplace seller tools'),
+    ]);
+    expect(strict.passed).toBe(true);
+
+    const lenient = await graded([judged('Native Arabic speaker'), judged('Marketplace seller tools')]);
+    expect(lenient.passed).toBe(false);
+    const lines = caseLines(lenient);
+    expect(lines).toEqual([
+      'FAIL evals.judge suggestion-proxy: judge 0/1',
+      '    suggestions[0]: expected proxy, the judge said pass',
+    ]);
+    // Suggestion names are model output text (AGENTS.md 1.2): a miss names the position only.
+    expect(lines.join('\n')).not.toContain('Native Arabic speaker');
+
+    const dropped = await graded([judged('Native Arabic speaker', { aboutThePerson: true })]);
+    expect(caseLines(dropped)).toContain('    suggestions[1]: expected pass, the judge said nothing');
+  });
+
+  // SAFETY: mutation check: the prompt id comparison removed from recordedJudgeVerdict.suggestion -> this test failed
+  it('Scenario: A verdict stamped with another suggestion judge prompt is refused', async () => {
+    const stale = suggestionCases.map((c) => {
+      const recorded = c.golden.recorded.suggestions;
+      const stamped = recorded && { ...recorded, judge: 'evals.suggestion@1' };
+      return { ...c, golden: { ...c.golden, recorded: { ...c.golden.recorded, suggestions: stamped } } };
+    });
+    const report = await evaluateJudge(stale, recordedJudgeVerdict);
+    expect(report.passed).toBe(false);
+    expect(report.cases.map((c) => c.error)).toEqual(
+      stale.map(
+        () =>
+          `suggestion verdicts recorded with evals.suggestion@1, code is ${suggestionPrompt.id}: re-run the judge golden cases live`,
+      ),
+    );
+  });
+
+  it('refuses a case whose expected faults do not name every suggestion of its fixture, in order', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'judge-'));
+    mkdirSync(join(dir, 'judge'));
+    mkdirSync(join(dir, 'fixtures', 'failing', 'jobs.draftCompetencies'), { recursive: true });
+    const proxy = 'fixtures/failing/jobs.draftCompetencies/proxy.yaml';
+    writeFileSync(join(dir, proxy), readFileSync(join(import.meta.dirname, proxy)));
+    const write = (expected: string) =>
+      writeFileSync(
+        join(dir, 'judge', 'swapped.yaml'),
+        `id: swapped\njudge: suggestion\ncase: jobs.draftCompetencies/proxy\nfrom: failing\nexpected:\n${expected}`,
+      );
+    write('  Marketplace seller tools: null\n  Native Arabic speaker: proxy\n');
+    expect(() => loadJudgeCases(dir, golden)).toThrow(
+      'judge/swapped.yaml: expected must name every suggestion of failing/jobs.draftCompetencies/proxy, in order',
+    );
+    write('  Native Arabic speaker: proxy\n  Marketplace seller tools: null\n');
+    expect(loadJudgeCases(dir, golden).map((c) => c.id)).toEqual(['swapped']);
   });
 });
 

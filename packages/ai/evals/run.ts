@@ -5,7 +5,15 @@ import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from 
 import { fakeProvider } from '../src/providers.ts';
 import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
-import { identifiersOf, type GoldenCase, type JudgeCase, type SuggestionFault, type Verdict } from './golden.ts';
+import {
+  identifiersOf,
+  type EvidenceJudgeCase,
+  type GoldenCase,
+  type JudgeCase,
+  type SuggestionFault,
+  type SuggestionJudgeCase,
+  type Verdict,
+} from './golden.ts';
 import {
   citationValidity,
   claimLabelling,
@@ -511,33 +519,73 @@ export function summaryTable(reports: TaskReport[]): string {
   ].join('\n');
 }
 
-/** A judge golden case's verdict: from the live judge, or as recorded (AIV-P2-084). */
-export type JudgeVerdict = (c: JudgeCase) => Promise<Verdict>;
-/** The recorded verdict, refused when the judge prompt in code is not the one it was recorded with. */
-export const recordedJudgeVerdict: JudgeVerdict = async (c) => {
-  if (c.recorded.judgePrompt !== judgePrompt.id)
-    throw new StaleRecording(
-      `judge verdict recorded with ${c.recorded.judgePrompt}, code is ${judgePrompt.id}: re-run the judge golden cases live`,
-    );
-  return c.recorded.verdict;
+/**
+ * A judge golden case's verdict, from the live judges or as recorded (AIV-P2-084): the evidence judge's, or the
+ * suggestion judge's per suggestion (AIV-P2-088).
+ */
+export type JudgeVerdict = {
+  evidence: (c: EvidenceJudgeCase) => Promise<Verdict>;
+  suggestion: (c: SuggestionJudgeCase) => Promise<Record<string, SuggestionFault | null>>;
 };
-export const liveJudgeVerdict =
-  (judge: Judge): JudgeVerdict =>
-  (c) =>
-    judge(c.rubric, c.golden, c.output);
+/** The recorded verdicts, refused when the judge prompt in code is not the one they were recorded with. */
+export const recordedJudgeVerdict: JudgeVerdict = {
+  evidence: async (c) => {
+    if (c.recorded.judgePrompt !== judgePrompt.id)
+      throw new StaleRecording(
+        `judge verdict recorded with ${c.recorded.judgePrompt}, code is ${judgePrompt.id}: re-run the judge golden cases live`,
+      );
+    return c.recorded.verdict;
+  },
+  suggestion: async (c) => {
+    const recorded = c.golden.recorded.suggestions;
+    if (recorded?.judge !== suggestionPrompt.id)
+      throw new StaleRecording(
+        `suggestion verdicts recorded with ${recorded?.judge ?? 'no judge'}, code is ${suggestionPrompt.id}: re-run the judge golden cases live`,
+      );
+    return recorded.verdicts;
+  },
+};
+export const liveJudgeVerdict = (judge: Judge, suggestionJudge: SuggestionJudge): JudgeVerdict => ({
+  evidence: (c) => judge(c.rubric, c.golden, c.output),
+  suggestion: (c) => suggestionJudge(c.golden, c.output),
+});
 
 /**
- * The judge's own golden cases (AIV-P2-084): each passes when the verdict is the expected one. The report names the
- * expected and given verdicts only, never the judge's reason (it can quote the sources, AGENTS.md 1.2).
+ * Where a judge golden case's given verdict differs from its expected one. A suggestion is named by its position, never
+ * its name (output text), and the judge's reason never appears (it can quote the sources, AGENTS.md 1.2).
  */
+async function judgeCase(c: JudgeCase, verdictOf: JudgeVerdict): Promise<CaseResult> {
+  let failures: string[];
+  let suggestions: Record<string, SuggestionFault | null> | undefined;
+  if ('judge' in c) {
+    const given = await verdictOf.suggestion(c);
+    suggestions = given;
+    const said = (name: string) => (Object.hasOwn(given, name) ? (given[name] ?? 'pass') : 'nothing');
+    failures = Object.entries(c.expected).flatMap(([name, fault], i) =>
+      said(name) === (fault ?? 'pass')
+        ? []
+        : [`suggestions[${i}]: expected ${fault ?? 'pass'}, the judge said ${said(name)}`],
+    );
+  } else {
+    const given = (await verdictOf.evidence(c)).pass ? 'pass' : 'fail';
+    failures = given === c.expected ? [] : [`judge: expected ${c.expected}, the judge said ${given}`];
+  }
+  const passed = failures.length === 0;
+  // The suggestion verdicts, as the fixture's `recorded.suggestions.verdicts` stores them after a live re-run.
+  return {
+    id: c.id,
+    passed,
+    scores: { judge: { n: passed ? 1 : 0, total: 1, failures } },
+    ...(suggestions ? { suggestions } : {}),
+  };
+}
+
+/** The judges' own golden cases (AIV-P2-084, AIV-P2-088): each passes when every verdict is the expected one. */
 export async function evaluateJudge(cases: JudgeCase[], verdictOf: JudgeVerdict): Promise<TaskReport> {
   const results: CaseResult[] = [];
   for (const c of cases) {
     try {
-      const given = (await verdictOf(c)).pass ? 'pass' : 'fail';
-      const passed = given === c.expected;
-      const failures = passed ? [] : [`judge: expected ${c.expected}, the judge said ${given}`];
-      results.push({ id: c.id, passed, scores: { judge: { n: passed ? 1 : 0, total: 1, failures } } });
+      results.push(await judgeCase(c, verdictOf));
     } catch (error) {
       const name = error instanceof Error ? error.name : 'error';
       results.push({
@@ -551,7 +599,7 @@ export async function evaluateJudge(cases: JudgeCase[], verdictOf: JudgeVerdict)
   const scored = results.filter((r) => r.scores.judge);
   const rates = Object.fromEntries(metrics.map((metric) => [metric, null])) as Record<Metric, number | null>;
   if (scored.length) rates.judge = scored.filter((r) => r.passed).length / scored.length;
-  // Every case must get its expected verdict: one judge miss can pass a mapping that misstates its evidence.
+  // Every case must get its expected verdicts: one judge miss can pass a mapping that misstates its evidence, or a proxy.
   const thresholds = { ...hardGates, fieldMatch: 1, judge: 1 }; // only judge is scored; the rest are n/a
   return { task: 'evals.judge', passed: results.every((r) => r.passed), cases: results, rates, thresholds, groups: [] };
 }

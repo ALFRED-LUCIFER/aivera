@@ -1,0 +1,8 @@
+# AIV-P2-088: a proxy (who someone is, not a skill shown by work) suggested; the suggestion judge must call it proxy.
+id: suggestion-proxy
+judge: suggestion
+case: jobs.draftCompetencies/proxy
+from: failing
+expected:
+  Native Arabic speaker: proxy
+  Marketplace seller tools: null

@@ -1,0 +1,8 @@
+# AIV-P2-088: a generic soft skill suggested beside a good suggestion; the suggestion judge must call it generic.
+id: suggestion-generic-soft-skill
+judge: suggestion
+case: jobs.draftCompetencies/generic-soft-skill
+from: failing
+expected:
+  Arabic and bilingual NLP: null
+  Communication and Interpersonal Skills: generic

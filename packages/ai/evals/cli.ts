@@ -85,8 +85,8 @@ if (values.live) {
   };
   judge = liveJudge(ai);
   matcher = liveMatcher(ai);
-  judgeVerdict = liveJudgeVerdict(judge);
   suggestionJudge = liveSuggestionJudge(ai);
+  judgeVerdict = liveJudgeVerdict(judge, suggestionJudge);
 }
 
 const reports: TaskReport[] = [];

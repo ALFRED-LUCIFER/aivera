@@ -1,0 +1,8 @@
+# AIV-P2-088: a suggestion citing nothing; the suggestion judge must find no cited line that implies it.
+id: suggestion-no-citation
+judge: suggestion
+case: jobs.draftCompetencies/no-citation
+from: failing
+expected:
+  Arabic and right-to-left design: null
+  Accessibility: citation

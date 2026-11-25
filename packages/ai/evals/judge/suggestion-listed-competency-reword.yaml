@@ -1,0 +1,8 @@
+# AIV-P2-088: a listed competency reworded as a suggestion; the suggestion judge must call it listed.
+id: suggestion-listed-competency-reword
+judge: suggestion
+case: jobs.draftCompetencies/listed-competency-reword
+from: failing
+expected:
+  Arabic and right-to-left design: null
+  Interaction design skills: listed

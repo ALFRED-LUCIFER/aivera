@@ -130,11 +130,12 @@ export function loadGolden(dir: string): Map<string, GoldenCase[]> {
  * A judge golden case (AIV-P2-084): an output whose verdict is known, graded against a golden case's rubric and
  * sources, so every judge prompt change is tested on the real model. One YAML file per case in `<dir>/judge/`.
  */
-const judgeCase = z
+const caseRef = z.string().regex(/^[\w.-]+\/[a-z0-9-]+$/);
+const evidenceJudgeCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
     /** The golden case (`<task>/<id>`) whose rubric, sources and recorded output the judge grades. */
-    case: z.string().regex(/^[\w.-]+\/[a-z0-9-]+$/),
+    case: caseRef,
     /** Replaces every link's limit in that output; omitted, the recorded output is graded as it is. */
     limit: z.string().min(1).optional(),
     expected: z.enum(['pass', 'fail']),
@@ -142,9 +143,27 @@ const judgeCase = z
     recorded: z.object({ judgePrompt: z.string().min(1), verdict }).strict(),
   })
   .strict();
-export type JudgeCase = z.infer<typeof judgeCase> & { rubric: string; golden: GoldenCase; output: unknown };
+/**
+ * A suggestion judge golden case (AIV-P2-088): a hand-made draft (`<dir>/fixtures/<from>/<task>/<id>.yaml`) and, for
+ * each of its suggestions in order, the fault the suggestion judge must give it or null. Its recorded verdicts are the
+ * fixture's own `recorded.suggestions`, so they are stored once.
+ */
+const suggestionJudgeCase = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    judge: z.literal('suggestion'),
+    case: caseRef,
+    from: z.enum(['failing', 'passing']),
+    expected: z.record(z.string(), z.enum(suggestionFaults).nullable()),
+  })
+  .strict();
+type Graded = { golden: GoldenCase; output: unknown };
+export type EvidenceJudgeCase = z.infer<typeof evidenceJudgeCase> & Graded & { rubric: string };
+export type SuggestionJudgeCase = z.infer<typeof suggestionJudgeCase> & Graded;
+export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase;
 
 const withLinks = z.object({ links: z.array(z.record(z.string(), z.unknown())) }).loose();
+const withSuggestions = z.object({ suggestions: z.array(z.object({ name: z.string() }).loose()) }).loose();
 
 /** Reads every `<dir>/judge/*.yaml` against the golden set `golden`; none when the folder is absent. */
 export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): JudgeCase[] {
@@ -152,12 +171,28 @@ export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): 
   return readdirSync(join(dir, 'judge'))
     .filter((file) => file.endsWith('.yaml'))
     .toSorted()
-    .map((file) => {
+    .map((file): JudgeCase => {
       const path = join('judge', file);
-      const parsed = judgeCase.safeParse(parse(readFileSync(join(dir, path), 'utf8')));
+      const parsed = z
+        .union([evidenceJudgeCase, suggestionJudgeCase])
+        .safeParse(parse(readFileSync(join(dir, path), 'utf8')));
       if (!parsed.success) throw new Error(`${path}: ${z.prettifyError(parsed.error)}`);
       if (parsed.data.id !== basename(file, '.yaml')) throw new Error(`${path}: id must equal the file name`);
       const [task = '', id] = parsed.data.case.split('/');
+      if ('judge' in parsed.data) {
+        const { from, expected } = parsed.data;
+        const target = loadGolden(join(dir, 'fixtures', from))
+          .get(task)
+          ?.find((c) => c.id === id);
+        const drafted = withSuggestions.safeParse(target?.recorded.output);
+        if (!target || !drafted.success)
+          throw new Error(`${path}: no fixture ${from}/${parsed.data.case} that suggests`);
+        // Every suggestion, in order: a miss is reported by its position, and none goes ungraded.
+        const names = drafted.data.suggestions.map((s) => s.name);
+        if (JSON.stringify(Object.keys(expected)) !== JSON.stringify(names))
+          throw new Error(`${path}: expected must name every suggestion of ${from}/${parsed.data.case}, in order`);
+        return { ...parsed.data, golden: target, output: target.recorded.output };
+      }
       const target = golden.get(task)?.find((c) => c.id === id);
       if (!target?.expected.judge) throw new Error(`${path}: no golden case ${parsed.data.case} with a judge rubric`);
       const { limit } = parsed.data;
