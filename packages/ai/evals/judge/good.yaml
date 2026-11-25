@@ -3,11 +3,8 @@ id: good
 case: evidence.mapToCompetency/sara-eval-harness
 expected: pass
 recorded:
-  judgePrompt: evals.judge@4
+  judgePrompt: evals.judge@5
   verdict:
     pass: true
     reason: >-
-      Each link's limit correctly names what its evidence does not show: the LLM system's detailed monitoring or scale
-      (S2), exact measurement methods or ongoing reliability data (S2), size or impact of the Arabic evaluation set
-      (S2), scale or impact of the evaluation harness in production (S1), and the candidate's role in maintaining the
-      Python service or its production use (S1).
+      Every link's limit names what its evidence does not show, as required by the rubric.

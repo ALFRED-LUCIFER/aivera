@@ -5,14 +5,7 @@ import { AiUnavailable, createAiClient, memoryTokenBudget, type AiClient } from 
 import { fakeProvider } from '../src/providers.ts';
 import { serviceTasks } from '../src/service.ts';
 import { hardGates, runners, taskThresholds, type Runner } from './config.ts';
-import {
-  identifiersOf,
-  verdict,
-  type GoldenCase,
-  type JudgeCase,
-  type SuggestionFault,
-  type Verdict,
-} from './golden.ts';
+import { identifiersOf, type GoldenCase, type JudgeCase, type SuggestionFault, type Verdict } from './golden.ts';
 import {
   citationValidity,
   claimLabelling,
@@ -160,7 +153,7 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
  * cases for other source kinds when a second judged rubric runs live.
  */
 export const judgePrompt = {
-  id: 'evals.judge@4',
+  id: 'evals.judge@5',
   system:
     'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
@@ -172,8 +165,18 @@ export const judgePrompt = {
     "candidate: a repository source's authored commit count is the candidate's own authorship. Before you pass a " +
     'limit, compare it with the sources: a limit saying the evidence does not show something a source states (who ' +
     'wrote the work, a count, a date) is false, and a false limit does not meet the rubric. A limit about what the ' +
-    'sources leave out is not false.',
+    'sources leave out is not false. Fill checks first, one per item the rubric speaks of (each link, each ' +
+    'statement), in order: the item as the output words it, what its cited source says on that point (quote it, or ' +
+    '"nothing"), and whether the item meets the rubric. Then give pass and the reason.',
 };
+// AIV-P1-075: on gpt-4.1 and gpt-4.1-mini alike, a bare verdict passed a limit its source contradicts (judge case
+// contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
+// schema's order is the order it writes), and code fails the output when any item does not meet the rubric.
+const judgeAnswer = z.object({
+  checks: z.array(z.object({ item: z.string(), sourceSays: z.string(), meetsRubric: z.boolean() }).strict()),
+  pass: z.boolean(),
+  reason: z.string().min(1),
+});
 
 export const matchPrompt = {
   id: 'evals.match@1',
@@ -279,19 +282,25 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
  * fails with SchemaMismatch, never patched (AGENTS.md 3.7).
  */
 export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
-  return async (rubric, golden, output) =>
-    ai.generateStructured({
+  return async (rubric, golden, output) => {
+    const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
       promptVersion: judgePrompt.id,
       system: judgePrompt.system,
       prompt: JSON.stringify({ rubric, output }),
-      schema: verdict,
+      schema: judgeAnswer,
       sources: golden.sources,
       // The judge reads the sources redacted, as the task's model did; the output in its prompt carries the stored
       // text of each quote (synthetic cases only).
       identifiers: identifiersOf(golden),
     });
+    const failed = answer.checks.filter((c) => !c.meetsRubric).length;
+    // A pass with a failed check is a fail; the reason then counts the items, never quotes them (AGENTS.md 1.2).
+    return failed && answer.pass
+      ? { pass: false, reason: `${failed} item(s) do not meet the rubric.` }
+      : { pass: answer.pass, reason: answer.reason };
+  };
 }
 
 async function scoreCase(
