@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, matchesGlob } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MockLanguageModelV4 } from 'ai/test';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { createAiClient, memoryTokenBudget, UNTRUSTED_CONTENT_RULES } from '../src/client.ts';
 import { fakeProvider } from '../src/providers.ts';
@@ -1428,6 +1428,25 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     );
     write('  Native Arabic speaker: proxy\n  Marketplace seller tools: null\n');
     expect(loadJudgeCases(dir, golden).map((c) => c.id)).toEqual(['swapped']);
+  });
+
+  // SAFETY: mutation check: .min(1) removed from withSuggestions in golden.ts -> this test failed
+  it('refuses a case whose fixture suggests nothing, so a case never passes ungraded', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'judge-'));
+    mkdirSync(join(dir, 'judge'));
+    mkdirSync(join(dir, 'fixtures', 'failing', 'jobs.draftCompetencies'), { recursive: true });
+    const proxy = parse(
+      readFileSync(join(import.meta.dirname, 'fixtures/failing/jobs.draftCompetencies/proxy.yaml'), 'utf8'),
+    ) as GoldenCase & { recorded: { output: Suggested } };
+    const empty = { ...proxy, recorded: { ...proxy.recorded, output: { ...proxy.recorded.output, suggestions: [] } } };
+    writeFileSync(join(dir, 'fixtures/failing/jobs.draftCompetencies/proxy.yaml'), stringify(empty));
+    writeFileSync(
+      join(dir, 'judge', 'empty.yaml'),
+      'id: empty\njudge: suggestion\ncase: jobs.draftCompetencies/proxy\nfrom: failing\nexpected: {}\n',
+    );
+    expect(() => loadJudgeCases(dir, golden)).toThrow(
+      'judge/empty.yaml: no fixture failing/jobs.draftCompetencies/proxy that suggests',
+    );
   });
 });
 
