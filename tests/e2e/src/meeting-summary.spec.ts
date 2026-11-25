@@ -257,6 +257,8 @@ for (const theme of themes) {
     await expect(effect(page).getByText('Before: Observed')).toBeVisible();
     await expect(effect(page).getByText('After: Projection')).toBeVisible();
     await expect(effect(page).getByText('Nothing changes until you confirm.')).toBeVisible();
+    // One primary button in the view: while the card is open, "Submit scorecard" is a default one.
+    await expect(page.getByRole('button', { name: 'Submit scorecard' })).not.toHaveClass(/\bbg-action\b/);
     await expect(
       effect(page).getByText('Cost and reliability: not covered in the summary · stays a gap'),
     ).toBeVisible();
@@ -269,8 +271,10 @@ for (const theme of themes) {
     await before.tab.close();
 
     if (theme === 'dark') {
-      // Scenario: Declining applies nothing.
+      // Scenario: Declining applies nothing. Escape never declines: it takes the "Decline" button.
       await effect(page).getByRole('button', { name: 'Decline' }).focus();
+      await page.keyboard.press('Escape');
+      await expect(effect(page)).toBeVisible();
       await page.keyboard.press('Enter');
       await expect(
         panel(page).getByText('Declined. Nothing changed, and the summary stays on this interview.'),
@@ -306,6 +310,8 @@ for (const theme of themes) {
     // And the summary is a source on his evidence profile for that competency.
     await after.row.getByRole('link', { name: `Daniel Novak ${theme}` }).click();
     await expect(after.tab.getByText("Interviewer's summary", { exact: false }).first()).toBeVisible();
+    // The interviewer's word, never "Candidate-submitted" (AGENTS.md 1.6).
+    await expect(after.tab.getByText("Interviewer's word", { exact: true }).first()).toBeVisible();
     await expect(after.tab.getByText(QUOTE).first()).toBeVisible();
   });
 }

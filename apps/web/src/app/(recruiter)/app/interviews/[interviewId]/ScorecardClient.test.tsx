@@ -11,7 +11,8 @@ import { ScorecardClient } from './ScorecardClient.tsx';
 // on Senior AI Engineer, as the Interview artboard draws it (synthetic cast, personas.md).
 const fake = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn() }));
 vi.mock('@/features/scorecard/services/saveDraft.ts', () => ({ saveScorecardDraft: fake.save }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fake.push }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fake.push, refresh: vi.fn() }) }));
+vi.mock('@/features/interview-summary/services/summaryActions.ts', () => ({}));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
     <a href={href} {...rest}>
@@ -332,5 +333,29 @@ describe('a member who may not change the scorecard', () => {
     for (const button of screen.getAllByRole('button')) expect((button as HTMLButtonElement).disabled).toBe(true);
     for (const note of screen.getAllByLabelText('What you saw or heard'))
       expect((note as HTMLTextAreaElement).disabled).toBe(true);
+  });
+});
+
+const summary = (status: 'proposed' | 'applied') => ({
+  interviewId: '0190d4a2-0000-7000-9000-000000000060',
+  summary: { summaryId: 's-1', status, unusual: false, proposals: [], preview: null, previewUnavailable: false },
+});
+const primary = (name: string) => screen.getByRole('button', { name }).className.includes('bg-action');
+const withSummary = (status: 'proposed' | 'applied') =>
+  render(
+    <IntlProvider {...intl}>
+      <ScorecardClient data={data()} summary={summary(status)} />
+    </IntlProvider>,
+  );
+
+describe('beside the meeting summary (AIV-P1-115)', () => {
+  // Mutation check: "Submit scorecard" stayed primary whatever `quietSubmit` said -> this test failed.
+  it('"Submit scorecard" is not a primary button while the preview card is open, so the view has one', () => {
+    withSummary('proposed');
+    expect(primary('Submit scorecard')).toBe(false);
+    expect(primary('Apply 0 changes')).toBe(true);
+    cleanup();
+    withSummary('applied');
+    expect(primary('Submit scorecard')).toBe(true);
   });
 });

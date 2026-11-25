@@ -27,7 +27,7 @@ expected:
   prompt:
     forbidden: [Priya, Nair]
 recorded:
-  promptVersion: interviews.mapSummary@1
+  promptVersion: interviews.mapSummary@2
   promptHash: 22734a0efc8c
   output:
     findings: []

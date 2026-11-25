@@ -54,6 +54,16 @@ export const errorKey = (code: string): SummaryErrorKey =>
 export const includedByDefault = (proposals: readonly SummaryProposal[]) =>
   proposals.filter((p) => p.change && !p.alreadyChanged).map((p) => p.competencyId);
 
+/**
+ * The model's reason as the person's starting text, with the placeholders the redaction put in ("[CANDIDATE]",
+ * "[PERSON]", "[EMAIL_1]", "[PHONE_1]") taken out, so none reaches the audit note the reason becomes.
+ */
+export const reasonDraft = (reason: string | null) =>
+  (reason ?? '')
+    .replace(/\s*\[(?:CANDIDATE|PERSON|EMAIL_\d+|PHONE_\d+)\]/g, '')
+    .replace(/^\s*[,;:]?\s*/, '')
+    .trim();
+
 // What the browser sends, checked again in the interviews module (AGENTS.md 3.7). The text's bound is the module's
 // `summaryTextSchema`; here it is only kept from being unbounded.
 export const submitInput = z.strictObject({ interviewId: z.uuid(), text: z.string().max(100_000) });

@@ -91,6 +91,16 @@ describe('interviews.mapSummary schema', () => {
     ).toEqual(['findings.0:off_rubric']);
     expect(rulesOf(finding({ reason: 'He mentioned his young children.' }))).toEqual(['findings.0.reason:off_rubric']);
   });
+
+  // Mutation check: restored the bare words `health`, `family` and `accent` -> every row failed (refused off_rubric).
+  it.each([
+    'added the health-check endpoint to the queue service',
+    'compared answer quality across one model family',
+    'moved the accent colour tokens into the design system',
+    'mapped patient health records between the two clinics',
+  ])('a work sentence using a word that can be about a person is not off-rubric: "%s"', (quote) => {
+    expect(rulesOf(finding({ reason: 'Describes the work.', citations: [{ sourceId: 'S1', quote }] }))).toEqual([]);
+  });
 });
 
 describe('interviews.mapSummary through the client', () => {

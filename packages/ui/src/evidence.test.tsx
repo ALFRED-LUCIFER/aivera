@@ -39,6 +39,7 @@ describe('Scenario Outline: Every value carries its basis', () => {
 const provenances: [Provenance, string][] = [
   ['corroborated', 'Independently corroborated'],
   ['submitted', 'Candidate-submitted'],
+  ['interviewer', "Interviewer's word"],
   ['claim', 'Claim awaiting validation'],
   ['contradictory', 'Contradictory'],
   ['awaiting-defence', 'To check in interview'],

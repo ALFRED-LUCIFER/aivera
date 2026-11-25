@@ -117,6 +117,21 @@ describe('evidenceCards', () => {
     });
   });
 
+  // SAFETY: mutation check: `shown` returned the stored provenance (no interview_note case) -> this test failed (the
+  // summary's item read "submitted", Candidate-submitted)
+  it("an interviewer's summary reads \"Interviewer's word\", never Candidate-submitted, and a candidate's item beside it keeps its own tag", () => {
+    const summary = item('summary', 'walked through the set he built', 'medium', 'submitted', {
+      kind: 'interview_note',
+      label: "Interviewer's summary, 24 Nov",
+    });
+    const [card] = evidenceCards([result('retrieval', 20, ['summary', 'review'])], names, [summary, review], true);
+    expect(card?.lead).toEqual({ strength: 'medium', provenance: 'interviewer' });
+    expect(card?.items.map((i) => [i.id, i.own])).toEqual([
+      ['summary', null],
+      ['review', { strength: 'medium', provenance: 'submitted' }],
+    ]);
+  });
+
   it('cards are ordered by weight, heaviest first, and equal weights keep the rubric order', () => {
     const cards = evidenceCards(
       [result('arabic', 10, []), result('cost', 15, []), result('retrieval', 20, []), result('llm', 25, [])],

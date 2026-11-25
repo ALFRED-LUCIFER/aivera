@@ -52,8 +52,8 @@ const originOf = (groups: readonly (readonly string[])[]) => (sourceId: string) 
 /**
  * The competencies "Independently corroborated": their Candidate-submitted links come from at least two origins and at
  * least one of those is independent. Near-duplicate sources are one origin, so a re-uploaded write-up never confirms
- * itself; two candidate-authored origins never corroborate each other; claims and `withheld` sources (in an open
- * contradiction) count toward neither.
+ * itself; two candidate-authored origins never corroborate each other; claims, interview notes and `withheld` sources
+ * (in an open contradiction) count toward neither.
  */
 // shortcut: decided per competency, so every Candidate-submitted link on it becomes corroborated, not only the ones the
 // independent source speaks to; narrow it to the claim once the AI comparison (AIV-P1-078) can match claims.
@@ -66,10 +66,16 @@ export function corroboratedCompetencies(input: {
 }): Set<string> {
   const origin = originOf(input.originGroups);
   const independent = new Set(input.sources.filter((s) => isIndependent(s, input.logins)).map((s) => s.id));
+  // SAFETY: the interviewer's word is no second origin: other evidence is never corroborated on it (AGENTS.md 1.6).
+  const notes = new Set(input.sources.filter((s) => s.kind === 'interview_note').map((s) => s.id));
   const result = new Set<string>();
   for (const competencyId of new Set(input.links.map((l) => l.competencyId))) {
     const own = input.links.filter(
-      (l) => l.competencyId === competencyId && l.provenance === 'submitted' && !input.withheld?.has(l.sourceId),
+      (l) =>
+        l.competencyId === competencyId &&
+        l.provenance === 'submitted' &&
+        !notes.has(l.sourceId) &&
+        !input.withheld?.has(l.sourceId),
     );
     const origins = new Set(own.map((l) => origin(l.sourceId)));
     if (origins.size >= 2 && own.some((l) => independent.has(l.sourceId))) result.add(competencyId);

@@ -98,7 +98,13 @@ export async function applySummary(input: unknown): Promise<SummaryOutcome> {
   if (!parsed.success) notFound();
   const { interviewId, summaryId, previewId, changes } = parsed.data;
   return run('apply meeting summary', async (ctx) => {
-    await getInterviews().applySummaryProposals(ctx, summaryId, { previewId, changes });
+    await getInterviews()
+      .applySummaryProposals(ctx, summaryId, { previewId, changes })
+      .catch((error: unknown) => {
+        // Already decided (a retry after the apply committed, or a decline in another tab): show the panel as stored.
+        // Thrown before anything is written, so the transaction is still good to read in.
+        if (!(error instanceof InterviewError && error.code === 'summary_decided')) throw error;
+      });
     return panelAfter(ctx, interviewId);
   });
 }

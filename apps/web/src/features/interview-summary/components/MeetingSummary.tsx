@@ -23,7 +23,8 @@ import type { SummaryErrorKey, SummaryPanel, SummaryProposal } from '../domain/s
 // - the box, its count, its note and "Analyse summary" are drawn from the scorecard's own note field (Label, Textarea,
 //   meta text): there is no artboard to port;
 // - "Analyse summary" is a default button, not a primary one: the page's primary button is "Submit scorecard", and
-//   the preview card brings its own (one primary button per view, DESIGN.md);
+//   while the preview card is open its "Apply" is, with "Submit scorecard" a default button (one primary button per
+//   view, DESIGN.md);
 // - "Effect on the assessment" is the preview card's title, inline at the foot of the left column, not a card in the
 //   right column: the right column is the scorecard's (its live preview is AIV-P2-005, #119);
 // - each change has an include checkbox and its own reason field (the ticket), which the artboard's card has not;
@@ -31,8 +32,8 @@ import type { SummaryErrorKey, SummaryPanel, SummaryProposal } from '../domain/s
 //   change cites, and "no change" cites none (AGENTS.md 4, DESIGN.md);
 // - "Backed score 55 to 61" carries two basis markers, "Before: Observed" and "After: Projection" (AGENTS.md 1.7);
 // - the numbers are the assessment's own preview (the scoring formula), not the artboard's illustrative 55 to 61;
-// - Escape inside a reason field or a checkbox does not decline: declining discards the proposals, so it takes the
-//   "Decline" button (Escape on the card's buttons still cancels, as the shared card does everywhere);
+// - Escape does not decline, anywhere in the card: declining discards the proposals for good, so it takes the
+//   "Decline" button (the shared card cancels on Escape, which suits a preview that can simply be opened again);
 // - "Analysing the summary…", "Waiting for tomorrow's AI allowance…", "The summary could not be analysed…" and
 //   "Unusual content in this summary" are the ticket's states; the artboard draws none.
 
@@ -135,45 +136,54 @@ function Proposals({
   const count = view.included.length;
   const { preview } = view;
   return (
-    <PreviewBanner
-      title={t('interviewSummary.effect')}
-      consequence={t('interviewSummary.logged')}
-      confirmLabel={t('interviewSummary.apply', { count })}
-      pendingLabel={t('interviewSummary.applying')}
-      confirmDisabled={count === 0 || !preview || view.reasonMissing || view.busy}
-      cancelLabel={t('interviewSummary.decline')}
-      footer={t('interviewSummary.footer')}
-      errorMessage={t('interviewSummary.notApplied')}
-      onConfirm={view.onApply}
-      onCancel={view.onDecline}
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- takes no input: it only keeps Escape from the card, where it would decline
+    <div
+      onKeyDownCapture={(event) => {
+        if (event.key === 'Escape') event.preventDefault();
+      }}
     >
-      <ul className="flex flex-col gap-4">
-        {proposals.map((proposal) => (
-          <li key={proposal.competencyId} className="flex flex-col gap-2">
-            <Proposal view={view} proposal={proposal} />
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {unavailable ? (
-          <>
-            <span>{t('interviewSummary.previewUnavailable')}</span>
-            <Button size="compact" disabled={view.busy} onClick={view.onRetryPreview}>
-              {t('interviewSummary.tryAgain')}
-            </Button>
-          </>
-        ) : preview && count > 0 ? (
-          <>
-            <span className="font-semibold tabular-nums">{t('interviewSummary.backedScore', preview.backedScore)}</span>
-            <ValueBasis basis="observed" label={t('interviewSummary.before')} />
-            <ValueBasis basis="projection" label={t('interviewSummary.after')} />
-          </>
-        ) : (
-          count === 0 && <span className="text-text-2">{t('interviewSummary.nothingIncluded')}</span>
-        )}
-      </div>
-      {view.reasonMissing && <p className="mt-2 text-meta text-text">{t('interviewSummary.reasonNeeded')}</p>}
-    </PreviewBanner>
+      <PreviewBanner
+        title={t('interviewSummary.effect')}
+        consequence={t('interviewSummary.logged')}
+        confirmLabel={t('interviewSummary.apply', { count })}
+        pendingLabel={t('interviewSummary.applying')}
+        confirmDisabled={count === 0 || !preview || view.reasonMissing || view.busy}
+        cancelLabel={t('interviewSummary.decline')}
+        footer={t('interviewSummary.footer')}
+        errorMessage={t('interviewSummary.notApplied')}
+        onConfirm={view.onApply}
+        onCancel={view.onDecline}
+      >
+        <ul className="flex flex-col gap-4">
+          {proposals.map((proposal) => (
+            <li key={proposal.competencyId} className="flex flex-col gap-2">
+              <Proposal view={view} proposal={proposal} />
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {unavailable ? (
+            <>
+              <span>{t('interviewSummary.previewUnavailable')}</span>
+              <Button size="compact" disabled={view.busy} onClick={view.onRetryPreview}>
+                {t('interviewSummary.tryAgain')}
+              </Button>
+            </>
+          ) : preview && count > 0 ? (
+            <>
+              <span className="font-semibold tabular-nums">
+                {t('interviewSummary.backedScore', preview.backedScore)}
+              </span>
+              <ValueBasis basis="observed" label={t('interviewSummary.before')} />
+              <ValueBasis basis="projection" label={t('interviewSummary.after')} />
+            </>
+          ) : (
+            count === 0 && <span className="text-text-2">{t('interviewSummary.nothingIncluded')}</span>
+          )}
+        </div>
+        {view.reasonMissing && <p className="mt-2 text-meta text-text">{t('interviewSummary.reasonNeeded')}</p>}
+      </PreviewBanner>
+    </div>
   );
 }
 
@@ -196,13 +206,7 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
   const included = view.included.includes(competencyId);
   const reasonId = `summary-reason-${competencyId}`;
   return (
-    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Escape from a field must not reach the card, where it declines
-    <div
-      className="flex flex-col gap-2"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') event.preventDefault();
-      }}
-    >
+    <div className="flex flex-col gap-2">
       <span className="font-semibold">
         {change.from === change.to
           ? t('interviewSummary.stays', { name, strength: strength(change.to) })

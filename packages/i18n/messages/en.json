@@ -261,6 +261,7 @@
     "provenance": {
       "corroborated": "Independently corroborated",
       "submitted": "Candidate-submitted",
+      "interviewer": "Interviewer's word",
       "claim": "Claim awaiting validation",
       "contradictory": "Contradictory",
       "awaiting-defence": "To check in interview"

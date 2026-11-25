@@ -124,6 +124,7 @@ export const sample = {
   provenance: {
     corroborated: 'Independently corroborated',
     submitted: 'Candidate-submitted',
+    interviewer: "Interviewer's word",
     claim: 'Claim awaiting validation',
     contradictory: 'Contradictory',
     awaitingDefence: 'To check in interview',

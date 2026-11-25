@@ -63,6 +63,8 @@ import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts'
 // - the time reads "Today, 14:00" or "18 Nov, 14:00", the catalogue's one format (`interviews.when`), not "today, 14:00";
 // - the recommendations name the round after this one ("Round 2 shortlist" on Round 1), or "the next stage";
 // - `children` is a slot for a sibling panel on this page (the meeting summary, AIV-P1-115), at the foot of the left column;
+//   while that panel's preview card is open (`quietSubmit`), "Submit scorecard" is a default button, so the card's
+//   "Apply" is the view's one primary button (DESIGN.md);
 // - the subtitle is the 14/20 px body size, not 15/22 px, and the card padding is the shared Card's 16 px, not 20 px:
 //   the tokens and @credalent/ui have neither;
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
@@ -107,7 +109,16 @@ const linkIcon = svg(
 const INTERVIEWS = '/app/interviews' as Route;
 const ROUNDS = ['structured_screen', 'evidence_defence', 'panel'] as const;
 
-export function Scorecard({ view, children }: { view: ScorecardView; children?: ReactNode }) {
+export function Scorecard({
+  view,
+  children,
+  quietSubmit = false,
+}: {
+  view: ScorecardView;
+  children?: ReactNode;
+  /** A preview card with its own primary button is open beside the form. */
+  quietSubmit?: boolean;
+}) {
   const t = useTranslations();
   if (view.status !== 'ready')
     return (
@@ -190,7 +201,11 @@ export function Scorecard({ view, children }: { view: ScorecardView; children?: 
               {view.canEdit && (
                 <>
                   <div>
-                    <Button variant="primary" disabled={view.saving === 'saving'} onClick={view.onSubmit}>
+                    <Button
+                      variant={quietSubmit ? 'secondary' : 'primary'}
+                      disabled={view.saving === 'saving'}
+                      onClick={view.onSubmit}
+                    >
                       {t('scorecard.submit')}
                     </Button>
                   </div>
