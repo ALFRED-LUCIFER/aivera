@@ -38,7 +38,7 @@ export const SUMMARY_QUEUE = 'assessment';
 const unusualSpans: SummaryPorts['unusualSpans'] = (text) => detectUnusualContent(text);
 
 const notWired = async (): Promise<never> => {
-  throw new Error('Meeting summaries are not wired in this app');
+  throw new Error('Meeting summaries and the score preview are not wired in this app');
 };
 
 /**
@@ -103,6 +103,7 @@ export function createInterviews(
             }),
         })
       : {
+          previewScorecardRatings: notWired,
           submitMeetingSummary: notWired,
           getMeetingSummary: notWired,
           previewSummaryProposals: notWired,

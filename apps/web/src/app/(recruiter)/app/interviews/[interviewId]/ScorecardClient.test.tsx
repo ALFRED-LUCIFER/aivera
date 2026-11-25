@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startingDraft, type ScorecardCompetency, type ScorecardData } from '@/features/scorecard/domain/scorecard.ts';
@@ -378,7 +378,8 @@ const answer = (from: ReturnType<typeof state>, to: ReturnType<typeof state>, sc
 });
 const supporting = state('supporting');
 const RATED = {
-  'Not shown': answer(supporting, state('claim'), [55, 49]),
+  // A claim already counts zero: weakening it to Claim only leaves the backed score where it was.
+  'Not shown': answer(supporting, state('claim'), [55, 55]),
   'Partly shown': answer(supporting, supporting, [55, 55]),
   'Clearly shown': answer(supporting, state('medium', 3), [55, 67]),
   'Strongly shown': answer(supporting, state('medium', 3), [55, 67]),
@@ -398,7 +399,7 @@ describe('Scenario: Before any rating', () => {
 
 describe('Scenario Outline: Rating previews the change', () => {
   it.each([
-    ['Not shown', 'Evidence weakened', 'Retrieval and evaluation: Supporting to Claim only.', 'Backed score 55 to 49.'],
+    ['Not shown', 'Evidence weakened', 'Retrieval and evaluation: Supporting to Claim only.', 'Backed score stays 55.'],
     ['Partly shown', 'No change', 'Retrieval and evaluation stays at Supporting.', 'Backed score stays 55.'],
     [
       'Clearly shown',
@@ -443,6 +444,24 @@ describe('Scenario Outline: Rating previews the change', () => {
     await user.type(within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard'), 'Built the set');
     await wait(500);
     expect(fake.preview).toHaveBeenCalledTimes(1);
+  });
+
+  it('a new rating shows "Previewing…", never the previous rating\'s answer, until its own arrives', async () => {
+    const later = Promise.withResolvers();
+    fake.preview.mockResolvedValueOnce(RATED['Clearly shown']).mockReturnValueOnce(later.promise);
+    const user = userEvent.setup();
+    show();
+    const group = rating('Retrieval and evaluation');
+    await user.click(within(group).getByRole('radio', { name: 'Clearly shown' }));
+    await within(effectCard()).findByText('Backed score 55 to 67.');
+    await user.click(within(group).getByRole('radio', { name: 'Not shown' }));
+    expect(within(effectCard()).getByText('Previewing…')).toBeTruthy();
+    expect(within(effectCard()).queryByText('Evidence strengthened')).toBeNull();
+    expect(within(effectCard()).queryByText('Backed score 55 to 67.')).toBeNull();
+    await waitFor(() => expect(fake.preview).toHaveBeenCalledTimes(2));
+    await act(async () => later.resolve(RATED['Not shown']));
+    expect(within(effectCard()).getByText('Evidence weakened')).toBeTruthy();
+    expect(within(effectCard()).queryByText('Previewing…')).toBeNull();
   });
 
   it('a competency marked as not tested is not previewed, and with nothing rated the panel is empty again', async () => {

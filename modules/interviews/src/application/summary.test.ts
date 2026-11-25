@@ -429,3 +429,69 @@ describe('Scenario Outline: Only people on the interview analyse or apply', () =
     await expect(s.submit()).rejects.toMatchObject({ code: 'interview_not_held' });
   });
 });
+
+// AIV-P2-005: the scorecard's live preview, the assessment's own preview of the ratings on the latest snapshot.
+describe('previewScorecardRatings', () => {
+  const ratings = [{ competencyId: RETRIEVAL, rating: 'strongly_shown' as const }];
+
+  // SAFETY: mutation check: called ports.applyScoreChange after the preview in previewScorecardRatings -> this test failed (apply called)
+  it('the interviewer and an admin preview the latest snapshot, and nothing is stored, applied or published', async () => {
+    for (const ctx of [ctxAs('interviewer', LINA), ctxAs('admin')]) {
+      const s = setup();
+      await expect(s.useCases.previewScorecardRatings(ctx, INTERVIEW.id, ratings)).resolves.toEqual(PREVIEW);
+      expect(s.decisions.latestAssessment).toHaveBeenCalledWith(ctx, DANIEL, JOB.jobId);
+      expect(s.decisions.previewScoreChange).toHaveBeenCalledWith(ctx, {
+        assessmentId: id(90),
+        interviewId: INTERVIEW.id,
+        changes: ratings,
+      });
+      expect(s.decisions.applyScoreChange).not.toHaveBeenCalled();
+      expect(s.decisions.recordSummaryEvidence).not.toHaveBeenCalled();
+      expect(s.publishSubmitted).not.toHaveBeenCalled();
+      expect(s.calls).toEqual([]);
+      expect(s.summaries).toEqual([]);
+    }
+  });
+
+  // SAFETY: mutation check: removed the holdsScorecard check from scorecardHolder -> this test failed (resolved, assessment read)
+  it("a recruiter, the job's hiring owner and another interviewer are refused, and read no assessment", async () => {
+    for (const ctx of [ctxAs('recruiter'), ctxAs('hiring_owner', HASSAN), ctxAs('interviewer', NOOR)]) {
+      const s = setup();
+      await expect(s.useCases.previewScorecardRatings(ctx, INTERVIEW.id, ratings)).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+      expect(s.decisions.latestAssessment).not.toHaveBeenCalled();
+    }
+  });
+
+  it('the interviewer is refused on a job they cannot reach', async () => {
+    const s = setup({ ...INTERVIEW, jobId: id(11) });
+    await expect(
+      s.useCases.previewScorecardRatings(ctxAs('interviewer', LINA), INTERVIEW.id, ratings),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(s.decisions.previewScoreChange).not.toHaveBeenCalled();
+  });
+
+  it('no assessment, a refusal by the assessment, another interview and malformed ratings are refused', async () => {
+    const s = setup();
+    const lina = ctxAs('interviewer', LINA);
+    await expect(s.useCases.previewScorecardRatings(lina, id(61), ratings)).rejects.toMatchObject({
+      code: 'interview_not_found',
+    });
+    s.decisions.latestAssessment.mockResolvedValueOnce(null);
+    await expect(s.useCases.previewScorecardRatings(lina, INTERVIEW.id, ratings)).rejects.toMatchObject({
+      code: 'not_assessed',
+    });
+    s.decisions.previewScoreChange.mockRejectedValueOnce(
+      Object.assign(new Error('not yet scored'), { name: 'ScoreChangeError' }),
+    );
+    await expect(s.useCases.previewScorecardRatings(lina, INTERVIEW.id, ratings)).rejects.toMatchObject({
+      code: 'preview_changed',
+    });
+    const twice = [...ratings, { competencyId: RETRIEVAL, rating: 'not_shown' as const }];
+    await expect(s.useCases.previewScorecardRatings(lina, INTERVIEW.id, twice)).rejects.toThrow(
+      'One rating per competency',
+    );
+    await expect(s.useCases.previewScorecardRatings(lina, INTERVIEW.id, [])).rejects.toThrow();
+  });
+});

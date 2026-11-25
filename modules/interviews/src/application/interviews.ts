@@ -89,6 +89,27 @@ const ownOnly = (ctx: WorkspaceContext) => ctx.role === 'interviewer';
 // SAFETY: a draft is its interviewer's unsubmitted word about a candidate: only they, or a workspace admin, hold it.
 const holdsScorecard = (ctx: WorkspaceContext, interview: Interview) =>
   ctx.role === 'admin' || interview.interviewerUserId === ctx.userId;
+
+/**
+ * The stored interview for the person who holds its scorecard (`holdsScorecard`), on a job they can reach, authorised
+ * `scorecard.submit`; throws for anyone else, reading nothing more. Saving a draft and previewing its ratings
+ * (AIV-P2-005) share it.
+ */
+export async function scorecardHolder(
+  ports: Pick<Ports, 'storeFor' | 'jobResource' | 'authorize'>,
+  ctx: WorkspaceContext,
+  interviewId: string,
+): Promise<Interview> {
+  const interview = await ports.storeFor(ctx.tx).find(ctx.workspaceId, interviewId);
+  if (!interview) throw new InterviewError('interview_not_found');
+  if (!holdsScorecard(ctx, interview)) throw new ForbiddenError();
+  // SAFETY: the job comes from the stored interview. One the member cannot reach (a hiring owner or interviewer
+  // with no grant on it, ADR-005 point 6) is refused, even for the interview's own interviewer.
+  const job = await ports.jobResource(ctx, interview.jobId);
+  if (!job) throw new ForbiddenError();
+  await ports.authorize(ctx, 'scorecard.submit', job);
+  return interview;
+}
 const open = (interview: Interview) => interview.status !== 'completed' && interview.status !== 'cancelled';
 
 export function interviewUseCases(ports: Ports) {
@@ -119,14 +140,7 @@ export function interviewUseCases(ports: Ports) {
 
     async saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, raw: ScorecardDraft): Promise<void> {
       const draft = scorecardDraftSchema.parse(raw);
-      const interview = await storeFor(ctx.tx).find(ctx.workspaceId, interviewId);
-      if (!interview) throw new InterviewError('interview_not_found');
-      if (!holdsScorecard(ctx, interview)) throw new ForbiddenError();
-      // SAFETY: the job comes from the stored interview. One the member cannot reach (a hiring owner or interviewer
-      // with no grant on it, ADR-005 point 6) is refused, even for the interview's own interviewer.
-      const job = await jobResource(ctx, interview.jobId);
-      if (!job) throw new ForbiddenError();
-      await authorize(ctx, 'scorecard.submit', job);
+      const interview = await scorecardHolder(ports, ctx, interviewId);
       if (!open(interview)) throw new InterviewError('scorecard_closed');
       const ids = draft.competencies.map((c) => c.competencyId);
       if (new Set(ids).size !== ids.length || !ids.every((id) => interview.competencyIds.includes(id)))

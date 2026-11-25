@@ -15,7 +15,8 @@ const DEBOUNCE_MS = 400;
 /**
  * "Effect on the assessment" (AIV-P2-005): the assessment's preview of the draft's ratings, asked for a moment after
  * they change. Nothing here writes: the preview is a read, and the draft saves itself through the scorecard's own
- * controller. The last answer stays shown until the next one arrives; an older answer never replaces a newer one.
+ * controller. Until the answer for the current ratings arrives the panel says "Previewing…", never an earlier
+ * rating's answer; an older answer never replaces a newer one.
  */
 export function useScoreEffectController(data: ScorecardData, draft: ScorecardDraft): EffectState {
   // Only someone who may submit sees the panel; a competency not assessed carries no rating (`assessedRatings`).
@@ -24,7 +25,7 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
     : [];
   // The ratings as a string: typing a note changes the draft, not what is previewed.
   const key = JSON.stringify(rated);
-  const [shown, setShown] = useState<{ rated: PreviewRatings; effect: ScoreEffect | null } | null>(null);
+  const [shown, setShown] = useState<{ key: string; effect: ScoreEffect | null } | null>(null);
   const { interviewId } = data;
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
     const timer = setTimeout(() => {
       void previewScorecardRatings({ interviewId, ratings })
         .catch(() => null)
-        .then((effect) => current && setShown({ rated: ratings, effect }));
+        .then((effect) => current && setShown({ key, effect }));
     }, DEBOUNCE_MS);
     return () => {
       current = false;
@@ -43,11 +44,11 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
   }, [interviewId, key]);
 
   if (rated.length === 0) return { status: 'empty' };
-  if (!shown) return { status: 'pending' };
+  if (shown?.key !== key) return { status: 'pending' };
   if (!shown.effect) return { status: 'unavailable' };
   return {
     status: 'ready',
-    lines: effectLines(shown.rated, shown.effect, data.competencies),
+    lines: effectLines(rated, shown.effect, data.competencies),
     backedScore: shown.effect.backedScore,
   };
 }
