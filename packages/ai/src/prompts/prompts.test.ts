@@ -8,6 +8,7 @@ import { schemaRules } from '../citations.ts';
 import { compareExcerptsSchema } from './evidence.compareExcerpts.ts';
 import { MAP_TO_COMPETENCY_SYSTEM, mapToCompetencySchema } from './evidence.mapToCompetency.ts';
 import { parseCvSchema } from './evidence.parseCv.ts';
+import { mapSummarySchema } from './interviews.mapSummary.ts';
 import { detectDomainSchema } from './jobs.detectDomain.ts';
 import { draftCompetenciesSchema } from './jobs.draftCompetencies.ts';
 
@@ -46,6 +47,7 @@ const SCHEMAS: [string, z.ZodType][] = [
   ['assistant.answer', assistantAnswerSchema],
   ['assessment.explainRanking', explainRankingSchema],
   ['assessment.suggestQuestions', suggestQuestionsSchema(['C1'])],
+  ['interviews.mapSummary', mapSummarySchema(['C1'])],
 ];
 
 // Node types the walker knows to have only declared keys below them. Anything else (record, map, catchall, and any type

@@ -39,6 +39,8 @@ export const generateTasks = {
     maxOutputTokens: 2_500,
     temperature: 0.2,
   },
+  // One short finding with a quote for each competency an interview tested (AIV-P1-115), as repeatable as the model allows.
+  'interviews.mapSummary': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 1_500, temperature: 0 },
   // A recruiter's question answered from the page's sources (AIV-P2-068), through the Python AI service.
   'assistant.answer': {
     deployment: 'gpt-main',

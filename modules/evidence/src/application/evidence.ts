@@ -188,6 +188,26 @@ export type RecordReferenceCallInput = {
 
 export const REFERENCE_LIMIT = "One person's account, noted by the recruiter; it does not show the work itself.";
 
+/** What a person confirmed from an interviewer's meeting summary (AIV-P1-115): one item per changed competency. */
+export type RecordInterviewSummaryInput = {
+  candidateId: string;
+  /** The interview's job: the items are linked to its competencies, and the member is authorised on it. */
+  jobId: string;
+  /** When the summary was written; the source is labelled by its day. */
+  writtenAt: Date;
+  items: {
+    competencyId: string;
+    /** The summary's exact words the change cites. */
+    excerpt: string;
+    /** Medium at most: Strong means checked by a second source, which one interviewer's word is not. */
+    strength: 'medium' | 'claim';
+    level: number;
+  }[];
+  synthetic: boolean;
+};
+
+export const INTERVIEW_SUMMARY_LIMIT = "The interviewer's summary of the interview: their word, not inspected work.";
+
 // shortcut: recording and linking are open to admins and recruiters (`candidate.create`). Hiring owners and
 // interviewers read through a job: `listEvidenceForCandidate`, `listComparisons` and `getEvidenceMapping` authorise
 // against the candidate's application on it (AIV-P1-091); the reads with no job (`getEvidenceItem`, origin groups,
@@ -282,6 +302,47 @@ export function evidenceUseCases({
         ],
         synthetic: input.synthetic,
         text: input.notes,
+      });
+    },
+
+    /**
+     * An interviewer's meeting summary as an `interview_note` source ("Interviewer's summary, 24 Nov") with one item
+     * per confirmed change, each citing its excerpt (AIV-P1-115). Anyone who may submit a scorecard on the job.
+     */
+    // shortcut: a Medium item counts in the score by itself, beside the assessment's own interview change, and reads
+    // "Candidate-submitted" (the closed provenance list has no "interviewer's word"), so a later rating of the same
+    // interview that takes the change back leaves this item counting, and the day in the label is UTC. Cite the stored
+    // interview change on the profile instead when the assessment offers that read (AIV-P2-006, #120).
+    async recordInterviewSummary(
+      ctx: WorkspaceContext,
+      input: RecordInterviewSummaryInput,
+    ): Promise<RecordEvidenceResult> {
+      await authorize(ctx, 'scorecard.submit', (await candidateJob(ctx, input.candidateId, input.jobId)) ?? undefined);
+      // SAFETY: the interviewer's word is Medium at most and never "Independently corroborated" (AGENTS.md 1.6): the
+      // caller names no provenance, and any strength but these two is refused.
+      if (input.items.some((i) => i.strength !== 'medium' && i.strength !== 'claim'))
+        throw new EvidenceError('strength');
+      const date = input.writtenAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+      return record(ctx, {
+        candidateId: input.candidateId,
+        source: {
+          kind: 'interview_note',
+          label: `Interviewer's summary, ${date}`,
+          url: null,
+          blobFileId: null,
+          capturedAt: input.writtenAt,
+          checkedAt: null,
+          checkMethod: null,
+        },
+        items: input.items.map((i) => ({
+          excerpt: i.excerpt,
+          excerptSpan: null,
+          provenance: i.strength === 'claim' ? 'claim' : 'submitted',
+          strength: i.strength,
+          limit: INTERVIEW_SUMMARY_LIMIT,
+          competencies: [{ jobId: input.jobId, competencyId: i.competencyId, level: i.level }],
+        })),
+        synthetic: input.synthetic,
       });
     },
 

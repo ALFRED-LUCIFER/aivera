@@ -263,6 +263,9 @@ describe('Scenario: No AI or overall judgement of the person', () => {
         !file.endsWith('.test.ts') &&
         /from '(@credalent\/ai|@\/server\/ai)['/]/.test(readFileSync(join(root, file), 'utf8')),
     );
-    expect(importsAi).toEqual([]);
+    // AIV-P1-115: the module's one model call is the meeting-summary analysis, wired in its composition for the worker.
+    // It rates no person: it proposes a change per competency, which a person confirms. Nothing of the scorecard (its
+    // feature, its page, the module's domain, use cases and store) may import the AI platform, and no other file may.
+    expect(importsAi).toEqual(['modules/interviews/src/composition.ts']);
   });
 });

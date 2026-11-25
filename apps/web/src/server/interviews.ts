@@ -1,6 +1,8 @@
 import type { InterviewsContract } from '@credalent/interviews';
 import { createInterviews } from '@credalent/interviews/composition';
 import { findApplication } from '@credalent/intake/composition';
+import { getAssessment } from './assessment';
+import { getEvidence } from './evidence';
 import { getApprovedRubricReads, getJobs } from './jobs';
 import { getWorkspaces } from './workspace';
 
@@ -12,4 +14,13 @@ export const getInterviews = (): InterviewsContract =>
     getJobs(),
     getApprovedRubricReads().approvedRubric,
     findApplication,
+    undefined,
+    // What a confirmed meeting summary ends in (AIV-P1-115): the assessment's own preview and apply (AIV-P1-117) and
+    // the evidence contract's record. Each authorises the member itself; called lazily, so the modules build in any order.
+    {
+      latestAssessment: (ctx, candidateId, jobId) => getAssessment().getLatestAssessment(ctx, candidateId, jobId),
+      previewScoreChange: (ctx, input) => getAssessment().previewScoreChange(ctx, input),
+      applyScoreChange: (ctx, input) => getAssessment().applyScoreChange(ctx, input),
+      recordSummaryEvidence: (ctx, input) => getEvidence().recordInterviewSummary(ctx, input),
+    },
   ));

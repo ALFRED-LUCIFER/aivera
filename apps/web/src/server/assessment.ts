@@ -2,12 +2,14 @@ import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import { createAudit } from '@credalent/audit/composition';
 import { readPersonAsSystem } from '@credalent/candidates/composition';
+import { readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import { createApprovedRubricReads } from '@credalent/jobs/composition';
 import { createApplicationReads, createCandidateJobResolver } from '@credalent/intake/composition';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { aiOrUnavailable } from './ai';
 import { getDb } from './db';
 import { getEvidence } from './evidence';
+import { getInterviews } from './interviews';
 import { getCatalogue, getJobs } from './jobs';
 import { getWorkspaces } from './workspace';
 
@@ -40,8 +42,12 @@ export const getAssessment = (): AssessmentContract =>
       evidence: evidenceOf,
       identifiersOf,
     },
-    // Interview-based score changes (AIV-P1-117) are wired by the first screen that calls them (AIV-P2-005, AIV-P1-115).
-    undefined,
+    // Interview-based score changes (AIV-P1-117), which a confirmed meeting summary ends in (AIV-P1-115). The interview
+    // is read as the member may see it; called lazily, so the two modules build in either order.
+    {
+      evidenceForJob: readEvidenceForJobAsSystem,
+      interviewOf: (ctx, interviewId) => getInterviews().getInterview(ctx, interviewId),
+    },
     // Suggested interview questions (AIV-P1-113), lazy as the explanation is: an unconfigured app answers "failed".
     {
       ai: aiOrUnavailable('assessment.suggestQuestions'),

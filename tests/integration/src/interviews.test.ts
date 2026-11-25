@@ -200,15 +200,18 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'interviews' order by name`);
     expect([...tables]).toEqual([
+      { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'interview', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'meeting_summaries', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'outbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'scorecard_drafts', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'summary_proposals', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });
 
   it('applying the migrations again is a no-op', async () => {
     const applied = await count('migrations.interviews');
-    expect(applied).toBe(4);
+    expect(applied).toBe(6);
     execFileSync(process.execPath, [dbCli, 'migrate'], {
       env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
     });

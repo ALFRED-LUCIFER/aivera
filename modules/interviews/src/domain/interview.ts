@@ -73,6 +73,16 @@ const MESSAGES = {
   scorecard_closed: 'This interview is completed or cancelled, so its scorecard cannot change.',
   competency_not_in_interview: 'This competency is not one the interview tests.',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
+  // The meeting summary (AIV-P1-115).
+  summary_empty: 'Paste the meeting summary first.',
+  summary_too_long: 'Shorten the summary to 12,000 characters or fewer.',
+  summary_not_found: 'Meeting summary not found',
+  summary_pending: 'Apply or decline the changes proposed from the earlier summary first.',
+  summary_decided: 'These proposed changes are not waiting for a decision.',
+  proposal_not_found: 'This summary proposes no change for that competency.',
+  interview_not_held: 'This interview has not been held.',
+  not_assessed: 'The candidate has no assessment to change yet.',
+  preview_changed: 'The assessment changed since this preview. Preview the change again.',
 } as const;
 
 export type InterviewErrorCode = keyof typeof MESSAGES;

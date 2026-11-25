@@ -86,6 +86,9 @@ const {
   EVIDENCE_QUEUE,
   readEvidenceForJobAsSystem,
 } = await import('@credalent/evidence/composition');
+const { createIdentity } = await import('@credalent/identity/composition');
+const { MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
+const { createSummaryHandlers, SUMMARY_QUEUE } = await import('@credalent/interviews/composition');
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
 const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
 const { createAiTokenBudget } = await import('@credalent/workspaces/composition');
@@ -114,12 +117,20 @@ const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_
 // on arrival, while an unmapped one waits in its outbox (retried by the relay) until the owner configures it.
 const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
-// shortcut: `interviews` (InterviewScheduled.v1, InterviewCompleted.v1, AIV-P2-001) is left out until something consumes
-// them (score changes from scorecards, AIV-P2-005): they wait unsent in interviews.outbox; that ticket adds the schema
-// here and the queue mapping.
+// shortcut: `interviews` is relayed for MeetingSummarySubmitted.v1 (AIV-P1-115). Its InterviewScheduled.v1 and
+// InterviewCompleted.v1 (AIV-P2-001) have no queue until something consumes them (the scorecard submit, AIV-P2-006):
+// unmapped, each fails alone and is retried with back-off, as the evidence request events are.
 // shortcut: `decisions` (PackReady.v1, DecisionsRecorded.v1, AIV-P2-009) is left out the same way: they wait unsent in
 // decisions.outbox until their consumers exist (the stage change in intake, the decision email drafts in notifications).
-const OUTBOXES = ['candidates', 'jobs', 'intake', 'evidence', 'notifications', ...(fileReading ? ['files'] : [])];
+const OUTBOXES = [
+  'candidates',
+  'jobs',
+  'intake',
+  'evidence',
+  'notifications',
+  'interviews',
+  ...(fileReading ? ['files'] : []),
+];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
 // has its consumer (the GitHub App or file reading, below), and its EvidenceMapped.v1 is scored on `assessment`;
 // otherwise they go to `assessment` directly (AIV-P1-031), so the evidence queue never receives an event nothing handles.
@@ -133,6 +144,9 @@ const QUEUES: Record<string, string> = {
   [EvidenceMappingRequestedV1.type]: EVIDENCE_QUEUE,
   [EvidenceMappedV1.type]: ASSESSMENT_QUEUE,
   [ContradictionResolvedV1.type]: ASSESSMENT_QUEUE,
+  // A pasted meeting summary to analyse (AIV-P1-115): always consumed; with no model its summary is marked "could not
+  // be analysed" instead of waiting for ever.
+  [MeetingSummarySubmittedV1.type]: SUMMARY_QUEUE,
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
@@ -236,6 +250,27 @@ const evidenceHandlers: NonNullable<(typeof CONSUMERS)[string]> = [];
 // Rate-limited reads and AI work held back by the daily budget are scheduled with the relay's sender: the worker-only
 // identity holding Data Sender (infra/modules/messaging.bicep); the app identity, shared with the web app, stays receive-only.
 const scheduler = createScheduler(senderFor);
+// The meeting-summary analysis (AIV-P1-115) proposes evidence changes for a person to confirm; it applies nothing.
+// Names are read only to remove them from the summary before the model sees it.
+const identity = createIdentity(appDb, { trustedIssuer: 'worker: reads display names only' });
+(CONSUMERS[SUMMARY_QUEUE] ??= []).push(
+  ...createSummaryHandlers({
+    ai: model
+      ? createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) })
+      : undefined,
+    ...createApprovedRubricReads(),
+    identifiersOf: async (tx, workspaceId, candidateId) => {
+      const person = await readPersonAsSystem(tx, workspaceId, candidateId);
+      // The intake placeholder is no name: redacting it would hide nothing (AIV-P1-090).
+      return (
+        person && { names: person.unnamed ? [] : [person.displayName], emails: person.emails, phones: person.phones }
+      );
+    },
+    memberName: async (userId) => (await identity.getUser(userId))?.displayName ?? null,
+    scheduler,
+    now,
+  }),
+);
 if (mapping)
   evidenceHandlers.push(
     ...createEvidenceMappingHandlers({
