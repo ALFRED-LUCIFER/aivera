@@ -181,17 +181,21 @@ export function questionUseCases(ports: QuestionPorts) {
         for (const { source } of own) if (!sources.some((s) => s.id === source.id)) sources.push(source);
         // What the gap's evidence does not show and what would change it are text an earlier model call wrote about
         // the candidate's sources: they go in a source block too (untrusted, identifiers replaced), never in the
-        // prompt. A question may be aimed by them but cites the evidence: `storedGaps` drops a citation of the notes.
+        // prompt. A question may be aimed by them but cites the evidence: the schema refuses a citation of the notes.
         const lines = [
           ...new Set(cited.map((item) => `Limit: ${item.limit}`)),
           ...changes.flatMap((c) =>
             c.competencyId === gap.competencyId && c.text ? [`Would change this: ${c.text}`] : [],
           ),
         ];
+        const listedSources: QuestionGapInput['sources'][number][] = own.map(({ source, evidence }) => ({
+          id: source.id,
+          evidence,
+        }));
         if (lines.length) {
           const source = { id: `notes:${gap.competencyId}`, kind: 'document' as const, text: lines.join('\n') };
           notes.push(source);
-          own.push({ source, evidence: 'notes on this evidence, never cited' });
+          listedSources.push({ id: source.id, evidence: 'notes on this evidence, never cited', notes: true });
         }
         const label = `C${i + 1}`;
         labels.set(label, { ...gap, itemIds: cited.map((item) => item.id) });
@@ -203,7 +207,7 @@ export function questionUseCases(ports: QuestionPorts) {
             levelNeeded: gap.levelNeeded,
             provenLevel: gap.provenLevel,
             claimedLevel: gap.claimedLevel,
-            sources: own.map(({ source, evidence }) => ({ id: source.id, evidence })),
+            sources: listedSources,
           },
         ];
       });

@@ -48,6 +48,9 @@ export const asksProtectedTrait = (text: string) => PROTECTED_TRAIT.test(text);
 
 // The rule's name goes on telemetry in place of zod's `custom` (citations.ts schemaRules): never output text.
 const rule = (reason: string) => ({ params: { reason } });
+// The same, as a superRefine issue at `path`.
+const issue = (path: (string | number)[], reason: string) =>
+  ({ code: 'custom', path, message: reason, params: { reason } }) as const;
 
 const note = z
   .string()
@@ -68,20 +71,46 @@ const question = cited(
 );
 
 /**
- * The answer for the gaps listed under `gapIds`: questions for any other competency reject it (`competency_not_gap`).
+ * The answer for the listed gaps, each with the source labels its questions may cite (its evidence) and its notes,
+ * which are never cited. Rejected, so the client asks once more, rather than trimmed: questions for a competency that
+ * is not listed (`competency_not_gap`), a listed gap left out (`gap_missing`) or answered twice (`gap_repeated`), and a
+ * citation of another gap's evidence or of notes (`citation_not_gap`) (AGENTS.md 1.6, 3.7). A label listed for no gap
+ * is left to the citation check, which names it `unknown_citation`.
  * Azure strict mode needs every property present: nothing here is optional (client.ts generateStructured).
  */
-export const suggestQuestionsSchema = (gapIds: readonly string[]) =>
-  z.object({
-    gaps: z
-      .array(
-        z.object({
-          competencyId: z.string().refine((id) => gapIds.includes(id), rule('competency_not_gap')),
-          questions: z.array(question).min(2).max(3),
-        }),
-      )
-      .max(gapIds.length),
-  });
+export const suggestQuestionsSchema = (
+  gaps: readonly { id: string; citable: readonly string[]; notes?: readonly string[] }[],
+) => {
+  const citable = new Map(gaps.map((g) => [g.id, new Set(g.citable)]));
+  const listed = new Set(gaps.flatMap((g) => [...g.citable, ...(g.notes ?? [])]));
+  return z
+    .object({
+      gaps: z
+        .array(
+          z.object({
+            competencyId: z.string().refine((id) => citable.has(id), rule('competency_not_gap')),
+            questions: z.array(question).min(2).max(3),
+          }),
+        )
+        .max(gaps.length),
+    })
+    .superRefine(({ gaps: answered }, ctx) => {
+      const seen = new Set<string>();
+      answered.forEach(({ competencyId, questions }, i) => {
+        if (seen.has(competencyId)) ctx.addIssue(issue(['gaps', i, 'competencyId'], 'gap_repeated'));
+        seen.add(competencyId);
+        const own = citable.get(competencyId);
+        if (!own) return;
+        questions.forEach(({ citations }, j) =>
+          citations.forEach(({ sourceId }, k) => {
+            if (listed.has(sourceId) && !own.has(sourceId))
+              ctx.addIssue(issue(['gaps', i, 'questions', j, 'citations', k, 'sourceId'], 'citation_not_gap'));
+          }),
+        );
+      });
+      if ([...citable.keys()].some((id) => !seen.has(id))) ctx.addIssue(issue(['gaps'], 'gap_missing'));
+    });
+};
 
 /** One gap as the prompt lists it. `id` is a label of the caller's ("C1"), so no opaque id reaches the model. */
 export type QuestionGapInput = {
@@ -92,8 +121,11 @@ export type QuestionGapInput = {
   levelNeeded: number;
   provenLevel: number;
   claimedLevel: number;
-  /** The gap's own sources, by their `Source.id`, each with what the evidence is: "supporting, claim". */
-  sources: readonly { id: string; evidence: string }[];
+  /**
+   * The gap's own sources, by their `Source.id`, each with what the evidence is: "supporting, claim". A `notes` source
+   * says what the evidence does not show: it may aim a question but is never cited.
+   */
+  sources: readonly { id: string; evidence: string; notes?: boolean | undefined }[];
 };
 
 /**
@@ -121,7 +153,13 @@ export const suggestQuestionsRequest = (
           `- ${g.id}: ${g.name}. Meaning: ${g.meaning} Level the job needs: ${g.levelNeeded} of 5; shown by inspected work: ${g.provenLevel}; claimed: ${g.claimedLevel}. Sources: ${g.sources.map((s) => `${label(s.id)} (${s.evidence})`).join(', ')}.`,
       ),
     ].join('\n'),
-    schema: suggestQuestionsSchema(gaps.map((g) => g.id)),
+    schema: suggestQuestionsSchema(
+      gaps.map((g) => ({
+        id: g.id,
+        citable: g.sources.filter((s) => !s.notes).map((s) => label(s.id)),
+        notes: g.sources.filter((s) => s.notes).map((s) => label(s.id)),
+      })),
+    ),
     sources,
   };
 };

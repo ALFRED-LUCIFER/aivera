@@ -22,6 +22,7 @@ input:
           evidence: supporting, claim
         - id: S2
           evidence: notes on this evidence, never cited
+          notes: true
 sources:
   - id: S1
     kind: cv

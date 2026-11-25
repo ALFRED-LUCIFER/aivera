@@ -51,9 +51,11 @@ export type SuggestedQuestion = {
 export type SuggestedGap = { competencyId: string; questions: SuggestedQuestion[] };
 
 /**
- * The model's checked answer as stored: each gap by its competency id, each citation by its evidence item. A citation
- * of a source that is not the gap's own is dropped, then a question left citing nothing, then a gap left with no
- * question (AGENTS.md 1.6). `labels` maps the prompt's gap labels ("C1") back to the gaps.
+ * The model's checked answer as stored: each gap by its competency id, each citation by its evidence item. `labels`
+ * maps the prompt's gap labels ("C1") back to the gaps. The task's schema already refuses a citation that is not the
+ * gap's own, a gap left out or answered twice, so the client asks once more; the drops here only back that up: a
+ * citation of a source that is not the gap's own, then a question left citing nothing, then a gap left with no question
+ * (AGENTS.md 1.6).
  */
 export function storedGaps(
   answer: readonly {

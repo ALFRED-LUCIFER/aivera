@@ -18,7 +18,7 @@ import {
 } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import { explainRankingSchema } from '../src/prompts/assessment.explainRanking.ts';
-import { suggestQuestionsSchema } from '../src/prompts/assessment.suggestQuestions.ts';
+import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
@@ -1239,8 +1239,10 @@ describe('Feature: Cited ranking explanation', () => {
 });
 
 // Feature: Suggested interview questions per evidence gap (AIV-P1-113). Synthetic data only.
-const questionsSchemaOf = (c: GoldenCase) =>
-  suggestQuestionsSchema(questionsInput.parse(c.input).gaps.map((g) => g.id));
+const questionsSchemaOf = (c: GoldenCase) => {
+  const { job, gaps } = questionsInput.parse(c.input);
+  return suggestQuestionsRequest(job, gaps, c.sources).schema;
+};
 describe('Feature: Suggested interview questions per evidence gap', () => {
   const task = 'assessment.suggestQuestions';
   const cases = golden.get(task) ?? [];

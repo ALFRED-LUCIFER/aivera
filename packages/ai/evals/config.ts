@@ -31,7 +31,9 @@ export const questionsInput = z.object({
         levelNeeded: z.number().int(),
         provenLevel: z.number().int(),
         claimedLevel: z.number().int(),
-        sources: z.array(z.object({ id: z.string().min(1), evidence: z.string().min(1) })).min(1),
+        sources: z
+          .array(z.object({ id: z.string().min(1), evidence: z.string().min(1), notes: z.boolean().optional() }))
+          .min(1),
       }),
     )
     .min(1),
