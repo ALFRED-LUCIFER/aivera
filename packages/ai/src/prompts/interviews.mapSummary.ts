@@ -90,7 +90,7 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
             finding: z
               .enum(SUMMARY_FINDINGS)
               .describe(
-                'clearly_shown only when the summary names a specific thing the candidate built, showed or measured (an evaluation set, an endpoint, a figure); an activity alone (compared, reviewed, chose) is partly_shown; not_shown only when the summary says the candidate could not show or explain it, never for a competency the summary does not discuss, which gets no finding at all',
+                'clearly_shown only when the summary names a specific thing the candidate built, showed or measured (an evaluation set, an endpoint, a figure); an activity alone (compared, reviewed, chose) is partly_shown; not_shown only when the quoted words say the candidate could not show or explain it (could not, did not know, was unable); a summary that is silent on what the Meaning asks for is never not_shown: that competency gets no finding at all',
               ),
           }),
         )

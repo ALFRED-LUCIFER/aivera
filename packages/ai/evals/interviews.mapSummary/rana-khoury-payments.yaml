@@ -31,11 +31,11 @@ expected:
     forbidden: [Rana, Khoury]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: 5410fe08f67b
+  promptHash: 36b84d34f732
   output:
     findings:
       - competencyId: C1
-        reason: Candidate described the settlement flow for merchant payouts but could not explain chargebacks.
+        reason: The candidate described the settlement flow for merchant payouts but could not explain chargebacks.
         finding: partly_shown
         citations:
           - sourceId: S1
@@ -44,7 +44,7 @@ recorded:
             end: 113
         claim: false
       - competencyId: C2
-        reason: Candidate could not explain how the checkout conversion metric was defined or what decision it changed.
+        reason: The candidate could not explain how the checkout conversion metric was defined or what decision it changed.
         finding: not_shown
         citations:
           - sourceId: S1

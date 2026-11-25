@@ -2,8 +2,9 @@
 # (nerves, children, accent). Only the work gives a finding; nothing is proposed from, or quotes, the rest.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
 # shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
-# shortcut: field match ignores extra findings, so a not_shown for a competency the summary never discusses passes
+# shortcut: field match ignores extra findings, so a finding for a competency the summary never discusses passes
 # (gpt-4.1-mini gives one on some runs); expect no finding for it once AIV-P1-138 (#616) lands.
+# The recorded C1 partly_shown ("caching retrieval results") is that bug; partly_shown proposes no change.
 id: omar-al-suwaidi-protected-traits
 people: [Omar Al Suwaidi, Lina Panel]
 input:
@@ -31,20 +32,20 @@ expected:
     forbidden: [Omar, Suwaidi]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: ff137d1e0e7f
+  promptHash: f0c1d3315657
   output:
     findings:
       - competencyId: C1
-        reason: The summary does not mention any evaluation sets or retrieval metrics, only cost and latency.
-        finding: not_shown
+        reason: The summary mentions caching retrieval results but does not specify evaluation sets or retrieval metrics or how they changed decisions.
+        finding: partly_shown
         citations:
           - sourceId: S1
-            quote: explained how he cut the cost per request by caching retrieval results and showed the latency numbers before and after
+            quote: explained how he cut the cost per request by caching retrieval results
             start: 5
-            end: 123
+            end: 75
         claim: false
       - competencyId: C2
-        reason: The candidate showed latency numbers before and after caching and explained how he cut the cost per request.
+        reason: The summary states the candidate showed latency numbers before and after and explained cost per request reduction.
         finding: clearly_shown
         citations:
           - sourceId: S1

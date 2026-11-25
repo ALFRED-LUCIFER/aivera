@@ -30,11 +30,11 @@ expected:
     forbidden: [Arjun, Menon]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: 4b04509f9eaf
+  promptHash: 3d5dc9533dc5
   output:
     findings:
       - competencyId: C1
-        reason: The candidate compared answer quality across one model family before choosing the smaller model, indicating evaluation of retrieval quality.
+        reason: The candidate compared answer quality across one model family before choosing the smaller model, indicating evaluation activity though no specific evaluation set or metric is named.
         finding: partly_shown
         citations:
           - sourceId: S1
@@ -43,7 +43,7 @@ recorded:
             end: 211
         claim: false
       - competencyId: C2
-        reason: The candidate showed the health-check endpoint and how its alerts cut the time to spot a stalled worker, demonstrating reliability improvements.
+        reason: The candidate showed the health-check endpoint and how its alerts cut the time to spot a stalled worker, demonstrating a reliability improvement with a specific endpoint built and its impact described.
         finding: clearly_shown
         citations:
           - sourceId: S1

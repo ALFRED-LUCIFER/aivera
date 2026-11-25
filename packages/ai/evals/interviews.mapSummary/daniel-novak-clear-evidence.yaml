@@ -2,7 +2,7 @@
 # shown with the summary's own words; it says nothing on cost, so that competency is left out (not mentioned).
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
 # shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
-# shortcut: field match ignores extra findings, so a not_shown for a competency the summary never discusses passes
+# shortcut: field match ignores extra findings, so a finding for a competency the summary never discusses passes
 # (gpt-4.1-mini gives one on some runs); expect no finding for it once AIV-P1-138 (#616) lands.
 id: daniel-novak-clear-evidence
 people: [Daniel Novak, Lina Panel]
@@ -31,7 +31,7 @@ expected:
     forbidden: [Daniel, Novak]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: 3299ca2700f9
+  promptHash: a7a758b4efe6
   output:
     findings:
       - competencyId: C1
