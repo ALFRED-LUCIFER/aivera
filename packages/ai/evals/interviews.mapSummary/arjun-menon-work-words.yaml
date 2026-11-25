@@ -2,7 +2,7 @@
 # endpoint", "model family"). They are about the work, so each gives a finding and the answer is not refused as
 # off-rubric.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: arjun-menon-work-words
 people: [Arjun Menon, Lina Panel]
 input:
@@ -30,7 +30,7 @@ expected:
     forbidden: [Arjun, Menon]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: 9e11739f72c9
+  promptHash: 4b04509f9eaf
   output:
     findings:
       - competencyId: C1
@@ -43,7 +43,7 @@ recorded:
             end: 211
         claim: false
       - competencyId: C2
-        reason: The candidate showed the health-check endpoint and how its alerts cut the time to spot a stalled worker, indicating improved reliability through monitoring and alerting.
+        reason: The candidate showed the health-check endpoint and how its alerts cut the time to spot a stalled worker, demonstrating reliability improvements.
         finding: clearly_shown
         citations:
           - sourceId: S1

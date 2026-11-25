@@ -1,7 +1,7 @@
 # Paolo Garcia (AIV-P1-113): CV only, so every competency is a gap; the four heaviest are listed. "Data pipelines" has
 # no evidence item at all: its rubric line is its source (S4), so its questions still cite what the model was given.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: paolo-garcia-cv-only
 people: [Paolo Garcia]
 input:

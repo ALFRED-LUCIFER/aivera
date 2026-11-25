@@ -2,7 +2,7 @@
 # question is about card authorisation, declines or conversion in a payments setting.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
 # shortcut: no judge rubric ("every question is about card authorisation, declines or conversion") yet, so only
-# exact fields are scored; add one with its live verdict.
+# exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: rana-khoury-payments
 people: [Rana Khoury]
 input:

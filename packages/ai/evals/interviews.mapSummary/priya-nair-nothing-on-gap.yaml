@@ -1,7 +1,7 @@
 # Priya Nair (AIV-P1-115): the summary covers timing and next steps only. Nothing in it is about either competency, so
 # no finding is given: both stay gaps and nothing is guessed from silence.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: priya-nair-nothing-on-gap
 people: [Priya Nair, Lina Panel]
 input:
@@ -27,6 +27,6 @@ expected:
     forbidden: [Priya, Nair]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: 8f2ceaa46db9
+  promptHash: dd1b8b47a4a4
   output:
     findings: []

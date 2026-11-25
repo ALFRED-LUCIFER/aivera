@@ -81,6 +81,7 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
           z.object({
             competencyId: z.string().refine((id) => competencyIds.includes(id), rule('competency_not_listed')),
             // Before the finding, so the model weighs what the summary names before it rates (strict mode keeps order).
+            // The description on `finding` is prompt text, not documentation: strict mode sends it to the model.
             reason: z
               .string()
               .min(1)
@@ -89,7 +90,7 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
             finding: z
               .enum(SUMMARY_FINDINGS)
               .describe(
-                'clearly_shown only when the reason names a specific set, metric, figure or system the candidate built, showed or measured; an activity alone (compared, reviewed, chose) is partly_shown',
+                'clearly_shown only when the summary names a specific thing the candidate built, showed or measured (an evaluation set, an endpoint, a figure); an activity alone (compared, reviewed, chose) is partly_shown; not_shown only when the summary says the candidate could not show or explain it, never for a competency the summary does not discuss, which gets no finding at all',
               ),
           }),
         )

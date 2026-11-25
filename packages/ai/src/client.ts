@@ -195,6 +195,8 @@ export function createAiClient(options: {
           // at the threshold, so one more transient failure reopens it (half-open).
           if (!transient) Object.assign(breaker, { failures: 0, openUntil: 0 });
           else if (++breaker.failures >= circuitBreaker.failures) breaker.openUntil = now() + circuitBreaker.openMs;
+          // shortcut: Azure's content filter (HTTP 400 content_filter, e.g. a jailbreak line in a source) is reported as
+          // unavailable too, so retrying never helps; report it as its own outcome (AIV-P1-136, #614).
           if (!transient || attempts >= maxAttempts || breaker.openUntil > now()) {
             outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': reason });
             throw new AiUnavailable(task, reason);

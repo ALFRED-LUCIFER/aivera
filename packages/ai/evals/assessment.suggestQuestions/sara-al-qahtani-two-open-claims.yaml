@@ -1,7 +1,7 @@
 # Sara Al Qahtani (AIV-P1-113): two open claims, the 40% cost cut and the Gulf Arabic evaluation set. The cost gap also
 # has submitted work, so a question may cite either of its two sources; no question cites another gap's source.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: sara-al-qahtani-two-open-claims
 people: [Sara Al Qahtani]
 input:

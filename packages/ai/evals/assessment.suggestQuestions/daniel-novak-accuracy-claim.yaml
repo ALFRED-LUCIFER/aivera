@@ -2,7 +2,7 @@
 # work and is not listed, so no question is for it. Each question cites the CV line it tests, never the notes (S2):
 # the limit of that line and what would change it.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: daniel-novak-accuracy-claim
 people: [Daniel Novak]
 input:

@@ -2,7 +2,7 @@
 # part and says she could not explain the other; "verified by her former manager" is the interviewer's word and
 # changes no finding.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict.
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: rana-khoury-payments
 people: [Rana Khoury, Lina Panel]
 input:
@@ -31,7 +31,7 @@ expected:
     forbidden: [Rana, Khoury]
 recorded:
   promptVersion: interviews.mapSummary@3
-  promptHash: f63f27f0c77a
+  promptHash: 5410fe08f67b
   output:
     findings:
       - competencyId: C1
