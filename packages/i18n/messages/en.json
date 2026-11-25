@@ -340,6 +340,20 @@
     "short": "{short, plural, other {# short}}",
     "shortClaimed": "{short, plural, other {# short, claimed}}"
   },
+  "againstNeed": {
+    "title": "Against what the job needs",
+    "intro": "Each competency is judged against the level this job needs, set in the rubric.",
+    "introShape": "Where the proven shape falls inside the needed one, there is a gap.",
+    "radar": "Radar of {count, plural, one {# competency} other {# competencies}}. {levels}",
+    "legendProven": "Proven by evidence",
+    "legendClaimed": "Claimed",
+    "legendNeeded": "What the job needs",
+    "summary": "Meets the need on {meets} of {count, plural, one {# competency} other {# competencies}}",
+    "bar": "{name}: proven {proven}, claimed {claimed}, job needs {needed}",
+    "footnote": "Solid is proven, hatched is claimed, and the upright mark is the level the job needs.",
+    "gapsClose": "{gaps, plural, =1 {The one gap} =2 {The two gaps} other {The # gaps}} would close if their claims hold.",
+    "gapsCloseSome": "{closing} of the {gaps} gaps would close if their claims hold."
+  },
   "competency": {
     "weight": "Weight {weight}",
     "weightMandatory": "Weight {weight} · mandatory",
