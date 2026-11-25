@@ -493,8 +493,8 @@ export default async function seed() {
           synthetic: true,
         }),
       );
-      // A mixed card, as imported data gives: Product judgement rests on the submitted repository and the checked one,
-      // and a CV line, stored as the CV parse and mapping store a claim (Supporting, "Claim awaiting validation").
+      // A mixed card, as imported data gives: LLM systems in production rests on the checked repository and the
+      // submitted one, and a CV line, stored as the CV parse and mapping store a claim (Supporting, "Claim awaiting validation").
       const cvClaim = await as((ctx) =>
         evidence.recordEvidence(ctx, {
           candidateId: personId,
@@ -509,12 +509,12 @@ export default async function seed() {
           },
           items: [
             {
-              excerpt: 'Argued against a fully automatic refund bot.',
+              excerpt: 'Shipped a merchant help assistant.',
               excerptSpan: 'page 2',
               provenance: 'claim',
               strength: 'supporting',
               limit: 'A claim until a document or a second source supports it.',
-              competencies: [{ jobId: sae, competencyId: competency('Product judgement'), level: 4 }],
+              competencies: [{ jobId: sae, competencyId: competency('LLM systems in production'), level: 5 }],
             },
           ],
           synthetic: true,
@@ -531,12 +531,12 @@ export default async function seed() {
             level: proven,
             itemIds: [
               ...(source ? [items.get(source)] : []),
-              ...(c === 'Product judgement' ? [items.get('llm-eval-harness')] : []),
+              ...(c === 'LLM systems in production' ? [items.get('fastapi-ml-serve')] : []),
             ],
           },
           claimedLevel,
           claimItemIds:
-            c === 'Arabic and bilingual NLP' ? claim.itemIds : c === 'Product judgement' ? cvClaim.itemIds : [],
+            c === 'Arabic and bilingual NLP' ? claim.itemIds : c === 'LLM systems in production' ? cvClaim.itemIds : [],
         };
       });
     }

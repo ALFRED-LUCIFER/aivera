@@ -199,13 +199,13 @@ for (const theme of themes) {
 
     // A mixed card, as imported data gives (AGENTS.md 1.6): the row is labelled by its strongest proven item; the
     // submitted repository and the CV claim each carry their own strength and tag, and the claim is not highlighted.
-    const product = page.getByRole('article', { name: /^Product judgement/ });
+    const product = page.getByRole('article', { name: /^LLM systems in production/ });
     await expect(product.getByText('Independently corroborated')).toHaveCount(1);
     const submitted = product.getByRole('listitem').filter({ hasText: 'contract tests on every endpoint' });
     await expect(submitted.getByText('Medium', { exact: true })).toBeVisible();
     await expect(submitted.getByText('Candidate-submitted')).toBeVisible();
     await expect(submitted.locator('mark')).toHaveCount(1);
-    const cvClaim = product.getByRole('listitem').filter({ hasText: 'Argued against a fully automatic refund bot.' });
+    const cvClaim = product.getByRole('listitem').filter({ hasText: 'Shipped a merchant help assistant.' });
     await expect(cvClaim.getByText('Supporting', { exact: true })).toBeVisible();
     await expect(cvClaim.getByText('Claim awaiting validation')).toBeVisible();
     await expect(cvClaim.locator('mark')).toHaveCount(0);
