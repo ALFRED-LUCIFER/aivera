@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { CompetencyResult } from '../domain/assess.ts';
 import type { ExplanationStatement } from '../domain/explain.ts';
+import type { SuggestedGap } from '../domain/questions.ts';
 import { RATINGS } from '../domain/scoreChange.ts';
 
 export const assessment = pgSchema('assessment');
@@ -75,6 +76,25 @@ export const explanation = assessment
       primaryKey({ columns: [t.resultId, t.promptVersion] }),
       tenantPolicy('explanation_tenant_isolation', t.workspaceId),
     ],
+  )
+  .enableRLS();
+
+// The suggested interview questions of a stored result (AIV-P1-113), one set per result: a new result gets a new set
+// on demand. Holds the questions with their quotes of the candidate's evidence, so it stays in the database (AGENTS.md
+// 1.2); deleting a result deletes its questions (erasure, AIV-P3-014). Guidance for a person: nothing scores from it.
+export const suggestedQuestions = assessment
+  .table(
+    'suggested_questions',
+    {
+      resultId: uuid('result_id')
+        .primaryKey()
+        .references(() => result.id, { onDelete: 'cascade' }),
+      workspaceId: uuid('workspace_id').notNull(),
+      promptVersion: text('prompt_version').notNull(),
+      gaps: jsonb().$type<SuggestedGap[]>().notNull(),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    },
+    (t) => [tenantPolicy('suggested_questions_tenant_isolation', t.workspaceId)],
   )
   .enableRLS();
 

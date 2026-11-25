@@ -1828,6 +1828,20 @@
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again."
   },
+  "suggestedQuestions": {
+    "title": "Needs live verification",
+    "intro": "Competencies whose evidence is below the job's need or rests on a claim. The questions are suggestions for the person who interviews: they change no score, stage or rank.",
+    "suggest": "Suggest interview questions",
+    "suggestAgain": "Suggest again",
+    "suggesting": "Suggesting interview questions…",
+    "noGaps": "No open gaps. Nothing here needs live verification.",
+    "stale": "Evidence changed since these questions were suggested.",
+    "waiting": "Waiting for tomorrow's AI allowance",
+    "failed": "Questions could not be suggested. You can write your own.",
+    "strong": "A strong answer shows:",
+    "weak": "A weak answer shows:",
+    "rubric": "the job's rubric"
+  },
   "interviews": {
     "round": {
       "structured_screen": "Round 1, structured screen",

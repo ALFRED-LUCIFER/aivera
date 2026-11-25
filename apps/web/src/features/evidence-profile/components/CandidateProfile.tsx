@@ -3,6 +3,7 @@
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Card, EvidenceHighlight, ScoreWithUncertainty, ValueBasis } from '@credalent/ui';
 import type { Route } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { evidenceAnchor, type Fit, type ProfileData } from '../domain/profile.ts';
@@ -38,13 +39,14 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 //   tokens have no 15 px step;
 // - a candidate not yet scored on the approved rubric shows "Not yet scored", basis "Not yet available" (AGENTS.md 1.7);
 // - no "Against what the job needs" chart and competency bars: AIV-P1-044 (#108);
-// - no "Needs live verification", "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
+// - "Needs live verification" is the page's `children`, SuggestedQuestions (AIV-P1-113), with its own deviations;
+// - no "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
 
 export type CandidateProfileView =
   { status: 'loading' } | { status: 'error'; onRetry: () => void } | ({ status: 'ready' } & ProfileData);
 
-export function CandidateProfile({ view }: { view: CandidateProfileView }) {
+export function CandidateProfile({ view, children }: { view: CandidateProfileView; children?: ReactNode }) {
   const t = useTranslations();
   if (view.status !== 'ready')
     return (
@@ -108,6 +110,7 @@ export function CandidateProfile({ view }: { view: CandidateProfileView }) {
       {(view.competencies.length > 0 || view.notes.length > 0) && (
         <EvidenceCards cards={view.competencies} notes={view.notes} />
       )}
+      {children}
     </div>
   );
 }

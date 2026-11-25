@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { createAiClient, fakeProvider, memoryTokenBudget } from '@credalent/ai';
 import type { AssessmentContract, RubricInput } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
@@ -171,7 +172,7 @@ afterAll(async () => {
 });
 
 describe('Migrations', () => {
-  it('assessment.explanation, inbox, interview_change and result are owned by aivera_migrator with row-level security enabled and forced', async () => {
+  it('assessment.explanation, inbox, interview_change, result and suggested_questions are owned by aivera_migrator with row-level security enabled and forced', async () => {
     const tables = await admin.execute<{ name: string; owner: string; rls: boolean; forced: boolean }>(sql`
       select t.tablename as name, t.tableowner as owner, c.relrowsecurity as rls, c.relforcerowsecurity as forced
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
@@ -181,6 +182,7 @@ describe('Migrations', () => {
       { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'interview_change', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'result', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'suggested_questions', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });
 
@@ -309,5 +311,196 @@ describe('Who may assess', () => {
     await expect(as(LINA, w1, (ctx) => assessment.getLatestAssessment(ctx, SARA, JOB))).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+});
+
+// Feature: Suggested interview questions per evidence gap (AIV-P1-113), on PostgreSQL. Daniel Novak (synthetic): his
+// "Retrieval and evaluation" rests on a CV line, and nothing is recorded for "Arabic and bilingual NLP".
+const suggestedQuestion = (text: string, sourceId: string, quote: string) => ({
+  text,
+  strongAnswer: 'Names the set, who built it and what was held out.',
+  weakAnswer: 'Repeats the figure without saying how it was measured.',
+  citations: [{ sourceId, quote }],
+});
+const countQuestions = async (workspaceId: string) =>
+  (
+    await withWorkspace(app, workspaceId, (tx) =>
+      tx.execute<{ n: number }>(sql`select count(*)::int as n from assessment.suggested_questions`),
+    )
+  )[0]?.n;
+
+describe('Scenario: Questions are kept for the snapshot they were made from (AIV-P1-113)', () => {
+  const DANIEL = '0190d4a2-0000-7000-8000-00000000c002';
+  const CLAIM = 'raised answer accuracy from 71% to 88%';
+  const retrieval = {
+    competencyId: 'C1',
+    questions: [
+      suggestedQuestion('How was the 71% measured, on which questions, and who built that set?', 'S1', CLAIM),
+      suggestedQuestion('What did you change yourself to move accuracy from 71% to 88%?', 'S1', 'from 71% to 88%'),
+    ],
+  };
+  const arabic = {
+    competencyId: 'C2',
+    questions: [
+      suggestedQuestion('Tell me about an Arabic evaluation set you built.', 'S2', 'Arabic evaluation sets'),
+      suggestedQuestion('What did that set show that an English one missed?', 'S2', 'evaluation sets they built'),
+    ],
+  };
+  // The first snapshot has both gaps; once Arabic is backed by checked work, only the first is left.
+  const provider = fakeProvider({
+    fixtures: [{ when: 'C2: Arabic and bilingual NLP', completion: JSON.stringify({ gaps: [retrieval, arabic] }) }],
+    completion: JSON.stringify({ gaps: [retrieval] }),
+  });
+  const model = createAiClient({ provider, budget: memoryTokenBudget() });
+  let pool: Db;
+  let poolWorkspaces: WorkspacesContract;
+  let questions: AssessmentContract;
+  let modelCalls = 0;
+  /** Set to hold every model call until two have arrived: two requests in flight for one snapshot. */
+  let gate: { arrived: number; both: Promise<void>; open: () => void } | undefined;
+
+  const danielClaim: RecordEvidenceInput = {
+    ...claim(RETRIEVAL, 4),
+    candidateId: DANIEL,
+    items: claim(RETRIEVAL, 4).items.map((item) => ({ ...item, excerpt: CLAIM, excerptSpan: 'page 1' })),
+  };
+  const assessDaniel = () =>
+    as(ALEX, w1, async (ctx) =>
+      assessment.assessCandidate(ctx, {
+        candidateId: DANIEL,
+        jobId: JOB,
+        rubric: RUBRIC,
+        evidence: await evidence.listEvidenceForCandidate(ctx, DANIEL, JOB),
+      }),
+    );
+  beforeAll(async () => {
+    // Two connections, so two requests can be in flight at once.
+    pool = createDb(urlFor('aivera_app'), { max: 2 });
+    const poolAudit = createAudit(pool);
+    poolWorkspaces = createWorkspaces(pool, poolAudit);
+    questions = createAssessment(
+      poolWorkspaces,
+      poolAudit,
+      createJobs(poolWorkspaces, poolAudit, () => NOW),
+      () => NOW,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        ai: {
+          generateStructured: async (input) => {
+            modelCalls++;
+            if (gate) {
+              if (++gate.arrived === 2) gate.open();
+              await gate.both;
+            }
+            return model.generateStructured(input);
+          },
+        },
+        approvedRubric: async () => ({
+          id: RUBRIC.versionId,
+          competencies: [
+            { id: RETRIEVAL, name: 'Retrieval and evaluation', evidenceExpected: 'Eval sets they built.' },
+            { id: ARABIC, name: 'Arabic and bilingual NLP', evidenceExpected: 'Arabic evaluation sets they built.' },
+          ],
+        }),
+        evidence: (ctx, candidateId, jobId) => evidence.listEvidenceForCandidate(ctx, candidateId, jobId),
+        identifiersOf: async () => ({ names: ['Daniel Novak'], emails: [], phones: [] }),
+        changes: async () => [],
+        jobOf: async () => ({ title: 'Senior AI Engineer', domainPack: null }),
+      },
+    );
+    await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, danielClaim));
+    await assessDaniel();
+  });
+
+  afterAll(async () => {
+    await pool?.$client.end();
+  });
+
+  const suggest = (workspaceId = w1) =>
+    poolWorkspaces.withWorkspace({ userId: ALEX }, workspaceId, (ctx) =>
+      questions.suggestInterviewQuestions(ctx, DANIEL, JOB),
+    );
+  const stored = () =>
+    poolWorkspaces.withWorkspace({ userId: ALEX }, w1, (ctx) => questions.getSuggestedQuestions(ctx, DANIEL, JOB));
+
+  it('one stored set per snapshot: a second request reuses it and asks no model', async () => {
+    expect((await stored())?.status).toBe('not_suggested');
+    const first = await suggest();
+    if (first?.status !== 'suggested') throw new Error(`not suggested: ${first?.status}`);
+    expect(first.gaps.map((g) => [g.competencyId, g.questions.length])).toEqual([
+      [RETRIEVAL, 2],
+      [ARABIC, 2],
+    ]);
+    // The CV line is cited by its evidence item; the competency with no evidence by its rubric line.
+    expect(first.gaps[0]?.questions[0]?.citations).toEqual([{ itemId: expect.any(String), quote: CLAIM }]);
+    expect(first.gaps[1]?.questions[0]?.citations).toEqual([{ itemId: null, quote: 'Arabic evaluation sets' }]);
+    expect(await suggest()).toEqual(first);
+    expect(await stored()).toEqual(first);
+    expect(modelCalls).toBe(1);
+    expect(await countQuestions(w1)).toBe(1);
+    // Guidance only: no audit entry and no new result.
+    expect((await audit.listFor(w1, { type: 'candidate', id: DANIEL })).map((e) => e.action)).toEqual([
+      'score.changed',
+    ]);
+  });
+
+  // SAFETY: mutation check: dropped the primary key's conflict handling (plain insert) -> this test failed (the second
+  // request threw a unique violation)
+  it('new evidence changes the snapshot: the stored set is stale, and a duplicated request in flight stores once', async () => {
+    await as(ALEX, w1, (ctx) => evidence.recordEvidence(ctx, { ...harness(ARABIC, 5), candidateId: DANIEL }));
+    const next = await assessDaniel();
+    expect(await stored()).toMatchObject({ status: 'suggested', stale: true });
+
+    const { promise: both, resolve: open } = Promise.withResolvers<void>();
+    gate = { arrived: 0, both, open };
+    const [one, two] = await Promise.all([suggest(), suggest()]);
+    gate = undefined;
+    // Both asked the model (neither saw a stored set), one answer was stored, and both show that one.
+    expect(modelCalls).toBe(3);
+    expect(one).toMatchObject({ status: 'suggested', stale: false, resultId: next.id });
+    expect(two).toEqual(one);
+    expect(await countQuestions(w1)).toBe(2);
+  });
+
+  // SAFETY: mutation check: ALTER POLICY suggested_questions_tenant_isolation USING (true) WITH CHECK (true) -> this
+  // test failed (W2 read W1's questions)
+  it("W2 reads none of W1's questions with the repository filter removed, and W1 cannot write one for W2", async () => {
+    expect([
+      ...(await withWorkspace(app, w2, (tx) => tx.execute(sql`select * from assessment.suggested_questions`))),
+    ]).toEqual([]);
+    expect(await countQuestions(w1)).toBeGreaterThan(0);
+    await expect(
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(
+          sql`insert into assessment.suggested_questions (result_id, workspace_id, prompt_version, gaps, created_at)
+              select id, ${w2}::uuid, 'assessment.suggestQuestions@1', '[]'::jsonb, ${NOW.toISOString()}
+              from assessment.result where id not in (select result_id from assessment.suggested_questions) limit 1`,
+        ),
+      ),
+    ).rejects.toThrow();
+    // The same candidate id in W2 has no snapshot there: nothing is found, and no model is asked.
+    expect(await suggest(w2)).toBeNull();
+    expect(modelCalls).toBe(3);
+  });
+
+  it('is deleted with its result, so an erasure of results leaves none behind (rolled back here)', async () => {
+    const rollback = new Error('roll back');
+    const counts: (number | undefined)[] = [];
+    await withWorkspace(app, w1, async (tx) => {
+      const left = async () =>
+        (await tx.execute<{ n: number }>(sql`select count(*)::int as n from assessment.suggested_questions`))[0]?.n;
+      counts.push(await left());
+      await tx.execute(
+        sql`delete from assessment.result where id in (select result_id from assessment.suggested_questions)`,
+      );
+      counts.push(await left());
+      throw rollback;
+    }).catch((error: unknown) => {
+      if (error !== rollback) throw error;
+    });
+    expect(counts).toEqual([2, 0]);
   });
 });

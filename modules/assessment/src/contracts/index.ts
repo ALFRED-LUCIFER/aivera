@@ -3,6 +3,7 @@
 import type { WorkspaceContext } from '@credalent/workspaces';
 import type { AssessCandidateInput, JobRanking, StoredAssessment } from '../application/assessment.ts';
 import type { RankingExplanation } from '../application/explain.ts';
+import type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
 import type { ApplyScoreChangeInput, ScoreChangeInput, ScoreChangePreview } from '../application/scoreChange.ts';
 
 export { ScoreChangeError } from '../application/scoreChange.ts';
@@ -27,6 +28,8 @@ export type {
 export type { AssessCandidateInput, JobRanking, RankingRow, StoredAssessment } from '../application/assessment.ts';
 export type { RankingExplanation } from '../application/explain.ts';
 export type { ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
+export type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
+export type { QuestionCitation, SuggestedGap, SuggestedQuestion } from '../domain/questions.ts';
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction, so
@@ -90,4 +93,27 @@ export interface AssessmentContract {
    * contact changes. `scorecard.submit` on the snapshot's job; refusals as `previewScoreChange`.
    */
   applyScoreChange(ctx: WorkspaceContext, input: ApplyScoreChangeInput): Promise<StoredAssessment>;
+  /**
+   * The suggested interview questions stored for the candidate's latest snapshot (AIV-P1-113), read only: no model is
+   * called and nothing is written. `no_gaps` when nothing needs live verification, `not_suggested` when there are gaps
+   * and nobody asked yet, `suggested` with the stored gaps (each a competency id and its questions, every question
+   * citing an evidence item by id, or the rubric line with `itemId` null), `stale` when the evidence has changed the
+   * snapshot since they were made. Null with no snapshot, or one not on the approved rubric version. `candidate.view`
+   * on the job, as `getLatestAssessment`.
+   */
+  getSuggestedQuestions(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<SuggestedQuestions | null>;
+  /**
+   * Two or three open, job-specific questions for each evidence gap of the latest snapshot, each citing the gap's
+   * evidence, with what a strong and a weak answer show: one model call, on demand, stored for that snapshot. A gap
+   * is a competency proven below the job's need or resting on a claim, heaviest first, at most 4. Asking again on the
+   * same snapshot returns the stored set and calls no model; `no_gaps` calls none either. `budget_exceeded` when the
+   * workspace's daily AI budget is spent (no request made), `failed` when the model is unavailable or its answer is
+   * rejected twice; neither stores anything. Null as `getSuggestedQuestions`. Guidance for a person: it changes no
+   * score, stage or rank, and is not audited (AGENTS.md 1.5). `candidate.view` on the job.
+   */
+  suggestInterviewQuestions(
+    ctx: WorkspaceContext,
+    candidateId: string,
+    jobId: string,
+  ): Promise<SuggestQuestionsResult | null>;
 }
