@@ -71,7 +71,8 @@ test('Scenario: Open a scorecard (the link), by keyboard', async ({ page }) => {
   await page.goto('/app/interviews');
   const open = row(page, 'Daniel Novak').getByRole('link', { name: 'Open scorecard' });
   await expect(open).toHaveAttribute('href', /^\/app\/interviews\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole('table', { name: 'Interviews' }).getByRole('link')).toHaveCount(1);
+  // Daniel's "Open scorecard" and Layla's overdue "Scorecard due, 2 days"; Daniel's row is first.
+  await expect(page.getByRole('table', { name: 'Interviews' }).getByRole('link')).toHaveCount(2);
   // Tab moves on from the tabs into the table; when the table is wider than its box, the box is a stop on the way.
   await page.getByRole('radio', { name: 'Ongoing 4' }).focus();
   await page.keyboard.press('Tab');
