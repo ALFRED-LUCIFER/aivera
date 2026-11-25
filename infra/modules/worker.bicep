@@ -28,6 +28,24 @@ param blobUrl string
 param malwareScanning bool
 @description('The AI Foundry resource evidence mapping calls with the app identity (modules/ai.bicep, AIV-P1-027).')
 param aiResourceName string
+@description('The GitHub App that reads public repositories (AIV-P1-074, #406). Empty until the owner creates it and writes github-app-private-key to the vault: repository reads stay queued.')
+param githubAppId string = ''
+@description('The GitHub App installation id: the number at the end of https://github.com/settings/installations/<id>.')
+param githubAppInstallationId string = ''
+
+// GitHub repository reads (AIV-P1-074): added only once the app exists, because a secret reference to a missing vault
+// secret fails the apply. The worker refuses to start with only some of the three settings (apps/backend/worker).
+var githubApp = !empty(githubAppId) && !empty(githubAppInstallationId)
+var githubSecrets = githubApp
+  ? [{ name: 'github-app-private-key', keyVaultUrl: '${keyVaultUri}secrets/github-app-private-key', identity: appIdentityId }]
+  : []
+var githubEnv = githubApp
+  ? [
+      { name: 'GITHUB_APP_ID', value: githubAppId }
+      { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
+      { name: 'GITHUB_APP_PRIVATE_KEY', secretRef: 'github-app-private-key' }
+    ]
+  : []
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: containerAppsEnvName
@@ -49,7 +67,7 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
-      secrets: [
+      secrets: concat([
         { name: 'appinsights-connection-string', keyVaultUrl: appInsightsSecretUri, identity: appIdentityId }
         // The send log's column key (AIV-P0-017): the worker opens what the web app sealed.
         {
@@ -57,14 +75,14 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVaultUri}secrets/notifications-encryption-key'
           identity: appIdentityId
         }
-      ]
+      ], githubSecrets)
     }
     template: {
       containers: [
         {
           name: 'worker'
           image: workerImage
-          env: [
+          env: concat([
             // No passwords: packages/db signs in with each identity's Entra token.
             { name: 'DATABASE_URL', value: 'postgres://aivera_app@${database}' }
             { name: 'RELAY_DATABASE_URL', value: 'postgres://aivera_relay@${database}' }
@@ -87,7 +105,7 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
             }
             // The catalogue draft eval (AIV-P2-048): on with the `jobs` queue this same apply creates (modules/messaging.bicep).
             { name: 'CATALOGUE_EVAL', value: 'on' }
-          ]
+          ], githubEnv)
           resources: { cpu: json('0.25'), memory: '0.5Gi' }
           probes: [
             { type: 'Liveness', httpGet: union(probe, { path: '/health' }), periodSeconds: 30 }

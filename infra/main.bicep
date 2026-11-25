@@ -37,6 +37,11 @@ param entraTenantSubdomain string = 'aiveradev'
 param entraTenantId string = '88c795fc-1018-45f7-8904-75e1c2991b8f'
 param entraRecruiterClientId string = '463fb57b-570d-4384-b914-1078df012bd8'
 
+@description('GitHub App id for repository reads (AIV-P1-074, #406); empty keeps them off. A public identifier, not a secret.')
+param githubAppId string = ''
+@description('That GitHub App\'s installation id; set with githubAppId, and only after github-app-private-key is in the vault.')
+param githubAppInstallationId string = ''
+
 @description('The AI service\'s app registration, as api://<client id> (AIV-P2-068, infra/README.md); empty leaves the service out.')
 param aiServiceAudience string = ''
 
@@ -269,6 +274,8 @@ module worker 'modules/worker.bicep' = {
     blobUrl: blobUrl
     malwareScanning: malwareScanning
     aiResourceName: ai.outputs.resourceName
+    githubAppId: githubAppId
+    githubAppInstallationId: githubAppInstallationId
   }
 }
 
