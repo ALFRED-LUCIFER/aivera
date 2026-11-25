@@ -28,9 +28,9 @@ describe('requireScreen', () => {
   });
 
   // SAFETY: mutation check: gave every role the recruiter capability in shellMember -> this test failed (settings opened)
-  it('hiring owners and interviewers open the desk and jobs, and 404 on the recruiter-only screens (AIV-P1-091)', async () => {
+  it('hiring owners and interviewers open the desk, jobs and interviews, and 404 on the recruiter-only screens (AIV-P1-091)', async () => {
     for (const role of ['hiring_owner', 'interviewer'] as const) {
-      for (const screen of ['desk', 'jobs'] as const) {
+      for (const screen of ['desk', 'jobs', 'interviews'] as const) {
         membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
         expect(await requireScreen(screen)).toMatchObject({ initials: 'LP' });
       }

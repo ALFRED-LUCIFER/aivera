@@ -26,7 +26,7 @@ export type AssessmentStore = {
   applied(
     workspaceId: string,
     idempotencyKey: string,
-  ): Promise<{ result: StoredAssessment; previewId: string; reason: string } | null>;
+  ): Promise<{ result: StoredAssessment; previewId: string; reason: string; competencyId: string } | null>;
   insert(row: StoredAssessment): Promise<void>;
   /** Every result of the job, any rubric version, oldest first. */
   listForJob(workspaceId: string, jobId: string): Promise<StoredAssessment[]>;

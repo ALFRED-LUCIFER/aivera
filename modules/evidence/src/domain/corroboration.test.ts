@@ -179,6 +179,14 @@ describe('corroboratedCompetencies', () => {
     expect(isIndependent(source('repo', { kind: 'repository' }), LOGINS)).toBe(false);
     expect(isIndependent(source('note', { kind: 'interview_note' }), LOGINS)).toBe(false);
   });
+
+  // SAFETY: mutation check: counted interview_note links as an origin (dropped `!notes.has(l.sourceId)`) -> this test
+  // failed (the reference call was corroborated on the interviewer's summary)
+  it("an interview note is no second origin: a reference call beside the interviewer's summary stays Candidate-submitted", () => {
+    expect(
+      evaluate([source('note', { kind: 'interview_note' }), source('reference', { kind: 'reference_call' })]),
+    ).toBe('Candidate-submitted');
+  });
 });
 
 describe('comparablePairs', () => {

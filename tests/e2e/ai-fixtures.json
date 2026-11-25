@@ -30,5 +30,13 @@
   {
     "when": "keep our flaky assistants running",
     "status": 500
+  },
+  {
+    "when": "Suggest interview questions for the gaps below.",
+    "completion": "{\"gaps\": [{\"competencyId\": \"C1\", \"questions\": [{\"text\": \"How did the contract tests change a product decision, and which one?\", \"strongAnswer\": \"Names a decision the tests informed and what merchants saw.\", \"weakAnswer\": \"Describes the tests but no decision they changed.\", \"citations\": [{\"sourceId\": \"S1\", \"quote\": \"contract tests on every endpoint\"}]}, {\"text\": \"What would you have shipped differently without those tests, and why?\", \"strongAnswer\": \"Gives a concrete release the tests held back or changed.\", \"weakAnswer\": \"Says the tests were routine and changed nothing.\", \"citations\": [{\"sourceId\": \"S1\", \"quote\": \"contract tests on every endpoint\"}]}]}, {\"competencyId\": \"C2\", \"questions\": [{\"text\": \"Walk me through the Gulf Arabic evaluation set, how it was built and what it changed.\", \"strongAnswer\": \"Explains the sources, dialect coverage, labelling and a decision it changed.\", \"weakAnswer\": \"Describes the idea of the set but not how items were chosen.\", \"citations\": [{\"sourceId\": \"S2\", \"quote\": \"built a Gulf Arabic evaluation set\"}]}, {\"text\": \"What did that set show that an English set had missed?\", \"strongAnswer\": \"Gives a concrete failure the set exposed, with an example.\", \"weakAnswer\": \"Says Arabic is harder, with no example from the set.\", \"citations\": [{\"sourceId\": \"S2\", \"quote\": \"Gulf Arabic evaluation set\"}]}]}]}"
+  },
+  {
+    "when": "Map the interview summary to the competencies below.",
+    "completion": "{\"findings\": [{\"competencyId\": \"C1\", \"finding\": \"clearly_shown\", \"reason\": \"Describes the evaluation set he built and how its answers were graded.\", \"citations\": [{\"sourceId\": \"S1\", \"quote\": \"walked through the 200-question evaluation set he built\"}]}]}"
   }
 ]

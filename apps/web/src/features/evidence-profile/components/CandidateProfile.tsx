@@ -3,14 +3,17 @@
 import { useTranslations } from '@credalent/i18n/react';
 import { Button, Card, EvidenceHighlight, ScoreWithUncertainty, ValueBasis } from '@credalent/ui';
 import type { Route } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { evidenceAnchor, type Fit, type ProfileData } from '../domain/profile.ts';
+import { AgainstNeed } from './AgainstNeed.tsx';
 import { EvidenceCards } from './EvidenceCards.tsx';
 
 // AIV-P1-043: the top of the candidate evidence profile, from the Candidate artboard
 // (docs/01-design/artboards/Candidate.dc.html): breadcrumb, name, subtitle, the fit block and "Why she is ranked here".
-// "Competency by competency" under it is EvidenceCards (AIV-P1-045), with its own deviations.
+// "Against what the job needs" under it is AgainstNeed (AIV-P1-044) and "Competency by competency" is EvidenceCards
+// (AIV-P1-045), each with its own deviations.
 // Deviations, each for a later ticket or a rule:
 // - no "Compare" button: the comparison page is AIV-P1-047 (#111), and a link to nothing is not shipped;
 // - no "Request evidence" button, preview card or "sent" note: the drafted preview is AIV-P1-038 (#102) and sending is
@@ -37,14 +40,14 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 // - the subtitle is the 14/20 px body size, not 15/22 px, and the "Why" heading the 16 px card size, not 15 px: the
 //   tokens have no 15 px step;
 // - a candidate not yet scored on the approved rubric shows "Not yet scored", basis "Not yet available" (AGENTS.md 1.7);
-// - no "Against what the job needs" chart and competency bars: AIV-P1-044 (#108);
-// - no "Needs live verification", "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
+// - "Needs live verification" is the page's `children`, SuggestedQuestions (AIV-P1-113), with its own deviations;
+// - no "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
 
 export type CandidateProfileView =
   { status: 'loading' } | { status: 'error'; onRetry: () => void } | ({ status: 'ready' } & ProfileData);
 
-export function CandidateProfile({ view }: { view: CandidateProfileView }) {
+export function CandidateProfile({ view, children }: { view: CandidateProfileView; children?: ReactNode }) {
   const t = useTranslations();
   if (view.status !== 'ready')
     return (
@@ -105,9 +108,11 @@ export function CandidateProfile({ view }: { view: CandidateProfileView }) {
           )}
         </div>
       </Card>
+      {view.needs.length > 0 && <AgainstNeed rows={view.needs} />}
       {(view.competencies.length > 0 || view.notes.length > 0) && (
         <EvidenceCards cards={view.competencies} notes={view.notes} />
       )}
+      {children}
     </div>
   );
 }

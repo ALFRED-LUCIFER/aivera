@@ -53,9 +53,15 @@ importers:
       '@credalent/files':
         specifier: workspace:*
         version: link:../../../modules/files
+      '@credalent/identity':
+        specifier: workspace:*
+        version: link:../../../modules/identity
       '@credalent/intake':
         specifier: workspace:*
         version: link:../../../modules/intake
+      '@credalent/interviews':
+        specifier: workspace:*
+        version: link:../../../modules/interviews
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../../modules/jobs
@@ -126,6 +132,9 @@ importers:
       '@credalent/intake':
         specifier: workspace:*
         version: link:../../modules/intake
+      '@credalent/interviews':
+        specifier: workspace:*
+        version: link:../../modules/interviews
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs
@@ -541,12 +550,18 @@ importers:
 
   modules/interviews:
     dependencies:
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../jobs
+      '@credalent/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces
@@ -1007,6 +1022,12 @@ importers:
       '@axe-core/playwright':
         specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.0)
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@credalent/assessment':
+        specifier: workspace:*
+        version: link:../../modules/assessment
       '@credalent/audit':
         specifier: workspace:*
         version: link:../../modules/audit
@@ -1031,6 +1052,9 @@ importers:
       '@credalent/intake':
         specifier: workspace:*
         version: link:../../modules/intake
+      '@credalent/interviews':
+        specifier: workspace:*
+        version: link:../../modules/interviews
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../../modules/jobs

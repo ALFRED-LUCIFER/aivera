@@ -105,7 +105,9 @@ export async function seedDemo(
   const seeded = await asRecruiter(async (ctx) => {
     // First, though audited before the jobs (AGENTS.md 3.6 asks audit last): a job's hiring owner must already be an
     // active member, and gets the job's grant, audited, as the job is saved (AIV-P1-056).
-    for (const owner of owners) await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner');
+    // AIV-P2-002: each with their title, which the Interviews list and My desk name them by ("CPO, Payments").
+    for (const [i, owner] of owners.entries())
+      await workspaces.addSyntheticMember(ctx, owner, 'hiring_owner', HIRING_OWNERS[i]?.title);
     for (const c of CANDIDATES) await candidates.findOrCreatePerson(ctx, personOf(c));
     // AIV-P1-065: a job is found again by its title; each new one gets its draft rubric v1, audited as `job.created`.
     // shortcut: a demo job renamed in the app is seeded again on the next run; match on a seed key if that matters.

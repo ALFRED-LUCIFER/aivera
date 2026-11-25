@@ -63,7 +63,7 @@ test('Scenario: Hiring owner can read; an interviewer not on this job gets 403',
   await signIn(page, { email: AP });
   const url = await openRubric(page);
   await context.clearCookies({ name: '__Host-credalent-session' });
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: 'head.engineering@example.com', name: 'Head of Engineering' });
   await page.goto(url);
   await expect(page.getByText('Weights total 100%')).toBeVisible();
   await context.clearCookies({ name: '__Host-credalent-session' });

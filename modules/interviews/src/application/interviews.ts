@@ -16,6 +16,7 @@ import {
   type Interview,
   type InterviewStatus,
 } from '../domain/interview.ts';
+import { scorecardDraftSchema, type ScorecardDraft } from '../domain/scorecard.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type InterviewStore = {
@@ -25,7 +26,12 @@ export type InterviewStore = {
   moveStatus(workspaceId: string, interviewId: string, from: InterviewStatus, to: InterviewStatus): Promise<boolean>;
   /** Interviews with a stored status in `statuses`, soonest first and those with no time last; one interviewer's if given. */
   list(workspaceId: string, statuses: readonly InterviewStatus[], interviewerUserId?: string): Promise<Interview[]>;
-  /** Deletes every interview of the workspace. */
+  findDraft(workspaceId: string, interviewId: string): Promise<ScorecardDraft | null>;
+  /** Stores the interview's one draft, replacing an earlier one. */
+  saveDraft(
+    row: ScorecardDraft & { workspaceId: string; interviewId: string; updatedBy: string; updatedAt: Date },
+  ): Promise<void>;
+  /** Deletes every interview of the workspace, and with each its scorecard draft. */
   deleteAll(workspaceId: string): Promise<void>;
 };
 
@@ -68,8 +74,22 @@ export type CreateInterviewInput = z.input<typeof createInterviewInputSchema>;
 
 export type InterviewFilter = 'ongoing' | 'completed';
 
+/** An interview with its scorecard draft, for a member who may see the interview. */
+export type Scorecard = {
+  interview: Interview;
+  /** Whether this member may change the draft now: its interviewer or an admin, while the interview is open. */
+  canEdit: boolean;
+  /** Null when nothing is saved yet, and always for a member who is neither its interviewer nor an admin. */
+  draft: ScorecardDraft | null;
+};
+
 // Interviewers see and run only their own interviews ("see the candidates you interview"); hiring owners see their jobs'.
 const ownOnly = (ctx: WorkspaceContext) => ctx.role === 'interviewer';
+
+// SAFETY: a draft is its interviewer's unsubmitted word about a candidate: only they, or a workspace admin, hold it.
+const holdsScorecard = (ctx: WorkspaceContext, interview: Interview) =>
+  ctx.role === 'admin' || interview.interviewerUserId === ctx.userId;
+const open = (interview: Interview) => interview.status !== 'completed' && interview.status !== 'cancelled';
 
 export function interviewUseCases(ports: Ports) {
   const { storeFor, authorize, jobResource, now } = ports;
@@ -85,6 +105,44 @@ export function interviewUseCases(ports: Ports) {
   }
 
   return {
+    async getScorecard(ctx: WorkspaceContext, interviewId: string): Promise<Scorecard | null> {
+      const found = await visible(ctx, interviewId);
+      if (!found) return null;
+      await authorize(ctx, 'interview.view', found.job);
+      const holds = holdsScorecard(ctx, found.interview);
+      return {
+        interview: shown(found.interview),
+        canEdit: holds && open(found.interview),
+        draft: holds ? await storeFor(ctx.tx).findDraft(ctx.workspaceId, interviewId) : null,
+      };
+    },
+
+    async saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, raw: ScorecardDraft): Promise<void> {
+      const draft = scorecardDraftSchema.parse(raw);
+      const interview = await storeFor(ctx.tx).find(ctx.workspaceId, interviewId);
+      if (!interview) throw new InterviewError('interview_not_found');
+      if (!holdsScorecard(ctx, interview)) throw new ForbiddenError();
+      // SAFETY: the job comes from the stored interview. One the member cannot reach (a hiring owner or interviewer
+      // with no grant on it, ADR-005 point 6) is refused, even for the interview's own interviewer.
+      const job = await jobResource(ctx, interview.jobId);
+      if (!job) throw new ForbiddenError();
+      await authorize(ctx, 'scorecard.submit', job);
+      if (!open(interview)) throw new InterviewError('scorecard_closed');
+      const ids = draft.competencies.map((c) => c.competencyId);
+      if (new Set(ids).size !== ids.length || !ids.every((id) => interview.competencyIds.includes(id)))
+        throw new InterviewError('competency_not_in_interview');
+      // shortcut: a draft's questions are stored as the browser sent them, so a crafted request could mark a competency
+      // "not assessed" with questions it was never shown; harmless while a draft scores nothing. The submit (AIV-P2-006)
+      // must rebuild the question list from the stored suggested questions before it applies `assessedRatings`.
+      await storeFor(ctx.tx).saveDraft({
+        ...draft,
+        workspaceId: ctx.workspaceId,
+        interviewId,
+        updatedBy: ctx.userId,
+        updatedAt: now(),
+      });
+    },
+
     async createInterview(ctx: WorkspaceContext, raw: CreateInterviewInput): Promise<{ interviewId: string }> {
       const input = createInterviewInputSchema.parse(raw);
       const application = await ports.findApplication(ctx.tx, ctx.workspaceId, input.applicationId);

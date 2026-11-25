@@ -80,11 +80,11 @@ describe('navigation map (ADR-002 item 4)', () => {
     const flagged = { ...navigation[0], flag: 'beta' };
     expect(canOpen(navigation[0], ['member', 'recruiter'], new Set())).toBe(true);
     expect(canOpen(navigation[0], [], new Set())).toBe(false);
-    // Hiring owners and interviewers hold `member` only: the desk and jobs, nothing else (AIV-P1-091).
+    // Hiring owners and interviewers hold `member` only: the desk, jobs and interviews (AIV-P1-091, AIV-P2-002).
     const opened = navigation
       .filter((entry) => canOpen(entry, ['member'], new Set(['inbox', 'candidates'])))
       .map((e) => e.id);
-    expect(opened).toEqual(['desk', 'jobs']);
+    expect(opened).toEqual(['desk', 'jobs', 'interviews']);
     expect(canOpen(flagged, ['member', 'recruiter'], new Set())).toBe(false);
     expect(canOpen(flagged, ['member', 'recruiter'], new Set(['beta']))).toBe(true);
   });
@@ -95,13 +95,13 @@ const ids = (flags: string[]) =>
 
 describe('unbuilt sections (AIV-P1-095)', () => {
   it('stay out of the sidebar until their flag is on', () => {
-    expect(ids([])).toEqual(['desk', 'jobs', 'settings']);
-    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'settings']);
+    expect(ids([])).toEqual(['desk', 'jobs', 'interviews', 'settings']);
+    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'interviews', 'settings']);
   });
 
   // The route half (404 while off, opens when on) is tested against requireScreen in services/request.test.ts.
   it('every unbuilt section page guards itself with its own entry', () => {
-    for (const id of ['inbox', 'candidates', 'pool', 'interviews', 'packs', 'value']) {
+    for (const id of ['inbox', 'candidates', 'pool', 'packs', 'value']) {
       const source = readFileSync(join(appDir, '(recruiter)/app', id, 'page.tsx'), 'utf8');
       expect(source, id).toContain(`screen="${id}"`);
     }

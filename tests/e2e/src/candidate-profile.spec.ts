@@ -149,6 +149,75 @@ for (const theme of themes) {
     await expectAccessible(page);
   });
 
+  // AIV-P1-044, a step of J2: "Against what the job needs". Sara's seeded levels (seed.ts, saraCompetencies) are not
+  // the Candidate artboard's: here Cost and reliability meets its need and Product judgement is the gap beside Arabic
+  // NLP. The ticket's own rows are proven on the artboard's levels in AgainstNeed.test.tsx.
+  test(`Scenarios: Sara's competencies, Summary count, Screen reader text: against what the job needs, axe passes (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: AP });
+    await openSara(page);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const section = page.getByRole('region', { name: 'Against what the job needs' });
+    await expect(section.getByRole('heading', { level: 2, name: 'Against what the job needs' })).toBeVisible();
+    await expect(
+      section.getByRole('heading', { level: 3, name: 'Meets the need on 4 of 6 competencies' }),
+    ).toBeVisible();
+    for (const legend of ['Proven by evidence', 'Claimed', 'What the job needs'])
+      await expect(section.getByText(legend, { exact: true })).toBeVisible();
+    // Heaviest first, as "Competency by competency" orders them: [competency, line, verdict, the bar's text].
+    const rows = [
+      [
+        'LLM systems in production',
+        'Proven 5 of 5 · job needs 4',
+        'Above the need',
+        'proven 5, claimed 5, job needs 4',
+      ],
+      ['Retrieval and evaluation', 'Proven 5 of 5 · job needs 4', 'Above the need', 'proven 5, claimed 5, job needs 4'],
+      [
+        'Python service engineering',
+        'Proven 3 of 5 · job needs 3',
+        'Meets the need',
+        'proven 3, claimed 3, job needs 3',
+      ],
+      ['Cost and reliability', 'Proven 2 of 5 · job needs 2', 'Meets the need', 'proven 2, claimed 2, job needs 2'],
+      ['Product judgement', 'Proven 2 of 5 · job needs 3', '1 short, claimed', 'proven 2, claimed 4, job needs 3'],
+      [
+        'Arabic and bilingual NLP',
+        'Proven 0 of 5 · job needs 2',
+        '2 short, claimed',
+        'proven 0, claimed 4, job needs 2',
+      ],
+    ] as const;
+    for (const [name, line, verdict, bar] of rows) {
+      const row = section.getByRole('listitem').filter({ hasText: line }).filter({ hasText: name });
+      await expect(row).toHaveCount(1);
+      await expect(row.getByText(verdict, { exact: true })).toBeVisible();
+      // Every bar has a text equivalent that names its competency.
+      await expect(row.getByRole('img', { name: `${name}: ${bar}`, exact: true })).toBeVisible();
+    }
+    // The radar says the same in words, and the verdict is never colour alone: each chip carries an icon.
+    await expect(
+      section.getByRole('img', {
+        name: `Radar of 6 competencies. ${rows.map(([n, , , b]) => `${n}: ${b}`).join('; ')}`,
+      }),
+    ).toBeVisible();
+    await expect(
+      section.getByRole('listitem').filter({ hasText: 'job needs' }).locator('svg[aria-hidden="true"]'),
+    ).toHaveCount(6);
+    await expect(
+      section.getByText(
+        'Solid is proven, hatched is claimed, and the upright mark is the level the job needs. The two gaps would close if their claims hold.',
+      ),
+    ).toBeVisible();
+    // The highlighter marks cited evidence only: none of it here.
+    await expect(section.locator('mark')).toHaveCount(0);
+    await expectAccessible(page);
+  });
+
   // AIV-P1-045, a step of J2: "Competency by competency". Sara's seeded evidence is a checked repository backing her
   // two heaviest competencies, a submitted one, and her Arabic NLP claim from the Round 1 notes.
   test(`Scenarios: Retrieval and evaluation, A claim counts zero, Only cited text is highlighted, Cited reasons link to evidence (${theme})`, async ({
@@ -278,7 +347,7 @@ test('a hiring owner granted the job reads the evidence cards, and no "Unusual c
   const maria = new URL(page.url());
   await context.clearCookies({ name: '__Host-credalent-session' });
   // The Head of Engineering is the hiring owner of Senior AI Engineer in "Demo", granted the job (seed.ts).
-  await signIn(page, { email: 'head.engineering@example.com' });
+  await signIn(page, { email: 'head.engineering@example.com', name: 'Head of Engineering' });
   await page.goto(sara);
   const retrieval = page.getByRole('article', { name: /^Retrieval and evaluation/ });
   await expect(retrieval.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');

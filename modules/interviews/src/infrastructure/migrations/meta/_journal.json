@@ -15,6 +15,34 @@
       "when": 1795522644605,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795592682051,
+      "tag": "0002_scorecard_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795592682396,
+      "tag": "0003_force_rls_scorecard_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795603598385,
+      "tag": "0004_meeting_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795603598799,
+      "tag": "0005_force_rls_meeting_summaries",
+      "breakpoints": true
     }
   ]
 }

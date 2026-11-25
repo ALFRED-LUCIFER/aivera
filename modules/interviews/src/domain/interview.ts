@@ -47,7 +47,7 @@ export type Interview = {
 
 /**
  * The status to show at `now`: a scheduled interview whose time has passed with nobody starting it has its scorecard
- * due. One a person started stays in progress until its scorecard completes it (AIV-P2-004).
+ * due. One a person started stays in progress until its scorecard is submitted (AIV-P2-006).
  */
 export const effectiveStatus = (
   { status, scheduledAt }: Pick<Interview, 'status' | 'scheduledAt'>,
@@ -70,7 +70,19 @@ const MESSAGES = {
   competency_not_in_rubric: "This competency is not in the job's approved rubric",
   interviewer_not_on_job: 'The interviewer must be an active member who can see this job.',
   status_move: 'This interview cannot move to that status.',
+  scorecard_closed: 'This interview is completed or cancelled, so its scorecard cannot change.',
+  competency_not_in_interview: 'This competency is not one the interview tests.',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
+  // The meeting summary (AIV-P1-115).
+  summary_empty: 'Paste the meeting summary first.',
+  summary_too_long: 'Shorten the summary to 12,000 characters or fewer.',
+  summary_not_found: 'Meeting summary not found',
+  summary_pending: 'Apply or decline the changes proposed from the earlier summary first.',
+  summary_decided: 'These proposed changes are not waiting for a decision.',
+  proposal_not_found: 'This summary proposes no change for that competency.',
+  interview_not_held: 'This interview has not been held.',
+  not_assessed: 'The candidate has no assessment to change yet.',
+  preview_changed: 'The assessment changed since this preview. Preview the change again.',
 } as const;
 
 export type InterviewErrorCode = keyof typeof MESSAGES;

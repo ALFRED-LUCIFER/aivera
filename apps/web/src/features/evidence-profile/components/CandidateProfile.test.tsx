@@ -33,7 +33,7 @@ const cited = {
 const ready = (
   fit: Fit,
   explanation: ProfileData['explanation'] = null,
-  more: Partial<Pick<ProfileData, 'competencies' | 'notes'>> = {},
+  more: Partial<Pick<ProfileData, 'competencies' | 'needs' | 'notes'>> = {},
 ): CandidateProfileView => ({
   status: 'ready',
   jobId: '0190d4a2-0000-7000-9000-000000001031',
@@ -43,6 +43,7 @@ const ready = (
   fit,
   explanation,
   competencies: [],
+  needs: [],
   notes: [],
   ...more,
 });

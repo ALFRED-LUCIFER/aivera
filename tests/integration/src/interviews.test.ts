@@ -8,7 +8,12 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { IntakeContract } from '@credalent/intake';
 import { createIntake, findApplication } from '@credalent/intake/composition';
-import { scorecardDueDays, type InterviewsContract } from '@credalent/interviews';
+import {
+  scorecardDueDays,
+  toInterviewNoteEvidence,
+  type InterviewsContract,
+  type ScorecardDraft,
+} from '@credalent/interviews';
 import { createInterviews } from '@credalent/interviews/composition';
 import type { Competency, JobsContract } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -27,6 +32,7 @@ const AYESHA = '0190d4a2-0000-7000-8000-0000000a1e5a'; // recruiter, creator of 
 const LINA = '0190d4a2-0000-7000-8000-0000000011aa'; // interviewer granted Senior AI Engineer
 const HUDA = '0190d4a2-0000-7000-8000-00000000d0da'; // interviewer with no grant
 const FAISAL = '0190d4a2-0000-7000-8000-0000000fa15a'; // hiring owner granted Senior AI Engineer
+const ZAID = '0190d4a2-0000-7000-8000-00000000a1d0'; // recruiter, not an admin (AIV-P2-004)
 const NOW = new Date('2026-11-18T05:00:00.000Z'); // 18 Nov, 09:00 in Dubai
 const TODAY_1400 = new Date('2026-11-18T10:00:00.000Z'); // today, 14:00 in Dubai
 const ROUND1 = 'structured_screen';
@@ -194,14 +200,18 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'interviews' order by name`);
     expect([...tables]).toEqual([
+      { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'interview', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'meeting_summaries', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'outbox', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'scorecard_drafts', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'summary_proposals', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });
 
   it('applying the migrations again is a no-op', async () => {
     const applied = await count('migrations.interviews');
-    expect(applied).toBe(2);
+    expect(applied).toBe(6);
     execFileSync(process.execPath, [dbCli, 'migrate'], {
       env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
     });
@@ -438,6 +448,188 @@ describe('Who interviews and who sees interviews', () => {
     await expect(as(FAISAL, w1, (ctx) => interviews.startInterview(ctx, ayeshas?.id ?? ''))).rejects.toThrow(
       'Forbidden',
     );
+  });
+});
+
+// AIV-P2-004: the scorecard draft of Daniel Novak's Round 1, held by Lina, an interviewer granted Senior AI Engineer.
+describe('Scorecard drafts (AIV-P2-004)', () => {
+  const NOTE = 'Walked through the 200-question set he built';
+  let round1: string;
+  const draft = (note = NOTE): ScorecardDraft => ({
+    competencies: [
+      { competencyId: idOf('Retrieval and evaluation'), rating: 'clearly_shown', note, questions: [] },
+      {
+        competencyId: idOf('Cost and reliability'),
+        rating: null,
+        note: '',
+        questions: [{ text: 'In the March incident, what did you do in the first thirty minutes?', mark: 'not_asked' }],
+      },
+    ],
+    recommendation: 'shortlist',
+  });
+  const drafts = async () => [
+    ...(await admin.execute<{ interview_id: string; updated_by: string; note: string }>(
+      sql`select interview_id, updated_by, competencies->0->>'note' as note from interviews.scorecard_drafts
+        where interview_id = ${round1}`,
+    )),
+  ];
+
+  beforeAll(async () => {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status) values (${w1}, ${ZAID}, 'recruiter', 'active')`,
+      ),
+    );
+    ({ interviewId: round1 } = await as(AYESHA, w1, (ctx) =>
+      interviews.createInterview(ctx, {
+        applicationId: danielApplication,
+        round: ROUND1,
+        interviewerUserId: LINA,
+        scheduledAt: TODAY_1400,
+        competencyIds: [idOf('Retrieval and evaluation'), idOf('Cost and reliability')],
+      }),
+    ));
+    await as(LINA, w1, (ctx) => interviews.startInterview(ctx, round1));
+  });
+
+  it('Scenario: Rate and note: the interviewer saves a draft, saves it again and reads it back; the interview is unchanged', async () => {
+    await as(LINA, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft('First words')));
+    await as(LINA, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft()));
+    expect(await drafts()).toEqual([{ interview_id: round1, updated_by: LINA, note: NOTE }]);
+    const read = await as(LINA, w1, (ctx) => interviews.getScorecard(ctx, round1));
+    expect(read).toMatchObject({ canEdit: true, draft: draft(), interview: { id: round1, status: 'in_progress' } });
+    // The evidence payloads the submit will write (AIV-P2-006): the rated competency only, not the one not asked.
+    expect(
+      toInterviewNoteEvidence({ interviewId: round1, authorMemberId: LINA, draft: read?.draft ?? draft('') }),
+    ).toEqual([
+      {
+        kind: 'interview_note',
+        interviewId: round1,
+        competencyId: idOf('Retrieval and evaluation'),
+        authorMemberId: LINA,
+        rating: 'clearly_shown',
+        note: NOTE,
+      },
+    ]);
+  });
+
+  it('a workspace admin who is not the interviewer saves too', async () => {
+    await as(AYESHA, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft('Admin correction')));
+    expect(await drafts()).toEqual([{ interview_id: round1, updated_by: AYESHA, note: 'Admin correction' }]);
+  });
+
+  it('Scenario Outline: a recruiter who is not the interviewer and not an admin is refused, and nothing is stored', async () => {
+    const before = await drafts();
+    await expect(as(ZAID, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft('Zaid')))).rejects.toThrow(
+      'Forbidden',
+    );
+    expect(await drafts()).toEqual(before);
+    // They see the interview, read-only, and never the interviewer's draft.
+    expect(await as(ZAID, w1, (ctx) => interviews.getScorecard(ctx, round1))).toMatchObject({
+      canEdit: false,
+      draft: null,
+    });
+  });
+
+  // Huda is an interviewer with no grant on Senior AI Engineer. The contract never makes her an interviewer of it
+  // (interviewer_not_on_job), so the row is written past it: the grant is checked again when the draft is saved.
+  // SAFETY: mutation check: removed the job-grant check from saveScorecardDraft (the jobResource read, `if (!job) throw new ForbiddenError()` and the authorize call) -> this test failed (the promise resolved: Huda's draft was stored)
+  it('Scenario Outline: an interviewer with no grant on Senior AI Engineer is refused, and nothing is stored', async () => {
+    const { interviewId } = await as(AYESHA, w1, (ctx) =>
+      interviews.createInterview(ctx, {
+        applicationId: danielApplication,
+        round: 'evidence_defence',
+        interviewerUserId: LINA,
+        competencyIds: [idOf('Retrieval and evaluation')],
+      }),
+    );
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`update interviews.interview set interviewer_user_id = ${HUDA} where id = ${interviewId}`),
+    );
+    const before = await count('interviews.scorecard_drafts');
+    await expect(
+      as(HUDA, w1, (ctx) =>
+        interviews.saveScorecardDraft(ctx, interviewId, {
+          competencies: [
+            { competencyId: idOf('Retrieval and evaluation'), rating: 'not_shown', note: 'Huda', questions: [] },
+          ],
+          recommendation: null,
+        }),
+      ),
+    ).rejects.toThrow('Forbidden');
+    expect(await count('interviews.scorecard_drafts')).toBe(before);
+  });
+
+  it('Scenario: No overall judgement: the table holds the competencies, a recommendation and who saved it, nothing else', async () => {
+    const columns = await admin.execute<{ column_name: string }>(sql`select column_name from information_schema.columns
+      where table_schema = 'interviews' and table_name = 'scorecard_drafts' order by ordinal_position`);
+    expect(columns.map((c) => c.column_name)).toEqual([
+      'interview_id',
+      'workspace_id',
+      'competencies',
+      'recommendation',
+      'updated_by',
+      'updated_at',
+    ]);
+    // A field the schema does not name never reaches the table, and the database knows the three recommendations.
+    await expect(
+      as(LINA, w1, (ctx) =>
+        interviews.saveScorecardDraft(ctx, round1, { ...draft(), overallScore: 4 } as ScorecardDraft),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`update interviews.scorecard_drafts set recommendation = 'hire' where interview_id = ${round1}`),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('a draft of another workspace: its interview is not found from W1, and RLS alone hides the row', async () => {
+    const jobId = await newJob(w2, 'Data Engineer');
+    const v = await approvedVersion(w2, jobId, [competency('Retrieval and evaluation', 100)]);
+    const application = await apply(w2, jobId, 'Mei Tanaka');
+    const { interviewId } = await as(AYESHA, w2, (ctx) =>
+      interviews.createInterview(ctx, {
+        applicationId: application,
+        round: ROUND1,
+        interviewerUserId: AYESHA,
+        competencyIds: [...v.values()],
+      }),
+    );
+    const theirs: ScorecardDraft = {
+      competencies: [...v.values()].map((competencyId) => ({
+        competencyId,
+        rating: 'partly_shown',
+        note: 'W2 note',
+        questions: [],
+      })),
+      recommendation: null,
+    };
+    await as(AYESHA, w2, (ctx) => interviews.saveScorecardDraft(ctx, interviewId, theirs));
+    expect(await as(AYESHA, w1, (ctx) => interviews.getScorecard(ctx, interviewId))).toBeNull();
+    await expect(
+      as(AYESHA, w1, (ctx) => interviews.saveScorecardDraft(ctx, interviewId, theirs)),
+    ).rejects.toMatchObject({ code: 'interview_not_found' });
+    // SAFETY: mutation check: ALTER TABLE interviews.scorecard_drafts DISABLE ROW LEVEL SECURITY before this read -> this test failed (the W2 draft was read from W1)
+    // The repository filter removed: a query with no WHERE clause, as the app role.
+    const inW1 = await withWorkspace(app, w1, (tx) =>
+      tx.execute<{ workspace_id: string }>(sql`select workspace_id from interviews.scorecard_drafts`),
+    );
+    expect(inW1.length).toBeGreaterThan(0);
+    expect(new Set(inW1.map((r) => r.workspace_id))).toEqual(new Set([w1]));
+    expect(await app.execute(sql`select 1 from interviews.scorecard_drafts`)).toHaveLength(0);
+  });
+
+  it('a completed interview takes no more changes, and its draft goes with the interview', async () => {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`update interviews.interview set status = 'completed' where id = ${round1}`),
+    );
+    await expect(as(LINA, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft()))).rejects.toMatchObject({
+      code: 'scorecard_closed',
+    });
+    expect(await as(LINA, w1, (ctx) => interviews.getScorecard(ctx, round1))).toMatchObject({ canEdit: false });
+    await withWorkspace(app, w1, (tx) => tx.execute(sql`delete from interviews.interview where id = ${round1}`));
+    expect(await drafts()).toEqual([]);
   });
 });
 

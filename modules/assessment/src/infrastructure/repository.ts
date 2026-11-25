@@ -2,7 +2,8 @@ import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { AssessmentStore } from '../application/assessment.ts';
 import type { ExplanationStore } from '../application/explain.ts';
-import { explanation, interviewChange, result } from './schema.ts';
+import type { QuestionStore } from '../application/questions.ts';
+import { explanation, interviewChange, result, suggestedQuestions } from './schema.ts';
 
 /**
  * The assessment store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -60,7 +61,12 @@ export function assessmentStore(tx: Tx): AssessmentStore {
     },
     async applied(workspaceId, idempotencyKey) {
       const [row] = await tx
-        .select({ result, previewId: interviewChange.previewId, reason: interviewChange.reason })
+        .select({
+          result,
+          previewId: interviewChange.previewId,
+          reason: interviewChange.reason,
+          competencyId: interviewChange.competencyId,
+        })
         .from(interviewChange)
         .innerJoin(result, and(eq(result.id, interviewChange.resultId), eq(result.workspaceId, workspaceId)))
         .where(and(eq(interviewChange.workspaceId, workspaceId), eq(interviewChange.idempotencyKey, idempotencyKey)))
@@ -112,6 +118,37 @@ export function explanationStore(tx: Tx): ExplanationStore {
     async put(row) {
       // Two requests may explain the same snapshot at once: the first answer stands, the other is dropped.
       await tx.insert(explanation).values(row).onConflictDoNothing();
+    },
+  };
+}
+
+/** The suggested questions over a workspace-scoped transaction: the same two layers as `assessmentStore`. */
+export function questionStore(tx: Tx): QuestionStore {
+  return {
+    async latest(workspaceId, candidateId, jobId, rubricVersionId) {
+      const [row] = await tx
+        .select({
+          resultId: suggestedQuestions.resultId,
+          gaps: suggestedQuestions.gaps,
+          createdAt: suggestedQuestions.createdAt,
+        })
+        .from(suggestedQuestions)
+        .innerJoin(result, and(eq(result.id, suggestedQuestions.resultId), eq(result.workspaceId, workspaceId)))
+        .where(
+          and(
+            eq(suggestedQuestions.workspaceId, workspaceId),
+            eq(result.candidateId, candidateId),
+            eq(result.jobId, jobId),
+            eq(result.rubricVersionId, rubricVersionId),
+          ),
+        )
+        .orderBy(desc(result.assessedAt), desc(result.id))
+        .limit(1);
+      return row ?? null;
+    },
+    async put(row) {
+      // Two requests may ask for the same snapshot at once: the first answer stands, the other is dropped.
+      await tx.insert(suggestedQuestions).values(row).onConflictDoNothing();
     },
   };
 }

@@ -32,6 +32,15 @@ export const generateTasks = {
   'evidence.compareExcerpts': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 3_000, temperature: 0 },
   // Three short statements on a ranking, each citing the facts or an excerpt (AIV-P1-033).
   'assessment.explainRanking': { deployment: 'gpt-main', timeoutMs: 45_000, maxOutputTokens: 1_200, temperature: 0 },
+  // Two or three short questions with two notes for each of at most four evidence gaps (AIV-P1-113).
+  'assessment.suggestQuestions': {
+    deployment: 'gpt-main',
+    timeoutMs: 60_000,
+    maxOutputTokens: 2_500,
+    temperature: 0.2,
+  },
+  // One short finding with a quote for each competency an interview tested (AIV-P1-115), as repeatable as the model allows.
+  'interviews.mapSummary': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 1_500, temperature: 0 },
   // A recruiter's question answered from the page's sources (AIV-P2-068), through the Python AI service.
   'assistant.answer': {
     deployment: 'gpt-main',

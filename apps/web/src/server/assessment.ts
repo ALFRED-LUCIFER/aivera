@@ -2,13 +2,28 @@ import type { AssessmentContract } from '@credalent/assessment';
 import { createAssessment } from '@credalent/assessment/composition';
 import { createAudit } from '@credalent/audit/composition';
 import { readPersonAsSystem } from '@credalent/candidates/composition';
+import { readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import { createApprovedRubricReads } from '@credalent/jobs/composition';
 import { createApplicationReads, createCandidateJobResolver } from '@credalent/intake/composition';
+import type { WorkspaceContext } from '@credalent/workspaces';
 import { aiOrUnavailable } from './ai';
 import { getDb } from './db';
 import { getEvidence } from './evidence';
-import { getJobs } from './jobs';
+import { getInterviews } from './interviews';
+import { getCatalogue, getJobs } from './jobs';
 import { getWorkspaces } from './workspace';
+
+const evidenceOf = (ctx: WorkspaceContext, candidateId: string, jobId: string) =>
+  getEvidence().listEvidenceForCandidate(ctx, candidateId, jobId);
+
+// The person's identifiers the AI client replaces in every source (ADR-006 point 7).
+const identifiersOf = async (ctx: WorkspaceContext, candidateId: string) => {
+  const person = await readPersonAsSystem(ctx.tx, ctx.workspaceId, candidateId);
+  // The intake placeholder is no name: redacting it would hide nothing. No person: no identifiers, the call fails closed.
+  return person
+    ? { names: person.unnamed ? [] : [person.displayName], emails: person.emails, phones: person.phones }
+    : undefined;
+};
 
 let assessment: AssessmentContract | undefined;
 /** The app's one assessment module instance (AIV-P1-034 reads the ranking); every call takes the request context. */
@@ -24,13 +39,30 @@ export const getAssessment = (): AssessmentContract =>
       // Lazy: building the module must not need AI configuration (an unconfigured app still lists rankings).
       ai: aiOrUnavailable('assessment.explainRanking'),
       approvedRubric: createApprovedRubricReads().approvedRubric,
-      evidence: (ctx, candidateId, jobId) => getEvidence().listEvidenceForCandidate(ctx, candidateId, jobId),
-      identifiersOf: async (ctx, candidateId) => {
-        const person = await readPersonAsSystem(ctx.tx, ctx.workspaceId, candidateId);
-        // The intake placeholder is no name: redacting it would hide nothing. No person: no identifiers, the call fails closed.
-        return person
-          ? { names: person.unnamed ? [] : [person.displayName], emails: person.emails, phones: person.phones }
-          : undefined;
+      evidence: evidenceOf,
+      identifiersOf,
+    },
+    // Interview-based score changes (AIV-P1-117), which a confirmed meeting summary ends in (AIV-P1-115). The interview
+    // is read as the member may see it; called lazily, so the two modules build in either order.
+    {
+      evidenceForJob: readEvidenceForJobAsSystem,
+      interviewOf: (ctx, interviewId) => getInterviews().getInterview(ctx, interviewId),
+    },
+    // Suggested interview questions (AIV-P1-113), lazy as the explanation is: an unconfigured app answers "failed".
+    {
+      ai: aiOrUnavailable('assessment.suggestQuestions'),
+      approvedRubric: createApprovedRubricReads().approvedRubric,
+      evidence: evidenceOf,
+      identifiersOf,
+      changes: async (ctx, candidateId, jobId) =>
+        (await getEvidence().getEvidenceMapping(ctx, candidateId, jobId))?.changes ?? [],
+      jobOf: async (ctx, jobId) => {
+        const job = await getJobs().getJob(ctx, jobId);
+        if (!job) return null;
+        // A rubric's pack competencies name their domain pack; the published catalogue has its name.
+        const key = (await getJobs().getApprovedRubric(ctx, jobId))?.competencies.find((c) => c.packKey)?.packKey;
+        const pack = key ? (await getCatalogue().getPublishedCatalogue()).packs.find((p) => p.key === key) : undefined;
+        return { title: job.title, domainPack: pack?.label.en ?? null };
       },
     },
   ));

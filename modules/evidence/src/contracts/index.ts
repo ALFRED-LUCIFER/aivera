@@ -9,6 +9,7 @@ import type {
   EvidenceItemView,
   RecordEvidenceInput,
   RecordEvidenceResult,
+  RecordInterviewSummaryInput,
   RecordReferenceCallInput,
 } from '../application/evidence.ts';
 import type { Comparison } from '../domain/corroboration.ts';
@@ -40,6 +41,7 @@ export type {
   EvidenceItemView,
   RecordEvidenceInput,
   RecordEvidenceResult,
+  RecordInterviewSummaryInput,
   RecordReferenceCallInput,
 } from '../application/evidence.ts';
 export type { Comparison, ComparisonOutcome } from '../domain/corroboration.ts';
@@ -202,6 +204,16 @@ export interface EvidenceContract {
    * `excerpt`) and writes nothing.
    */
   recordReferenceCall(ctx: WorkspaceContext, input: RecordReferenceCallInput): Promise<RecordEvidenceResult>;
+  /**
+   * Stores what a person confirmed from an interviewer's meeting summary (AIV-P1-115) as an `interview_note` source
+   * ("Interviewer's summary, 24 Nov") with one item per changed competency, each citing its excerpt and linked to that
+   * competency of the job: Medium and "Candidate-submitted" provenance for a strengthening, Claim only for a
+   * weakening, never Strong and never "Independently corroborated", with the limit "The interviewer's summary of the
+   * interview: their word, not inspected work." Writes `EvidenceRecorded.v1`. Anyone who may submit a scorecard on the
+   * job (`scorecard.submit`: a hiring owner or interviewer needs a grant on it); `ForbiddenError` otherwise, storing
+   * nothing. Throws `EvidenceError` (`strength`, `excerpt`, `level`).
+   */
+  recordInterviewSummary(ctx: WorkspaceContext, input: RecordInterviewSummaryInput): Promise<RecordEvidenceResult>;
   /**
    * The comparisons of the candidate's newest mapping run for the job (AIV-P1-029), oldest first: contradictions (open
    * while `resolvedAt` is null) and agreement facts, each citing both items by id. An open contradiction shows both

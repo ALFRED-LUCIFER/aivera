@@ -52,7 +52,7 @@ async function asOwner(browser: Browser, theme: string, baseURL: string) {
   const context = await browser.newContext({ baseURL });
   await context.addCookies([{ name: 'theme', value: theme, url: baseURL }]);
   const page = await context.newPage();
-  await signIn(page, { email: 'head.approvals@example.com' });
+  await signIn(page, { email: 'head.approvals@example.com', name: 'Head of Engineering' });
   return page;
 }
 

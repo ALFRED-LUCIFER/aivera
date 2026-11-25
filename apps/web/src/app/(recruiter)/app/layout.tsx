@@ -3,6 +3,7 @@ import { Button } from '@credalent/ui';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { countOngoingInterviews } from '@/features/interviews/services/loadInterviews.ts';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
 import { currentMember, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
@@ -77,13 +78,20 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
       </AccessMessage>
     );
   }
-  const [theme, intl] = await Promise.all([readTheme(), intlConfig(defaultLocale, defaultTimeZone)]);
+  // shortcut: counted when the shell renders, so it is stale until the next full load; refresh it from the action
+  // that changes an interview (AIV-P2-004's scorecard submit) when one exists.
+  const [theme, intl, ongoing] = await Promise.all([
+    readTheme(),
+    intlConfig(defaultLocale, defaultTimeZone),
+    countOngoingInterviews(),
+  ]);
   return (
     <RecruiterShell
       intl={intl}
       member={member}
       theme={theme}
       screens={navigation.filter((screen) => canOpen(screen, member.capabilities, enabledFlags))}
+      counts={ongoing ? { interviews: ongoing } : {}}
     >
       {children}
     </RecruiterShell>

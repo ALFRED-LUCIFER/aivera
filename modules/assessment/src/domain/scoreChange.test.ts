@@ -232,6 +232,18 @@ describe('Stored changes stand in later assessments', () => {
     }
   });
 
+  it("says which rating of the same interview a new one replaces, and none for another interview's (AIV-P1-115)", () => {
+    const first = preview('c-retrieval', 'clearly_shown');
+    expect(first.changes.map((c) => c.replaces)).toEqual([null]);
+    const stored = first.changes.map((c) => c.change);
+    expect(preview('c-retrieval', 'not_shown', LINKS, stored).changes.map((c) => c.replaces)).toEqual([
+      'clearly_shown',
+    ]);
+    expect(preview('c-retrieval', 'not_shown', LINKS, stored, 'interview-2').changes.map((c) => c.replaces)).toEqual([
+      null,
+    ]);
+  });
+
   it('is deterministic: the same input gives the same result', () => {
     expect(preview('c-retrieval', 'clearly_shown')).toEqual(preview('c-retrieval', 'clearly_shown'));
   });

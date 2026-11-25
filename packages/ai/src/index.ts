@@ -57,6 +57,18 @@ export {
 } from './prompts/evidence.compareExcerpts.ts';
 export { EXPLAIN_RANKING_VERSION, explainRankingRequest, figuresQuoted } from './prompts/assessment.explainRanking.ts';
 export {
+  SUGGEST_QUESTIONS_SYSTEM,
+  SUGGEST_QUESTIONS_VERSION,
+  suggestQuestionsRequest,
+  type QuestionGapInput,
+} from './prompts/assessment.suggestQuestions.ts';
+export {
+  MAP_SUMMARY_SYSTEM,
+  MAP_SUMMARY_VERSION,
+  mapSummaryRequest,
+  type SummaryCompetencyInput,
+} from './prompts/interviews.mapSummary.ts';
+export {
   ASSISTANT_ANSWER_SYSTEM,
   ASSISTANT_ANSWER_VERSION,
   assistantAnswerRequest,

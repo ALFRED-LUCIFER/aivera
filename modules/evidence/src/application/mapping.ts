@@ -242,7 +242,11 @@ export async function mapEvidence(
 
   const bySource = new Map<string, EvidenceItemView[]>();
   for (const i of await ports.storeFor(tx).list(workspaceId, { candidateId, unmapped: true }, null))
-    bySource.set(i.sourceId, [...(bySource.get(i.sourceId) ?? []), i]);
+    // SAFETY: an interviewer's summary is linked by the person who confirmed it (AIV-P1-115); mapped again, the model
+    // could link it to a competency nobody confirmed and re-score with no preview or audit (AGENTS.md 1.5). An
+    // interview note recorded with no link (the dev seed's "Round 1 notes") is mapped like any other source.
+    if (i.source.kind !== 'interview_note' || i.competencies.length === 0)
+      bySource.set(i.sourceId, [...(bySource.get(i.sourceId) ?? []), i]);
   const mapSources: MapSource[] = [];
   const originSources: OriginSource[] = [];
   const { logins, pulls } = await reads.pullRequestOrigins(workspaceId, candidateId);

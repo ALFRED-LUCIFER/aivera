@@ -51,7 +51,7 @@
 
 Their employers are a card and wallet payments company, a digital health company, an online marketplace, a retail bank and a payments gateway.
 
-Ayesha Perera signs in as `ap@example.com`. In `pnpm db:seed` each demo hiring owner has a full name and keeps the title in the job's hiring-owner field: Hassan Barakat at `head.engineering@example.com`, Camille Fares at `cpo.payments@example.com`, Rashid Al Nuaimi at `head.quality@example.com`, Vikram Deshmukh at `vp.engineering@example.com` and Dina Sabbagh at `design.director@example.com`. The end-to-end seed (`tests/e2e/seed.ts`) still names its copies of these users by title. Every seeded person has a different surname.
+Ayesha Perera signs in as `ap@example.com`. In `pnpm db:seed` each demo hiring owner has a full name and keeps the title in the job's hiring-owner field and as their member title in the workspace (the Interviews list and My desk name them by it): Hassan Barakat at `head.engineering@example.com`, Camille Fares at `cpo.payments@example.com`, Rashid Al Nuaimi at `head.quality@example.com`, Vikram Deshmukh at `vp.engineering@example.com` and Dina Sabbagh at `design.director@example.com`. The end-to-end seed (`tests/e2e/seed.ts`) still names its copies of these users by title. Every seeded person has a different surname.
 
 Candidate-site listings also include Real Estate Sales Consultant (a property brokerage, Dubai) and Senior Software Engineer, Banking (a retail bank, Dubai). Employers are described generically ("A BNPL fintech"), never named.
 

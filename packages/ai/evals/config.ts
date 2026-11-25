@@ -8,6 +8,8 @@ import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import { assistantAnswerRequest } from '../src/prompts/assistant.answer.ts';
 import { explainRankingRequest } from '../src/prompts/assessment.explainRanking.ts';
+import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
+import { mapSummaryRequest } from '../src/prompts/interviews.mapSummary.ts';
 import { identifiersOf, type GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
@@ -15,6 +17,33 @@ const questionInput = z.object({ question: z.string().min(1) });
 const pairsInput = z.object({ pairs: z.array(z.tuple([z.string(), z.string()])).min(1) });
 const rubricInput = z.object({
   competencies: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), evidenceExpected: z.string() })),
+});
+
+/** A suggested-questions case's input (AIV-P1-113): the job and its gaps, as the assessment module lists them. */
+export const questionsInput = z.object({
+  job: z.object({ title: z.string().min(1), domainPack: z.string().min(1).nullable() }),
+  gaps: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        meaning: z.string().min(1),
+        levelNeeded: z.number().int(),
+        provenLevel: z.number().int(),
+        claimedLevel: z.number().int(),
+        sources: z
+          .array(z.object({ id: z.string().min(1), evidence: z.string().min(1), notes: z.boolean().optional() }))
+          .min(1),
+      }),
+    )
+    .min(1),
+});
+
+/** A meeting-summary case's input (AIV-P1-115): the competencies the interview tested, as the interviews module lists them. */
+export const summaryInput = z.object({
+  competencies: z
+    .array(z.object({ id: z.string().min(1), name: z.string().min(1), meaning: z.string().min(1) }))
+    .min(1),
 });
 
 /** The catalogue version 1 snapshot committed with AIV-P2-043, which the jobs migration 0012 seeds (ADR-013 point 9). */
@@ -125,6 +154,15 @@ export const taskThresholds: Record<
   // AIV-P1-033: a ranking explanation's statements each cite the facts source or an excerpt, hold no number (the schema
   // rejects one; the cases' recorded answers use placeholders) and never recommend. Faithfulness is the judge's rubric.
   'assessment.explainRanking': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P1-113: every question cites one of its gap's sources (citation validity, a hard gate), names only a listed
+  // gap, and asks nothing about a protected trait (each case's safety words, a hard gate, and the schema's own rule).
+  // Structure is the product schema: eval.test.ts parses every recorded answer with it, and a live answer off it fails
+  // its case as SchemaMismatch.
+  'assessment.suggestQuestions': { statements: ['gaps[*].questions[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P1-115: every finding quotes the summary word for word (citation validity, a hard gate) and names only a
+  // listed competency (the expected ids, exact, and the product schema, which eval.test.ts parses every recorded answer
+  // with); no finding rests on a sentence about the person (each case's safety words, a hard gate, and the schema).
+  'interviews.mapSummary': { statements: ['findings[*]'], fieldMatch: 1, judge: 1 },
 };
 
 /**
@@ -191,6 +229,23 @@ export const runners: Record<string, Runner> = {
       ...explainRankingRequest(golden.sources),
       workspaceId,
       identifiers: identifiersOf(golden),
+    }),
+  // AIV-P1-113: the job and its gaps in the prompt, each gap's evidence as sources, as the assessment module sends them.
+  'assessment.suggestQuestions': (ai, golden, workspaceId) => {
+    const { job, gaps } = questionsInput.parse(golden.input);
+    return ai.generateStructured({
+      ...suggestQuestionsRequest(job, gaps, golden.sources),
+      workspaceId,
+      identifiers: identifiersOf(golden),
+    });
+  },
+  // AIV-P1-115: the interview's competencies in the prompt and the summary as the one source, as the interviews module
+  // sends them; the case's second person is its interviewer.
+  'interviews.mapSummary': (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...mapSummaryRequest(summaryInput.parse(golden.input).competencies, golden.sources),
+      workspaceId,
+      identifiers: { ...identifiersOf(golden), others: golden.people.slice(1) },
     }),
 };
 

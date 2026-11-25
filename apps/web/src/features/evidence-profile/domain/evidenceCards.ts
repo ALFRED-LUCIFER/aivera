@@ -19,12 +19,15 @@ export type SourceChip = { key: string } & (
   | { kind: 'check'; method: string; at: Date }
 );
 
+/** A provenance as shown: `interviewer` for an interviewer's summary or note counted as submitted (AIV-P1-115). */
+export type ShownProvenance = Provenance | 'interviewer';
+
 export type EvidenceCard = {
   competencyId: string;
   name: string;
   weightPercent: number;
   /** The strongest cited item's strength and provenance; null when the assessment cites nothing for the competency. */
-  lead: { strength: Strength; provenance: Provenance } | null;
+  lead: { strength: Strength; provenance: ShownProvenance } | null;
   /**
    * The cited items, those behind the proven level first. Only an item behind the proven level is highlighted; one
    * that counts toward the claimed level only never is. `own` is the item's strength and provenance when either
@@ -53,7 +56,7 @@ function shortUrl(url: string): string | null {
 }
 
 /** How a source is cited: a repository by its address, anything else by its label, then the span ("CV, page 2"). */
-function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
+export function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>, span: string | null): string {
   const name = (source.kind === 'repository' && source.url && shortUrl(source.url)) || source.label;
   return span ? `${name}, ${span}` : name;
 }
@@ -71,6 +74,13 @@ export const sourceNote = (
 
 const stronger = (a: EvidenceItemView, b: EvidenceItemView) =>
   STRENGTHS.indexOf(a.strength) - STRENGTHS.indexOf(b.strength);
+
+// SAFETY: an interviewer's word is stored as submitted work but is neither the candidate's nor checked: it never reads
+// "Candidate-submitted" or "Independently corroborated" (AGENTS.md 1.6).
+const shown = (i: EvidenceItemView): ShownProvenance =>
+  i.source.kind === 'interview_note' && (i.provenance === 'submitted' || i.provenance === 'corroborated')
+    ? 'interviewer'
+    : i.provenance;
 
 function chips(items: readonly EvidenceItemView[], canOpenFiles: boolean): SourceChip[] {
   const found = new Map<string, SourceChip>();
@@ -122,15 +132,15 @@ export function evidenceCards(
         // its strength (a CV line is stored as Supporting, "Claim awaiting validation").
         highlighted: backs && i.provenance !== 'claim',
         own:
-          lead && (i.strength !== lead.strength || i.provenance !== lead.provenance)
-            ? { strength: i.strength, provenance: i.provenance }
+          lead && (i.strength !== lead.strength || shown(i) !== shown(lead))
+            ? { strength: i.strength, provenance: shown(i) }
             : null,
       });
       return {
         competencyId: result.competencyId,
         name,
         weightPercent: result.weightPercent,
-        lead: lead ? { strength: lead.strength, provenance: lead.provenance } : null,
+        lead: lead ? { strength: lead.strength, provenance: shown(lead) } : null,
         items: [...proven.map((i) => view(i, true)), ...claims.map((i) => view(i, false))],
         sources: chips(items, canOpenFiles),
         claimOnly: proven.length === 0 && claims.length > 0,

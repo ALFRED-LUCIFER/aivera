@@ -295,6 +295,18 @@ describe("Feature: Candidate-written sources cannot be proven on the model's wor
     );
   });
 
+  // SAFETY: mutation check: removed the `interview_note` exception from settleProvenance -> this test failed (the note became corroborated)
+  it("Scenario: An interviewer's note or summary is never independently corroborated (AIV-P1-115)", () => {
+    const sources = [own('interview_note', 'summary'), repo()];
+    const { links } = guard([expert('summary'), link({ competencyId: LLM })], sources);
+    expect(settleProvenance(links, sources, new Set([LLM])).map((l) => [l.sourceId, l.provenance, l.strength])).toEqual(
+      [
+        ['summary', 'submitted', 'supporting'],
+        ['repo', 'corroborated', 'strong'],
+      ],
+    );
+  });
+
   // SAFETY: mutation check: called STRENGTH_CAP[authorship] directly instead of strengthCapOf -> "The GitHub login limit applies in mapping" failed
   it('Scenario: The GitHub login limit applies in mapping', () => {
     const noLogin = guard([link({ level: 5 })], [repo({ hasLogin: false })]).links[0];

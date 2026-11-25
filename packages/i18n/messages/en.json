@@ -261,6 +261,7 @@
     "provenance": {
       "corroborated": "Independently corroborated",
       "submitted": "Candidate-submitted",
+      "interviewer": "Interviewer's word",
       "claim": "Claim awaiting validation",
       "contradictory": "Contradictory",
       "awaiting-defence": "To check in interview"
@@ -339,6 +340,20 @@
     "meetsNeed": "Meets the need",
     "short": "{short, plural, other {# short}}",
     "shortClaimed": "{short, plural, other {# short, claimed}}"
+  },
+  "againstNeed": {
+    "title": "Against what the job needs",
+    "intro": "Each competency is judged against the level this job needs, set in the rubric.",
+    "introShape": "Where the proven shape falls inside the needed one, there is a gap.",
+    "radar": "Radar of {count, plural, one {# competency} other {# competencies}}. {levels}",
+    "legendProven": "Proven by evidence",
+    "legendClaimed": "Claimed",
+    "legendNeeded": "What the job needs",
+    "summary": "Meets the need on {meets} of {count, plural, one {# competency} other {# competencies}}",
+    "bar": "{name}: proven {proven}, claimed {claimed}, job needs {needed}",
+    "footnote": "Solid is proven, hatched is claimed, and the upright mark is the level the job needs.",
+    "gapsClose": "{gaps, plural, =1 {The one gap} =2 {The two gaps} other {The # gaps}} would close if their claims hold.",
+    "gapsCloseSome": "{closing} of the {gaps} gaps would close if their claims hold."
   },
   "competency": {
     "weight": "Weight {weight}",
@@ -1800,7 +1815,20 @@
     "emptyFiltered": "No candidates match these filters.",
     "loading": "Loading the ranking…",
     "error": "We could not load the ranking. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "bulk": {
+      "label": "Bulk actions",
+      "selected": "{count} selected",
+      "notShown": "{count} not shown in the table",
+      "previewNote": "Bulk actions always show a preview first.",
+      "selectAll": "Select all {count} shown",
+      "selectRow": "Select {name}",
+      "compare": {
+        "ready": "Compare",
+        "tooFew": "Choose 2 or 3 to compare",
+        "tooMany": "Compare up to 3 at a time"
+      }
+    }
   },
   "candidateProfile": {
     "title": "Candidate profile",
@@ -1828,7 +1856,55 @@
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again."
   },
+  "suggestedQuestions": {
+    "title": "Needs live verification",
+    "intro": "Competencies whose evidence is below the job's need or rests on a claim. The questions are suggestions for the person who interviews: they change no score, stage or rank.",
+    "suggest": "Suggest interview questions",
+    "suggestAgain": "Suggest again",
+    "suggesting": "Suggesting interview questions…",
+    "noGaps": "No open gaps. Nothing here needs live verification.",
+    "stale": "Evidence changed since these questions were suggested.",
+    "waiting": "Waiting for tomorrow's AI allowance",
+    "failed": "Questions could not be suggested. You can write your own.",
+    "strong": "A strong answer shows:",
+    "weak": "A weak answer shows:",
+    "rubric": "the job's rubric"
+  },
   "interviews": {
+    "intro": "Each interview exists to test specific evidence. Scorecards feed the backed score, with the reason recorded.",
+    "caption": "Interviews",
+    "viewsLabel": "Interview views",
+    "views": {
+      "ongoing": "Ongoing",
+      "completed": "Completed"
+    },
+    "columns": {
+      "candidate": "Candidate",
+      "round": "Round",
+      "interviewer": "Interviewer",
+      "when": "When",
+      "status": "Status",
+      "competencies": "Competencies to investigate",
+      "action": "Action"
+    },
+    "unnamed": "Unnamed applicant",
+    "you": "You",
+    "when": {
+      "today": "Today, {at, time, ::HHmm}",
+      "at": "{at, date, ::dMMM}, {at, time, ::HHmm}",
+      "day": "{at, date, ::dMMM}",
+      "none": "No time yet"
+    },
+    "openScorecard": "Open scorecard",
+    "noGuide": "No guide yet",
+    "summary": "{count, plural, one {# interview} other {# interviews}} completed with {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}} so far.",
+    "observed": "Observed",
+    "empty": "No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.",
+    "emptyOngoing": "No ongoing interviews.",
+    "emptyCompleted": "No completed interviews yet.",
+    "loading": "Loading interviews…",
+    "error": "We could not load the interviews. Try again.",
+    "retry": "Try again",
     "round": {
       "structured_screen": "Round 1, structured screen",
       "evidence_defence": "Round 2, evidence defence",
@@ -1843,5 +1919,114 @@
       "cancelled": "Cancelled"
     },
     "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}"
+  },
+  "scorecard": {
+    "pageTitle": "Interview scorecard",
+    "title": {
+      "structured_screen": "Round 1 scorecard: {name}",
+      "evidence_defence": "Round 2 scorecard: {name}",
+      "panel": "Round 3 scorecard: {name}"
+    },
+    "crumb": {
+      "structured_screen": "{name}, Round 1",
+      "evidence_defence": "{name}, Round 2",
+      "panel": "{name}, Round 3"
+    },
+    "kind": {
+      "structured_screen": "structured screen",
+      "evidence_defence": "evidence defence",
+      "panel": "panel"
+    },
+    "interviewer": "interviewer: {name}",
+    "interviewerYou": "interviewer: you",
+    "saveAndClose": "Save and close",
+    "rounds": "Interview rounds",
+    "assessed": "Evidence assessed",
+    "assessedOn": "{at, date, ::dMMM} · backed score {score}",
+    "notAssessedYet": "No assessment on this rubric yet",
+    "current": "Current round",
+    "earlier": "Earlier round",
+    "later": "If shortlisted",
+    "questions": "Evidence-linked questions",
+    "noQuestions": "No questions are suggested for this competency yet. Ask your own.",
+    "suggestOnProfile": "Suggest questions on the evidence profile",
+    "ownQuestions": "Your own questions on this competency",
+    "question": "Question {number}",
+    "marks": {
+      "not_asked": "Not asked",
+      "not_answered": "Not answered"
+    },
+    "assessment": "Your assessment",
+    "ratings": {
+      "not_shown": "Not shown",
+      "partly_shown": "Partly shown",
+      "clearly_shown": "Clearly shown",
+      "strongly_shown": "Strongly shown"
+    },
+    "notAssessed": "Not assessed in this round · stays a gap",
+    "note": "What you saw or heard",
+    "notePlaceholder": "Evidence, not impressions",
+    "recommendation": "Your recommendation",
+    "recommendationGroup": "Next-stage recommendation",
+    "recommendations": {
+      "shortlist": "{round, select, structured_screen {Recommend for the Round 2 shortlist} evidence_defence {Recommend for the Round 3 panel} other {Recommend for the next stage}}",
+      "more_evidence": "Ask for more evidence first",
+      "not_recommended": "{round, select, structured_screen {Do not recommend for Round 2} evidence_defence {Do not recommend for Round 3} other {Do not recommend for the next stage}}"
+    },
+    "notADecision": "A recommendation, not a decision. The hiring owner decides in the decision pack.",
+    "submit": "Submit scorecard",
+    "submitHelp": "This checks that every competency is rated or marked as not tested, and saves your draft. Applying a scorecard to the assessment is not available yet.",
+    "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
+    "complete": "Your scorecard is complete and saved as a draft. It has not been submitted: the assessment, the stage and the ranking are unchanged.",
+    "saving": "Saving your draft…",
+    "saved": "Draft saved. Nothing changes the assessment until a scorecard is submitted.",
+    "failed": "We could not save your draft. Try again.",
+    "readOnly": "You can read this scorecard but not change it. Only the interviewer or a workspace admin fills it in, while the interview is open.",
+    "loading": "Loading the scorecard…",
+    "error": "We could not load this scorecard. Try again."
+  },
+  "interviewSummary": {
+    "title": "Meeting summary",
+    "intro": "Paste the summary of this interview. Credalent proposes evidence changes from it, and nothing changes until you confirm.",
+    "label": "Summary of the interview",
+    "count": "{count, number} of 12,000 characters",
+    "redacted": "Names, emails and phone numbers are removed before Credalent reads it.",
+    "analyse": "Analyse summary",
+    "analysing": "Analysing the summary…",
+    "waiting": "Waiting for tomorrow's AI allowance. Your summary is saved.",
+    "failed": "The summary could not be analysed. You can rate on the scorecard instead.",
+    "unusual": "Unusual content in this summary",
+    "effect": "Effect on the assessment",
+    "change": "{name}: {from} to {to}",
+    "stays": "{name}: stays {strength}",
+    "noEvidence": "No evidence",
+    "noChange": "{name}: no change",
+    "notCovered": "{name}: not covered in the summary · stays a gap",
+    "include": "Include this change",
+    "alreadyChanged": "Already changed by the scorecard",
+    "reason": "Reason for {name}",
+    "reasonNeeded": "Give a reason for each change you include.",
+    "backedScore": "Backed score {from} to {to}",
+    "before": "Before: Observed",
+    "after": "After: Projection",
+    "nothingIncluded": "No change is included. The backed score stays as it is.",
+    "previewUnavailable": "The assessment cannot be previewed right now. New evidence may still be being scored. Try again shortly.",
+    "tryAgain": "Try again",
+    "logged": "Each change is logged with your name, the time and your reason.",
+    "apply": "Apply {count, plural, one {# change} other {# changes}}",
+    "applying": "Applying…",
+    "decline": "Decline",
+    "footer": "Nothing changes until you confirm.",
+    "notApplied": "That did not go through. Nothing was changed.",
+    "applied": "The changes you confirmed are applied and logged. The assessment and the ranking are updated.",
+    "declined": "Declined. Nothing changed, and the summary stays on this interview.",
+    "errors": {
+      "summary_empty": "Paste the meeting summary first.",
+      "summary_too_long": "Shorten the summary to 12,000 characters or fewer.",
+      "summary_pending": "Apply or decline the proposed changes first.",
+      "interview_not_held": "This interview has not been held yet, so its summary cannot be analysed.",
+      "preview_changed": "The assessment changed since this preview. Check the changes again.",
+      "failed": "That did not go through. Nothing was changed."
+    }
   }
 }

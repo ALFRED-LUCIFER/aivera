@@ -3,8 +3,8 @@
 import { createHash } from 'node:crypto';
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { RubricInput } from '../domain/assess.ts';
-import { previewRatings, RATINGS, type CompetencyChange } from '../domain/scoreChange.ts';
+import { assess, type Assessment, type RubricInput } from '../domain/assess.ts';
+import { previewRatings, RATINGS, withInterviewChanges, type CompetencyChange } from '../domain/scoreChange.ts';
 import { canonical, pickAssessment, sameResult, toLinks, type Ports, type StoredAssessment } from './assessment.ts';
 import type { WorkerPorts } from './worker.ts';
 
@@ -16,6 +16,7 @@ const MESSAGES = {
   competency_not_in_interview: 'This competency is not one the interview investigates',
   not_yet_scored: 'New evidence is still being scored. Try again shortly.',
   idempotency_conflict: 'This idempotency key was used for a different change',
+  write_up_moves_score: "The interview's write-up would move the score beyond the preview",
 } as const;
 
 export type ScoreChangeErrorCode = keyof typeof MESSAGES;
@@ -45,6 +46,13 @@ const applyInput = changeInput.extend({
   reason: z.string().trim().min(1).max(1000),
   previewId: z.string().min(1),
   idempotencyKey: z.uuid(),
+  /** The person's reason for one competency's change, where they gave it one of its own (AIV-P1-115); else `reason`. */
+  reasons: z.record(z.uuid(), z.string().trim().min(1).max(1000)).default({}),
+  /**
+   * Evidence items the caller recorded in this transaction as the interview's write-up (AIV-P1-115): the new snapshot
+   * cites them beside the interview, and they are not "evidence the snapshot has not scored".
+   */
+  writeUpItemIds: z.array(z.uuid()).max(50).default([]),
 });
 export type ScoreChangeInput = z.input<typeof changeInput>;
 export type ApplyScoreChangeInput = z.input<typeof applyInput>;
@@ -98,6 +106,10 @@ export type ScoreChangePorts = Pick<
 // 2026); only a future `scheduled` time and `cancelled` are refused. #118 narrows it when the scorecard starts interviews.
 const HELD: readonly string[] = ['to_schedule', 'in_progress', 'scorecard_due', 'completed'];
 
+// Everything of a result but which items it cites.
+const levels = (a: Assessment) =>
+  canonical({ ...a, competencies: a.competencies.map((c) => [c.competencyId, c.proven.level, c.claimedLevel]) });
+
 export function scoreChangeUseCases(ports: ScoreChangePorts) {
   const { storeFor, authorize, candidateJob, evidenceForJob, interviewOf, auditScoreChange, newId, now } = ports;
 
@@ -109,7 +121,12 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
     return snapshot;
   };
 
-  const prepare = async (ctx: WorkspaceContext, snapshot: StoredAssessment, input: z.output<typeof changeInput>) => {
+  const prepare = async (
+    ctx: WorkspaceContext,
+    snapshot: StoredAssessment,
+    input: z.output<typeof changeInput>,
+    writeUp: readonly string[] = [],
+  ) => {
     const { candidateId, jobId } = snapshot;
     const interview = await interviewOf(ctx, input.interviewId);
     if (interview?.candidateId !== candidateId || interview.jobId !== jobId)
@@ -132,15 +149,23 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
     };
     if (input.changes.some((c) => !rubric.competencies.some((r) => r.id === c.competencyId)))
       throw new ScoreChangeError('competency_not_in_rubric');
-    const links = toLinks(candidateId, jobId, await evidenceForJob(ctx.tx, ctx.workspaceId, candidateId, jobId));
+    const all = toLinks(candidateId, jobId, await evidenceForJob(ctx.tx, ctx.workspaceId, candidateId, jobId));
+    const links = all.filter((l) => !writeUp.includes(l.itemId));
     const stored = await store.interviewChanges(ctx.workspaceId, candidateId, jobId);
-    const result = previewRatings(rubric, links, stored, input.changes, input.interviewId);
+    // In one order, so the preview id names the changes whatever order a caller sends them in.
+    const changes = input.changes.toSorted((a, b) => (a.competencyId < b.competencyId ? -1 : 1));
+    const result = previewRatings(rubric, links, stored, changes, input.interviewId);
     // Evidence the worker has not scored yet would ride along unaudited: refused until its snapshot is stored.
     if (!sameResult(result.before, pickAssessment(snapshot))) throw new ScoreChangeError('not_yet_scored');
     const previewId = createHash('sha256')
-      .update(canonical([snapshot.id, input.interviewId, input.changes, result.after, result.changes]))
+      .update(canonical([snapshot.id, input.interviewId, changes, result.after, result.changes]))
       .digest('hex');
-    return { ...result, previewId };
+    if (writeUp.length === 0) return { ...result, previewId };
+    const after = assess(rubric, withInterviewChanges(all, [...stored, ...result.changes.map((c) => c.change)]));
+    // SAFETY: the write-up is the same interview's word: it may add a citation, never a level or a score the person
+    // did not see in the preview (AGENTS.md 1.5), whatever item ids the caller names.
+    if (levels(after) !== levels(result.after)) throw new ScoreChangeError('write_up_moves_score');
+    return { ...result, after, previewId };
   };
 
   return {
@@ -171,12 +196,12 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
           applied.result.candidateId !== snapshot.candidateId ||
           applied.result.jobId !== snapshot.jobId ||
           applied.previewId !== input.previewId ||
-          applied.reason !== input.reason
+          applied.reason !== (input.reasons[applied.competencyId] ?? input.reason)
         )
           throw new ScoreChangeError('idempotency_conflict');
         return applied.result;
       }
-      const { before, after, changes, previewId } = await prepare(ctx, snapshot, input);
+      const { before, after, changes, previewId } = await prepare(ctx, snapshot, input, input.writeUpItemIds);
       if (previewId !== input.previewId) throw new ScoreChangeError('stale');
       if (changes.length === 0) return snapshot;
       const appliedAt = now();
@@ -195,7 +220,7 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
           resultId: row.id,
           idempotencyKey: input.idempotencyKey,
           previewId,
-          reason: input.reason,
+          reason: input.reasons[change.competencyId] ?? input.reason,
           appliedBy: ctx.userId,
           appliedAt,
         })),
@@ -204,7 +229,7 @@ export function scoreChangeUseCases(ports: ScoreChangePorts) {
       for (const { competencyId, rating, from, to } of changes)
         await auditScoreChange(ctx, {
           candidateId: row.candidateId,
-          note: input.reason,
+          note: input.reasons[competencyId] ?? input.reason,
           before: {
             resultId: snapshot.id,
             competencyId,

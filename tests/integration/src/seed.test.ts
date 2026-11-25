@@ -136,16 +136,19 @@ describe('Scenario: Seeding a fresh database', () => {
       sql`select name, synthetic from workspaces.workspace where id = ${workspaceId}`,
     );
     expect(ws).toEqual({ name: 'Meridian Talent', synthetic: true });
-    const members = await admin.execute<{ role: string; email: string; status: string }>(sql`
-      select m.role, u.email, m.status from workspaces.member m join identity.user u on u.id = m.user_id
+    const members = await admin.execute<{ role: string; email: string; status: string; title: string | null }>(sql`
+      select m.role, u.email, m.status, m.title from workspaces.member m join identity.user u on u.id = m.user_id
       where m.workspace_id = ${workspaceId} order by m.role, u.email`);
+    // AIV-P2-002: each hiring owner carries their title (personas.md), which the Interviews list names them by.
     expect([...members]).toEqual([
-      { role: 'admin', email: 'ap@example.com', status: 'active' },
-      ...['cpo.payments', 'design.director', 'head.engineering', 'head.quality', 'vp.engineering'].map((k) => ({
-        role: 'hiring_owner',
-        email: `${k}@example.com`,
-        status: 'active',
-      })),
+      { role: 'admin', email: 'ap@example.com', status: 'active', title: null },
+      ...[
+        ['cpo.payments', 'CPO, Payments'],
+        ['design.director', 'Design Director'],
+        ['head.engineering', 'Head of Engineering'],
+        ['head.quality', 'Head of Quality'],
+        ['vp.engineering', 'VP Engineering'],
+      ].map(([k, title]) => ({ role: 'hiring_owner', email: `${k}@example.com`, status: 'active', title })),
     ]);
   });
 
@@ -273,6 +276,57 @@ describe('Scenario: Seeding a fresh database', () => {
         and batch_id is null`),
     ).toBe(5);
     expect(await count(sql`select count(*) as n from candidates.person where workspace_id = ${workspaceId}`)).toBe(23);
+  });
+
+  // AIV-P2-002: the Interviews list's query on the seed, on its day (18 Nov), through the contract the page calls.
+  it("AIV-P2-002: lists 5 ongoing and 0 completed for the recruiter, and a hiring owner only her job's", async () => {
+    const audit = createAudit(app);
+    const workspaces = createWorkspaces(app, audit);
+    const jobs = createJobs(workspaces, audit);
+    const interviews = createInterviews(
+      workspaces,
+      jobs,
+      createApprovedRubricReads().approvedRubric,
+      findApplication,
+      () => NOW,
+    );
+    const idOf = async (email: string) => {
+      const [user] = await admin.execute<{ id: string }>(sql`select id from identity.user where email = ${email}`);
+      if (!user) throw new Error(`the seed created ${email}`);
+      return user.id;
+    };
+    const listsFor = async (userId: string) =>
+      workspaces.withWorkspace({ userId }, workspaceId, async (ctx) => ({
+        ongoing: await interviews.listInterviews(ctx, 'ongoing'),
+        completed: await interviews.listInterviews(ctx, 'completed'),
+      }));
+    const recruiter = await idOf('ap@example.com');
+    const seen = await listsFor(recruiter);
+    // Soonest first, with the status to show on 18 Nov: Anjali's 16 Nov interview has its scorecard due.
+    expect(seen.ongoing.map((i) => i.status)).toEqual([
+      'scorecard_due',
+      'in_progress',
+      'scheduled',
+      'scheduled',
+      'scheduled',
+    ]);
+    expect(seen.completed).toEqual([]);
+    // Camille Fares is granted Senior Product Manager, Payments only: its three interviews, not the two of Senior AI Engineer.
+    const owners = await listsFor(await idOf('cpo.payments@example.com'));
+    expect(owners.ongoing).toHaveLength(3);
+    expect(new Set(owners.ongoing.map((i) => i.jobId)).size).toBe(1);
+
+    // No contract completes an interview until the scorecard (AIV-P2-004), so one is completed past the module here,
+    // then put back: the lists follow the stored status.
+    const [first] = seen.ongoing;
+    if (!first) throw new Error('the seed created interviews');
+    await admin.execute(sql`update interviews.interview set status = 'completed' where id = ${first.id}`);
+    try {
+      const after = await listsFor(recruiter);
+      expect([after.ongoing.length, after.completed.map((i) => i.id)]).toEqual([4, [first.id]]);
+    } finally {
+      await admin.execute(sql`update interviews.interview set status = 'scheduled' where id = ${first.id}`);
+    }
   });
 
   it('audits the workspace and every added member', async () => {

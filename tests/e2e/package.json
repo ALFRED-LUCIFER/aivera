@@ -10,6 +10,8 @@
     "e2e:update": "sh docker.sh"
   },
   "devDependencies": {
+    "@credalent/ai": "workspace:*",
+    "@credalent/assessment": "workspace:*",
     "@credalent/audit": "workspace:*",
     "@credalent/candidate-accounts": "workspace:*",
     "@credalent/candidates": "workspace:*",
@@ -18,6 +20,7 @@
     "@credalent/evidence": "workspace:*",
     "@credalent/identity": "workspace:*",
     "@credalent/intake": "workspace:*",
+    "@credalent/interviews": "workspace:*",
     "@credalent/jobs": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "@auth/core": "0.41.3",

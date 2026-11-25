@@ -40,6 +40,16 @@ describe('the replacer', () => {
     ['Sarah and Saratoga', 'Sarah and Saratoga'],
   ])('names: %s', (text, expected) => expect(redact(text)).toBe(expected));
 
+  it('another named person (an interviewer, AIV-P1-115) becomes [PERSON], never [CANDIDATE]', () => {
+    const withLina = { ...sara, others: ['Lina Panel'] };
+    const [sent] = redactSources(
+      [source("Lina asked Sara about Panel's question; Sara answered.")],
+      withLina,
+      false,
+    ).sources;
+    expect(sent?.text).toBe('[PERSON] asked [CANDIDATE] about [PERSON] question; [CANDIDATE] answered.');
+  });
+
   it('replaces the record email and any other email, numbered per call', () => {
     const { sources } = redactSources(
       [source('Mail sara.al.qahtani@example.com or omar@example.com.'), source('Again: Sara.Al.Qahtani@Example.com')],

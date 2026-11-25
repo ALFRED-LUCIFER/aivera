@@ -5,9 +5,16 @@ import type { Source } from './citations.ts';
 // pairs live only inside one call and are never stored, logged or returned.
 
 /** The candidate's known identifiers, from the candidate record. */
-export type Identifiers = { names: readonly string[]; emails: readonly string[]; phones: readonly string[] };
+export type Identifiers = {
+  names: readonly string[];
+  emails: readonly string[];
+  phones: readonly string[];
+  /** Other people a source may name (an interviewer, AIV-P1-115): each becomes `[PERSON]`, never `[CANDIDATE]`. */
+  others?: readonly string[];
+};
 
 export const CANDIDATE_PLACEHOLDER = '[CANDIDATE]';
+const OTHER_PLACEHOLDER = '[PERSON]';
 
 /**
  * The only tasks that may send emails and phones as written: extracting the candidate's own contact details onto the
@@ -149,11 +156,14 @@ function namePartsOf(names: readonly string[]) {
 }
 
 /** One pattern per source kind: `traits` for TRAIT_KINDS, and `cv` adds the Arabic name. */
-function patternFor({ names, phones }: Identifiers, traits: boolean, cv: boolean): RegExp {
-  const { parts, own, ownWord, lead } = namePartsOf(names);
+function patternFor({ names, phones, others = [] }: Identifiers, traits: boolean, cv: boolean): RegExp {
+  const { ownWord } = namePartsOf(names);
   // A run of name parts ("Sara Al Qahtani", "Al-Qahtani's", split across lines) is one placeholder; it starts and ends
   // on a non-particle. Emails are masked before this runs (redactSources), so a run never reaches into one.
-  const name = parts.length ? `(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
+  const run = ({ parts, own, lead }: ReturnType<typeof namePartsOf>) =>
+    parts.length ? `(?<!${letter})${lead}${own}(?:[\\s-]+${lead}${own})*(?:['’]s(?!${letter}))?` : '';
+  const name = run(namePartsOf(names));
+  const other = run(namePartsOf(others));
   // The record's own phones match by their digits in any formatting, spaced dashes included, at any length.
   const record = phones
     .map((phone) => phone.replace(/\D/g, '').replace(/^00/, ''))
@@ -168,6 +178,8 @@ function patternFor({ names, phones }: Identifiers, traits: boolean, cv: boolean
     ...(traits ? [`(?<trait>${TRAIT})`] : []),
     ...(cv ? [`(?<arabicName>${arabicNameOf(ownWord && `(?:${ownWord}|${NAMED_MASK})`)})`] : []),
     ...(name ? [`(?<name>${name})`] : []),
+    // After the candidate's name, so a part the two share reads as the candidate.
+    ...(other ? [`(?<other>${other})`] : []),
   ];
   return new RegExp(alternatives.join('|'), 'giu');
 }
@@ -222,8 +234,8 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     const masked = source.text.replace(emailPattern, mask);
     for (const match of masked.matchAll(patternOf(source.kind))) {
       const value = source.text.slice(match.index, match.index + match[0].length);
-      const { email, own, phone, trait } = match.groups ?? {};
-      let to = trait ? PROTECTED_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
+      const { email, own, phone, trait, other } = match.groups ?? {};
+      let to = trait ? PROTECTED_PLACEHOLDER : other ? OTHER_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
       if (email || own || phone) {
         if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
         if (keepContact) continue;

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
 
-export type Provenance = 'corroborated' | 'submitted' | 'claim' | 'contradictory' | 'awaiting-defence';
+/** `interviewer`: an interviewer's account of the interview (AIV-P1-115), neither the candidate's nor checked work. */
+export type Provenance = 'corroborated' | 'submitted' | 'interviewer' | 'claim' | 'contradictory' | 'awaiting-defence';
 
 // Foundations artboard .chip-*: each provenance has its own icon shape, so the meaning survives without colour.
 const looks: Record<Provenance, { chip: string; icon: ReactNode }> = {
@@ -12,6 +13,12 @@ const looks: Record<Provenance, { chip: string; icon: ReactNode }> = {
   submitted: {
     chip: 'border-border bg-surface-subtle text-text-2',
     icon: <path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14" />,
+  },
+  // Neutral like submitted work: a speech bubble, someone's word. Deviation (AIV-P1-115): the Foundations artboard has no
+  // chip for this look; it reuses the submitted chip's tokens with its own icon.
+  interviewer: {
+    chip: 'border-border bg-surface-subtle text-text-2',
+    icon: <path d="M4 5h16v11H9l-5 4z" />,
   },
   claim: {
     chip: 'border-warn-border bg-warn-bg text-warn-text',
