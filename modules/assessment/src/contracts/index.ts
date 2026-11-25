@@ -30,6 +30,8 @@ export type { RankingExplanation } from '../application/explain.ts';
 export type { ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
 export type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
 export type { QuestionCitation, SuggestedGap, SuggestedQuestion } from '../domain/questions.ts';
+/** The competencies of a result a person should test live, heaviest first (AIV-P1-113); pure. */
+export { selectGaps } from '../domain/questions.ts';
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction, so

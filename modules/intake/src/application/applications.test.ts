@@ -1,6 +1,7 @@
 import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it, vi } from 'vitest';
 import { IntakeError } from '../domain/application.ts';
+import type { Application } from '../domain/application.ts';
 import { applicationUseCases, type IntakeStore, type Ports, type ReceiveBatchInput } from './applications.ts';
 
 // AIV-P1-086: listApplicationsForJob over faked ports. With the real modules the jobs module's row-level security
@@ -21,6 +22,7 @@ function setup(authorize: Ports['authorize']) {
     publishApplicationReceived: vi.fn(),
     authorize,
     auditBatchConfirmed: vi.fn(),
+    auditStageChanged: vi.fn(),
     findOrCreatePerson: vi.fn(),
     displayNames,
     jobResource: async () => JOB,
@@ -89,6 +91,7 @@ describe('receiveBatch', () => {
       publishApplicationReceived: vi.fn(async () => void calls.push('outbox')),
       authorize: async () => undefined,
       auditBatchConfirmed,
+      auditStageChanged: vi.fn(),
       findOrCreatePerson: async () => ({ personId: 'p' }),
       displayNames: vi.fn(),
       jobResource: async () => JOB,
@@ -132,5 +135,172 @@ describe('receiveBatch', () => {
     await expect(useCases.receiveBatch(batchCtx, { ...input, wordingKey: 'import.title' })).rejects.toThrow(
       IntakeError,
     );
+  });
+});
+
+// AIV-P1-114: choosing for interview over faked ports; the stored rows, the rollback and RLS are in
+// tests/integration/src/choose-for-interview.test.ts. Synthetic cast, opaque ids.
+const OTHER_JOB = '0190d4a2-0000-7000-9000-000000001032';
+const id = (n: number) => `0190d4a2-0000-7000-9000-00000000200${n}`;
+const recruiter = { workspaceId: 'w1', userId: 'u1', role: 'recruiter', tx: {} } as WorkspaceContext;
+const app = (n: number, stage: Application['stage'] = 'assessing', jobId = JOB.jobId): Application => ({
+  id: id(n),
+  workspaceId: 'w1',
+  personId: `p${n}`,
+  jobId,
+  stage,
+  receivedAt: at,
+  submittedToClientAt: null,
+});
+
+function setupChoose(stored: Application[], authorize: Ports['authorize'] = async () => undefined) {
+  const calls: string[] = [];
+  const moveStage = vi.fn<IntakeStore['moveStage']>(async (_w, applicationId) => {
+    calls.push(`stage:${applicationId}`);
+    return true;
+  });
+  const createInterview = vi.fn(async (_ctx: WorkspaceContext, input: { applicationId: string }) => {
+    calls.push(`interview:${input.applicationId}`);
+    return { interviewId: `i-${input.applicationId}` };
+  });
+  const auditStageChanged = vi.fn<Ports['auditStageChanged']>(async (_ctx, change) => {
+    calls.push(`audit:${change.applicationId}`);
+  });
+  const publishApplicationReceived = vi.fn();
+  const useCases = applicationUseCases({
+    storeFor: () =>
+      ({
+        findApplication: async (_w: string, applicationId: string) =>
+          stored.find((a) => a.id === applicationId) ?? null,
+        moveStage,
+      }) as unknown as IntakeStore,
+    publishApplicationReceived,
+    authorize,
+    auditBatchConfirmed: vi.fn(),
+    auditStageChanged,
+    interviews: { createInterview, interviewGaps: async (_ctx, personId) => [`gap-of-${personId}`] },
+    findOrCreatePerson: vi.fn(),
+    displayNames: vi.fn(),
+    jobResource: async (_ctx, jobId) => (jobId === JOB.jobId ? JOB : null),
+    isSyntheticWorkspace: async () => false,
+    newId: () => 'id',
+    now: () => at,
+  });
+  return { useCases, calls, moveStage, createInterview, auditStageChanged, publishApplicationReceived };
+}
+
+describe('chooseForInterview', () => {
+  it('moves each to interview with a Round 1 interview, the member as interviewer and their gaps, and audits last', async () => {
+    const { useCases, calls, createInterview, auditStageChanged, publishApplicationReceived } = setupChoose([
+      app(1),
+      app(2, 'new'),
+    ]);
+    const result = await useCases.chooseForInterview(recruiter, {
+      jobId: JOB.jobId,
+      applicationIds: [id(1), id(2)],
+      reason: '  First shortlist ',
+    });
+    expect(result).toEqual({
+      chosen: [
+        { applicationId: id(1), interviewId: `i-${id(1)}` },
+        { applicationId: id(2), interviewId: `i-${id(2)}` },
+      ],
+      skipped: [],
+    });
+    expect(createInterview).toHaveBeenCalledWith(recruiter, {
+      applicationId: id(1),
+      round: 'structured_screen',
+      interviewerUserId: 'u1',
+      competencyIds: ['gap-of-p1'],
+    });
+    // SAFETY: mutation check: audited before createInterview -> this test failed (order)
+    expect(calls).toEqual([
+      `stage:${id(1)}`,
+      `interview:${id(1)}`,
+      `stage:${id(2)}`,
+      `interview:${id(2)}`,
+      `audit:${id(1)}`,
+      `audit:${id(2)}`,
+    ]);
+    expect(auditStageChanged).toHaveBeenCalledWith(recruiter, {
+      applicationId: id(1),
+      jobId: JOB.jobId,
+      from: 'assessing',
+      to: 'interview',
+      interviewId: `i-${id(1)}`,
+      reason: 'First shortlist',
+    });
+    // Nobody is contacted: no outbox event leaves intake.
+    expect(publishApplicationReceived).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: removed `application.stage === 'interview' ||` from the skip -> this test failed (a second interview for id(1))
+  it('skips someone already chosen: no stage change, interview or audit for them', async () => {
+    const { useCases, createInterview, auditStageChanged } = setupChoose([app(1, 'interview'), app(2)]);
+    const result = await useCases.chooseForInterview(recruiter, {
+      jobId: JOB.jobId,
+      applicationIds: [id(1), id(2)],
+      reason: 'First shortlist',
+    });
+    expect(result).toEqual({ chosen: [{ applicationId: id(2), interviewId: `i-${id(2)}` }], skipped: [id(1)] });
+    expect(createInterview).toHaveBeenCalledTimes(1);
+    expect(auditStageChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips someone a concurrent choice moved first', async () => {
+    const { useCases, moveStage, createInterview } = setupChoose([app(1)]);
+    moveStage.mockResolvedValueOnce(false);
+    const result = await useCases.chooseForInterview(recruiter, {
+      jobId: JOB.jobId,
+      applicationIds: [id(1)],
+      reason: 'First shortlist',
+    });
+    expect(result).toEqual({ chosen: [], skipped: [id(1)] });
+    expect(createInterview).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: removed the `application?.jobId !== job.jobId` check -> this test failed (resolved, id(2) moved)
+  it('refuses the whole choice when one application is of another job, writing nothing', async () => {
+    const { useCases, calls } = setupChoose([app(1), app(2, 'assessing', OTHER_JOB)]);
+    await expect(
+      useCases.chooseForInterview(recruiter, {
+        jobId: JOB.jobId,
+        applicationIds: [id(1), id(2)],
+        reason: 'First shortlist',
+      }),
+    ).rejects.toMatchObject({ code: 'not_on_job', message: 'This candidate has not applied to this job' });
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses an unknown application and a job the member cannot see', async () => {
+    const { useCases, calls } = setupChoose([app(1)]);
+    await expect(
+      useCases.chooseForInterview(recruiter, { jobId: JOB.jobId, applicationIds: [id(9)], reason: 'x' }),
+    ).rejects.toMatchObject({ code: 'not_on_job' });
+    await expect(
+      useCases.chooseForInterview(recruiter, { jobId: OTHER_JOB, applicationIds: [id(1)], reason: 'x' }),
+    ).rejects.toMatchObject({ code: 'job_not_found' });
+    expect(calls).toEqual([]);
+  });
+
+  it.each(['', '   ', 'x'.repeat(501)])('refuses the reason %j, writing nothing', async (reason) => {
+    const { useCases, calls } = setupChoose([app(1)]);
+    await expect(
+      useCases.chooseForInterview(recruiter, { jobId: JOB.jobId, applicationIds: [id(1)], reason }),
+    ).rejects.toMatchObject({ code: 'reason_required', message: 'Give a reason for this choice' });
+    expect(calls).toEqual([]);
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'interview.schedule', job) from chooseForInterview -> this test failed (resolved, id(1) moved)
+  it('authorises interview.schedule on the job before anything is written', async () => {
+    const authorize = vi.fn<Ports['authorize']>(async () => {
+      throw new ForbiddenError();
+    });
+    const { useCases, calls } = setupChoose([app(1)], authorize);
+    await expect(
+      useCases.chooseForInterview(recruiter, { jobId: JOB.jobId, applicationIds: [id(1)], reason: 'x' }),
+    ).rejects.toThrow(ForbiddenError);
+    expect(authorize).toHaveBeenCalledWith(recruiter, 'interview.schedule', JOB);
+    expect(calls).toEqual([]);
   });
 });

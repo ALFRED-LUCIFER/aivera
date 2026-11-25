@@ -8,12 +8,14 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RankingTable, type RankingTableView } from '@/features/ranking/components/RankingTable.tsx';
 import type { RowDuplicates } from '@/features/ranking/domain/duplicates.ts';
 import type { CandidateRow } from '@/features/ranking/domain/ranking.ts';
+import type { BulkActionId } from '@/features/ranking/domain/selection.ts';
 import { Ranking } from './Ranking.tsx';
 
 // AIV-P1-034: the ranked table with its controller, as the page renders it. Synthetic cast only (docs/00-product/personas.md).
 // The merge and undo server actions (AIV-P1-018) are faked: these tests check what is shown and sent.
 const fake = vi.hoisted(() => ({
   merge: vi.fn(),
+  choose: vi.fn(),
   undo: vi.fn(),
   refresh: vi.fn(),
   push: vi.fn(),
@@ -37,6 +39,7 @@ window.history.replaceState = (...args) => {
   act(() => fake.urlListeners.forEach((listener) => listener()));
 };
 vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
+vi.mock('@/features/ranking/services/chooseForInterview.ts', () => ({ chooseForInterview: fake.choose }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -64,6 +67,7 @@ const scoredRow = (n: number, name: string, backed: number, upTo: number, missin
     competencyCount: 6,
     confidence: n === 1 ? 'High' : 'Low',
     missing,
+    investigate: missing,
     assessedAt,
   },
 });
@@ -77,7 +81,7 @@ const nine = [
   { id: 'a9', personId: 'p9', name: 'Huda Rahman', stage: 'new', score: null } satisfies CandidateRow,
 ];
 
-const showRanking = (rows: CandidateRow[], awaitingRubric = false, bulkActions: 'compare'[] = []) =>
+const showRanking = (rows: CandidateRow[], awaitingRubric = false, bulkActions: BulkActionId[] = []) =>
   render(
     <IntlProvider {...intl}>
       <Ranking jobId={JOB} awaitingRubric={awaitingRubric} rows={rows} bulkActions={bulkActions} />
@@ -400,5 +404,99 @@ describe('Scenario: Interviewers cannot act in bulk (AIV-P1-036)', () => {
     showRanking(nine);
     expect(within(table()).queryByRole('checkbox')).toBeNull();
     expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull();
+  });
+});
+
+// AIV-P1-114: a recruiter chooses who to interview, after a preview. The server action is faked: these tests check what
+// is shown and sent; the stage, interview and audit writes are in tests/integration/src/choose-for-interview.test.ts.
+const choosable = (rows = nine) => showRanking(rows, false, ['chooseForInterview']);
+const preview = () => screen.getByRole('region', { name: /^Preview: / });
+
+describe('Scenario: Preview, then confirm (AIV-P1-114)', () => {
+  // SAFETY: mutation check: dropped `|| !view.reasonValid` from confirmDisabled -> this test failed (sent with no reason)
+  it('shows each person with their scores and gaps, round, interviewer and reason; only Confirm sends, with the reason', async () => {
+    fake.choose.mockResolvedValue({ ok: true, chosen: 2 });
+    choosable();
+    await pick('Sara Al Qahtani');
+    await pick('Arjun Menon');
+    // Compare is not offered: its flag is off.
+    expect(within(bar()).queryByRole('button', { name: /compare/i })).toBeNull();
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(within(preview()).getByRole('heading').textContent).toBe('Preview: 2 people chosen for interview');
+    const text = preview().textContent;
+    expect(
+      within(preview()).getByRole('img', { name: '68 backed by evidence · up to 84 if claims hold' }),
+    ).toBeTruthy();
+    expect(text).toContain('To investigate: Product judgement');
+    expect(text).toContain('To investigate: Retrieval and evaluation');
+    expect(text).toContain('Round 1, structured screen');
+    expect(text).toContain('Interviewer: You');
+    expect(text).toContain('Nobody is contacted');
+    expect(text).toContain('Nothing changes until you confirm.');
+    const reason = within(preview()).getByRole<HTMLTextAreaElement>('textbox', { name: 'Reason' });
+    expect(reason.value).toBe('First shortlist');
+    // Focus moves into the preview, so the keyboard path continues there.
+    expect(document.activeElement).toBe(reason);
+    expect(fake.choose).not.toHaveBeenCalled();
+
+    await userEvent.clear(reason);
+    expect(preview().textContent).toContain('Give a reason for this choice');
+    const confirm = within(preview()).getByRole<HTMLButtonElement>('button', { name: 'Choose 2 for interview' });
+    expect(confirm.disabled).toBe(true);
+    await userEvent.click(confirm);
+    expect(fake.choose).not.toHaveBeenCalled();
+
+    await userEvent.type(reason, 'First shortlist');
+    await userEvent.click(confirm);
+    expect(fake.choose).toHaveBeenCalledExactlyOnceWith({
+      jobId: JOB,
+      applicationIds: ['a1', 'a2'],
+      reason: 'First shortlist',
+    });
+    expect(fake.refresh).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('region', { name: /^Preview: / })).toBeNull();
+    expect(screen.getByText(/2 people chosen for interview\. They are on the Interviews page/)).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get('selected')).toBeNull();
+  });
+});
+
+describe('Scenario: Someone already chosen is not chosen twice (AIV-P1-114)', () => {
+  it('marks them "Already chosen for interview", counts only the others, and their row shows the next action', async () => {
+    const rows = nine.map((row) => (row.name === 'Sara Al Qahtani' ? { ...row, stage: 'interview' as const } : row));
+    choosable(rows);
+    const sara = bodyRows().find((row) => row.textContent.includes('Sara Al Qahtani'));
+    expect(sara?.textContent).toContain('Chosen for interview');
+    await pick('Sara Al Qahtani');
+    await pick('Arjun Menon');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(within(preview()).getByRole('heading').textContent).toBe('Preview: 1 person chosen for interview');
+    expect(preview().textContent).toContain('Sara Al QahtaniAlready chosen for interview');
+    expect(within(preview()).getByRole('button', { name: 'Choose 1 for interview' })).toBeTruthy();
+  });
+});
+
+describe('Scenario: Cancel changes nothing (AIV-P1-114)', () => {
+  it('closes the preview and sends nothing', async () => {
+    choosable();
+    await pick('Daniel Novak');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(preview().textContent).toContain('No evidence gap to investigate');
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('region', { name: /^Preview: / })).toBeNull();
+    expect(fake.choose).not.toHaveBeenCalled();
+  });
+});
+
+describe('Scenario: An application from another job is refused (AIV-P1-114)', () => {
+  it('says so, changes nothing and keeps the preview open', async () => {
+    fake.choose.mockResolvedValue({ ok: false, error: 'notOnJob' });
+    choosable();
+    await pick('Sara Al Qahtani');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Choose 1 for interview' }));
+    expect(within(preview()).getByRole('alert').textContent).toContain(
+      'This candidate has not applied to this job. Nothing was changed.',
+    );
+    expect(fake.refresh).not.toHaveBeenCalled();
   });
 });

@@ -36,6 +36,13 @@
       "when": 1795525059624,
       "tag": "0004_force_rls_import_batches",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795618982275,
+      "tag": "0005_blue_white_tiger",
+      "breakpoints": true
     }
   ]
 }

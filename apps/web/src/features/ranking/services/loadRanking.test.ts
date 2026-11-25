@@ -42,6 +42,7 @@ const ranked = {
   competencyCount: 6,
   confidence: 'High',
   missingCritical: ['c5'],
+  gaps: ['c5'],
   assessedAt: at,
 };
 const rubric = (id: string) => ({ id, competencies: [{ id: 'c5', name: 'Product judgement' }] });
@@ -87,7 +88,7 @@ describe('loadRanking', () => {
       jobId: JOB,
       awaitingRubric: true,
       rows: [{ id: 'a1', personId: 'p1', name: 'Sara Al Qahtani', stage: 'new', score: null }],
-      bulkActions: ['compare'],
+      bulkActions: ['compare', 'chooseForInterview'],
     });
     expect(fake.rubric).not.toHaveBeenCalled();
   });

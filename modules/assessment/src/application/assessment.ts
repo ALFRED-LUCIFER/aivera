@@ -2,6 +2,7 @@ import type { Tx } from '@credalent/db';
 import type { EvidenceItemView } from '@credalent/evidence';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
 import { assess, type Assessment, type Confidence, type EvidenceLink, type RubricInput } from '../domain/assess.ts';
+import { selectGaps } from '../domain/questions.ts';
 import { withInterviewChanges, type InterviewChange } from '../domain/scoreChange.ts';
 import type { InterviewChangeRow } from './scoreChange.ts';
 
@@ -50,6 +51,8 @@ export type RankingRow = {
   confidence: Confidence;
   /** As stored in `assessment.result`: mandatory competencies proven below the need, evidence to request. */
   missingCritical: string[];
+  /** The competencies a Round 1 interview should investigate (`selectGaps`), heaviest first (AIV-P1-114). */
+  gaps: string[];
   assessedAt: Date;
 };
 
@@ -231,6 +234,7 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
       competencyCount: r.competencyCount,
       confidence: r.confidence,
       missingCritical: r.missingCritical,
+      gaps: selectGaps(r).map((gap) => gap.competencyId),
       assessedAt: r.assessedAt,
     }));
 }

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -235,7 +235,7 @@ describe('PreviewConfirmCard', () => {
   });
 });
 
-function Bulk(props: Partial<PreviewConfirmProps>) {
+function Bulk(props: Partial<PreviewConfirmProps> & { level?: 2 | 3 }) {
   return (
     <PreviewBanner
       {...labels}
@@ -267,6 +267,14 @@ describe('PreviewBanner', () => {
     await userEvent.keyboard('{Escape}');
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('its title is an h3, or an h2 when the page has no h2 above it', () => {
+    render(<Bulk />);
+    expect(screen.getByRole('heading', { level: 3, name: 'Preview: evidence request to 3 people' })).toBeTruthy();
+    cleanup();
+    render(<Bulk level={2} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Preview: evidence request to 3 people' })).toBeTruthy();
   });
 
   // SAFETY: mutation check: removed e.stopPropagation() -> this test failed (Escape reached the document)

@@ -6,7 +6,7 @@ import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
 import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
-import { applicationUseCases, type Ports } from './application/applications.ts';
+import { applicationUseCases, type InterviewPorts, type Ports } from './application/applications.ts';
 import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
 import {
   applicationRecords,
@@ -17,7 +17,11 @@ import {
 } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
-/** `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. */
+/**
+ * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. `interviews` are what choosing for interview
+ * calls (AIV-P1-114): the interviews contract's `createInterview` and the assessment's gaps, as functions so the modules
+ * need no package edge; without them `chooseForInterview` throws.
+ */
 export function createIntake(
   workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace'>,
   candidates: Pick<CandidatesContract, 'findOrCreatePerson'>,
@@ -26,6 +30,7 @@ export function createIntake(
   displayNames: Ports['displayNames'],
   audit: Pick<AuditContract, 'record'>,
   now: () => Date = () => new Date(),
+  interviews?: InterviewPorts,
 ): IntakeContract {
   return applicationUseCases({
     storeFor: intakeStore,
@@ -46,6 +51,18 @@ export function createIntake(
           after: { jobId: batch.jobId, wordingVersion: batch.wordingVersion, cvs: batch.cvs },
         },
       ),
+    auditStageChanged: (ctx, { applicationId, jobId, from, to, interviewId, reason }) =>
+      audit.record(
+        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
+        {
+          action: 'application.stage_changed',
+          subject: { type: 'application', id: applicationId },
+          note: reason,
+          before: { stage: from },
+          after: { stage: to, jobId, interviewId },
+        },
+      ),
+    ...(interviews && { interviews }),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),
     displayNames,
     jobResource: async (ctx, jobId) => {

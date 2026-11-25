@@ -1,7 +1,9 @@
 import type { Tx } from '@credalent/db';
 import type { FindOrCreatePersonInput } from '@credalent/candidates';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
+import { z } from 'zod';
 import {
+  CHOICE_REASON_MAX,
   IntakeError,
   type Application,
   type ApplicationSource,
@@ -20,6 +22,8 @@ export type IntakeStore = {
   /** The batch of any source of the application (links added later inherit it), or null when none has one. */
   batchOfApplication(workspaceId: string, applicationId: string): Promise<string | null>;
   findApplication(workspaceId: string, applicationId: string): Promise<Application | null>;
+  /** Moves the stage only while it is still `from`, so two concurrent moves cannot both apply. */
+  moveStage(workspaceId: string, applicationId: string, from: Stage, to: Stage): Promise<boolean>;
   /** An arrival with its application's person, or null when the workspace has no such source. */
   findSource(
     workspaceId: string,
@@ -42,6 +46,30 @@ export type IntakeStore = {
   deleteAll(workspaceId: string): Promise<void>;
 };
 
+/** One person moved to `interview` with their Round 1 interview, as audited (`application.stage_changed`). */
+export type StageChange = {
+  applicationId: string;
+  jobId: string;
+  from: Stage;
+  to: Stage;
+  interviewId: string;
+  reason: string;
+};
+
+/**
+ * What choosing for interview calls (AIV-P1-114). Apps wire them, so intake needs neither the interviews nor the
+ * assessment package; without them `chooseForInterview` throws.
+ */
+export type InterviewPorts = {
+  /** The interviews contract's `createInterview`, in `ctx.tx`; it authorises `interview.schedule` on the job itself. */
+  createInterview(
+    ctx: WorkspaceContext,
+    input: { applicationId: string; round: 'structured_screen'; interviewerUserId: string; competencyIds: string[] },
+  ): Promise<{ interviewId: string }>;
+  /** The competencies to investigate: the gaps of the candidate's latest assessment for the job; none without one. */
+  interviewGaps(ctx: WorkspaceContext, personId: string, jobId: string): Promise<string[]>;
+};
+
 export type Ports = {
   storeFor(tx: Tx): IntakeStore;
   /** Writes `ApplicationReceived.v1` to the outbox in `tx`, so it commits only with the source (AIV-P0-014). */
@@ -49,6 +77,9 @@ export type Ports = {
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
   /** Appends `intake.batch_confirmed` to the audit log in `ctx.tx` (the audit module's `record`). */
   auditBatchConfirmed(ctx: WorkspaceContext, batch: ImportBatch): Promise<void>;
+  /** Appends `application.stage_changed` to the audit log in `ctx.tx`, with the reason as its note. */
+  auditStageChanged(ctx: WorkspaceContext, change: StageChange): Promise<void>;
+  interviews?: InterviewPorts;
   /** The candidates contract's `findOrCreatePerson`. */
   findOrCreatePerson(ctx: WorkspaceContext, input: FindOrCreatePersonInput): Promise<{ personId: string }>;
   /**
@@ -87,6 +118,17 @@ export type ReceiveBatchInput = {
   arrivals: Omit<ReceiveApplicationInput, 'jobId'>[];
 };
 
+/** Validated in the use case whatever the caller checked (AGENTS.md 3.7); the reason is checked after trimming. */
+export const chooseForInterviewInputSchema = z.strictObject({
+  jobId: z.uuid(),
+  applicationIds: z.array(z.uuid()).min(1).max(50),
+  reason: z.string(),
+});
+export type ChooseForInterviewInput = z.input<typeof chooseForInterviewInputSchema>;
+
+/** Who was chosen, each with their new interview, and who was skipped because they were already chosen. */
+export type ChooseForInterviewResult = { chosen: { applicationId: string; interviewId: string }[]; skipped: string[] };
+
 export type ReceiveApplicationResult = { applicationId: string; personId: string; sourceId: string; created: boolean };
 
 /** One row of a job's applicant list (AIV-P1-086). `displayName` is null only if the person record is gone. */
@@ -105,6 +147,8 @@ export function applicationUseCases({
   publishApplicationReceived,
   authorize,
   auditBatchConfirmed,
+  auditStageChanged,
+  interviews,
   findOrCreatePerson,
   displayNames,
   jobResource,
@@ -229,6 +273,57 @@ export function applicationUseCases({
       await store.insertSource(source);
       await publishApplicationReceived(ctx.tx, source);
       return { sourceId: source.id };
+    },
+
+    async chooseForInterview(ctx: WorkspaceContext, raw: ChooseForInterviewInput): Promise<ChooseForInterviewResult> {
+      if (!interviews) throw new Error('Choosing for interview is not wired in this app');
+      const input = chooseForInterviewInputSchema.parse(raw);
+      const reason = input.reason.trim();
+      if (!reason || reason.length > CHOICE_REASON_MAX) throw new IntakeError('reason_required');
+      // Another workspace's job, or one the member is not granted, is not found: nothing says it exists.
+      const job = await jobResource(ctx, input.jobId);
+      if (!job) throw new IntakeError('job_not_found');
+      // Admins and recruiters on the job; hiring owners and interviewers are refused (ForbiddenError, 403).
+      await authorize(ctx, 'interview.schedule', job);
+      const store = storeFor(ctx.tx);
+      const applications: Application[] = [];
+      for (const id of new Set(input.applicationIds)) {
+        const application = await store.findApplication(ctx.workspaceId, id);
+        // SAFETY: every application must be this job's; one from another job refuses the whole choice, writing nothing.
+        if (application?.jobId !== job.jobId) throw new IntakeError('not_on_job');
+        applications.push(application);
+      }
+      const changes: StageChange[] = [];
+      const skipped: string[] = [];
+      // shortcut: a `withdrawn` application can be chosen too; no command withdraws one yet. Refuse it here when one does.
+      for (const application of applications) {
+        // SAFETY: someone already chosen gets no second Round 1 interview. moveStage is conditional, so a concurrent
+        // choice of the same person (the only command that moves a stage) also lands here.
+        if (
+          application.stage === 'interview' ||
+          !(await store.moveStage(ctx.workspaceId, application.id, application.stage, 'interview'))
+        ) {
+          skipped.push(application.id);
+          continue;
+        }
+        const { interviewId } = await interviews.createInterview(ctx, {
+          applicationId: application.id,
+          round: 'structured_screen',
+          interviewerUserId: ctx.userId,
+          competencyIds: await interviews.interviewGaps(ctx, application.personId, job.jobId),
+        });
+        changes.push({
+          applicationId: application.id,
+          jobId: job.jobId,
+          from: application.stage,
+          to: 'interview',
+          interviewId,
+          reason,
+        });
+      }
+      // The last statements before commit (AGENTS.md 3.6). Nothing here contacts the candidate (AGENTS.md 1.5).
+      for (const change of changes) await auditStageChanged(ctx, change);
+      return { chosen: changes.map(({ applicationId, interviewId }) => ({ applicationId, interviewId })), skipped };
     },
 
     /** The demo seed's reset (AIV-P2-001): admins; refuses unless the workspace is flagged synthetic. */

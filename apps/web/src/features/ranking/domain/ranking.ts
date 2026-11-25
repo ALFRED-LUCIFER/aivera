@@ -3,8 +3,14 @@ import type { ApplicationListItem, Stage } from '@credalent/intake';
 import type { RowDuplicates } from './duplicates.ts';
 import type { BulkActionId } from './selection.ts';
 
-/** An assessed candidate's figures, with the missing critical competencies by name. */
-export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical'> & { missing: string[] };
+/**
+ * An assessed candidate's figures, with the missing critical competencies and the competencies a Round 1 interview
+ * should investigate (AIV-P1-114) by name.
+ */
+export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical' | 'gaps'> & {
+  missing: string[];
+  investigate: string[];
+};
 
 /**
  * A table row as the page hands it to the browser: plain data, keyed by the application id. The opaque person id is
@@ -43,6 +49,8 @@ export function toCandidateRows(
   duplicates: ReadonlyMap<string, RowDuplicates> = new Map(),
 ): CandidateRow[] {
   const scores = new Map(ranking.map((r) => [r.candidateId, r]));
+  // An id the rubric does not name is left out, never shown raw.
+  const names = (ids: string[]) => ids.flatMap((id) => competencyName(id) ?? []);
   const row = (a: ApplicationListItem): CandidateRow => {
     const dup = duplicates.get(a.personId);
     const base = {
@@ -54,9 +62,8 @@ export function toCandidateRows(
     };
     const r = scores.get(a.personId);
     if (!r) return { ...base, score: null };
-    const { candidateId: _, missingCritical, ...figures } = r;
-    const missing = missingCritical.flatMap((id) => competencyName(id) ?? []);
-    return { ...base, score: { ...figures, missing } };
+    const { candidateId: _, missingCritical, gaps, ...figures } = r;
+    return { ...base, score: { ...figures, missing: names(missingCritical), investigate: names(gaps) } };
   };
   const rows = applicants.map(row);
   const rank = (r: CandidateRow) => r.score?.rank ?? Number.MAX_SAFE_INTEGER;

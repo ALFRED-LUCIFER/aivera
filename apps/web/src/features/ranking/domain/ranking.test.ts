@@ -22,6 +22,7 @@ const ranked = (n: number, rank: number, backed: number, upTo: number, missing: 
   competencyCount: 6,
   confidence: 'High',
   missingCritical: missing,
+  gaps: missing,
   assessedAt: at,
 });
 const names: Record<string, string> = { c4: 'Retrieval and evaluation', c5: 'Product judgement' };
@@ -66,11 +67,13 @@ describe('toCandidateRows', () => {
         competencyCount: 6,
         confidence: 'High',
         missing: ['Product judgement'],
+        investigate: ['Product judgement'],
         assessedAt: at,
       },
     });
     // An id the rubric does not name is left out, never shown raw.
     expect(rows[2]?.score?.missing).toEqual(['Retrieval and evaluation']);
+    expect(rows[2]?.score?.investigate).toEqual(['Retrieval and evaluation']);
   });
 });
 
