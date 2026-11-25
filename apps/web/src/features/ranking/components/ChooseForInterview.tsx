@@ -11,7 +11,9 @@ import { ScoreCell } from './ScoreCell.tsx';
 // - the artboard's bar draws Compare, Request evidence, Message and Add to decision pack, not "Choose for interview"
 //   (the owner's decision on the ticket); the other actions join with their tickets (domain/selection.ts);
 // - its preview is an evidence request; this one lists each person with their backed score and claim range, what
-//   Round 1 should investigate (the evidence gaps, AIV-P1-113), the round, the interviewer and a required reason.
+//   Round 1 should investigate (the evidence gaps, AIV-P1-113), the round, the interviewer and a required reason;
+// - no "Not sent yet" chip: nothing is sent to anyone, so the consequence line says "Nobody is contacted" instead;
+// - its title is an h2 (PreviewBanner `level`), as the artboard draws it, so the page's heading order holds.
 
 // Stable, so focus moves into the preview once, when it opens.
 const focusOnMount = (element: HTMLElement | null) => element?.focus();
@@ -44,12 +46,15 @@ export function ChooseForInterview({ view }: { view: ChooseView }) {
               <span className="text-meta text-text-2">{t('alreadyChosen')}</span>
             ) : (
               <>
+                {/* Not assessed yet: the score cell says "Not yet scored" and "Not yet available"; no gaps are claimed. */}
                 <ScoreCell row={row} />
-                <span className="text-meta text-text-2">
-                  {row.score?.investigate.length
-                    ? t('investigate', { names: row.score.investigate.join('; ') })
-                    : t('noGaps')}
-                </span>
+                {row.score && (
+                  <span className="text-meta text-text-2">
+                    {row.score.investigate.length > 0
+                      ? t('investigate', { names: row.score.investigate.join('; ') })
+                      : t('noGaps')}
+                  </span>
+                )}
               </>
             )}
           </li>

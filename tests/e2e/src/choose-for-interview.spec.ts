@@ -198,7 +198,8 @@ for (const theme of themes) {
       table.getByRole('checkbox', { name: 'Select Omar Al Suwaidi' }).check({ timeout: 1000 }),
     ).toPass();
     await bar(page).getByRole('button', { name: 'Choose for interview' }).click();
-    await expect(preview(page)).toContainText('No evidence gap to investigate');
+    await expect(preview(page)).toContainText('Omar Al SuwaidiNot yet scored');
+    await expect(preview(page)).not.toContainText('No evidence gap');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
     await preview(page).getByRole('textbox', { name: 'Reason' }).fill('');

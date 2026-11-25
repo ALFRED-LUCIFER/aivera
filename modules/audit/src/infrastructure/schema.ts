@@ -38,7 +38,7 @@ export const entry = audit
       ),
       check(
         'entry_note_check',
-        sql`${t.action} not in ('score.changed', 'decision.recorded', 'ai_budget.changed', 'evidence.contradiction_resolved', 'evidence.level_changed') or coalesce(btrim(${t.note}), '') <> ''`,
+        sql`${t.action} not in ('score.changed', 'decision.recorded', 'ai_budget.changed', 'evidence.contradiction_resolved', 'evidence.level_changed', 'application.stage_changed') or coalesce(btrim(${t.note}), '') <> ''`,
       ),
       tenantPolicy('entry_tenant_isolation', t.workspaceId),
     ],

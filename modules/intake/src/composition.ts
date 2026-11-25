@@ -7,7 +7,7 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
 import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases, type InterviewPorts, type Ports } from './application/applications.ts';
-import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract } from './contracts/index.ts';
+import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract, type Stage } from './contracts/index.ts';
 import {
   applicationRecords,
   candidatesForJob,
@@ -93,6 +93,14 @@ export { applicationRecords };
  * returns before writing anything. Not authorised itself.
  */
 export { findApplication };
+
+/**
+ * The demo seed's interviews (AIV-P1-114): moves an application the seed gave an interview to `interview`, as
+ * `chooseForInterview` would, so the demo ranking never offers to choose them twice. Not authorised and not audited:
+ * tools/seed only, in a synthetic workspace's transaction.
+ */
+export const markInterviewStageForSeed = (tx: Tx, workspaceId: string, applicationId: string, from: Stage) =>
+  intakeStore(tx).moveStage(workspaceId, applicationId, from, 'interview');
 
 /** The worker's application reads (AIV-P1-027). */
 export const createApplicationReads = (): ApplicationReads => ({ jobsForCandidate, candidatesForJob });

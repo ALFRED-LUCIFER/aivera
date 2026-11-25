@@ -43,6 +43,7 @@ let w2: string;
 let seniorAi: string;
 let qa: string;
 let retrieval: string;
+let w2Job: string;
 const applications = new Map<string, string>();
 
 const urlFor = (role: string) =>
@@ -91,7 +92,10 @@ const auditsOf = (name: string) =>
     select actor_id as actor, occurred_at as at, note, before, after from audit.entry
     where action = 'application.stage_changed' and subject_type = 'application' and subject_id = ${idOf(name)}
     order by seq`);
-/** Every row of every module's outbox: anything that would reach a candidate leaves through one (AIV-P0-014). */
+/**
+ * Every row of every module's outbox and the send log: anything that would reach a candidate leaves through an outbox
+ * (AIV-P0-014) or is logged in `notifications.message`.
+ */
 const outboxRows = async () => {
   const tables = await admin.execute<{ schema: string }>(
     sql`select table_schema as schema from information_schema.tables where table_name = 'outbox'`,
@@ -101,7 +105,7 @@ const outboxRows = async () => {
     n += Number(
       (await admin.execute<{ n: string }>(sql`select count(*) as n from ${sql.raw(`"${schema}".outbox`)}`))[0]?.n,
     );
-  return n;
+  return n + Number((await admin.execute<{ n: string }>(sql`select count(*) as n from notifications.message`))[0]?.n);
 };
 
 beforeAll(async () => {
@@ -185,7 +189,7 @@ beforeAll(async () => {
   for (const name of ['Daniel Novak', 'Priya Nair', 'Omar Al Suwaidi', 'Maria Santos', 'Arjun Menon'])
     await apply(w1, seniorAi, name);
   await apply(w1, qa, 'Sara Al Qahtani', 'Sara on QA');
-  const w2Job = await newJob(w2, 'Senior AI Engineer');
+  w2Job = await newJob(w2, 'Senior AI Engineer');
   await apply(w2, w2Job, 'Layla Haddad', 'Layla in W2');
 });
 
@@ -202,6 +206,17 @@ describe('Migrations', () => {
         tx.execute(sql`update intake.application set stage = 'rejected' where id = ${idOf('Arjun Menon')}`),
       ),
     ).rejects.toMatchObject({ code: '23514', constraint: 'application_stage_check' });
+  });
+
+  // SAFETY: mutation check: left 'application.stage_changed' out of entry_note_check -> this test failed (the insert succeeded)
+  it('the database refuses a stage change audited with no reason', async () => {
+    await expect(
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`insert into audit.entry (id, workspace_id, occurred_at, actor_type, actor_id, action, subject_type,
+          subject_id, note) values (gen_random_uuid(), ${w1}, now(), 'user', ${ZAID}, 'application.stage_changed',
+          'application', ${idOf('Arjun Menon')}, ' ')`),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'entry_note_check' });
   });
 });
 
@@ -317,6 +332,14 @@ describe('Tenancy', () => {
   it("another workspace's application is not this job's, and RLS alone hides it with the repository filter removed", async () => {
     await expect(choose(ZAID, w1, seniorAi, ['Layla in W2'])).rejects.toMatchObject({ code: 'not_on_job' });
     expect(await stageOf('Layla in W2')).toBe('new');
+    // W2 has an interview of its own, so the unfiltered read below has something to hide.
+    const noGaps = intakeWith({
+      createInterview: (ctx, input) => interviews.createInterview(ctx, input),
+      interviewGaps: async () => [],
+    });
+    await choose(AYESHA, w2, w2Job, ['Layla in W2'], noGaps);
+    expect(await interviewsOf('Layla in W2')).toHaveLength(1);
+    // SAFETY: mutation check: ran the select below with RLS disabled on interviews.interview (`alter table ... no force row level security; disable row level security`) -> this test failed (W2's interview came back)
     // No WHERE clause, as the app role in W1: only W1's applications and interviews come back.
     const seen = await withWorkspace(app, w1, async (tx) => ({
       applications: await tx.execute<{ id: string }>(sql`select id from intake.application`),

@@ -30,8 +30,6 @@ export type { RankingExplanation } from '../application/explain.ts';
 export type { ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
 export type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
 export type { QuestionCitation, SuggestedGap, SuggestedQuestion } from '../domain/questions.ts';
-/** The competencies of a result a person should test live, heaviest first (AIV-P1-113); pure. */
-export { selectGaps } from '../domain/questions.ts';
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction, so
@@ -47,6 +45,12 @@ export interface AssessmentContract {
   assessCandidate(ctx: WorkspaceContext, input: AssessCandidateInput): Promise<StoredAssessment>;
   /** The latest assessment of the candidate for the job, or null. Admins and recruiters; hiring owners and interviewers on a granted job the candidate applied to. */
   getLatestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<StoredAssessment | null>;
+  /**
+   * The competency ids a Round 1 interview should investigate (AIV-P1-114): the gaps of the candidate's latest result
+   * on the job's approved rubric version (`selectGaps`: proven below the need, or resting on a claim), heaviest first,
+   * at most 4; none without such a result. Writes nothing. Access as `getLatestAssessment`.
+   */
+  interviewGaps(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<string[]>;
   /**
    * The job's ranking (AIV-P1-031): `awaiting_rubric` until a rubric version is approved; then each candidate's latest
    * result on the approved version, by backed score, then upper bound, then earliest first assessment, ranked from 1.

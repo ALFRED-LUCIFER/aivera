@@ -177,7 +177,13 @@ export function RankingTable({
           previewNote={t('bulk.previewNote')}
           actions={[
             ...(choose
-              ? [{ id: 'choose', label: t('bulk.choose'), preview: (ids: readonly string[]) => ({ choose: ids }) }]
+              ? [
+                  {
+                    id: 'chooseForInterview',
+                    label: t('bulk.choose'),
+                    preview: (ids: readonly string[]) => ({ choose: ids }),
+                  },
+                ]
               : []),
             ...(selection.compare
               ? [

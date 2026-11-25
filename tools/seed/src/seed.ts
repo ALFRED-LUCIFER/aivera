@@ -4,7 +4,7 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import type { Db } from '@credalent/db/client';
 import { createEvidence } from '@credalent/evidence/composition';
 import { createIdentity } from '@credalent/identity/composition';
-import { createIntake, findApplication } from '@credalent/intake/composition';
+import { createIntake, findApplication, markInterviewStageForSeed } from '@credalent/intake/composition';
 import { createInterviews } from '@credalent/interviews/composition';
 import type { Competency } from '@credalent/jobs';
 import { createApprovedRubricReads, createCatalogueReads, createJobs } from '@credalent/jobs/composition';
@@ -232,10 +232,6 @@ export async function seedDemo(
       if (!interviewerUserId) throw new Error(`No hiring owner ${i.interviewer}`);
       const applied = (await intake.listApplicationsForJob(ctx, jobId)).find((a) => a.displayName === i.candidate);
       // No batch: the worker never reads the arrival, so the demo's applications cost no AI call.
-      // shortcut: the application stays at stage `new` though its interview is under way, so the demo ranking still
-      // offers to choose them, which would add an unscheduled Round 1. Intake moves a stage only with the interview
-      // `chooseForInterview` creates (AIV-P1-114), which has no time; seed through it once interviews can be scheduled
-      // (AIV-P2-007).
       const applicationId =
         applied?.applicationId ??
         (await intake.receiveApplication(ctx, { jobId, person: personOf(candidate), source: 'linkedin' }))
@@ -253,6 +249,8 @@ export async function seedDemo(
         }),
       });
       if (i.started) await interviews.startInterview(ctx, interviewId);
+      // As choosing for interview would (AIV-P1-114), so the demo ranking never offers to choose them twice.
+      await markInterviewStageForSeed(ctx.tx, ctx.workspaceId, applicationId, applied?.stage ?? 'new');
     }
   });
   return workspaceId;

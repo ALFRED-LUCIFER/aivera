@@ -260,6 +260,15 @@ export function assessmentUseCases(ports: Ports) {
       return storeFor(ctx.tx).latest(ctx.workspaceId, candidateId, jobId);
     },
 
+    async interviewGaps(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<string[]> {
+      await authorize(ctx, 'candidate.view', (await candidateJob(ctx, candidateId, jobId)) ?? undefined);
+      const job = await rankingJob(ctx, jobId);
+      const latest = await storeFor(ctx.tx).latest(ctx.workspaceId, candidateId, jobId);
+      // Only a result on the approved version: another version's competencies are not the interview's to test.
+      if (!latest || !job || latest.rubricVersionId !== job.approvedVersionId) return [];
+      return selectGaps(latest).map((gap) => gap.competencyId);
+    },
+
     // shortcut: no paging; a pilot job has tens of applicants. Page with the ranked table once a job passes a few hundred.
     async listRanking(ctx: WorkspaceContext, jobId: string): Promise<JobRanking> {
       const job = await rankingJob(ctx, jobId);

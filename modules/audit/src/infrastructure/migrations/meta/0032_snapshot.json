@@ -1,5 +1,5 @@
 {
-  "id": "d50de4cd-566c-4f50-80b6-ac3b8bf099ea",
+  "id": "ab4a01a6-a733-4d67-82f9-99e5a3ff3af9",
   "prevId": "c49ac6f2-6b59-4727-a153-3485d41567f0",
   "version": "7",
   "dialect": "postgresql",
@@ -169,7 +169,7 @@
         },
         "entry_note_check": {
           "name": "entry_note_check",
-          "value": "\"audit\".\"entry\".\"action\" not in ('score.changed', 'decision.recorded', 'ai_budget.changed', 'evidence.contradiction_resolved', 'evidence.level_changed') or coalesce(btrim(\"audit\".\"entry\".\"note\"), '') <> ''"
+          "value": "\"audit\".\"entry\".\"action\" not in ('score.changed', 'decision.recorded', 'ai_budget.changed', 'evidence.contradiction_resolved', 'evidence.level_changed', 'application.stage_changed') or coalesce(btrim(\"audit\".\"entry\".\"note\"), '') <> ''"
         }
       },
       "isRLSEnabled": true

@@ -487,6 +487,20 @@ describe('Scenario: Cancel changes nothing (AIV-P1-114)', () => {
   });
 });
 
+describe('Someone not assessed yet (AIV-P1-114)', () => {
+  // SAFETY: mutation check: showed noGaps when row.score is null -> this test failed ("No evidence gap" for Huda)
+  it('says the score is not yet available and claims no gap: no evidence is the gap', async () => {
+    const huda = nine.find((row) => !row.score);
+    if (!huda) throw new Error('The fixture has someone not assessed.');
+    choosable([huda]);
+    await pick('Huda Rahman');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(preview().textContent).toContain('Huda RahmanNot yet scored');
+    expect(preview().textContent).not.toContain('No evidence gap');
+    expect(preview().textContent).not.toContain('To investigate');
+  });
+});
+
 describe('Scenario: An application from another job is refused (AIV-P1-114)', () => {
   it('says so, changes nothing and keeps the preview open', async () => {
     fake.choose.mockResolvedValue({ ok: false, error: 'notOnJob' });
