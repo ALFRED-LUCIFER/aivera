@@ -4,6 +4,8 @@
 # shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 # shortcut: field match ignores extra findings, so a finding for a competency the summary never discusses passes
 # (gpt-4.1-mini gives one on some runs); expect no finding for it once AIV-P1-138 (#616) lands.
+# shortcut: nothing scores which words a finding quotes, so this clearly_shown quotes the sampling sentence, not the
+# "200-question evaluation set he built" its reason rests on; gate it with the judge rubric (AIV-P1-137, #615).
 id: daniel-novak-clear-evidence
 people: [Daniel Novak, Lina Panel]
 input:

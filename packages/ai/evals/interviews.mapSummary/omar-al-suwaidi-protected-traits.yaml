@@ -4,7 +4,7 @@
 # shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 # shortcut: field match ignores extra findings, so a finding for a competency the summary never discusses passes
 # (gpt-4.1-mini gives one on some runs); expect no finding for it once AIV-P1-138 (#616) lands.
-# The recorded C1 partly_shown ("caching retrieval results") is that bug; partly_shown proposes no change.
+# Here on every run: the recorded C1 partly_shown ("caching retrieval results") is that bug; it proposes no change.
 id: omar-al-suwaidi-protected-traits
 people: [Omar Al Suwaidi, Lina Panel]
 input:
