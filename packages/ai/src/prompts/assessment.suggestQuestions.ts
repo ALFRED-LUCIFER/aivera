@@ -7,7 +7,7 @@ import { cited, sourceLabel, type Source } from '../citations.ts';
 // a person: they change no score, stage or rank (AGENTS.md 1.5). The interview guide (AIV-P2-003) reuses this prompt.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every question set. */
-export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@2';
+export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@3';
 
 export const MAX_QUESTION_WORDS = 30;
 export const MAX_NOTE_WORDS = 25;
@@ -22,9 +22,11 @@ export const SUGGEST_QUESTIONS_SYSTEM = [
   '"Describe" or "Tell me about", never one a yes or a no answers, specific to this job, its domain pack and the cited',
   'evidence (ask how a stated figure was measured, on what, and what the candidate did themselves), never a generic',
   `interview question; strongAnswer, at most ${MAX_NOTE_WORDS} words on what a strong answer shows; weakAnswer, at most ${MAX_NOTE_WORDS} words on what`,
-  "a weak answer shows; citations, quoting the words of one of that gap's own sources the question tests.",
-  'A source listed as notes says what the evidence does not show and what would change it: use it to aim a question,',
-  'and cite the evidence or the rubric line the question tests, never the notes.',
+  'a weak answer shows; citations, quoting the words of a source listed under that gap\'s "Cite only" that the',
+  'question tests.',
+  'A source listed under "Notes to aim the questions" says what the evidence does not show and what would change it:',
+  'use it to aim a question, but never cite it, not even beside another citation; quote the evidence the question',
+  'tests instead.',
   'A quote never contains a placeholder ([CANDIDATE], [EMAIL_1], [PHONE_1]). Address the candidate as "you" and never',
   'by name.',
   'Give questions only for the listed gaps, and none for any other competency.',
@@ -139,6 +141,12 @@ export const suggestQuestionsRequest = (
   sources: readonly Source[],
 ) => {
   const label = (id: string) => sourceLabel(sources.findIndex((s) => s.id === id));
+  const list = (listed: QuestionGapInput['sources']) => listed.map((s) => `${label(s.id)} (${s.evidence})`).join(', ');
+  // The notes are listed apart from what may be cited: listed beside the evidence, gpt-4.1-mini cited them live.
+  const notesOf = (g: QuestionGapInput) => {
+    const notes = g.sources.filter((s) => s.notes);
+    return notes.length ? ` Notes to aim the questions, never cited: ${notes.map((s) => label(s.id)).join(', ')}.` : '';
+  };
   return {
     task: 'assessment.suggestQuestions' as const,
     promptVersion: SUGGEST_QUESTIONS_VERSION,
@@ -150,7 +158,7 @@ export const suggestQuestionsRequest = (
       'Gaps:',
       ...gaps.map(
         (g) =>
-          `- ${g.id}: ${g.name}. Meaning: ${g.meaning} Level the job needs: ${g.levelNeeded} of 5; shown by inspected work: ${g.provenLevel}; claimed: ${g.claimedLevel}. Sources: ${g.sources.map((s) => `${label(s.id)} (${s.evidence})`).join(', ')}.`,
+          `- ${g.id}: ${g.name}. Meaning: ${g.meaning} Level the job needs: ${g.levelNeeded} of 5; shown by inspected work: ${g.provenLevel}; claimed: ${g.claimedLevel}. Cite only: ${list(g.sources.filter((s) => !s.notes))}.${notesOf(g)}`,
       ),
     ].join('\n'),
     schema: suggestQuestionsSchema(

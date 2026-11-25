@@ -1,8 +1,8 @@
 # Rana Khoury (AIV-P1-113), domain grounding: the job's rubric uses the domain pack "Payments and fintech", so every
 # question is about card authorisation, declines or conversion in a payments setting.
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task assessment.suggestQuestions --live`
-# and add a judge rubric ("every question is about card authorisation, declines or conversion") with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
+# shortcut: no judge rubric ("every question is about card authorisation, declines or conversion") yet, so only
+# exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: rana-khoury-payments
 people: [Rana Khoury]
 input:
@@ -33,30 +33,36 @@ expected:
   prompt:
     forbidden: [Rana Khoury]
 recorded:
-  promptVersion: assessment.suggestQuestions@2
-  promptHash: d744b1894fe2
+  promptVersion: assessment.suggestQuestions@3
+  promptHash: f5bd739a1d6a
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: How was the 82% authorisation rate measured, and across which card schemes and issuers?
-            strongAnswer: Defines the rate, the attempts counted, and splits it by scheme, issuer or market.
-            weakAnswer: Quotes the rate without saying which payments it covers.
-            claim: true
+          - text: Walk me through how you measured the increase in card authorisation rate from 82% to 91% across the three Gulf markets.
+            strongAnswer: Explains specific metrics, data sources, and timeframe used to measure authorisation rates, showing hands-on involvement.
+            weakAnswer: Gives vague or generic statements without concrete measurement details or personal contribution.
             citations:
               - sourceId: S1
-                quote: lifted authorisation rate from 82% to 91%
-          - text: Which decline reasons did you remove to reach 91%, and how did you choose them?
-            strongAnswer: Names decline codes, retry or routing changes, and the data behind the choice.
-            weakAnswer: Speaks of fewer declines with no reason codes or changes named.
+                quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+                start: 12
+                end: 97
             claim: true
+          - text: Describe what specific actions you took to improve the card authorisation rate in these markets.
+            strongAnswer: Details personal initiatives and strategies implemented to achieve the increase in authorisation rate.
+            weakAnswer: Mentions team efforts or general improvements without clarifying own role or actions.
             citations:
               - sourceId: S1
-                quote: from 82% to 91%
-          - text: What did the higher authorisation rate do to checkout conversion and fraud in those three markets?
-            strongAnswer: Gives conversion and fraud or chargeback figures beside the rate, per market.
-            weakAnswer: Treats authorisation rate as the only outcome that mattered.
+                quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+                start: 12
+                end: 97
             claim: true
+          - text: What challenges did you face in improving checkout conversion rates, and how did you address them?
+            strongAnswer: Identifies concrete challenges and explains problem-solving approaches directly related to checkout conversion.
+            weakAnswer: Fails to specify challenges or provides superficial answers unrelated to checkout conversion.
             citations:
               - sourceId: S1
-                quote: for card payments across three Gulf markets
+                quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+                start: 12
+                end: 97
+            claim: true

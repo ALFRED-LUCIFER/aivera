@@ -1,8 +1,7 @@
 # Sara Al Qahtani (AIV-P1-113): two open claims, the 40% cost cut and the Gulf Arabic evaluation set. The cost gap also
 # has submitted work, so a question may cite either of its two sources; no question cites another gap's source.
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task assessment.suggestQuestions --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: sara-al-qahtani-two-open-claims
 people: [Sara Al Qahtani]
 input:
@@ -52,39 +51,47 @@ expected:
   prompt:
     forbidden: [Sara Al Qahtani]
 recorded:
-  promptVersion: assessment.suggestQuestions@2
-  promptHash: b0e7f158b6b4
+  promptVersion: assessment.suggestQuestions@3
+  promptHash: c475518750c8
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: How did you measure the 40% cut in cost per request, and over which traffic?
-            strongAnswer: Gives the cost before and after, the period, and what was held constant.
-            weakAnswer: States the percentage with no baseline or period.
-            claim: true
+          - text: How did you measure the 40% cost reduction per request on the merchant assistant, and what was your specific role in achieving it?
+            strongAnswer: Details clear measurement methods and personal contributions to cost reduction with concrete data.
+            weakAnswer: Vague or no details on measurement or personal involvement in cost reduction.
             citations:
               - sourceId: S1
-                quote: Cut cost per request by 40%
-          - text: Which change saved the most on the merchant assistant, and what did it cost in reliability?
-            strongAnswer: Names the change, its share of the saving and the reliability trade-off they watched.
-            weakAnswer: Lists general optimisations without ranking them or naming a trade-off.
+                quote: Cut cost per request by 40% on the merchant assistant
+                start: 0
+                end: 53
             claim: true
+          - text: What reliability or latency metrics did you track during the cost reduction work, and how did you ensure they met required standards?
+            strongAnswer: Explains specific latency or reliability metrics monitored and actions taken to maintain standards.
+            weakAnswer: No mention of latency or reliability metrics or how they were managed.
             citations:
-              - sourceId: S1
-                quote: on the merchant assistant
+              - sourceId: S2
+                quote: 'fastapi-ml-serve: contract tests on every endpoint'
+                start: 0
+                end: 50
+            claim: false
       - competencyId: C2
         questions:
-          - text: Walk me through the Gulf Arabic evaluation set, how it was built and what it changed.
-            strongAnswer: Explains the sources, dialect coverage, labelling and a decision the set changed.
-            weakAnswer: Describes the idea of the set but not how items were chosen or used.
-            claim: false
+          - text: Walk me through how you built the Gulf Arabic evaluation set, including data sources, annotation process, and validation methods.
+            strongAnswer: Describes detailed data collection, annotation, and validation steps for the evaluation set.
+            weakAnswer: No concrete details on building or validating the evaluation set.
             citations:
               - sourceId: S3
-                quote: built a Gulf Arabic evaluation set
-          - text: What did the evaluation set show that an English set had missed?
-            strongAnswer: Gives a concrete failure the set exposed, with an example.
-            weakAnswer: Says Arabic is harder without an example from the set.
+                quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
+                start: 0
+                end: 70
             claim: false
+          - text: Describe the models you developed for Arabic or bilingual NLP and how you evaluated their performance on your datasets.
+            strongAnswer: Details model architectures, training, and evaluation results on Arabic or bilingual datasets.
+            weakAnswer: No specifics on models or evaluation methods used for Arabic NLP.
             citations:
               - sourceId: S3
-                quote: Gulf Arabic evaluation set
+                quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
+                start: 0
+                end: 70
+            claim: false

@@ -163,6 +163,8 @@ export const taskThresholds: Record<
   // AIV-P1-115: every finding quotes the summary word for word (citation validity, a hard gate) and names only a
   // listed competency (the expected ids, exact, and the product schema, which eval.test.ts parses every recorded answer
   // with); no finding rests on a sentence about the person (each case's safety words, a hard gate, and the schema).
+  // shortcut: field match only checks the expected values are present, so an extra finding for a competency the
+  // summary never discusses passes; gate "no finding" once AIV-P1-138 (#616) lands.
   'interviews.mapSummary': { statements: ['findings[*]'], fieldMatch: 1, judge: 1 },
 };
 

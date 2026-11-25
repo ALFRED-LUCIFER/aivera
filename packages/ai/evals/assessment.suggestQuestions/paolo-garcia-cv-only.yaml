@@ -1,8 +1,7 @@
 # Paolo Garcia (AIV-P1-113): CV only, so every competency is a gap; the four heaviest are listed. "Data pipelines" has
 # no evidence item at all: its rubric line is its source (S4), so its questions still cite what the model was given.
-# The recorded answer was written by hand with the ticket, on the product schema, not taken from a model: no live
-# deployment was reachable when it was built. Re-record with `pnpm ai:eval --task assessment.suggestQuestions --live`
-# and add a judge rubric with its verdict then.
+# The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
+# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: paolo-garcia-cv-only
 people: [Paolo Garcia]
 input:
@@ -72,71 +71,87 @@ expected:
   prompt:
     forbidden: [Paolo Garcia]
 recorded:
-  promptVersion: assessment.suggestQuestions@2
-  promptHash: b88e9062eddb
+  promptVersion: assessment.suggestQuestions@3
+  promptHash: 42bc836caf87
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: How did you build the retrieval benchmark, and which queries did you put in it?
-            strongAnswer: Explains where the queries came from, how relevance was judged and the metric used.
-            weakAnswer: Names a metric but not the queries or how relevance was decided.
-            claim: true
+          - text: Walk me through the retrieval benchmark you built for the internal search tool and how you measured its effectiveness.
+            strongAnswer: Explains specific metrics used, data sets evaluated, and how results influenced system improvements.
+            weakAnswer: Gives vague or generic descriptions without concrete metrics or impact on decisions.
             citations:
               - sourceId: S1
-                quote: Built a retrieval benchmark
-          - text: What changed in the internal search tool because of the benchmark?
-            strongAnswer: Points to a ranking or indexing change the benchmark justified, with the result.
-            weakAnswer: Says the benchmark existed but nothing was decided from it.
+                quote: Built a retrieval benchmark for the internal search tool
+                start: 0
+                end: 56
             claim: true
+          - text: Describe how the retrieval metrics you developed changed any design or operational decisions in your project.
+            strongAnswer: Details specific decisions changed based on metric results and their role in those changes.
+            weakAnswer: Cannot specify any decisions influenced or their personal involvement.
             citations:
               - sourceId: S1
-                quote: for the internal search tool
+                quote: Built a retrieval benchmark for the internal search tool
+                start: 0
+                end: 56
+            claim: true
       - competencyId: C2
         questions:
-          - text: What was your own part in the help centre chatbot, from design to release?
-            strongAnswer: Separates their work from the team's and names what they built and shipped.
-            weakAnswer: Describes the product but not what they did themselves.
-            claim: true
+          - text: Tell me about the chatbot you shipped for the customer help centre and your specific contributions to its deployment.
+            strongAnswer: Describes their role in development, deployment, and user interaction monitoring.
+            weakAnswer: Speaks only generally about the chatbot without clarifying personal responsibilities.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
-          - text: How did you know the chatbot was answering customers correctly once it was live?
-            strongAnswer: Describes monitoring, a review of answers or an escalation path, with numbers.
-            weakAnswer: Assumes it worked because there were no complaints.
+                start: 13
+                end: 59
             claim: true
+          - text: How did you ensure the chatbot met real user needs after deployment?
+            strongAnswer: Explains user feedback collection, system adjustments, and performance monitoring.
+            weakAnswer: Does not describe any post-deployment user engagement or system tuning.
             citations:
               - sourceId: S2
-                quote: chatbot for the customer help centre
+                quote: shipped a chatbot for the customer help centre
+                start: 13
+                end: 59
+            claim: true
       - competencyId: C3
         questions:
-          - text: Which Python APIs did you maintain, and what did you change in them yourself?
-            strongAnswer: Names the services, a change they made and how it was tested.
-            weakAnswer: Lists frameworks without a service or a change.
-            claim: true
+          - text: Describe the Python APIs you maintained for the data team and your approach to testing them.
+            strongAnswer: Details the APIs' functionality, testing frameworks used, and maintenance practices.
+            weakAnswer: Cannot describe testing methods or specifics of the APIs maintained.
             citations:
               - sourceId: S3
-                quote: Maintained Python APIs
-          - text: How were those APIs tested and released for the data team?
-            strongAnswer: Describes the tests, the release steps and an incident they handled.
-            weakAnswer: Says testing was another team's job.
+                quote: Maintained Python APIs for the data team
+                start: 0
+                end: 40
             claim: true
+          - text: Walk me through a challenge you faced maintaining these Python services and how you resolved it.
+            strongAnswer: Provides a concrete example showing problem-solving and service reliability focus.
+            weakAnswer: Gives a vague or no example of maintenance challenges or resolutions.
             citations:
               - sourceId: S3
-                quote: for the data team
+                quote: Maintained Python APIs for the data team
+                start: 0
+                end: 40
+            claim: true
       - competencyId: C4
         questions:
-          - text: Tell me about a data pipeline you built and how you kept it running.
-            strongAnswer: Describes one pipeline, its schedule, its failures and how they were caught.
-            weakAnswer: Speaks of pipelines in general with no example of their own.
-            claim: false
+          - text: What experience do you have building and maintaining data pipelines in production environments?
+            strongAnswer: Describes specific pipelines built, technologies used, and maintenance strategies.
+            weakAnswer: Cannot provide concrete examples or details about pipeline construction or upkeep.
             citations:
               - sourceId: S4
-                quote: Pipelines they built and kept running
-          - text: What broke most often in a pipeline you ran, and what did you change?
-            strongAnswer: Gives a real failure, its cause and the fix they made.
-            weakAnswer: Cannot recall a failure or a change.
+                quote: 'Data pipelines: Pipelines they built and kept running'
+                start: 0
+                end: 53
             claim: false
+          - text: How did you monitor and ensure the reliability of data pipelines you worked on?
+            strongAnswer: Explains monitoring tools, alerting mechanisms, and incident responses.
+            weakAnswer: Does not describe any monitoring or reliability practices for data pipelines.
             citations:
               - sourceId: S4
-                quote: kept running
+                quote: 'Data pipelines: Pipelines they built and kept running'
+                start: 0
+                end: 53
+            claim: false
