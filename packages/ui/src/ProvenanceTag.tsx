@@ -14,7 +14,8 @@ const looks: Record<Provenance, { chip: string; icon: ReactNode }> = {
     chip: 'border-border bg-surface-subtle text-text-2',
     icon: <path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14" />,
   },
-  // Neutral like submitted work: a speech bubble, someone's word.
+  // Neutral like submitted work: a speech bubble, someone's word. Deviation (AIV-P1-115): the Foundations artboard has no
+  // chip for this look; it reuses the submitted chip's tokens with its own icon.
   interviewer: {
     chip: 'border-border bg-surface-subtle text-text-2',
     icon: <path d="M4 5h16v11H9l-5 4z" />,

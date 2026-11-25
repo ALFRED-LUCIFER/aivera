@@ -199,11 +199,14 @@ describe('the panel domain', () => {
       'c-retrieval',
     ]);
   });
-  // SAFETY: mutation check: `reasonDraft` returned the reason as given -> this test failed (the placeholders stayed)
+  // SAFETY: mutation check: `reasonDraft` returned the reason as given -> this test failed (the placeholders stayed);
+  // `REMOVED` left out of its pattern -> this test failed ("[REMOVED]" stayed)
   it("prefills the model's reason without the redaction's placeholders, so none reaches the audit note", () => {
     expect(reasonDraft('[CANDIDATE] built the set [PERSON] asked about; reach him at [EMAIL_1].')).toBe(
       'built the set asked about; reach him at.',
     );
+    // A protected trait's labelled field the redaction removed.
+    expect(reasonDraft('Built the set [REMOVED] and graded it.')).toBe('Built the set and graded it.');
     expect([reasonDraft(null), reasonDraft('Describes the set he built.')]).toEqual([
       '',
       'Describes the set he built.',

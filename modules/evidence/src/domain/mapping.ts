@@ -174,7 +174,8 @@ export function settleProvenance<
     if (l.provenance !== 'submitted') return l;
     const kind = kinds.get(l.sourceId);
     // SAFETY: an interviewer's note or summary is one person's word about the candidate: other sources on the
-    // competency never make it "Independently corroborated" (AGENTS.md 1.6, AIV-P1-115).
+    // competency never make it "Independently corroborated" (AGENTS.md 1.6, AIV-P1-115). A backstop: the mapping run
+    // already keeps linked interview notes out.
     if (corroborated.has(l.competencyId) && kind !== 'interview_note') return { ...l, provenance: 'corroborated' };
     if (!kind || kind === 'repository' || kind === 'cv' || !KINDS[kind].ownAccount) return l;
     return { ...l, provenance: 'claim', strength: lowest(l.strength, 'supporting'), limit: OWN_ACCOUNT_LIMIT };

@@ -141,7 +141,19 @@ function setup(interview = INTERVIEW) {
   const submit = async (text = TEXT) =>
     (await useCases.submitMeetingSummary(ctxAs('recruiter'), interview.id, text)).summaryId;
   const analyse = (summaryId: string) => analyseSummary(analysis, {} as never, 'w1', summaryId);
-  return { useCases, analysis, decisions, publishSubmitted, summaries, proposals, calls, submit, analyse, clock };
+  return {
+    useCases,
+    analysis,
+    decisions,
+    publishSubmitted,
+    summaries,
+    proposals,
+    calls,
+    submit,
+    analyse,
+    clock,
+    store,
+  };
 }
 
 describe('Scenario: Analysing a summary proposes a change and applies nothing', () => {
@@ -267,6 +279,24 @@ describe('Scenario Outline: Input limits and failures', () => {
     // Its message, should it run after all, stores nothing for the stalled summary.
     await s.analyse(stalled);
     expect(s.proposals.get(stalled)).toBeUndefined();
+  });
+
+  // SAFETY: mutation check: ignored the result of ending the stalled analysis -> this test failed (a second summary stored)
+  it('a late analysis that lands while a new summary is pasted keeps its proposals, and the new summary waits', async () => {
+    const s = setup();
+    const late = await s.submit();
+    s.clock.now = new Date(NOW.getTime() + 15 * 60_000 + 1);
+    const { latest } = s.store;
+    // The submit reads the stalled summary; the late analysis commits its proposals before the submit ends it.
+    s.store.latest = async (...args) => {
+      const read = await latest(...args);
+      const copy = read && { ...read };
+      await s.analyse(late);
+      return copy;
+    };
+    await expect(s.submit()).rejects.toMatchObject({ code: 'summary_pending' });
+    expect(s.summaries.map((x) => [x.id, x.status])).toEqual([[late, 'proposed']]);
+    expect(s.proposals.get(late)).toHaveLength(2);
   });
 });
 

@@ -38,15 +38,21 @@ const words = (text: string) => text.trim().split(/\s+/).length;
 // Phrases about the person, never a work word alone: "health-check endpoint", "model family", "accent colour tokens"
 // and a healthcare job's competencies pass.
 // shortcut: a trait said in other words passes (the prompt, the eval's forbidden words and the person who confirms each
-// change are the backstop), and a work sentence that matches a phrase ("traversed the nodes and their children")
-// rejects the whole answer, so the summary cannot be analysed. Widen or narrow it, or drop only that finding, if an eval
-// or the pilot shows either.
+// change are the backstop), and a work sentence that matches a phrase ("traversed the nodes and their children", "a
+// 10-year-old monolith") rejects the whole answer, so the summary cannot be analysed. Widen or narrow it, or drop only
+// that finding, if an eval or the pilot shows either.
 const OFF_RUBRIC = new RegExp(
   [
     String.raw`\b(?:his|her|their)\s+(?:young\s+|own\s+)?(?:family|health|illness|children|kids|wife|husband|nerves|accent|age|nationality|religion|faith)\b`,
-    String.raw`\b(?:seemed|seems|was|were|looked|appeared|sounded|felt)\s+(?:very\s+|quite\s+|a\s+bit\s+|rather\s+|visibly\s+)?(?:nervous|shy|anxious)\b`,
+    String.raw`\b(?:seemed|seems|is|are|was|were|looked|looks|appeared|appears|sounded|sounds|felt|got|became)\s+(?:very\s+|quite\s+|a\s+bit\s+|rather\s+|visibly\s+)?(?:nervous|shy|anxious)\b`,
+    String.raw`\[CANDIDATE\][\s,]+(?:\w+\s+)?(?:nervous|shy|anxious)\b`,
     String.raw`\b(?:pregnan\w*|married|nationality|religio\w*)\b`,
-    String.raw`\b(?:he|she|they)\s+(?:is|are|was|were)\s+\d+\s+years?\s+old\b`,
+    String.raw`\b\d+[ -]years?[ -]old\b`,
+    // "[CANDIDATE] is 52", never "he was 2 weeks in" or "is 2.5x faster".
+    String.raw`(?:\b(?:he|she)|\[CANDIDATE\])\s+(?:is|was)\s+\d+(?!\d|\.\d|\s*[a-z%])`,
+    String.raw`\bha(?:s|ve)\s+(?:\w+\s+){0,2}kids\b`,
+    String.raw`(?:\b(?:he|she|they)|\[CANDIDATE\])\s+ha(?:s|ve)\s+(?:\w+\s+){0,2}children\b`,
+    String.raw`\bin\s+(?:poor|bad|ill|failing)\s+health\b`,
   ].join('|'),
   'i',
 );
