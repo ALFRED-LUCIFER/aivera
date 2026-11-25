@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@5
-  promptHash: 10e0a84fdf73
+  promptVersion: assessment.explainRanking@7
+  promptHash: cf9256198c27
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Performance engineering, {checkedWeight} of the weight.'
@@ -42,4 +42,4 @@ recorded:
             quote: 'latency-budget: authored 150 of 170 commits, cutting p95 latency in the benchmark suite'
   judge:
     pass: true
-    reason: Every statement is supported by a direct quote from its cited source, uses only what the source shows, and does not include any unsupported numbers, recommendations, or candidate names.
+    reason: Every statement says only what the source it cites shows, placeholders stand for lines in the facts source, and no statement holds a percentage or number word not quoted from the source; no statement recommends an action or names the candidate.

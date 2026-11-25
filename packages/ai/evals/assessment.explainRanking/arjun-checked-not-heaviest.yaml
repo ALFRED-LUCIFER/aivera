@@ -24,22 +24,22 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@5
-  promptHash: 7f7b3249849f
+  promptVersion: assessment.explainRanking@7
+  promptHash: cfc67222e8e1
   output:
     statements:
-      - text: Independently checked work backs the competencies Queue reliability and Incident response, covering {checkedWeight} of the weight.
+      - text: 'Independently checked work backs these competencies: Queue reliability and Incident response, {checkedWeight} of the weight.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs these competencies: Queue reliability and Incident response, {checkedWeight} of the weight'
-      - text: The candidate authored 301 of 355 commits in the job-queue repository, including the retry scheduler.
-        citations:
-          - sourceId: S2
-            quote: 'job-queue: authored 301 of 355 commits, including the retry scheduler'
-      - text: Still resting on claims are {claimNames}, covering {claimWeight} of the weight.
+      - text: 'Still resting on claims: {claimNames}, {claimWeight} of the weight.'
         citations:
           - sourceId: S1
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
+      - text: The candidate authored 301 of 355 commits, including the retry scheduler.
+        citations:
+          - sourceId: S2
+            quote: 'job-queue: authored 301 of 355 commits, including the retry scheduler'
   judge:
     pass: true
-    reason: Every statement says only what the source it cites shows, placeholders stand for lines in the facts source, no statement holds a percentage or number word except as quoted, and there are no recommendations or candidate names.
+    reason: Every statement is supported by a quote from its cited source, uses only what the source shows, and does not include unsupported numbers, recommendations, or candidate names.

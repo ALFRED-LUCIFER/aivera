@@ -23,18 +23,18 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@5
-  promptHash: 4b8bc6979a02
+  promptVersion: assessment.explainRanking@7
+  promptHash: 83673a20c420
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competency: Model evaluation, {checkedWeight} of the weight.'
         citations:
           - sourceId: S1
             quote: 'Independently checked work backs the heaviest competency: Model evaluation, {checkedWeight} of the weight'
-      - text: The candidate authored 88 of 120 commits in the eval-suite, which includes a CI gate on regressions.
+      - text: The candidate authored 88 of 120 commits in the eval-suite, with a CI gate on regressions.
         citations:
           - sourceId: S2
             quote: 'eval-suite: authored 88 of 120 commits, with a CI gate on regressions'
   judge:
     pass: true
-    reason: Every statement is directly supported by a quote from its cited source, uses only what the source shows, and does not include any recommendations or unsupported figures.
+    reason: Every statement says only what the source it cites shows, every count is a placeholder for a line in the facts source, and no statement recommends an action or names the candidate.

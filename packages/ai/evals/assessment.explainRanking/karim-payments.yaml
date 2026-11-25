@@ -24,8 +24,8 @@ expected:
     quotes it from the excerpt it cites. No statement recommends rejecting, advancing, hiring or contacting anyone,
     and none names the candidate.
 recorded:
-  promptVersion: assessment.explainRanking@5
-  promptHash: ac5e6a3d6832
+  promptVersion: assessment.explainRanking@7
+  promptHash: 474cdf7720a3
   output:
     statements:
       - text: 'Independently checked work backs the heaviest competencies: Payments integration and Reconciliation, {checkedWeight} of the weight.'
@@ -42,4 +42,4 @@ recorded:
             quote: 'recon-engine: authored 64 of 80 commits'
   judge:
     pass: true
-    reason: Every statement is directly supported by a quote from its cited source, and no statement includes unsupported numbers, recommendations, or percentages.
+    reason: Every statement says only what the source it cites shows, every share of the weight and count of competencies is a placeholder matching a line in the facts source, no statement holds a percentage or number word except as quoted, and no statement recommends an action or names the candidate.
