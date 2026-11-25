@@ -54,6 +54,22 @@ resource embeddingMain 'Microsoft.CognitiveServices/accounts/deployments@2024-10
   dependsOn: [gptMain] // Azure rejects concurrent deployment writes on one account.
 }
 
+// The eval harness's LLM judge, matcher and suggestion judge (task evals.judge), never a recruiter-facing answer: on
+// gpt-main the live judge missed a limit its sources contradict (AIV-P2-084 case contradicted-limit). Dev runs gpt-4.1
+// on Global Standard (ADR-011, synthetic data only). Quota on 25 Nov 2026: 1,000 (gpt-4.1), unused.
+// shortcut: the pilot must infer in UAE North, where gpt-4.1 has no regional Standard yet, so its judge is gpt-4.1-mini
+// like gpt-main; move the pilot to gpt-4.1 when UAE North offers it on Standard.
+resource gptJudge 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: account
+  name: 'gpt-judge'
+  sku: { name: env == 'dev' ? 'GlobalStandard' : 'Standard', capacity: 50 }
+  properties: {
+    model: { format: 'OpenAI', name: env == 'dev' ? 'gpt-4.1' : 'gpt-4.1-mini', version: '2025-04-14' }
+    versionUpgradeOption: 'NoAutoUpgrade'
+  }
+  dependsOn: [embeddingMain] // Azure rejects concurrent deployment writes on one account.
+}
+
 // Cognitive Services OpenAI User: call deployments, nothing else. Scoped to this account only.
 var openAiUser = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
 
