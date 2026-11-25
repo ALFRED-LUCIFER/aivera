@@ -1032,8 +1032,7 @@ describe('Feature: A statement that differs only by a trailing period matches', 
     return output;
   };
 
-  // SAFETY: mutation check: dropped the code match (`take(path, value) ||` and the misses filter's sameText) -> this
-  // test failed
+  // SAFETY: mutation check: dropped the code match (the misses filter's `take`) -> this test failed
   it('Scenario: The output adds a period, a capital and a space: it matches with no model call', async () => {
     expect(await score('evidence.parseCv', sara, cv(`  ${expected.toUpperCase()}. `))).toEqual({
       failures: [],
@@ -1041,9 +1040,26 @@ describe('Feature: A statement that differs only by a trailing period matches', 
     });
   });
 
-  // SAFETY: mutation check: dropped `meaning.has(path) &&` from the fieldMatch callback -> this test failed (the id and
-  // enum row)
-  it('Scenario Outline: An id, enum or email that differs only by a period does not match', async () => {
+  // SAFETY: mutation check: settled code matches in the fieldMatch callback, after earlier verdicts (the first version
+  // of this fix, no reservation in the misses filter) -> this test failed
+  it('Scenario: A matcher verdict cannot use the output value a code match names', async () => {
+    const other = 'Ran the Gulf Arabic eval set weekly';
+    const output = cv(`${expected}.`);
+    output.statements.push({
+      ...output.statements[0],
+      text: 'Wrote the onboarding guide.',
+    } as Cv['statements'][number]);
+    const c = { ...sara, expected: { ...sara.expected, match: { 'statements[*].text': [other, expected] } } };
+    expect(await score('evidence.parseCv', c, output, `${expected}.`)).toEqual({
+      failures: [`statements[*].text: missing ${JSON.stringify(other)}`],
+      asked: [other],
+    });
+  });
+
+  // SAFETY: mutation check: dropped `meaning.has` from both the misses filter and the fieldMatch callback (each alone
+  // still holds) -> this test failed on the id and enum part; `contact.emails` and phones are whole lists, not `[*]`
+  // strings, so they also stay exact by shape
+  it('Scenario: An id, enum or email that differs only by a period does not match', async () => {
     expect(await score('evidence.parseCv', sara, cv(`${expected}.`, 'sara.al.qahtani@example.com.'))).toEqual({
       failures: ['contact.emails: missing ["sara.al.qahtani@example.com"]'],
       asked: [],

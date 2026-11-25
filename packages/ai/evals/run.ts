@@ -200,6 +200,7 @@ const bare = (s: string) =>
     .trimEnd()
     .toLowerCase();
 const sameText = (a: string, b: string) => bare(a) === bare(b);
+const key = (path: string, value: string) => `${path}\u0000${value}`;
 const matchVerdicts = z.object({
   matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
 });
@@ -345,32 +346,40 @@ async function scoreCase(
       const free = (path: string) =>
         valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
       const used = new Set<string>();
-      // Takes the first free output value at `path` that is `text` (sameText) and not yet taken: each counts once.
+      const unused = (path: string) => free(path).filter((v) => !used.has(key(path, v)));
+      // Uses the first unused free output value at `path` that is `text` (sameText): each counts once.
       const take = (path: string, text: unknown) => {
-        const found =
-          typeof text === 'string'
-            ? free(path).find((v) => !used.has(`${path}\u0000${v}`) && sameText(v, text))
-            : undefined;
-        if (found !== undefined) used.add(`${path}\u0000${found}`);
+        const found = typeof text === 'string' ? unused(path).find((v) => sameText(v, text)) : undefined;
+        if (found !== undefined) used.add(key(path, found));
         return found !== undefined;
       };
-      // A miss that is a free value's own text, bar case, space or trailing punctuation, matches in code: no model call.
+      // A miss that is a free value's own text, bar case, space or trailing punctuation, matches in code with no model
+      // call. These settle first, so no matcher verdict can use a value one of them names.
+      const inCode: string[] = [];
       const misses = missedPoints(output, match).filter((p): p is { path: string; value: string } => {
-        const { path, value } = p;
-        return meaning.has(path) && typeof value === 'string' && !free(path).some((v) => sameText(v, value));
+        if (!meaning.has(p.path) || typeof p.value !== 'string') return false;
+        if (!take(p.path, p.value)) return true;
+        inCode.push(key(p.path, p.value));
+        return false;
       });
       if (misses.length)
         matches = await matcher(
           golden,
-          misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
+          misses.map((p) => ({ expected: p.value, candidates: unused(p.path) })),
         );
-      // Else a verdict counts when it names a free output value at that path; sameText, so a verdict that drops its
-      // option's period still names it.
+      // Spends one code match of this point (an expected value may repeat).
+      const settled = (k: string) => {
+        const i = inCode.indexOf(k);
+        if (i >= 0) inCode.splice(i, 1);
+        return i >= 0;
+      };
+      // Else a verdict counts when it names an unused free output value at that path; sameText, so a verdict that drops
+      // its option's period still names it.
       scores.fieldMatch = fieldMatch(
         output,
         match,
         ({ path, value }) =>
-          meaning.has(path) && typeof value === 'string' && (take(path, value) || take(path, matches?.[value])),
+          meaning.has(path) && typeof value === 'string' && (settled(key(path, value)) || take(path, matches?.[value])),
       );
       if (suggestionPath && Array.isArray(expectedSuggestions)) {
         if (valuesAt(output, suggestionPath).length) suggestions = await suggestionJudge(golden, output);
