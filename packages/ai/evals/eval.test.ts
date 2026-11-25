@@ -43,6 +43,7 @@ import {
   suggestionPrompt,
   summaryTable,
   type Answer,
+  type Matcher,
 } from './run.ts';
 import { citationValidity, claimLabelling, contract, fieldMatch, safety, suggestionMatch } from './scorers.ts';
 
@@ -998,6 +999,81 @@ describe('Feature: The live eval scores free-text competency names by meaning', 
     expect(await failuresOf('jobs.draftCompetencies', renamed('Testing and code quality'))).toEqual([
       'competencies[*].name: missing "Code quality and testing"',
     ]);
+  });
+});
+
+// Feature: A CV statement copied word for word matches whatever its trailing period (AIV-P1-140). Synthetic data only.
+/** The case with `output`, scored with a matcher that answers `verdict` to every miss and records what it is asked. */
+const score = async (task: string, c: GoldenCase, output: unknown, verdict: string | null = null) => {
+  const asked: string[] = [];
+  const matcher: Matcher = async (_golden, misses) => {
+    asked.push(...misses.map((m) => m.expected));
+    return Object.fromEntries(misses.map((m) => [m.expected, verdict]));
+  };
+  const report = await evaluateTask(
+    task,
+    [{ ...c, recorded: { ...c.recorded, output, matches: {} } }],
+    recordedAnswer,
+    recordedJudge,
+    matcher,
+    recordedSuggestionJudge,
+  );
+  return { failures: report.cases[0]?.scores.fieldMatch?.failures, asked };
+};
+describe('Feature: A statement that differs only by a trailing period matches', () => {
+  const sara = caseOf('evidence.parseCv', 'sara-al-qahtani-contact');
+  const expected = '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech';
+  type Cv = { contact: { emails: string[] }; statements: { text: string }[] };
+  /** Sara's recorded CV with its one statement worded `text` (and its email `email`). */
+  const cv = (text: string, email?: string) => {
+    const output = structuredClone(sara.recorded.output) as Cv;
+    output.statements[0] = { ...output.statements[0], text } as Cv['statements'][number];
+    if (email) output.contact.emails = [email];
+    return output;
+  };
+
+  // SAFETY: mutation check: dropped the code match (`take(path, value) ||` and the misses filter's sameText) -> this
+  // test failed
+  it('Scenario: The output adds a period, a capital and a space: it matches with no model call', async () => {
+    expect(await score('evidence.parseCv', sara, cv(`  ${expected.toUpperCase()}. `))).toEqual({
+      failures: [],
+      asked: [],
+    });
+  });
+
+  // SAFETY: mutation check: dropped `meaning.has(path) &&` from the fieldMatch callback -> this test failed (the id and
+  // enum row)
+  it('Scenario Outline: An id, enum or email that differs only by a period does not match', async () => {
+    expect(await score('evidence.parseCv', sara, cv(`${expected}.`, 'sara.al.qahtani@example.com.'))).toEqual({
+      failures: ['contact.emails: missing ["sara.al.qahtani@example.com"]'],
+      asked: [],
+    });
+    const maria = caseOf('evidence.mapToCompetency', 'maria-santos-clean');
+    const output = structuredClone(maria.recorded.output) as { links: { competencyId: string; strength: string }[] };
+    for (const link of output.links) {
+      link.strength = 'Supporting.';
+      if (link.competencyId === 'c-retrieval') link.competencyId = 'C-RETRIEVAL.';
+    }
+    expect(await score('evidence.mapToCompetency', maria, output, 'supporting')).toEqual({
+      failures: ['links[*].competencyId: missing "c-retrieval"', 'links[*].strength: missing "supporting"'],
+      asked: [],
+    });
+  });
+
+  // SAFETY: mutation check: compared a verdict with its option by `===` in `take` instead of sameText -> this test failed
+  it('Scenario: A verdict that drops its option period still names that option', async () => {
+    const option = `${expected} startup.`;
+    expect(await score('evidence.parseCv', sara, cv(option), option.slice(0, -1))).toEqual({
+      failures: [],
+      asked: [expected],
+    });
+  });
+
+  it('Scenario: A genuinely different statement still needs the matcher', async () => {
+    expect(await score('evidence.parseCv', sara, cv('[CANDIDATE] built a Gulf Arabic eval set.'))).toEqual({
+      failures: [`statements[*].text: missing ${JSON.stringify(expected)}`],
+      asked: [expected],
+    });
   });
 });
 

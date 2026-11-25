@@ -188,6 +188,18 @@ export const matchPrompt = {
     'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
     'the option exactly. Answer for every expected text, in order.',
 };
+/**
+ * AIV-P1-140: a CV statement the model copies word for word but ends with a period is the same text; the matcher model
+ * answered null for it, or named it without the period. Compares after case, surrounding space and trailing
+ * punctuation only; used on `meaning` paths only.
+ */
+const bare = (s: string) =>
+  s
+    .trim()
+    .replace(/[.,;:!?]+$/, '')
+    .trimEnd()
+    .toLowerCase();
+const sameText = (a: string, b: string) => bare(a) === bare(b);
 const matchVerdicts = z.object({
   matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
 });
@@ -328,27 +340,38 @@ async function scoreCase(
       const { [`${suggestionPath}.name`]: expectedSuggestions, ...match } = expected.match;
       // Free-text paths the task declares (config.ts `meaning`) may match by meaning; everything else stays exact.
       const meaning = new Set(taskThresholds[task]?.meaning ?? []);
-      const misses = missedPoints(output, match).filter(
-        (p): p is { path: string; value: string } => meaning.has(p.path) && typeof p.value === 'string',
-      );
       // An output value that already matches an expected one exactly is taken: only the rest may answer a miss.
       const taken = (path: string) => [match[path]].flat();
       const free = (path: string) =>
         valuesAt(output, path).filter((v): v is string => typeof v === 'string' && !taken(path).includes(v));
+      const used = new Set<string>();
+      // Takes the first free output value at `path` that is `text` (sameText) and not yet taken: each counts once.
+      const take = (path: string, text: unknown) => {
+        const found =
+          typeof text === 'string'
+            ? free(path).find((v) => !used.has(`${path}\u0000${v}`) && sameText(v, text))
+            : undefined;
+        if (found !== undefined) used.add(`${path}\u0000${found}`);
+        return found !== undefined;
+      };
+      // A miss that is a free value's own text, bar case, space or trailing punctuation, matches in code: no model call.
+      const misses = missedPoints(output, match).filter((p): p is { path: string; value: string } => {
+        const { path, value } = p;
+        return meaning.has(path) && typeof value === 'string' && !free(path).some((v) => sameText(v, value));
+      });
       if (misses.length)
         matches = await matcher(
           golden,
           misses.map((p) => ({ expected: p.value, candidates: free(p.path) })),
         );
-      const used = new Set<string>();
-      scores.fieldMatch = fieldMatch(output, match, ({ path, value }) => {
-        const found = typeof value === 'string' ? matches?.[value] : null;
-        // A verdict counts only when the value it names is free in the output at that path, and once.
-        if (!meaning.has(path) || typeof found !== 'string' || !free(path).includes(found)) return false;
-        if (used.has(`${path}\u0000${found}`)) return false;
-        used.add(`${path}\u0000${found}`);
-        return true;
-      });
+      // Else a verdict counts when it names a free output value at that path; sameText, so a verdict that drops its
+      // option's period still names it.
+      scores.fieldMatch = fieldMatch(
+        output,
+        match,
+        ({ path, value }) =>
+          meaning.has(path) && typeof value === 'string' && (take(path, value) || take(path, matches?.[value])),
+      );
       if (suggestionPath && Array.isArray(expectedSuggestions)) {
         if (valuesAt(output, suggestionPath).length) suggestions = await suggestionJudge(golden, output);
         const judged = suggestionMatch(output, suggestionPath, expectedSuggestions.length, suggestions ?? {});
