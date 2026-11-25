@@ -394,13 +394,15 @@ async function seed(
     });
     // A Round 1 interview with a time, so its InterviewScheduled.v1 is in the outbox (interviews.*, AIV-P2-001).
     const approved = await createApprovedRubricReads().approvedRubric(ctx.tx, workspaceId, job.id);
-    await interviews.createInterview(ctx, {
+    const { interviewId } = await interviews.createInterview(ctx, {
       applicationId,
       round: 'structured_screen',
       interviewerUserId: creator,
       scheduledAt: NOW,
       competencyIds: approved?.competencies.map((c) => c.id) ?? [],
     });
+    // Its interviewer's scorecard draft (interviews.scorecard_drafts, AIV-P2-004).
+    await interviews.saveScorecardDraft(ctx, interviewId, { competencies: [], recommendation: null });
     // The same person arriving again under another address, merged by a recruiter (candidates.merge, AIV-P1-018).
     const duplicate = await candidates.findOrCreatePerson(ctx, {
       displayName: person,

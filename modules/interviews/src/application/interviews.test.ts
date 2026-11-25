@@ -1,6 +1,7 @@
 import { ForbiddenError, type Role, type WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it, vi } from 'vitest';
 import type { Interview } from '../domain/interview.ts';
+import type { ScorecardDraft } from '../domain/scorecard.ts';
 import { interviewUseCases, type InterviewStore, type Ports } from './interviews.ts';
 
 // AIV-P2-001: the interview use cases over faked ports; the database scenarios are in
@@ -34,12 +35,22 @@ const stored = (over: Partial<Interview> = {}): Interview => ({
   ...over,
 });
 
+const RATED: ScorecardDraft['competencies'][number] = {
+  competencyId: RETRIEVAL,
+  rating: 'clearly_shown',
+  note: 'Walked through the set',
+  questions: [],
+};
+const DRAFT: ScorecardDraft = { competencies: [RATED], recommendation: null };
+
 function setup(over: Partial<Ports> = {}, rows: Interview[] = [stored()]) {
   const store = {
     insert: vi.fn<InterviewStore['insert']>(async () => undefined),
     find: vi.fn<InterviewStore['find']>(async (_w, interviewId) => rows.find((r) => r.id === interviewId) ?? null),
     moveStatus: vi.fn<InterviewStore['moveStatus']>(async () => true),
     list: vi.fn<InterviewStore['list']>(async () => rows),
+    findDraft: vi.fn<InterviewStore['findDraft']>(async () => DRAFT),
+    saveDraft: vi.fn<InterviewStore['saveDraft']>(async () => undefined),
     deleteAll: vi.fn<InterviewStore['deleteAll']>(async () => undefined),
   };
   const ports: Ports = {
@@ -199,5 +210,71 @@ describe('listInterviews and getInterview', () => {
   it('getInterview is null for an interview on a job the context cannot see', async () => {
     const { useCases } = setup({ jobResource: async () => null });
     expect(await useCases.getInterview(ctxAs('hiring_owner'), id(60))).toBeNull();
+  });
+});
+
+describe('scorecard draft (AIV-P2-004)', () => {
+  const HUDA = id(3);
+  const started = stored({ status: 'in_progress' });
+  const closed = stored({ id: id(62), status: 'completed' });
+
+  it('the interviewer saves their draft, stamped with who and when', async () => {
+    const { useCases, store, ports } = setup({}, [started]);
+    await useCases.saveScorecardDraft(ctxAs('interviewer', LINA), started.id, DRAFT);
+    expect(ports.authorize).toHaveBeenCalledWith(expect.anything(), 'scorecard.submit', JOB);
+    expect(store.saveDraft).toHaveBeenCalledWith({
+      ...DRAFT,
+      workspaceId: 'w1',
+      interviewId: started.id,
+      updatedBy: LINA,
+      updatedAt: NOW,
+    });
+  });
+
+  it('an admin who is not the interviewer saves; a recruiter or another member is refused and nothing is stored', async () => {
+    const { useCases, store } = setup({}, [started]);
+    await useCases.saveScorecardDraft(ctxAs('admin'), started.id, DRAFT);
+    expect(store.saveDraft).toHaveBeenCalledTimes(1);
+    for (const ctx of [ctxAs('recruiter'), ctxAs('interviewer', HUDA), ctxAs('hiring_owner', HUDA)])
+      await expect(useCases.saveScorecardDraft(ctx, started.id, DRAFT)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(store.saveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('the interviewer with no grant on the job (the job hidden from them) is refused and nothing is stored', async () => {
+    const { useCases, store } = setup({ jobResource: async () => null }, [started]);
+    await expect(useCases.saveScorecardDraft(ctxAs('interviewer', LINA), started.id, DRAFT)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(store.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it('refuses a closed interview, a competency the interview does not test, one listed twice, and an unknown field', async () => {
+    const { useCases, store } = setup({}, [started, closed]);
+    const me = ctxAs('interviewer', LINA);
+    await expect(useCases.saveScorecardDraft(me, closed.id, DRAFT)).rejects.toMatchObject({ code: 'scorecard_closed' });
+    for (const competencies of [[{ ...RATED, competencyId: COST }], [RATED, RATED]])
+      await expect(useCases.saveScorecardDraft(me, started.id, { ...DRAFT, competencies })).rejects.toMatchObject({
+        code: 'competency_not_in_interview',
+      });
+    await expect(
+      useCases.saveScorecardDraft(me, started.id, { ...DRAFT, overallScore: 4 } as ScorecardDraft),
+    ).rejects.toThrow();
+    await expect(useCases.saveScorecardDraft(me, id(99), DRAFT)).rejects.toMatchObject({ code: 'interview_not_found' });
+    expect(store.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it('the draft is read by its interviewer and admins only; a recruiter sees the interview with no draft', async () => {
+    const { useCases, store } = setup({}, [started, closed]);
+    expect(await useCases.getScorecard(ctxAs('interviewer', LINA), started.id)).toMatchObject({
+      canEdit: true,
+      draft: DRAFT,
+    });
+    expect(await useCases.getScorecard(ctxAs('admin'), started.id)).toMatchObject({ canEdit: true, draft: DRAFT });
+    expect(await useCases.getScorecard(ctxAs('recruiter'), started.id)).toMatchObject({ canEdit: false, draft: null });
+    expect(store.findDraft).toHaveBeenCalledTimes(2);
+    // Completed: its interviewer still reads it, and changes nothing.
+    expect(await useCases.getScorecard(ctxAs('interviewer', LINA), closed.id)).toMatchObject({ canEdit: false });
+    // Another interviewer's interview is not theirs to see.
+    expect(await useCases.getScorecard(ctxAs('interviewer', HUDA), started.id)).toBeNull();
   });
 });

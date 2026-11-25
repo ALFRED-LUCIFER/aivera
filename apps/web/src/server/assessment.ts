@@ -40,7 +40,7 @@ export const getAssessment = (): AssessmentContract =>
       evidence: evidenceOf,
       identifiersOf,
     },
-    // Interview-based score changes (AIV-P1-117) are wired by the first screen that calls them (AIV-P2-004, AIV-P1-115).
+    // Interview-based score changes (AIV-P1-117) are wired by the first screen that calls them (AIV-P2-005, AIV-P1-115).
     undefined,
     // Suggested interview questions (AIV-P1-113), lazy as the explanation is: an unconfigured app answers "failed".
     {

@@ -20,6 +20,14 @@ import { sql } from 'drizzle-orm';
 // browser signs in. Each run creates new workspaces, which become their creators' active workspaces, so a reused local
 // database works too. Huda signs in as she would before Gulf Talent Partners invites her (AIV-P1-003): no workspace.
 
+/** A stored suggested question citing one evidence item (AIV-P1-113), for the scorecard seed (AIV-P2-004). */
+const question = (text: string, strongAnswer: string, weakAnswer: string, itemId: string, quote: string) => ({
+  text,
+  strongAnswer,
+  weakAnswer,
+  citations: [{ itemId, quote }],
+});
+
 /** `time` in the Gulf (UTC+4), `days` from today there: the demo interviews count from the run (AIV-P2-002). */
 const gulfTime = (days: number, time: string) =>
   new Date(`${new Date(Date.now() + (4 + 24 * days) * 3_600_000).toISOString().slice(0, 10)}T${time}:00+04:00`);
@@ -413,15 +421,24 @@ export default async function seed() {
           );
       const [backed, upTo, meets, confidence, missing] = score;
       if (backed === null) continue;
-      const results = name === 'Sara Al Qahtani' ? await saraCompetencies(personId) : [];
+      const daniel = name === 'Daniel Novak' ? await danielScorecard(personId) : null;
+      const results = name === 'Sara Al Qahtani' ? await saraCompetencies(personId) : (daniel?.results ?? []);
       if (name === 'Maria Santos') await mariaCvNote(personId);
-      await withWorkspace(db, workspaceId, (tx) =>
-        tx.execute(sql`insert into assessment.result (id, workspace_id, candidate_id, job_id, rubric_version_id,
+      const resultId = crypto.randomUUID();
+      await withWorkspace(db, workspaceId, async (tx) => {
+        await tx.execute(sql`insert into assessment.result (id, workspace_id, candidate_id, job_id, rubric_version_id,
             backed_score, upper_bound, meets_need, competency_count, missing_critical, confidence, competencies, assessed_at)
-          values (${crypto.randomUUID()}, ${workspaceId}, ${personId}, ${sae}, ${rubric.id}, ${backed}, ${upTo}, ${meets},
+          values (${resultId}, ${workspaceId}, ${personId}, ${sae}, ${rubric.id}, ${backed}, ${upTo}, ${meets},
             6, ${JSON.stringify(missing.map(competency))}::jsonb, ${confidence}, ${JSON.stringify(results)}::jsonb,
-            ${new Date(Date.UTC(2026, 10, 14, 10, i)).toISOString()})`),
-      );
+            ${new Date(Date.UTC(2026, 10, 14, 10, i)).toISOString()})`);
+        // AIV-P2-004: the questions his scorecard shows, stored as "Suggest interview questions" stores them
+        // (AIV-P1-113). The scorecard page asks no model, so no ai-fixtures.json answer exists for them.
+        if (daniel)
+          await tx.execute(sql`insert into assessment.suggested_questions
+              (result_id, workspace_id, prompt_version, gaps, created_at)
+            values (${resultId}, ${workspaceId}, 'assessment.suggestQuestions@1', ${JSON.stringify(daniel.gaps)}::jsonb,
+              '2026-11-15T08:00:00.000Z')`);
+      });
     }
 
     // AIV-P2-002: the Interviews list, on days counted from this run as tools/seed counts them: Daniel's Round 1 today
@@ -462,6 +479,129 @@ export default async function seed() {
         await withWorkspace(db, workspaceId, (tx) =>
           tx.execute(sql`update interviews.interview set status = 'completed' where id = ${interviewId}`),
         );
+    }
+
+    /**
+     * AIV-P2-004: what Daniel's Round 1 scorecard tests, as the Interview artboard draws it. "Retrieval and
+     * evaluation" rests on a CV line (a claim, stored Supporting, "Claim awaiting validation"); "Cost and reliability"
+     * on an incident review he submitted, proven below the job's need. Both are gaps, each with two stored questions.
+     * His seeded scores (55, up to 78) are hand-written, as every row's are, and do not follow from these two.
+     */
+    async function danielScorecard(personId: string) {
+      const record = (
+        kind: 'cv' | 'document',
+        label: string,
+        item: { excerpt: string; provenance: 'claim' | 'submitted'; strength: 'supporting' | 'medium'; limit: string },
+        link: { competency: string; level: number },
+      ) =>
+        as(async (ctx) => {
+          const { itemIds } = await evidence.recordEvidence(ctx, {
+            candidateId: personId,
+            source: {
+              kind,
+              label,
+              url: null,
+              blobFileId: null,
+              capturedAt: new Date('2026-11-12T08:00:00.000Z'),
+              checkedAt: null,
+              checkMethod: null,
+            },
+            items: [
+              {
+                ...item,
+                excerptSpan: null,
+                competencies: [{ jobId: sae, competencyId: competency(link.competency), level: link.level }],
+              },
+            ],
+            synthetic: true,
+          });
+          return itemIds[0] ?? '';
+        });
+      const cvLine = await record(
+        'cv',
+        'CV',
+        {
+          excerpt: 'raised answer accuracy from 71% to 88%',
+          provenance: 'claim',
+          strength: 'supporting',
+          limit: 'A claim until a document or a second source supports it.',
+        },
+        { competency: 'Retrieval and evaluation', level: 4 },
+      );
+      const review = await record(
+        'document',
+        'Incident review, March (PDF)',
+        {
+          excerpt: 'rolled back the index change and restored search within the hour',
+          provenance: 'submitted',
+          strength: 'medium',
+          limit: 'Shows the fix, not his part in the on-call response.',
+        },
+        { competency: 'Cost and reliability', level: 1 },
+      );
+      const result = (
+        name: string,
+        proven: { level: number; itemIds: string[] },
+        claimed: number,
+        claims: string[],
+      ) => {
+        const found = rubric?.competencies.find((r) => r.name === name);
+        return {
+          competencyId: competency(name),
+          weightPercent: found?.weightPercent,
+          levelNeeded: found?.levelNeeded,
+          mandatory: found?.type === 'mandatory',
+          proven,
+          claimedLevel: claimed,
+          claimItemIds: claims,
+        };
+      };
+      return {
+        results: [
+          result('Retrieval and evaluation', { level: 0, itemIds: [] }, 4, [cvLine]),
+          result('Cost and reliability', { level: 1, itemIds: [review] }, 1, []),
+        ],
+        gaps: [
+          {
+            competencyId: competency('Retrieval and evaluation'),
+            questions: [
+              question(
+                'How was the 71% measured, on which questions, and who built that set?',
+                'Names the question set, who built it and how answers were judged.',
+                'Gives the number again with no account of how it was measured.',
+                cvLine,
+                'from 71% to 88%',
+              ),
+              question(
+                'What did you change between 71% and 88%, and what did you try that did not work?',
+                'Describes specific changes, including one that was dropped and why.',
+                'Lists tools without saying what each changed.',
+                cvLine,
+                'raised answer accuracy',
+              ),
+            ],
+          },
+          {
+            competencyId: competency('Cost and reliability'),
+            questions: [
+              question(
+                'In the March incident, what did you do in the first thirty minutes?',
+                'Gives their own actions in order, and what they decided.',
+                'Describes what the team did, not their part in it.',
+                review,
+                'rolled back the index change',
+              ),
+              question(
+                'What would you watch to catch it earlier next time?',
+                'Names a signal and the threshold they would alert on.',
+                'Says more monitoring, with no signal named.',
+                review,
+                'restored search within the hour',
+              ),
+            ],
+          },
+        ],
+      };
     }
 
     /**

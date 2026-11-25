@@ -61,7 +61,7 @@ test('Scenario: Overdue scorecard', async ({ page }) => {
   await expect(cells.nth(6)).toHaveText('Scorecard due, 2 days');
 });
 
-// The scorecard page is AIV-P2-004: this proves where "Open scorecard" leads; that ticket follows the link.
+// Where "Open scorecard" leads; scorecard.spec.ts (AIV-P2-004) follows the link.
 test('Scenario: Open a scorecard (the link), by keyboard', async ({ page }) => {
   await signIn(page, { email: AP });
   await page.goto('/app/interviews');
@@ -102,13 +102,20 @@ test('Scenario: Empty state', async ({ page }) => {
   ).toBeVisible();
 });
 
-// shortcut: no route serves one interview until AIV-P2-004, so an id from anywhere is a 404 today; that ticket must
-// keep this true for another workspace's real id (the contract's `getInterview` returns null for it, tested on
-// PostgreSQL in tests/integration/src/interviews.test.ts).
-test("Scenario: Another workspace's interviews are not reachable", async ({ page }) => {
+// Daniel's interview is real, in AP's workspace: Nadia, in her own, gets the same 404 as for an id that never existed
+// (the contract's `getScorecard` returns null for it, tested on PostgreSQL in tests/integration/src/interviews.test.ts).
+test("Scenario: Another workspace's interviews are not reachable", async ({ page, context }) => {
+  await signIn(page, { email: AP });
+  await page.goto('/app/interviews');
+  const theirs = await row(page, 'Daniel Novak').getByRole('link', { name: 'Open scorecard' }).getAttribute('href');
+  expect(theirs).toMatch(/^\/app\/interviews\/[0-9a-f-]{36}$/);
+  expect((await page.goto(theirs ?? ''))?.status()).toBe(200);
+  await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: 'nadia@example.com' });
-  expect((await page.goto('/app/interviews/0190d4a2-0000-7000-8000-00000000beef'))?.status()).toBe(404);
-  await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' })).toBeVisible();
+  for (const path of [theirs ?? '', '/app/interviews/0190d4a2-0000-7000-8000-00000000beef', '/app/interviews/daniel']) {
+    expect((await page.goto(path))?.status()).toBe(404);
+    await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' })).toBeVisible();
+  }
 });
 
 for (const theme of themes) {

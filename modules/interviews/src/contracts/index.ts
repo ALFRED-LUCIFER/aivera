@@ -2,12 +2,31 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { CreateInterviewInput, InterviewFilter } from '../application/interviews.ts';
+import type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
 import type { Interview } from '../domain/interview.ts';
+import type { ScorecardDraft } from '../domain/scorecard.ts';
 
 export { InterviewError, scorecardDueDays } from '../domain/interview.ts';
 export type { Interview, InterviewStatus, Round } from '../domain/interview.ts';
-export type { CreateInterviewInput, InterviewFilter } from '../application/interviews.ts';
+export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
+export {
+  assessedRatings,
+  MARKS,
+  notAssessed,
+  RATINGS,
+  RECOMMENDATIONS,
+  scorecardDraftSchema,
+  toInterviewNoteEvidence,
+  unrated,
+} from '../domain/scorecard.ts';
+export type {
+  DraftCompetency,
+  InterviewNoteEvidence,
+  Mark,
+  Rating,
+  Recommendation,
+  ScorecardDraft,
+} from '../domain/scorecard.ts';
 
 const interviewEvent = z.strictObject({ interviewId: z.uuid(), applicationId: z.uuid() });
 
@@ -20,7 +39,7 @@ export const InterviewScheduledV1 = {
   payload: interviewEvent,
 } satisfies EventDefinition<z.infer<typeof interviewEvent>>;
 
-/** Written by the scorecard submit that completes an interview (AIV-P2-004), the same shape as `InterviewScheduled.v1`. */
+/** Written by the scorecard submit that completes an interview (AIV-P2-006), the same shape as `InterviewScheduled.v1`. */
 export const InterviewCompletedV1 = {
   type: 'InterviewCompleted.v1',
   payload: interviewEvent,
@@ -50,6 +69,21 @@ export interface InterviewsContract {
   listInterviews(ctx: WorkspaceContext, filter: InterviewFilter): Promise<Interview[]>;
   /** One interview with the status to show now, or null when the context cannot see it (as in `listInterviews`). */
   getInterview(ctx: WorkspaceContext, interviewId: string): Promise<Interview | null>;
+  /**
+   * An interview (as `getInterview`, null when the context cannot see it) with its scorecard draft (AIV-P2-004). The
+   * draft is returned only to the interview's interviewer and to admins; `canEdit` is theirs while the interview is not
+   * completed or cancelled. Reads nothing of the assessment.
+   */
+  getScorecard(ctx: WorkspaceContext, interviewId: string): Promise<Scorecard | null>;
+  /**
+   * Stores the interview's scorecard draft, replacing the earlier one. It changes no score, stage or status: the
+   * assessment changes only when the scorecard is submitted (AIV-P2-006). Only the interview's interviewer, on a job
+   * they can reach, or a workspace admin: `ForbiddenError`, storing nothing, for anyone else, an interviewer or hiring
+   * owner with no grant on the job included. Throws `InterviewError` `interview_not_found`, `scorecard_closed` (completed or
+   * cancelled), `competency_not_in_interview` (a competency the interview does not test, or one listed twice); a zod
+   * error for a draft that is not `scorecardDraftSchema`.
+   */
+  saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, draft: ScorecardDraft): Promise<void>;
   /**
    * The demo seed's reset (`pnpm db:seed --reset`): deletes the workspace's interviews. Admins. Throws
    * `InterviewError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic. The flag is the only

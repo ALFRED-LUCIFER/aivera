@@ -9,7 +9,7 @@ import { InterviewsClient } from './InterviewsClient.tsx';
 export const generateMetadata = screenMetadata('interviews');
 
 // The Interviews list (AIV-P2-002). Loading and error states: loading.tsx and error.tsx beside this page, inside the
-// (list) group so an interview's own page (AIV-P2-004) keeps its own. Every role opens it; the interviews contract
+// (list) group so an interview's scorecard page (../[interviewId], AIV-P2-004) keeps its own. Every role opens it; the interviews contract
 // returns only the jobs the member is granted and, to an interviewer, their own interviews.
 export default async function InterviewsPage() {
   await requireScreen('interviews');
