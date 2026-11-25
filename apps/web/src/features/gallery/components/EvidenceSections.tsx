@@ -96,6 +96,7 @@ export function EvidenceSections() {
         <div className="flex flex-wrap gap-2">
           <ProvenanceTag provenance="corroborated" label={sample.provenance.corroborated} />
           <ProvenanceTag provenance="submitted" label={sample.provenance.submitted} />
+          <ProvenanceTag provenance="interviewer" label={sample.provenance.interviewer} />
           <ProvenanceTag provenance="claim" label={sample.provenance.claim} />
           <ProvenanceTag provenance="contradictory" label={sample.provenance.contradictory} />
           <ProvenanceTag provenance="awaiting-defence" label={sample.provenance.awaitingDefence} />

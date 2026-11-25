@@ -7,7 +7,7 @@ import { cited, type Source } from '../citations.ts';
 // it to a strength in code and nothing changes until a person confirms (AGENTS.md 1.5).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
-export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@1';
+export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@2';
 
 export const MAX_REASON_WORDS = 40;
 
@@ -35,10 +35,21 @@ export const MAP_SUMMARY_SYSTEM = [
 
 const words = (text: string) => text.trim().split(/\s+/).length;
 
-// shortcut: phrases about the person, not the work, so a trait said in other words passes; the prompt, the eval's
-// forbidden words and the person who confirms each change are the backstop. Widen it if an eval or the pilot shows one.
-const OFF_RUBRIC =
-  /\b(?:nervous|nerves|shy|accent|children|kids|family|married|pregnan\w*|wife|husband|health|illness|nationality|religio\w*|years?[ -]old)\b/i;
+// Phrases about the person, never a work word alone: "health-check endpoint", "model family", "accent colour tokens"
+// and a healthcare job's competencies pass.
+// shortcut: a trait said in other words passes (the prompt, the eval's forbidden words and the person who confirms each
+// change are the backstop), and a work sentence that matches a phrase ("traversed the nodes and their children")
+// rejects the whole answer, so the summary cannot be analysed. Widen or narrow it, or drop only that finding, if an eval
+// or the pilot shows either.
+const OFF_RUBRIC = new RegExp(
+  [
+    String.raw`\b(?:his|her|their)\s+(?:young\s+|own\s+)?(?:family|health|illness|children|kids|wife|husband|nerves|accent|age|nationality|religion|faith)\b`,
+    String.raw`\b(?:seemed|seems|was|were|looked|appeared|sounded|felt)\s+(?:very\s+|quite\s+|a\s+bit\s+|rather\s+|visibly\s+)?(?:nervous|shy|anxious)\b`,
+    String.raw`\b(?:pregnan\w*|married|nationality|religio\w*)\b`,
+    String.raw`\b(?:he|she|they)\s+(?:is|are|was|were)\s+\d+\s+years?\s+old\b`,
+  ].join('|'),
+  'i',
+);
 
 /** Whether the text is about the person rather than the work (AGENTS.md 1.5): the schema rejects a finding built on it. */
 export const isOffRubric = (text: string) => OFF_RUBRIC.test(text);

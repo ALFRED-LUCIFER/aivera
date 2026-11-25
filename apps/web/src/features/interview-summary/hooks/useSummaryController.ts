@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   errorKey,
   includedByDefault,
+  reasonDraft,
   type SummaryErrorKey,
   type SummaryOutcome,
   type SummaryPanel,
@@ -32,7 +33,7 @@ const decisionFor = (panel: SummaryPanel): Decision => {
   return {
     of: `${panel.summary?.summaryId}:${panel.summary?.status}`,
     included: includedByDefault(proposals),
-    reasons: Object.fromEntries(proposals.map((p) => [p.competencyId, p.reason ?? ''])),
+    reasons: Object.fromEntries(proposals.map((p) => [p.competencyId, reasonDraft(p.reason)])),
     preview: panel.summary?.preview ?? null,
   };
 };

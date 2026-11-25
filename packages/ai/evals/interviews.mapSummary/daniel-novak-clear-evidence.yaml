@@ -29,7 +29,7 @@ expected:
   prompt:
     forbidden: [Daniel, Novak]
 recorded:
-  promptVersion: interviews.mapSummary@1
+  promptVersion: interviews.mapSummary@2
   promptHash: 1080f912b49c
   output:
     findings:

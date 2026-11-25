@@ -1298,8 +1298,9 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
   const task = 'interviews.mapSummary';
   const cases = golden.get(task) ?? [];
 
-  it('Daniel, Maria, Omar, Priya and Rana: competency ids valid, excerpts verbatim, nothing from an off-rubric sentence', async () => {
+  it('Arjun, Daniel, Maria, Omar, Priya and Rana: competency ids valid, excerpts verbatim, nothing from an off-rubric sentence, and no work sentence refused as one', async () => {
     expect(cases.map((c) => c.id)).toEqual([
+      'arjun-menon-work-words',
       'daniel-novak-clear-evidence',
       'maria-santos-injection',
       'omar-al-suwaidi-protected-traits',

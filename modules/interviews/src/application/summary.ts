@@ -10,6 +10,7 @@ import {
   budgetResetAt,
   changedByScorecard,
   ratingOf,
+  shownStatus,
   summaryTextSchema,
   toProposals,
   type MeetingSummary,
@@ -158,9 +159,12 @@ const onInterview = (ctx: WorkspaceContext, interview: Interview) =>
 
 const PENDING: readonly SummaryStatus[] = ['analysing', 'waiting', 'proposed'];
 
-/** The ratings of the proposals for `competencyIds`; `proposal_not_found` for one that proposes no change. */
+/**
+ * The ratings of the proposals for `competencyIds`, by competency id: the assessment's preview id hashes the changes in
+ * order, so every preview and the apply send them in one order. `proposal_not_found` for one that proposes no change.
+ */
 const ratingsOf = (proposals: readonly Proposal[], competencyIds: readonly string[]) =>
-  competencyIds.map((competencyId) => {
+  competencyIds.toSorted().map((competencyId) => {
     const proposal = proposals.find((p) => p.competencyId === competencyId);
     const rating = proposal && ratingOf(proposal.finding);
     if (!proposal || !rating) throw new InterviewError('proposal_not_found');
@@ -225,7 +229,9 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
       if (!held(interview, now())) throw new InterviewError('interview_not_held');
       const store = summariesFor(ctx.tx);
       const earlier = await store.latest(ctx.workspaceId, interviewId);
-      if (earlier && PENDING.includes(earlier.status)) throw new InterviewError('summary_pending');
+      if (earlier && PENDING.includes(shownStatus(earlier, now()))) throw new InterviewError('summary_pending');
+      // A stalled analysis ends here, so its message, should it ever run, finds it no longer analysing and stores nothing.
+      if (earlier?.status === 'analysing') await store.move(ctx.workspaceId, earlier.id, ['analysing'], 'failed');
       const summary: MeetingSummary = {
         id: ports.newId(),
         workspaceId: ctx.workspaceId,
@@ -257,7 +263,7 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
       const proposals = await store.proposals(ctx.workspaceId, summary.id);
       const view: MeetingSummaryView = {
         summaryId: summary.id,
-        status: summary.status,
+        status: shownStatus(summary, now()),
         unusual: summary.unusual,
         createdAt: summary.createdAt,
         proposals: proposals.map((p) => ({ ...p, change: null, alreadyChanged: false })),

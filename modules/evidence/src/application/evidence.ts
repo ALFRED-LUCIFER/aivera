@@ -309,10 +309,11 @@ export function evidenceUseCases({
      * An interviewer's meeting summary as an `interview_note` source ("Interviewer's summary, 24 Nov") with one item
      * per confirmed change, each citing its excerpt (AIV-P1-115). Anyone who may submit a scorecard on the job.
      */
-    // shortcut: a Medium item counts in the score by itself, beside the assessment's own interview change, and reads
-    // "Candidate-submitted" (the closed provenance list has no "interviewer's word"), so a later rating of the same
-    // interview that takes the change back leaves this item counting, and the day in the label is UTC. Cite the stored
-    // interview change on the profile instead when the assessment offers that read (AIV-P2-006, #120).
+    // shortcut: a Medium item counts in the score by itself, beside the assessment's own interview change, and is stored
+    // `submitted` (the closed provenance list has no "interviewer's word"; the profile and scorecard show it as
+    // "Interviewer's word" by its source kind), so a later rating of the same interview that takes the change back
+    // leaves this item counting, and the day in the label is UTC. Cite the stored interview change on the profile
+    // instead when the assessment offers that read (AIV-P2-006, #120).
     async recordInterviewSummary(
       ctx: WorkspaceContext,
       input: RecordInterviewSummaryInput,

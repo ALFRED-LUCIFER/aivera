@@ -123,6 +123,23 @@ export function toProposals(
 export const changedByScorecard = (replaces: Rating | null, appliedBySummary: boolean) =>
   replaces !== null && !appliedBySummary;
 
+/**
+ * How long an analysis may run: well past the worker's last delivery (10 deliveries, at most 30 s apart) and the
+ * model's own retry. A summary still `analysing` after it was dead-lettered.
+ */
+export const ANALYSIS_BOUND_MS = 15 * 60_000;
+
+/**
+ * The status a person sees and acts on: `failed` for a summary left `analysing` past the bound, so the page stops
+ * asking and a new summary may be pasted.
+ */
+// shortcut: a dead-lettered analysis reads failed only after the bound, and a `waiting` summary whose next-day run is
+// dead-lettered stays waiting; mark the summary failed on the consumer's last delivery when it offers that hook.
+export const shownStatus = (summary: Pick<MeetingSummary, 'status' | 'createdAt'>, now: Date): SummaryStatus =>
+  summary.status === 'analysing' && now.getTime() - summary.createdAt.getTime() > ANALYSIS_BOUND_MS
+    ? 'failed'
+    : summary.status;
+
 /** 00:05 UTC on the day after `now`: when work held back by the daily AI budget runs again (AIV-P1-089). */
 export const budgetResetAt = (now: Date): Date =>
   new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 5));

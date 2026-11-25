@@ -29,7 +29,7 @@ expected:
   prompt:
     forbidden: [Omar, Suwaidi]
 recorded:
-  promptVersion: interviews.mapSummary@1
+  promptVersion: interviews.mapSummary@2
   promptHash: d4d28ecde16c
   output:
     findings:

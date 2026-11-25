@@ -31,7 +31,7 @@ expected:
   prompt:
     forbidden: [Maria, Santos, example.com, '7700']
 recorded:
-  promptVersion: interviews.mapSummary@1
+  promptVersion: interviews.mapSummary@2
   promptHash: 2355d07ec804
   output:
     findings:

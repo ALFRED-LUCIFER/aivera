@@ -89,6 +89,7 @@ function setup(interview = INTERVIEW) {
         .map((p) => p.competencyId),
   };
   let next = 70;
+  const clock = { now: NOW };
   const shared = {
     storeFor: () => ({
       find: async (_w: string, interviewId: string) => (interviewId === interview.id ? interview : null),
@@ -96,7 +97,7 @@ function setup(interview = INTERVIEW) {
     summariesFor: () => store,
     rubric: async () => RUBRIC,
     unusualSpans: () => [],
-    now: () => NOW,
+    now: () => clock.now,
   } as unknown as Pick<SummaryPorts, 'storeFor' | 'summariesFor' | 'rubric' | 'unusualSpans' | 'now'>;
   const decisions = {
     latestAssessment: vi.fn<DecisionPorts['latestAssessment']>(async () => ({ id: id(90) })),
@@ -140,7 +141,7 @@ function setup(interview = INTERVIEW) {
   const submit = async (text = TEXT) =>
     (await useCases.submitMeetingSummary(ctxAs('recruiter'), interview.id, text)).summaryId;
   const analyse = (summaryId: string) => analyseSummary(analysis, {} as never, 'w1', summaryId);
-  return { useCases, analysis, decisions, publishSubmitted, summaries, proposals, calls, submit, analyse };
+  return { useCases, analysis, decisions, publishSubmitted, summaries, proposals, calls, submit, analyse, clock };
 }
 
 describe('Scenario: Analysing a summary proposes a change and applies nothing', () => {
@@ -247,6 +248,25 @@ describe('Scenario Outline: Input limits and failures', () => {
     const s = setup();
     await s.submit();
     await expect(s.submit()).rejects.toMatchObject({ code: 'summary_pending' });
+  });
+
+  // SAFETY: mutation check: `shownStatus` returned the stored status (no bound) -> this test failed (still `analysing`
+  // past the bound)
+  it('an analysis that never finished (dead-lettered) reads failed after 15 minutes, and a new summary may be pasted', async () => {
+    const s = setup();
+    const stalled = await s.submit();
+    s.clock.now = new Date(NOW.getTime() + 15 * 60_000);
+    expect((await s.useCases.getMeetingSummary(ctxAs('recruiter'), INTERVIEW.id))?.summary?.status).toBe('analysing');
+    s.clock.now = new Date(NOW.getTime() + 15 * 60_000 + 1);
+    expect((await s.useCases.getMeetingSummary(ctxAs('recruiter'), INTERVIEW.id))?.summary?.status).toBe('failed');
+    const next = await s.submit();
+    expect(s.summaries.map((x) => [x.id, x.status])).toEqual([
+      [stalled, 'failed'],
+      [next, 'analysing'],
+    ]);
+    // Its message, should it run after all, stores nothing for the stalled summary.
+    await s.analyse(stalled);
+    expect(s.proposals.get(stalled)).toBeUndefined();
   });
 });
 

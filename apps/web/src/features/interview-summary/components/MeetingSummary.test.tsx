@@ -4,7 +4,13 @@ import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { errorKey, includedByDefault, type SummaryPanel, type SummaryProposal } from '../domain/summary.ts';
+import {
+  errorKey,
+  includedByDefault,
+  reasonDraft,
+  type SummaryPanel,
+  type SummaryProposal,
+} from '../domain/summary.ts';
 import { MeetingSummary, type MeetingSummaryView } from './MeetingSummary.tsx';
 
 // AIV-P1-115: the "Meeting summary" panel in every state. Synthetic cast only (Daniel Novak).
@@ -138,10 +144,15 @@ describe('Scenario: Analysing a summary proposes a change and applies nothing', 
     expect(screen.getAllByRole('checkbox')).toHaveLength(1);
   });
 
-  it('only "Apply" applies and only "Decline" declines; Escape in a reason field declines nothing', async () => {
+  // SAFETY: mutation check: removed the card's Escape capture -> this test failed (onDecline was called)
+  it('only "Apply" applies and only "Decline" declines; Escape anywhere in the card declines nothing', async () => {
     const view = show(panelOf('proposed'));
     const reason = screen.getByLabelText('Reason for Retrieval and evaluation');
     await userEvent.type(reason, '{Escape}');
+    screen.getByRole('button', { name: 'Apply 1 change' }).focus();
+    await userEvent.keyboard('{Escape}');
+    screen.getByRole('button', { name: 'Decline' }).focus();
+    await userEvent.keyboard('{Escape}');
     expect(view.onDecline).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Apply 1 change' }));
     expect(view.onApply).toHaveBeenCalledOnce();
@@ -188,6 +199,17 @@ describe('the panel domain', () => {
       'c-retrieval',
     ]);
   });
+  // SAFETY: mutation check: `reasonDraft` returned the reason as given -> this test failed (the placeholders stayed)
+  it("prefills the model's reason without the redaction's placeholders, so none reaches the audit note", () => {
+    expect(reasonDraft('[CANDIDATE] built the set [PERSON] asked about; reach him at [EMAIL_1].')).toBe(
+      'built the set asked about; reach him at.',
+    );
+    expect([reasonDraft(null), reasonDraft('Describes the set he built.')]).toEqual([
+      '',
+      'Describes the set he built.',
+    ]);
+  });
+
   it('gives a refusal it has no words for the general message', () => {
     expect([errorKey('summary_pending'), errorKey('proposal_not_found')]).toEqual(['summary_pending', 'failed']);
   });
