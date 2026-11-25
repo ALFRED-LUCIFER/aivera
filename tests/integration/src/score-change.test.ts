@@ -564,6 +564,73 @@ describe("Scenario: The interviewer's word is not verification", () => {
   });
 });
 
+/** An item the caller records as the interview's write-up, in the transaction that applies the change. */
+const writeUp = (candidateId: string, level: number): RecordEvidenceInput => ({
+  candidateId,
+  source: {
+    kind: 'interview_note',
+    label: "Interviewer's summary, 24 Nov",
+    url: null,
+    blobFileId: null,
+    capturedAt: NOW,
+    checkedAt: null,
+    checkMethod: null,
+  },
+  items: [
+    {
+      excerpt: 'walked through the 200-question evaluation set he built',
+      excerptSpan: null,
+      provenance: 'submitted',
+      strength: 'medium',
+      limit: "The interviewer's summary of the interview: their word, not inspected work.",
+      competencies: [{ jobId: sae, competencyId: RETRIEVAL, level }],
+    },
+  ],
+  synthetic: true,
+});
+
+const applyWith = (d: Daniel & { candidateId: string }, previewId: string, level: number) =>
+  as(AYESHA, w1, async (ctx) => {
+    const { itemIds } = await evidence.recordEvidence(ctx, writeUp(d.candidateId, level));
+    const stored = await assessment.applyScoreChange(ctx, {
+      ...ratings(d),
+      previewId,
+      reason: 'Overall reason',
+      reasons: { [RETRIEVAL]: 'He built the set himself' },
+      idempotencyKey: crypto.randomUUID(),
+      writeUpItemIds: itemIds,
+    });
+    return { stored, itemId: itemIds[0] ?? '' };
+  });
+
+describe("The interview's write-up and a reason per competency (AIV-P1-115)", () => {
+  it('evidence recorded with the apply is cited beside the interview, the score is the previewed one, and the audit note is that competency’s reason', async () => {
+    const d = await daniel();
+    const shown = await preview(d);
+    const { stored, itemId } = await applyWith(d, shown.previewId, 3);
+    expect(stored.backedScore).toBe(shown.backedScore.to);
+    expect(stored.competencies.find((c) => c.competencyId === RETRIEVAL)?.proven).toEqual({
+      level: 3,
+      itemIds: [d.interviewId, itemId].toSorted(),
+    });
+    const entries = await audit.listFor(w1, { type: 'candidate', id: d.candidateId });
+    expect(entries.at(-1)).toMatchObject({ action: 'score.changed', note: 'He built the set himself' });
+    // The worker's next run over the same evidence stores nothing new.
+    expect((await assess(d.candidateId)).id).toBe(stored.id);
+  });
+
+  // SAFETY: mutation check: removed the `write_up_moves_score` guard from prepare -> this test failed (applied at 71, not the previewed 67)
+  it('a write-up that would move the score beyond the preview is refused, and nothing is stored', async () => {
+    const d = await daniel();
+    const { previewId } = await preview(d);
+    const before = await written(d.candidateId);
+    await expect(applyWith(d, previewId, 4)).rejects.toMatchObject({ code: 'write_up_moves_score' });
+    expect(await written(d.candidateId)).toEqual(before);
+    const items = await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, sae));
+    expect(items.filter((i) => i.source.kind === 'interview_note')).toEqual([]);
+  });
+});
+
 describe('Scenario: Another workspace', () => {
   // SAFETY: mutation check: removed the workspace filter from assessmentStore.byId -> this test still passed on RLS alone;
   // ALTER POLICY result_tenant_isolation USING (true) as well -> this test failed (W2 previewed W1's assessment)

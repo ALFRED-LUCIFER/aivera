@@ -85,6 +85,8 @@ export type CompetencyChange = {
   from: CompetencyState;
   to: CompetencyState;
   noChange: NoChange | null;
+  /** The same interview's earlier rating of the competency, which this one replaces; null when it gave none. */
+  replaces: Rating | null;
   change: InterviewChange;
 };
 
@@ -141,9 +143,9 @@ export function previewRatings(
     const from = state(current.assessment, current.links, competencyId);
     const to = state(next, nextLinks, competencyId);
     const moved = from.strength !== to.strength || from.provenLevel !== to.provenLevel;
+    const replaces = stored.findLast((c) => c.competencyId === competencyId && c.sourceId === sourceId)?.rating ?? null;
     // "No change" is stored only to take back this interview's earlier rating of the competency.
-    if (rating === 'partly_shown' && !stored.some((c) => c.competencyId === competencyId && c.sourceId === sourceId))
-      continue;
+    if (rating === 'partly_shown' && !replaces) continue;
     const counted = nextLinks.filter((l) => l.competencyId === competencyId && l.itemId !== sourceId && counts(l));
     const noChange = moved
       ? null
@@ -152,7 +154,7 @@ export function previewRatings(
         : counted.some((l) => otherInterviews.has(l.itemId))
           ? 'outranked_by_other_interview'
           : 'no_effect';
-    changes.push({ competencyId, rating, from, to, noChange, change });
+    changes.push({ competencyId, rating, from, to, noChange, replaces, change });
     current = { links: nextLinks, assessment: next, stored: nextStored };
   }
   return { before, after: current.assessment, changes };

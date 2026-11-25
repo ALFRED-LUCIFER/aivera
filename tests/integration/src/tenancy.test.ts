@@ -403,6 +403,17 @@ async function seed(
     });
     // Its interviewer's scorecard draft (interviews.scorecard_drafts, AIV-P2-004).
     await interviews.saveScorecardDraft(ctx, interviewId, { competencies: [], recommendation: null });
+    // A pasted meeting summary with one proposal, and its handled analysis message (interviews.meeting_summaries,
+    // .summary_proposals and .inbox, AIV-P1-115), written as the module and the worker's consumer store them.
+    const summaryId = crypto.randomUUID();
+    await ctx.tx.execute(sql`insert into interviews.meeting_summaries
+      (id, workspace_id, interview_id, author_user_id, text, status, unusual, created_at)
+      values (${summaryId}, ${workspaceId}, ${interviewId}, ${creator}, 'Synthetic summary.', 'proposed', false, now())`);
+    await ctx.tx
+      .execute(sql`insert into interviews.summary_proposals (summary_id, competency_id, workspace_id, finding, status)
+      values (${summaryId}, gen_random_uuid(), ${workspaceId}, 'not_mentioned', 'proposed')`);
+    await ctx.tx.execute(sql`insert into interviews.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('interviews.summary.analyse', gen_random_uuid(), ${workspaceId}, now())`);
     // The same person arriving again under another address, merged by a recruiter (candidates.merge, AIV-P1-018).
     const duplicate = await candidates.findOrCreatePerson(ctx, {
       displayName: person,

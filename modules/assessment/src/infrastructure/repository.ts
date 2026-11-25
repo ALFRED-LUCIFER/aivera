@@ -61,7 +61,12 @@ export function assessmentStore(tx: Tx): AssessmentStore {
     },
     async applied(workspaceId, idempotencyKey) {
       const [row] = await tx
-        .select({ result, previewId: interviewChange.previewId, reason: interviewChange.reason })
+        .select({
+          result,
+          previewId: interviewChange.previewId,
+          reason: interviewChange.reason,
+          competencyId: interviewChange.competencyId,
+        })
         .from(interviewChange)
         .innerJoin(result, and(eq(result.id, interviewChange.resultId), eq(result.workspaceId, workspaceId)))
         .where(and(eq(interviewChange.workspaceId, workspaceId), eq(interviewChange.idempotencyKey, idempotencyKey)))

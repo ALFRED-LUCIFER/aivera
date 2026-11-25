@@ -1,0 +1,708 @@
+{
+  "id": "a5550778-7077-4717-9f72-8e109b5504e8",
+  "prevId": "685e2a13-7f65-4c73-93bc-8004bd12cf09",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "interviews.inbox": {
+      "name": "inbox",
+      "schema": "interviews",
+      "columns": {
+        "consumer": {
+          "name": "consumer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "handled_at": {
+          "name": "handled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inbox_consumer_message_id_pk": {
+          "name": "inbox_consumer_message_id_pk",
+          "columns": [
+            "consumer",
+            "message_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "inbox_tenant_isolation": {
+          "name": "inbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "interviews.interview": {
+      "name": "interview",
+      "schema": "interviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "round": {
+          "name": "round",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interviewer_user_id": {
+          "name": "interviewer_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competency_ids": {
+          "name": "competency_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "interview_status_idx": {
+          "name": "interview_status_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "interview_workspace_id_key": {
+          "name": "interview_workspace_id_key",
+          "columns": [
+            "workspace_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "interview_tenant_isolation": {
+          "name": "interview_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "interview_round_check": {
+          "name": "interview_round_check",
+          "value": "\"interviews\".\"interview\".\"round\" in ('structured_screen', 'evidence_defence', 'panel')"
+        },
+        "interview_status_check": {
+          "name": "interview_status_check",
+          "value": "\"interviews\".\"interview\".\"status\" in ('to_schedule', 'scheduled', 'in_progress', 'scorecard_due', 'completed', 'cancelled')"
+        },
+        "interview_scheduled_at_check": {
+          "name": "interview_scheduled_at_check",
+          "value": "(\"interviews\".\"interview\".\"status\" <> 'scheduled' or \"interviews\".\"interview\".\"scheduled_at\" is not null) and (\"interviews\".\"interview\".\"status\" <> 'to_schedule' or \"interviews\".\"interview\".\"scheduled_at\" is null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "interviews.meeting_summaries": {
+      "name": "meeting_summaries",
+      "schema": "interviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interview_id": {
+          "name": "interview_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_user_id": {
+          "name": "author_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unusual": {
+          "name": "unusual",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt_version": {
+          "name": "prompt_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "meeting_summaries_interview_idx": {
+          "name": "meeting_summaries_interview_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interview_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "meeting_summaries_interview_fk": {
+          "name": "meeting_summaries_interview_fk",
+          "tableFrom": "meeting_summaries",
+          "columnsFrom": [
+            "workspace_id",
+            "interview_id"
+          ],
+          "tableTo": "interview",
+          "schemaTo": "interviews",
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meeting_summaries_workspace_id_key": {
+          "name": "meeting_summaries_workspace_id_key",
+          "columns": [
+            "workspace_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "meeting_summaries_tenant_isolation": {
+          "name": "meeting_summaries_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"meeting_summaries\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"meeting_summaries\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "meeting_summaries_status_check": {
+          "name": "meeting_summaries_status_check",
+          "value": "\"interviews\".\"meeting_summaries\".\"status\" in ('analysing', 'waiting', 'failed', 'proposed', 'applied', 'declined')"
+        },
+        "meeting_summaries_text_check": {
+          "name": "meeting_summaries_text_check",
+          "value": "char_length(\"interviews\".\"meeting_summaries\".\"text\") between 1 and 12000"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "interviews.outbox": {
+      "name": "outbox",
+      "schema": "interviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correlation_id": {
+          "name": "correlation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "outbox_unsent_idx": {
+          "name": "outbox_unsent_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"interviews\".\"outbox\".\"sent_at\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "outbox_workspace_dedupe_key": {
+          "name": "outbox_workspace_dedupe_key",
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "outbox_tenant_isolation": {
+          "name": "outbox_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        },
+        "outbox_relay_read": {
+          "name": "outbox_relay_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true"
+        },
+        "outbox_relay_mark": {
+          "name": "outbox_relay_mark",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "aivera_relay"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "interviews.scorecard_drafts": {
+      "name": "scorecard_drafts",
+      "schema": "interviews",
+      "columns": {
+        "interview_id": {
+          "name": "interview_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competencies": {
+          "name": "competencies",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recommendation": {
+          "name": "recommendation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "scorecard_drafts_interview_fk": {
+          "name": "scorecard_drafts_interview_fk",
+          "tableFrom": "scorecard_drafts",
+          "columnsFrom": [
+            "workspace_id",
+            "interview_id"
+          ],
+          "tableTo": "interview",
+          "schemaTo": "interviews",
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "scorecard_drafts_tenant_isolation": {
+          "name": "scorecard_drafts_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"scorecard_drafts\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"scorecard_drafts\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "scorecard_drafts_recommendation_check": {
+          "name": "scorecard_drafts_recommendation_check",
+          "value": "\"interviews\".\"scorecard_drafts\".\"recommendation\" in ('shortlist', 'more_evidence', 'not_recommended')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "interviews.summary_proposals": {
+      "name": "summary_proposals",
+      "schema": "interviews",
+      "columns": {
+        "summary_id": {
+          "name": "summary_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competency_id": {
+          "name": "competency_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "finding": {
+          "name": "finding",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "excerpt": {
+          "name": "excerpt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "excerpt_start": {
+          "name": "excerpt_start",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "excerpt_end": {
+          "name": "excerpt_end",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposed_strength": {
+          "name": "proposed_strength",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "summary_proposals_summary_fk": {
+          "name": "summary_proposals_summary_fk",
+          "tableFrom": "summary_proposals",
+          "columnsFrom": [
+            "workspace_id",
+            "summary_id"
+          ],
+          "tableTo": "meeting_summaries",
+          "schemaTo": "interviews",
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "summary_proposals_summary_id_competency_id_pk": {
+          "name": "summary_proposals_summary_id_competency_id_pk",
+          "columns": [
+            "summary_id",
+            "competency_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "summary_proposals_tenant_isolation": {
+          "name": "summary_proposals_tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"interviews\".\"summary_proposals\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
+          "withCheck": "\"interviews\".\"summary_proposals\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "summary_proposals_finding_check": {
+          "name": "summary_proposals_finding_check",
+          "value": "\"interviews\".\"summary_proposals\".\"finding\" in ('not_mentioned', 'not_shown', 'partly_shown', 'clearly_shown', 'strongly_shown')"
+        },
+        "summary_proposals_status_check": {
+          "name": "summary_proposals_status_check",
+          "value": "\"interviews\".\"summary_proposals\".\"status\" in ('proposed', 'applied', 'declined')"
+        },
+        "summary_proposals_strength_check": {
+          "name": "summary_proposals_strength_check",
+          "value": "\"interviews\".\"summary_proposals\".\"proposed_strength\" in ('claim', 'medium')"
+        },
+        "summary_proposals_excerpt_check": {
+          "name": "summary_proposals_excerpt_check",
+          "value": "(\"interviews\".\"summary_proposals\".\"finding\" = 'not_mentioned') = (\"interviews\".\"summary_proposals\".\"excerpt\" is null)"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "interviews": "interviews"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
