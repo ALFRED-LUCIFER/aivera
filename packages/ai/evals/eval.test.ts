@@ -17,7 +17,11 @@ import {
   draftCompetenciesSchema,
 } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
-import { explainRankingSchema } from '../src/prompts/assessment.explainRanking.ts';
+import {
+  explainRankingRequest,
+  explainRankingSchema,
+  explainRankingSchemaFor,
+} from '../src/prompts/assessment.explainRanking.ts';
 import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
@@ -1329,7 +1333,7 @@ describe('Feature: Cited ranking explanation', () => {
   it('Scenario: 10 synthetic snapshots, each recorded answer on the schema, every statement cited, and the runner passes the gates', async () => {
     expect(cases).toHaveLength(10);
     for (const c of cases) {
-      const parsed = explainRankingSchema.safeParse(c.recorded.output);
+      const parsed = explainRankingSchemaFor(c.sources[0]?.text ?? '').safeParse(c.recorded.output);
       expect(parsed.error, c.id).toBeUndefined();
       expect(
         parsed.data?.statements.every((s) => s.citations.length > 0),
@@ -1346,6 +1350,36 @@ describe('Feature: Cited ranking explanation', () => {
     expect(explainRankingSchema.safeParse(withText('60% of the weight')).success).toBe(false);
     expect(explainRankingSchema.safeParse(withText('60 of the weight')).success).toBe(false);
     expect(explainRankingSchema.safeParse(withText('{checkedWeight} of the weight')).success).toBe(true);
+  });
+
+  // AIV-P1-132, owner decision 25 Nov 2026: a statement citing the facts source (S1) is one of its lines, exactly.
+  // SAFETY: mutation check: removed the facts-line refine from explainRankingSchemaFor -> the reworded rows failed (they parsed)
+  const facts =
+    'Independently checked work backs this competency: Data modelling, {checkedWeight} of the weight.\n' +
+    'Still resting on claims: {claimNames}, {claimWeight} of the weight.';
+  it.each([
+    ['Still resting on claims: {claimNames}, {claimWeight} of the weight.', 'S1', true],
+    ['Independently checked work backs this competency: Data modelling, {checkedWeight} of the weight.', 'S1', true],
+    ["The candidate's score is based on claims that have not yet been independently checked.", 'S1', false],
+    ['Still resting on claims: {claimNames}, {claimWeight} of the weight', 'S1', false],
+    ['The remaining competencies still rest on claims, including {claimNames}.', 'S1', false],
+    // A statement citing only an excerpt is not held to a facts line.
+    ['The candidate published schema documentation for the analytics warehouse.', 'S2', true],
+  ])(
+    'Scenario Outline: a statement citing the facts source is one of its lines: %j citing %s',
+    (text, sourceId, ok) => {
+      const said = { statements: [{ text, citations: [{ sourceId, quote: 'q' }] }] };
+      expect(explainRankingSchemaFor(facts).safeParse(said).success).toBe(ok);
+    },
+  );
+
+  // SAFETY: mutation check: explainRankingRequest given the static explainRankingSchema -> this test failed (it parsed)
+  it('Scenario: the request the model is sent holds its facts source to its lines', () => {
+    const { schema } = explainRankingRequest([{ id: 'facts', kind: 'document', text: facts }]);
+    expect(schema.safeParse(withText('The score rests on claims.')).success).toBe(false);
+    expect(
+      schema.safeParse(withText('Still resting on claims: {claimNames}, {claimWeight} of the weight.')).success,
+    ).toBe(true);
   });
 
   // AIV-P1-132, owner decision 24 Nov 2026. S1 is the facts source; a figure in it never counts.

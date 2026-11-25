@@ -165,19 +165,20 @@ function setup(
 
 const cite = (sourceId: string, quote: string) => ({ sourceId, quote });
 // S1 is the facts source; S2 onward are the cited items, heaviest competency first (e1, e2, e3, e4).
+const CHECKED_LINE =
+  'Independently checked work backs the heaviest competencies: Retrieval and evaluation, and LLM systems in production, {checkedWeight} of the weight.';
+const CLAIMS_LINE = 'Still resting on claims: {claimNames}, {claimWeight} of the weight.';
+// A statement citing the facts source is one of its lines, exactly (AIV-P1-132): the schema rejects a paraphrase.
 const GOOD = {
   statements: [
-    {
-      text: 'Work that was independently checked backs {checkedCompetencies}, {checkedWeight} of the weight, the heaviest.',
-      citations: [cite('S1', 'Independently checked work backs')],
-    },
+    { text: CHECKED_LINE, citations: [cite('S1', 'Independently checked work backs')] },
     { text: 'The candidate authored most of the evaluation harness.', citations: [cite('S2', '412 of 460 commits')] },
-    {
-      text: '{claimCompetencies}, {claimWeight} of the weight, still rest on claims: {claimNames}.',
-      citations: [cite('S1', 'Still resting on claims')],
-    },
+    { text: CLAIMS_LINE, citations: [cite('S1', 'Still resting on claims')] },
   ],
 };
+// The model's own words reach the module's checks (statementAllowed, figuresQuoted) only on a statement citing an
+// excerpt: S2 is llm-eval-harness.
+const EXCERPT = 'llm-eval-harness';
 
 describe("Scenario: Sara's explanation", () => {
   it('says what the ticket says, with every number from the snapshot, and cites the source', async () => {
@@ -185,14 +186,30 @@ describe("Scenario: Sara's explanation", () => {
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('ai');
     expect(explained?.statements.map((s) => s.text)).toEqual([
-      'Work that was independently checked backs two competencies, 45% of the weight, the heaviest.',
+      'Independently checked work backs the heaviest competencies: Retrieval and evaluation, and LLM systems in production, 45% of the weight.',
       'The candidate authored most of the evaluation harness.',
-      'Two competencies, 25% of the weight, still rest on claims: Cost and reliability, and Arabic NLP.',
+      'Still resting on claims: Cost and reliability, and Arabic NLP, 25% of the weight.',
     ]);
     expect(explained?.statements[1]?.citations).toEqual([
       { itemId: 'e1', label: 'llm-eval-harness', quote: '412 of 460 commits' },
     ]);
     expect(explained?.statements[0]?.citations[0]?.itemId).toBeNull();
+  });
+});
+
+describe('Scenario: A reworded facts line is rejected, never shown', () => {
+  // SAFETY: mutation check: explainRankingRequest given the static explainRankingSchema -> this test failed (the paraphrase was shown)
+  it('falls back to the template, uncached, when a statement citing the facts source rewords its line', async () => {
+    const reworded = {
+      text: "The candidate's score is based on claims.",
+      citations: [cite('S1', 'Still resting on claims')],
+    };
+    const { useCases, calls } = setup({ statements: [GOOD.statements[1], reworded] });
+    const explained = await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(explained?.source).toBe('template');
+    expect(JSON.stringify(explained)).not.toContain('based on claims');
+    await useCases.explainRanking(ctx, 'sara', JOB);
+    expect(calls.model).toBe(2);
   });
 });
 
@@ -215,7 +232,7 @@ describe('Scenario: Numbers come from the snapshot', () => {
     '{checkedWeight}% of the weight',
     'A {madeUp} share',
   ])('rejects the model text %j and shows the template', async (text) => {
-    const { useCases } = setup({ statements: [{ text, citations: [cite('S1', 'Still resting on claims')] }] });
+    const { useCases } = setup({ statements: [{ text, citations: [cite('S2', EXCERPT)] }] });
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('template');
     expect(JSON.stringify(explained)).not.toContain('60%');
@@ -236,6 +253,7 @@ describe('Scenario Outline: A number the model wrote is never shown', () => {
   });
 
   // SAFETY: mutation check: removed the quotesItsFigures refine from explainRankingSchema -> these tests failed (400 was shown)
+  // (the facts-only row is now also rejected by the facts-line refine, AIV-P1-132)
   it.each([
     [
       'a figure the excerpt does not hold',
@@ -318,7 +336,7 @@ describe('Scenario: The facts line holds placeholders, and a line copied from it
   // SAFETY: mutation check: removed the brace check in citationOf -> this test failed ("{claimWeight" was shown)
   it('drops a facts citation whose quote cuts a placeholder in half, and the statement it leaves uncited', async () => {
     const { useCases } = setup({
-      statements: [{ text: 'Some work still rests on claims.', citations: [cite('S1', '{claimNames}, {claimWeight')] }],
+      statements: [{ text: CLAIMS, citations: [cite('S1', '{claimNames}, {claimWeight')] }],
     });
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('template');
@@ -339,9 +357,9 @@ describe('Statements the facts do not support are dropped', () => {
         statements: [
           {
             text: 'The {checkedCompetencies}, {checkedWeight} of the weight, are the heaviest.',
-            citations: [cite('S1', 'Independently checked work backs')],
+            citations: [cite('S2', EXCERPT)],
           },
-          { text: '{claimCompetencies} still rest on claims.', citations: [cite('S1', 'Still resting on claims')] },
+          { text: '{claimCompetencies} still rest on claims.', citations: [cite('S2', EXCERPT)] },
         ],
       },
       { evidence },
@@ -401,10 +419,7 @@ describe('The template never states what the facts do not', () => {
   });
 });
 
-const say = (text: string, quote = 'Independently checked work backs') => ({
-  text,
-  citations: [cite('S1', quote)],
-});
+const say = (text: string) => ({ text, citations: [cite('S2', EXCERPT)] });
 
 describe('Rule 1.6 wording is enforced in code, not only asked of the model', () => {
   // Retrieval (25%) is only candidate-submitted here, so the checked work is not the heaviest.
@@ -413,17 +428,17 @@ describe('Rule 1.6 wording is enforced in code, not only asked of the model', ()
   // SAFETY: mutation check: statementAllowed always true -> this test failed (verified, proven and a "backed" claim were shown)
   // Here the checked work IS the heaviest (Sara's own evidence), so only a claim being "heaviest" is wrong.
   it('drops a statement calling the claims the heaviest, even when the checked work is', async () => {
-    const { useCases } = setup({ statements: [say('{claimNames} are the heaviest.', 'Still resting on claims')] });
+    const { useCases } = setup({ statements: [say('{claimNames} are the heaviest.')] });
     expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
   });
 
   it.each([
     ['verified', say('The work was independently verified.')],
     ['proven', say('The work is proven.')],
-    ['a claim called backed', say('{claimNames} are backed.', 'Still resting on claims')],
+    ['a claim called backed', say('{claimNames} are backed.')],
     ['largest share when not the heaviest', say('This holds the largest share of the weight.')],
-    ['a claim supported', say('{claimNames} are supported.', 'Still resting on claims')],
-    ['a claim checked', say('{claimNames} have been checked.', 'Still resting on claims')],
+    ['a claim supported', say('{claimNames} are supported.')],
+    ['a claim checked', say('{claimNames} have been checked.')],
   ])('drops a statement saying %s, leaving the template', async (_, statement) => {
     const { useCases } = setup({ statements: [statement] }, { evidence });
     expect((await useCases.explainRanking(ctx, 'sara', JOB))?.source).toBe('template');
@@ -440,19 +455,14 @@ describe("A rubric competency named like a banned word is a server fact, not the
     ]);
     const { useCases } = setup(
       {
-        statements: [
-          {
-            text: '{claimCompetencies} still rest on claims: {claimNames}.',
-            citations: [cite('S1', 'Still resting on claims')],
-          },
-        ],
+        statements: [{ text: CLAIMS_LINE, citations: [cite('S1', 'Still resting on claims')] }],
       },
       { names },
     );
     const explained = await useCases.explainRanking(ctx, 'sara', JOB);
     expect(explained?.source).toBe('ai');
     expect(explained?.statements[0]?.text).toBe(
-      'Two competencies still rest on claims: Test and verification, and Arabic NLP.',
+      'Still resting on claims: Test and verification, and Arabic NLP, 25% of the weight.',
     );
   });
 });

@@ -109,12 +109,28 @@ export const explainRankingSchema = z.object({
     .max(3),
 });
 
+/**
+ * The schema for one request: a statement that cites the facts source is one of its lines, exactly, so a paraphrase
+ * cannot say more than the snapshot (AIV-P1-132, owner decision 25 Nov 2026). A refine only: the schema the model is
+ * given does not change.
+ */
+// The lines as given here; a line that redaction changed for the model then fails, and the template is shown.
+export const explainRankingSchemaFor = (factsText: string) => {
+  const lines = factsText.split('\n');
+  return explainRankingSchema.superRefine(({ statements }, ctx) =>
+    statements.forEach(({ text, citations }, i) => {
+      if (citations.some((c) => c.sourceId === FACTS_LABEL) && !lines.includes(text))
+        ctx.addIssue({ code: 'custom', path: ['statements', i, 'text'], message: 'a facts line, copied exactly' });
+    }),
+  );
+};
+
 /** The whole request but its workspace and identifiers: `sources` are the facts source first, then the cited excerpts. */
 export const explainRankingRequest = (sources: readonly Source[]) => ({
   task: 'assessment.explainRanking' as const,
   promptVersion: EXPLAIN_RANKING_VERSION,
   system: EXPLAIN_RANKING_SYSTEM,
   prompt: 'Explain the ranking from the facts source and the excerpts.',
-  schema: explainRankingSchema,
+  schema: explainRankingSchemaFor(sources[0]?.text ?? ''),
   sources,
 });
