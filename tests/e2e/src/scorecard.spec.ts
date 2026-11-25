@@ -93,9 +93,10 @@ test('Scenario: Scorecard shows what to test', async ({ page }) => {
   // No overall or AI judgement of the person: the only choices are a rating per competency and the recommendation.
   await expect(page.getByRole('radiogroup')).toHaveCount(3);
   // The "Meeting summary" panel (AIV-P1-115) is the interviewer's own pasted text, allowed on this page by the owner's
-  // decision of 24 Nov 2026; everything else on the page carries no such judgement.
+  // decision of 24 Nov 2026: only the word "summary" is allowed in it, and nowhere else on the page.
   const summaryPanel = page.getByRole('region', { name: 'Meeting summary' });
   await expect(summaryPanel).toBeVisible();
+  await expect(summaryPanel).not.toContainText(/overall|communication|english|confidence|attitude|soft.skill/i);
   await summaryPanel.evaluate((panel) => panel.remove());
   await expect(page.getByRole('main')).not.toContainText(
     /overall|summary|communication|english|confidence|attitude|soft.skill/i,
