@@ -163,11 +163,15 @@ export type SuggestionJudgeCase = z.infer<typeof suggestionJudgeCase> & Graded;
 export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase;
 
 const withLinks = z.object({ links: z.array(z.record(z.string(), z.unknown())) }).loose();
-const withSuggestions = z.object({ suggestions: z.array(z.object({ name: z.string() }).loose()) }).loose();
+// At least one: a case with nothing to grade would pass without the judge.
+const withSuggestions = z.object({ suggestions: z.array(z.object({ name: z.string() }).loose()).min(1) }).loose();
 
 /** Reads every `<dir>/judge/*.yaml` against the golden set `golden`; none when the folder is absent. */
 export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): JudgeCase[] {
   if (!existsSync(join(dir, 'judge'))) return [];
+  const fixtures = new Map<string, Map<string, GoldenCase[]>>();
+  const fixturesIn = (from: string) =>
+    fixtures.get(from) ?? fixtures.set(from, loadGolden(join(dir, 'fixtures', from))).get(from);
   return readdirSync(join(dir, 'judge'))
     .filter((file) => file.endsWith('.yaml'))
     .toSorted()
@@ -181,8 +185,8 @@ export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): 
       const [task = '', id] = parsed.data.case.split('/');
       if ('judge' in parsed.data) {
         const { from, expected } = parsed.data;
-        const target = loadGolden(join(dir, 'fixtures', from))
-          .get(task)
+        const target = fixturesIn(from)
+          ?.get(task)
           ?.find((c) => c.id === id);
         const drafted = withSuggestions.safeParse(target?.recorded.output);
         if (!target || !drafted.success)

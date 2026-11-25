@@ -558,8 +558,7 @@ async function judgeCase(c: JudgeCase, verdictOf: JudgeVerdict): Promise<CaseRes
   let failures: string[];
   let suggestions: Record<string, SuggestionFault | null> | undefined;
   if ('judge' in c) {
-    const given = await verdictOf.suggestion(c);
-    suggestions = given;
+    const given = (suggestions = await verdictOf.suggestion(c));
     const said = (name: string) => (Object.hasOwn(given, name) ? (given[name] ?? 'pass') : 'nothing');
     failures = Object.entries(c.expected).flatMap(([name, fault], i) =>
       said(name) === (fault ?? 'pass')
