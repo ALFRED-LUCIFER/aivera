@@ -1,6 +1,7 @@
 import type { RankingRow } from '@credalent/assessment';
 import type { ApplicationListItem, Stage } from '@credalent/intake';
 import type { RowDuplicates } from './duplicates.ts';
+import type { BulkActionId } from './selection.ts';
 
 /** An assessed candidate's figures, with the missing critical competencies by name. */
 export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical'> & { missing: string[] };
@@ -20,8 +21,16 @@ export type CandidateRow = {
   duplicates?: RowDuplicates;
 };
 
-/** The page's data: the job, whether its rubric is approved yet, and every applicant's row. */
-export type RankingData = { jobId: string; awaitingRubric: boolean; rows: CandidateRow[] };
+/**
+ * The page's data: the job, whether its rubric is approved yet, every applicant's row, and the bulk actions this
+ * member may use on selected rows (AIV-P1-036): none means no selection is offered.
+ */
+export type RankingData = {
+  jobId: string;
+  awaitingRubric: boolean;
+  rows: CandidateRow[];
+  bulkActions: BulkActionId[];
+};
 
 /**
  * Ranked rows in rank order, then everyone not yet assessed, newest first: ranking orders attention and nobody drops

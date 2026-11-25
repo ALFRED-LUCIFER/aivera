@@ -9,7 +9,13 @@ import { cx } from './cx.ts';
  */
 export type BulkPreviewHandler<P extends object> = (ids: readonly string[]) => P & { then?: never };
 
-export type BulkAction<P extends object> = { id: string; label: string; preview: BulkPreviewHandler<P> };
+export type BulkAction<P extends object> = {
+  id: string;
+  /** While `disabled`, the label is the reason, e.g. "Compare up to 3 at a time" (Button: never opacity alone). */
+  label: string;
+  disabled?: boolean;
+  preview: BulkPreviewHandler<P>;
+};
 
 export type BulkActionBarProps<P extends object> = {
   /** Names the bar while it shows, from i18n, e.g. "Bulk actions". */
@@ -60,7 +66,7 @@ export function BulkActionBar<P extends object>({
         <>
           <div className="flex flex-wrap gap-2">
             {actions.map((action) => (
-              <Button key={action.id} onClick={() => onPreview(action.preview(selectedIds))}>
+              <Button key={action.id} disabled={action.disabled} onClick={() => onPreview(action.preview(selectedIds))}>
                 {action.label}
               </Button>
             ))}

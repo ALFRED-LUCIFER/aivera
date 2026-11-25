@@ -4,6 +4,7 @@ import type { Messages } from '@credalent/i18n';
 import type { Stage } from '@credalent/intake';
 import { useTimeZone, useTranslations } from '@credalent/i18n/react';
 import {
+  BulkActionBar,
   Button,
   Checkbox,
   DataTable,
@@ -30,13 +31,25 @@ import {
   type HideableColumn,
   type RankingFilters,
 } from '../domain/ranking.ts';
+import type { CompareState } from '../domain/selection.ts';
 import { DuplicateActions } from './DuplicateActions.tsx';
 
 // AIV-P1-034: the ranked candidates table, from the Candidates artboard (docs/01-design/artboards/Candidates.dc.html).
 // Deviations, each for a later ticket or a rule:
 // - no "Who is ahead, and how sure are we?" proof map chart: AIV-P1-035 (#99);
-// - no compare checkboxes, "3 selected" bulk bar, bulk evidence request preview or "Compare 3 selected" button:
-//   selection and bulk actions are AIV-P1-036 (#100);
+// - selection and the bulk bar (AIV-P1-036) use the shared DataTable and BulkActionBar: the bar is its own region above
+//   the table, shown only while rows are selected, not the table card's top strip; the checkbox column has a
+//   "Select all N shown" box where the artboard has a hidden "Compare" header; a row's box is named "Select <name>",
+//   not "Select <name> to compare", as it serves every bulk action;
+// - while fewer than 2 or more than 3 are selected, the disabled Compare button reads its reason ("Compare up to 3 at
+//   a time"), as a disabled Button does; the artboard draws only the 3-selected state;
+// - the bar has "Compare" only, and it and the checkboxes stay hidden behind the `compare` flag until the comparison
+//   page exists (AIV-P1-047, #111). "Request evidence" and its preview are AIV-P1-038 and AIV-P1-039 (#102, #103),
+//   "Message" waits for Message candidates, "Add to decision pack" is AIV-P2-010 (#124): each ticket adds its button
+//   (domain/selection.ts), so no button leads nowhere;
+// - no "Compare 3 selected" primary button beside "Add candidates": the job header is shared by every job page
+//   (AIV-P1-011), and the bar's Compare does the same;
+// - only admins and recruiters select: interviewers and hiring owners get no checkboxes (the server decides);
 // - the line under each name is the application's intake stage ("New"), not the interview round ("Round 1 complete"),
 //   which interviews and scorecards record (AIV-P2-E01, #18);
 // - "Last review" is "Last scored" (owner's decision): when the stored result last changed (an unchanged re-run stores nothing), in the workspace time zone
@@ -75,6 +88,14 @@ export type RankingTableView =
       onShowAll: () => void;
       hidden: HideableColumn[];
       onToggleColumn: (column: HideableColumn) => void;
+      /** Null when this member has no bulk action: no checkboxes and no bar (AIV-P1-036). */
+      selection: {
+        selectedIds: string[];
+        onSelectedIdsChange: (ids: string[]) => void;
+        notShown: number;
+        compare: CompareState;
+        onCompare: () => void;
+      } | null;
     };
 
 type ColumnId = keyof Messages['ranking']['columns'];
@@ -104,6 +125,7 @@ export function RankingTable({ view, duplicates }: { view: RankingTableView; dup
   const t = useTranslations('ranking');
   const timeZone = useTimeZone();
   const ready = view.status === 'ready' ? view : null;
+  const selection = ready?.selection;
   const columns = cells
     .filter((column) => !(ready && isHideable(column.id) && ready.hidden.includes(column.id)))
     .map((column) => ({
@@ -127,11 +149,38 @@ export function RankingTable({ view, duplicates }: { view: RankingTableView; dup
       )}
       {duplicates && <SuccessBanner>{duplicates.done && t(`duplicates.done.${duplicates.done}`)}</SuccessBanner>}
       {ready && ready.total > 0 && <Toolbar view={ready} />}
+      {selection && (
+        <BulkActionBar
+          label={t('bulk.label')}
+          selectedIds={selection.selectedIds}
+          selectedLabel={t('bulk.selected', { count: selection.selectedIds.length })}
+          hiddenLabel={selection.notShown > 0 ? t('bulk.notShown', { count: selection.notShown }) : undefined}
+          previewNote={t('bulk.previewNote')}
+          actions={[
+            {
+              id: 'compare',
+              label: t(`bulk.compare.${selection.compare}`),
+              disabled: selection.compare !== 'ready',
+              preview: (ids) => ({ ids }),
+            },
+          ]}
+          // Compare changes nothing: it opens the comparison of the selected candidates.
+          onPreview={selection.onCompare}
+        />
+      )}
       <DataTable
         caption={t('caption')}
         columns={columns}
         rows={ready?.rows ?? []}
         getRowId={(row) => row.id}
+        {...(selection && {
+          selection: {
+            selectedIds: selection.selectedIds,
+            onSelectedIdsChange: selection.onSelectedIdsChange,
+            allLabel: t('bulk.selectAll', { count: ready?.rows.length ?? 0 }),
+            rowLabel: (row: CandidateRow) => t('bulk.selectRow', { name: row.name ?? t('unnamed') }),
+          },
+        })}
         emptyMessage={ready && ready.total > 0 ? t('emptyFiltered') : t('empty')}
         loading={view.status === 'loading'}
         loadingLabel={t('loading')}
