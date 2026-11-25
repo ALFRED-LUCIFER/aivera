@@ -333,6 +333,8 @@ describe('Scenario: Seeding a fresh database', () => {
     const actions = await admin.execute<{ action: string; n: string }>(sql`
       select action, count(*) as n from audit.entry where workspace_id = ${workspaceId} group by action order by action`);
     expect([...actions]).toEqual([
+      // The five demo interviews' applications, moved to `interview` as choosing for interview would (AIV-P1-114).
+      { action: 'application.stage_changed', n: '5' },
       { action: 'job_access.granted', n: '10' },
       { action: 'job.created', n: '10' },
       { action: 'job.stage_changed', n: '4' },

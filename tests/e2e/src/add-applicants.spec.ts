@@ -105,7 +105,9 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   // The URL carries the job's opaque id only.
   expect(new URL(page.url()).pathname).toMatch(/^\/app\/jobs\/[0-9a-f-]{36}\/candidates$/);
   await expect(page.getByText(/^Ranked by backed score: only evidence that can be inspected counts\./)).toBeVisible();
+  // AP, an admin, may choose people for interview (AIV-P1-114), so each row has a selection box.
   await expect(table.getByRole('columnheader')).toHaveText([
+    'Select all 7 shown',
     '#',
     'Candidate',
     'Backed score',
@@ -119,10 +121,12 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   await expect(rows).toHaveCount(7);
   // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it.
   await expect(rows.nth(0)).toHaveText(
-    '1Sara Al QahtaniNew1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+    'Select Sara Al Qahtani1Sara Al QahtaniNew1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
   );
-  await expect(rows.nth(1)).toHaveText(/^2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/);
-  await expect(rows.nth(2)).toHaveText(/^3Tarek MansourNew63up to 80 if claims hold/);
+  await expect(rows.nth(1)).toHaveText(
+    /^Select Arjun Menon2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
+  );
+  await expect(rows.nth(2)).toHaveText(/^Select Tarek Mansour3Tarek MansourNew63up to 80 if claims hold/);
   await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
@@ -151,9 +155,9 @@ test('Scenario: Show all', async ({ page }) => {
   await page.getByRole('button', { name: 'Show all 9' }).click();
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(9);
-  await expect(rows.nth(7)).toHaveText(/^8Maria SantosNew31up to 69 if claims hold/);
+  await expect(rows.nth(7)).toHaveText(/^Select Maria Santos8Maria SantosNew31up to 69 if claims hold/);
   // Not assessed yet and still listed: nobody drops out of the ranking (AGENTS.md 1.5).
-  await expect(rows.nth(8)).toHaveText(/^Youssef AzizNewNot yet scoredNot yet available/);
+  await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot yet scoredNot yet available/);
   await expect(page.getByText(`Showing 8 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
@@ -163,7 +167,7 @@ test('Scenario: Filter by missing evidence', async ({ page }) => {
   await page
     .getByRole('combobox', { name: 'Missing evidence' })
     .selectOption({ label: 'Missing evidence: Retrieval and evaluation' });
-  await expect(bodyRows(table)).toHaveText([/^2Arjun Menon/, /^4Layla Haddad/]);
+  await expect(bodyRows(table)).toHaveText([/^Select Arjun Menon2Arjun Menon/, /^Select Layla Haddad4Layla Haddad/]);
 });
 
 test('Scenario: Job without an approved rubric, and no applicants', async ({ page }) => {
@@ -207,7 +211,7 @@ test('Scenario: The ranking is keyboard operable: search, the filters and Column
   await page.keyboard.press('Tab');
   await expect(page.getByRole('searchbox', { name: 'Search candidates' })).toBeFocused();
   await page.keyboard.type('menon');
-  await expect(bodyRows(table)).toHaveText([/^2Arjun Menon/]);
+  await expect(bodyRows(table)).toHaveText([/^Select Arjun Menon2Arjun Menon/]);
   await page.keyboard.press('Tab');
   await expect(page.getByRole('combobox', { name: 'Stage' })).toBeFocused();
   await page.keyboard.press('Tab');

@@ -3,13 +3,19 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
-import type { ApplySummaryInput, MeetingSummaryView, SummaryPreview } from '../application/summary.ts';
+import type { ApplySummaryInput, MeetingSummaryView, ScorePreview, SummaryPreview } from '../application/summary.ts';
 import type { Interview } from '../domain/interview.ts';
-import type { ScorecardDraft } from '../domain/scorecard.ts';
+import type { ScorecardDraft, ScorecardRatings } from '../domain/scorecard.ts';
 
 export { InterviewError, scorecardDueDays } from '../domain/interview.ts';
 export type { Interview, InterviewErrorCode, InterviewStatus, Round } from '../domain/interview.ts';
-export type { ApplySummaryInput, MeetingSummaryView, ProposalView, SummaryPreview } from '../application/summary.ts';
+export type {
+  ApplySummaryInput,
+  MeetingSummaryView,
+  ProposalView,
+  ScorePreview,
+  SummaryPreview,
+} from '../application/summary.ts';
 export { FINDINGS, SUMMARY_MAX_CHARS, summaryTextSchema } from '../domain/summary.ts';
 export type { Finding, ProposalStatus, ProposedStrength, SummaryStatus } from '../domain/summary.ts';
 export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
@@ -20,6 +26,7 @@ export {
   RATINGS,
   RECOMMENDATIONS,
   scorecardDraftSchema,
+  scorecardRatingsSchema,
   toInterviewNoteEvidence,
   unrated,
 } from '../domain/scorecard.ts';
@@ -30,6 +37,7 @@ export type {
   Rating,
   Recommendation,
   ScorecardDraft,
+  ScorecardRatings,
 } from '../domain/scorecard.ts';
 
 const interviewEvent = z.strictObject({ interviewId: z.uuid(), applicationId: z.uuid() });
@@ -100,6 +108,15 @@ export interface InterviewsContract {
    * error for a draft that is not `scorecardDraftSchema`.
    */
   saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, draft: ScorecardDraft): Promise<void>;
+  /**
+   * What the scorecard's ratings would do to the candidate's latest assessment (AIV-P2-005): the assessment's
+   * `previewScoreChange` on the interview, strength and proven level before and after per rated competency and the
+   * backed score. Writes nothing. Who as `saveScorecardDraft`: its interviewer or a workspace admin, on a job they can
+   * reach (`scorecard.submit`); anyone else, a recruiter or hiring owner included, gets `ForbiddenError`. Throws
+   * `InterviewError` `interview_not_found`, `not_assessed` (no assessment yet) and `preview_changed` (the assessment
+   * refused it: not the latest, evidence not yet scored, an interview not held); a zod error for malformed ratings.
+   */
+  previewScorecardRatings(ctx: WorkspaceContext, interviewId: string, ratings: ScorecardRatings): Promise<ScorePreview>;
   /**
    * Stores a pasted meeting summary on the interview (plain text, 1 to 12,000 characters) and writes
    * `MeetingSummarySubmitted.v1`, so the worker proposes evidence changes from it. It changes no score, evidence or

@@ -18,11 +18,12 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 // - no "Compare" button: the comparison page is AIV-P1-047 (#111), and a link to nothing is not shipped;
 // - no "Request evidence" button, preview card or "sent" note: the drafted preview is AIV-P1-038 (#102) and sending is
 //   AIV-P1-039 (#103); no preview is faked here;
-// - no "Open decision pack" button: packs are AIV-P2-009 to AIV-P2-011 (#123 to #125), so no candidate is in one yet.
-//   With no action, the view has no primary button until those land;
+// - no "Open decision pack" button: packs are built from the ranking (AIV-P2-010) and opened from its success line and
+//   the job's Decision tab; the profile's button comes with the pack page (AIV-P2-011, #125). With no action, the view
+//   has no primary button until then;
 // - "Candidates" in the breadcrumb is text, not a link: the all-candidates page is AIV-P1-048 (#112), hidden until then;
 // - the subtitle is the job and the application's intake stage ("Senior AI Engineer · New"), not "Round 1 complete · in
-//   the Round 2 shortlist pack": rounds are AIV-P2-007 (#121) and packs AIV-P2-010 (#124);
+//   the Round 2 shortlist pack": rounds are AIV-P2-007 (#121) and the pack line AIV-P2-011 (#125);
 // - the feature folder is `evidence-profile`, not the ticket's `candidate-profile`: every `features/candidate-*` folder is
 //   candidate-site code to the architecture rules (ADR-009), which may not read the recruiter session;
 // - "Roles without an approved rubric are not assessed." says "Jobs": the catalogue never calls a job a role

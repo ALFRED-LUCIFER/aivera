@@ -46,22 +46,23 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
     hidden,
     onToggleColumn: (column: HideableColumn) =>
       setHidden(hidden.includes(column) ? hidden.filter((c) => c !== column) : [...hidden, column]),
-    selection: bulkActions.includes('compare')
-      ? {
-          selectedIds,
-          onSelectedIdsChange: replaceSelectedInUrl,
-          /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
-          notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,
-          compare: compareState(selectedIds.length),
-          // compareHref builds the path from opaque ids, which typed routes cannot check.
-          onCompare: () =>
-            router.push(
-              compareHref(
-                jobId,
-                rows.filter((row) => selectedIds.includes(row.id)).map((row) => row.personId),
-              ) as Route,
-            ),
-        }
-      : null,
+    selection:
+      bulkActions.length > 0
+        ? {
+            selectedIds,
+            onSelectedIdsChange: replaceSelectedInUrl,
+            /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
+            notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,
+            compare: bulkActions.includes('compare') ? compareState(selectedIds.length) : null,
+            // compareHref builds the path from opaque ids, which typed routes cannot check.
+            onCompare: () =>
+              router.push(
+                compareHref(
+                  jobId,
+                  rows.filter((row) => selectedIds.includes(row.id)).map((row) => row.personId),
+                ) as Route,
+              ),
+          }
+        : null,
   };
 }

@@ -81,6 +81,16 @@ export function intakeStore(tx: Tx): IntakeStore {
         .where(and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId)));
       return row ?? null;
     },
+    async moveStage(workspaceId, applicationId, from, to) {
+      const moved = await tx
+        .update(application)
+        .set({ stage: to })
+        .where(
+          and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId), eq(application.stage, from)),
+        )
+        .returning({ id: application.id });
+      return moved.length === 1;
+    },
     listForJob(workspaceId, jobId) {
       // One row per application: DISTINCT ON keeps its earliest source.
       return tx

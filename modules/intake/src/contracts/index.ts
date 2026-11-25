@@ -5,15 +5,20 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type {
   ApplicationListItem,
+  ChooseForInterviewInput,
+  ChooseForInterviewResult,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
   ReceiveBatchInput,
 } from '../application/applications.ts';
 
-export { IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
+export { CHOICE_REASON_MAX, IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
 export type { Source, Stage } from '../domain/application.ts';
 export type {
   ApplicationListItem,
+  ChooseForInterviewInput,
+  ChooseForInterviewResult,
+  InterviewPorts,
   ReceiveApplicationInput,
   ReceiveApplicationResult,
   ReceiveBatchInput,
@@ -66,6 +71,18 @@ export interface IntakeContract {
    * (AIV-P1-101). Same access and `IntakeError('job_not_found')` as `listApplicationsForJob`.
    */
   countApplications(ctx: WorkspaceContext, jobId: string): Promise<number>;
+  /**
+   * A person chooses who to interview from the job's ranking, after a preview (AIV-P1-114): each application moves to
+   * stage `interview` and gets a Round 1 interview ("structured screen") with the member as interviewer, the
+   * candidate's evidence gaps to investigate and no time yet ("Not scheduled yet"). One already at `interview` is
+   * skipped and gets no second interview. One `application.stage_changed` audit entry per person (from and to stage,
+   * job, interview id, the reason as note) is written last, in the caller's transaction. Nobody is contacted, and
+   * nobody not chosen changes (AGENTS.md 1.5). Admins and recruiters on the job (`interview.schedule`; `ForbiddenError`
+   * otherwise). Throws, writing nothing: `IntakeError` `reason_required` (empty or over `CHOICE_REASON_MAX` once
+   * trimmed), `job_not_found` (another workspace's or an ungranted job), `not_on_job` (any application not of this
+   * job); the interviews contract's refusals; a zod error for a malformed input.
+   */
+  chooseForInterview(ctx: WorkspaceContext, input: ChooseForInterviewInput): Promise<ChooseForInterviewResult>;
   /**
    * The demo seed's reset (`pnpm db:seed --reset`): deletes the workspace's applications, sources and batches. Admins.
    * Throws `IntakeError('not_synthetic')`, deleting nothing, unless the workspace is flagged synthetic. The flag is the

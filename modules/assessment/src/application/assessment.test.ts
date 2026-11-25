@@ -179,3 +179,36 @@ describe("getLatestAssessment authorises against the candidate's stored applicat
     expect(await read(async () => null)).toEqual([undefined]);
   });
 });
+
+// Maria's CV: LLM systems proven at 3 where the job needs 4, and Python resting on a claim.
+const maria = (rubricVersionId: string): StoredAssessment => ({
+  ...assess(RUBRIC, toLinks('maria', JOB, CLEAN)),
+  rubricVersionId,
+  id: 'maria-1',
+  workspaceId: 'w1',
+  candidateId: 'maria',
+  jobId: JOB,
+  assessedAt: day,
+});
+describe('The competencies a Round 1 interview should investigate (AIV-P1-114)', () => {
+  const ctx = { userId: 'ap', workspaceId: 'w1', role: 'recruiter', tx: {} } as unknown as WorkspaceContext;
+  const gaps = (latest: StoredAssessment | null, authorized: unknown[] = []) =>
+    assessmentUseCases({
+      storeFor: () => ({ latest: async () => latest }) as never,
+      authorize: async (_ctx: unknown, _action: unknown, resource: unknown) => void authorized.push(resource),
+      candidateJob: async () => ({ jobId: JOB, clientId: null }),
+      rankingJob: async () => ({ resource: { jobId: JOB, clientId: null }, approvedVersionId: 'rubric-v2' }),
+    } as unknown as Ports).interviewGaps(ctx, 'maria', JOB);
+
+  it("lists the latest result's gaps, heaviest first, after authorising the candidate's job", async () => {
+    const authorized: unknown[] = [];
+    expect(await gaps(maria('rubric-v2'), authorized)).toEqual(['c-llm', 'c-python']);
+    expect(authorized).toEqual([{ jobId: JOB, clientId: null }]);
+  });
+
+  // SAFETY: mutation check: dropped the approved-version comparison from interviewGaps -> this test failed (version 1's gaps returned)
+  it('none from a result on another rubric version, and none without a result', async () => {
+    expect(await gaps(maria('rubric-v1'))).toEqual([]);
+    expect(await gaps(null)).toEqual([]);
+  });
+});

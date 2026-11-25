@@ -82,6 +82,10 @@ describe('the platform log query', () => {
 
 describe('Scenario: A note is required where a person changes an outcome', () => {
   // SAFETY: mutation check: removed the NOTE_REQUIRED check in assertValidEntry -> these tests failed (nothing thrown)
+  it.each<Action>(['pack.created', 'pack.member_added'])('"%s" (AIV-P1-139) needs no note', (action) => {
+    expect(() => assertValidEntry(entry(action, { after: { packId: CANDIDATE.id, position: 0 } }))).not.toThrow();
+  });
+
   it.each<Action>(['decision.recorded', 'score.changed'])('"%s" without a note is refused', (action) => {
     expect(() => assertValidEntry(entry(action))).toThrow('A note is required for this action');
     expect(() => assertValidEntry(entry(action, { note: '   ' }))).toThrow(new AuditError('note_required'));
