@@ -202,7 +202,8 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
   app = createDb(urlFor('aivera_app'), { max: 1 });
-  audit = createAudit(app);
+  // The audit's clock is the same as the module's, so an entry's time is the member's `added_at` (AIV-P1-139).
+  audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
   intake = createIntake(
@@ -649,6 +650,8 @@ describe('Scenario: Pack creation and member additions are audited', () => {
   let round4: string;
 
   // SAFETY: mutation check: removed auditPackCreated and the auditMemberAdded loop from createPack -> this test failed (no entries)
+  // SAFETY: mutation check: added the pack's name to pack.created's after -> this test failed (after compared exactly; the
+  // audit module's own check catches emails and phone numbers only, not names)
   it('Zaid creates a pack with Sara: one pack.created, one pack.member_added, and Sara added by Zaid at the time', async () => {
     ({ packId: round4 } = await as(ZAID, w1, (ctx) =>
       decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 4', members: [{ candidateId: sara }] }),
@@ -659,12 +662,14 @@ describe('Scenario: Pack creation and member additions are audited', () => {
       expect.objectContaining({
         action: 'pack.created',
         actor: { type: 'user', id: ZAID },
+        occurredAt: NOW,
         after: { jobId: seniorAi.jobId, rubricVersionId: seniorAi.rubric.versionId },
       }),
     ]);
     expect(await memberAudits(round4, sara)).toEqual([
       expect.objectContaining({
         actor: { type: 'user', id: ZAID },
+        occurredAt: NOW,
         after: { packId: round4, jobId: seniorAi.jobId, assessmentId: expect.any(String), position: 0 },
       }),
     ]);

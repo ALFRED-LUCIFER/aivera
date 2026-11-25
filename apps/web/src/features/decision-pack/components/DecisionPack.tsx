@@ -12,7 +12,8 @@ import type { DecisionPackView, PackPage } from '../domain/pack.ts';
 // (docs/01-design/artboards/Pack.dc.html). Ported: the pack's name, "prepared <date> · rubric vN", each member with
 // their backed score and claim range (as snapshotted when they joined) and the basis "Observed" (AGENTS.md 1.7),
 // "Back to ranking", and "N other candidates stay in the ranking and can be added to a later pack.". Added beyond the
-// artboard (AIV-P1-139): "Added by <member> on <date>" under each member, for who put them in front of the hiring owner.
+// artboard (AIV-P1-139): "Added by <who added them> on <date>" under each member, so the hiring owner sees who put a
+// candidate in front of them.
 // Deviations:
 // - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011);
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;

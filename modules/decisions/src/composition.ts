@@ -58,7 +58,7 @@ export function createDecisions(
       ),
     auditPackCreated: (ctx, pack) =>
       audit.record(
-        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: pack.preparedBy } },
+        { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
         {
           action: 'pack.created',
           subject: { type: 'pack', id: pack.id },
