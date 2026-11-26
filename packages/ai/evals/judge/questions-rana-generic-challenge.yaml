@@ -29,7 +29,9 @@ output:
           claim: true
 expected: fail
 recorded:
-  judgePrompt: evals.judge@5
+  judgePrompt: evals.judge@6
   verdict:
     pass: false
-    reason: pending
+    reason:
+      The third question is generic and could be put to anyone about any project, failing the rubric requirement that
+      every question is about card authorisation, declines or conversion in a payments setting.

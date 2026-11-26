@@ -6,8 +6,9 @@ import { cited, type Source } from '../citations.ts';
 // every change runs the eval set (evals/interviews.mapSummary/). A finding is a proposal: the interviews module maps
 // it to a strength in code and nothing changes until a person confirms (AGENTS.md 1.5).
 
+// AIV-P1-137: @3 could quote the sentence beside the work its finding rests on (the eval now checks the words in code).
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
-export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@3';
+export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@4';
 
 export const MAX_REASON_WORDS = 40;
 
@@ -25,7 +26,7 @@ export const MAP_SUMMARY_SYSTEM = [
   'without the specific thing built, shown or measured; clearly_shown when it names a specific thing the candidate',
   'built, showed or measured (an evaluation set, an endpoint, a figure), even if not everything the Meaning lists;',
   'strongly_shown when it describes that in depth and detail; and one citation quoting the words of the summary the',
-  'finding rests on.',
+  'finding rests on: the words that name the thing built, shown or measured, not a sentence beside them.',
   'Leave out every competency the summary does not cover, and never guess one from silence. Give at most one finding',
   'for a competency and none for a competency that is not listed.',
   'Judge only what the summary says the candidate did, built, explained or could not explain. A sentence about',

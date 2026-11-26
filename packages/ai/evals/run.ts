@@ -24,6 +24,7 @@ import {
   promptSafety,
   safety,
   suggestionMatch,
+  textChecks,
   valuesAt,
   type Ratio,
 } from './scorers.ts';
@@ -377,6 +378,10 @@ export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
   };
 }
 
+/** Two scores as one: their points and failures added. */
+const plus = (a: Ratio | undefined, b: Ratio): Ratio =>
+  a ? { n: a.n + b.n, total: a.total + b.total, failures: [...a.failures, ...b.failures] } : b;
+
 async function scoreCase(
   task: string,
   golden: GoldenCase,
@@ -443,15 +448,14 @@ async function scoreCase(
       );
       if (suggestionPath && Array.isArray(expectedSuggestions)) {
         if (valuesAt(output, suggestionPath).length) suggestions = await suggestionJudge(golden, output);
-        const judged = suggestionMatch(output, suggestionPath, expectedSuggestions.length, suggestions ?? {});
-        const { n, total, failures } = scores.fieldMatch;
-        scores.fieldMatch = {
-          n: n + judged.n,
-          total: total + judged.total,
-          failures: [...failures, ...judged.failures],
-        };
+        scores.fieldMatch = plus(
+          scores.fieldMatch,
+          suggestionMatch(output, suggestionPath, expectedSuggestions.length, suggestions ?? {}),
+        );
       }
     }
+    // AIV-P1-137: the rubric points code checks are field-match points too, so the judge grades meaning only.
+    if (expected.text) scores.fieldMatch = plus(scores.fieldMatch, textChecks(output, expected.text));
     if (expected.safety) scores.safety = safety(output, expected.safety);
     // A proxy suggestion is a fairness failure (AGENTS.md 1.5): it fails the safety hard gate too, not one point.
     const proxies = valuesAt(output, `${suggestionPath}.name`).flatMap((name, i) =>

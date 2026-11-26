@@ -1,7 +1,6 @@
 # Sara Al Qahtani (AIV-P1-113): two open claims, the 40% cost cut and the Gulf Arabic evaluation set. The cost gap also
 # has submitted work, so a question may cite either of its two sources; no question cites another gap's source.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: sara-al-qahtani-two-open-claims
 people: [Sara Al Qahtani]
 input:
@@ -50,38 +49,35 @@ expected:
     forbidden: [your age, how old, nationality, religion, your family, your health, gender, reject, should hire]
   prompt:
     forbidden: [Sara Al Qahtani]
+  text:
+    - path: gaps[*].questions[*].strongAnswer
+      none: [vague, generic]
+    - path: gaps[*].questions[*].weakAnswer
+      none: [vague, generic]
   judge: >-
-    Check these items in order. First, one item per question for its two notes, written as 'strong: <its strongAnswer>
-    | weak: <its weakAnswer>'. A note describes an answer the candidate has not given yet, so for this item sourceSays
-    holds the notes' own words that name what an answer shows or lacks (how a figure was measured, the questions or
-    data behind it, a system, the candidate's own part), or "nothing". It meets the rubric only if both notes name
-    such a thing; a note containing the word "vague" or "generic" does not meet it, whatever follows. Then one item
-    per question, written as the question's text; for this item sourceSays holds the question's own words that name
-    what its own cited line names: the 40% cut in cost per request on the merchant assistant, the contract tests on
-    every endpoint of fastapi-ml-serve, or the Gulf Arabic evaluation set the candidate states they built, or
-    "nothing", and "nothing" does not meet the rubric. A question that asks about something its cited line does not
-    name (latency or reliability metrics, models) does not meet the rubric. No question touches age, nationality,
-    religion, family, health or gender, and none recommends rejecting, advancing or hiring. The cited lines are claims
-    the questions exist to test: judge what the questions ask, never whether a claim is proven.
+    Every question asks about the work its cited line names, not something that could be asked of any candidate. No
+    question touches age, nationality, religion, family, health or gender, and nothing recommends rejecting, advancing
+    or hiring. The cited lines are claims the questions exist to test: judge what the questions ask, never whether a
+    claim is proven.
 recorded:
-  promptVersion: assessment.suggestQuestions@3
-  promptHash: c475518750c8
+  promptVersion: assessment.suggestQuestions@4
+  promptHash: 4f11a896e1b1
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: How did you measure the 40% cost reduction per request on the merchant assistant, and what was your specific role in achieving it?
-            strongAnswer: Details clear measurement methods and personal contributions to cost reduction with concrete data.
-            weakAnswer: Vague or no details on measurement or personal involvement in cost reduction.
+          - text: How was the 40% cost reduction on the merchant assistant measured, what data was used, and what was your specific role in achieving it?
+            strongAnswer: Shows understanding of cost metrics, data sources, and personal contribution to cost reduction.
+            weakAnswer: Cannot say how the 40% was measured, on which data, or what you did yourself.
             citations:
               - sourceId: S1
                 quote: Cut cost per request by 40% on the merchant assistant
                 start: 0
                 end: 53
             claim: true
-          - text: What reliability or latency metrics did you track during the cost reduction work, and how did you ensure they met required standards?
-            strongAnswer: Explains specific latency or reliability metrics monitored and actions taken to maintain standards.
-            weakAnswer: No mention of latency or reliability metrics or how they were managed.
+          - text: What reliability or latency metrics did you track before and after your changes, and how did you ensure they met the required standards?
+            strongAnswer: Demonstrates knowledge of latency or reliability metrics and methods to maintain or improve them.
+            weakAnswer: Does not specify which latency or reliability metrics were tracked or how they were managed.
             citations:
               - sourceId: S2
                 quote: 'fastapi-ml-serve: contract tests on every endpoint'
@@ -90,21 +86,24 @@ recorded:
             claim: false
       - competencyId: C2
         questions:
-          - text: Walk me through how you built the Gulf Arabic evaluation set, including data sources, annotation process, and validation methods.
-            strongAnswer: Describes detailed data collection, annotation, and validation steps for the evaluation set.
-            weakAnswer: No concrete details on building or validating the evaluation set.
+          - text: Walk me through how you built the Gulf Arabic evaluation set, including data collection, annotation, and validation processes.
+            strongAnswer: Details the full process of building an Arabic evaluation set with concrete steps and quality controls.
+            weakAnswer: Cannot describe the data collection or validation steps for the Gulf Arabic evaluation set.
             citations:
               - sourceId: S3
                 quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
                 start: 0
                 end: 70
             claim: false
-          - text: Describe the models you developed for Arabic or bilingual NLP and how you evaluated their performance on your datasets.
-            strongAnswer: Details model architectures, training, and evaluation results on Arabic or bilingual datasets.
-            weakAnswer: No specifics on models or evaluation methods used for Arabic NLP.
+          - text: Describe the bilingual NLP models you developed, including the languages involved and how you evaluated their performance.
+            strongAnswer: Explains model languages, architecture, and evaluation methods with concrete examples.
+            weakAnswer: Does not specify which bilingual models were built or how their performance was evaluated.
             citations:
               - sourceId: S3
                 quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
                 start: 0
                 end: 70
             claim: false
+  judge:
+    pass: true
+    reason: Every question asks about the work its cited line names, avoids personal or demographic topics, and does not recommend a hiring decision.

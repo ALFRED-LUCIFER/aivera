@@ -1,7 +1,6 @@
 # Paolo Garcia (AIV-P1-113): CV only, so every competency is a gap; the four heaviest are listed. "Data pipelines" has
 # no evidence item at all: its rubric line is its source (S4), so its questions still cite what the model was given.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric yet, so only exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
 id: paolo-garcia-cv-only
 people: [Paolo Garcia]
 input:
@@ -70,38 +69,35 @@ expected:
     forbidden: [your age, how old, nationality, religion, your family, your health, gender, reject, should hire]
   prompt:
     forbidden: [Paolo Garcia]
+  text:
+    - path: gaps[*].questions[*].strongAnswer
+      none: [vague, generic]
+    - path: gaps[*].questions[*].weakAnswer
+      none: [vague, generic]
   judge: >-
-    Check these items in order. First, one item per question for its two notes, written as 'strong: <its strongAnswer>
-    | weak: <its weakAnswer>'. A note describes an answer the candidate has not given yet, so for this item sourceSays
-    holds the notes' own words that name what an answer shows or lacks (how a figure was measured, the questions or
-    data behind it, a system, the candidate's own part), or "nothing". It meets the rubric only if both notes name
-    such a thing; a note containing the word "vague" or "generic" does not meet it, whatever follows. Then one item
-    per question, written as the question's text; for this item sourceSays holds the question's own words that name
-    what its cited line names: the retrieval benchmark for the internal search tool, the chatbot for the customer help
-    centre, the Python APIs for the data team, or, for Data pipelines, whose only source is the rubric line, a
-    pipeline the candidate built and kept running, or "nothing", and "nothing" does not meet the rubric. No question
-    touches age, nationality, religion, family, health or gender, and none recommends rejecting, advancing or hiring.
-    The cited lines are claims the questions exist to test: judge what the questions ask, never whether a claim is
-    proven.
+    Every question asks about the work its cited line names, not something that could be asked of any candidate. No
+    question touches age, nationality, religion, family, health or gender, and nothing recommends rejecting, advancing
+    or hiring. The cited lines are claims the questions exist to test: judge what the questions ask, never whether a
+    claim is proven.
 recorded:
-  promptVersion: assessment.suggestQuestions@3
-  promptHash: 42bc836caf87
+  promptVersion: assessment.suggestQuestions@4
+  promptHash: 74fa02199d94
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: Walk me through the retrieval benchmark you built for the internal search tool and how you measured its effectiveness.
-            strongAnswer: Explains specific metrics used, data sets evaluated, and how results influenced system improvements.
-            weakAnswer: Gives vague or generic descriptions without concrete metrics or impact on decisions.
+          - text: Walk me through the retrieval benchmark you built for the internal search tool and how it influenced your decisions.
+            strongAnswer: Shows detailed design of eval sets, retrieval metrics, and concrete decision changes based on results.
+            weakAnswer: Cannot say which eval sets or metrics were used or how decisions changed.
             citations:
               - sourceId: S1
                 quote: Built a retrieval benchmark for the internal search tool
                 start: 0
                 end: 56
             claim: true
-          - text: Describe how the retrieval metrics you developed changed any design or operational decisions in your project.
-            strongAnswer: Details specific decisions changed based on metric results and their role in those changes.
-            weakAnswer: Cannot specify any decisions influenced or their personal involvement.
+          - text: What retrieval metrics did you use in your benchmark and why did you choose them?
+            strongAnswer: Explains specific metrics and rationale tied to search tool goals.
+            weakAnswer: Does not specify metrics or reasons for their choice.
             citations:
               - sourceId: S1
                 quote: Built a retrieval benchmark for the internal search tool
@@ -110,18 +106,18 @@ recorded:
             claim: true
       - competencyId: C2
         questions:
-          - text: Tell me about the chatbot you shipped for the customer help centre and your specific contributions to its deployment.
-            strongAnswer: Describes their role in development, deployment, and user interaction monitoring.
-            weakAnswer: Speaks only generally about the chatbot without clarifying personal responsibilities.
+          - text: Describe the chatbot you shipped for the customer help centre and your specific role in its development and deployment.
+            strongAnswer: Details their contributions to design, implementation, testing, and deployment with real user feedback.
+            weakAnswer: Cannot specify their exact role or involvement in the chatbot system.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
                 start: 13
                 end: 59
             claim: true
-          - text: How did you ensure the chatbot met real user needs after deployment?
-            strongAnswer: Explains user feedback collection, system adjustments, and performance monitoring.
-            weakAnswer: Does not describe any post-deployment user engagement or system tuning.
+          - text: How did you ensure the chatbot met user needs and performed reliably in production?
+            strongAnswer: Describes testing, monitoring, and iteration based on user data.
+            weakAnswer: Does not explain how user needs or reliability were addressed.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
@@ -130,18 +126,18 @@ recorded:
             claim: true
       - competencyId: C3
         questions:
-          - text: Describe the Python APIs you maintained for the data team and your approach to testing them.
-            strongAnswer: Details the APIs' functionality, testing frameworks used, and maintenance practices.
-            weakAnswer: Cannot describe testing methods or specifics of the APIs maintained.
+          - text: Tell me about the Python APIs you maintained for the data team, including how you tested and deployed them.
+            strongAnswer: Explains development, testing strategies, deployment, and maintenance practices.
+            weakAnswer: Cannot describe testing or deployment processes for the APIs.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
                 start: 0
                 end: 40
             claim: true
-          - text: Walk me through a challenge you faced maintaining these Python services and how you resolved it.
-            strongAnswer: Provides a concrete example showing problem-solving and service reliability focus.
-            weakAnswer: Gives a vague or no example of maintenance challenges or resolutions.
+          - text: What challenges did you face maintaining these Python services and how did you resolve them?
+            strongAnswer: Describes specific issues and solutions in service maintenance.
+            weakAnswer: Does not provide examples of challenges or resolutions.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
@@ -150,21 +146,24 @@ recorded:
             claim: true
       - competencyId: C4
         questions:
-          - text: What experience do you have building and maintaining data pipelines in production environments?
-            strongAnswer: Describes specific pipelines built, technologies used, and maintenance strategies.
-            weakAnswer: Cannot provide concrete examples or details about pipeline construction or upkeep.
+          - text: How have you built and kept data pipelines running in your past roles?
+            strongAnswer: Details pipeline design, implementation, monitoring, and troubleshooting.
+            weakAnswer: Cannot describe any pipeline building or maintenance experience.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
                 start: 0
                 end: 53
             claim: false
-          - text: How did you monitor and ensure the reliability of data pipelines you worked on?
-            strongAnswer: Explains monitoring tools, alerting mechanisms, and incident responses.
-            weakAnswer: Does not describe any monitoring or reliability practices for data pipelines.
+          - text: Walk me through a time you fixed a failure in a data pipeline you managed.
+            strongAnswer: Describes specific failure, diagnosis, and fix steps taken.
+            weakAnswer: Does not provide an example of pipeline failure handling.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
                 start: 0
                 end: 53
             claim: false
+  judge:
+    pass: true
+    reason: 'All rubric points are met: every question is about the cited work, avoids personal or hiring topics, and exists to test the cited claims.'

@@ -6,8 +6,10 @@ import { cited, sourceLabel, type Source } from '../citations.ts';
 // Versioned here so every change runs the eval set (evals/assessment.suggestQuestions/). The questions are guidance for
 // a person: they change no score, stage or rank (AGENTS.md 1.5). The interview guide (AIV-P2-003) reuses this prompt.
 
+// AIV-P1-137: @3 asked about a figure without naming it and wrote notes such as "Gives vague or generic answers", which
+// the eval now fails in code; @4 has the question write the figure and the notes name what an answer must show.
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every question set. */
-export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@3';
+export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@4';
 
 export const MAX_QUESTION_WORDS = 30;
 export const MAX_NOTE_WORDS = 25;
@@ -20,10 +22,14 @@ export const SUGGEST_QUESTIONS_SYSTEM = [
   'interviewer can ask to test what is unproven.',
   `Each question: text, an open question of at most ${MAX_QUESTION_WORDS} words that starts with How, What, Which, Why, "Walk me through",`,
   '"Describe" or "Tell me about", never one a yes or a no answers, specific to this job, its domain pack and the cited',
-  'evidence (ask how a stated figure was measured, on what, and what the candidate did themselves), never a generic',
-  `interview question; strongAnswer, at most ${MAX_NOTE_WORDS} words on what a strong answer shows; weakAnswer, at most ${MAX_NOTE_WORDS} words on what`,
-  'a weak answer shows; citations, quoting the words of a source listed under that gap\'s "Cite only" that the',
-  'question tests.',
+  'evidence, never a generic interview question. When a line you cite states figures (a percentage, a count, a',
+  'rate), the first question on it writes each of them exactly as the line does: a line that cut errors "from 9% to',
+  '4%" gives "How were the 9% and the 4% measured, on which data, and what did you do yourself?".',
+  `strongAnswer, at most ${MAX_NOTE_WORDS} words on what a strong answer shows about the cited evidence; weakAnswer, at most ${MAX_NOTE_WORDS} words`,
+  'naming what a weak answer leaves out about it ("Cannot say which data the 9% was measured on"). A note names only',
+  "that thing (how a figure was measured, the data or questions behind it, the system, the candidate's own part) and",
+  "never describes the answer's manner: no note calls an answer vague, general, generic or lacking detail.",
+  'citations, quoting the words of a source listed under that gap\'s "Cite only" that the question tests.',
   'A source listed under "Notes to aim the questions" says what the evidence does not show and what would change it:',
   'use it to aim a question, but never cite it, not even beside another citation; quote the evidence the question',
   'tests instead.',

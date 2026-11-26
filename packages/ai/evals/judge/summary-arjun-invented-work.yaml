@@ -20,7 +20,9 @@ output:
       claim: false
 expected: fail
 recorded:
-  judgePrompt: evals.judge@5
+  judgePrompt: evals.judge@6
   verdict:
     pass: false
-    reason: pending
+    reason:
+      The reason for C1 adds 'led the evaluation of retrieval metrics', which is not stated in the summary and fails the
+      rubric.

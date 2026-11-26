@@ -26,6 +26,7 @@ import { detectUnusualContent } from '../src/untrusted.ts';
 import { mapSummarySchema } from '../src/prompts/interviews.mapSummary.ts';
 import { domainCatalogue, hardGates, questionsInput, runners, summaryInput, taskThresholds } from './config.ts';
 import {
+  goldenCase as goldenCaseSchema,
   identifiersOf,
   loadGolden,
   loadJudgeCases,
@@ -55,7 +56,15 @@ import {
   type Answer,
   type Matcher,
 } from './run.ts';
-import { citationValidity, claimLabelling, contract, fieldMatch, safety, suggestionMatch } from './scorers.ts';
+import {
+  citationValidity,
+  claimLabelling,
+  contract,
+  fieldMatch,
+  safety,
+  suggestionMatch,
+  textChecks,
+} from './scorers.ts';
 
 // Feature: AI eval harness with a golden set (AIV-P0-029). Synthetic data only (docs/00-product/personas.md).
 
@@ -1121,7 +1130,10 @@ describe('Feature: A statement that differs only by a trailing period matches', 
 
 // Feature: The live AI judge is pinned by golden good and bad outputs (AIV-P2-084). Synthetic data only.
 describe('Feature: The live AI judge is pinned by golden good and bad outputs', () => {
-  const judgeCases = loadJudgeCases(import.meta.dirname, golden).filter((c): c is EvidenceJudgeCase => !('judge' in c));
+  // The evidence judge's cases on sara-eval-harness; AIV-P1-137's question and summary cases have their own feature.
+  const judgeCases = loadJudgeCases(import.meta.dirname, golden).filter(
+    (c): c is EvidenceJudgeCase => !('judge' in c) && c.case.startsWith('evidence.'),
+  );
   const contradicted = 'This evidence does not show who authored the repository.';
 
   it('holds the good output and every bad limit, each with its expected verdict', () => {
@@ -1383,7 +1395,7 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch));
 
   it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
-    expect(judgeCases.length).toBe(suggestionCases.length + 4 + 3); // four evidence and three matcher judge cases
+    expect(judgeCases.length).toBe(suggestionCases.length + 6 + 3); // six evidence and three matcher judge cases
     expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
       ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
       ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
@@ -1736,6 +1748,141 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
     expect(report.passed).toBe(false);
     expect(report.rates.safety).toBe(0);
     expect(summarySchemaOf(omar).safeParse(fromNerves).success).toBe(false);
+  });
+});
+
+// Feature: Judge rubrics for the suggested-question and meeting-summary golden cases (AIV-P1-137). The rubric points
+// about an item's own words are checked in code (`expected.text`); the LLM judge grades the meaning points. Synthetic.
+describe('Feature: Judge rubrics for the suggested-question and meeting-summary golden cases', () => {
+  const questions = 'assessment.suggestQuestions';
+  const summaries = 'interviews.mapSummary';
+  const daniel = caseOf(questions, 'daniel-novak-accuracy-claim');
+  const s1 = { sourceId: 'S1', quote: 'raised answer accuracy from 71% to 88% on the support assistant' };
+  const q = (text: string, weakAnswer = 'Cannot say where the questions came from or who graded the answers.') => ({
+    text,
+    strongAnswer:
+      'Names the questions in the set, where they came from, who graded the answers and against what standard.',
+    weakAnswer,
+    citations: [s1],
+    claim: true,
+  });
+  const evalSet = q(
+    'Walk me through how you built the evaluation set for the support assistant and how its answers were graded.',
+  );
+  const metrics = q(
+    'Which retrieval metrics did you track on the support assistant, and how did they change what you built?',
+  );
+  const howMeasured = q('How was the 71% measured, on which questions, and who built that set?');
+  /** Daniel's case answered with these questions: the field-match score, where the code checks count. */
+  const fieldMatchOf = async (...asked: ReturnType<typeof q>[]) => {
+    const output = { gaps: [{ competencyId: 'C1', questions: asked }] };
+    return (await run(questions, [withOutput(daniel, output)])).cases[0]?.scores.fieldMatch;
+  };
+
+  // SAFETY: mutation check: deleted daniel-novak-accuracy-claim's `judge:` rubric -> this test failed
+  it('Scenario: Every case of both tasks has a judge rubric and a recorded verdict that passes', async () => {
+    for (const task of [questions, summaries]) {
+      const cases = golden.get(task) ?? [];
+      expect(cases).toHaveLength(task === questions ? 5 : 6);
+      for (const c of cases) {
+        expect([c.expected.judge !== undefined, c.recorded.judge?.pass], c.id).toEqual([true, true]);
+        expect(readFileSync(join(import.meta.dirname, task, `${c.id}.yaml`), 'utf8')).not.toContain('no judge rubric');
+      }
+      expect((await run(task, cases)).rates.judge).toBe(1);
+    }
+    // Every suggested-questions case checks both answer notes of every question in code.
+    for (const c of golden.get(questions) ?? [])
+      expect(c.expected.text, c.id).toEqual(
+        expect.arrayContaining([
+          { path: 'gaps[*].questions[*].strongAnswer', none: ['vague', 'generic'] },
+          { path: 'gaps[*].questions[*].weakAnswer', none: ['vague', 'generic'] },
+        ]),
+      );
+  });
+
+  // SAFETY: mutation check: removed `some: ['71%']` from daniel-novak-accuracy-claim -> this test failed
+  // SAFETY: mutation check: `if (expected.text)` line removed from scoreCase in run.ts -> this test and the next two failed
+  it("Scenario: Daniel's questions must ask how the 71% was measured", async () => {
+    expect(await fieldMatchOf(evalSet, metrics)).toMatchObject({
+      n: 4,
+      total: 5,
+      failures: ['gaps[*].questions[*].text: none has "71%"'],
+    });
+    expect(await fieldMatchOf(evalSet, howMeasured)).toEqual({ n: 5, total: 5, failures: [] });
+  });
+
+  // SAFETY: mutation check: textChecks' `none` branch returned no failures in scorers.ts -> this test failed
+  it('Scenario: Answer notes say what is specific: a weak note reading "Gives vague or generic answers." fails', async () => {
+    const vague = q(evalSet.text, 'Gives vague or generic answers.');
+    expect((await fieldMatchOf(vague, howMeasured))?.failures).toEqual([
+      'gaps[0].questions[0].weakAnswer: has "vague"',
+      'gaps[0].questions[0].weakAnswer: has "generic"',
+    ]);
+    // Any case: the note on every question fails once per question.
+    for (const c of golden.get(questions) ?? []) {
+      const worse = structuredClone(c.recorded.output) as { gaps: { questions: { weakAnswer: string }[] }[] };
+      for (const g of worse.gaps) for (const question of g.questions) question.weakAnswer = 'Gives generic answers.';
+      const report = await run(questions, [withOutput(c, worse)]);
+      const generic = report.cases[0]?.scores.fieldMatch?.failures.filter((f) => f.endsWith('has "generic"'));
+      expect([report.passed, generic?.length], c.id).toEqual([false, worse.gaps.flatMap((g) => g.questions).length]);
+    }
+  });
+
+  // SAFETY: mutation check: textChecks' `some` branch returned no failures in scorers.ts -> this test failed
+  it("Scenario: A summary finding quotes the words the case names (Daniel's 200-question evaluation set)", async () => {
+    const summary = caseOf(summaries, 'daniel-novak-clear-evidence');
+    const sampling = 'asked how the questions were chosen and he explained the sampling from real support tickets';
+    const output = JSON.parse(JSON.stringify(summary.recorded.output), (key, value) =>
+      key === 'quote' ? sampling : value,
+    );
+    const report = await run(summaries, [withOutput(summary, output)]);
+    expect(report.passed).toBe(false);
+    expect(report.cases[0]?.scores.fieldMatch?.failures).toEqual([
+      'findings[*].citations[*].quote: none has "200-question evaluation set"',
+    ]);
+  });
+
+  // SAFETY: mutation check: the `texts.length === 0` guard removed from textChecks in scorers.ts -> this test failed
+  it('a check whose path holds no text fails, matches from a word start in any case, and never quotes the output', () => {
+    const output = { notes: ['Vaguely put: the extravagant claim', 'Names the data set.'] };
+    expect(textChecks(output, [{ path: 'note[*]', none: ['vague'] }])).toEqual({
+      n: 0,
+      total: 1,
+      failures: ['note[*]: no text to check'],
+    });
+    const found = textChecks(output, [
+      { path: 'notes[*]', none: ['vague', 'agant'] },
+      { path: 'notes[*]', some: ['data set', 'model'] },
+    ]);
+    expect(found).toEqual({
+      n: 0,
+      total: 2,
+      failures: ['notes[0]: has "vague"', 'notes[*]: none has "model"'],
+    });
+    expect(found.failures.join('\n')).not.toMatch(/extravagant|Names/);
+  });
+
+  it('a text check gives exactly one of some and none', () => {
+    const both = { ...daniel, expected: { ...daniel.expected, text: [{ path: 'x', some: ['a'], none: ['b'] }] } };
+    expect(goldenCaseSchema.safeParse(both).success).toBe(false);
+    expect(
+      goldenCaseSchema.safeParse({ ...both, expected: { ...daniel.expected, text: [{ path: 'x' }] } }).success,
+    ).toBe(false);
+  });
+
+  it('Scenario: Each meaning rubric is pinned by a known bad output the judge must fail', async () => {
+    const pinned = loadJudgeCases(import.meta.dirname, golden).filter(
+      (c): c is EvidenceJudgeCase => !('judge' in c) && !c.case.startsWith('evidence.'),
+    );
+    expect(pinned.map((c) => [c.id, c.case, c.expected])).toEqual([
+      ['questions-rana-generic-challenge', `${questions}/rana-khoury-payments`, 'fail'],
+      ['summary-arjun-invented-work', `${summaries}/arjun-menon-work-words`, 'fail'],
+    ]);
+    for (const c of pinned) {
+      expect(c.rubric).toBe(c.golden.expected.judge);
+      expect(c.output).not.toEqual(c.golden.recorded.output);
+    }
+    expect((await evaluateJudge(pinned, recordedJudgeVerdict)).passed).toBe(true);
   });
 });
 

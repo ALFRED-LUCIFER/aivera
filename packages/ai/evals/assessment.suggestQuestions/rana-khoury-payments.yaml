@@ -1,8 +1,9 @@
 # Rana Khoury (AIV-P1-113), domain grounding: the job's rubric uses the domain pack "Payments and fintech", so every
 # question is about card authorisation, declines or conversion in a payments setting.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: no judge rubric ("every question is about card authorisation, declines or conversion") yet, so only
-# exact fields are scored; add one with its live verdict (AIV-P1-137, #615).
+# shortcut: the rubric's example of a generic question (a recent project's challenges) is the one its judge case
+# (judge/questions-rana-generic-challenge) grades: evals.judge@6 failed that case in 10 of 10 runs with it, 8 of 10
+# without. Add a held-out generic question as a second judge case when the judge prompt next changes.
 id: rana-khoury-payments
 people: [Rana Khoury]
 input:
@@ -32,49 +33,51 @@ expected:
     forbidden: [your age, how old, nationality, religion, your family, your health, gender, reject, should hire]
   prompt:
     forbidden: [Rana Khoury]
+  text:
+    - path: gaps[*].questions[*].strongAnswer
+      none: [vague, generic]
+    - path: gaps[*].questions[*].weakAnswer
+      none: [vague, generic]
   judge: >-
-    Check these items in order. First, one item per question for its two notes, written as 'strong: <its strongAnswer>
-    | weak: <its weakAnswer>'. A note describes an answer the candidate has not given yet, so for this item sourceSays
-    holds the notes' own words that name what an answer shows or lacks (how a figure was measured, the questions or
-    data behind it, a system, the candidate's own part), or "nothing". It meets the rubric only if both notes name
-    such a thing; a note containing the word "vague" or "generic" does not meet it, whatever follows. Then one item
-    per question, written as the question's text; for this item sourceSays holds the question's own words that name
-    card authorisation, the authorisation rate, declines, conversion, card payments or the three Gulf markets, or
-    "nothing", and "nothing" does not meet the rubric. Every question must be about card authorisation, declines or
-    conversion in a payments setting: one about "a recent project" does not meet the rubric. No question touches age,
-    nationality, religion, family, health or gender, and none recommends rejecting, advancing or hiring. The cited
-    lines are claims the questions exist to test: judge what the questions ask, never whether a claim is proven.
+    Every question is about card authorisation, declines or conversion in a payments setting. A question that names
+    none of these and could be put to anyone about any project, such as one about the challenges of a recent project,
+    fails, whatever line it cites. No question touches age, nationality, religion, family, health or gender, and nothing
+    recommends rejecting, advancing or hiring. The cited lines are claims the questions exist to test: judge what the
+    questions ask, never whether a claim is proven.
 recorded:
-  promptVersion: assessment.suggestQuestions@3
-  promptHash: f5bd739a1d6a
+  promptVersion: assessment.suggestQuestions@4
+  promptHash: 5e10bcb0eed7
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: Walk me through how you measured the increase in card authorisation rate from 82% to 91% across the three Gulf markets.
-            strongAnswer: Explains specific metrics, data sources, and timeframe used to measure authorisation rates, showing hands-on involvement.
-            weakAnswer: Gives vague or generic statements without concrete measurement details or personal contribution.
+          - text: How were the 82% and the 91% measured, on which data, and what did you do yourself?
+            strongAnswer: Shows detailed understanding of data sources, measurement methods, and personal contributions to improving authorisation rates.
+            weakAnswer: Cannot say which data the 82% was measured on or what the candidate's own part was.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: Describe what specific actions you took to improve the card authorisation rate in these markets.
-            strongAnswer: Details personal initiatives and strategies implemented to achieve the increase in authorisation rate.
-            weakAnswer: Mentions team efforts or general improvements without clarifying own role or actions.
+          - text: What specific changes did you implement to increase the authorisation rate from 82% to 91%?
+            strongAnswer: Describes concrete actions taken that directly influenced the authorisation rate improvement.
+            weakAnswer: Does not specify the candidate's role or the changes made to achieve the increase.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: What challenges did you face in improving checkout conversion rates, and how did you address them?
-            strongAnswer: Identifies concrete challenges and explains problem-solving approaches directly related to checkout conversion.
-            weakAnswer: Fails to specify challenges or provides superficial answers unrelated to checkout conversion.
+          - text: Walk me through how you monitored and validated the checkout conversion rates during this improvement.
+            strongAnswer: Explains monitoring processes and validation methods ensuring accurate measurement of conversion rates.
+            weakAnswer: Fails to explain how conversion rates were tracked or validated during the project.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
+  judge:
+    pass: true
+    reason: All questions are about card authorisation or conversion in a payments setting, cite relevant evidence, and avoid prohibited topics.

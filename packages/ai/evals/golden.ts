@@ -60,6 +60,20 @@ export const goldenCase = z
           .object({ forbidden: z.array(z.string().min(1)).min(1) })
           .strict()
           .optional(),
+        /**
+         * AIV-P1-137: text the output's values at a path must hold (`some`: each phrase in at least one) or never hold
+         * (`none`), checked in code (scorers.ts textChecks) and counted in field match: the rubric points about an
+         * item's own words, which the LLM judge does not grade reliably.
+         */
+        text: z
+          .array(
+            z.union([
+              z.object({ path: z.string().min(1), some: z.array(z.string().min(1)).min(1) }).strict(),
+              z.object({ path: z.string().min(1), none: z.array(z.string().min(1)).min(1) }).strict(),
+            ]),
+          )
+          .min(1)
+          .optional(),
         /** A rubric for the LLM judge, where exact match is not possible. */
         judge: z.string().min(1).optional(),
       })
@@ -176,7 +190,7 @@ const matchJudgeCase = z
   })
   .strict();
 type Graded = { golden: GoldenCase; output: unknown };
-export type EvidenceJudgeCase = z.infer<typeof evidenceJudgeCase> & Graded & { rubric: string };
+export type EvidenceJudgeCase = Omit<z.infer<typeof evidenceJudgeCase>, 'output'> & Graded & { rubric: string };
 export type SuggestionJudgeCase = z.infer<typeof suggestionJudgeCase> & Graded;
 export type MatchJudgeCase = z.infer<typeof matchJudgeCase>;
 export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase | MatchJudgeCase;
