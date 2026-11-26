@@ -29,6 +29,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-025 acceptance scenarios: the worker jobs that parse CVs, against real PostgreSQL (as aivera_app), Document
@@ -283,7 +284,9 @@ beforeAll(async () => {
   w1 = (await create('Demo hiring team')).id;
   w2 = (await create('Gulf Talent Partners')).id;
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through.
-  docintel.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(DI) && print.error()) });
+  docintel.listen({
+    onUnhandledFrame: failUnmocked(DI),
+  });
 });
 
 beforeEach(() => {

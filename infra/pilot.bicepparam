@@ -17,3 +17,6 @@ param alertEmail = readEnvironmentVariable('ALERT_EMAIL')
 param entraTenantSubdomain = readEnvironmentVariable('ENTRA_TENANT_SUBDOMAIN')
 param entraTenantId = readEnvironmentVariable('ENTRA_TENANT_ID')
 param entraRecruiterClientId = readEnvironmentVariable('ENTRA_RECRUITER_CLIENT_ID')
+// main.bicep's GitHub App defaults are dev's (credalent-dev-evidence-reader-2); the pilot has no such app.
+param githubAppId = ''
+param githubAppInstallationId = ''

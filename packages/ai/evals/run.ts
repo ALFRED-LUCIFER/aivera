@@ -10,6 +10,7 @@ import {
   type EvidenceJudgeCase,
   type GoldenCase,
   type JudgeCase,
+  type MatchJudgeCase,
   type SuggestionFault,
   type SuggestionJudgeCase,
   type Verdict,
@@ -188,14 +189,23 @@ const judgeAnswer = z.object({
 });
 
 export const matchPrompt = {
-  id: 'evals.match@1',
+  id: 'evals.match@2',
   system:
-    'You compare short texts: competency names, or statements from a CV. For each expected text, give the one of ' +
-    'its options that means the same, worded differently, or null when none does. Same meaning: the same skill, area of ' +
-    'work or fact, not merely a related one ("Incident response" and "On-call incident handling" match; "Incident ' +
-    'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
-    'the option exactly. Answer for every expected text, in order.',
+    'You compare short texts: competency names, or statements from a CV. You get expected texts and keyed options. ' +
+    "Under each option's key, give the expected text it means the same as, worded differently, copied exactly, or " +
+    'null when it means none of them: options often name skills none of the expected texts is, and an option that ' +
+    'only works near an expected skill is null. A competency name means the same when the option is that skill or area of work, ' +
+    'even worded as an activity, narrowed to the job it is for, or named with a second skill: "On-call incident ' +
+    'handling" means "Incident response"; "Experiment design for pricing tests" means "Experimentation"; "Accessible ' +
+    'checkout design" means "Accessibility"; "Prototyping and user testing" means "Prototyping". It does not when it is ' +
+    'a related but different skill: "Monitoring" does not mean "Incident response"; "Release pipeline automation" ' +
+    'does not mean "Infrastructure as code". A CV statement means the same only when the option states the same ' +
+    'fact: a longer line stating that cut means "cut cost per request by 40%". Give each expected text to at most one ' +
+    'option, the closest.',
 };
+// AIV-P1-142: on gpt-4.1, @1 answered null for a drafted competency naming the expected skill as the job's own activity,
+// skipped expected texts (an empty list) on the same request at temperature 0, and gave one option to two expected
+// texts, so a draft that named every skill lost a point. Each option is now a required key answered once.
 /**
  * AIV-P1-140: a CV statement the model copies word for word but ends with a period is the same text; the matcher model
  * answered null for it, or named it without the period. Compares after case, surrounding space and trailing
@@ -209,24 +219,42 @@ const bare = (s: string) =>
     .toLowerCase();
 const sameText = (a: string, b: string) => bare(a) === bare(b);
 const key = (path: string, value: string) => `${path}\u0000${value}`;
-const matchVerdicts = z.object({
-  matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
-});
+/** The matcher's options and answer: one key per option (`o0`, `o1`, …), so each is judged once and none skipped. */
+export const matchKey = (i: number) => `o${i}`;
 
+type Misses = Parameters<Matcher>[1];
 /** The LLM matcher on the `evals.judge` task (AIV-P2-083): one call per case, for its missed free-text names only. */
-export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
-  return async (_golden, misses) => {
-    const { matches } = await ai.generateStructured({
+export function liveMatch(ai: Pick<AiClient, 'generateStructured'>) {
+  return async (misses: Misses): Promise<Record<string, string | null>> => {
+    const options = [...new Set(misses.flatMap((m) => m.candidates))];
+    const verdicts: Record<string, string | null> = Object.fromEntries(misses.map((m) => [m.expected, null]));
+    if (!options.length) return verdicts; // no option left to judge: nothing to ask
+    const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
       promptVersion: matchPrompt.id,
       system: matchPrompt.system,
-      prompt: JSON.stringify(misses),
-      schema: matchVerdicts,
+      prompt: JSON.stringify({
+        expected: misses.map((m) => m.expected),
+        options: Object.fromEntries(options.map((o, i) => [matchKey(i), o])),
+      }),
+      schema: z.object(Object.fromEntries(options.map((_, i) => [matchKey(i), z.string().nullable()]))).strict(),
       sources: [],
     });
-    return Object.fromEntries(matches.map((m) => [m.expected, m.match]));
+    // In option order, each option goes to the miss it names, if that miss offered it and has none yet.
+    options.forEach((option, i) => {
+      const named = answer[matchKey(i)];
+      const miss = misses.find(
+        (m) => typeof named === 'string' && sameText(m.expected, named) && m.candidates.includes(option),
+      );
+      if (miss && verdicts[miss.expected] === null) verdicts[miss.expected] = option;
+    });
+    return verdicts;
   };
+}
+export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
+  const match = liveMatch(ai);
+  return (_golden, misses) => match(misses);
 }
 
 export const suggestionPrompt = {
@@ -535,6 +563,7 @@ export function summaryTable(reports: TaskReport[]): string {
 export type JudgeVerdict = {
   evidence: (c: EvidenceJudgeCase) => Promise<Verdict>;
   suggestion: (c: SuggestionJudgeCase) => Promise<Record<string, SuggestionFault | null>>;
+  match: (c: MatchJudgeCase) => Promise<Record<string, string | null>>;
 };
 /** The recorded verdicts, refused when the judge prompt in code is not the one they were recorded with. */
 export const recordedJudgeVerdict: JudgeVerdict = {
@@ -553,10 +582,22 @@ export const recordedJudgeVerdict: JudgeVerdict = {
       );
     return recorded.verdicts;
   },
+  match: async (c) => {
+    if (c.recorded.matchPrompt !== matchPrompt.id)
+      throw new StaleRecording(
+        `match verdicts recorded with ${c.recorded.matchPrompt}, code is ${matchPrompt.id}: re-run the judge golden cases live`,
+      );
+    return c.recorded.verdicts;
+  },
 };
-export const liveJudgeVerdict = (judge: Judge, suggestionJudge: SuggestionJudge): JudgeVerdict => ({
+export const liveJudgeVerdict = (
+  judge: Judge,
+  suggestionJudge: SuggestionJudge,
+  match: (misses: Misses) => Promise<Record<string, string | null>>,
+): JudgeVerdict => ({
   evidence: (c) => judge(c.rubric, c.golden, c.output),
   suggestion: (c) => suggestionJudge(c.golden, c.output),
+  match: (c) => match(Object.keys(c.expected).map((expected) => ({ expected, candidates: c.options }))),
 });
 
 /**
@@ -566,7 +607,16 @@ export const liveJudgeVerdict = (judge: Judge, suggestionJudge: SuggestionJudge)
 async function judgeCase(c: JudgeCase, verdictOf: JudgeVerdict): Promise<CaseResult> {
   let failures: string[];
   let suggestions: Record<string, SuggestionFault | null> | undefined;
-  if ('judge' in c) {
+  let matches: Record<string, string | null> | undefined;
+  if ('judge' in c && c.judge === 'match') {
+    const given = (matches = await verdictOf.match(c));
+    // By position only, like a suggestion miss: the case file holds the texts.
+    const at = (option: string | null | undefined) =>
+      option === undefined ? 'nothing' : option === null ? 'null' : `options[${c.options.indexOf(option)}]`;
+    failures = Object.entries(c.expected).flatMap(([text, option], i) =>
+      given[text] === option ? [] : [`expected[${i}]: expected ${at(option)}, the matcher said ${at(given[text])}`],
+    );
+  } else if ('judge' in c) {
     const given = (suggestions = await verdictOf.suggestion(c));
     const said = (name: string) => (Object.hasOwn(given, name) ? (given[name] ?? 'pass') : 'nothing');
     failures = Object.entries(c.expected).flatMap(([name, fault], i) =>
@@ -585,6 +635,7 @@ async function judgeCase(c: JudgeCase, verdictOf: JudgeVerdict): Promise<CaseRes
     passed,
     scores: { judge: { n: passed ? 1 : 0, total: 1, failures } },
     ...(suggestions ? { suggestions } : {}),
+    ...(matches ? { matches } : {}),
   };
 }
 

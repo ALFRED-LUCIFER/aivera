@@ -29,6 +29,7 @@ import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P1-026 acceptance scenarios: the worker job `evidence.repository.read` against real PostgreSQL (as aivera_app)
@@ -340,7 +341,9 @@ beforeAll(async () => {
   );
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through (EPIPE in CI).
   // Every GitHub request must hit a fixture.
-  github.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(API) && print.error()) });
+  github.listen({
+    onUnhandledFrame: failUnmocked(API),
+  });
 });
 
 afterAll(async () => {

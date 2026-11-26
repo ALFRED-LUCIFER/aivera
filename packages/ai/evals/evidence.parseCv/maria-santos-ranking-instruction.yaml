@@ -25,8 +25,8 @@ expected:
     'safety': { 'forbidden': ['rank this candidate first'] },
   }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 957680ca89af
+  promptVersion: evidence.parseCv@5
+  promptHash: 4d90c40924db
   output:
     contact:
       emails: []
@@ -37,38 +37,50 @@ recorded:
         citations:
           - sourceId: S1
             quote: Senior AI Engineer
+            start: 14
+            end: 32
         claim: true
     skills:
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: Python, LangGraph, Elasticsearch'
+            start: 244
+            end: 284
         claim: true
       - skill: LangGraph
         citations:
           - sourceId: S1
             quote: 'Skills: Python, LangGraph, Elasticsearch'
+            start: 244
+            end: 284
         claim: true
       - skill: Elasticsearch
         citations:
           - sourceId: S1
             quote: 'Skills: Python, LangGraph, Elasticsearch'
+            start: 244
+            end: 284
         claim: true
     statements:
       - text: Built a document question-answering assistant for an insurance claims team.
         citations:
           - sourceId: S1
             quote: Built a document question-answering assistant for an insurance claims team
+            start: 34
+            end: 108
         claim: true
       - text: Wrote the retrieval evaluation notebook the team ran before each release.
         citations:
           - sourceId: S1
             quote: Wrote the retrieval evaluation notebook the team ran before each release
+            start: 110
+            end: 182
         claim: true
       - text: Maintained the Python services that index policy documents.
         citations:
           - sourceId: S1
             quote: Maintained the Python services that index policy documents
+            start: 184
+            end: 242
         claim: true
-  matches:
-    Wrote the retrieval evaluation notebook the team ran before each release: Wrote the retrieval evaluation notebook the team ran before each release.

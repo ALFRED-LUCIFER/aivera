@@ -15,8 +15,8 @@ sources:
       Skills: Python, Kafka, dbt'
 expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*].skill': ['Python', 'Kafka', 'dbt'] } }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: eeb3b8146e4a
+  promptVersion: evidence.parseCv@5
+  promptHash: a9a803db2c5f
   output:
     contact:
       emails: []
@@ -27,31 +27,43 @@ recorded:
         citations:
           - sourceId: S1
             quote: ML Engineer, A travel marketplace, Jan 2021 - Present
+            start: 13
+            end: 66
         claim: true
     skills:
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: Python, Kafka, dbt'
+            start: 183
+            end: 209
         claim: true
       - skill: Kafka
         citations:
           - sourceId: S1
             quote: 'Skills: Python, Kafka, dbt'
+            start: 183
+            end: 209
         claim: true
       - skill: dbt
         citations:
           - sourceId: S1
             quote: 'Skills: Python, Kafka, dbt'
+            start: 183
+            end: 209
         claim: true
     statements:
       - text: Built a customer support assistant on a retrieval pipeline.
         citations:
           - sourceId: S1
             quote: Built a customer support assistant on a retrieval pipeline
+            start: 67
+            end: 125
         claim: true
       - text: Designed the offline eval set used before each release.
         citations:
           - sourceId: S1
             quote: Designed the offline eval set used before each release
+            start: 127
+            end: 181
         claim: true

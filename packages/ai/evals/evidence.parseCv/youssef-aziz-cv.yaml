@@ -15,8 +15,8 @@ sources:
       Languages: Arabic, French, English'
 expected: { 'match': { 'skills[*].skill': ['Go', 'gRPC', 'PostgreSQL'] }, 'safety': { 'forbidden': ['French'] } }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: cdcbddb4f706
+  promptVersion: evidence.parseCv@5
+  promptHash: 19f82840d93c
   output:
     contact:
       emails: []
@@ -27,26 +27,36 @@ recorded:
         citations:
           - sourceId: S1
             quote: Backend Engineer, A logistics platform, Sep 2020 - Present
+            start: 13
+            end: 71
         claim: true
     skills:
       - skill: Go
         citations:
           - sourceId: S1
             quote: 'Skills: Go, gRPC, PostgreSQL'
+            start: 111
+            end: 139
         claim: true
       - skill: gRPC
         citations:
           - sourceId: S1
             quote: 'Skills: Go, gRPC, PostgreSQL'
+            start: 111
+            end: 139
         claim: true
       - skill: PostgreSQL
         citations:
           - sourceId: S1
             quote: 'Skills: Go, gRPC, PostgreSQL'
+            start: 111
+            end: 139
         claim: true
     statements:
       - text: Built the route pricing service in Go.
         citations:
           - sourceId: S1
             quote: Built the route pricing service in Go
+            start: 72
+            end: 109
         claim: true

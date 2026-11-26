@@ -1,0 +1,13 @@
+# AIV-P1-142: a competency worded as the job's own activity means the expected skill; the matcher gives it, not the
+# related one beside it.
+id: match-reworded-skill
+judge: match
+options:
+  - Monitoring
+  - On-call incident handling
+expected:
+  Incident response: On-call incident handling
+recorded:
+  matchPrompt: evals.match@2
+  verdicts:
+    Incident response: On-call incident handling

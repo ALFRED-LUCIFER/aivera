@@ -18,37 +18,35 @@ expected:
     contact.phones: ['+44 7700 900123']
     statements[*].text: ['[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech']
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 95a3c60568b5
+  promptVersion: evidence.parseCv@5
+  promptHash: bf8084568c15
   output:
     contact:
       emails:
         - sara.al.qahtani@example.com
       phones:
         - +44 7700 900123
-    workHistory:
-      - role: Senior AI Engineer
-        dates: null
-        citations:
-          - sourceId: S1
-            quote: sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer
-        claim: true
+    workHistory: []
     skills:
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: Python, PyTorch'
+            start: 159
+            end: 182
         claim: true
       - skill: PyTorch
         citations:
           - sourceId: S1
             quote: 'Skills: Python, PyTorch'
+            start: 159
+            end: 182
         claim: true
     statements:
       - text: '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech.'
         citations:
           - sourceId: S1
             quote: led the Gulf Arabic eval set for a BNPL fintech
+            start: 110
+            end: 157
         claim: true
-  matches:
-    '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech': '[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech.'

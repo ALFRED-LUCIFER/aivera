@@ -141,7 +141,6 @@ recorded:
     Deployment pipelines: Deployment Pipeline Development
     Observability and alerting: Monitoring and Alerting Configuration
     Incident response: Incident Management and On-Call Leadership
-    Cloud cost management: Cloud Cost Management
   suggestions:
     judge: evals.suggestion@2
     verdicts:

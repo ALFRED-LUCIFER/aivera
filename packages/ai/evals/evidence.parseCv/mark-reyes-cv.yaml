@@ -13,8 +13,8 @@ sources:
       Skills: Kubernetes, Prometheus, Terraform and Grafana'
 expected: { 'match': { 'skills[*].skill': ['Kubernetes', 'Prometheus', 'Terraform', 'Grafana'] } }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 8bbbf11e958a
+  promptVersion: evidence.parseCv@5
+  promptHash: 5767584320b3
   output:
     contact:
       emails: []
@@ -25,31 +25,43 @@ recorded:
         citations:
           - sourceId: S1
             quote: Site Reliability Engineer, A telecom operator, Jul 2019 - Present
+            start: 11
+            end: 76
         claim: true
     skills:
       - skill: Kubernetes
         citations:
           - sourceId: S1
             quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+            start: 139
+            end: 192
         claim: true
       - skill: Prometheus
         citations:
           - sourceId: S1
             quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+            start: 139
+            end: 192
         claim: true
       - skill: Terraform
         citations:
           - sourceId: S1
             quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+            start: 139
+            end: 192
         claim: true
       - skill: Grafana
         citations:
           - sourceId: S1
             quote: 'Skills: Kubernetes, Prometheus, Terraform and Grafana'
+            start: 139
+            end: 192
         claim: true
     statements:
       - text: Cut paging alerts by half by moving checks to SLO burn rates.
         citations:
           - sourceId: S1
             quote: Cut paging alerts by half by moving checks to SLO burn rates
+            start: 77
+            end: 137
         claim: true

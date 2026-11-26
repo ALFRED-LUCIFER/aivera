@@ -142,10 +142,16 @@ export function recordedClient(
     sources: readonly unknown[];
   }) => {
     if (request.promptVersion === matchPrompt.id) {
-      const misses = JSON.parse(request.prompt) as { expected: string; candidates: string[] }[];
-      const pick = (m: (typeof misses)[number]) =>
-        verdicts.get(m.expected)?.find((v): v is string => v !== null && m.candidates.includes(v)) ?? null;
-      return { matches: misses.map((m) => ({ expected: m.expected, match: pick(m) })) };
+      const { expected, options } = JSON.parse(request.prompt) as {
+        expected: string[];
+        options: Record<string, string>;
+      };
+      return Object.fromEntries(
+        Object.entries(options).map(([k, option]) => [
+          k,
+          expected.find((e) => verdicts.get(e)?.includes(option)) ?? null,
+        ]),
+      );
     }
     if (request.promptVersion === suggestionPrompt.id) {
       const recorded = cases.get(JSON.stringify(['jobs.draftCompetencies', request.sources]))?.golden.recorded

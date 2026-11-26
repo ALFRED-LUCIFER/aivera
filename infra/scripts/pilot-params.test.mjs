@@ -35,10 +35,14 @@ test('nothing replicates or infers outside the region for the pilot', () => {
     });
 });
 
+// SAFETY: mutation check: removed `param githubAppId = ''` from pilot.bicepparam -> this test failed
 test('the pilot turns off synthetic-only behaviour and turns on scanning and backups', () => {
   assert.match(pilot, /^param env = 'pilot'$/m);
   assert.match(pilot, /^param malwareScanning = true$/m);
   assert.match(pilot, /^param backupRetentionDays = \d+$/m);
+  // main.bicep's GitHub App defaults are dev's app (AIV-P1-074): the pilot must not read with it.
+  assert.match(pilot, /^param githubAppId = ''$/m);
+  assert.match(pilot, /^param githubAppInstallationId = ''$/m);
   // APP_ENV decides the synthetic email band and fake AI (apps/web/src/server/notifications.ts, packages/ai).
   assert.match(read('modules/web.bicep'), /\{ name: 'APP_ENV', value: env \}/);
 });

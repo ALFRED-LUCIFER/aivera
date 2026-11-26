@@ -42,6 +42,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-079 acceptance scenarios against real PostgreSQL (as aivera_app): every CV that arrives on an application is
@@ -303,7 +304,9 @@ beforeAll(async () => {
       ).id,
   );
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through.
-  docintel.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(DI) && print.error()) });
+  docintel.listen({
+    onUnhandledFrame: failUnmocked(DI),
+  });
 });
 
 afterAll(async () => {

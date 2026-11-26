@@ -80,7 +80,7 @@ beforeAll(() => {
     const url = new URL(request.url);
     sent.push(`${url.hostname} ${request.headers.get('host')}${url.pathname}${url.search}`);
   });
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledFrame: 'error' });
 });
 afterAll(() => server.close());
 beforeEach(() => {
