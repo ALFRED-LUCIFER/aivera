@@ -38,12 +38,21 @@ expected:
     advancing or hiring.
 recorded:
   promptVersion: interviews.mapSummary@4
-  promptHash: 23d3b251a3c7
+  promptHash: f9ffcefe6554
   output:
     findings:
       - competencyId: C1
-        reason: The summary says the candidate built a 200-question evaluation set and showed how answers were graded, explaining the sampling from real support tickets.
+        reason: The candidate built and walked through the 200-question evaluation set and showed how answers were graded.
         finding: clearly_shown
+        citations:
+          - sourceId: S1
+            quote: walked through the 200-question evaluation set he built and showed how answers were graded
+            start: 7
+            end: 97
+        claim: false
+      - competencyId: C2
+        reason: The summary does not mention any numbers on latency, cost per request or incidents handled.
+        finding: not_shown
         citations:
           - sourceId: S1
             quote: walked through the 200-question evaluation set he built and showed how answers were graded
@@ -52,4 +61,4 @@ recorded:
         claim: false
   judge:
     pass: true
-    reason: The finding's reason only states what the summary says the candidate did for the competency, with no added work, metric, or result.
+    reason: Each finding's reason states only what the summary says the candidate did for that competency, with no added work, metrics, or results, and nothing about personal traits or recommendations.

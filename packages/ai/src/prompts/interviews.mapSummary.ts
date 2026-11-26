@@ -6,7 +6,8 @@ import { cited, type Source } from '../citations.ts';
 // every change runs the eval set (evals/interviews.mapSummary/). A finding is a proposal: the interviews module maps
 // it to a strength in code and nothing changes until a person confirms (AGENTS.md 1.5).
 
-// AIV-P1-137: @3 could quote the sentence beside the work its finding rests on (the eval now checks the words in code).
+// AIV-P1-137: @3 could quote the sentence beside the work its finding rests on, and a reason could name the work in
+// the competency's words ("evaluation of retrieval quality" for a comparison of answer quality); the eval checks both.
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
 export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@4';
 
@@ -20,8 +21,12 @@ export const MAP_SUMMARY_SYSTEM = [
   "You read an interviewer's written summary of one interview. The prompt lists the competencies the interview",
   'tested; the summary is the one source. For each listed competency the summary says something about, give its',
   `competencyId, copied exactly from the list; reason, at most ${MAX_REASON_WORDS} words, about the work only: what the`,
-  'summary says the candidate built, showed or measured for it, in its own words, never adding what it does not say;',
-  'then finding: not_shown when the summary says the candidate could not show it; partly_shown when the candidate',
+  'summary says the candidate built, showed or measured for it, in its own words, never adding what it does not say.',
+  "The reason names the work as the summary words it, never in the competency's own terms, and never adds what the",
+  'work indicates: a summary saying the candidate "rewrote the onboarding emails" gives "The candidate rewrote the',
+  'onboarding emails", not "rewrote the onboarding emails, indicating content strategy work";',
+  'then finding: not_shown only when the summary says the candidate could not show or explain it, never because it',
+  'says nothing on that competency; partly_shown when the candidate',
   'could explain only part of it, or the summary names only an activity (compared, reviewed, worked on, chose)',
   'without the specific thing built, shown or measured; clearly_shown when it names a specific thing the candidate',
   'built, showed or measured (an evaluation set, an endpoint, a figure), even if not everything the Meaning lists;',
