@@ -162,7 +162,7 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
  * cases for other source kinds when a second judged rubric runs live.
  */
 export const judgePrompt = {
-  id: 'evals.judge@5',
+  id: 'evals.judge@6',
   system:
     'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
     'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
@@ -174,16 +174,28 @@ export const judgePrompt = {
     "candidate: a repository source's authored commit count is the candidate's own authorship. Before you pass a " +
     'limit, compare it with the sources: a limit saying the evidence does not show something a source states (who ' +
     'wrote the work, a count, a date) is false, and a false limit does not meet the rubric. A limit about what the ' +
-    'sources leave out is not false. Fill checks first, one per item the rubric speaks of (each link, each ' +
-    'statement), in order: the item as the output words it, what its cited source says on that point (quote it, or ' +
-    '"nothing"), and whether the item meets the rubric. Then give pass and the reason.',
+    "sources leave out is not false. When a rubric point is about the item's own words (a question, an answer " +
+    'note, a quote, a reason), judge those words alone: what its cited source says never makes an item meet such a ' +
+    'point. Fill checks first, one per item the rubric speaks of (each link, each statement, each question), in ' +
+    'order: the item as the output words it, what its cited source says on that point (quote it, or "nothing"), ' +
+    'whether that quote contradicts the item (a limit saying the evidence does not show what the quote states is ' +
+    'contradicted), and whether the item meets the rubric. Then give pass and the reason.',
 };
 // AIV-P1-075: on gpt-4.1 and gpt-4.1-mini alike, a bare verdict passed a limit its source contradicts (judge case
 // contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
 // schema's order is the order it writes), and code fails the output when any item does not meet the rubric.
+// AIV-P1-144: on @5 a check could quote S1's "authored 412 of 460 commits" for the authorship limit and still mark it
+// as meeting the rubric (about 3 runs in 50). Each check now says whether its quote contradicts the item, and code
+// fails a contradicted item whatever else it says. AIV-P1-137: an item judged on its own words is not met by its source.
 const judgeAnswer = z.object({
   // At least one: an empty list is the bare verdict this replaced.
-  checks: z.array(z.object({ item: z.string(), sourceSays: z.string(), meetsRubric: z.boolean() }).strict()).min(1),
+  checks: z
+    .array(
+      z
+        .object({ item: z.string(), sourceSays: z.string(), contradicted: z.boolean(), meetsRubric: z.boolean() })
+        .strict(),
+    )
+    .min(1),
   pass: z.boolean(),
   reason: z.string().min(1),
 });
@@ -354,7 +366,7 @@ export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
       // text of each quote (synthetic cases only).
       identifiers: identifiersOf(golden),
     });
-    const failed = answer.checks.filter((c) => !c.meetsRubric).length;
+    const failed = answer.checks.filter((c) => c.contradicted || !c.meetsRubric).length;
     // A pass with a failed check is a fail; the reason then counts the items, never quotes them (AGENTS.md 1.2).
     return failed && answer.pass
       ? { pass: false, reason: `${failed} item(s) do not meet the rubric.` }

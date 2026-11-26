@@ -75,6 +75,13 @@ const groupOf = (report: Awaited<ReturnType<typeof run>>, label: string) =>
 /** The live judge on the fake provider, answering with a fixed completion. */
 const judgeWith = (completion: string) =>
   liveJudge(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
+/** A judge answer that passes, with one check meeting the rubric whose quote does or does not contradict its item. */
+const passingCheck = (isContradicted: boolean) =>
+  JSON.stringify({
+    checks: [{ item: 'a limit', sourceSays: 'a quote', contradicted: isContradicted, meetsRubric: true }],
+    pass: true,
+    reason: 'fine',
+  });
 const matchWith = (completion: string) =>
   liveMatch(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
 /** For a judge test that grades no matcher case. */
@@ -696,12 +703,12 @@ describe('Feature: AI eval harness with a golden set', () => {
     expect(
       (
         await judged(
-          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"ok"}',
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","contradicted":false,"meetsRubric":true}],"pass":true,"reason":"ok"}',
         )
       ).rates.judge,
     ).toBe(1);
     const fail = await judged(
-      '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no limit"}',
+      '{"checks":[{"item":"a limit","sourceSays":"a quote","contradicted":false,"meetsRubric":true}],"pass":false,"reason":"no limit"}',
     );
     expect(fail.cases[0]?.scores.judge?.failures).toEqual(['judge: no limit']);
     expect(fail.passed).toBe(false);
@@ -714,7 +721,12 @@ describe('Feature: AI eval harness with a golden set', () => {
   // SAFETY: mutation check: liveJudge returned answer.pass as given (failed checks ignored) -> this test failed
   it('a pass whose own checks fail an item is a fail, and the reason counts items without quoting them', async () => {
     const c = caseOf('evidence.mapToCompetency', 'sara-eval-harness');
-    const checks = [true, false].map((meetsRubric) => ({ item: 'a limit', sourceSays: 'a quote', meetsRubric }));
+    const checks = [true, false].map((meetsRubric) => ({
+      item: 'a limit',
+      sourceSays: 'a quote',
+      contradicted: false,
+      meetsRubric,
+    }));
     const passWithFailedCheck = JSON.stringify({ checks, pass: true, reason: 'All fine.' });
     const report = await evaluateTask(
       'evidence.mapToCompetency',
@@ -1134,13 +1146,32 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
     expect(report.passed).toBe(true);
   });
 
+  // SAFETY: mutation check: `c.contradicted ||` removed from liveJudge's failed-check rule -> this test failed
+  it('Scenario: A check whose quote contradicts its item fails the output, whatever its verdict says', async () => {
+    const [c] = judgeCases;
+    if (!c) throw new Error('no evidence judge case');
+    expect(await judgeWith(passingCheck(true))(c.rubric, c.golden, c.output)).toEqual({
+      pass: false,
+      reason: '1 item(s) do not meet the rubric.',
+    });
+    expect(await judgeWith(passingCheck(false))(c.rubric, c.golden, c.output)).toEqual({ pass: true, reason: 'fine' });
+  });
+
+  it('refuses a judge answer whose check does not say whether its quote contradicts the item, never patching it', async () => {
+    const [c] = judgeCases;
+    if (!c) throw new Error('no evidence judge case');
+    const bare =
+      '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"fine"}';
+    await expect(judgeWith(bare)(c.rubric, c.golden, c.output)).rejects.toMatchObject({ name: 'SchemaMismatch' });
+  });
+
   // SAFETY: mutation check: evaluateJudge compared nothing (passed = true) -> this test failed
   it('Scenario: A judge that misses a bad case fails the live eval, naming the case', async () => {
     const lenient = await evaluateJudge(
       judgeCases,
       liveJudgeVerdict(
         judgeWith(
-          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"fine"}',
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","contradicted":false,"meetsRubric":true}],"pass":true,"reason":"fine"}',
         ),
         recordedSuggestionJudge,
         noMatch,
@@ -1162,7 +1193,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
       judgeCases,
       liveJudgeVerdict(
         judgeWith(
-          '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no"}',
+          '{"checks":[{"item":"a limit","sourceSays":"a quote","contradicted":false,"meetsRubric":true}],"pass":false,"reason":"no"}',
         ),
         recordedSuggestionJudge,
         noMatch,
