@@ -95,8 +95,8 @@ const cites = (s: { citations: { sourceId: string }[] }, among: ReadonlySet<stri
   s.citations.some((c) => among.has(c.sourceId));
 
 /**
- * The schema for one request, over the labels the model sees: a strength cites inspected work (a source that is neither
- * the facts nor the CV) and, when it names a competency, the facts line that names it; and the Round 1 finding is null
+ * The schema for one request, over the labels the model sees: a strength's first citation is inspected work (a source
+ * that is neither the facts nor the CV) and, when it names a competency, it cites the facts line that names it; and the Round 1 finding is null
  * without interview notes and cites them otherwise. A refine only: the JSON schema the model is given, and so the
  * prompt hash, do not change.
  */

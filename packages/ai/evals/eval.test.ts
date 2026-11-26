@@ -2244,6 +2244,36 @@ describe('Feature: Decision pack summaries', () => {
     ).toBe(true);
   });
 
+  // SAFETY: mutation check: dropped the `i` flag from the competency matcher -> this test failed (lower-case "ai" parsed)
+  it('a competency named in lower case is still a mention of it', () => {
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for ai.', [library]), shortNames).success,
+    ).toBe(false);
+  });
+
+  // SAFETY: mutation check: dropped the regex escape of competency names -> this test failed (new RegExp threw on "C++")
+  it('a competency name with regex characters ("C++") is matched as written', () => {
+    const cpp = {
+      ...shortNames,
+      sources: [
+        {
+          id: 'S1',
+          kind: 'document' as const,
+          text: [
+            'Work meets the need on competencies holding 50% of the weight.',
+            'C++, 50% of the weight, needs level 3: submitted work shows level 3, which meets the need.',
+            'Go, 50% of the weight, needs level 3: no evidence yet.',
+          ].join('\n'),
+        },
+        { id: 'S2', kind: 'repo' as const, text: 'maintains a scheduling algorithm library' },
+      ],
+    };
+    const text = 'The candidate maintains a scheduling algorithm library in C++.';
+    expect(parseCard(shortCard(text, [library]), cpp).success).toBe(false);
+    const line = { sourceId: 'S1', quote: 'C++, 50% of the weight, needs level 3' };
+    expect(parseCard(shortCard(text, [library, line]), cpp).success).toBe(true);
+  });
+
   // SAFETY: mutation check: checked that any citation is work instead of the first -> this test failed (it parsed)
   it("a strength's first citation is the excerpt it is about, the facts line after it", () => {
     const line = { sourceId: 'S1', quote: 'AI, 50% of the weight, needs level 3' };

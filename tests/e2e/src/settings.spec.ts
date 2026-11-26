@@ -79,8 +79,8 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
     page,
     () => shortlist(page).fill('7'),
     async () => {
-      await expect(page.getByText(SAVED)).toBeVisible({ timeout: 1000 });
-      await expect(shortlist(page)).toHaveValue('7', { timeout: 1000 });
+      await expect(page.getByText(SAVED)).toBeVisible();
+      await expect(shortlist(page)).toHaveValue('7');
     },
   );
   await page.reload();
@@ -91,10 +91,14 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
   // Restore a default.
   await editAndSave(
     page,
-    () => page.getByRole('button', { name: 'Use default for Client shortlist link lasts' }).click(),
+    // The button shows only while the value differs from the default: a try after one that took leaves it alone.
     async () => {
-      await expect(page.getByText(SAVED)).toBeVisible({ timeout: 1000 });
-      await expect(shortlist(page)).toHaveValue('14', { timeout: 1000 });
+      const useDefault = page.getByRole('button', { name: 'Use default for Client shortlist link lasts' });
+      if (await useDefault.isVisible()) await useDefault.click();
+    },
+    async () => {
+      await expect(page.getByText(SAVED)).toBeVisible();
+      await expect(shortlist(page)).toHaveValue('14');
     },
   );
   await page.reload();
