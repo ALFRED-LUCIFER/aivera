@@ -2071,11 +2071,11 @@
     },
     "noteCount": "{count, number} of {max, number} characters",
     "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
-    "addNote": "Write what you saw or heard before submitting: it is the reason logged with your rating",
+    "addNote": "Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes",
     "outcome": {
       "submitting": "Submitting your scorecard…",
       "updated": "Scorecard submitted and logged. {name}'s assessment has been updated.",
-      "unchanged": "Scorecard submitted and logged. {name}'s assessment is unchanged.",
+      "unchanged": "Scorecard submitted. {name}'s assessment is unchanged.",
       "already": "Already submitted",
       "changed": "The assessment changed since this preview. Check the new preview, then submit again.",
       "incomplete": "Not submitted. Rate or mark every competency and write a note for each rating, then submit again.",
@@ -2086,7 +2086,7 @@
       "closed": "Not submitted. This interview was cancelled."
     },
     "seeRanking": "See the ranking",
-    "submittedReadOnly": "This scorecard is submitted and logged. It can no longer change.",
+    "submittedReadOnly": "This scorecard is submitted. It can no longer change.",
     "saving": "Saving your draft…",
     "saved": "Draft saved. Nothing changes the assessment until a scorecard is submitted.",
     "failed": "We could not save your draft. Try again.",

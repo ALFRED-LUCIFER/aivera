@@ -16,6 +16,8 @@ export const RECOMMENDATIONS = ['shortlist', 'more_evidence', 'not_recommended']
 export type Recommendation = (typeof RECOMMENDATIONS)[number];
 
 /** A note's length limit: the note is the reason the assessment logs with the rating, which takes 1,000 at most. */
+// shortcut: a draft saved before this limit with a longer note (synthetic dev data only) now fails its autosave and
+// its submit until the note is shortened; nothing migrates it, as no real draft exists before the pilot.
 export const NOTE_MAX = 1000;
 
 /**

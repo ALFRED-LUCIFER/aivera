@@ -45,13 +45,17 @@ export type SubmitOutcome =
   | 'failed';
 
 /**
- * The suggested questions the scorecard shows, by competency: the stored set while it is suggested, none otherwise
- * (AIV-P1-113). The page and the submit (AIV-P2-006) both read it, so a mark is judged on the questions shown.
+ * The suggested questions the scorecard shows, by competency: the stored set while it is suggested and the latest
+ * assessment is on the interview's rubric version (`onVersion`), none otherwise (AIV-P1-113). The page and the submit
+ * (AIV-P2-006) both read it, so a mark is judged on the questions shown.
  */
 export const shownQuestions = <Q>(
+  onVersion: boolean,
   stored: { status: string; gaps?: readonly { competencyId: string; questions: Q[] }[] } | null,
 ): Map<string, Q[]> =>
-  new Map(stored?.status === 'suggested' ? (stored.gaps ?? []).map((g) => [g.competencyId, g.questions]) : []);
+  new Map(
+    onVersion && stored?.status === 'suggested' ? (stored.gaps ?? []).map((g) => [g.competencyId, g.questions]) : [],
+  );
 
 type CompetencyState = ScorePreview['changes'][number]['from'];
 
