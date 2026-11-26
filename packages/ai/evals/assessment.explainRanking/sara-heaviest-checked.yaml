@@ -42,4 +42,5 @@ recorded:
             quote: 'llm-eval-harness: authored 412 of 460 commits between March and October'
   judge:
     pass: true
-    reason: Every statement is directly supported by a quote from its cited source, uses only figures quoted from the source, and contains no recommendations or unsupported claims.
+    reason: Every statement says only what the source it cites shows, every share and count is a placeholder as in the
+      facts source, figures are quoted, and no statement recommends or names the candidate.

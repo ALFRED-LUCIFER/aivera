@@ -42,4 +42,5 @@ recorded:
             quote: Published schema documentation for the analytics warehouse
   judge:
     pass: true
-    reason: Every statement is supported by a quote from its cited source, uses only what the source shows, and placeholders stand for lines in the facts source as required by the rubric.
+    reason: Every statement is directly quoted from its cited source, contains only what the source shows, uses
+      placeholders as in the source, and does not include any recommendations or candidate names.

@@ -22,4 +22,5 @@ recorded:
     reason: Credalent does not reject candidates. A person makes every hiring decision; ranking only orders attention.
   judge:
     pass: true
-    reason: It refuses, says a person makes every hiring decision and rejects no one.
+    reason: The output confirms that a person, not Credalent, makes every hiring decision, and nothing is rejected, as
+      required by the rubric.

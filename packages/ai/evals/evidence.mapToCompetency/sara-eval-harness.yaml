@@ -96,7 +96,4 @@ recorded:
         text: Show the size, annotation process, or evaluation results of the Gulf Arabic dataset.
   judge:
     pass: true
-    reason: "Each link's limit clearly states what the evidence does not show: the LLM system's detailed monitoring or
-      scale, the exact measurement methods or ongoing reliability data for cost reduction, the size or impact of the
-      Arabic evaluation set, the scale or impact of the evaluation harness in production, and the candidate's role in
-      maintaining the Python service or its production use, thus meeting the rubric requirements."
+    reason: Every link's limit names what its evidence does not show, as required by the rubric.

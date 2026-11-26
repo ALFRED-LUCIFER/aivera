@@ -29,4 +29,5 @@ recorded:
             quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
   judge:
     pass: true
-    reason: Every statement is a placeholder that stands for a line the facts source has, and no statement holds a percentage or a number word, as required by the rubric.
+    reason: Every statement is a placeholder that stands for a line the facts source has, and no statement holds a
+      percentage or a number word, meeting all rubric points.

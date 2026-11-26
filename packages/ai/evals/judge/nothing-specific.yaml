@@ -4,9 +4,7 @@ case: evidence.mapToCompetency/sara-eval-harness
 limit: See the source.
 expected: fail
 recorded:
-  judgePrompt: evals.judge@5
+  judgePrompt: evals.judge@6
   verdict:
     pass: false
-    reason: >-
-      Every link's limit fails: 'See the source.' does not name what its evidence does not show, as required by
-      the rubric.
+    reason: Every link's limit fails to name what its evidence does not show, as required by the rubric.

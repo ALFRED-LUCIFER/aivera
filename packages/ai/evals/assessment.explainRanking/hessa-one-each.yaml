@@ -42,4 +42,6 @@ recorded:
             quote: Design review of the test harness, signed by the reviewing lead
   judge:
     pass: true
-    reason: Every statement is supported by a quote from its cited source, uses only what the source shows, and does not include any unsupported figures, recommendations, or candidate names.
+    reason: Every statement is a placeholder that stands for a line the facts source has, and no statement holds a
+      percentage or a number word; all statements cite their source and quote it word for word, and none recommends
+      rejecting, advancing, hiring or contacting anyone, nor names the candidate.

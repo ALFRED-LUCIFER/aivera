@@ -4,9 +4,9 @@ case: evidence.mapToCompetency/sara-eval-harness
 limit: This evidence does not show who authored the repository.
 expected: fail
 recorded:
-  judgePrompt: evals.judge@5
+  judgePrompt: evals.judge@6
   verdict:
     pass: false
-    reason: >-
-      The output's limit for c-python is false, as S1 states the candidate authored 412 of 460 commits, so the
-      output does not meet the rubric for that link.
+    reason:
+      The limit for the Python competency is contradicted by the source, which states the candidate authored 412 of
+      460 commits.
