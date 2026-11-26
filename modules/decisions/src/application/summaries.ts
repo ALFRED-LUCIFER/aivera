@@ -4,6 +4,7 @@ import type { Tx } from '@credalent/db';
 import type { EvidenceItemView } from '@credalent/evidence';
 import {
   FACTS_ID,
+  recommendedAction,
   sourcesOf,
   type CitedStatement,
   type MemberSummary,
@@ -12,14 +13,20 @@ import {
 } from '../domain/summary.ts';
 import type { PackStore } from './packs.ts';
 
-/** A statement as the model's checked answer gives it: its citations name the caller's source ids. */
-type Answered = { text: string; citations: { sourceId: string; quote: string }[] };
+/**
+ * A statement as the model's checked answer gives it: its citations name the caller's source ids, and `claim` is the
+ * citation contract's (every source it cites is the candidate's own words).
+ */
+type Answered = { text: string; claim: boolean; citations: { sourceId: string; quote: string }[] };
 export type SummaryAnswer = {
   strengths: Answered[];
   risks: Answered[];
   round1: Answered | null;
   recommendation: { action: 'advance' | 'hold'; focus: string | null; citations: Answered['citations'] };
 };
+
+/** Why `summarise` gave no answer: the daily budget is spent, the model stayed unavailable, or the answer is unusable. */
+export type NoAnswer = 'budget_exceeded' | 'model_unavailable' | 'failed';
 
 /** What the worker job reads besides the pack, each wired by the worker from its module, in the job's transaction. */
 export type SummaryPorts = {
@@ -41,11 +48,14 @@ export type SummaryPorts = {
     workspaceId: string;
     sources: SummarySource[];
     identifiers: Identifiers;
-  }): Promise<{ promptVersion: string; answer: SummaryAnswer } | 'failed' | 'budget_exceeded'>;
-  /** Asks for the whole pack again at `at` (the daily AI budget's reset); members already summarised are skipped. */
+  }): Promise<{ promptVersion: string; answer: SummaryAnswer } | NoAnswer>;
+  /** Asks for the whole pack again at `at`; members already summarised are skipped. */
   retryAt(workspaceId: string, pack: { packId: string; jobId: string }, at: Date): Promise<void>;
   now(): Date;
 };
+
+/** How long a model outage (timeouts through the client's retries, an open circuit) waits before the pack is asked again. */
+export const MODEL_RETRY_MS = 15 * 60_000;
 
 /** 00:05 UTC the next day: the daily AI token budget has reset by then (AIV-P1-089). */
 export const budgetResetAt = (now: Date): Date =>
@@ -54,16 +64,26 @@ export const budgetResetAt = (now: Date): Date =>
 // The model refers to the candidate by the client's placeholder; the card says "the candidate".
 const CANDIDATE = /\[CANDIDATE\]/g;
 
-/** The answer with each citation resolved to its evidence item (or the facts) and label. */
-function toSummary(answer: SummaryAnswer, sources: readonly SummarySource[]): MemberSummary {
+/**
+ * The answer with each citation resolved to its evidence item (or the facts) and label, a CV citation marked a claim,
+ * and the recommendation's action the one the snapshot gives (`recommendedAction`), whatever the model chose.
+ */
+function toSummary(
+  answer: SummaryAnswer,
+  sources: readonly SummarySource[],
+  action: 'advance' | 'hold',
+): MemberSummary {
   const byId = new Map(sources.map((s) => [s.id, s]));
   const cite = (citations: Answered['citations']) =>
     citations.flatMap(({ sourceId, quote }) => {
       const source = byId.get(sourceId);
-      return source ? [{ itemId: sourceId === FACTS_ID ? null : sourceId, label: source.label, quote }] : [];
+      return source
+        ? [{ itemId: sourceId === FACTS_ID ? null : sourceId, label: source.label, quote, claim: source.kind === 'cv' }]
+        : [];
     });
   const statement = (s: Answered): CitedStatement => ({
     text: s.text.replace(CANDIDATE, 'the candidate').replace(/^\s*\p{L}/u, (c) => c.toUpperCase()),
+    claim: s.claim,
     citations: cite(s.citations),
   });
   return {
@@ -71,7 +91,7 @@ function toSummary(answer: SummaryAnswer, sources: readonly SummarySource[]): Me
     risks: answer.risks.map(statement),
     round1: answer.round1 && statement(answer.round1),
     recommendation: {
-      action: answer.recommendation.action,
+      action,
       focus: answer.recommendation.focus?.replace(CANDIDATE, 'the candidate') ?? null,
       citations: cite(answer.recommendation.citations),
     },
@@ -81,8 +101,9 @@ function toSummary(answer: SummaryAnswer, sources: readonly SummarySource[]): Me
 /**
  * The worker job `decisions.pack.summarise` (AIV-P2-011): for each member of the pack with no summary yet, one
  * `decisions.summariseMember` call on the snapshot they joined with, stored once. A member whose snapshot, rubric
- * version or person cannot be read, or whose answer is rejected (a citation outside their sources, off the schema) or
- * never comes, is stored `unavailable`. A spent daily AI budget stores nothing more and asks again after the reset.
+ * version or person cannot be read, or whose answer is rejected (a citation outside their sources, off the schema),
+ * is stored `unavailable`. The action is the snapshot's (`recommendedAction`), not the model's. A spent daily AI budget, or a model that stays unavailable through the client's retries,
+ * stores nothing more and asks again: after the budget's reset, or `MODEL_RETRY_MS` later.
  * It recommends only: it moves no stage, records no decision and contacts nobody (AGENTS.md 1.5).
  */
 export async function summarisePack(ports: SummaryPorts, tx: Tx, workspaceId: string, packId: string) {
@@ -95,8 +116,8 @@ export async function summarisePack(ports: SummaryPorts, tx: Tx, workspaceId: st
   // shortcut: such a pack's members are stored unavailable; read the version by id when the jobs contract offers it.
   const names = rubric?.id === pack.rubricVersionId ? new Map(rubric.competencies.map((c) => [c.id, c.name])) : null;
   for (const member of await store.listMembers(workspaceId, packId)) {
-    // shortcut: a summary is written once and never regenerated, so an `unavailable` one (a model outage) stays; add
-    // the recruiter's "regenerate" action, with its own write path, when a pilot pack needs it (#125's deliverables).
+    // shortcut: a summary is written once and never regenerated, so an `unavailable` one (an answer rejected twice)
+    // stays; add the recruiter's "regenerate" action, with its own write path, when a pilot pack needs it (#125).
     if (done.has(member.candidateId)) continue;
     const row = (summary: Pick<StoredMemberSummary, 'status' | 'promptVersion' | 'summary'>) =>
       store.insertSummary({ workspaceId, packId, candidateId: member.candidateId, createdAt: ports.now(), ...summary });
@@ -115,8 +136,19 @@ export async function summarisePack(ports: SummaryPorts, tx: Tx, workspaceId: st
     const result = await ports.summarise({ workspaceId, sources, identifiers });
     if (result === 'budget_exceeded')
       return ports.retryAt(workspaceId, { packId, jobId: pack.jobId }, budgetResetAt(ports.now()));
+    // An outage is not an answer: the member stays "Preparing summary" until the model is back.
+    if (result === 'model_unavailable')
+      return ports.retryAt(
+        workspaceId,
+        { packId, jobId: pack.jobId },
+        new Date(ports.now().getTime() + MODEL_RETRY_MS),
+      );
     if (result === 'failed') await unavailable();
     else
-      await row({ status: 'ready', promptVersion: result.promptVersion, summary: toSummary(result.answer, sources) });
+      await row({
+        status: 'ready',
+        promptVersion: result.promptVersion,
+        summary: toSummary(result.answer, sources, recommendedAction(snapshot.competencies)),
+      });
   }
 }

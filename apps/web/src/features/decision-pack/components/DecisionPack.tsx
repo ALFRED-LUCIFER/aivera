@@ -25,6 +25,11 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 // - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011),
 //   and each member's name an h3;
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;
+// - "What the role needs" reads "What the job needs": the copy rules never call a job a role (packages/i18n copy test);
+// - the card's sentences are the model's (decisions.summariseMember), cited and checked in code, so they word things
+//   their own way rather than as the artboard's examples;
+// - the Round 1 finding is what the interview notes say, with no score change ("rose from 58 to 68"): the card reads
+//   only the snapshot the member joined with, not an earlier one to compare it with;
 // - the recommendation reads "advance" or "hold", with the focus the model gives ("probe product judgement"); "hold"
 //   is not on the artboard, which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
 // - no decision buttons ("Advance to Round 2", "Hold", "Do not advance"), "Record the decision", "Record decisions" or

@@ -9,9 +9,18 @@ import { z } from 'zod';
 /** The id of the facts source among the sources the model reads; evidence items use their own ids. */
 export const FACTS_ID = 'facts';
 
-/** What a statement rests on: the snapshot's facts (`itemId` null) or an evidence item, with the exact words quoted. */
-const citation = z.strictObject({ itemId: z.uuid().nullable(), label: z.string(), quote: z.string() });
-const statement = z.strictObject({ text: z.string().min(1), citations: z.array(citation).min(1) });
+/**
+ * What a statement rests on: the snapshot's facts (`itemId` null) or an evidence item, with the exact words quoted.
+ * `claim` marks the candidate's own words (a CV), which back nothing (AGENTS.md 1.6).
+ */
+const citation = z.strictObject({
+  itemId: z.uuid().nullable(),
+  label: z.string(),
+  quote: z.string(),
+  claim: z.boolean(),
+});
+/** `claim`: every source it cites is the candidate's own words, as the AI client's citation contract decides. */
+const statement = z.strictObject({ text: z.string().min(1), claim: z.boolean(), citations: z.array(citation).min(1) });
 
 /** As stored in `decisions.member_summary.summary`, parsed again on every read. */
 export const memberSummary = z.strictObject({
@@ -67,6 +76,22 @@ const MAX_WORK = 8;
 const MAX_NOTES = 3;
 const isNote = (item: EvidenceItemView) => item.source.kind === 'interview_note';
 
+/** At least this share of the weight met on inspected work is a recommendation to advance; below it, to hold. */
+export const ADVANCE_SHARE = 50;
+
+type Need = Pick<CompetencyResult, 'weightPercent' | 'levelNeeded' | 'proven'>;
+// The job needs level 1 at least, so a competency that meets it has proven work.
+const meetsNeed = (c: Need) => c.proven.level >= c.levelNeeded;
+const share = (competencies: readonly Need[]) =>
+  competencies.filter(meetsNeed).reduce((sum, c) => sum + c.weightPercent, 0);
+
+/**
+ * Credalent's recommendation, decided here from the snapshot, not by the model: advance when the work meets the need on
+ * at least `ADVANCE_SHARE`% of the weight, otherwise hold while the gaps are closed. Never a rejection (AGENTS.md 1.6).
+ */
+export const recommendedAction = (competencies: readonly Need[]): 'advance' | 'hold' =>
+  share(competencies) >= ADVANCE_SHARE ? 'advance' : 'hold';
+
 type Competency = Pick<
   CompetencyResult,
   'competencyId' | 'weightPercent' | 'levelNeeded' | 'proven' | 'claimedLevel'
@@ -87,16 +112,14 @@ export function sourcesOf(
 ): SummarySource[] {
   const byId = new Map(evidence.map((item) => [item.id, item]));
   const heaviest = competencies.toSorted((a, b) => b.weightPercent - a.weightPercent);
-  // The job needs level 1 at least, so a competency that meets it has proven work.
-  const meets = heaviest.filter((c) => c.proven.level >= c.levelNeeded);
   const lines = [
-    `Work meets the need on competencies holding ${meets.reduce((sum, c) => sum + c.weightPercent, 0)}% of the weight.`,
+    `Work meets the need on competencies holding ${share(heaviest)}% of the weight.`,
     ...heaviest.map((c) => {
       const head = `${names.get(c.competencyId) ?? 'An unnamed competency'}, ${c.weightPercent}% of the weight, needs level ${c.levelNeeded}: `;
       if (c.proven.level > 0) {
         const checked = c.proven.itemIds.some((id) => byId.get(id)?.provenance === 'corroborated');
         const claims = c.claimedLevel > c.proven.level ? `; claims would take it to level ${c.claimedLevel}` : '';
-        return `${head}${checked ? 'independently checked' : 'submitted'} work shows level ${c.proven.level}, ${meets.includes(c) ? 'which meets the need' : 'short of the need'}${claims}.`;
+        return `${head}${checked ? 'independently checked' : 'submitted'} work shows level ${c.proven.level}, ${meetsNeed(c) ? 'which meets the need' : 'short of the need'}${claims}.`;
       }
       return c.claimedLevel > 0
         ? `${head}a claim with nothing to inspect, level ${c.claimedLevel} if it holds.`

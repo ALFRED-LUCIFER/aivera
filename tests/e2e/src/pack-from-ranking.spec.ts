@@ -36,6 +36,7 @@ let creator: string;
 let interviewer: string;
 let otherOwner: string;
 let outsider: string;
+let owner: string;
 let workspaceId: string;
 let workspaceName: string;
 let jobId: string;
@@ -59,6 +60,7 @@ test.beforeAll(async () => {
   interviewer = `rami+pack-${stamp}@example.com`;
   otherOwner = `hana+pack-${stamp}@example.com`;
   outsider = `omar+pack-${stamp}@example.com`;
+  owner = `faisal+pack-${stamp}@example.com`;
   await approvedWorkspace(outsider, `Elsewhere ${stamp}`);
   workspaceName = `Pack ${stamp}`;
   const made = await approvedWorkspace(creator, workspaceName);
@@ -67,6 +69,7 @@ test.beforeAll(async () => {
   try {
     const interviewerId = await syntheticUser(db, interviewer);
     const otherOwnerId = await syntheticUser(db, otherOwner);
+    const ownerId = await syntheticUser(db, owner);
     const audit = createAudit(db);
     const workspaces = createWorkspaces(db, audit);
     const jobs = createJobs(workspaces, audit);
@@ -99,6 +102,12 @@ test.beforeAll(async () => {
           values (${made.workspaceId}, ${otherOwnerId}, 'hiring_owner', 'active')`,
       );
       await workspaces.grantJobAccess(ctx, { userId: otherOwnerId, jobId: other.id });
+      // AIV-P2-011: a hiring owner granted this job, who follows a card's source to the candidate's profile.
+      await ctx.tx.execute(
+        sql`insert into workspaces.member (workspace_id, user_id, role, status)
+          values (${made.workspaceId}, ${ownerId}, 'hiring_owner', 'active')`,
+      );
+      await workspaces.grantJobAccess(ctx, { userId: ownerId, jobId: job.id });
       const saved = await jobs.saveRubric(ctx, job.id, {
         successStatement: 'Ships reliable AI features.',
         competencies: [
@@ -380,7 +389,7 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await signIn(page, { email: creator });
   await page.goto(packPath);
   // The role and its weights, from the pack's rubric version.
-  await expect(page.getByRole('heading', { name: 'What the role needs' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What the job needs' })).toBeVisible();
   await expect(page.getByText('Ships reliable AI features.')).toBeVisible();
   await expect(
     page.getByText('Python service engineering 55% · Retrieval and evaluation 20% · Cost and reliability 25%'),
@@ -394,8 +403,15 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
     'Retrieval and evaluation rests on a claim with nothing to inspect.',
   );
   await expect(sara.getByText('Round 1 finding').locator('xpath=following-sibling::*[1]')).toHaveText(
-    'No Round 1 interview notes yet.',
+    'None stated in this summary.',
   );
+  // Her CV's words are a claim: labelled so, never highlighted as cited evidence (AGENTS.md 1.6).
+  const claim = sara
+    .getByRole('list', { name: 'Outstanding risks' })
+    .getByText('raised answer accuracy from 71% to 88%');
+  await expect(claim).toBeVisible();
+  await expect(sara.locator('mark').filter({ hasText: 'raised answer accuracy' })).toHaveCount(0);
+  await expect(sara.getByRole('list', { name: 'Outstanding risks' })).toContainText('Claim awaiting validation');
   await expect(sara.getByText("Credalent's recommendation:")).toHaveText(
     "Credalent's recommendation: advance, and probe cost and reliability",
   );
@@ -419,6 +435,27 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(page).toHaveURL(
     (url) => url.pathname.startsWith('/app/candidates/') && url.hash.startsWith('#evidence-'),
   );
+});
+
+// AGENTS.md 1.9: a card's source opens the candidate's profile; a hiring owner there sees summaries and sources only.
+test('AIV-P2-011: a hiring owner following a source reaches the evidence, never a raw file or contact detail', async ({
+  page,
+}) => {
+  await signIn(page, { email: owner });
+  await page.goto(packPath);
+  await page
+    .getByRole('region', { name: 'Sara Al Qahtani' })
+    .getByRole('link', { name: 'Source: rag-service' })
+    .click();
+  await expect(page).toHaveURL(
+    (url) => url.pathname.startsWith('/app/candidates/') && url.hash.startsWith('#evidence-'),
+  );
+  await expect(page.getByRole('heading', { level: 1, name: 'Sara Al Qahtani' })).toBeVisible();
+  await expect(page.locator('mark').filter({ hasText: 'authored 301 of 340 commits' }).first()).toBeVisible();
+  const text = await page.locator('body').innerText();
+  expect(text).not.toContain(SARA_EMAIL);
+  expect(text.replace(/\D/g, '')).not.toContain(SARA_PHONE.slice(1));
+  await expect(page.locator('a[href*="/files"], a[href^="mailto:"], a[href^="tel:"], a[download]')).toHaveCount(0);
 });
 
 test('AIV-P2-011 Scenario: Access: a member of another workspace who opens the pack URL gets 404', async ({ page }) => {

@@ -4,7 +4,7 @@ import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
 import { needRows } from '@/features/evidence-profile/domain/needs.ts';
-import { getAssessment } from '@/server/assessment';
+import { readSnapshot } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
@@ -52,18 +52,15 @@ export const loadPackPreview = (jobId: string, packId: string): Promise<PackPrev
  */
 async function cardOf(
   ctx: WorkspaceContext,
-  jobId: string,
   member: PackView['members'][number],
   stored: PackView['summaries'][number] | undefined,
   names: ReadonlyMap<string, string>,
 ): Promise<CardSummary> {
   if (!stored) return { status: 'preparing' };
   if (stored.summary) return { status: 'ready', summary: stored.summary };
-  const latest = names.size ? await getAssessment().getLatestAssessment(ctx, member.candidateId, jobId) : null;
-  // SAFETY: only the assessment the member joined with, so a newer result's levels never sit beside the pack's scores.
-  // shortcut: no read of a snapshot by id, so a member whose assessment moved on shows no strengths; add one to the
-  // assessment contract if pilot packs show it.
-  const rows = latest?.id === member.assessmentId ? byNeed(needRows(latest.competencies, names)) : null;
+  // The snapshot the member joined with, never a newer result. Not authorised itself: `getPack` authorised this job.
+  const snapshot = names.size ? await readSnapshot(ctx, member.assessmentId) : null;
+  const rows = snapshot ? byNeed(needRows(snapshot.competencies, names)) : null;
   return { status: 'unavailable', strengths: rows?.strengths ?? [], risks: rows?.risks ?? [] };
 }
 
@@ -106,7 +103,7 @@ async function withPack<T>(
           backedScore: m.backedScore,
           upperBound: m.upperBound,
           added: by && m.addedAt ? { by, at: m.addedAt } : null,
-          summary: await cardOf(ctx, jobId, m, summaries.get(m.candidateId), competencies),
+          summary: await cardOf(ctx, m, summaries.get(m.candidateId), competencies),
         });
       }
       return read(ctx, {

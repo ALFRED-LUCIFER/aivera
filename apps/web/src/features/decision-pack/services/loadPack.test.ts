@@ -17,7 +17,7 @@ const fake = vi.hoisted(() => ({
   getUser: vi.fn(),
   getWorkspace: vi.fn(),
   approvedRubric: vi.fn(),
-  latest: vi.fn(),
+  snapshot: vi.fn(),
 }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: object) => Promise<unknown>) => (fake.workspace ? { value: await fn({}) } : null),
@@ -28,7 +28,7 @@ vi.mock('@/server/jobs', () => ({
   getJobs: () => ({ getJobHeader: fake.header }),
   getApprovedRubricReads: () => ({ approvedRubric: fake.approvedRubric }),
 }));
-vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ getLatestAssessment: fake.latest }) }));
+vi.mock('@/server/assessment', () => ({ readSnapshot: fake.snapshot }));
 vi.mock('@/server/auth', () => ({ getIdentity: () => ({ getUser: fake.getUser }) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.applicants }) }));
 vi.mock('next/navigation', () => ({
@@ -167,7 +167,8 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
     strengths: [
       {
         text: 'The candidate authored 412 of 460 commits.',
-        citations: [{ itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits' }],
+        claim: false,
+        citations: [{ itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false }],
       },
     ],
     risks: [],
@@ -175,7 +176,7 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
     recommendation: {
       action: 'advance',
       focus: null,
-      citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets' }],
+      citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets', claim: false }],
     },
   };
   const summaryRow = (candidateId: string, ready: boolean) => ({
@@ -195,8 +196,8 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
       summaries: [summaryRow('p1', true), summaryRow('p2', false)],
     });
     fake.getWorkspace.mockResolvedValue({ name: 'Gulf Talent Partners' });
-    fake.latest.mockImplementation(async (_ctx: object, candidateId: string) => ({
-      id: candidateId === 'p1' ? SNAP_SARA : SNAP_ARJUN,
+    fake.snapshot.mockImplementation(async (_ctx: object, assessmentId: string) => ({
+      id: assessmentId,
       competencies: [result(4, 4, 3, LLM, 60), result(1, 4, 2, COST, 40)],
     }));
   });
@@ -229,8 +230,8 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
         },
       ],
     });
-    // Only the unavailable member's assessment is read, for its levels.
-    expect(fake.latest).toHaveBeenCalledTimes(1);
+    // Only the unavailable member's snapshot is read, by the id it joined with, for its levels.
+    expect(fake.snapshot.mock.calls.map(([, assessmentId]) => assessmentId)).toEqual([SNAP_ARJUN]);
   });
 
   it('a member with no summary stored yet is "preparing", and nothing is read for it', async () => {
@@ -241,18 +242,13 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
       { status: 'preparing' },
       { status: 'preparing' },
     ]);
-    expect(fake.latest).not.toHaveBeenCalled();
+    expect(fake.snapshot).not.toHaveBeenCalled();
   });
 
-  // SAFETY: mutation check: removed the `latest?.id !== member.assessmentId` check from cardOf -> this test failed (Arjun's newer levels were shown)
-  it('an unavailable member whose assessment changed after joining shows no levels from the newer one', async () => {
-    fake.latest.mockResolvedValue({ id: id(14), competencies: [result(4, 4, 3, LLM, 60)] });
-    const page = await loadPack(JOB, PACK);
-    expect(page !== 'notFound' && page?.members[1]?.summary).toEqual({
-      status: 'unavailable',
-      strengths: [],
-      risks: [],
-    });
+  // SAFETY: mutation check: cardOf read another assessment id than the member's -> this test failed
+  it("an unavailable member's levels are those of the snapshot they joined with, read by its id, never a newer result", async () => {
+    await loadPack(JOB, PACK);
+    expect(fake.snapshot).toHaveBeenCalledWith(expect.anything(), SNAP_ARJUN);
   });
 
   it('once another rubric version is approved, an unavailable member reads no assessment (its competencies would have no names)', async () => {
@@ -263,7 +259,7 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
       strengths: [],
       risks: [],
     });
-    expect(fake.latest).not.toHaveBeenCalled();
+    expect(fake.snapshot).not.toHaveBeenCalled();
   });
 
   // SAFETY: mutation check: removed the `pack?.jobId !== jobId` check from withPack -> this test failed (another job's pack was previewed)
@@ -272,7 +268,7 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
     expect(await loadPackPreview(JOB, PACK)).toBe('notFound');
     fake.getPack.mockResolvedValue(null);
     expect(await loadPackPreview(JOB, PACK)).toBe('notFound');
-    expect(fake.latest).not.toHaveBeenCalled();
+    expect(fake.snapshot).not.toHaveBeenCalled();
   });
 
   it('an interviewer gets the 403 page; a malformed id is not found', async () => {
