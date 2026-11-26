@@ -15,6 +15,7 @@ const PACK = id(30);
 const JOB = id(10);
 const V2 = id(11);
 const REPO = id(40);
+const CV = id(41);
 const NOW = new Date('2026-11-17T08:00:00.000Z');
 const tx = {} as Tx;
 
@@ -49,7 +50,7 @@ const snapshot = {
       mandatory: true,
       proven: { level: 4, itemIds: [REPO] },
       claimedLevel: 4,
-      claimItemIds: [],
+      claimItemIds: [CV],
     },
   ],
 } as unknown as StoredAssessment;
@@ -59,13 +60,24 @@ const repo = {
   excerpt: 'authored 412 of 460 commits',
   source: { kind: 'repository', label: 'llm-eval-harness' },
 } as unknown as EvidenceItemView;
+const cv = {
+  id: CV,
+  provenance: 'claim',
+  excerpt: 'cut cost per request by 38%',
+  source: { kind: 'cv', label: 'CV' },
+} as unknown as EvidenceItemView;
+// The model says "hold"; the snapshot (level 4 of 4 on all the weight) says advance, and the snapshot decides.
 const answer: SummaryAnswer = {
   strengths: [
-    { text: '[CANDIDATE] authored 412 of 460 commits.', citations: [{ sourceId: REPO, quote: '412 of 460' }] },
+    {
+      text: '[CANDIDATE] authored 412 of 460 commits.',
+      claim: false,
+      citations: [{ sourceId: REPO, quote: '412 of 460' }],
+    },
   ],
-  risks: [],
+  risks: [{ text: 'Cost rests on a claim.', claim: true, citations: [{ sourceId: CV, quote: 'cut cost' }] }],
   round1: null,
-  recommendation: { action: 'advance', focus: null, citations: [{ sourceId: 'facts', quote: 'Work meets the need' }] },
+  recommendation: { action: 'hold', focus: null, citations: [{ sourceId: 'facts', quote: 'Work meets the need' }] },
 };
 
 function setup(over: Partial<SummaryPorts> = {}, done: string[] = []) {
@@ -79,9 +91,9 @@ function setup(over: Partial<SummaryPorts> = {}, done: string[] = []) {
     storeFor: () => store as unknown as PackStore,
     snapshot: vi.fn(async () => snapshot),
     approvedRubric: async () => ({ id: V2, competencies: [{ id: 'llm', name: 'LLM systems in production' }] }),
-    evidence: async () => [repo],
+    evidence: async () => [repo, cv],
     identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
-    summarise: vi.fn(async () => ({ promptVersion: 'decisions.summariseMember@1', answer })),
+    summarise: vi.fn(async () => ({ promptVersion: 'decisions.summariseMember@2', answer })),
     retryAt: vi.fn(async () => undefined),
     now: () => NOW,
     ...over,
@@ -101,29 +113,38 @@ const stored = (candidateId: string, over: Partial<StoredMemberSummary>): Stored
 });
 
 describe('summarisePack', () => {
-  it('stores each member\'s cited summary once: an evidence item by id and label, the facts as "Assessment", the candidate never named', async () => {
+  // SAFETY: mutation check: toSummary kept the model's action -> this test failed ('hold' stored)
+  // SAFETY: mutation check: cite() set claim: false for every citation -> this test failed (the CV quote unmarked)
+  it('stores each member\'s cited summary once: an item by id and label, a CV quote marked a claim, the facts as "Assessment", the action the snapshot\'s, the candidate never named', async () => {
     const { store, ports, run } = setup();
     await run();
     expect(ports.summarise).toHaveBeenCalledTimes(2);
     const [sources] = vi.mocked(ports.summarise).mock.calls.map(([input]) => input.sources);
-    expect(sources?.map((s) => s.id)).toEqual(['facts', REPO]);
+    expect(sources?.map((s) => s.id)).toEqual(['facts', REPO, CV]);
     expect(store.insertSummary.mock.calls[0]?.[0]).toEqual(
       stored(SARA, {
         status: 'ready',
-        promptVersion: 'decisions.summariseMember@1',
+        promptVersion: 'decisions.summariseMember@2',
         summary: {
           strengths: [
             {
               text: 'The candidate authored 412 of 460 commits.',
-              citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: '412 of 460' }],
+              claim: false,
+              citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: '412 of 460', claim: false }],
             },
           ],
-          risks: [],
+          risks: [
+            {
+              text: 'Cost rests on a claim.',
+              claim: true,
+              citations: [{ itemId: CV, label: 'CV', quote: 'cut cost', claim: true }],
+            },
+          ],
           round1: null,
           recommendation: {
             action: 'advance',
             focus: null,
-            citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need' }],
+            citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need', claim: false }],
           },
         },
       }),
@@ -164,6 +185,18 @@ describe('summarisePack', () => {
     expect(store.insertSummary).not.toHaveBeenCalled();
     expect(ports.retryAt).toHaveBeenCalledWith('w1', { packId: PACK, jobId: JOB }, budgetResetAt(NOW));
     expect(budgetResetAt(NOW)).toEqual(new Date('2026-11-18T00:05:00.000Z'));
+  });
+
+  // SAFETY: mutation check: summarisePack stored 'model_unavailable' members as unavailable -> this test failed
+  it('a model that stays unavailable stores nothing and asks for the pack again 15 minutes later: an outage is no answer', async () => {
+    const { store, ports, run } = setup({ summarise: async () => 'model_unavailable' });
+    await run();
+    expect(store.insertSummary).not.toHaveBeenCalled();
+    expect(ports.retryAt).toHaveBeenCalledWith(
+      'w1',
+      { packId: PACK, jobId: JOB },
+      new Date('2026-11-17T08:15:00.000Z'),
+    );
   });
 
   it('a pack that is gone does nothing', async () => {

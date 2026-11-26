@@ -1,6 +1,6 @@
 import type { EvidenceItemView } from '@credalent/evidence';
 import { describe, expect, it } from 'vitest';
-import { FACTS_ID, memberSummary, sourcesOf } from './summary.ts';
+import { ADVANCE_SHARE, FACTS_ID, memberSummary, recommendedAction, sourcesOf } from './summary.ts';
 
 // AIV-P2-011: the facts a pack member's summary reads, from their snapshot. Synthetic cast and opaque ids only.
 const id = (n: number) => `0190d4a2-0000-7000-9000-${String(n).padStart(12, '0')}`;
@@ -94,8 +94,26 @@ describe('sourcesOf: the facts and excerpts a pack member is summarised from', (
   });
 });
 
+// SAFETY: mutation check: recommendedAction compared with > instead of >= -> this test failed (50% held)
+describe('recommendedAction: the recommendation is decided from the snapshot, never a rejection', () => {
+  it(`advance when the work meets the need on at least ${ADVANCE_SHARE}% of the weight, otherwise hold`, () => {
+    expect(recommendedAction(SARA)).toBe('advance'); // 60%
+    expect(recommendedAction([competency('llm', 50, 4, 4, [id(2)]), competency('rag', 50, 4, 3, [id(3)])])).toBe(
+      'advance',
+    ); // exactly 50%
+    expect(recommendedAction([competency('llm', 49, 4, 4, [id(2)]), competency('rag', 51, 4, 3, [id(3)])])).toBe(
+      'hold',
+    );
+    expect(recommendedAction([competency('rag', 100, 3, 0, [], 5, [id(5)])])).toBe('hold'); // a claim alone counts zero
+  });
+});
+
 describe('memberSummary: what a stored summary may hold', () => {
-  const statement = { text: 'The candidate built it.', citations: [{ itemId: null, label: 'Assessment', quote: 'q' }] };
+  const statement = {
+    text: 'The candidate built it.',
+    claim: false,
+    citations: [{ itemId: null, label: 'Assessment', quote: 'q', claim: false }],
+  };
   const summary = {
     strengths: [statement],
     risks: [],

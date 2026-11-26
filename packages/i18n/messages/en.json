@@ -1746,7 +1746,7 @@
     "empty": "This pack has no candidates. Add them from the ranking.",
     "shared": "Shared packs show evidence summaries and sources, not raw files.",
     "role": {
-      "needs": "What the role needs",
+      "needs": "What the job needs",
       "weights": "Competencies and weights",
       "weight": "{name} {weight, number}%"
     },
@@ -1754,9 +1754,7 @@
       "strengths": "Strengths, backed",
       "risks": "Outstanding risks",
       "round1": "Round 1 finding",
-      "noStrengths": "No inspected work backs a competency yet.",
-      "noRisks": "No outstanding risks.",
-      "noRound1": "No Round 1 interview notes yet.",
+      "none": "None stated in this summary.",
       "recommendation": "Credalent's recommendation:",
       "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and {focus}} other {}}",
       "source": "Source: {label}",
@@ -1773,7 +1771,6 @@
       "risks": "Still to test in the interview",
       "noStrengths": "No competency meets the job's need on inspected evidence yet.",
       "noRisks": "Every competency meets the job's need on inspected evidence.",
-      "round1": "Round 1 finding",
       "poweredBy": "Powered by Credalent"
     },
     "record": {

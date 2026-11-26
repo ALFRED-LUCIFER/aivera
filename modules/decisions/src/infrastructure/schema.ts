@@ -118,7 +118,8 @@ export const decision = decisions
   .enableRLS();
 
 // A member's strengths, risks, Round 1 finding and Credalent's recommendation (AIV-P2-011), written once by the worker
-// for the snapshot the member joined with. The app role may not UPDATE or DELETE it (0004_force_rls_and_grants.sql).
+// for the snapshot the member joined with. The app role may not UPDATE or DELETE it
+// (0004_force_rls_member_summaries.sql).
 export const memberSummary = decisions
   .table(
     'member_summary',

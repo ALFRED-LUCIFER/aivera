@@ -18,24 +18,37 @@ beforeAll(async () => {
 const id = (n: number) => `0190d4a2-0000-7000-9000-${String(n).padStart(12, '0')}`;
 const [JOB, PACK, REPO, CV, NOTE] = [id(1), id(2), id(20), id(21), id(22)];
 const at = new Date('2026-11-17T08:00:00.000Z');
-const facts = { itemId: null, label: 'Assessment', quote: 'Work meets the need on competencies holding 60%' };
+const facts = {
+  itemId: null,
+  label: 'Assessment',
+  quote: 'Work meets the need on competencies holding 60%',
+  claim: false,
+};
 const sara: MemberSummary = {
   strengths: [
     {
       text: 'Checked evidence on the heaviest competencies; 412 of 460 commits in her eval harness.',
-      citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: 'authored 412 of 460 commits' }],
+      claim: false,
+      citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false }],
     },
   ],
   risks: [
     {
       text: 'Cost reduction and Arabic work are claims with nothing to inspect.',
-      citations: [{ itemId: CV, label: 'CV', quote: 'cut the cost per request by 38%' }],
+      claim: true,
+      citations: [{ itemId: CV, label: 'CV', quote: 'cut the cost per request by 38%', claim: true }],
     },
   ],
   round1: {
     text: 'The candidate defended the merchant assistant.',
+    claim: false,
     citations: [
-      { itemId: NOTE, label: "Interviewer's scorecard, 18 Nov 2026", quote: 'defended the merchant assistant' },
+      {
+        itemId: NOTE,
+        label: "Interviewer's scorecard, 18 Nov 2026",
+        quote: 'defended the merchant assistant',
+        claim: false,
+      },
     ],
   },
   recommendation: { action: 'advance', focus: null, citations: [facts] },
@@ -104,7 +117,7 @@ describe('DecisionPack', () => {
 
   it('Scenario: The role and its weights', () => {
     show(page([]));
-    expect(screen.getByRole('heading', { name: 'What the role needs' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'What the job needs' })).toBeTruthy();
     expect(screen.getByText('A bilingual assistant for merchants, live within six months.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Competencies and weights' }).nextElementSibling?.textContent).toBe(
       'LLM systems in production 25% · Retrieval and evaluation 20% · Python services 15% · Cost and reliability 15% · Product judgement 15% · Arabic and bilingual NLP 10%',
@@ -112,7 +125,8 @@ describe('DecisionPack', () => {
   });
 
   // SAFETY: mutation check: passed hrefFor={undefined} on the pack page -> this test failed (no links)
-  it('Scenario: A candidate card cites its evidence: score and range, each section, and each sentence links to its item', () => {
+  // SAFETY: mutation check: Sources highlighted a claim's quote like cited evidence -> this test failed (a mark)
+  it('Scenario: A candidate card cites its evidence: score and range, each section, each sentence linked to its item, a claim labelled', () => {
     show(page([member('p1', 'Sara Al Qahtani', { status: 'ready', summary: sara })]));
     const card = screen.getByRole('region', { name: 'Sara Al Qahtani' });
     expect(within(card).getByRole('img', { name: '68 backed by evidence · up to 84 if claims hold' })).toBeTruthy();
@@ -132,6 +146,10 @@ describe('DecisionPack', () => {
       ),
     ).toEqual([`${profile}#evidence-${REPO}`, `${profile}#evidence-${CV}`, `${profile}#evidence-${NOTE}`]);
     expect(within(card).getByText('authored 412 of 460 commits').closest('mark')).toBeTruthy();
+    // A quote of her CV is her own word: labelled a claim, never highlighted as cited evidence (AGENTS.md 1.6).
+    const claim = within(card).getByText('cut the cost per request by 38%');
+    expect(claim.closest('mark')).toBeNull();
+    expect(claim.parentElement?.textContent).toContain('Claim awaiting validation');
     // The recommendation rests on the snapshot's facts.
     expect(within(card).getByText('Source: the assessment')).toBeTruthy();
   });

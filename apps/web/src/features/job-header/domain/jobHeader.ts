@@ -43,7 +43,7 @@ export function jobHeaderView(
   /** The job's applications from every source, intake's count (AIV-P1-101). */
   imported: number,
   /** The job has an undecided decision pack (AIV-P2-011): "Shortlist ready". */
-  shortlistReady = false,
+  shortlistReady: boolean,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds

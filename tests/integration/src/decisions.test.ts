@@ -844,16 +844,21 @@ describe('Scenario: Pack summaries are written once per member, cited, by the wo
     const pack = await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, shortlist));
     const card = pack?.summaries.find((s) => s.candidateId === sara);
     const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, seniorAi.jobId));
-    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@1' });
+    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@2' });
     const [strength] = card?.summary?.strengths ?? [];
     expect(strength?.citations).toEqual([
-      { itemId: expect.any(String), label: expect.stringMatching(/^Write-up /), quote: 'Synthetic work sample' },
+      {
+        itemId: expect.any(String),
+        label: expect.stringMatching(/^Write-up /),
+        quote: 'Synthetic work sample',
+        claim: false,
+      },
     ]);
     expect(items.map((i) => i.id)).toContain(strength?.citations[0]?.itemId);
     expect(card?.summary?.recommendation).toEqual({
       action: 'advance',
       focus: 'probe arabic and bilingual NLP',
-      citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need' }],
+      citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need', claim: false }],
     });
   });
 

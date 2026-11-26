@@ -2,14 +2,15 @@
 
 import type { CitedStatement, MemberSummary } from '@credalent/decisions';
 import { useTranslations } from '@credalent/i18n/react';
-import { EvidenceHighlight, NeedVsProvenBar } from '@credalent/ui';
+import { EvidenceHighlight, NeedVsProvenBar, ProvenanceTag } from '@credalent/ui';
 import { useId } from 'react';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
 
 // AIV-P2-011: a pack member's card text, shared by the pack page and the hiring owner's preview. Every statement shows
-// the evidence it rests on: each quoted excerpt highlighted with its source, linked to the item's card on the
-// candidate's profile where `hrefFor` gives an address (the preview has none), or "Source: the assessment" for a
-// statement resting on the snapshot's own facts (AGENTS.md 1.6).
+// the evidence it rests on: each quoted excerpt with its source, linked to the item's card on the candidate's profile
+// where `hrefFor` gives an address (the preview has none), or "Source: the assessment" for a statement resting on the
+// snapshot's own facts. The highlighter marks cited evidence only; a quote of the candidate's own words (a CV) is a
+// claim, shown as plain text under the shared "Claim" tag, never highlighted (AGENTS.md 1.6, DESIGN.md).
 
 type HrefFor = ((itemId: string) => string) | undefined;
 
@@ -17,14 +18,21 @@ function Sources({ citations, hrefFor }: { citations: CitedStatement['citations'
   const t = useTranslations();
   return (
     <>
-      {citations.map(({ itemId, label, quote }, i) =>
+      {citations.map(({ itemId, label, quote, claim }, i) =>
         itemId === null ? null : (
           <span key={`${i}:${itemId}`} className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <EvidenceHighlight
-              text={quote}
-              citations={[{ start: 0, end: quote.length, sourceId: itemId }]}
-              markLabel={t('candidateProfile.markLabel')}
-            />
+            {claim ? (
+              <>
+                <ProvenanceTag provenance="claim" label={t('evidence.provenance.claim')} />
+                <span>{quote}</span>
+              </>
+            ) : (
+              <EvidenceHighlight
+                text={quote}
+                citations={[{ start: 0, end: quote.length, sourceId: itemId }]}
+                markLabel={t('candidateProfile.markLabel')}
+              />
+            )}
             {hrefFor ? (
               <a href={hrefFor(itemId)} className="text-meta text-text-2 underline underline-offset-2">
                 {t('decisionPack.summary.source', { label })}
@@ -100,17 +108,12 @@ export function SummaryText({
   return (
     <>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-x-8 gap-y-4">
-        <Statements
-          title={labels.strengths}
-          statements={summary.strengths}
-          empty={t('noStrengths')}
-          hrefFor={hrefFor}
-        />
-        <Statements title={labels.risks} statements={summary.risks} empty={t('noRisks')} hrefFor={hrefFor} />
+        <Statements title={labels.strengths} statements={summary.strengths} empty={t('none')} hrefFor={hrefFor} />
+        <Statements title={labels.risks} statements={summary.risks} empty={t('none')} hrefFor={hrefFor} />
         <Statements
           title={t('round1')}
           statements={summary.round1 ? [summary.round1] : []}
-          empty={t('noRound1')}
+          empty={t('none')}
           hrefFor={hrefFor}
         />
       </div>
@@ -133,6 +136,8 @@ export function SummaryText({
 }
 
 /** The assessment's own competencies against the job's need, each on the shared NeedVsProvenBar. */
+// shortcut: a level here names no source (only the summary's statements cite evidence); cite each level's items when
+// the "Summary unavailable" state needs them (AIV-P1-116's note, kept for the cards with no usable summary).
 export function Needs({ title, rows, empty }: { title: string; rows: NeedRow[]; empty: string }) {
   const t = useTranslations();
   const titleId = useId();
