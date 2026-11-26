@@ -30,8 +30,8 @@ expected:
     forbidden:
       ['ليلى', 'حداد', 'Egyptian', '14 March', '1990', 'Married', 'Female', 'مصرية', '١٩٩٠', 'متزوجة', 'attached']
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 6946b4544653
+  promptVersion: evidence.parseCv@5
+  promptHash: 10936f33536f
   output:
     contact:
       emails:
@@ -43,26 +43,36 @@ recorded:
         citations:
           - sourceId: S1
             quote: Senior AI Engineer, A document processing company, Jan 2021 - Present
+            start: 237
+            end: 306
         claim: true
     skills:
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: Python, PyTorch, OpenCV'
+            start: 347
+            end: 378
         claim: true
       - skill: PyTorch
         citations:
           - sourceId: S1
             quote: 'Skills: Python, PyTorch, OpenCV'
+            start: 347
+            end: 378
         claim: true
       - skill: OpenCV
         citations:
           - sourceId: S1
             quote: 'Skills: Python, PyTorch, OpenCV'
+            start: 347
+            end: 378
         claim: true
     statements:
       - text: Built an Arabic OCR pipeline in Python.
         citations:
           - sourceId: S1
             quote: Built an Arabic OCR pipeline in Python
+            start: 307
+            end: 345
         claim: true

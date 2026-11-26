@@ -14,8 +14,8 @@ sources:
 expected:
   { 'match': { 'workHistory[*].dates': ['2019 - 2023'], 'skills[*].skill': ['Playwright', 'TypeScript', 'k6'] } }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 8cc32089fe81
+  promptVersion: evidence.parseCv@5
+  promptHash: 5fcc30c290e0
   output:
     contact:
       emails: []
@@ -26,26 +26,36 @@ recorded:
         citations:
           - sourceId: S1
             quote: QA Engineer, A ride-hailing app, 2019 - 2023
+            start: 13
+            end: 57
         claim: true
     skills:
       - skill: Playwright
         citations:
           - sourceId: S1
             quote: 'Skills: Playwright, TypeScript, k6'
+            start: 109
+            end: 143
         claim: true
       - skill: TypeScript
         citations:
           - sourceId: S1
             quote: 'Skills: Playwright, TypeScript, k6'
+            start: 109
+            end: 143
         claim: true
       - skill: k6
         citations:
           - sourceId: S1
             quote: 'Skills: Playwright, TypeScript, k6'
+            start: 109
+            end: 143
         claim: true
     statements:
       - text: Wrote the end-to-end checkout suite in Playwright.
         citations:
           - sourceId: S1
             quote: Wrote the end-to-end checkout suite in Playwright
+            start: 58
+            end: 107
         claim: true

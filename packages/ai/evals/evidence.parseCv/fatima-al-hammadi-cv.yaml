@@ -17,8 +17,8 @@ sources:
       Skills: SQL, Looker, Python'
 expected: { 'match': { 'contact.emails': ['fatima.alhammadi@example.com'], 'contact.phones': ['+971 50 000 0002'] } }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: 1386e3617f96
+  promptVersion: evidence.parseCv@5
+  promptHash: e3d8f82bacb7
   output:
     contact:
       emails:
@@ -31,26 +31,36 @@ recorded:
         citations:
           - sourceId: S1
             quote: Product Analyst, A retail bank, Apr 2021 - Present
+            start: 64
+            end: 114
         claim: true
     skills:
       - skill: SQL
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Looker, Python'
+            start: 176
+            end: 203
         claim: true
       - skill: Looker
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Looker, Python'
+            start: 176
+            end: 203
         claim: true
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Looker, Python'
+            start: 176
+            end: 203
         claim: true
     statements:
       - text: Built the weekly card-spend dashboard used by the risk team.
         citations:
           - sourceId: S1
             quote: Built the weekly card-spend dashboard used by the risk team
+            start: 115
+            end: 174
         claim: true

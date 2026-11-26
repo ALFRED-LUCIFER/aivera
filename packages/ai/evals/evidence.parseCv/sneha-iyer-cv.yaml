@@ -24,8 +24,8 @@ expected:
       },
   }
 recorded:
-  promptVersion: evidence.parseCv@4
-  promptHash: ef073d1b618c
+  promptVersion: evidence.parseCv@5
+  promptHash: cdb104cd012a
   output:
     contact:
       emails: []
@@ -36,41 +36,57 @@ recorded:
         citations:
           - sourceId: S1
             quote: Data Engineer, A payments startup, Feb 2022 - Oct 2024
+            start: 11
+            end: 65
         claim: true
     skills:
       - skill: SQL
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Airflow, Spark, Python'
+            start: 190
+            end: 225
         claim: true
       - skill: Airflow
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Airflow, Spark, Python'
+            start: 190
+            end: 225
         claim: true
       - skill: Spark
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Airflow, Spark, Python'
+            start: 190
+            end: 225
         claim: true
       - skill: Python
         citations:
           - sourceId: S1
             quote: 'Skills: SQL, Airflow, Spark, Python'
+            start: 190
+            end: 225
         claim: true
     statements:
       - text: Moved nightly settlement reports from cron scripts to Airflow.
         citations:
           - sourceId: S1
             quote: Moved nightly settlement reports from cron scripts to Airflow
+            start: 66
+            end: 127
         claim: true
       - text: B.Tech in Computer Science, 2021
         citations:
           - sourceId: S1
             quote: B.Tech in Computer Science, 2021
+            start: 129
+            end: 161
         claim: true
       - text: AWS Certified Data Engineer
         citations:
           - sourceId: S1
             quote: AWS Certified Data Engineer
+            start: 162
+            end: 189
         claim: true
