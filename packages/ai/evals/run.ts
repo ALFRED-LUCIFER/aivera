@@ -228,7 +228,7 @@ export function liveMatch(ai: Pick<AiClient, 'generateStructured'>) {
   return async (misses: Misses): Promise<Record<string, string | null>> => {
     const options = [...new Set(misses.flatMap((m) => m.candidates))];
     const verdicts: Record<string, string | null> = Object.fromEntries(misses.map((m) => [m.expected, null]));
-    if (!options.length) return verdicts; // every output value is taken: nothing to ask
+    if (!options.length) return verdicts; // no option left to judge: nothing to ask
     const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,

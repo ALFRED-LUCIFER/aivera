@@ -1777,7 +1777,11 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
     );
   });
 
-  it('refuses a matcher case whose expected option is not one of its options', () => {
+  // SAFETY: mutation check: `|| !offered(recorded.verdicts)` removed from loadJudgeCases -> the recorded row failed
+  it.each([
+    ['expected', { 'Incident response': 'Paging' }, { 'Incident response': null }],
+    ['recorded', { 'Incident response': null }, { 'Incident response': 'Paging' }],
+  ])('refuses a matcher case whose %s option is not one of its options', (_which, expected, verdicts) => {
     const dir = mkdtempSync(join(tmpdir(), 'match-'));
     mkdirSync(join(dir, 'judge'));
     writeFileSync(
@@ -1786,8 +1790,8 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
         id: 'bad',
         judge: 'match',
         options: ['Monitoring'],
-        expected: { 'Incident response': 'Paging' },
-        recorded: { matchPrompt: matchPrompt.id, verdicts: { 'Incident response': null } },
+        expected,
+        recorded: { matchPrompt: matchPrompt.id, verdicts },
       }),
     );
     expect(() => loadJudgeCases(dir, new Map())).toThrow(
