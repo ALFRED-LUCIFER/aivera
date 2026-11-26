@@ -188,14 +188,21 @@ const judgeAnswer = z.object({
 });
 
 export const matchPrompt = {
-  id: 'evals.match@1',
+  id: 'evals.match@2',
   system:
-    'You compare short texts: competency names, or statements from a CV. For each expected text, give the one of ' +
-    'its options that means the same, worded differently, or null when none does. Same meaning: the same skill, area of ' +
-    'work or fact, not merely a related one ("Incident response" and "On-call incident handling" match; "Incident ' +
-    'response" and "Monitoring" do not; "cut cost per request by 40%" matches a longer line stating that cut). Copy ' +
-    'the option exactly. Answer for every expected text, in order.',
+    'You compare short texts: competency names, or statements from a CV. Each key holds an expected text and its ' +
+    'options. Judge each on its own, under its key: copy exactly the one of its options closest to it in meaning, ' +
+    'then say whether that option means the same. A competency name means the same when the option is that skill or area of work, even worded as an ' +
+    'activity or narrowed to the job it is for: "Incident response" and "On-call incident handling" do; ' +
+    '"Experimentation" and "Experiment design for pricing tests" do; "Accessibility" and "Accessible checkout design" ' +
+    'do. It does not when the option is a related but different skill: "Incident response" and "Monitoring" do not; ' +
+    '"Infrastructure as code" and "Release pipeline automation" do not. A CV statement means the same only when the ' +
+    'option states the same fact: "cut cost per request by 40%" and a longer line stating that cut do.',
 };
+// AIV-P1-142: on gpt-4.1, @1 answered null for a drafted competency naming the expected skill as the job's own activity,
+// and the same request at temperature 0 flipped between all matched and all null (an empty list). Each expected text is
+// now a required key of the answer, and the model names its closest option before the verdict (as evals.judge@5 writes
+// checks first); code turns the two into the match.
 /**
  * AIV-P1-140: a CV statement the model copies word for word but ends with a period is the same text; the matcher model
  * answered null for it, or named it without the period. Compares after case, surrounding space and trailing
@@ -209,23 +216,29 @@ const bare = (s: string) =>
     .toLowerCase();
 const sameText = (a: string, b: string) => bare(a) === bare(b);
 const key = (path: string, value: string) => `${path}\u0000${value}`;
-const matchVerdicts = z.object({
-  matches: z.array(z.object({ expected: z.string(), match: z.string().nullable() }).strict()),
-});
+// In the order the model writes: the closest option before the verdict on it.
+const matchVerdict = z.object({ closest: z.string(), sameMeaning: z.boolean() }).strict();
+/** The matcher's request and answer: one key per miss (`e0`, `e1`, …), so the answer cannot skip one. */
+export const matchKey = (i: number) => `e${i}`;
 
 /** The LLM matcher on the `evals.judge` task (AIV-P2-083): one call per case, for its missed free-text names only. */
 export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
   return async (_golden, misses) => {
-    const { matches } = await ai.generateStructured({
+    const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
       promptVersion: matchPrompt.id,
       system: matchPrompt.system,
-      prompt: JSON.stringify(misses),
-      schema: matchVerdicts,
+      prompt: JSON.stringify(Object.fromEntries(misses.map((m, i) => [matchKey(i), m]))),
+      schema: z.object(Object.fromEntries(misses.map((_, i) => [matchKey(i), matchVerdict]))).strict(),
       sources: [],
     });
-    return Object.fromEntries(matches.map((m) => [m.expected, m.match]));
+    return Object.fromEntries(
+      misses.map((m, i) => {
+        const v = matchVerdict.parse(answer[matchKey(i)]);
+        return [m.expected, v.sameMeaning ? v.closest : null];
+      }),
+    );
   };
 }
 

@@ -3,7 +3,7 @@ import { AiUnavailable, type AiClient } from '../src/client.ts';
 import { evaluateCatalogue, recordedClient, runBudget, uncoveredKeys } from './catalogue.ts';
 import { domainCatalogue, liveTokenCap } from './config.ts';
 import { loadGolden } from './golden.ts';
-import { matchPrompt, suggestionPrompt } from './run.ts';
+import { matchKey, matchPrompt, suggestionPrompt } from './run.ts';
 
 // Feature: Run the eval set on a catalogue draft (AIV-P2-048). Recorded answers only: no model call in CI.
 
@@ -71,11 +71,11 @@ describe('a run with recorded answers', () => {
       recordedClient().generateStructured({
         task: 'evals.judge',
         promptVersion: matchPrompt.id,
-        prompt: JSON.stringify([{ expected, candidates }]),
+        prompt: JSON.stringify({ [matchKey(0)]: { expected, candidates } }),
         sources: [],
       } as unknown as Parameters<AiClient['generateStructured']>[0]);
-    expect(await ask(['another statement', match])).toEqual({ matches: [{ expected, match }] });
-    expect(await ask(['another statement'])).toEqual({ matches: [{ expected, match: null }] });
+    expect(await ask(['another statement', match])).toEqual({ e0: { closest: match, sameMeaning: true } });
+    expect(await ask(['another statement'])).toEqual({ e0: { closest: 'another statement', sameMeaning: false } });
   });
 
   it("answers a suggestion-judge request with the case's recorded verdicts, and refuses one it has none for (AIV-P2-085)", async () => {
