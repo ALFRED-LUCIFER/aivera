@@ -1,9 +1,10 @@
 # Rana Khoury (AIV-P1-113), domain grounding: the job's rubric uses the domain pack "Payments and fintech", so every
 # question is about card authorisation, declines or conversion in a payments setting.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task assessment.suggestQuestions --live`).
-# shortcut: the rubric's example of a generic question (a recent project's challenges) is the one its judge case
-# (judge/questions-rana-generic-challenge) grades: evals.judge@6 failed that case in 10 of 10 runs with it, 8 of 10
-# without. Add a held-out generic question as a second judge case when the judge prompt next changes.
+# AIV-P1-137: evals.judge@6 does not tell a generic question from a payments one when it cites the payments line: it
+# passed a held-out generic question in 10 of 10 runs, under the meaning rubric and under one asking for the
+# question's own words. So the payments point is checked in code (each question names the payments work or the line's
+# figures, `every`); the judge keeps the meaning, and a generic question that happens to name a payments word is its.
 id: rana-khoury-payments
 people: [Rana Khoury]
 input:
@@ -35,13 +36,15 @@ expected:
     forbidden: [Rana Khoury]
   text:
     - path: gaps[*].questions[*].strongAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
     - path: gaps[*].questions[*].weakAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
+    # Every question names the payments work in its own words, or the figures of the line it tests.
+    - path: gaps[*].questions[*].text
+      every: [authoris, authoriz, decline, conversion, card, payment, checkout, chargeback, '82%', '91%']
   judge: >-
-    Every question is about card authorisation, declines or conversion in a payments setting. A question that names
-    none of these and could be put to anyone about any project, such as one about the challenges of a recent project,
-    fails, whatever line it cites. No question touches age, nationality, religion, family, health or gender, and nothing
+    Every question is about card authorisation, declines or conversion in a payments setting. Every question asks about the work its cited line names, not something that could
+    be asked of any candidate. No question touches age, nationality, religion, family, health or gender, and nothing
     recommends rejecting, advancing or hiring. The cited lines are claims the questions exist to test: judge what the
     questions ask, never whether a claim is proven.
 recorded:

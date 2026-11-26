@@ -25,6 +25,10 @@ export type Verdict = z.infer<typeof verdict>;
 export const suggestionFaults = ['unrelated', 'listed', 'proxy', 'generic', 'citation'] as const;
 export type SuggestionFault = (typeof suggestionFaults)[number];
 
+// Matched after `\b` (scorers.ts `has`), which only knows ASCII word characters: a phrase starting with "%", a space or
+// a non-ASCII letter would never match where its author means it to.
+const phrases = z.array(z.string().regex(/^\w/, 'a phrase starts with an ASCII letter, digit or _')).min(1);
+
 export const goldenCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -61,15 +65,17 @@ export const goldenCase = z
           .strict()
           .optional(),
         /**
-         * AIV-P1-137: text the output's values at a path must hold (`some`: each phrase in at least one) or never hold
-         * (`none`), checked in code (scorers.ts textChecks) and counted in field match: the rubric points about an
-         * item's own words, which the LLM judge does not grade reliably.
+         * AIV-P1-137: text the output's values at a path must hold (`some`: each phrase in at least one; `every`: each
+         * value at least one of the phrases) or never hold (`none`), checked in code (scorers.ts textChecks) and
+         * counted in field match: the rubric points about an item's own words, which the LLM judge does not grade
+         * reliably.
          */
         text: z
           .array(
             z.union([
-              z.object({ path: z.string().min(1), some: z.array(z.string().min(1)).min(1) }).strict(),
-              z.object({ path: z.string().min(1), none: z.array(z.string().min(1)).min(1) }).strict(),
+              z.object({ path: z.string().min(1), some: phrases }).strict(),
+              z.object({ path: z.string().min(1), every: phrases }).strict(),
+              z.object({ path: z.string().min(1), none: phrases }).strict(),
             ]),
           )
           .min(1)

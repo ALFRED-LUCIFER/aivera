@@ -190,7 +190,8 @@ export function safety(output: unknown, expected: NonNullable<GoldenCase['expect
 
 /**
  * AIV-P1-137: the rubric points code can check, so the LLM judge grades only what needs reading for meaning. One point
- * per check: each `some` phrase is in at least one text at its path, no `none` phrase is in any, matched from a word
+ * per check: each `some` phrase is in at least one text at its path, each text holds one of the `every` phrases, and
+ * no `none` phrase is in any, matched from a word
  * start, case-insensitive, as `safety` matches. A path holding no text fails, so a mistyped path never passes. A failure
  * names the path, the position and the case's own phrase, never the output's text (AGENTS.md 1.2).
  */
@@ -204,6 +205,10 @@ export function textChecks(output: unknown, checks: NonNullable<GoldenCase['expe
       return check.some
         .filter((p) => !texts.some((t) => has(t.value.toLowerCase(), p, false)))
         .map((p) => `${check.path}: none has "${p}"`);
+    if ('every' in check)
+      return texts
+        .filter((t) => !check.every.some((p) => has(t.value.toLowerCase(), p, false)))
+        .map((t) => `${t.at}: has none of the phrases`);
     return texts.flatMap((t) =>
       check.none.filter((p) => has(t.value.toLowerCase(), p, false)).map((p) => `${t.at}: has "${p}"`),
     );

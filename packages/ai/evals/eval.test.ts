@@ -1395,7 +1395,7 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch));
 
   it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
-    expect(judgeCases.length).toBe(suggestionCases.length + 6 + 3); // six evidence and three matcher judge cases
+    expect(judgeCases.length).toBe(suggestionCases.length + 5 + 3); // five evidence and three matcher judge cases
     expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
       ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
       ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
@@ -1758,6 +1758,8 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   const summaries = 'interviews.mapSummary';
   const daniel = caseOf(questions, 'daniel-novak-accuracy-claim');
   const s1 = { sourceId: 'S1', quote: 'raised answer accuracy from 71% to 88% on the support assistant' };
+  /** Daniel's case with these text checks, for the schema. */
+  const textOf = (text: unknown[]) => ({ ...daniel, expected: { ...daniel.expected, text } });
   const q = (text: string, weakAnswer = 'Cannot say where the questions came from or who graded the answers.') => ({
     text,
     strongAnswer:
@@ -1794,8 +1796,8 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
     for (const c of golden.get(questions) ?? [])
       expect(c.expected.text, c.id).toEqual(
         expect.arrayContaining([
-          { path: 'gaps[*].questions[*].strongAnswer', none: ['vague', 'generic'] },
-          { path: 'gaps[*].questions[*].weakAnswer', none: ['vague', 'generic'] },
+          { path: 'gaps[*].questions[*].strongAnswer', none: ['vague', 'generic', 'general', 'lacking detail'] },
+          { path: 'gaps[*].questions[*].weakAnswer', none: ['vague', 'generic', 'general', 'lacking detail'] },
         ]),
       );
   });
@@ -1862,27 +1864,66 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
     expect(found.failures.join('\n')).not.toMatch(/extravagant|Names/);
   });
 
-  it('a text check gives exactly one of some and none', () => {
-    const both = { ...daniel, expected: { ...daniel.expected, text: [{ path: 'x', some: ['a'], none: ['b'] }] } };
-    expect(goldenCaseSchema.safeParse(both).success).toBe(false);
-    expect(
-      goldenCaseSchema.safeParse({ ...both, expected: { ...daniel.expected, text: [{ path: 'x' }] } }).success,
-    ).toBe(false);
+  // SAFETY: mutation check: removed Rana's `every` check on gaps[*].questions[*].text -> this test failed
+  // SAFETY: mutation check: textChecks' `every` branch returned no failures in scorers.ts -> this test failed
+  it("Scenario: Rana's questions stay in payments: a generic question fails, whichever payments line it cites", async () => {
+    const rana = caseOf(questions, 'rana-khoury-payments');
+    const recorded = rana.recorded.output as { gaps: { questions: { text: string }[] }[] };
+    expect((await run(questions, [rana])).cases[0]?.scores.fieldMatch?.failures).toEqual([]);
+    // The ticket's example, and a held-out one: the live judge@6 passed the held-out one in 10 of 10 runs.
+    for (const generic of [
+      'What challenges did you face in a recent project, and how did you address them?',
+      'How do you prioritise when several stakeholders need something from you by the same deadline?',
+    ]) {
+      const asked = structuredClone(recorded);
+      const last = asked.gaps[0]?.questions.at(-1);
+      if (last) last.text = generic;
+      const report = await run(questions, [withOutput(rana, asked)]);
+      const lastText = `gaps[0].questions[${(asked.gaps[0]?.questions.length ?? 0) - 1}].text`;
+      expect([report.passed, report.cases[0]?.scores.fieldMatch?.failures]).toEqual([
+        false,
+        [`${lastText}: has none of the phrases`],
+      ]);
+    }
   });
 
-  it('Scenario: Each meaning rubric is pinned by a known bad output the judge must fail', async () => {
+  it('a text check gives exactly one of some, every and none, and each phrase starts with a word character', () => {
+    expect(goldenCaseSchema.safeParse(textOf([{ path: 'x', some: ['a'], none: ['b'] }])).success).toBe(false);
+    expect(goldenCaseSchema.safeParse(textOf([{ path: 'x', every: ['a'], none: ['b'] }])).success).toBe(false);
+    expect(goldenCaseSchema.safeParse(textOf([{ path: 'x' }])).success).toBe(false);
+    // `\b` before "%" or a space never matches where it is meant to.
+    for (const phrase of ['%71', ' vague', 'é']) {
+      expect(goldenCaseSchema.safeParse(textOf([{ path: 'x', none: [phrase] }])).success, phrase).toBe(false);
+    }
+    expect(goldenCaseSchema.safeParse(textOf([{ path: 'x', every: ['71%', 'card'] }])).success).toBe(true);
+  });
+
+  it('Scenario: The summary rubric is pinned by a known bad output the judge must fail, itself on the product schema', async () => {
     const pinned = loadJudgeCases(import.meta.dirname, golden).filter(
       (c): c is EvidenceJudgeCase => !('judge' in c) && !c.case.startsWith('evidence.'),
     );
     expect(pinned.map((c) => [c.id, c.case, c.expected])).toEqual([
-      ['questions-rana-generic-challenge', `${questions}/rana-khoury-payments`, 'fail'],
       ['summary-arjun-invented-work', `${summaries}/arjun-menon-work-words`, 'fail'],
     ]);
     for (const c of pinned) {
       expect(c.rubric).toBe(c.golden.expected.judge);
       expect(c.output).not.toEqual(c.golden.recorded.output);
+      // A hand-made output the product could never return would test nothing the recruiter sees.
+      const schemaOf = c.case.startsWith(`${questions}/`) ? questionsSchemaOf : summarySchemaOf;
+      expect(schemaOf(c.golden).safeParse(c.output).error, c.id).toBeUndefined();
     }
     expect((await evaluateJudge(pinned, recordedJudgeVerdict)).passed).toBe(true);
+  });
+
+  it('refuses a judge case that gives both a limit and a whole output', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'judge-'));
+    mkdirSync(join(dir, 'judge'));
+    writeFileSync(
+      join(dir, 'judge', 'both.yaml'),
+      'id: both\ncase: interviews.mapSummary/arjun-menon-work-words\nlimit: x\noutput: { findings: [] }\n' +
+        'expected: fail\nrecorded: { judgePrompt: evals.judge@6, verdict: { pass: false, reason: x } }\n',
+    );
+    expect(() => loadJudgeCases(dir, golden)).toThrow('give a limit or an output, not both');
   });
 });
 

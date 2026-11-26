@@ -51,9 +51,9 @@ expected:
     forbidden: [Sara Al Qahtani]
   text:
     - path: gaps[*].questions[*].strongAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
     - path: gaps[*].questions[*].weakAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
   judge: >-
     Every question asks about the work its cited line names, not something that could be asked of any candidate. No
     question touches age, nationality, religion, family, health or gender, and nothing recommends rejecting, advancing

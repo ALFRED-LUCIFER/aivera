@@ -42,9 +42,9 @@ expected:
     forbidden: [Daniel Novak]
   text:
     - path: gaps[*].questions[*].strongAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
     - path: gaps[*].questions[*].weakAnswer
-      none: [vague, generic]
+      none: [vague, generic, general, lacking detail]
     - path: gaps[*].questions[*].text
       some: ['71%']
   judge: >-

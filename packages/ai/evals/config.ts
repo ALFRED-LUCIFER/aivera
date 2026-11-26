@@ -161,7 +161,8 @@ export const taskThresholds: Record<
   // Structure is the product schema: eval.test.ts parses every recorded answer with it, and a live answer off it fails
   // its case as SchemaMismatch.
   // AIV-P1-137: a rubric point about an item's own words (a note that says "vague", a question naming a figure, a
-  // finding's quote) is a code check (`expected.text`) counted in field match; the judge grades meaning only. Both here.
+  // finding's quote) is a code check (`expected.text`) counted in field match; the judge grades meaning only. This
+  // applies to both tasks below.
   'assessment.suggestQuestions': { statements: ['gaps[*].questions[*]'], fieldMatch: 1, judge: 1 },
   // AIV-P1-115: every finding quotes the summary word for word (citation validity, a hard gate) and names only a
   // listed competency (the expected ids, exact, and the product schema, which eval.test.ts parses every recorded answer
