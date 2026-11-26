@@ -10,7 +10,7 @@ import { getFiles } from '@/server/files';
 import { getInterviews } from '@/server/interviews';
 import { getApprovedRubricReads } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
-import { startingDraft, type ScorecardData } from '../domain/scorecard.ts';
+import { shownQuestions, startingDraft, type ScorecardData } from '../domain/scorecard.ts';
 
 /**
  * Whether the member may see the interview, by the interviews contract (`getInterview`): false for a malformed id too.
@@ -58,7 +58,7 @@ export async function loadScorecard(interviewId: string): Promise<ScorecardData 
     // The stored set only (`getSuggestedQuestions` calls no model); questions are asked for on the evidence profile.
     const stored = assessed && (await getAssessment().getSuggestedQuestions(ctx, candidateId, jobId));
     const view = stored && questionsView(stored, names, evidence);
-    const questions = new Map(view?.status === 'suggested' ? view.gaps.map((g) => [g.competencyId, g.questions]) : []);
+    const questions = shownQuestions(view);
     const competencies = interview.competencyIds.flatMap((id) => {
       const competency = rubric.find((c) => c.id === id);
       if (!competency) return [];

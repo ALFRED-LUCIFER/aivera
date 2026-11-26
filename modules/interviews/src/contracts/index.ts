@@ -24,6 +24,7 @@ export type { SubmitScorecardInput, SubmittedScorecard } from '../application/su
 export {
   assessedRatings,
   MARKS,
+  NOTE_MAX,
   notAssessed,
   RATINGS,
   rebuildDraft,
@@ -125,7 +126,8 @@ export interface InterviewsContract {
    * Submits the interview's stored scorecard draft (AIV-P2-006), in the caller's one transaction: the interview is
    * `completed` (from `to_schedule`, `in_progress` or `scorecard_due`) and writes `InterviewCompleted.v1`; the draft,
    * rebuilt on the questions the page shows, is kept as the submitted scorecard, its recommendation included (it changes
-   * no stage); each rated competency's note is recorded as `interview_note` evidence ("Interviewer's scorecard, 26 Nov");
+   * no stage); each rated competency's note is recorded as `interview_note` evidence ("Interviewer's scorecard, 26 Nov"),
+   * except Partly shown, which the preview shows changing nothing;
    * and the ratings are applied through the assessment's `applyScoreChange` with `previewId`, each note as its reason,
    * so the new snapshot and one `score.changed` audit entry per rating are the last statements. A competency not assessed
    * in this round has no rating: no evidence, no change, no entry; it stays a gap. `previewId` is the

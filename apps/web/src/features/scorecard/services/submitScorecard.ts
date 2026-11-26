@@ -11,6 +11,10 @@ const OUTCOME: Partial<Record<InterviewError['code'], SubmitOutcome>> = {
   scorecard_submitted: 'already',
   preview_changed: 'changed',
   scorecard_incomplete: 'incomplete',
+  not_assessed: 'notAssessed',
+  competency_not_in_rubric: 'rubricChanged',
+  interview_not_held: 'notHeld',
+  scorecard_closed: 'closed',
 };
 
 /**

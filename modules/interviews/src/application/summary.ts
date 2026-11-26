@@ -20,6 +20,7 @@ import {
   type SummaryFinding,
   type SummaryStatus,
 } from '../domain/summary.ts';
+import { recordAndApply, refusedByAssessment } from './decision.ts';
 import { scorecardHolder, type Ports } from './interviews.ts';
 
 /** The summaries store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
@@ -85,7 +86,10 @@ export type SummaryPorts = Pick<
 export type DecisionPorts = {
   latestAssessment(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<{ id: string } | null>;
   previewScoreChange(ctx: WorkspaceContext, input: ScoreChange): Promise<ScorePreview>;
-  /** The assessment's `applyScoreChange`: its audit entries are the transaction's last statements (AGENTS.md 3.6). */
+  /**
+   * The assessment's `applyScoreChange`: its audit entries are the transaction's last statements (AGENTS.md 3.6). The
+   * snapshot it leaves the candidate with.
+   */
   applyScoreChange(
     ctx: WorkspaceContext,
     input: ScoreChange & {
@@ -95,7 +99,7 @@ export type DecisionPorts = {
       idempotencyKey: string;
       writeUpItemIds: string[];
     },
-  ): Promise<unknown>;
+  ): Promise<{ id: string }>;
   /** The evidence contract's `recordInterviewSummary`. */
   recordSummaryEvidence(
     ctx: WorkspaceContext,
@@ -103,6 +107,8 @@ export type DecisionPorts = {
       candidateId: string;
       jobId: string;
       writtenAt: Date;
+      /** `scorecard`: a submitted scorecard's notes (AIV-P2-006); otherwise a meeting summary. */
+      from?: 'scorecard';
       items: { competencyId: string; excerpt: string; strength: ProposedStrength; level: number }[];
       synthetic: boolean;
     },
@@ -145,9 +151,6 @@ const applyInput = z.strictObject({
     .refine((cs) => new Set(cs.map((c) => c.competencyId)).size === cs.length, 'One change per competency'),
 });
 export type ApplySummaryInput = z.input<typeof applyInput>;
-
-// The assessment refuses a preview or an apply with its own error; this module has no dependency on its package.
-const refusedByAssessment = (error: unknown) => error instanceof Error && error.name === 'ScoreChangeError';
 
 // shortcut: `to_schedule` counts as held, as the assessment's score change reads it (the pilot does not schedule).
 const held = (interview: Interview, now: Date) => !['scheduled', 'cancelled'].includes(effectiveStatus(interview, now));
@@ -336,24 +339,31 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
         throw new InterviewError('summary_decided');
       await store.markProposals(ctx.workspaceId, summaryId, 'applied', ids);
       await store.markProposals(ctx.workspaceId, summaryId, 'declined', ids, true);
-      // The summary as the source of each applied change, citing its excerpt (AGENTS.md 1.6).
-      const { itemIds } = await ports.recordSummaryEvidence(ctx, {
-        candidateId: interview.candidateId,
-        jobId: interview.jobId,
-        writtenAt: summary.createdAt,
-        items: rated.map(({ competencyId, proposal }) => {
-          const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
-          if (rubric?.id !== interview.rubricVersionId || level === undefined)
-            throw new InterviewError('competency_not_in_rubric');
-          const strength = proposal.proposedStrength ?? 'claim';
-          // The level the job needs, as the interview's own change backs; a weakening shows no level.
-          return { competencyId, excerpt: proposal.excerpt ?? '', strength, level: strength === 'medium' ? level : 0 };
-        }),
-        synthetic: await ports.isSyntheticWorkspace(ctx),
-      });
-      try {
-        // Last: the assessment stores the snapshot and the changes, then one audit entry per change (AGENTS.md 3.6).
-        await ports.applyScoreChange(ctx, {
+      // The summary as the source of each applied change, citing its excerpt (AGENTS.md 1.6); last, the assessment
+      // stores the snapshot and the changes, then one audit entry per change (AGENTS.md 3.6).
+      await recordAndApply(
+        ports,
+        ctx,
+        {
+          candidateId: interview.candidateId,
+          jobId: interview.jobId,
+          writtenAt: summary.createdAt,
+          items: rated.map(({ competencyId, proposal }) => {
+            const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
+            if (rubric?.id !== interview.rubricVersionId || level === undefined)
+              throw new InterviewError('competency_not_in_rubric');
+            const strength = proposal.proposedStrength ?? 'claim';
+            // The level the job needs, as the interview's own change backs; a weakening shows no level.
+            return {
+              competencyId,
+              excerpt: proposal.excerpt ?? '',
+              strength,
+              level: strength === 'medium' ? level : 0,
+            };
+          }),
+          synthetic: await ports.isSyntheticWorkspace(ctx),
+        },
+        {
           assessmentId: latest.id,
           interviewId: interview.id,
           changes: rated.map(({ competencyId, rating }) => ({ competencyId, rating })),
@@ -361,12 +371,8 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
           reason: input.changes[0]?.reason ?? '',
           reasons: Object.fromEntries(input.changes.map((c) => [c.competencyId, c.reason])),
           idempotencyKey: summaryId,
-          writeUpItemIds: itemIds,
-        });
-      } catch (error) {
-        if (refusedByAssessment(error)) throw new InterviewError('preview_changed');
-        throw error;
-      }
+        },
+      );
     },
 
     async declineSummaryProposals(ctx: WorkspaceContext, summaryId: string): Promise<void> {

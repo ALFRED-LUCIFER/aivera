@@ -68,9 +68,9 @@ function setup(over: Partial<SubmitPorts> = {}, row = interview(), draft: Scorec
     now: () => NOW,
     rubric: async () => RUBRIC,
     latestAssessment: async () => ({ id: id(70) }),
-    suggestedQuestions: async () => [{ competencyId: COST, questions: ASKED }],
+    suggestedQuestions: async () => new Map([[COST, ASKED]]),
     publishInterviewCompleted: vi.fn(async () => void calls.push('InterviewCompleted.v1')),
-    recordScorecardEvidence: vi.fn<SubmitPorts['recordScorecardEvidence']>(async () => {
+    recordSummaryEvidence: vi.fn<SubmitPorts['recordSummaryEvidence']>(async () => {
       calls.push('evidence');
       return { itemIds: [id(80)] };
     }),
@@ -90,7 +90,7 @@ describe('Scenario: Submitting applies the change', () => {
     expect(calls).toEqual(['complete', 'store scorecard', 'InterviewCompleted.v1', 'evidence', 'apply and audit']);
     expect(store.moveStatus).toHaveBeenCalledWith('w1', id(60), 'in_progress', 'completed');
     expect(ports.authorize).toHaveBeenCalledWith(ctxAs('interviewer'), 'scorecard.submit', JOB);
-    expect(ports.recordScorecardEvidence).toHaveBeenCalledWith(ctxAs('interviewer'), {
+    expect(ports.recordSummaryEvidence).toHaveBeenCalledWith(ctxAs('interviewer'), {
       candidateId: DANIEL,
       jobId: JOB.jobId,
       writtenAt: NOW,
@@ -110,7 +110,8 @@ describe('Scenario: Submitting applies the change', () => {
     });
   });
 
-  it("a Not shown or Partly shown note is the interviewer's word as Claim only, at no level", async () => {
+  // SAFETY: mutation check: recorded Partly shown as Claim only, as before the review -> this test failed (two items).
+  it("a Not shown note is the interviewer's word as Claim only, at no level; Partly shown, which the preview shows changing nothing, records nothing", async () => {
     const draft: ScorecardDraft = {
       ...DRAFT,
       competencies: [
@@ -118,14 +119,28 @@ describe('Scenario: Submitting applies the change', () => {
         { competencyId: COST, rating: 'partly_shown', note: 'Explained the fix only', questions: [] },
       ],
     };
-    const { submit, ports } = setup({ suggestedQuestions: async () => [] }, interview(), draft);
+    const { submit, ports } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
     await submit(ctxAs('interviewer'), id(60), { previewId: 'p1' });
-    expect(vi.mocked(ports.recordScorecardEvidence).mock.calls[0]?.[1].items.map((i) => [i.strength, i.level])).toEqual(
-      [
-        ['claim', 0],
-        ['claim', 0],
+    expect(vi.mocked(ports.recordSummaryEvidence).mock.calls[0]?.[1].items).toEqual([
+      { competencyId: RETRIEVAL, excerpt: 'Could not say how 71% was measured', strength: 'claim', level: 0 },
+    ]);
+    // Its note is still the reason logged with its rating.
+    expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].reasons[COST]).toBe('Explained the fix only');
+  });
+
+  it('with only Partly shown rated there is no evidence to record, and the rating is still applied and logged', async () => {
+    const draft: ScorecardDraft = {
+      ...DRAFT,
+      competencies: [
+        { competencyId: RETRIEVAL, rating: 'partly_shown', note: 'Explained the fix only', questions: [] },
+        { competencyId: COST, rating: null, note: '', questions: [{ text: '', mark: 'not_asked' }] },
       ],
-    );
+    };
+    const { submit, ports, calls } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
+    await submit(ctxAs('interviewer'), id(60), { previewId: 'p1' });
+    expect(ports.recordSummaryEvidence).not.toHaveBeenCalled();
+    expect(calls.at(-1)).toBe('apply and audit');
+    expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].writeUpItemIds).toEqual([]);
   });
 });
 
@@ -138,7 +153,7 @@ describe('Scenario: A competency not assessed in this round stays a gap', () => 
     expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].changes.map((c) => c.competencyId)).toEqual([
       RETRIEVAL,
     ]);
-    expect(vi.mocked(ports.recordScorecardEvidence).mock.calls[0]?.[1].items.map((i) => i.competencyId)).toEqual([
+    expect(vi.mocked(ports.recordSummaryEvidence).mock.calls[0]?.[1].items.map((i) => i.competencyId)).toEqual([
       RETRIEVAL,
     ]);
   });
@@ -178,7 +193,7 @@ describe('refusals write nothing', () => {
     ['a rating with no note', { competencyId: COST, rating: 'partly_shown' as const, note: '  ', questions: [] }],
   ])('%s is "scorecard_incomplete"', async (_case, cost) => {
     const draft = { ...DRAFT, competencies: [DRAFT.competencies[0], cost] } as ScorecardDraft;
-    const { submit, calls } = setup({ suggestedQuestions: async () => [] }, interview(), draft);
+    const { submit, calls } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
     await expect(submit(ctxAs('interviewer'), id(60), { previewId: 'p1' })).rejects.toMatchObject({
       code: 'scorecard_incomplete',
     });

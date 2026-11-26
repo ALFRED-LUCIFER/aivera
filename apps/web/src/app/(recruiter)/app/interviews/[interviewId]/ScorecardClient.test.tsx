@@ -287,16 +287,16 @@ describe('Scenario: Submit needs every competency rated or marked not tested', (
   it('names the competency that is neither rated nor marked, then accepts it once it is', async () => {
     const user = userEvent.setup();
     show();
+    fake.preview.mockResolvedValue(RATED['Clearly shown']);
     await user.click(within(rating('Retrieval and evaluation')).getAllByRole('radio')[2] as HTMLElement);
     // "Submit scorecard" waits for the preview of the ratings (AIV-P2-006).
-    await within(effectCard()).findByText(UNAVAILABLE);
+    await within(effectCard()).findByText('Backed score 55 to 67.');
     expect(screen.queryByText(BLOCKED)).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
     expect(within(card('Cost and reliability')).getByRole('alert').textContent).toBe(BLOCKED);
     // Rated, so not blocked; its missing note is said on the note (AIV-P2-006).
     expect(within(card('Retrieval and evaluation')).queryByText(BLOCKED)).toBeNull();
     expect(rating('Cost and reliability').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.queryByText(/^Your scorecard is complete/)).toBeNull();
 
     expect(fake.submit).not.toHaveBeenCalled();
     for (const button of within(card('Cost and reliability')).getAllByRole('button', { name: 'Not asked' }))
@@ -561,11 +561,36 @@ describe('Scenario: Submitting applies the change', () => {
   });
 });
 
+const FAILED = 'Not submitted. Your ratings are saved. Try again.';
+
 describe('Scenario: Double submit, and a submit that fails', () => {
+  it('"already" says "Already submitted" as submitted, with the ranking, and Submit stays disabled', async () => {
+    fake.submit.mockResolvedValue('already');
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText('Already submitted')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'See the ranking' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Submit scorecard' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('a draft save the server refuses as closed reads as "Already submitted", and nothing is submitted', async () => {
+    fake.save.mockResolvedValue('closed');
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText('Already submitted')).toBeTruthy();
+    expect(fake.submit).not.toHaveBeenCalled();
+    expect(fake.refresh).toHaveBeenCalled();
+  });
+
   it.each([
-    ['already', 'Already submitted'],
-    ['failed', 'Not submitted. Your ratings are saved; try again.'],
+    ['failed', FAILED],
     ['changed', 'The assessment changed since this preview. Check the new preview, then submit again.'],
+    ['notAssessed', 'Not submitted. Daniel Novak has no assessment to change yet.'],
+    ['rubricChanged', "Not submitted. The job's rubric changed after this interview was planned."],
+    ['notHeld', 'Not submitted. This interview has not been held yet.'],
+    ['closed', 'Not submitted. This interview was cancelled.'],
   ] as const)('"%s" says "%s"', async (outcome, text) => {
     fake.submit.mockResolvedValue(outcome);
     const user = userEvent.setup();
@@ -580,7 +605,7 @@ describe('Scenario: Double submit, and a submit that fails', () => {
     const user = userEvent.setup();
     await ready(user);
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
-    expect(await screen.findByText('Not submitted. Your ratings are saved; try again.')).toBeTruthy();
+    expect(await screen.findByText(FAILED)).toBeTruthy();
     expect(fake.refresh).not.toHaveBeenCalled();
     expect(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' })).toBeTruthy();
   });
@@ -592,5 +617,36 @@ describe('a submitted scorecard', () => {
     expect(screen.getByText('This scorecard is submitted and logged. It can no longer change.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Submit scorecard' })).toBeNull();
     expect(screen.getByRole('link', { name: 'See the ranking' })).toBeTruthy();
+  });
+});
+
+describe('waiting for the preview (AIV-P2-006)', () => {
+  // Mutation check: dropped `previewBlock` from the button's disabled -> this test failed (it was enabled).
+  it('with a rating, Submit is disabled and says why until its preview is ready, and while it is unavailable', async () => {
+    const later = Promise.withResolvers();
+    fake.preview.mockReturnValueOnce(later.promise);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' }));
+    const submit = screen.getByRole('button', { name: 'Submit scorecard' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText('Submitting waits for the preview of your ratings.').id).toBe(
+      submit.getAttribute('aria-describedby'),
+    );
+    await waitFor(() => expect(fake.preview).toHaveBeenCalled());
+    await act(async () => later.resolve(null));
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText('Submitting needs the preview of your ratings, which is unavailable now.')).toBeTruthy();
+  });
+});
+
+describe('the note limit', () => {
+  it('a note takes 1,000 characters at most, with its count under it', async () => {
+    const user = userEvent.setup();
+    show();
+    const note = within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard');
+    expect(note.getAttribute('maxlength')).toBe('1000');
+    await user.type(note, 'Built it');
+    expect(within(card('Retrieval and evaluation')).getByText('8 of 1,000 characters')).toBeTruthy();
   });
 });

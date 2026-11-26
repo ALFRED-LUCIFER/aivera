@@ -52,8 +52,9 @@ const notWired = async (): Promise<never> => {
  * composition's `findApplication`. Both are unauthorised reads this module calls only for the job it then authorises.
  * Taken as functions, not modules, so intake can call this contract (AIV-P1-114) without a package cycle.
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. `decisions` are the assessment's and the
- * evidence contract's commands a meeting summary ends in (AIV-P1-115), and `scorecard` those a submitted scorecard
- * ends in (AIV-P2-006), as functions for the same reason; without them those commands throw.
+ * evidence contract's commands a meeting summary (AIV-P1-115) and a submitted scorecard (AIV-P2-006) end in, as
+ * functions for the same reason; without them those commands throw. The submit also needs `suggestedQuestions`, the
+ * questions its page shows.
  */
 export function createInterviews(
   workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace' | 'listMembers' | 'listJobGrants'>,
@@ -61,11 +62,7 @@ export function createInterviews(
   approvedRubric: ApprovedRubricReads['approvedRubric'],
   findApplication: Ports['findApplication'],
   now: () => Date = () => new Date(),
-  decisions?: DecisionPorts,
-  scorecard?: Pick<
-    SubmitPorts,
-    'latestAssessment' | 'applyScoreChange' | 'recordScorecardEvidence' | 'suggestedQuestions'
-  >,
+  decisions?: DecisionPorts & Partial<Pick<SubmitPorts, 'suggestedQuestions'>>,
 ): InterviewsContract {
   const ports: Ports = {
     storeFor: interviewStore,
@@ -97,10 +94,11 @@ export function createInterviews(
   };
   return {
     ...interviewUseCases(ports),
-    ...(scorecard
+    ...(decisions?.suggestedQuestions
       ? submitUseCases({
           ...ports,
-          ...scorecard,
+          ...decisions,
+          suggestedQuestions: decisions.suggestedQuestions,
           rubric: approvedRubric,
           publishInterviewCompleted: (tx, interview) =>
             enqueue(tx, outbox, InterviewCompletedV1, {

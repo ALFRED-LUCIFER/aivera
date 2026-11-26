@@ -15,6 +15,9 @@ export type Mark = (typeof MARKS)[number];
 export const RECOMMENDATIONS = ['shortlist', 'more_evidence', 'not_recommended'] as const;
 export type Recommendation = (typeof RECOMMENDATIONS)[number];
 
+/** A note's length limit: the note is the reason the assessment logs with the rating, which takes 1,000 at most. */
+export const NOTE_MAX = 1000;
+
 /**
  * A draft as the browser sends it and the database keeps it. Strict: a field this schema does not name is refused.
  * `questions` are the questions shown for the competency when it was saved, each with its mark, so a draft says which
@@ -27,7 +30,7 @@ export const scorecardDraftSchema = z.strictObject({
         competencyId: z.uuid(),
         rating: z.enum(RATINGS).nullable(),
         /** "What you saw or heard". */
-        note: z.string().max(4000),
+        note: z.string().max(NOTE_MAX),
         questions: z.array(z.strictObject({ text: z.string().max(2000), mark: z.enum(MARKS).nullable() })).max(20),
       }),
     )

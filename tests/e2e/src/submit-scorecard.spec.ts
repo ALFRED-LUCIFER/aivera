@@ -154,6 +154,17 @@ for (const theme of themes) {
     await radio.focus();
     await page.keyboard.press('Space');
     await card(page, 'Retrieval and evaluation').getByLabel('What you saw or heard').fill(NOTE);
+    await expect(effect(page).locator('[aria-live="polite"]')).toHaveText('Backed score 55 to 67.');
+
+    // Scenario: Submit needs every competency rated or marked not tested.
+    const submit = page.getByRole('button', { name: 'Submit scorecard' });
+    await submit.focus();
+    await page.keyboard.press('Enter');
+    await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(
+      'Rate this competency, or mark its questions Not asked or Not answered, before submitting',
+    );
+    await expect(card(page, 'Retrieval and evaluation').getByRole('alert')).toHaveCount(0);
+    await expectAccessible(page);
     const notAsked = card(page, 'Cost and reliability')
       .getByRole('group', { name: 'Your own questions on this competency' })
       .getByRole('button', { name: 'Not asked' });
@@ -173,10 +184,10 @@ for (const theme of themes) {
     await page.route('**/*', (route) =>
       route.request().method() === 'POST' && isSubmit(route.request().postData()) ? route.abort() : route.fallback(),
     );
-    const submit = page.getByRole('button', { name: 'Submit scorecard' });
+    await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveCount(0);
     await submit.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Not submitted. Your ratings are saved; try again.')).toBeVisible();
+    await expect(page.getByText('Not submitted. Your ratings are saved. Try again.')).toBeVisible();
     await expect(submit).toBeEnabled();
     // Its fade back from disabled reads as low contrast to axe until it ends.
     await submit.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
@@ -186,15 +197,18 @@ for (const theme of themes) {
     await page.unrouteAll();
     await submit.focus();
     await page.keyboard.press('Enter');
-    await expect(
-      page.getByText(`Scorecard submitted and logged. Daniel Novak ${theme}'s assessment has been updated.`),
-    ).toBeVisible();
+    // The artboard's ok note: a status region with its tick, its words and "See the ranking" inline.
+    const confirmed = page
+      .getByRole('status')
+      .filter({ hasText: `Scorecard submitted and logged. Daniel Novak ${theme}'s assessment has been updated.` });
+    await expect(confirmed).toBeVisible();
+    await expect(confirmed.getByRole('link', { name: 'See the ranking' })).toBeVisible();
     await expect(page.getByText('This scorecard is submitted and logged. It can no longer change.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Submit scorecard' })).toHaveCount(0);
     await expectAccessible(page);
 
     // The ranking reads the new snapshot; "Do not recommend" changed no stage and he is still listed.
-    await page.getByRole('link', { name: 'See the ranking' }).click();
+    await confirmed.getByRole('link', { name: 'See the ranking' }).click();
     const row = page
       .getByRole('table', { name: 'Ranked candidates' })
       .getByRole('row')
