@@ -51,7 +51,7 @@ export type { RepositoryReadView, RequestRepositoryReadInput, SkillGradeView } f
 export { COVERAGE_GAPS, GRADE_REASONS, SKILL_GRADES } from '../domain/skill-signals/classify.ts';
 export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/skill-signals/classify.ts';
 export { parseRepositoryUrl } from '../domain/repository.ts';
-export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
+export type { AuthorshipClass, RepositoryReadStatus, RepositoryVia } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
 export type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
 export { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';

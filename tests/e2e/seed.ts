@@ -422,7 +422,12 @@ export default async function seed() {
       const [backed, upTo, meets, confidence, missing] = score;
       if (backed === null) continue;
       const daniel = name === 'Daniel Novak' ? await danielScorecard(personId) : null;
-      const results = name === 'Sara Al Qahtani' ? await saraCompetencies(personId) : (daniel?.results ?? []);
+      const results =
+        name === 'Sara Al Qahtani'
+          ? await saraCompetencies(personId)
+          : name === 'Maria Santos'
+            ? await mariaProfileRepositories(personId)
+            : (daniel?.results ?? []);
       if (name === 'Maria Santos') await mariaCvNote(personId);
       const resultId = crypto.randomUUID();
       await withWorkspace(db, workspaceId, async (tx) => {
@@ -731,6 +736,72 @@ export default async function seed() {
             c === 'Arabic and bilingual NLP' ? claim.itemIds : c === 'LLM systems in production' ? cvClaim.itemIds : [],
         };
       });
+    }
+
+    /**
+     * AIV-P1-118: Maria Santos's CV links only her GitHub profile, github.com/maria-credalent-example, so AIV-P1-112
+     * read two of its repositories with no GitHub login. The worker never runs here (no GitHub call), so each read is
+     * written as it stores one: the source and its authorship item, checked by commit history, and its
+     * `evidence.repository_read` row with `via = 'cv_profile'`. Her "Retrieval and evaluation" rests on both; her
+     * seeded scores (31, up to 69) are hand-written, as every row's are.
+     */
+    async function mariaProfileRepositories(personId: string) {
+      const checked = new Date('2026-11-12T08:00:00.000Z');
+      const itemIds: string[] = [];
+      for (const [name, authored, total] of [
+        ['rag-notebook', 30, 35],
+        ['vector-cache', 18, 22],
+      ] as const) {
+        const url = `https://github.com/maria-credalent-example/${name}`;
+        const { sourceId, itemIds: ids } = await as((ctx) =>
+          evidence.recordEvidence(ctx, {
+            candidateId: personId,
+            source: {
+              kind: 'repository',
+              label: name,
+              url,
+              blobFileId: null,
+              capturedAt: checked,
+              checkedAt: checked,
+              checkMethod: 'Commit history',
+            },
+            items: [
+              {
+                excerpt: `authored ${authored} of ${total} commits`,
+                excerptSpan: null,
+                provenance: 'submitted',
+                // No login supplied: authorship unclear, so never above Medium (evidence `strengthCapOf`).
+                strength: 'medium',
+                limit:
+                  'Authorship unclear: no GitHub login supplied. Measured from the commit history of the default ' +
+                  'branch; does not show code quality or who reviewed the work.',
+                competencies: [{ jobId: sae, competencyId: competency('Retrieval and evaluation'), level: 2 }],
+              },
+            ],
+            synthetic: true,
+          }),
+        );
+        itemIds.push(...ids);
+        await withWorkspace(db, workspaceId, (tx) =>
+          tx.execute(sql`insert into evidence.repository_read (workspace_id, source_id, candidate_id, url, github_login,
+              emails, via, status, total_commits, authored_commits, generated_only_commits, generated_checked,
+              commits_truncated, has_tests, has_ci)
+            values (${workspaceId}, ${sourceId}, ${personId}, ${url}, null, '{}', 'cv_profile', 'read', ${total},
+              ${authored}, 0, ${authored}, false, false, false)`),
+        );
+      }
+      const found = rubric?.competencies.find((r) => r.name === 'Retrieval and evaluation');
+      return [
+        {
+          competencyId: competency('Retrieval and evaluation'),
+          weightPercent: found?.weightPercent,
+          levelNeeded: found?.levelNeeded,
+          mandatory: found?.type === 'mandatory',
+          proven: { level: 2, itemIds },
+          claimedLevel: 2,
+          claimItemIds: [],
+        },
+      ];
     }
 
     /**

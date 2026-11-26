@@ -335,7 +335,85 @@ for (const theme of themes) {
     await expect(page.getByText(/^31 backed by evidence · up to 69 /)).toBeVisible();
     await expectAccessible(page);
   });
+
+  // AIV-P1-118, a step of J2: Maria's CV links only her GitHub profile; two of its repositories were read with no
+  // login (seed.ts, mariaProfileRepositories). Seeded in AP's "Demo", where the Senior AI Engineer ranking lives.
+  test(`Scenarios: A repository read from the profile says where it came from, The chip changes no score, The suffix is provenance, axe passes (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await signIn(page, { email: AP });
+    await openMaria(page);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // Opaque ids only: no login and no repository name in the address (AGENTS.md 1.2).
+    const url = new URL(page.url());
+    expect(url.pathname + url.search).toMatch(/^\/app\/candidates\/[0-9a-f-]{36}\?job=[0-9a-f-]{36}$/);
+
+    const retrieval = page.getByRole('article', { name: /^Retrieval and evaluation/ });
+    await expect(retrieval.getByRole('list', { name: 'Sources' }).getByRole('listitem')).toHaveText([
+      'github.com/…/rag-notebook · from the GitHub profile in the CV (opens in a new tab)',
+      'Commit history, checked 12 Nov 2026',
+      'github.com/…/vector-cache · from the GitHub profile in the CV (opens in a new tab)',
+      'Commit history, checked 12 Nov 2026',
+    ]);
+    await expect(retrieval.getByText(/^Limit: Authorship unclear: no GitHub login supplied\. /)).toBeVisible();
+    // The chip changes no score, strength or tag: the seeded fit, Medium at most, the read's own provenance.
+    await expect(page.getByText(/^31 backed by evidence · up to 69 if claims hold · /)).toBeVisible();
+    await expect(retrieval.getByText('Medium', { exact: true })).toBeVisible();
+    await expect(retrieval.getByText('Strong', { exact: true })).toHaveCount(0);
+    await expect(retrieval.getByText('Candidate-submitted')).toBeVisible();
+
+    // Provenance, not cited evidence: never inside a mark, never on the highlighter's colour.
+    const suffix = retrieval.getByText('· from the GitHub profile in the CV').first();
+    await expect(retrieval.locator('mark').filter({ hasText: 'from the GitHub profile' })).toHaveCount(0);
+    const highlighter = await css(retrieval.locator('mark').first(), 'background-color');
+    expect(await css(suffix, 'background-color')).not.toBe(highlighter);
+
+    // Reachable by keyboard from the breadcrumb, and its accessible name says where it came from.
+    const chip = retrieval.getByRole('link', {
+      name: 'github.com/…/rag-notebook · from the GitHub profile in the CV (opens in a new tab)',
+      exact: true,
+    });
+    await page.getByRole('link', { name: 'Back to the Senior AI Engineer ranking' }).focus();
+    for (let i = 0; i < 40 && !(await chip.evaluate((el) => el === document.activeElement)); i++)
+      await page.keyboard.press('Tab');
+    await expect(chip).toBeFocused();
+    await expectAccessible(page);
+  });
 }
+
+// AIV-P1-118: a repository the candidate linked directly keeps the artboard's plain chip.
+// SAFETY: mutation check: EvidenceCards rendered the suffix for every link chip -> this test failed (Sara's chip said "from the GitHub profile in the CV")
+test('Scenario: A repository linked directly keeps the plain chip: Sara Al Qahtani', async ({ page }) => {
+  await signIn(page, { email: AP });
+  await openSara(page);
+  const retrieval = page.getByRole('article', { name: /^Retrieval and evaluation/ });
+  await expect(retrieval.getByRole('list', { name: 'Sources' }).getByRole('listitem').first()).toHaveText(
+    'code.credalent.example/…/llm-eval-harness (opens in a new tab)',
+  );
+  await expect(page.getByText('from the GitHub profile in the CV')).toHaveCount(0);
+});
+
+// AIV-P1-118: Rami Panel is an interviewer in Demo Hiring Co (seed.ts), not granted this Senior AI Engineer job.
+test('Scenario: An interviewer not on the job sees nothing: 403, and no repository name or source chip in the response', async ({
+  page,
+  context,
+}) => {
+  await signIn(page, { email: AP });
+  await openMaria(page);
+  const maria = new URL(page.url());
+  await context.clearCookies({ name: '__Host-credalent-session' });
+  await signIn(page, { email: 'rami@example.com' });
+  const response = await page.goto(maria.pathname + maria.search);
+  await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
+  // The suffix's words ship in every page's message catalogue, so the chip is checked by its path and its list.
+  expect(await response?.text()).not.toMatch(
+    /rag-notebook|vector-cache|maria-credalent-example|github\.com\/…|Maria Santos/,
+  );
+  await expect(page.getByRole('list', { name: 'Sources' })).toHaveCount(0);
+});
 
 test('a hiring owner granted the job reads the evidence cards, and no "Unusual content" quote', async ({
   page,

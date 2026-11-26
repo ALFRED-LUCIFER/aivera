@@ -4,6 +4,7 @@ import {
   type EvidenceItemView,
   type EvidenceSource,
   type Provenance,
+  type RepositoryVia,
   type Strength,
 } from '@credalent/evidence';
 
@@ -11,9 +12,13 @@ import {
 // cited items. Pure: the service reads, this shapes. The browser takes only this file's types: its one value import
 // (STRENGTHS) stays on the server.
 
-/** One source chip of a card: an outside link, an uploaded file the viewer may open, plain text, or how it was checked. */
+/**
+ * One source chip of a card: an outside link, an uploaded file the viewer may open, plain text, or how it was checked.
+ * A link's `via` says how Credalent came to read it ("from the GitHub profile in the CV", AIV-P1-118); absent when the
+ * candidate linked it themselves.
+ */
 export type SourceChip = { key: string } & (
-  | { kind: 'link'; text: string; url: string }
+  | { kind: 'link'; text: string; url: string; via?: RepositoryVia }
   | { kind: 'file'; text: string; fileId: string }
   | { kind: 'text'; text: string }
   | { kind: 'check'; method: string; at: Date }
@@ -88,7 +93,9 @@ function chips(items: readonly EvidenceItemView[], canOpenFiles: boolean): Sourc
     const key = `${source.id}:${excerptSpan ?? ''}`;
     const text = citation(source, excerptSpan);
     // https only is checked when a source is stored (evidence `checkSource`), so the link is never a script.
-    if (source.url) found.set(key, { key, kind: 'link', text, url: source.url });
+    // SAFETY: only a read that came by the GitHub profile in the CV says so; every other link keeps the plain chip.
+    if (source.url)
+      found.set(key, { key, kind: 'link', text, url: source.url, ...(source.via && { via: source.via }) });
     // SAFETY: a file id reaches the browser only for a viewer who may open raw candidate files (AGENTS.md 1.9).
     else if (source.blobFileId && canOpenFiles) found.set(key, { key, kind: 'file', text, fileId: source.blobFileId });
     else found.set(key, { key, kind: 'text', text });
