@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { EvidenceCard } from '@/features/evidence-profile/domain/evidenceCards.ts';
 
 // The comparison page (AIV-P1-047): the candidates a recruiter ticked on the ranking, side by side on the job's
-// competencies. Pure. The browser takes this file's types and limits; nothing here reads or computes a score.
+// competencies. Pure. The browser takes this file's types and limits; nothing here reads or changes a score.
 
 /**
  * A comparison holds 2 to 10 candidates (owner decision 26 Nov 2026: any number the recruiter ticks, not the ticket's
@@ -79,8 +79,9 @@ export type CompareData =
     });
 
 /**
- * "Seven points separate the three": the gap between the highest and lowest backed score, and whether the order could
- * change if claims hold (a lower candidate's "up to" reaches the highest backed score). Null unless everyone is scored.
+ * "7 points separate the 3 candidates": the gap between the highest and lowest backed score, and whether the order
+ * could change if claims hold (a lower candidate's "up to" reaches the highest backed score), whatever the gap's size.
+ * Null unless everyone is scored.
  */
 export function closingOf(
   columns: readonly Pick<CompareColumn, 'score'>[],
@@ -108,10 +109,10 @@ export type TradeoffsView =
         statements: (Pick<ExplanationStatement, 'text'> & {
           /**
            * A fact of the snapshot, written as the rest of a sentence that begins with the candidate's name; otherwise
-           * a sentence of its own about a piece of cited work.
+           * an excerpt of their cited work, whole, which its one citation repeats.
            */
           ofSnapshot: boolean;
-          /** The cited work, each linking to that item on the candidate's profile; none for a fact of the snapshot. */
+          /** The cited work, linking to that item on the candidate's profile; none for a fact of the snapshot. */
           citations: { key: string; quote: string; label: string; href: string }[];
         })[];
       }[];

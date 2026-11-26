@@ -1,6 +1,6 @@
 import {
-  CANDIDATE_PLACEHOLDER,
   compareTradeoffsRequest,
+  detectUnusualContent,
   keptTradeoffs,
   type Identifiers,
   type TradeoffGroup,
@@ -38,9 +38,9 @@ export function tradeoffUseCases(ports: TradeoffPorts) {
   const { storeFor, authorize, candidateJob, ai, approvedRubric, evidence, identifiersOf } = ports;
   return {
     /**
-     * One model call, on demand, for what sets each compared candidate's evidence apart and what is still open. Every
-     * statement cites its own candidate's facts or an excerpt of their work; a comparison between candidates is a
-     * facts line written here from the snapshots, never the model's. Null unless 2 to `MAX_COMPARED` different
+     * One model call, on demand, to pick what sets each compared candidate's evidence apart and what is still open.
+     * The model writes nothing that is shown: every statement is a facts line written here from the snapshots, or an
+     * excerpt of that candidate's cited work, whole. Null unless 2 to `MAX_COMPARED` different
      * candidates each have a snapshot on the job's approved rubric version. `candidate.view` on the job for each.
      * It ranks, rejects, advances and contacts nobody (AGENTS.md 1.5), stores nothing and is not audited.
      */
@@ -81,7 +81,11 @@ export function tradeoffUseCases(ports: TradeoffPorts) {
 
       const groups = facts.map((f, i): TradeoffGroup => [
         { id: factsId(i), kind: 'document', text: f.lines.join('\n') },
-        ...f.items.map((s) => ({ id: s.id, kind: s.kind === 'facts' ? 'document' : KIND[s.kind], text: s.text })),
+        ...f.items
+          // SAFETY: an excerpt holding text aimed at an AI or a reviewer ("Unusual content in this source", AIV-P1-070)
+          // is never offered as a pick, so it cannot be shown here as a trade-off.
+          .filter((s) => detectUnusualContent(s.text).length === 0)
+          .map((s) => ({ id: s.id, kind: s.kind === 'facts' ? ('document' as const) : KIND[s.kind], text: s.text })),
       ]);
       let answer;
       try {
@@ -100,16 +104,13 @@ export function tradeoffUseCases(ports: TradeoffPorts) {
         return unavailable(error.name);
       }
 
-      // A facts statement is the facts line its quote picks, as written above, whatever the model's wording of it;
-      // a statement about the work that breaks rule 1.6 or holds a number of the model's own is already left out.
+      // No word kept is the model's: each statement is a facts line written above or a cited excerpt, whole.
       const candidates = keptTradeoffs(answer, groups).map(({ statements }, i) => {
         const labels = new Map(facts[i]?.items.map((s) => [s.id, s.label]));
         return {
           candidateId: candidateIds[i] ?? '',
           statements: statements.map(({ text, citations }) => ({
-            // A placeholder the model repeats reads as words, with a capital where it starts a sentence about the work
-            // (a facts line never holds one: it is the rest of a sentence, in lower case).
-            text: text.replaceAll(CANDIDATE_PLACEHOLDER, 'the candidate').replace(/^the candidate/, 'The candidate'),
+            text,
             citations: citations.map((c) => ({
               itemId: c.sourceId === factsId(i) ? null : c.sourceId,
               label: labels.get(c.sourceId) ?? 'Snapshot',

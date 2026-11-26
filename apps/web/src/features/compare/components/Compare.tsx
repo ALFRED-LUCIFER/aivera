@@ -30,6 +30,7 @@ import { MAX_COMPARE, MIN_COMPARE, verdictOf, type CompareCell, type CompareData
 // - a competency resting only on claims reads "Claim only" with an empty meter whatever strength the claim is stored
 //   with, and "0 against N": a claim counts zero (AGENTS.md 1.6). The artboard draws such a cell as "Supporting · 1 against 2";
 // - "Awaiting live defence" reads "To check in interview", as every provenance tag does (evidence.provenance);
+// - the subtitle counts in figures ("The same 6 competencies"), as every count in the product does, not "six";
 // - every candidate's name links to their profile, not only the first, and a nameless applicant reads "Unnamed applicant";
 // - a candidate not yet scored on the approved rubric keeps their column, reading "Not yet scored", basis "Not yet
 //   available" (AGENTS.md 1.5, 1.7): nobody ticked is dropped from the comparison;

@@ -176,9 +176,8 @@ export const taskThresholds: Record<
   // rejects one; the cases' recorded answers use placeholders) and never recommend. Faithfulness is the judge's rubric.
   'assessment.explainRanking': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
   // AIV-P1-047: every statement cites one of its own candidate's sources (the request's schema, which eval.test.ts
-  // parses every recorded answer with), and a facts statement is the facts line its quote picks (`keptTradeoffs`, as
-  // the runner returns it). Faithfulness of what is said of an excerpt, and that nobody is recommended or ranked in
-  // words, is the judge's rubric.
+  // parses every recorded answer with) and is that source's own words: the facts line or the excerpt its citation
+  // picks (`keptTradeoffs`, as the runner returns it). The judge checks no other word is there.
   'assessment.compareTradeoffs': { statements: ['candidates[*].statements[*]'], fieldMatch: 1, judge: 1 },
   // AIV-P1-113: every question cites one of its gap's sources (citation validity, a hard gate), names only a listed
   // gap, and asks nothing about a protected trait (each case's safety words, a hard gate, and the schema's own rule).

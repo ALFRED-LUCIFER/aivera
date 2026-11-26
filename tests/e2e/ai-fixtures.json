@@ -45,7 +45,7 @@
   },
   {
     "when": "C1: facts S1, excerpts S2, S3.",
-    "completion": "{\"candidates\":[{\"candidate\":\"C1\",\"statements\":[{\"text\":\"has checked work.\",\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"text\":\"The candidate authored 412 of 460 commits.\",\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"authored 412 of 460 commits\"}]}]},{\"candidate\":\"C2\",\"statements\":[{\"text\":\"has checked work.\",\"citations\":[{\"sourceId\":\"S4\",\"quote\":\"is the only one compared with independently checked work on\"}]}]},{\"candidate\":\"C3\",\"statements\":[{\"text\":\"has checked Arabic work.\",\"citations\":[{\"sourceId\":\"S6\",\"quote\":\"Arabic and bilingual NLP\"}]},{\"text\":\"The arabic-ocr repository is public and documented.\",\"citations\":[{\"sourceId\":\"S7\",\"quote\":\"public and documented\"}]}]}]}"
+    "completion": "{\"candidates\":[{\"candidate\":\"C1\",\"statements\":[{\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"412 of 460\"}]}]},{\"candidate\":\"C2\",\"statements\":[{\"citations\":[{\"sourceId\":\"S4\",\"quote\":\"is the only one compared with independently checked work on\"}]}]},{\"candidate\":\"C3\",\"statements\":[{\"citations\":[{\"sourceId\":\"S6\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S7\",\"quote\":\"public and documented\"}]}]}]}"
   },
   {
     "when": "C1: facts S1, excerpts S2.",

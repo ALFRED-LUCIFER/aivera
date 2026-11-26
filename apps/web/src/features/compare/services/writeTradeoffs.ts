@@ -9,7 +9,7 @@ import { inActiveWorkspace } from '@/server/workspace';
 import { tradeoffsInput, type TradeoffsView } from '../domain/compare.ts';
 
 /**
- * "Write the trade-offs" on the comparison page (AIV-P1-047): one model call for the compared candidates, on demand,
+ * "Show the trade-offs" on the comparison page (AIV-P1-047): one model call for the compared candidates, on demand,
  * so the workspace's AI allowance is spent only when a person asks. The assessment module authorises the job for every
  * candidate (`candidate.view`; anyone else gets the 403 page) before anything is read or asked. Candidates the job does
  * not have, or a malformed id, are not found. The statements are for a person to read: nothing here changes a score,

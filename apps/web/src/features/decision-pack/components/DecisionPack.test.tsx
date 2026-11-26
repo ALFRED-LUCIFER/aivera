@@ -208,3 +208,39 @@ describe('DecisionPack', () => {
     ).toBeTruthy();
   });
 });
+
+// AIV-P1-047: a pack of 2 to 10 candidates opens as a comparison.
+const showPack = (count: number) =>
+  render(
+    <IntlProvider {...intl}>
+      <DecisionPack
+        view={{
+          status: 'ready',
+          pack: {
+            jobId: 'j1',
+            packId: 'k1',
+            name: 'Round 2 shortlist',
+            job: 'Senior AI Engineer',
+            preparedAt: at,
+            rubricVersion: 2,
+            members: Array.from({ length: count }, (_, i) => member(`p${i + 1}`, `Candidate ${i + 1}`, null)),
+            others: 0,
+          },
+        }}
+      />
+    </IntlProvider>,
+  );
+
+describe('DecisionPack: Open comparison', () => {
+  it("links to the comparison of its members, in the pack's order", () => {
+    showPack(3);
+    expect(screen.getByRole('link', { name: 'Open comparison' }).getAttribute('href')).toBe(
+      '/app/jobs/j1/compare?ids=p1,p2,p3',
+    );
+  });
+
+  it.each([1, 11])('has no comparison for a pack of %i: one comparison holds 2 to 10', (count) => {
+    showPack(count);
+    expect(screen.queryByRole('link', { name: 'Open comparison' })).toBeNull();
+  });
+});

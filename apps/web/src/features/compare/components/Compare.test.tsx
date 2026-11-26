@@ -132,35 +132,19 @@ describe('the page while it loads or fails', () => {
   });
 });
 
-const written: TradeoffsView = {
-  status: 'written',
-  candidates: [
-    {
-      candidateId: 'p3',
-      name: 'Layla Haddad',
-      profileHref: `/app/candidates/p3?job=${JOB}`,
-      statements: [
-        {
-          text: 'is the only one compared with independently checked work on Arabic and bilingual NLP.',
-          ofSnapshot: true,
-          citations: [],
-        },
-        {
-          text: 'The Arabic OCR pipeline is public and documented.',
-          ofSnapshot: false,
-          citations: [
-            {
-              key: 'i4:0',
-              quote: 'Arabic OCR pipeline, public and documented',
-              label: 'arabic-ocr',
-              href: `/app/candidates/p3?job=${JOB}#evidence-i4`,
-            },
-          ],
-        },
-      ],
-    },
-  ],
+const PROFILE = `/app/candidates/p3?job=${JOB}`;
+const ONLY = 'is the only one compared with independently checked work on Arabic and bilingual NLP.';
+const EXCERPT = 'Arabic OCR pipeline, public and documented.';
+const fact = { text: ONLY, ofSnapshot: true, citations: [] };
+const work = {
+  text: EXCERPT,
+  ofSnapshot: false,
+  citations: [{ key: 'i4:0', quote: EXCERPT, label: 'arabic-ocr', href: `${PROFILE}#evidence-i4` }],
 };
+const writtenWith = (statements: (typeof fact | typeof work)[]): TradeoffsView => ({
+  status: 'written',
+  candidates: [{ candidateId: 'p3', name: 'Layla Haddad', profileHref: PROFILE, statements }],
+});
 const tradeoffs = (view: TradeoffsView | null, columns = [sara, layla], pending = false) => {
   const onWrite = vi.fn();
   render(
@@ -172,37 +156,47 @@ const tradeoffs = (view: TradeoffsView | null, columns = [sara, layla], pending 
 };
 
 describe('Scenario: Trade-offs cite evidence', () => {
-  it('is written only when a person asks', async () => {
+  it('is shown only when a person asks', async () => {
     const onWrite = tradeoffs(null);
-    expect(
-      screen.getByText(/^Written by AI from the evidence each statement cites\. It recommends nobody/),
-    ).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Write the trade-offs' }));
+    expect(screen.getByText(/^Picked by AI from each candidate's snapshot and cited evidence/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show the trade-offs' }));
     expect(onWrite).toHaveBeenCalledOnce();
   });
 
   it('says a fact of the candidate by name, links each statement to the evidence it rests on, and ends on the gap', () => {
-    tradeoffs(written);
-    const items = screen.getAllByRole('listitem');
-    expect(items[0]?.textContent).toBe(
-      'Layla Haddad is the only one compared with independently checked work on Arabic and bilingual NLP.',
-    );
+    tradeoffs(writtenWith([fact, work]));
+    const items = within(screen.getByRole('list', { name: 'Layla Haddad' })).getAllByRole('listitem');
+    expect(items[0]?.textContent).toBe(`Layla Haddad ${ONLY}`);
     expect(
       within(items[0] as HTMLElement)
         .getByRole('link', { name: 'Layla Haddad' })
         .getAttribute('href'),
-    ).toBe(`/app/candidates/p3?job=${JOB}`);
-    // What the model says of a piece of work is a sentence of its own, never glued to the name.
-    expect(items[1]?.textContent).toMatch(/^The Arabic OCR pipeline is public and documented\./);
+    ).toBe(PROFILE);
     const link = within(items[1] as HTMLElement).getByRole('link');
-    expect(link.getAttribute('href')).toBe(`/app/candidates/p3?job=${JOB}#evidence-i4`);
-    expect(link.querySelector('mark')?.textContent).toContain('Arabic OCR pipeline, public and documented');
+    expect(link.getAttribute('href')).toBe(`${PROFILE}#evidence-i4`);
+    expect(link.querySelector('mark')?.textContent).toContain(EXCERPT);
+    expect(items[1]?.textContent).toContain('Source: arabic-ocr');
     expect(
-      screen.getByText(
-        '7 points separate the 2 candidates. A difference this small is within what Round 2 could change.',
-      ),
+      screen.getByText(/7 points separate the 2 candidates\. Claims still to check could change this order\./),
     ).toBeTruthy();
+    expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  // SAFETY: mutation check: removed the "Cited work of <name>" label from Tradeoffs -> this test failed (no name on the item)
+  it('names the candidate on a statement about their work too, even when it is their only one', () => {
+    tradeoffs(writtenWith([work]));
+    const [item] = within(screen.getByRole('list', { name: 'Layla Haddad' })).getAllByRole('listitem');
+    expect(item?.textContent).toMatch(/^Cited work of Layla Haddad:/);
+  });
+
+  it('calls no gap small: the order line shows only when claims could change the order', () => {
+    tradeoffs(writtenWith([fact]), [
+      { ...sara, score: { backed: 80, upTo: 90 } },
+      { ...sara, score: { backed: 40, upTo: 60 } },
+    ]);
+    expect(screen.getByText(/40 points separate the 2 candidates\.$/)).toBeTruthy();
+    expect(screen.queryByText(/could change/)).toBeNull();
   });
 });
 

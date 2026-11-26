@@ -7,6 +7,8 @@ const JOB = '0190d4a2-0000-7000-9000-000000001031';
 const SARA = '0190d4a2-0000-7000-8000-00000000c001';
 const LAYLA = '0190d4a2-0000-7000-8000-00000000c003';
 const NEW = '0190d4a2-0000-7000-8000-00000000c009';
+// Not among this job's applicants. Another job's applicant and a person nobody has take the same path: the only
+// test is membership of this job's applicant list.
 const ELSEWHERE = '0190d4a2-0000-7000-8000-00000000c0ff';
 const VERSION = '0190d4a2-0000-7000-9000-000000000002';
 const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'recruiter', tx: {} };

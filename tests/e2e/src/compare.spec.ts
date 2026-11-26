@@ -55,26 +55,27 @@ test('Scenario: Three candidates', async ({ page }) => {
 
 test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page }) => {
   await compare(page, TRIO);
-  // Nothing is written, and no model is asked, until a person asks.
+  // Nothing is shown, and no model is asked, until a person asks.
   await expect(tradeoffs(page).getByRole('listitem')).toHaveCount(0);
-  await tradeoffs(page).getByRole('button', { name: 'Write the trade-offs' }).focus();
+  await tradeoffs(page).getByRole('button', { name: 'Show the trade-offs' }).focus();
   await page.keyboard.press('Enter');
-  const layla = tradeoffs(page).getByRole('listitem').filter({ hasText: 'Layla Haddad' });
-  // The comparison is the snapshot's own line, whatever the model worded: the fixture says "has checked Arabic work."
-  await expect(layla).toHaveText(
+  const layla = tradeoffs(page).getByRole('list', { name: 'Layla Haddad' }).getByRole('listitem');
+  // The model only picks: the fixture quotes part of the line and part of the excerpt, and each is shown whole.
+  await expect(layla).toHaveText([
     'Layla Haddad is the only one compared with independently checked work on Arabic and bilingual NLP.',
-  );
-  await expect(tradeoffs(page)).not.toContainText('has checked');
-  await expect(layla.getByRole('link', { name: 'Layla Haddad' })).toHaveAttribute(
+    /^Cited work of Layla Haddad:.*arabic-ocr: public and documented, with most commits their own\.Source: /,
+  ]);
+  await expect(layla.first().getByRole('link', { name: 'Layla Haddad' })).toHaveAttribute(
     'href',
     /^\/app\/candidates\/[0-9a-f-]{36}\?job=[0-9a-f-]{36}$/,
   );
-  // What the model says of a piece of work cites it: the quoted words are highlighted and link to the profile's card.
-  const work = tradeoffs(page).getByRole('listitem').filter({ hasText: 'The candidate authored 412 of 460 commits.' });
+  // Cited work is highlighted with its source and links to that item on the candidate's profile.
+  const work = tradeoffs(page).getByRole('list', { name: 'Sara Al Qahtani' }).getByRole('listitem').nth(1);
+  await expect(work).toContainText('Cited work of Sara Al Qahtani:');
   await expect(work.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');
   await expect(work).toContainText('Source: llm-eval-harness');
   await expect(tradeoffs(page)).toContainText(
-    '7 points separate the 3 candidates. A difference this small is within what Round 2 could change.',
+    '7 points separate the 3 candidates. Claims still to check could change this order.',
   );
   await work.getByRole('link').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sara Al Qahtani' })).toBeVisible();
@@ -83,7 +84,7 @@ test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page 
 
 test('Scenario: Trade-offs unavailable', async ({ page }) => {
   await compare(page, ['Arjun Menon', 'Layla Haddad']);
-  await tradeoffs(page).getByRole('button', { name: 'Write the trade-offs' }).click();
+  await tradeoffs(page).getByRole('button', { name: 'Show the trade-offs' }).click();
   await expect(tradeoffs(page)).toContainText('Trade-off summary unavailable. The grid above is complete.', {
     timeout: 30_000,
   });
@@ -99,7 +100,8 @@ test('Scenario: One candidate, and candidates from another job', async ({ page }
   await expect(page.getByText('Choose 2 to 10 candidates to compare')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Change selection' })).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
-  // An id that is no applicant of this job: no comparison, and nothing about anyone.
+  // An id that is no applicant of this job (another job's applicant takes the same path: the only test is this job's
+  // applicant list): no comparison, and nothing about anyone.
   await page.goto(`${url.pathname}?ids=${sara},0190d4a2-0000-7000-8000-00000000c0ff`);
   await expect(page.getByText('These candidates are not all on this job')).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
@@ -107,12 +109,12 @@ test('Scenario: One candidate, and candidates from another job', async ({ page }
 });
 
 for (const theme of themes) {
-  test(`axe passes on the comparison with the trade-offs written (${theme})`, async ({ page, context, baseURL }) => {
+  test(`axe passes on the comparison with the trade-offs shown (${theme})`, async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await compare(page, TRIO);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
-    await tradeoffs(page).getByRole('button', { name: 'Write the trade-offs' }).click();
+    await tradeoffs(page).getByRole('button', { name: 'Show the trade-offs' }).click();
     await expect(tradeoffs(page).getByRole('listitem')).not.toHaveCount(0);
     await expectAccessible(page);
   });
