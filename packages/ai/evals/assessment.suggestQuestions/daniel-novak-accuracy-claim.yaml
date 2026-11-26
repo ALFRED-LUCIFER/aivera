@@ -41,6 +41,20 @@ expected:
       [your age, how old, nationality, religion, your family, your health, gender, reject, should hire, LLM systems]
   prompt:
     forbidden: [Daniel Novak]
+  judge: >-
+    Check these items in order. First, one item per question for its two notes, written as 'strong: <its strongAnswer>
+    | weak: <its weakAnswer>'. A note describes an answer the candidate has not given yet, so for this item sourceSays
+    holds the notes' own words that name what an answer shows or lacks (how a figure was measured, the questions or
+    data behind it, a system, the candidate's own part), or "nothing". It meets the rubric only if both notes name
+    such a thing; a note containing the word "vague" or "generic" does not meet it, whatever follows. Then one item
+    per question, written as the question's text; for this item sourceSays holds the question's own words that name
+    the 71% or the 88%, the support assistant, its evaluation set or the candidate's own part in that work, or
+    "nothing", and "nothing" does not meet the rubric. Then one last item: copy the one question whose text contains
+    "71%", or write "none"; for this item sourceSays holds "71%" as that question has it, or "nothing". It meets the
+    rubric only if a question contains "71%" and asks how the figure was measured, on which questions, or who built
+    that set. No question touches age, nationality, religion, family, health or gender, and none recommends rejecting,
+    advancing or hiring. The cited lines are claims the questions exist to test: judge what the questions ask, never
+    whether a claim is proven.
 recorded:
   promptVersion: assessment.suggestQuestions@3
   promptHash: da8044a514e1

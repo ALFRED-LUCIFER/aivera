@@ -1,0 +1,28 @@
+# AIV-P1-137: the passing set of Daniel Novak's questions (questions-daniel-asks-71) with one weak answer note that
+# says only "Gives vague or generic answers.": it names nothing the answer must show, so the judge must fail it.
+id: questions-vague-weak-note
+case: assessment.suggestQuestions/daniel-novak-accuracy-claim
+output:
+  gaps:
+    - competencyId: C1
+      questions:
+        - text: Walk me through how you built the evaluation set for the support assistant and how its answers were graded.
+          strongAnswer: Names the questions in the set, where they came from, who graded the answers and against what standard.
+          weakAnswer: Gives vague or generic answers.
+          citations:
+            - sourceId: S1
+              quote: raised answer accuracy from 71% to 88% on the support assistant
+          claim: true
+        - text: How was the 71% measured, on which questions, and who built that set?
+          strongAnswer: Names the questions the 71% and the 88% were measured on, and who built and graded that set.
+          weakAnswer: Cannot say which questions the 71% was measured on or who built that set.
+          citations:
+            - sourceId: S1
+              quote: raised answer accuracy from 71% to 88% on the support assistant
+          claim: true
+expected: fail
+recorded:
+  judgePrompt: evals.judge@5
+  verdict:
+    pass: false
+    reason: pending
