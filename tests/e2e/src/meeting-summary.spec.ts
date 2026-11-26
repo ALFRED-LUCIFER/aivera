@@ -254,6 +254,9 @@ for (const theme of themes) {
     context,
     baseURL,
   }) => {
+    // Two summaries analysed, up to three ranking reads and five axe scans take 30 s or more on a CI runner (15 to 17 s
+    // locally): longer than the default, with every step slow rather than one stuck.
+    test.setTimeout(90_000);
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: creator });
     await page.goto(`/app/interviews/${interviewOf.get(theme)}`);
