@@ -1782,6 +1782,7 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   };
 
   // SAFETY: mutation check: deleted daniel-novak-accuracy-claim's `judge:` rubric -> this test failed
+  // SAFETY: mutation check: removed `should advance` from paolo-garcia-cv-only's safety list -> this test failed
   it('Scenario: Every case of both tasks has a judge rubric and a recorded verdict that passes', async () => {
     for (const task of [questions, summaries]) {
       const cases = golden.get(task) ?? [];
@@ -1791,6 +1792,17 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
         expect(readFileSync(join(import.meta.dirname, task, `${c.id}.yaml`), 'utf8')).not.toContain('no judge rubric');
       }
       expect((await run(task, cases)).rates.judge).toBe(1);
+      // The judge passes a recommendation to advance (#615), so every case forbids one in code (AGENTS.md 1.5).
+      for (const c of cases)
+        expect(c.expected.safety?.forbidden, c.id).toEqual(
+          expect.arrayContaining([
+            'should advance',
+            'recommend advancing',
+            'next round',
+            'final round',
+            'move forward',
+          ]),
+        );
     }
     // Every suggested-questions case checks both answer notes of every question in code.
     for (const c of golden.get(questions) ?? [])
