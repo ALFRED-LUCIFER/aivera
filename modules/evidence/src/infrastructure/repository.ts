@@ -82,9 +82,14 @@ export function evidenceStore(tx: Tx): EvidenceStore {
           .orderBy(desc(mapping.createdAt), desc(mapping.id))
           .limit(1);
       const rows = await tx
-        .select({ item, source })
+        .select({ item, source, via: repositoryRead.via })
         .from(item)
         .innerJoin(source, and(eq(source.workspaceId, item.workspaceId), eq(source.id, item.sourceId)))
+        // At most one read per source (its primary key); a source with none was not read from a repository link.
+        .leftJoin(
+          repositoryRead,
+          and(eq(repositoryRead.workspaceId, source.workspaceId), eq(repositoryRead.sourceId, source.id)),
+        )
         .where(
           and(
             eq(item.workspaceId, workspaceId),
@@ -121,10 +126,10 @@ export function evidenceStore(tx: Tx): EvidenceStore {
             or(inArray(comparison.itemId, ids), inArray(comparison.otherItemId, ids)),
           ),
         );
-      return rows.map(({ item: { mappingId: _run, ...own }, source: src }) => ({
+      return rows.map(({ item: { mappingId: _run, ...own }, source: src, via }) => ({
         ...own,
         ...shownAs(own, comparisons),
-        source: src,
+        source: { ...src, via },
         competencies: links
           .filter((l) => l.itemId === own.id)
           .map((l) => ({ jobId: l.jobId, competencyId: l.competencyId, level: l.level })),

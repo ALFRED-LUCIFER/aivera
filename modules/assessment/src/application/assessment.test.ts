@@ -44,6 +44,7 @@ const cvItem = (
     checkedAt: null,
     checkMethod: null,
     textFingerprint: null,
+    via: null,
     synthetic: true,
     createdAt: day,
   },
@@ -80,6 +81,13 @@ describe('Scenario Outline: The note never acts on the candidate', () => {
     expect(noted.competencies.map((c) => [c.proven.level, c.claimedLevel])).toEqual(
       clean.competencies.map((c) => [c.proven.level, c.claimedLevel]),
     );
+  });
+
+  // AIV-P1-118: a repository read from the GitHub profile in the CV is provenance for its chip, never for the score.
+  // SAFETY: mutation check: toLinks set level 0 on items whose source has a `via` -> this test failed
+  it('the same reads with and without "from the GitHub profile in the CV" give an identical assessment', () => {
+    const profile = CLEAN.map((item) => ({ ...item, source: { ...item.source, via: 'cv_profile' as const } }));
+    expect(assess(RUBRIC, toLinks('maria', JOB, profile))).toEqual(assess(RUBRIC, toLinks('maria', JOB, CLEAN)));
   });
 
   it('only the item id, competency, level, strength and provenance reach the score', () => {

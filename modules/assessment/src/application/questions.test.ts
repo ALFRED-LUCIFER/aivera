@@ -61,6 +61,7 @@ const item = (
     checkedAt: null,
     checkMethod: null,
     textFingerprint: null,
+    via: null,
     synthetic: true,
     createdAt: day,
   },
