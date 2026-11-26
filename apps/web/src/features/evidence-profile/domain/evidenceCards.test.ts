@@ -1,5 +1,7 @@
 import type { CompetencyResult } from '@credalent/assessment';
-import type { EvidenceItemView, Provenance, RepositoryVia, SourceKind, Strength } from '@credalent/evidence';
+import type { EvidenceItemView, Provenance, SourceKind, Strength } from '@credalent/evidence';
+
+type RepositoryVia = NonNullable<EvidenceItemView['source']['via']>;
 import { describe, expect, it } from 'vitest';
 import { evidenceCards, sourceNote } from './evidenceCards.ts';
 

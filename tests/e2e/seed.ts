@@ -99,6 +99,13 @@ export default async function seed() {
         values (${apDemo}, ${hana}, 'hiring_owner', 'active')`),
     );
     await workspaces.switchWorkspace({ userId: hana }, apDemo);
+    // AIV-P1-118: Noor Panel, an interviewer in "Demo" granted no job, for the profile's job-scoped 403 (AGENTS.md 1.3).
+    const noor = await person('noor.panel@example.com', 'noor.panel');
+    await withWorkspace(db, apDemo, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${apDemo}, ${noor}, 'interviewer', 'active')`),
+    );
+    await workspaces.switchWorkspace({ userId: noor }, apDemo);
     await seedCandidateSiteJobs(await person('employer@example.com', 'Employer Recruiter'));
     // AIV-P3-007: Sara has signed up on the candidate site, so her sign-in lands on My applications.
     const accounts = createCandidateAccounts(db);
@@ -741,9 +748,10 @@ export default async function seed() {
     /**
      * AIV-P1-118: Maria Santos's CV links only her GitHub profile, github.com/maria-credalent-example, so AIV-P1-112
      * read two of its repositories with no GitHub login. The worker never runs here (no GitHub call), so each read is
-     * written as it stores one: the source and its authorship item, checked by commit history, and its
-     * `evidence.repository_read` row with `via = 'cv_profile'`. Her "Retrieval and evaluation" rests on both; her
-     * seeded scores (31, up to 69) are hand-written, as every row's are.
+     * written as it stores one: the profile link as CV parsing stores it (`evidence.profile_expansion`, expanded), each
+     * repository's source and authorship item, checked by commit history, and its `evidence.repository_read` row with
+     * `via = 'cv_profile'`. Her "Retrieval and evaluation" rests on both; her seeded scores (31, up to 69) are
+     * hand-written, as every row's are. Her CV's text is not stored here, so the link is the expansion row alone.
      */
     async function mariaProfileRepositories(personId: string) {
       const checked = new Date('2026-11-12T08:00:00.000Z');
@@ -790,6 +798,11 @@ export default async function seed() {
               ${authored}, 0, ${authored}, false, false, false)`),
         );
       }
+      await withWorkspace(db, workspaceId, (tx) =>
+        tx.execute(sql`insert into evidence.profile_expansion (workspace_id, id, candidate_id, login, synthetic, status,
+            queued)
+          values (${workspaceId}, ${crypto.randomUUID()}, ${personId}, 'maria-credalent-example', true, 'expanded', 2)`),
+      );
       const found = rubric?.competencies.find((r) => r.name === 'Retrieval and evaluation');
       return [
         {

@@ -365,11 +365,19 @@ for (const theme of themes) {
     await expect(retrieval.getByText('Strong', { exact: true })).toHaveCount(0);
     await expect(retrieval.getByText('Candidate-submitted')).toBeVisible();
 
-    // Provenance, not cited evidence: never inside a mark, never on the highlighter's colour.
-    const suffix = retrieval.getByText('· from the GitHub profile in the CV').first();
-    await expect(retrieval.locator('mark').filter({ hasText: 'from the GitHub profile' })).toHaveCount(0);
-    const highlighter = await css(retrieval.locator('mark').first(), 'background-color');
-    expect(await css(suffix, 'background-color')).not.toBe(highlighter);
+    // Provenance, not cited evidence: never inside a mark, and nothing on the page but a mark (not the suffix, its
+    // link or its chip) is painted with the highlighter.
+    await expect(page.locator('mark').filter({ hasText: 'from the GitHub profile' })).toHaveCount(0);
+    expect(
+      await page.evaluate(() => {
+        const mark = document.querySelector('mark');
+        if (!mark) return -1;
+        const highlighter = getComputedStyle(mark).backgroundColor;
+        return [...document.querySelectorAll('body *')].filter(
+          (el) => el.tagName !== 'MARK' && getComputedStyle(el).backgroundColor === highlighter,
+        ).length;
+      }),
+    ).toBe(0);
 
     // Reachable by keyboard from the breadcrumb, and its accessible name says where it came from.
     const chip = retrieval.getByRole('link', {
@@ -396,7 +404,9 @@ test('Scenario: A repository linked directly keeps the plain chip: Sara Al Qahta
   await expect(page.getByText('from the GitHub profile in the CV')).toHaveCount(0);
 });
 
-// AIV-P1-118: Rami Panel is an interviewer in Demo Hiring Co (seed.ts), not granted this Senior AI Engineer job.
+// AIV-P1-118: Noor Panel is an interviewer in AP's "Demo" granted no job (seed.ts): the job grant, not the workspace,
+// refuses her (AGENTS.md 1.3).
+// SAFETY: mutation check: job scope off in workspaces `withWorkspace` (`scoped = false`) and `authorize` returning before the grant check -> this test failed (Noor read Maria's profile)
 test('Scenario: An interviewer not on the job sees nothing: 403, and no repository name or source chip in the response', async ({
   page,
   context,
@@ -405,7 +415,7 @@ test('Scenario: An interviewer not on the job sees nothing: 403, and no reposito
   await openMaria(page);
   const maria = new URL(page.url());
   await context.clearCookies({ name: '__Host-credalent-session' });
-  await signIn(page, { email: 'rami@example.com' });
+  await signIn(page, { email: 'noor.panel@example.com' });
   const response = await page.goto(maria.pathname + maria.search);
   await expect(page.getByText('You do not have access to this. Ask your workspace admin.')).toBeVisible();
   // The suffix's words ship in every page's message catalogue, so the chip is checked by its path and its list.

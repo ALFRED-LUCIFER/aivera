@@ -4,7 +4,6 @@ import {
   type EvidenceItemView,
   type EvidenceSource,
   type Provenance,
-  type RepositoryVia,
   type Strength,
 } from '@credalent/evidence';
 
@@ -18,7 +17,7 @@ import {
  * candidate linked it themselves.
  */
 export type SourceChip = { key: string } & (
-  | { kind: 'link'; text: string; url: string; via?: RepositoryVia }
+  | { kind: 'link'; text: string; url: string; via?: NonNullable<EvidenceItemView['source']['via']> }
   | { kind: 'file'; text: string; fileId: string }
   | { kind: 'text'; text: string }
   | { kind: 'check'; method: string; at: Date }

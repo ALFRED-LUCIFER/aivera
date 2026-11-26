@@ -437,7 +437,7 @@ describe('AIV-P1-112: a repository reached through a GitHub profile in a CV', ()
       commits: [...commits(30, { email: maria.email }), ...commits(5, { login: 'maria-credalent-example' })],
     });
     const { view, items } = await read(maria, null, 'maria-credalent-example', 'rag-notebook', 'cv_profile');
-    // SAFETY: mutation check: `strengthCapOf(cls, githubLogin !== null || read.via !== null)` in getRepositoryRead -> this test failed (strengthCap 'strong')
+    // SAFETY: mutation check: `strengthCapOf(cls, githubLogin !== null || read.via !== null)` in getRepositoryRead -> "stays 'Authorship unclear' and capped at Medium" failed (view.strengthCap was 'strong')
     expect(view).toMatchObject({ via: 'cv_profile', authoredCommits: 30, totalCommits: 35, strengthCap: 'medium' });
     expect(items).toMatchObject([{ strength: 'medium' }]);
     expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
