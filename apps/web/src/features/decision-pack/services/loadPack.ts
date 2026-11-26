@@ -30,10 +30,11 @@ export const loadPack = (jobId: string, packId: string): Promise<PackPage | 'not
  * nothing and creates no file.
  */
 // shortcut: one assessment read and one explanation per member, in turn, inside the request, so the first view of a
-// new snapshot waits for the model (cached after, AIV-P1-033). At up to 3 attempts of 45 s per member, a slow model can
-// pass the 240 s ingress timeout from two uncached members on, and a pilot-sized pack (8 to 12) at a few seconds each
-// takes most of a minute; generate the explanations on PackReady (AIV-P2-011, #125) or stream each card under Suspense
-// before packs grow or the model slows.
+// new snapshot waits for the model (cached after, AIV-P1-033). One uncached member alone can pass the 240 s ingress
+// timeout (explainRanking's worst case is 2 schema x 3 transient attempts x 45 s plus backoff, about 4.5 min), slow but
+// successful answers add up member by member, and a model that only times out trips the circuit breaker after 5
+// failures (about 229 s) before the template shows; generate the explanations on pack creation (AIV-P2-011, #125) or
+// stream each card under Suspense before pilot packs open on a slow model.
 export const loadPackPreview = (jobId: string, packId: string): Promise<PackPreview | 'notFound' | null> =>
   withPack(jobId, packId, async (ctx, pack, page) => {
     const workspace = await getWorkspaces().getWorkspace(ctx);

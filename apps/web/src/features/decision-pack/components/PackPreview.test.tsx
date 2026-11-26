@@ -52,6 +52,13 @@ const preview: Preview = {
       },
     },
     { candidateId: id(2), name: 'Arjun Menon', backedScore: 64, upperBound: 76, summary: null },
+    {
+      candidateId: id(3),
+      name: 'Huda Al Mansoori',
+      backedScore: 61,
+      upperBound: 82,
+      summary: { strengths: [row(id(12), 'Arabic and bilingual NLP', 3, 3, 3)], risks: [], explanation: null },
+    },
   ],
 };
 
@@ -86,6 +93,11 @@ describe('PackPreview', () => {
     const arjun = screen.getByRole('region', { name: 'Arjun Menon' });
     expect(within(arjun).getByRole('img', { name: '64 backed by evidence · up to 76 if claims hold' })).toBeTruthy();
     expect(within(arjun).getByText(/^Summary unavailable/)).toBeTruthy();
+    // A member with no explanation yet says so under the summary's heading.
+    const huda = screen.getByRole('region', { name: 'Huda Al Mansoori' });
+    expect(within(huda).getByText("Credalent's summary").parentElement?.textContent).toContain(
+      'No explanation is available yet.',
+    );
     expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.getByText('Powered by Credalent')).toBeTruthy();
     expect(screen.getByText('Prepared 17 Nov 2026 · Confidential')).toBeTruthy();
