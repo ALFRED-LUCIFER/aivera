@@ -2085,6 +2085,7 @@
     "notCovered": "{name}: not covered in the summary · stays a gap",
     "include": "Include this change",
     "alreadyChanged": "Already changed by the scorecard",
+    "lowers": "Lowers the evidence. Include it only if the summary says this was not shown.",
     "reason": "Reason for {name}",
     "reasonNeeded": "Give a reason for each change you include.",
     "backedScore": "Backed score {from} to {to}",
