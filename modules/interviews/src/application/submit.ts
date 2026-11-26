@@ -6,28 +6,19 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { canMove, effectiveStatus, InterviewError, type Interview } from '../domain/interview.ts';
 import { assessedRatings, rebuildDraft, toInterviewNoteEvidence, unexplained, unrated } from '../domain/scorecard.ts';
+import { recordAndApply } from './decision.ts';
 import { scorecardHolder, type Ports } from './interviews.ts';
 import type { DecisionPorts, SummaryPorts } from './summary.ts';
 
 export type SubmitPorts = Pick<Ports, 'storeFor' | 'authorize' | 'jobResource' | 'isSyntheticWorkspace' | 'now'> &
   Pick<SummaryPorts, 'rubric'> &
-  Pick<DecisionPorts, 'latestAssessment'> & {
-    /** The assessment's `applyScoreChange`: the snapshot it leaves the candidate with. */
-    applyScoreChange(
-      ctx: WorkspaceContext,
-      input: Parameters<DecisionPorts['applyScoreChange']>[1],
-    ): Promise<{ id: string }>;
-    /** The evidence contract's `recordInterviewSummary`, for a scorecard's notes. */
-    recordScorecardEvidence(
-      ctx: WorkspaceContext,
-      input: Parameters<DecisionPorts['recordSummaryEvidence']>[1] & { from: 'scorecard' },
-    ): Promise<{ itemIds: string[] }>;
+  Pick<DecisionPorts, 'latestAssessment' | 'applyScoreChange' | 'recordSummaryEvidence'> & {
     /** The questions the scorecard page shows per competency: the assessment's stored suggested ones (AIV-P1-113). */
     suggestedQuestions(
       ctx: WorkspaceContext,
       candidateId: string,
       jobId: string,
-    ): Promise<{ competencyId: string; questions: string[] }[]>;
+    ): Promise<ReadonlyMap<string, readonly string[]>>;
     /** Writes `InterviewCompleted.v1` to the outbox in `tx`, so it commits only with the submit. */
     publishInterviewCompleted(tx: Tx, interview: Interview): Promise<void>;
   };
@@ -37,9 +28,6 @@ export type SubmitScorecardInput = z.input<typeof submitInput>;
 
 /** `updated`: the assessment has a new snapshot; false when nothing was rated or no rating moved anything. */
 export type SubmittedScorecard = { updated: boolean };
-
-// The assessment refuses an apply with its own error; this module has no dependency on its package.
-const refusedByAssessment = (error: unknown) => error instanceof Error && error.name === 'ScoreChangeError';
 
 const STRENGTHENS = new Set(['clearly_shown', 'strongly_shown']);
 
@@ -65,7 +53,7 @@ export function submitUseCases(ports: SubmitPorts) {
       const draft = rebuildDraft(
         interview.competencyIds.map((id) => ({
           competencyId: id,
-          questions: shown.find((s) => s.competencyId === id)?.questions ?? [],
+          questions: shown.get(id) ?? [],
         })),
         await store.findDraft(ctx.workspaceId, interviewId),
       );
@@ -90,28 +78,32 @@ export function submitUseCases(ports: SubmitPorts) {
       if (!latest || !previewId) return { updated: false };
 
       const rubric = await ports.rubric(ctx.tx, ctx.workspaceId, jobId);
-      // Each note as the interviewer's word, cited by the change it backs (AGENTS.md 1.6): Medium at the level the job
-      // needs for Clearly or Strongly shown, as the assessment's change adds; otherwise Claim only, at no level.
       // shortcut: the live task's answer, time taken and prompt trail are not in the draft yet, so none is recorded;
       // AIV-P2-055 and AIV-P2-056 add them to the draft and to this evidence.
       const notes = toInterviewNoteEvidence({ interviewId, authorMemberId: ctx.userId, draft });
-      const { itemIds } = await ports.recordScorecardEvidence(ctx, {
-        candidateId,
-        jobId,
-        writtenAt: now(),
-        from: 'scorecard',
-        items: notes.map(({ competencyId, rating, note }) => {
-          const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
-          if (rubric?.id !== interview.rubricVersionId || level === undefined)
-            throw new InterviewError('competency_not_in_rubric');
-          const medium = STRENGTHENS.has(rating);
-          return { competencyId, excerpt: note, strength: medium ? 'medium' : 'claim', level: medium ? level : 0 };
-        }),
-        synthetic: await ports.isSyntheticWorkspace(ctx),
-      });
-      try {
-        // Last: the snapshot, the changes, then one audit entry per change (AGENTS.md 3.6).
-        const after = await ports.applyScoreChange(ctx, {
+      const after = await recordAndApply(
+        ports,
+        ctx,
+        {
+          candidateId,
+          jobId,
+          writtenAt: now(),
+          from: 'scorecard',
+          // Each note as the interviewer's word, cited by the change it backs (AGENTS.md 1.6): Medium at the level the
+          // job needs for Clearly or Strongly shown, Claim only at no level for Not shown, as the previewed change.
+          // SAFETY: Partly shown changes nothing in the preview, so it records nothing: its note is the change's reason
+          // in the audit entry, and the scorecard keeps it (AGENTS.md 1.5).
+          items: notes.flatMap(({ competencyId, rating, note }) => {
+            const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
+            if (rubric?.id !== interview.rubricVersionId || level === undefined)
+              throw new InterviewError('competency_not_in_rubric');
+            if (rating === 'partly_shown') return [];
+            const medium = STRENGTHENS.has(rating);
+            return { competencyId, excerpt: note, strength: medium ? 'medium' : 'claim', level: medium ? level : 0 };
+          }),
+          synthetic: await ports.isSyntheticWorkspace(ctx),
+        },
+        {
           assessmentId: latest.id,
           interviewId,
           changes: rated.map(({ competencyId, rating }) => ({ competencyId, rating })),
@@ -119,13 +111,9 @@ export function submitUseCases(ports: SubmitPorts) {
           reason: rated[0]?.note ?? '',
           reasons: Object.fromEntries(rated.map((r) => [r.competencyId, r.note])),
           idempotencyKey: interviewId,
-          writeUpItemIds: itemIds,
-        });
-        return { updated: after.id !== latest.id };
-      } catch (error) {
-        if (refusedByAssessment(error)) throw new InterviewError('preview_changed');
-        throw error;
-      }
+        },
+      );
+      return { updated: after.id !== latest.id };
     },
   };
 }

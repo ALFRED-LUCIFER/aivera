@@ -17,13 +17,20 @@ export type {
   ScorePreview,
   SummaryPreview,
 } from '../application/summary.ts';
-export { FINDINGS, SUMMARY_MAX_CHARS, summaryTextSchema } from '../domain/summary.ts';
+export {
+  FINDINGS,
+  includedByDefault,
+  lowersEvidence,
+  SUMMARY_MAX_CHARS,
+  summaryTextSchema,
+} from '../domain/summary.ts';
 export type { Finding, ProposalStatus, ProposedStrength, SummaryStatus } from '../domain/summary.ts';
 export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
 export type { SubmitScorecardInput, SubmittedScorecard } from '../application/submit.ts';
 export {
   assessedRatings,
   MARKS,
+  NOTE_MAX,
   notAssessed,
   RATINGS,
   rebuildDraft,
@@ -125,7 +132,8 @@ export interface InterviewsContract {
    * Submits the interview's stored scorecard draft (AIV-P2-006), in the caller's one transaction: the interview is
    * `completed` (from `to_schedule`, `in_progress` or `scorecard_due`) and writes `InterviewCompleted.v1`; the draft,
    * rebuilt on the questions the page shows, is kept as the submitted scorecard, its recommendation included (it changes
-   * no stage); each rated competency's note is recorded as `interview_note` evidence ("Interviewer's scorecard, 26 Nov");
+   * no stage); each rated competency's note is recorded as `interview_note` evidence ("Interviewer's scorecard, 26 Nov"),
+   * except Partly shown, which the preview shows changing nothing;
    * and the ratings are applied through the assessment's `applyScoreChange` with `previewId`, each note as its reason,
    * so the new snapshot and one `score.changed` audit entry per rating are the last statements. A competency not assessed
    * in this round has no rating: no evidence, no change, no entry; it stays a gap. `previewId` is the
@@ -152,7 +160,8 @@ export interface InterviewsContract {
    * (finding, the quoted excerpt, the reason, the proposed strength: Claim only, Medium, or none). While `proposed`,
    * each proposal that changes something carries the competency's strength and proven level before and after, from the
    * assessment's own preview, and `alreadyChanged` when the interview's scorecard already changed that competency
-   * (excluded by default); `preview` is the backed score before and after for the proposals included by default.
+   * (excluded by default); a proposal that lowers the evidence (Not shown to Claim only) is excluded by default too
+   * (`includedByDefault`); `preview` is the backed score before and after for the proposals included by default.
    * `previewUnavailable` when the assessment cannot be previewed now. Never the summary's text. Writes nothing.
    */
   getMeetingSummary(ctx: WorkspaceContext, interviewId: string): Promise<{ summary: MeetingSummaryView | null } | null>;

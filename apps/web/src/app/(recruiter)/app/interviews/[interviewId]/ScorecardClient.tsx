@@ -25,7 +25,8 @@ export function ScorecardClient({ data, summary = null }: { data: ScorecardData;
         status: 'ready',
         ...data,
         ...scorecard,
-        previewPending: effect.status === 'pending',
+        // No preview, no submit: with ratings, it waits for their preview (AGENTS.md 1.5).
+        previewBlock: effect.status === 'pending' || effect.status === 'unavailable' ? effect.status : null,
         // The preview shown is what the submit applies (AIV-P2-006): the assessment refuses any other.
         onSubmit: () => void scorecard.onSubmit(effect.status === 'ready' ? effect.previewId : null),
       }}

@@ -83,6 +83,21 @@ describe('Scenario: Submit needs every competency rated or marked not tested', (
 });
 
 describe('AIV-P2-006: what a submit reads', () => {
+  // SAFETY: mutation check: put the note limit back to 4,000 -> this test failed (a 1,001-character note was taken,
+  // which the assessment then refuses as a reason, so the scorecard could never be submitted).
+  it('a note is at most 1,000 characters, the most the assessment logs as a reason', () => {
+    for (const [length, taken] of [
+      [1000, true],
+      [1001, false],
+    ] as const) {
+      const noted = {
+        competencies: [competency({ rating: 'partly_shown', note: 'x'.repeat(length) })],
+        recommendation: null,
+      };
+      expect(scorecardDraftSchema.safeParse(noted).success).toBe(taken);
+    }
+  });
+
   it('a rating with nothing under "What you saw or heard" blocks it; a competency not assessed needs no note', () => {
     const notAsked = competency({ questions: [{ text: 'Q', mark: 'not_asked' }], rating: 'not_shown' });
     const noNote = competency({ competencyId: RETRIEVAL, rating: 'partly_shown', note: ' ' });
@@ -148,7 +163,7 @@ describe('Scenario: No AI or overall judgement of the person', () => {
                   "type": "string",
                 },
                 "note": {
-                  "maxLength": 4000,
+                  "maxLength": 1000,
                   "type": "string",
                 },
                 "questions": {

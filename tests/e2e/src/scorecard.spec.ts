@@ -9,8 +9,8 @@ import { css, expectAccessible, themes } from './gallery.ts';
 // no model: ai-fixtures.json has no answer for it.
 const AP = 'ap@example.com';
 const NOTE = 'Walked through the 200-question set he built';
-const BLOCKED = 'Rate this competency, or mark its questions Not asked or Not answered, before submitting';
 const SCORE = '14 Nov · backed score 55';
+const WAITS = 'Submitting needs the preview of your ratings, which is unavailable now.';
 
 /** Opens Daniel's scorecard from the Interviews list. */
 async function openScorecard(page: Page) {
@@ -168,24 +168,17 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
   await expect(ranked).toContainText('Daniel NovakNew55up to 78 if claims hold3 of 6Medium');
 });
 
-test('Scenario: Submit needs every competency rated or marked not tested', async ({ page }) => {
+// The seeded scores are hand-written (seed.ts), so the assessment cannot preview a rating of Daniel's: it reads them as
+// evidence not yet scored. "Submit needs every competency rated or marked" is submit-scorecard.spec.ts, on a workspace
+// of its own whose scores the assessment computed; the seeded interview stays open for the tests after this one.
+test('Scenario: Submit waits for a preview of the ratings, and says why', async ({ page }) => {
   await signIn(page, { email: AP });
   await openScorecard(page);
-  // One question of "Cost and reliability" is open again: it is neither rated nor marked as not tested.
-  await setMark(page, notAsked(page, 1), false);
-  await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
   const submit = page.getByRole('button', { name: 'Submit scorecard' });
-  // It waits for the preview of the ratings, so what a submit applies is what was shown (AIV-P2-006).
-  await expect(submit).toBeEnabled();
-  await submit.focus();
-  await page.keyboard.press('Enter');
-  await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(BLOCKED);
-  await expect(card(page, 'Retrieval and evaluation').getByRole('alert')).toHaveCount(0);
-
-  await setMark(page, notAsked(page, 1), true);
-  await expect(page.getByText(BLOCKED)).toHaveCount(0);
-  // Not submitted here: the seeded interview stays open for the tests after this one. Submitting it is
-  // submit-scorecard.spec.ts, on a workspace of its own (AIV-P2-006).
+  // No preview, no submit (AGENTS.md 1.5): what a submit applies is what was shown (AIV-P2-006).
+  await expect(page.getByText(WAITS)).toBeVisible();
+  await expect(submit).toBeDisabled();
+  await expect(submit).toHaveAccessibleDescription(WAITS);
   await expect(page.getByText(SCORE)).toBeVisible();
 });
 
@@ -212,7 +205,7 @@ test('Scenario: Only the assigned interviewer or an admin edits: a hiring owner 
 });
 
 for (const theme of themes) {
-  test(`axe passes on the scorecard, with what blocks a submit shown (${theme})`, async ({
+  test(`axe passes on the scorecard, with a competency open again and why Submit waits shown (${theme})`, async ({
     page,
     context,
     baseURL,
@@ -221,17 +214,11 @@ for (const theme of themes) {
     await signIn(page, { email: AP });
     await openScorecard(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    // "Submit scorecard" waits, disabled, for the preview of the saved rating (AIV-P2-006); axe reads its fade back to
-    // ink as low contrast, so it runs once the fade has ended.
-    const submit = page.getByRole('button', { name: 'Submit scorecard' });
-    await expect(submit).toBeEnabled();
-    await submit.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    // "Submit scorecard" waits, disabled, with the line that says why (AIV-P2-006).
+    await expect(page.getByText(WAITS)).toBeVisible();
     await expectAccessible(page);
     await setMark(page, notAsked(page, 1), false);
-    await page.getByRole('button', { name: 'Submit scorecard' }).click();
-    await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(BLOCKED);
-    // Once the save has finished: while it runs the button is disabled and fading, which axe reads as low contrast.
-    await expect(page.getByRole('button', { name: 'Submit scorecard' })).toBeEnabled();
+    await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
     await expectAccessible(page);
     // Left as the earlier tests saved it.
     await setMark(page, notAsked(page, 1), true);

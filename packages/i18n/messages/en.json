@@ -2043,7 +2043,12 @@
     },
     "notADecision": "A recommendation, not a decision. The hiring owner decides in the decision pack.",
     "submit": "Submit scorecard",
-    "submitHelp": "Submitting applies your ratings to the assessment as previewed and completes the interview. Your recommendation goes to the hiring owner; it changes no stage.",
+    "submitHelp": "Submitting applies your ratings to the assessment as previewed and completes the interview. Your recommendation is kept with the scorecard. It changes no stage.",
+    "waits": {
+      "pending": "Submitting waits for the preview of your ratings.",
+      "unavailable": "Submitting needs the preview of your ratings, which is unavailable now."
+    },
+    "noteCount": "{count, number} of {max, number} characters",
     "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
     "addNote": "Write what you saw or heard before submitting: it is the reason logged with your rating",
     "outcome": {
@@ -2053,7 +2058,11 @@
       "already": "Already submitted",
       "changed": "The assessment changed since this preview. Check the new preview, then submit again.",
       "incomplete": "Not submitted. Rate or mark every competency and write a note for each rating, then submit again.",
-      "failed": "Not submitted. Your ratings are saved; try again."
+      "failed": "Not submitted. Your ratings are saved. Try again.",
+      "notAssessed": "Not submitted. {name} has no assessment to change yet.",
+      "rubricChanged": "Not submitted. The job's rubric changed after this interview was planned.",
+      "notHeld": "Not submitted. This interview has not been held yet.",
+      "closed": "Not submitted. This interview was cancelled."
     },
     "seeRanking": "See the ranking",
     "submittedReadOnly": "This scorecard is submitted and logged. It can no longer change.",
@@ -2096,6 +2105,7 @@
     "notCovered": "{name}: not covered in the summary · stays a gap",
     "include": "Include this change",
     "alreadyChanged": "Already changed by the scorecard",
+    "lowers": "Lowers the evidence. Include it only if the summary says this was not shown.",
     "reason": "Reason for {name}",
     "reasonNeeded": "Give a reason for each change you include.",
     "backedScore": "Backed score {from} to {to}",

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getInterviews } from '@/server/interviews';
 import { getApprovedRubricReads } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
-import type { SummaryPanel } from '../domain/summary.ts';
+import { lowers, type SummaryPanel } from '../domain/summary.ts';
 
 /**
  * The meeting-summary panel for one interview, in the member's transaction (AIV-P1-115). Null for a member who may
@@ -33,14 +33,16 @@ export async function panelOf(ctx: WorkspaceContext, interviewId: string): Promi
         const name = names.get(id);
         if (!proposal || name === undefined) return [];
         const { competencyId, finding, excerpt, reason, change, alreadyChanged } = proposal;
+        const shown = change && { from: change.from.strength, to: change.to.strength };
         return {
           competencyId,
           name,
           finding,
           excerpt,
           reason,
-          change: change && { from: change.from.strength, to: change.to.strength },
+          change: shown,
           alreadyChanged,
+          lowers: lowers(finding, shown),
         };
       }),
     },

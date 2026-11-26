@@ -74,27 +74,15 @@ const competency = (name: string, weightPercent: number, levelNeeded: number): C
 
 /** The interviews module as apps/web wires it, with the assessment's apply replaceable to make it fail. */
 const wire = (apply: AssessmentContract['applyScoreChange']) =>
-  createInterviews(
-    workspaces,
-    jobs,
-    createApprovedRubricReads().approvedRubric,
-    findApplication,
-    () => NOW,
-    {
-      latestAssessment: (ctx, candidateId, jobId) => assessment.getLatestAssessment(ctx, candidateId, jobId),
-      previewScoreChange: (ctx, input) => assessment.previewScoreChange(ctx, input),
-      applyScoreChange: (ctx, input) => assessment.applyScoreChange(ctx, input),
-      recordSummaryEvidence: (ctx, input) => evidence.recordInterviewSummary(ctx, input),
-    },
-    {
-      latestAssessment: (ctx, candidateId, jobId) => assessment.getLatestAssessment(ctx, candidateId, jobId),
-      applyScoreChange: apply,
-      recordScorecardEvidence: (ctx, input) => evidence.recordInterviewSummary(ctx, input),
-      // No questions were suggested for Daniel, so each competency shows the interviewer's own (apps/web reads the
-      // assessment's stored set; the rebuild on it is unit-tested in modules/interviews).
-      suggestedQuestions: async () => [],
-    },
-  );
+  createInterviews(workspaces, jobs, createApprovedRubricReads().approvedRubric, findApplication, () => NOW, {
+    latestAssessment: (ctx, candidateId, jobId) => assessment.getLatestAssessment(ctx, candidateId, jobId),
+    previewScoreChange: (ctx, input) => assessment.previewScoreChange(ctx, input),
+    applyScoreChange: apply,
+    recordSummaryEvidence: (ctx, input) => evidence.recordInterviewSummary(ctx, input),
+    // No questions were suggested for Daniel, so each competency shows the interviewer's own (apps/web reads the
+    // assessment's stored set; the rebuild on it is unit-tested in modules/interviews).
+    suggestedQuestions: async () => new Map(),
+  });
 
 let next = 0x1000;
 /**
@@ -309,6 +297,42 @@ describe('Scenario: Submitting applies the change', () => {
     expect(items).toEqual([
       { label: "Interviewer's scorecard, 26 Nov", excerpt: NOTE, strength: 'medium', competency: RETRIEVAL },
     ]);
+  });
+});
+
+describe('Scenario: Only what the preview showed is recorded', () => {
+  // SAFETY: mutation check: recorded Partly shown as a Claim-only item again -> this test failed (two interview_note
+  // items, one the preview never showed).
+  it('Not shown records its note as Claim only at no level; Partly shown, which changes nothing, records nothing', async () => {
+    const d = await daniel();
+    const draft: ScorecardDraft = {
+      competencies: [
+        {
+          competencyId: RETRIEVAL,
+          rating: 'not_shown',
+          note: 'Could not say how the 71% was measured',
+          questions: [{ text: '', mark: null }],
+        },
+        {
+          competencyId: COST,
+          rating: 'partly_shown',
+          note: 'Explained the fix only',
+          questions: [{ text: '', mark: null }],
+        },
+      ],
+      recommendation: null,
+    };
+    await submit(d.interviewId, await prepared(d.interviewId, draft));
+    const items = await admin.execute<{ excerpt: string; strength: string; level: number; competency: string }>(sql`
+      select i.excerpt, i.strength, l.level, l.competency_id as competency from evidence.item i
+        join evidence.source s on s.id = i.source_id
+        join evidence.competency_link l on l.item_id = i.id
+       where s.candidate_id = ${d.candidateId} and s.kind = 'interview_note'`);
+    expect(items).toEqual([
+      { excerpt: 'Could not say how the 71% was measured', strength: 'claim', level: 0, competency: RETRIEVAL },
+    ]);
+    // A claim already counts zero: weakening it to Claim only leaves the backed score where it was.
+    expect((await latest(d.candidateId))?.backedScore).toBe(55);
   });
 });
 
