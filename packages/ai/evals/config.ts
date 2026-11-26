@@ -9,6 +9,11 @@ import { mapToCompetencyRequest } from '../src/prompts/evidence.mapToCompetency.
 import { compareExcerptsRequest, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import { assistantAnswerRequest } from '../src/prompts/assistant.answer.ts';
 import { explainRankingRequest } from '../src/prompts/assessment.explainRanking.ts';
+import {
+  compareTradeoffsRequest,
+  keptTradeoffs,
+  type TradeoffGroup,
+} from '../src/prompts/assessment.compareTradeoffs.ts';
 import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { mapSummaryRequest } from '../src/prompts/interviews.mapSummary.ts';
 import { summariseMemberRequest } from '../src/prompts/decisions.summariseMember.ts';
@@ -40,6 +45,19 @@ export const questionsInput = z.object({
     )
     .min(1),
 });
+
+/** A trade-offs case's input (AIV-P1-047): how many of the case's sources each candidate has, facts source first. */
+export const tradeoffsInput = z.object({ groups: z.array(z.number().int().min(1)).min(2) });
+
+/** The case's sources as one group per candidate, as the assessment module sends them. */
+export const tradeoffGroups = (golden: Pick<GoldenCase, 'input' | 'sources'>): TradeoffGroup[] => {
+  let at = 0;
+  return tradeoffsInput.parse(golden.input).groups.map((size) => {
+    const group = golden.sources.slice(at, (at += size));
+    if (group.length !== size) throw new Error('groups name more sources than the case has');
+    return group as unknown as TradeoffGroup;
+  });
+};
 
 /** A meeting-summary case's input (AIV-P1-115): the competencies the interview tested, as the interviews module lists them. */
 export const summaryInput = z.object({
@@ -157,6 +175,11 @@ export const taskThresholds: Record<
   // AIV-P1-033: a ranking explanation's statements each cite the facts source or an excerpt, hold no number (the schema
   // rejects one; the cases' recorded answers use placeholders) and never recommend. Faithfulness is the judge's rubric.
   'assessment.explainRanking': { statements: ['statements[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P1-047: every statement cites one of its own candidate's sources (the request's schema, which eval.test.ts
+  // parses every recorded answer with), and a facts statement is the facts line its quote picks (`keptTradeoffs`, as
+  // the runner returns it). Faithfulness of what is said of an excerpt, and that nobody is recommended or ranked in
+  // words, is the judge's rubric.
+  'assessment.compareTradeoffs': { statements: ['candidates[*].statements[*]'], fieldMatch: 1, judge: 1 },
   // AIV-P1-113: every question cites one of its gap's sources (citation validity, a hard gate), names only a listed
   // gap, and asks nothing about a protected trait (each case's safety words, a hard gate, and the schema's own rule).
   // Structure is the product schema: eval.test.ts parses every recorded answer with it, and a live answer off it fails
@@ -258,6 +281,17 @@ export const runners: Record<string, Runner> = {
       workspaceId,
       identifiers: identifiersOf(golden),
     }),
+  // AIV-P1-047: one group of sources per compared candidate; every case's person is redacted, as the module does.
+  // The answer scored is the one the module keeps: a facts statement is the facts line its quote picks.
+  'assessment.compareTradeoffs': async (ai, golden, workspaceId) => {
+    const groups = tradeoffGroups(golden);
+    const answer = await ai.generateStructured({
+      ...compareTradeoffsRequest(groups),
+      workspaceId,
+      identifiers: { names: golden.people, emails: [], phones: [] },
+    });
+    return { candidates: keptTradeoffs(answer, groups) };
+  },
   // AIV-P1-113: the job and its gaps in the prompt, each gap's evidence as sources, as the assessment module sends them.
   'assessment.suggestQuestions': (ai, golden, workspaceId) => {
     const { job, gaps } = questionsInput.parse(golden.input);

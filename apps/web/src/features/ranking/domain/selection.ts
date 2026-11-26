@@ -1,15 +1,16 @@
+import { MAX_COMPARE, MIN_COMPARE } from '@/features/compare/domain/compare.ts';
 import type { CandidateRow } from './ranking.ts';
 
 // AIV-P1-036: selecting candidates on the ranking and the bulk actions on them.
 
 /**
  * The bulk actions, each with the feature flag that hides it until its target exists (as navigation.ts does for
- * screens, AIV-P1-095): the action's ticket sets its flag to null. Compare opens the comparison page (AIV-P1-047, #111);
+ * screens, AIV-P1-095): the action's ticket sets its flag to null. Compare opens the comparison page (AIV-P1-047);
  * Choose for interview moves people to Round 1 (AIV-P1-114); Add to decision pack (AIV-P2-010). Request evidence
  * (AIV-P1-038, #102) and Message join this list with their tickets.
  */
 export const BULK_ACTIONS = [
-  { id: 'compare', flag: 'compare' },
+  { id: 'compare', flag: null },
   { id: 'chooseForInterview', flag: null },
   { id: 'addToPack', flag: null },
 ] as const satisfies readonly {
@@ -33,11 +34,7 @@ export const parseSelected = (param: string | null, rows: CandidateRow[]): strin
   return rows.filter((row) => asked.has(row.id)).map((row) => row.id);
 };
 
-/** Compare takes two or three candidates. */
+/** Compare takes 2 to 10 candidates: as many as the recruiter ticks, within what one comparison holds. */
 export type CompareState = 'ready' | 'tooFew' | 'tooMany';
 export const compareState = (selected: number): CompareState =>
-  selected < 2 ? 'tooFew' : selected > 3 ? 'tooMany' : 'ready';
-
-/** The comparison's address: the job and the candidates' opaque person ids, as the profile is addressed. */
-export const compareHref = (jobId: string, personIds: string[]) =>
-  `/app/jobs/${jobId}/compare?ids=${personIds.join(',')}`;
+  selected < MIN_COMPARE ? 'tooFew' : selected > MAX_COMPARE ? 'tooMany' : 'ready';

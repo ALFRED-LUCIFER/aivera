@@ -43,10 +43,16 @@ const weight = (cs: { weightPercent: number }[]) => cs.reduce((sum, c) => sum + 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const competenciesText = (n: number) => `${WORDS[n] ?? String(n)} ${n === 1 ? 'competency' : 'competencies'}`;
 // A name that holds an "and" ("Cost and reliability") is followed by ", and" even for two names, so the list reads clearly.
-const listText = (names: string[]) =>
-  names.length < 3 && !names.some((n) => n.includes(' and '))
+export const listText = (names: string[]) =>
+  names.length < 2 || (names.length < 3 && !names.some((n) => n.includes(' and ')))
     ? names.join(' and ')
     : `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
+
+/** Independently checked: a corroborated item among those the proven level cites (AGENTS.md 1.6). */
+export const isChecked = (
+  c: Assessment['competencies'][number],
+  byId: ReadonlyMap<string, Pick<EvidenceItemView, 'provenance'>>,
+): boolean => c.proven.level > 0 && c.proven.itemIds.some((id) => byId.get(id)?.provenance === 'corroborated');
 
 /**
  * Facts from the latest snapshot: the weight resting on independently checked work (a corroborated item among those the
@@ -60,9 +66,7 @@ export function factsOf(
 ): Facts {
   const byId = new Map(evidence.map((item) => [item.id, item]));
   const nameOf = (c: { competencyId: string }) => names.get(c.competencyId) ?? 'an unnamed competency';
-  const checked = assessment.competencies.filter(
-    (c) => c.proven.level > 0 && c.proven.itemIds.some((id) => byId.get(id)?.provenance === 'corroborated'),
-  );
+  const checked = assessment.competencies.filter((c) => isChecked(c, byId));
   const claims = assessment.competencies.filter((c) => c.claimedLevel > c.proven.level);
 
   const values: Record<string, string> = {};

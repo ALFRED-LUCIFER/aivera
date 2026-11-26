@@ -18,6 +18,7 @@ import {
 } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import { explainRankingRequest, explainRankingSchema } from '../src/prompts/assessment.explainRanking.ts';
+import { compareTradeoffsRequest, keptTradeoffs } from '../src/prompts/assessment.compareTradeoffs.ts';
 import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
@@ -25,7 +26,15 @@ import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { mapSummarySchema } from '../src/prompts/interviews.mapSummary.ts';
 import { summariseMemberRequest } from '../src/prompts/decisions.summariseMember.ts';
-import { domainCatalogue, hardGates, questionsInput, runners, summaryInput, taskThresholds } from './config.ts';
+import {
+  domainCatalogue,
+  hardGates,
+  questionsInput,
+  runners,
+  summaryInput,
+  taskThresholds,
+  tradeoffGroups,
+} from './config.ts';
 import {
   goldenCase as goldenCaseSchema,
   identifiersOf,
@@ -1534,6 +1543,102 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     );
     expect(() => loadJudgeCases(dir, golden)).toThrow(
       'judge/empty.yaml: no fixture failing/jobs.draftCompetencies/proxy that suggests',
+    );
+  });
+});
+
+// Feature: Compare candidates side by side (AIV-P1-047), "The trade-offs". Synthetic data only.
+const tradeoffTrio = () => tradeoffGroups(caseOf('assessment.compareTradeoffs', 'trio-sara-arjun-layla'));
+const tradeoffSaid = (text: string, sourceId: string, quote: string) => ({ text, citations: [{ sourceId, quote }] });
+const tradeoffOne = (candidate: string, sourceId: string, quote: string) => ({
+  candidate,
+  statements: [tradeoffSaid('x', sourceId, quote)],
+});
+
+describe('Feature: Trade-offs between compared candidates', () => {
+  const cases = golden.get('assessment.compareTradeoffs') ?? [];
+
+  it("Scenario: the demo trio and three more comparisons, each recorded answer on its request's schema, and the runner passes the gates", async () => {
+    expect(cases.map((c) => c.id)).toContain('trio-sara-arjun-layla');
+    expect(cases).toHaveLength(4);
+    for (const c of cases) {
+      const groups = tradeoffGroups(c);
+      const parsed = compareTradeoffsRequest(groups).schema.safeParse(c.recorded.output);
+      expect(parsed.error, c.id).toBeUndefined();
+      // Recorded as the product keeps it: keeping it again changes nothing.
+      expect({ candidates: keptTradeoffs(parsed.data ?? { candidates: [] }, groups) }, c.id).toEqual(c.recorded.output);
+    }
+    const report = await run('assessment.compareTradeoffs', cases);
+    expect(report.passed).toBe(true);
+    expect(report.rates.citationValidity).toBe(1);
+  });
+
+  const LAYLA = 'is the only one compared with independently checked work on Arabic and bilingual NLP.';
+
+  // SAFETY: mutation check: keptTradeoffs returned the model's text for a facts statement -> this test failed
+  it("keeps a facts statement as the facts line its quote picks, never the model's wording, and says a line once", () => {
+    const given = {
+      candidates: [
+        { statements: [tradeoffSaid('x', 'S1', 'has independently checked work on Retrieval and evaluation.')] },
+        { statements: [tradeoffSaid('x', 'S4', 'still rests on claims for Cost and reliability.')] },
+        {
+          statements: [
+            tradeoffSaid(
+              'has independently checked Arabic work.',
+              'S7',
+              'independently checked work on Arabic and bilingual NLP',
+            ),
+            tradeoffSaid('is the best of the candidates on Arabic.', 'S7', 'Arabic and bilingual NLP'),
+          ],
+        },
+      ],
+    };
+    expect(keptTradeoffs(given, tradeoffTrio())[2]?.statements).toEqual([
+      { text: LAYLA, citations: [{ sourceId: 'S7', quote: LAYLA }] },
+    ]);
+  });
+
+  // SAFETY: mutation check: removed the explainText test from keptTradeoffs -> the "number word" row failed (it was kept)
+  // SAFETY: mutation check: removed the figuresQuoted test from keptTradeoffs -> the "does not hold" row failed (it was kept)
+  // SAFETY: mutation check: removed the OVERSTATES test from keptTradeoffs -> the "called proven" row failed (it was kept)
+  it.each([
+    ['a figure quoted from the excerpt it cites', 'The assistant handles questions for about 9,000 merchants.', true],
+    ['a figure the excerpt does not hold', 'The assistant handles questions for 900 merchants.', false],
+    ['a number word', 'The assistant handles half of the questions.', false],
+    ['a percentage', 'The assistant handles 9,000% more questions.', false],
+    ['work called proven', 'The assistant is proven in production.', false],
+    ['a placeholder', 'The assistant handles {claimNames}.', false],
+  ])('a statement about the work with %s', (_, text, kept) => {
+    const given = {
+      candidates: [
+        { statements: [tradeoffSaid(text, 'S2', 'about 9,000 merchants')] },
+        { statements: [] },
+        { statements: [] },
+      ],
+    };
+    expect(keptTradeoffs(given, tradeoffTrio())[0]?.statements).toHaveLength(kept ? 1 : 0);
+  });
+
+  // SAFETY: mutation check: removed the cites_another_candidate issue from schemaFor -> this test failed (the crossed answer parsed)
+  // SAFETY: mutation check: removed the every_candidate_once issue from schemaFor -> this test failed (two candidates parsed)
+  // SAFETY: mutation check: removed the facts_line_unknown issue from schemaFor -> this test failed (the two-line quote parsed)
+  it('rejects an answer that crosses candidates, leaves one out, reorders them or quotes across facts lines', () => {
+    const { schema } = compareTradeoffsRequest(tradeoffTrio());
+    const good = [
+      tradeoffOne('C1', 'S1', 'still rests on claims'),
+      tradeoffOne('C2', 'S4', 'still rests on claims'),
+      tradeoffOne('C3', 'S7', LAYLA),
+    ];
+    const rules = (candidates: unknown[]) =>
+      schema.safeParse({ candidates }).error?.issues.map((i) => (i as { params?: { reason?: string } }).params?.reason);
+    expect(rules(good)).toBeUndefined();
+    expect(rules([good[0], good[1], tradeoffOne('C3', 'S3', '412 of the 460 commits')])).toEqual([
+      'cites_another_candidate',
+    ]);
+    expect(rules([good[0], good[1]])).toEqual(['every_candidate_once']);
+    expect(rules([good[1], good[0], good[2]])).toContain('every_candidate_once');
+    expect(rules([tradeoffOne('C1', 'S1', 'Retrieval and evaluation.\nis below the level'), good[1], good[2]])).toEqual(
+      ['facts_line_unknown'],
     );
   });
 });
