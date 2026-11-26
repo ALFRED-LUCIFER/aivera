@@ -249,9 +249,16 @@ describe('scorecard draft (AIV-P2-004)', () => {
   });
 
   it('refuses a closed interview, a competency the interview does not test, one listed twice, and an unknown field', async () => {
-    const { useCases, store } = setup({}, [started, closed]);
+    const cancelled = stored({ id: id(63), status: 'cancelled' });
+    const { useCases, store } = setup({}, [started, closed, cancelled]);
     const me = ctxAs('interviewer', LINA);
-    await expect(useCases.saveScorecardDraft(me, closed.id, DRAFT)).rejects.toMatchObject({ code: 'scorecard_closed' });
+    // SAFETY: mutation check: dropped the `completed` line -> this test failed (scorecard_closed, read as "cancelled").
+    await expect(useCases.saveScorecardDraft(me, closed.id, DRAFT)).rejects.toMatchObject({
+      code: 'scorecard_submitted',
+    });
+    await expect(useCases.saveScorecardDraft(me, cancelled.id, DRAFT)).rejects.toMatchObject({
+      code: 'scorecard_closed',
+    });
     for (const competencies of [[{ ...RATED, competencyId: COST }], [RATED, RATED]])
       await expect(useCases.saveScorecardDraft(me, started.id, { ...DRAFT, competencies })).rejects.toMatchObject({
         code: 'competency_not_in_interview',
