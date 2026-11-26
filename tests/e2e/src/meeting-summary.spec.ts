@@ -232,6 +232,8 @@ async function pasteAndAnalyse(page: Page, text = SUMMARY) {
 }
 
 /** Scenario: A downgrade from a summary is off until I include it (AIV-P1-138): unticked, with its note, axe clean. */
+// SAFETY: mutation check: `includedByDefault` no longer excluded a lowering finding -> both theme tests failed here
+// (the include box was checked)
 async function downgradeIsOff(page: Page) {
   await pasteAndAnalyse(page, LOWERING);
   await expect(effect(page).getByText('Retrieval and evaluation: Supporting to Claim only')).toBeVisible();
