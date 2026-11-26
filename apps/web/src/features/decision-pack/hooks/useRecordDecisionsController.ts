@@ -1,14 +1,19 @@
-import type { DecisionValue } from '@credalent/decisions';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { recordDecisionsSchema, undecided, type PackPage, type RecordView } from '../domain/pack.ts';
+import {
+  recordDecisionsSchema,
+  undecided,
+  type DecisionValue,
+  type PackPage,
+  type RecordView,
+} from '../domain/pack.ts';
 import * as actions from '../services/recordDecisions.ts';
 
 /**
  * "Record the decision" on the pack (AIV-P2-012): the hiring owner's choice per member, none chosen at first (Credalent's
  * recommendation decides nothing), then "Record decisions" checks every member has one and opens the preview with the
  * required reason. Confirm is the only thing that writes. A refused or failed record keeps the preview and reason so the
- * person can try again; a recorded one re-reads the page, which shows the decisions read-only.
+ * person can try again; once recorded the choices are read-only at once, and the page is read again.
  */
 export function useRecordDecisionsController(
   { packId, members }: Pick<PackPage, 'packId' | 'members'>,
@@ -20,7 +25,7 @@ export function useRecordDecisionsController(
   const [previewing, setPreviewing] = useState(false);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<RecordView['error']>(null);
-  const [recorded, setRecorded] = useState(false);
+  const [recordedAt, setRecordedAt] = useState<Date | null>(null);
   const missing = checked ? undecided(members, choices) : [];
 
   return {
@@ -37,7 +42,7 @@ export function useRecordDecisionsController(
     onReasonChange: setReason,
     reasonValid: recordDecisionsSchema.shape.reason.safeParse(reason).success,
     error,
-    recorded,
+    recordedAt,
     async onConfirm() {
       const result = await services.recordDecisions({
         packId,
@@ -50,7 +55,7 @@ export function useRecordDecisionsController(
         throw new Error(result.error);
       }
       setPreviewing(false);
-      setRecorded(true);
+      setRecordedAt(result.decidedAt);
       router.refresh();
     },
     onCancel: () => setPreviewing(false),

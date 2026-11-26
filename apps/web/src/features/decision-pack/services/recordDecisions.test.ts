@@ -9,6 +9,7 @@ const id = (n: number) => `0190d4a2-0000-7000-8000-${String(n).padStart(12, '0')
 const PACK = id(2);
 const [SARA, HUDA] = [id(21), id(22)];
 const WHY = 'Strong on the two heaviest competencies.';
+const NOW = new Date('2026-11-18T09:30:00.000Z');
 const decisions = { recordDecisions: vi.fn() };
 vi.mock('@/server/decisions', () => ({ getDecisions: () => decisions }));
 vi.mock('@/server/workspace', () => ({
@@ -38,12 +39,12 @@ const input = (reason = WHY) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  decisions.recordDecisions.mockResolvedValue(undefined);
+  decisions.recordDecisions.mockResolvedValue({ decidedAt: NOW });
 });
 
 describe('recordDecisions', () => {
   it('records each decision with the one reason as its note', async () => {
-    expect(await recordDecisions(input(`  ${WHY} `))).toEqual({ ok: true });
+    expect(await recordDecisions(input(`  ${WHY} `))).toEqual({ ok: true, decidedAt: NOW });
     expect(decisions.recordDecisions).toHaveBeenCalledWith(
       {},
       {

@@ -279,11 +279,23 @@ describe('Scenario: Only the authorised hiring owner', () => {
   });
 });
 
+/** Every event type in decisions.outbox, sorted. */
+const outboxTypes = async () =>
+  (await admin.execute<{ type: string }>(sql`select type from decisions.outbox`)).map((r) => r.type).toSorted();
+
 describe('Scenario: Record decisions, and No candidate is contacted', () => {
   let before: Awaited<ReturnType<typeof sideEffects>>;
+  let typesBefore: string[];
   beforeAll(async () => {
     before = await sideEffects();
+    typesBefore = await outboxTypes();
     await as(HASSAN, w1, (ctx) => decisions.recordDecisions(ctx, { packId, decisions: choices.decisions }));
+  });
+
+  // SAFETY: mutation check: publishDecisionsRecorded also enqueued EmailQueued.v1 to notifications.outbox -> this test failed (notifications.outbox 0 -> 1)
+  it('the record writes exactly one event, DecisionsRecorded.v1, and nothing that could reach a candidate', async () => {
+    expect(await outboxTypes()).toEqual([...typesBefore, 'DecisionsRecorded.v1'].toSorted());
+    expect(await sideEffects()).toEqual(before);
   });
 
   it('three decisions stored with the hiring owner and the time, each audited with the decision', async () => {

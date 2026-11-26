@@ -60,8 +60,9 @@ export function DecisionPack({ view, record }: { view: DecisionPackView; record?
 
 function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined }) {
   const t = useTranslations();
-  const nameOf = (m: PackPage['members'][number]) => m.name ?? t('ranking.unnamed');
-  const readOnly = pack.decided !== null || !pack.mayDecide;
+  const names = new Map(pack.members.map((m) => [m.candidateId, m.name ?? t('ranking.unnamed')] as const));
+  // Read-only once recorded, before the page is read again too, and for anyone but the job's hiring owner.
+  const readOnly = pack.decided !== null || !pack.mayDecide || Boolean(record?.recordedAt);
   return (
     <section aria-labelledby="pack-title" className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -103,11 +104,11 @@ function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined
       ) : (
         pack.members.map((m) => (
           <Member key={m.candidateId} jobId={pack.jobId} member={m}>
-            <DecisionChoice member={m} name={nameOf(m)} record={record} readOnly={readOnly} />
+            <DecisionChoice member={m} name={names.get(m.candidateId) ?? ''} record={record} readOnly={readOnly} />
           </Member>
         ))
       )}
-      {pack.members.length > 0 && <RecordSection pack={pack} record={record} nameOf={nameOf} />}
+      {pack.members.length > 0 && <RecordSection pack={pack} record={record} names={names} />}
       <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
         <ValueBasis basis="observed" label={t('ranking.observed')} />
         {t('decisionPack.basis')}

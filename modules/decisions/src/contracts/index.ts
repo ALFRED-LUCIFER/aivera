@@ -90,7 +90,8 @@ export interface DecisionsContract {
    * `DecisionsRecorded.v1` is written, and each decision is audited (`decision.recorded`: who, when, why). Only the
    * member named as the job's hiring owner: `ForbiddenError` (HTTP 403) for anyone else, storing nothing. It changes
    * no stage itself (intake's consumer of the event does, AIV-P2-012) and contacts no candidate. Throws `PackError` `pack_not_found`, `pack_decided`, `pack_not_ready`,
-   * `decisions_incomplete` (a member missing, named twice, or a candidate not in the pack).
+   * `decisions_incomplete` (a member missing, named twice, or a candidate not in the pack). Returns when they were
+   * recorded, for the page's confirmation.
    */
-  recordDecisions(ctx: WorkspaceContext, input: RecordDecisionsInput): Promise<void>;
+  recordDecisions(ctx: WorkspaceContext, input: RecordDecisionsInput): Promise<{ decidedAt: Date }>;
 }

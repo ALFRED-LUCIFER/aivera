@@ -24,7 +24,6 @@ let intl: Awaited<ReturnType<typeof intlConfig>>;
 beforeAll(async () => {
   intl = await intlConfig('en', 'Asia/Dubai');
 });
-beforeEach(() => fake.record.mockResolvedValue({ ok: true }));
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
@@ -35,6 +34,7 @@ const [JOB, PACK, SARA, ARJUN, HUDA] = [id(1), id(2), id(21), id(22), id(23)];
 const NAMES = ['Sara Al Qahtani', 'Arjun Menon', 'Huda Al Mansoori'];
 const WHY = 'Strong on the two heaviest competencies.';
 const decidedAt = new Date('2026-11-18T09:30:00.000Z');
+beforeEach(() => fake.record.mockResolvedValue({ ok: true, decidedAt }));
 
 const pack = (over: Partial<PackPage> = {}): PackPage => ({
   jobId: JOB,
@@ -101,6 +101,7 @@ describe('Scenario: Record decisions', () => {
     expect(fake.record).not.toHaveBeenCalled();
   });
 
+  // SAFETY: mutation check: dropped `|| Boolean(record?.recordedAt)` from readOnly in DecisionPack -> this test failed (choices editable before the refresh)
   it('advance for all three, previewed with each stage and a reason, then recorded once on Confirm', async () => {
     const { rerender } = show(pack());
     for (const name of NAMES) await choose(name, 'Advance to Round 2');
@@ -121,6 +122,15 @@ describe('Scenario: Record decisions', () => {
       reason: WHY,
     });
     expect(fake.refresh).toHaveBeenCalled();
+    // Before the page is read again: the confirmation, the choices read-only as recorded, and no way to record twice.
+    expect(screen.getByRole('status').textContent).toBe(
+      'Decisions recorded by you on 18 Nov 2026 and added to the audit trail. Schedule Round 2 interviews',
+    );
+    for (const name of NAMES) {
+      const advance = within(group(name)).getByRole('radio', { name: 'Advance to Round 2' });
+      expect([(advance as HTMLInputElement).checked, advance.matches(':disabled')]).toEqual([true, true]);
+    }
+    expect(screen.queryByRole('button', { name: 'Record decisions' })).toBeNull();
     // The page re-reads the decided pack.
     rerender(
       <IntlProvider {...intl}>

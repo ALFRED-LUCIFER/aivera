@@ -231,7 +231,7 @@ export function packUseCases(ports: Ports) {
     },
 
     /** Stores the decisions and one event. It moves no stage and contacts nobody (AGENTS.md 1.5). */
-    async recordDecisions(ctx: WorkspaceContext, raw: RecordDecisionsInput): Promise<void> {
+    async recordDecisions(ctx: WorkspaceContext, raw: RecordDecisionsInput): Promise<{ decidedAt: Date }> {
       const input = recordDecisionsInputSchema.parse(raw);
       const found = await visible(ctx, input.packId, true);
       if (!found) throw new PackError('pack_not_found');
@@ -257,6 +257,7 @@ export function packUseCases(ports: Ports) {
       await store.setStatus(ctx.workspaceId, pack.id, 'decided');
       await ports.publishDecisionsRecorded(ctx.tx, pack, decidedAt);
       for (const decision of decisions) await ports.auditDecision(ctx, job.jobId, decision);
+      return { decidedAt };
     },
   };
 }

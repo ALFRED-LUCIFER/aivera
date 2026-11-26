@@ -80,7 +80,8 @@ export const recordDecisionsSchema = z.strictObject({
   reason: z.string().trim().min(1).max(NOTE_MAX),
 });
 
-export type RecordDecisionsResult = { ok: true } | { ok: false; error: 'invalid' | 'decided' | 'failed' };
+export type RecordDecisionsResult =
+  { ok: true; decidedAt: Date } | { ok: false; error: 'invalid' | 'decided' | 'failed' };
 
 /** The members with no decision chosen, in pack order: "Choose a decision for Huda Al Mansoori". */
 export const undecided = (
@@ -102,8 +103,8 @@ export type RecordView = {
   onReasonChange: (reason: string) => void;
   reasonValid: boolean;
   error: 'decided' | 'failed' | null;
-  /** True once this person recorded the decisions on this page. */
-  recorded: boolean;
+  /** When this person recorded the decisions on this page; from then on the choices are read-only. */
+  recordedAt: Date | null;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 };

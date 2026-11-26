@@ -41,5 +41,5 @@ export async function recordDecisions(input: unknown): Promise<RecordDecisionsRe
   if (!result) forbidden();
   log.info({ area: 'decisions', packId, count: decisions.length }, 'decisions recorded');
   revalidatePath('/app', 'layout');
-  return { ok: true };
+  return { ok: true, decidedAt: result.value.decidedAt };
 }

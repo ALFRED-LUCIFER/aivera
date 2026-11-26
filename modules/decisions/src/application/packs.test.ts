@@ -242,7 +242,7 @@ describe('recordDecisions', () => {
 
   it('the hiring owner records all three: stored with who and when, decided, one event, each audited last', async () => {
     const { useCases, store, ports } = setup({}, pack(), members);
-    await useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), advanceAll());
+    expect(await useCases.recordDecisions(ctxAs('hiring_owner', FAISAL), advanceAll())).toEqual({ decidedAt: NOW });
     const written = store.insertDecisions.mock.calls[0]?.[0] as Decision[];
     expect(written).toHaveLength(3);
     expect(written.every((d) => d.decidedBy === FAISAL && d.decidedAt === NOW && d.decision === 'advance')).toBe(true);
