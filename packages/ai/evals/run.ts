@@ -191,18 +191,21 @@ export const matchPrompt = {
   id: 'evals.match@2',
   system:
     'You compare short texts: competency names, or statements from a CV. Each key holds an expected text and its ' +
-    'options. Judge each on its own, under its key: copy exactly the one of its options closest to it in meaning, ' +
-    'then say whether that option means the same. A competency name means the same when the option is that skill or area of work, even worded as an ' +
-    'activity or narrowed to the job it is for: "Incident response" and "On-call incident handling" do; ' +
-    '"Experimentation" and "Experiment design for pricing tests" do; "Accessibility" and "Accessible checkout design" ' +
-    'do. It does not when the option is a related but different skill: "Incident response" and "Monitoring" do not; ' +
-    '"Infrastructure as code" and "Release pipeline automation" do not. A CV statement means the same only when the ' +
-    'option states the same fact: "cut cost per request by 40%" and a longer line stating that cut do.',
+    'options. Under each key, give the one of its options that means the same, worded differently, or null when none ' +
+    'does. A competency name means the same when the option is that skill or area of work, even worded as an ' +
+    'activity, narrowed to the job it is for, or named with a second skill: "Incident response" and "On-call incident ' +
+    'handling" match; "Experimentation" and "Experiment design for pricing tests" match; "Accessibility" and ' +
+    '"Accessible checkout design" match; "Prototyping" and "Prototyping and user testing" match. It does not when the ' +
+    'option is a related but different skill: "Incident response" and "Monitoring" do not; "Infrastructure as code" ' +
+    'and "Release pipeline automation" do not. A CV statement means the same only when the option states the same ' +
+    'fact: "cut cost per request by 40%" matches a longer line stating that cut. Each option answers at most one ' +
+    'expected text, the one it is closest to. Copy the option exactly.',
 };
 // AIV-P1-142: on gpt-4.1, @1 answered null for a drafted competency naming the expected skill as the job's own activity,
-// and the same request at temperature 0 flipped between all matched and all null (an empty list). Each expected text is
-// now a required key of the answer, and the model names its closest option before the verdict (as evals.judge@5 writes
-// checks first); code turns the two into the match.
+// and the same request at temperature 0 flipped between all matched and an empty list. Each expected text is now a
+// required key of the answer, so none can go unanswered.
+// shortcut: gpt-4.1 still sometimes names one option under two keys; scoring gives it to the first expected text only, so
+// the point count holds but which name matched can be wrong. Upgrade to one verdict per option if a run shows a gain.
 /**
  * AIV-P1-140: a CV statement the model copies word for word but ends with a period is the same text; the matcher model
  * answered null for it, or named it without the period. Compares after case, surrounding space and trailing
@@ -216,8 +219,6 @@ const bare = (s: string) =>
     .toLowerCase();
 const sameText = (a: string, b: string) => bare(a) === bare(b);
 const key = (path: string, value: string) => `${path}\u0000${value}`;
-// In the order the model writes: the closest option before the verdict on it.
-const matchVerdict = z.object({ closest: z.string(), sameMeaning: z.boolean() }).strict();
 /** The matcher's request and answer: one key per miss (`e0`, `e1`, …), so the answer cannot skip one. */
 export const matchKey = (i: number) => `e${i}`;
 
@@ -230,15 +231,10 @@ export function liveMatcher(ai: Pick<AiClient, 'generateStructured'>): Matcher {
       promptVersion: matchPrompt.id,
       system: matchPrompt.system,
       prompt: JSON.stringify(Object.fromEntries(misses.map((m, i) => [matchKey(i), m]))),
-      schema: z.object(Object.fromEntries(misses.map((_, i) => [matchKey(i), matchVerdict]))).strict(),
+      schema: z.object(Object.fromEntries(misses.map((_, i) => [matchKey(i), z.string().nullable()]))).strict(),
       sources: [],
     });
-    return Object.fromEntries(
-      misses.map((m, i) => {
-        const v = matchVerdict.parse(answer[matchKey(i)]);
-        return [m.expected, v.sameMeaning ? v.closest : null];
-      }),
-    );
+    return Object.fromEntries(misses.map((m, i) => [m.expected, z.string().nullable().parse(answer[matchKey(i)])]));
   };
 }
 

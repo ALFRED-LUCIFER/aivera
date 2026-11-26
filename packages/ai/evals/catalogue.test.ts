@@ -74,8 +74,8 @@ describe('a run with recorded answers', () => {
         prompt: JSON.stringify({ [matchKey(0)]: { expected, candidates } }),
         sources: [],
       } as unknown as Parameters<AiClient['generateStructured']>[0]);
-    expect(await ask(['another statement', match])).toEqual({ e0: { closest: match, sameMeaning: true } });
-    expect(await ask(['another statement'])).toEqual({ e0: { closest: 'another statement', sameMeaning: false } });
+    expect(await ask(['another statement', match])).toEqual({ e0: match });
+    expect(await ask(['another statement'])).toEqual({ e0: null });
   });
 
   it("answers a suggestion-judge request with the case's recorded verdicts, and refuses one it has none for (AIV-P2-085)", async () => {

@@ -146,7 +146,7 @@ export function recordedClient(
       return Object.fromEntries(
         Object.entries(misses).map(([k, m]) => {
           const match = verdicts.get(m.expected)?.find((v): v is string => v !== null && m.candidates.includes(v));
-          return [k, { closest: match ?? m.candidates[0] ?? '', sameMeaning: match !== undefined }];
+          return [k, match ?? null];
         }),
       );
     }
