@@ -6,12 +6,17 @@ import { cited, type Source } from '../citations.ts';
 // the eval runner calls the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@4';
+export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@5';
 
 export const DRAFT_COMPETENCIES_SYSTEM = [
-  'You help a recruiter turn a job description into the competencies the job needs. List only the competencies the',
-  'description itself states, never more than 8: when it states more, merge related ones or keep the 8 most central.',
-  'For each give: a short name of at most 60 characters; the evidence of work that would show it (what the candidate',
+  'You help a recruiter turn a job description into the competencies the job needs. First, in needs, list every skill',
+  'the description itself asks for (a duty or a requirement, not the summary of the role), in a few words each and in',
+  'the order it states them, at most 20; a requirement that only names a language or tool a duty already uses is part',
+  'of that duty, not a need. There are never more than 8 competencies and no need is left out, so merges holds exactly',
+  'the number of needs minus 8 pairs (9 needs: 1 pair, 10 needs: 2 pairs; 8 needs or fewer: none): the pairs of needs',
+  'about the same work, each need in one pair at most. Then list the competencies in the order of needs: each pair is',
+  'one competency named by both skills that cites the line of each, and every other need is its own. For each',
+  'competency give: a short name of at most 60 characters; the evidence of work that would show it (what the candidate',
   'built, shipped or wrote) in one sentence of at most 300 characters; a weight from 1 to 100 for how central it is',
   'compared with the others (Credalent scales the weights to total 100, so they need not add up); the level the job',
   'needs from 1 (basic) to 5 (expert); and mandatory or desirable, as the description says. A competency is a skill',
@@ -49,6 +54,9 @@ const competency = z.object({
 // across a list (AIV-P1-082): the jobs module scales the weights to 100 with the rule the save applies
 // (rebalanceWeights), so the recruiter still sees a draft totalling exactly 100.
 export const draftCompetenciesSchema = z.object({
+  /** The stated needs, listed before the competencies so a merge under the cap of 8 drops none (AIV-P1-143); unused. */
+  needs: z.array(z.string().max(120)).max(20),
+  merges: z.array(z.object({ first: z.string().max(120), second: z.string().max(120) })).max(10),
   competencies: z.array(cited(competency)).max(8),
   /** True when a line asking for something other than a skill was left out. */
   refused: z.boolean(),
