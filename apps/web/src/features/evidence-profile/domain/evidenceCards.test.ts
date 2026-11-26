@@ -1,5 +1,7 @@
 import type { CompetencyResult } from '@credalent/assessment';
 import type { EvidenceItemView, Provenance, SourceKind, Strength } from '@credalent/evidence';
+
+type RepositoryVia = NonNullable<EvidenceItemView['source']['via']>;
 import { describe, expect, it } from 'vitest';
 import { evidenceCards, sourceNote } from './evidenceCards.ts';
 
@@ -12,7 +14,7 @@ const item = (
   excerpt: string,
   strength: Strength,
   provenance: Provenance,
-  source: { kind?: SourceKind; label: string; url?: string; file?: string; checked?: boolean },
+  source: { kind?: SourceKind; label: string; url?: string; file?: string; checked?: boolean; via?: RepositoryVia },
   span: string | null = null,
   limit = `${id} limit`,
 ) =>
@@ -31,6 +33,7 @@ const item = (
       blobFileId: source.file ?? null,
       checkedAt: source.checked ? CHECKED : null,
       checkMethod: source.checked ? 'Commit history' : null,
+      via: source.via ?? null,
     },
   }) as EvidenceItemView;
 
@@ -236,6 +239,77 @@ const chipText = (source: Parameters<typeof item>[4], span: string | null = null
   const [chip] = evidenceCards([result('llm', 25, ['x'])], names, [cited], true)[0]?.sources ?? [];
   return chip && 'text' in chip ? chip.text : null;
 };
+
+// AIV-P1-118: Maria Santos's CV links only her GitHub profile; Credalent read two of its repositories with no login.
+const NO_LOGIN = 'Authorship unclear: no GitHub login supplied.';
+const fromProfile = (via?: RepositoryVia) =>
+  ['rag-notebook', 'vector-cache'].map((name) =>
+    item(
+      name,
+      'authored 30 of 35 commits',
+      'medium',
+      'submitted',
+      { label: name, url: `https://github.com/maria-credalent-example/${name}`, checked: true, ...(via && { via }) },
+      null,
+      NO_LOGIN,
+    ),
+  );
+const retrievalOf = (items: EvidenceItemView[]) =>
+  evidenceCards(
+    [
+      result(
+        'retrieval',
+        20,
+        items.map((i) => i.id),
+      ),
+    ],
+    names,
+    items,
+    true,
+  )[0];
+
+describe('Scenario: A repository read from the profile says where it came from', () => {
+  // SAFETY: mutation check: `...(source.via && { via: source.via })` removed -> this test failed (no chip said where it came from)
+  it('each read from the profile is a link chip carrying "cv_profile", named by host and repository only', () => {
+    const card = retrievalOf(fromProfile('cv_profile'));
+    const links = card?.sources.filter((c) => c.kind === 'link');
+    expect(links).toEqual([
+      {
+        key: 's-rag-notebook:',
+        kind: 'link',
+        text: 'github.com/…/rag-notebook',
+        url: 'https://github.com/maria-credalent-example/rag-notebook',
+        via: 'cv_profile',
+      },
+      {
+        key: 's-vector-cache:',
+        kind: 'link',
+        text: 'github.com/…/vector-cache',
+        url: 'https://github.com/maria-credalent-example/vector-cache',
+        via: 'cv_profile',
+      },
+    ]);
+    // The label never names the profile's owner, the candidate's login.
+    for (const chip of links ?? []) expect(chip.text).not.toContain('maria-credalent-example');
+    expect(card?.limits).toEqual([NO_LOGIN]);
+  });
+
+  // SAFETY: mutation check: `via: source.via ?? 'cv_profile'` for every link -> this test failed (the directly linked repository said "from the profile")
+  it('Scenario: A repository linked directly keeps the plain chip: no `via`', () => {
+    const [card] = evidenceCards([result('retrieval', 20, ['harness'])], names, evidence, true);
+    expect(card?.sources.some((c) => 'via' in c)).toBe(false);
+  });
+
+  it('Scenario: The chip changes no score: the same reads with no `via` give the same card but for the chips', () => {
+    const withVia = retrievalOf(fromProfile('cv_profile'));
+    const without = retrievalOf(fromProfile());
+    expect({ ...withVia, sources: [] }).toEqual({ ...without, sources: [] });
+    expect(withVia?.lead).toEqual({ strength: 'medium', provenance: 'submitted' });
+    expect(withVia?.sources.map((c) => ({ ...c, via: undefined }))).toEqual(
+      without?.sources.map((c) => ({ ...c, via: undefined })),
+    );
+  });
+});
 
 describe('how a source is cited', () => {
   it('a repository is cited by its host and last path segment, anything else by its label and span', () => {
