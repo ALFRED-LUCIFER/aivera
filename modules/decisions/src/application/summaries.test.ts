@@ -217,6 +217,25 @@ describe('summarisePack', () => {
     expect(ports.retryAt).not.toHaveBeenCalled();
   });
 
+  // SAFETY: mutation check: timed the window from the pack's preparedAt only -> this test failed (stored unavailable)
+  it('the window runs from when the member joined, not from when the pack was prepared', async () => {
+    const { store, ports, run } = setup({
+      summarise: async () => 'model_unavailable',
+      now: () => new Date('2026-11-17T14:00:00.000Z'),
+    });
+    // Prepared at 08:00 (six hours ago); Sara joined at 13:00, an hour ago.
+    store.listMembers.mockResolvedValue([
+      { ...member(SARA, 0), addedBy: id(1), addedAt: new Date('2026-11-17T13:00:00.000Z') },
+    ]);
+    await run();
+    expect(store.insertSummary).not.toHaveBeenCalled();
+    expect(ports.retryAt).toHaveBeenCalledWith(
+      'w1',
+      { packId: PACK, jobId: JOB },
+      new Date('2026-11-17T14:15:00.000Z'),
+    );
+  });
+
   it('a pack that is gone does nothing', async () => {
     const { store, ports, run } = setup();
     store.findPack.mockResolvedValue(null as never);

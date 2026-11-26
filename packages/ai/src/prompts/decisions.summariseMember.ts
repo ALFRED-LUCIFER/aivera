@@ -14,7 +14,7 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 // ran or measured", and its live answer for Arjun Menon called a design and runbook a service he built and ran.
 // @3: a strength that names a competency cites the facts line naming it (checked in code, `competency_uncited`); @2's
 // answers named one with only the excerpt cited, which the judge passed. The focus is a noun phrase, which the card
-// reads after "look into next:", and a counting word is named in the number rule.
+// reads as "look into <focus> next", and a counting word is named in the number rule.
 export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@3';
 
 /** Advance to the next round, or hold while the gap the focus names is closed. Never reject: thin evidence is a gap. */
@@ -105,15 +105,19 @@ const schemaFor = (sources: readonly Source[]) => {
     new Set(sources.flatMap((s, i) => (keep(s, i) ? [sourceLabel(i)] : [])));
   const work = labels((s, i) => i > 0 && s.kind !== 'cv');
   const interview = labels((s) => s.kind === 'interview');
-  // The competencies the facts name, one per line ("<name>, 25% of the weight, needs level 4: ...").
+  // The competencies the facts name, one per line ("<name>, 25% of the weight, needs level 4: ..."), each matched as a
+  // whole phrase, so a short name ("AI", "Go") inside a word ("maintains", "algorithm") is not a mention of it.
   const competencies = (sources[0]?.text ?? '')
     .split('\n')
     .flatMap((line) => /^(.+?), \d+% of the weight, needs level/.exec(line)?.[1] ?? [])
-    .map((name) => name.toLowerCase());
+    .map(
+      (name) => new RegExp(`(?<![\\p{L}\\p{N}])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu'),
+    );
   const facts = sourceLabel(0);
   return summariseMemberSchema.superRefine(({ strengths, round1 }, ctx) => {
     strengths.forEach((s, i) => {
-      if (!cites(s, work))
+      // The first citation is the excerpt the strength is about; the facts line, if any, follows it.
+      if (!work.has(s.citations[0]?.sourceId ?? ''))
         ctx.addIssue({
           code: 'custom',
           path: ['strengths', i],
@@ -121,9 +125,9 @@ const schemaFor = (sources: readonly Source[]) => {
           params: { reason: 'not_backed' },
         });
       // That the work backs a competency is the assessment's fact, so a strength naming one cites the line naming it.
-      const named = competencies.filter((name) => s.text.toLowerCase().includes(name));
-      const quoted = s.citations.filter((c) => c.sourceId === facts).map((c) => c.quote.toLowerCase());
-      if (named.some((name) => !quoted.some((quote) => quote.includes(name))))
+      const named = competencies.filter((name) => name.test(s.text));
+      const quoted = s.citations.filter((c) => c.sourceId === facts).map((c) => c.quote);
+      if (named.some((name) => !quoted.some((quote) => name.test(quote))))
         ctx.addIssue({
           code: 'custom',
           path: ['strengths', i],

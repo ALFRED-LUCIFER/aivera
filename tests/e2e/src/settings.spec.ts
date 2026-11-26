@@ -9,6 +9,19 @@ const SAVED = 'Settings saved. New links, invitations and sessions use them. Exi
 const shortlist = (page: Page) => page.getByRole('textbox', { name: 'Client shortlist link lasts', exact: true });
 const save = (page: Page) => page.getByRole('button', { name: 'Save settings' });
 
+/**
+ * Edits and saves until the form answers. The server renders the form with its values, so a field can be typed into
+ * before React hydrates; hydration then keeps the loaded value in state and the save sends that (CI run 45877523565:
+ * the out-of-range save sent "12", passing on retry). Each try edits again, so the first one after hydration counts.
+ * Saving the same values again changes nothing.
+ */
+const editAndSave = (page: Page, edit: () => Promise<void>, answered: () => Promise<void>) =>
+  expect(async () => {
+    await edit();
+    await save(page).click();
+    await answered();
+  }).toPass();
+
 async function openFromSidebar(page: Page, email: string) {
   await signIn(page, { email });
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings', exact: true }).click();
@@ -52,31 +65,38 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
 
   // A value out of range is explained, not saved.
   const idle = page.getByRole('textbox', { name: 'Sign out after inactivity', exact: true });
-  // A save before the form hydrates is a native submit the form never sees (CI run 45877523565: the first attempt's
-  // description never came, its retry passed); fill and save again until the form answers. An invalid value is never
-  // saved, so repeating it changes nothing.
-  await expect(async () => {
-    await idle.fill('24');
-    await save(page).click();
-    await expect(idle).toHaveAccessibleDescription(/Enter a number from 1 to 12/, { timeout: 1000 });
-  }).toPass();
+  await editAndSave(
+    page,
+    () => idle.fill('24'),
+    () => expect(idle).toHaveAccessibleDescription(/Enter a number from 1 to 12/, { timeout: 1000 }),
+  );
   await expect(idle).toHaveAttribute('aria-invalid', 'true');
   await page.reload();
   await expect(page.getByRole('textbox', { name: 'Sign out after inactivity', exact: true })).toHaveValue('12');
 
   // Saving a change.
-  await shortlist(page).fill('7');
-  await save(page).click();
-  await expect(page.getByText(SAVED)).toBeVisible();
+  await editAndSave(
+    page,
+    () => shortlist(page).fill('7'),
+    async () => {
+      await expect(page.getByText(SAVED)).toBeVisible({ timeout: 1000 });
+      await expect(shortlist(page)).toHaveValue('7', { timeout: 1000 });
+    },
+  );
   await page.reload();
   await expect(shortlist(page)).toHaveValue('7');
   await expect(page.getByText('Default: 14')).toBeVisible();
   await expectAccessible(page);
 
   // Restore a default.
-  await page.getByRole('button', { name: 'Use default for Client shortlist link lasts' }).click();
-  await save(page).click();
-  await expect(page.getByText(SAVED)).toBeVisible();
+  await editAndSave(
+    page,
+    () => page.getByRole('button', { name: 'Use default for Client shortlist link lasts' }).click(),
+    async () => {
+      await expect(page.getByText(SAVED)).toBeVisible({ timeout: 1000 });
+      await expect(shortlist(page)).toHaveValue('14', { timeout: 1000 });
+    },
+  );
   await page.reload();
   await expect(shortlist(page)).toHaveValue('14');
   await expect(page.getByText(/^Default:/)).toHaveCount(0);

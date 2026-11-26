@@ -2141,6 +2141,14 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
   });
 });
 
+/** A pack card with one strength, for the schema's per-strength rules (AIV-P2-011). */
+const shortCard = (text: string, citations: { sourceId: string; quote: string }[]) => ({
+  strengths: [{ text, citations }],
+  risks: [],
+  round1: null,
+  recommendation: { action: 'advance', focus: null, citations: [{ sourceId: 'S1', quote: 'Work meets the need' }] },
+});
+
 // Feature: Decision pack page, a member's cited strengths, risks, Round 1 finding and recommendation (AIV-P2-011).
 // Synthetic data only.
 describe('Feature: Decision pack summaries', () => {
@@ -2203,6 +2211,45 @@ describe('Feature: Decision pack summaries', () => {
     expect(parseCard(withFirst('strengths', { text, citations: excerpt })).success).toBe(false);
     const line = { sourceId: 'S1', quote: 'LLM systems in production, 25% of the weight, needs level 4' };
     expect(parseCard(withFirst('strengths', { text, citations: [...excerpt, line] })).success).toBe(true);
+  });
+
+  // A rubric with short competency names, as a pilot job may have.
+  const shortNames = {
+    ...sara(),
+    sources: [
+      {
+        id: 'S1',
+        kind: 'document' as const,
+        text: [
+          'Work meets the need on competencies holding 50% of the weight.',
+          'AI, 50% of the weight, needs level 3: submitted work shows level 3, which meets the need.',
+          'Go, 50% of the weight, needs level 3: no evidence yet.',
+        ].join('\n'),
+      },
+      { id: 'S2', kind: 'repo' as const, text: 'maintains a scheduling algorithm library' },
+    ],
+  };
+  const library = { sourceId: 'S2', quote: 'maintains a scheduling algorithm library' };
+  // SAFETY: mutation check: matched competency names as plain substrings again -> this test failed ("AI" in "maintains")
+  it('a short competency name inside a word is no mention of it; standing alone, it needs its facts line', () => {
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling algorithm library.', [library]), shortNames).success,
+    ).toBe(true);
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [library]), shortNames).success,
+    ).toBe(false);
+    const line = { sourceId: 'S1', quote: 'AI, 50% of the weight, needs level 3' };
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [library, line]), shortNames).success,
+    ).toBe(true);
+  });
+
+  // SAFETY: mutation check: checked that any citation is work instead of the first -> this test failed (it parsed)
+  it("a strength's first citation is the excerpt it is about, the facts line after it", () => {
+    const line = { sourceId: 'S1', quote: 'AI, 50% of the weight, needs level 3' };
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [line, library]), shortNames).success,
+    ).toBe(false);
   });
 
   // SAFETY: mutation check: removed the not_round1 superRefine -> this test failed (a Round 1 finding citing the CV parsed)
