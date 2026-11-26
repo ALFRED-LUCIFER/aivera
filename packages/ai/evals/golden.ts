@@ -157,10 +157,26 @@ const suggestionJudgeCase = z
     expected: z.record(z.string(), z.enum(suggestionFaults).nullable()),
   })
   .strict();
+/**
+ * A matcher golden case (AIV-P1-142): expected texts, the options offered for them, and the option each must get or
+ * null. Its recorded verdicts carry the matcher prompt they came from: a recorded run refuses another prompt's.
+ */
+const matchJudgeCase = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    judge: z.literal('match'),
+    options: z.array(z.string().min(1)).min(1),
+    expected: z.record(z.string(), z.string().nullable()),
+    recorded: z
+      .object({ matchPrompt: z.string().min(1), verdicts: z.record(z.string(), z.string().nullable()) })
+      .strict(),
+  })
+  .strict();
 type Graded = { golden: GoldenCase; output: unknown };
 export type EvidenceJudgeCase = z.infer<typeof evidenceJudgeCase> & Graded & { rubric: string };
 export type SuggestionJudgeCase = z.infer<typeof suggestionJudgeCase> & Graded;
-export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase;
+export type MatchJudgeCase = z.infer<typeof matchJudgeCase>;
+export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase | MatchJudgeCase;
 
 const withLinks = z.object({ links: z.array(z.record(z.string(), z.unknown())) }).loose();
 // At least one: a case with nothing to grade would pass without the judge.
@@ -178,10 +194,16 @@ export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): 
     .map((file): JudgeCase => {
       const path = join('judge', file);
       const parsed = z
-        .union([evidenceJudgeCase, suggestionJudgeCase])
+        .union([evidenceJudgeCase, suggestionJudgeCase, matchJudgeCase])
         .safeParse(parse(readFileSync(join(dir, path), 'utf8')));
       if (!parsed.success) throw new Error(`${path}: ${z.prettifyError(parsed.error)}`);
       if (parsed.data.id !== basename(file, '.yaml')) throw new Error(`${path}: id must equal the file name`);
+      if ('judge' in parsed.data && parsed.data.judge === 'match') {
+        const { options, expected } = parsed.data;
+        if (Object.values(expected).some((option) => option !== null && !options.includes(option)))
+          throw new Error(`${path}: every expected option must be one of its options`);
+        return parsed.data;
+      }
       const [task = '', id] = parsed.data.case.split('/');
       if ('judge' in parsed.data) {
         const { from, expected } = parsed.data;

@@ -17,6 +17,7 @@ import {
   judgePrompt,
   liveJudge,
   liveJudgeVerdict,
+  liveMatch,
   liveMatcher,
   liveSuggestionJudge,
   matchPrompt,
@@ -86,7 +87,7 @@ if (values.live) {
   judge = liveJudge(ai);
   matcher = liveMatcher(ai);
   suggestionJudge = liveSuggestionJudge(ai);
-  judgeVerdict = liveJudgeVerdict(judge, suggestionJudge);
+  judgeVerdict = liveJudgeVerdict(judge, suggestionJudge, liveMatch(ai));
 }
 
 const reports: TaskReport[] = [];

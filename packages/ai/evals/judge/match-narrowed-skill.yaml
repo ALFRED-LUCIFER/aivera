@@ -1,0 +1,18 @@
+# AIV-P1-142: on evals.match@1 a skill narrowed to the job's own work got null (the misses that held
+# jobs.draftCompetencies at its 90% line); a neighbouring platform skill still does not mean infrastructure as code.
+# SAFETY: mutation check: matchPrompt's related-skill refusal replaced by "a related skill in the same area of work
+# means it too" -> this case failed live 2 of 2 runs (expected[1]: expected null, the matcher said options[1])
+id: match-narrowed-skill
+judge: match
+options:
+  - Dashboard and alert development
+  - Kubernetes cluster management
+  - Container image builds
+expected:
+  Observability: Dashboard and alert development
+  Infrastructure as code: null
+recorded:
+  matchPrompt: evals.match@2
+  verdicts:
+    Observability: Dashboard and alert development
+    Infrastructure as code: null

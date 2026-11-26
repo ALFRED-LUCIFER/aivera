@@ -142,12 +142,15 @@ export function recordedClient(
     sources: readonly unknown[];
   }) => {
     if (request.promptVersion === matchPrompt.id) {
-      const misses = JSON.parse(request.prompt) as Record<string, { expected: string; candidates: string[] }>;
+      const { expected, options } = JSON.parse(request.prompt) as {
+        expected: string[];
+        options: Record<string, string>;
+      };
       return Object.fromEntries(
-        Object.entries(misses).map(([k, m]) => {
-          const match = verdicts.get(m.expected)?.find((v): v is string => v !== null && m.candidates.includes(v));
-          return [k, match ?? null];
-        }),
+        Object.entries(options).map(([k, option]) => [
+          k,
+          expected.find((e) => verdicts.get(e)?.includes(option)) ?? null,
+        ]),
       );
     }
     if (request.promptVersion === suggestionPrompt.id) {

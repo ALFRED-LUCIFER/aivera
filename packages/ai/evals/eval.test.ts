@@ -31,6 +31,7 @@ import {
   loadJudgeCases,
   type EvidenceJudgeCase,
   type GoldenCase,
+  type MatchJudgeCase,
   type SuggestionJudgeCase,
 } from './golden.ts';
 import {
@@ -40,6 +41,7 @@ import {
   judgePrompt,
   liveJudge,
   liveJudgeVerdict,
+  liveMatch,
   liveSuggestionJudge,
   promptOf,
   recordedAnswer,
@@ -47,6 +49,7 @@ import {
   recordedJudgeVerdict,
   recordedMatcher,
   recordedSuggestionJudge,
+  matchPrompt,
   suggestionPrompt,
   summaryTable,
   type Answer,
@@ -72,6 +75,10 @@ const groupOf = (report: Awaited<ReturnType<typeof run>>, label: string) =>
 /** The live judge on the fake provider, answering with a fixed completion. */
 const judgeWith = (completion: string) =>
   liveJudge(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
+const matchWith = (completion: string) =>
+  liveMatch(createAiClient({ provider: fakeProvider({ completion }), budget: memoryTokenBudget() }));
+/** For a judge test that grades no matcher case. */
+const noMatch = async () => ({});
 
 // Each case spawns the CLI (tsx compiles on start): seconds on a busy CI runner, well past Vitest's 5 s default.
 const cliTimeout = 60_000;
@@ -1136,6 +1143,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
           '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":true,"reason":"fine"}',
         ),
         recordedSuggestionJudge,
+        noMatch,
       ),
     );
     expect(lenient.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual([
@@ -1157,6 +1165,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
           '{"checks":[{"item":"a limit","sourceSays":"a quote","meetsRubric":true}],"pass":false,"reason":"no"}',
         ),
         recordedSuggestionJudge,
+        noMatch,
       ),
     );
     expect(strict.cases.filter((c) => !c.passed).map((c) => c.id)).toEqual(['good']);
@@ -1335,14 +1344,14 @@ describe('Feature: The live eval scores drafted competency suggestions by what t
 // Feature: The suggestion judge is re-graded live on its golden good and bad cases (AIV-P2-088). Synthetic data only.
 describe('Feature: The suggestion judge is re-graded live on its golden good and bad cases', () => {
   const judgeCases = loadJudgeCases(import.meta.dirname, golden);
-  const suggestionCases = judgeCases.filter((c): c is SuggestionJudgeCase => 'judge' in c);
+  const suggestionCases = judgeCases.filter((c): c is SuggestionJudgeCase => 'judge' in c && c.judge === 'suggestion');
   const proxyCase = suggestionCases.filter((c) => c.id === 'suggestion-proxy');
   /** The proxy case graded by the live suggestion judge on a model that answers these verdicts. */
   const graded = (verdicts: unknown[]) =>
-    evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts }))));
+    evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch));
 
   it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
-    expect(judgeCases.length).toBe(suggestionCases.length + 4); // the four evidence judge cases
+    expect(judgeCases.length).toBe(suggestionCases.length + 4 + 3); // four evidence and three matcher judge cases
     expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
       ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
       ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
@@ -1402,7 +1411,7 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
       (
         await evaluateJudge(
           noCitation,
-          liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts }))),
+          liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch),
         )
       ).cases[0];
     const cited = judged('Arabic and right-to-left design');
@@ -1695,5 +1704,81 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
     expect(report.passed).toBe(false);
     expect(report.rates.safety).toBe(0);
     expect(summarySchemaOf(omar).safeParse(fromNerves).success).toBe(false);
+  });
+});
+
+// Feature: The live eval judges reworded competency names by meaning (AIV-P1-142). Synthetic data only.
+describe('Feature: The live eval judges reworded competency names by meaning, with margin over the gate', () => {
+  const matchCases = loadJudgeCases(import.meta.dirname, golden).filter(
+    (c): c is MatchJudgeCase => 'judge' in c && c.judge === 'match',
+  );
+  const misses = [
+    { expected: 'Incident response', candidates: ['Monitoring', 'On-call incident handling'] },
+    { expected: 'Observability', candidates: ['Monitoring', 'On-call incident handling'] },
+  ];
+
+  // SAFETY: mutation check: the `verdicts[miss.expected] === null` guard removed from liveMatch -> this test failed
+  // SAFETY: mutation check: the `m.candidates.includes(option)` check removed from liveMatch -> this test failed
+  // SAFETY: mutation check: sameText replaced by === in liveMatch -> this test failed
+  it('gives each option once, to the miss it names that offered it, and every other miss null', async () => {
+    // Options in order: Monitoring, On-call incident handling, Pager rota. o0 names Incident response bar case, o1 names it
+    // again (it already has one), o2 names Observability, which never offered Pager rota.
+    const match = matchWith(JSON.stringify({ o0: 'incident response', o1: 'Incident response', o2: 'Observability' }));
+    expect(await match([...misses, { expected: 'Paging', candidates: ['Pager rota'] }])).toEqual({
+      'Incident response': 'Monitoring',
+      Observability: null,
+      Paging: null,
+    });
+  });
+
+  it('Scenario Outline: The matcher keeps meaning, not similarity (recorded verdicts of the live matcher)', async () => {
+    expect(matchCases.map((c) => [c.id, c.expected])).toEqual([
+      ['match-narrowed-skill', { Observability: 'Dashboard and alert development', 'Infrastructure as code': null }],
+      ['match-related-skill', { 'Incident response': null }],
+      ['match-reworded-skill', { 'Incident response': 'On-call incident handling' }],
+    ]);
+    const report = await evaluateJudge(matchCases, recordedJudgeVerdict);
+    expect(report.cases.map((c) => [c.id, c.passed])).toEqual(matchCases.map((c) => [c.id, true]));
+  });
+
+  // SAFETY: mutation check: the expected-option comparison in evaluateJudge's match branch always passed -> this test failed
+  it('fails a matcher that accepts the related skill, naming positions only', async () => {
+    const related = matchCases.filter((c) => c.id === 'match-related-skill');
+    const report = await evaluateJudge(
+      related,
+      liveJudgeVerdict(recordedJudge, recordedSuggestionJudge, matchWith('{"o0":"Incident response"}')),
+    );
+    expect(report.passed).toBe(false);
+    expect(caseLines(report)).toContain('    expected[0]: expected null, the matcher said options[0]');
+  });
+
+  // SAFETY: mutation check: the prompt id comparison removed from recordedJudgeVerdict.match -> this test failed
+  it('refuses match verdicts recorded with another matcher prompt', async () => {
+    const stale = matchCases.map((c) => ({ ...c, recorded: { ...c.recorded, matchPrompt: 'evals.match@1' } }));
+    const report = await evaluateJudge(stale, recordedJudgeVerdict);
+    expect(report.cases.map((c) => c.error)).toEqual(
+      stale.map(
+        () =>
+          `match verdicts recorded with evals.match@1, code is ${matchPrompt.id}: re-run the judge golden cases live`,
+      ),
+    );
+  });
+
+  it('refuses a matcher case whose expected option is not one of its options', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'match-'));
+    mkdirSync(join(dir, 'judge'));
+    writeFileSync(
+      join(dir, 'judge', 'bad.yaml'),
+      stringify({
+        id: 'bad',
+        judge: 'match',
+        options: ['Monitoring'],
+        expected: { 'Incident response': 'Paging' },
+        recorded: { matchPrompt: matchPrompt.id, verdicts: { 'Incident response': null } },
+      }),
+    );
+    expect(() => loadJudgeCases(dir, new Map())).toThrow(
+      'judge/bad.yaml: every expected option must be one of its options',
+    );
   });
 });

@@ -1,0 +1,11 @@
+# AIV-P1-142: a related but different skill is not the expected one, so the matcher answers null.
+id: match-related-skill
+judge: match
+options:
+  - Monitoring
+expected:
+  Incident response: null
+recorded:
+  matchPrompt: evals.match@2
+  verdicts:
+    Incident response: null
