@@ -10,7 +10,9 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 // reject (AGENTS.md 1.5, 1.6).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every summary. */
-export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@1';
+// @2 (AIV-P2-011 review): a strength states what its excerpt states, in its words; @1 asked what the candidate "built,
+// ran or measured", and its live answer for Arjun Menon called a design and runbook a service he built and ran.
+export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@2';
 
 /** Advance to the next round, or hold while the gap the focus names is closed. Never "reject": thin evidence is a gap. */
 export const RECOMMENDATIONS = ['advance', 'hold'] as const;
@@ -23,18 +25,17 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV): what that excerpt says the candidate built, ran or measured, in its own words, citing the excerpt; it may also',
-  'name the competency the facts say the work backs and cite that line. A strength that cites no excerpt is rejected.',
-  'It ends where the excerpt ends: never add a judgement of size, depth or quality ("strong", "extensive",',
-  '"significant") or what the work demonstrates about the person;',
+  'CV): what that excerpt states, in its words, citing the excerpt; it may also name the competency the facts say the',
+  'work backs and cite that line. A strength that cites no excerpt is rejected. It states nothing the excerpt does not:',
+  'no other activity, role, scale or result, no adjective or adverb of your own about the work or its quality, and',
+  'nothing about the person;',
   'risks: at most two statements on the competencies still resting on claims, short of the need or with no evidence',
   'yet, each citing the facts line or the excerpt it rests on; a claim with nothing to inspect is called a claim;',
   'round1: one statement on what the Round 1 interview notes say the candidate showed, citing those notes, or null',
   'when there are no interview notes;',
   'recommendation: action "advance" when the facts say the work meets the need on at least half of the weight,',
-  'otherwise "hold"; focus, a short phrase without a full stop naming the gap from the facts to probe in the next',
-  'interview or the evidence to request first, such as "probe" followed by that competency, or null; cite the facts',
-  'lines the recommendation rests on.',
+  'otherwise "hold"; focus, a short phrase without a full stop naming the gap from the facts to look into at the next',
+  'interview, or the evidence to request first, or null; cite the facts lines the recommendation rests on.',
   `Each statement is at most ${MAX_STATEMENT_WORDS} words and says only what the sources it cites state. Never call`,
   'anything verified, proven or confirmed: say "independently checked" only where the facts say so.',
   'Never write a number word. A figure (a count, a level, a share of the weight) may appear only copied exactly from a',

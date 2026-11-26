@@ -55,17 +55,18 @@ expected:
   judge: >-
     Each strength says only what the excerpt of work it cites shows, with no judgement of size, depth or quality: a
     strength that adds work, a role, a team or a result its excerpt does not state fails, and a figure in it is copied
-    from that excerpt. Each risk is a competency the facts source says is short of the need or has no evidence yet. The
+    from that excerpt. The KYC document reader excerpt names a service design and an on-call runbook, not that the
+    candidate built, ran or shipped the reader: a strength saying so fails. Each risk is a competency the facts source says is short of the need or has no evidence yet. The
     Round 1 finding says only what the interview note states, including that the candidate could not give figures for
     cost per request if it mentions cost. The recommendation is to hold, as the facts say the work meets the need on
     only 40% of the weight, and its focus, if any, names a gap from the facts to close, never a reason to reject. No
     statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
-  promptVersion: decisions.summariseMember@1
-  promptHash: 36f50f25bf0c
+  promptVersion: decisions.summariseMember@2
+  promptHash: a9c6a40bf79e
   output:
     strengths:
-      - text: The candidate maintains an open-source queue library, with 1,840 of 2,100 commits since 2022, showing Python services work.
+      - text: The candidate maintains an open-source queue library with 1,840 of 2,100 commits since 2022, showing Python services work at level 5.
         citations:
           - sourceId: S2
             quote: maintains an open-source queue library, with 1,840 of 2,100 commits since 2022
@@ -76,7 +77,7 @@ recorded:
             start: 285
             end: 398
         claim: false
-      - text: The candidate built and ran a production KYC document reader service with design and on-call runbook.
+      - text: The candidate submitted service design and on-call runbook for a production KYC document reader, showing LLM systems in production at level 4.
         citations:
           - sourceId: S3
             quote: service design and on-call runbook for a production KYC document reader
@@ -88,14 +89,14 @@ recorded:
             end: 174
         claim: false
     risks:
-      - text: Retrieval and evaluation competency is short of the need at level 2, below required level 4.
+      - text: Retrieval and evaluation work shows level 2, short of the needed level 4.
         citations:
           - sourceId: S1
             quote: 'Retrieval and evaluation, 20% of the weight, needs level 4: submitted work shows level 2, short of the need'
             start: 176
             end: 283
         claim: false
-      - text: Cost and reliability competency is short of the need at level 2, below required level 3.
+      - text: Cost and reliability work shows level 2, short of the needed level 3.
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: submitted work shows level 2, short of the need'
@@ -103,7 +104,7 @@ recorded:
             end: 503
         claim: false
     round1:
-      text: Candidate explained the queue library's back-pressure design in depth but could not give figures for cost per request.
+      text: The candidate explained the queue library's back-pressure design in depth but could not give figures for cost per request.
       citations:
         - sourceId: S5
           quote: explained the queue library's back-pressure design in depth; he could not give figures for cost per request
@@ -112,13 +113,21 @@ recorded:
       claim: false
     recommendation:
       action: hold
-      focus: probe product judgement and Arabic and bilingual NLP
+      focus: Product judgement and Arabic and bilingual NLP evidence
       citations:
         - sourceId: S1
           quote: Work meets the need on competencies holding 40% of the weight
           start: 0
           end: 61
+        - sourceId: S1
+          quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
+          start: 505
+          end: 573
+        - sourceId: S1
+          quote: 'Arabic and bilingual NLP, 10% of the weight, needs level 3: no evidence yet'
+          start: 575
+          end: 650
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added work, role, team, result, or figure, and all citations are accurate and directly quoted from the sources.
+    reason: Every item is strictly limited to what its cited excerpt states, with no added work, role, team, or result, and all figures are copied from the excerpts.
