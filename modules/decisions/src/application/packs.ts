@@ -106,6 +106,8 @@ export type PackView = DecisionPack & {
   members: PackMember[];
   decisions: Decision[];
   summaries: StoredMemberSummary[];
+  /** Whether the reader may record the pack's decisions (`mayDecide`), so the page shows the controls read-only otherwise. */
+  mayDecide: boolean;
 };
 
 export function packUseCases(ports: Ports) {
@@ -224,6 +226,7 @@ export function packUseCases(ports: Ports) {
         members: await store.listMembers(ctx.workspaceId, packId),
         decisions: await store.listDecisions(ctx.workspaceId, packId),
         summaries: await store.listSummaries(ctx.workspaceId, packId),
+        mayDecide: mayDecide(ctx, found.job),
       };
     },
 

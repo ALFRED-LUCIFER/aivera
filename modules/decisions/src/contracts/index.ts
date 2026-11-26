@@ -20,7 +20,7 @@ export type {
   PackView,
   RecordDecisionsInput,
 } from '../application/packs.ts';
-export { NAME_MAX } from '../domain/pack.ts';
+export { DECISIONS, NAME_MAX, NOTE_MAX } from '../domain/pack.ts';
 
 const packEvent = z.strictObject({ packId: z.uuid(), jobId: z.uuid() });
 
@@ -44,8 +44,8 @@ export const PackMembersAddedV1 = {
 
 /**
  * Written once per `recordDecisions`, in its transaction, the same shape as `PackReady.v1`. It carries no decision:
- * the read a system consumer needs is not built (`getPack` is for members with `pack.view`) and belongs to the
- * consumer's ticket. It is not a notification: nothing here contacts a candidate (AGENTS.md 1.5).
+ * its consumer reads them with the composition's `readDecisionsAsSystem`. Intake's consumer moves each decided
+ * candidate's stage (AIV-P2-012). It is not a notification: nothing here contacts a candidate (AGENTS.md 1.5).
  */
 export const DecisionsRecordedV1 = {
   type: 'DecisionsRecorded.v1',
@@ -81,14 +81,15 @@ export interface DecisionsContract {
   /**
    * The pack, its members in order, its decisions and the members' summaries written so far (AIV-P2-011: a member with
    * none is still being prepared; `unavailable` when no usable cited answer came), or null when it does not exist or
-   * its job is hidden from the context. Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.
+   * its job is hidden from the context, and whether the reader may record its decisions (`mayDecide`, AIV-P2-012).
+   * Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.
    */
   getPack(ctx: WorkspaceContext, packId: string): Promise<PackView | null>;
   /**
    * Records one decision with its reason for every member, once: the pack becomes `decided`, one
    * `DecisionsRecorded.v1` is written, and each decision is audited (`decision.recorded`: who, when, why). Only the
    * member named as the job's hiring owner: `ForbiddenError` (HTTP 403) for anyone else, storing nothing. It changes
-   * no stage and contacts no candidate. Throws `PackError` `pack_not_found`, `pack_decided`, `pack_not_ready`,
+   * no stage itself (intake's consumer of the event does, AIV-P2-012) and contacts no candidate. Throws `PackError` `pack_not_found`, `pack_decided`, `pack_not_ready`,
    * `decisions_incomplete` (a member missing, named twice, or a candidate not in the pack).
    */
   recordDecisions(ctx: WorkspaceContext, input: RecordDecisionsInput): Promise<void>;

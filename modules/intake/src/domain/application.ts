@@ -7,7 +7,8 @@ export type Source = (typeof SOURCES)[number];
 /**
  * Where an application stands. There is no rejected stage: nothing rejects a candidate automatically, and a person
  * who decides against one records it in the decision pack (AIV-P1-114: `interview` once a person chose them for
- * interview; AGENTS.md 1.5).
+ * interview; AGENTS.md 1.5). `round2_shortlist` and `not_advanced` follow the hiring owner's recorded decision
+ * (AIV-P2-012): "Not advanced" stays in the ranking and can join a later pack.
  */
 export const STAGES = [
   'new',
@@ -17,8 +18,22 @@ export const STAGES = [
   'in_process',
   'in_pool',
   'withdrawn',
+  'round2_shortlist',
+  'not_advanced',
 ] as const;
 export type Stage = (typeof STAGES)[number];
+
+/** A hiring owner's recorded decision on a decision pack, as `DecisionsRecorded.v1`'s consumer reads it (AIV-P2-012). */
+export type RecordedDecision = {
+  candidateId: string;
+  decision: 'advance' | 'hold' | 'do_not_advance';
+  decidedBy: string;
+  note: string;
+};
+
+/** The stage a recorded decision moves an application to; `hold` keeps the stage it has. */
+export const stageAfter = (decision: RecordedDecision['decision']): Stage | null =>
+  decision === 'advance' ? 'round2_shortlist' : decision === 'do_not_advance' ? 'not_advanced' : null;
 
 /** The longest reason a recruiter may give for choosing people for interview (AIV-P1-114). */
 export const CHOICE_REASON_MAX = 500;

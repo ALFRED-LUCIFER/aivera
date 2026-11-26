@@ -82,13 +82,16 @@ async function withPack<T>(
       const header = await getJobs().getJobHeader(ctx, jobId);
       const applicants = await getIntake().listApplicationsForJob(ctx, jobId);
       const names = new Map(applicants.map((a) => [a.personId, a.displayName] as const));
-      // The workspace members who added someone, shown as the job header shows its hiring owner.
+      // The workspace members who added someone or recorded the decisions, shown as the job header shows its hiring owner.
+      const decidedBy = pack.decisions[0]?.decidedBy;
       const adders = new Map(
         await Promise.all(
-          [...new Set(pack.members.flatMap((m) => m.addedBy ?? []))].map(async (userId) => {
-            const user = await getIdentity().getUser(userId);
-            return [userId, user ? (user.displayName ?? user.email) : null] as const;
-          }),
+          [...new Set([...pack.members.flatMap((m) => m.addedBy ?? []), ...(decidedBy ? [decidedBy] : [])])].map(
+            async (userId) => {
+              const user = await getIdentity().getUser(userId);
+              return [userId, user ? (user.displayName ?? user.email) : null] as const;
+            },
+          ),
         ),
       );
       // Every member's snapshot is on the pack's rubric version; once another is approved its competencies have no names.
@@ -97,6 +100,7 @@ async function withPack<T>(
       const onPack = rubric?.id === pack.rubricVersionId && header?.approved?.id === rubric.id ? rubric : null;
       const competencies = new Map(onPack?.competencies.map((c) => [c.id, c.name] as const) ?? []);
       const summaries = new Map(pack.summaries.map((s) => [s.candidateId, s] as const));
+      const decisions = new Map(pack.decisions.map((d) => [d.candidateId, d.decision] as const));
       const members: PackPage['members'] = [];
       for (const m of pack.members) {
         const by = m.addedBy && adders.get(m.addedBy);
@@ -107,6 +111,7 @@ async function withPack<T>(
           upperBound: m.upperBound,
           added: by && m.addedAt ? { by, at: m.addedAt } : null,
           summary: await cardOf(ctx, jobId, m, summaries.get(m.candidateId), competencies),
+          decision: decisions.get(m.candidateId) ?? null,
         });
       }
       return read(ctx, {
@@ -122,6 +127,11 @@ async function withPack<T>(
         },
         members,
         others: new Set(applicants.map((a) => a.personId)).size - pack.members.length,
+        mayDecide: pack.mayDecide,
+        // One record decides the whole pack: every decision has the same author and time.
+        decided: pack.decisions[0]
+          ? { by: (decidedBy && adders.get(decidedBy)) ?? null, at: pack.decisions[0].decidedAt }
+          : null,
       });
     });
     return result ? result.value : null;

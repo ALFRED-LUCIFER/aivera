@@ -4,11 +4,13 @@ import { useTranslations } from '@credalent/i18n/react';
 import { Button, Card, ScoreWithUncertainty, Skeleton, ValueBasis, buttonClassName } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { evidenceAnchor, profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { packHref } from '@/features/ranking/domain/pack.ts';
-import type { DecisionPackView, PackPage } from '../domain/pack.ts';
+import type { DecisionPackView, PackPage, RecordView } from '../domain/pack.ts';
 import { Needs, SummaryText } from './CardSummary.tsx';
+import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 
 // AIV-P2-010, AIV-P2-011: the decision pack, from the Pack artboard (docs/01-design/artboards/Pack.dc.html). Ported:
 // the pack's name, "prepared <date> · rubric vN", "What the role needs" and "Competencies and weights", one card per
@@ -26,8 +28,7 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;
 // - the recommendation reads "advance" or "hold", with the focus the model gives ("probe product judgement"); "hold"
 //   is not on the artboard, which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
-// - no decision buttons ("Advance to Round 2", "Hold", "Do not advance"), "Record the decision", "Record decisions" or
-//   the decision emails: recording decisions is AIV-P2-012 (#126), so no decision option is shown, let alone chosen;
+// - the decision choices and "Record the decision" (AIV-P2-012) are in RecordDecisions.tsx, with their deviations;
 // - no "Open comparison" (AIV-P1-047, #111);
 // - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded
 //   preview inside Credalent; sharing it is AIV-P2-013 (#127);
@@ -35,7 +36,8 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 // - no "Decision packs" sidebar count: that item waits behind its flag for the packs list (AIV-P2-E02, #19);
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142).
 
-export function DecisionPack({ view }: { view: DecisionPackView }) {
+/** `record`: the hiring owner's choices and "Record decisions" (AIV-P2-012); without it the choices are read-only. */
+export function DecisionPack({ view, record }: { view: DecisionPackView; record?: RecordView }) {
   const t = useTranslations();
   if (view.status === 'loading')
     return (
@@ -52,11 +54,13 @@ export function DecisionPack({ view }: { view: DecisionPackView }) {
         <Button onClick={view.onRetry}>{t('ranking.retry')}</Button>
       </div>
     );
-  return <Pack pack={view.pack} />;
+  return <Pack pack={view.pack} record={record} />;
 }
 
-function Pack({ pack }: { pack: PackPage }) {
+function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined }) {
   const t = useTranslations();
+  const nameOf = (m: PackPage['members'][number]) => m.name ?? t('ranking.unnamed');
+  const readOnly = pack.decided !== null || !pack.mayDecide;
   return (
     <section aria-labelledby="pack-title" className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -96,8 +100,13 @@ function Pack({ pack }: { pack: PackPage }) {
       {pack.members.length === 0 ? (
         <p className="text-body text-text">{t('decisionPack.empty')}</p>
       ) : (
-        pack.members.map((m) => <Member key={m.candidateId} jobId={pack.jobId} member={m} />)
+        pack.members.map((m) => (
+          <Member key={m.candidateId} jobId={pack.jobId} member={m}>
+            <DecisionChoice member={m} name={nameOf(m)} record={record} readOnly={readOnly} />
+          </Member>
+        ))
       )}
+      {pack.members.length > 0 && <RecordSection pack={pack} record={record} nameOf={nameOf} />}
       <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
         <ValueBasis basis="observed" label={t('ranking.observed')} />
         {t('decisionPack.basis')}
@@ -116,7 +125,15 @@ function Pack({ pack }: { pack: PackPage }) {
   );
 }
 
-function Member({ jobId, member: m }: { jobId: string; member: PackPage['members'][number] }) {
+function Member({
+  jobId,
+  member: m,
+  children,
+}: {
+  jobId: string;
+  member: PackPage['members'][number];
+  children: ReactNode;
+}) {
   const t = useTranslations();
   const titleId = `member-${m.candidateId}`;
   const profile = profileHref(m.candidateId, jobId);
@@ -168,6 +185,7 @@ function Member({ jobId, member: m }: { jobId: string; member: PackPage['members
               />
             </>
           )}
+          {children}
         </div>
       </Card>
     </section>

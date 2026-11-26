@@ -314,8 +314,16 @@ describe('getPack', () => {
       members: [member(SARA, 0)],
       decisions: [],
       summaries: [sara],
+      mayDecide: true,
     });
     expect(ports.authorize).toHaveBeenCalledWith(ctxAs('hiring_owner', FAISAL), 'pack.view', JOB);
+  });
+
+  // AIV-P2-012: the page shows the decision controls read-only to anyone who may not record them.
+  it('says only the hiring owner named on the job may decide: not a recruiter, nor an admin', async () => {
+    const { useCases } = setup();
+    expect((await useCases.getPack(ctxAs('recruiter'), PACK))?.mayDecide).toBe(false);
+    expect((await useCases.getPack(ctxAs('admin', ALEX), PACK))?.mayDecide).toBe(false);
   });
 
   // SAFETY: mutation check: made visible() ignore a null job -> this test failed (pack returned)

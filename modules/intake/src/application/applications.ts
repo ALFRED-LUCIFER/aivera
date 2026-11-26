@@ -22,6 +22,8 @@ export type IntakeStore = {
   /** The batch of any source of the application (links added later inherit it), or null when none has one. */
   batchOfApplication(workspaceId: string, applicationId: string): Promise<string | null>;
   findApplication(workspaceId: string, applicationId: string): Promise<Application | null>;
+  /** The person's application for the job, or null (one per person and job). */
+  findForPersonAndJob(workspaceId: string, personId: string, jobId: string): Promise<Application | null>;
   /** Moves the stage only while it is still `from`, so two concurrent moves cannot both apply. */
   moveStage(workspaceId: string, applicationId: string, from: Stage, to: Stage): Promise<boolean>;
   /** An arrival with its application's person, or null when the workspace has no such source. */

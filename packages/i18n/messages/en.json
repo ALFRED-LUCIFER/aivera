@@ -1775,6 +1775,37 @@
       "noRisks": "Every competency meets the job's need on inspected evidence.",
       "round1": "Round 1 finding",
       "poweredBy": "Powered by Credalent"
+    },
+    "record": {
+      "title": "Record the decision",
+      "lead": "You are deciding as the authorised hiring owner. Recording a decision updates stages in Credalent only. No candidate is contacted until you send a message yourself.",
+      "legend": "Your decision for {name}",
+      "options": {
+        "advance": "Advance to Round 2",
+        "hold": "Hold",
+        "do_not_advance": "Do not advance"
+      },
+      "choose": "Choose a decision for {name}",
+      "submit": "Record decisions",
+      "onlyOwner": "Only the hiring owner can record decisions.",
+      "done": "Decisions recorded by you on {date, date, ::d MMM yyyy} and added to the audit trail.",
+      "recorded": "Decisions recorded by {name} on {date, date, ::d MMM yyyy} and added to the audit trail.",
+      "recordedUnknown": "Decisions recorded on {date, date, ::d MMM yyyy} and added to the audit trail.",
+      "schedule": "Schedule Round 2 interviews",
+      "preview": {
+        "title": "{count, plural, one {Preview: record # decision} other {Preview: record # decisions}}",
+        "stage": "{decision}. The stage becomes {stage}.",
+        "hold": "Hold. The stage stays as it is.",
+        "reason": "Reason, recorded in the audit trail with each decision",
+        "reasonRequired": "Give a reason for these decisions",
+        "consequence": "Stages change in Credalent only. No candidate is contacted, and everyone else stays in the ranking.",
+        "confirm": "{count, plural, one {Record # decision} other {Record # decisions}}",
+        "pending": "Recording…",
+        "cancel": "Cancel",
+        "footer": "Nothing changes until you confirm.",
+        "failed": "That did not go through. Nothing was recorded. Try again.",
+        "decided": "The decisions on this pack are already recorded. Nothing was changed."
+      }
     }
   },
   "ranking": {
@@ -1844,7 +1875,9 @@
       "interview": "Chosen for interview",
       "in_process": "In process",
       "in_pool": "In talent pool",
-      "withdrawn": "Withdrawn"
+      "withdrawn": "Withdrawn",
+      "round2_shortlist": "Round 2 shortlist",
+      "not_advanced": "Not advanced"
     },
     "meetsNeed": "{meets} of {count}",
     "confidence": {
