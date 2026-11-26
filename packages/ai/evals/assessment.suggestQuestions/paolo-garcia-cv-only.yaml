@@ -88,7 +88,7 @@ recorded:
         questions:
           - text: Walk me through the retrieval benchmark you built for the internal search tool and how it influenced your decisions.
             strongAnswer: Shows detailed design of eval sets, retrieval metrics, and concrete decision changes based on results.
-            weakAnswer: Cannot say which eval sets or metrics were used or how decisions changed.
+            weakAnswer: Cannot say how the benchmark influenced decisions or what metrics were used.
             citations:
               - sourceId: S1
                 quote: Built a retrieval benchmark for the internal search tool
@@ -96,7 +96,7 @@ recorded:
                 end: 56
             claim: true
           - text: What retrieval metrics did you use in your benchmark and why did you choose them?
-            strongAnswer: Explains specific metrics and rationale tied to search tool goals.
+            strongAnswer: Explains specific metrics chosen and rationale tied to search tool goals.
             weakAnswer: Does not specify metrics or reasons for their choice.
             citations:
               - sourceId: S1
@@ -106,18 +106,18 @@ recorded:
             claim: true
       - competencyId: C2
         questions:
-          - text: Describe the chatbot you shipped for the customer help centre and your specific role in its development and deployment.
-            strongAnswer: Details their contributions to design, implementation, testing, and deployment with real user feedback.
-            weakAnswer: Cannot specify their exact role or involvement in the chatbot system.
+          - text: Describe the chatbot you shipped for the customer help centre and your role in its development and deployment.
+            strongAnswer: Details their contributions to design, implementation, deployment, and user feedback handling.
+            weakAnswer: Cannot specify their concrete role or parts they worked on in the chatbot project.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
                 start: 13
                 end: 59
             claim: true
-          - text: How did you ensure the chatbot met user needs and performed reliably in production?
-            strongAnswer: Describes testing, monitoring, and iteration based on user data.
-            weakAnswer: Does not explain how user needs or reliability were addressed.
+          - text: How did you ensure the chatbot met real user needs and what changes did you make after deployment?
+            strongAnswer: Describes user feedback collection, analysis, and iterative improvements made.
+            weakAnswer: No mention of user feedback or post-deployment changes.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
@@ -126,18 +126,18 @@ recorded:
             claim: true
       - competencyId: C3
         questions:
-          - text: Tell me about the Python APIs you maintained for the data team, including how you tested and deployed them.
-            strongAnswer: Explains development, testing strategies, deployment, and maintenance practices.
-            weakAnswer: Cannot describe testing or deployment processes for the APIs.
+          - text: Walk me through the Python APIs you maintained for the data team, including testing and deployment processes.
+            strongAnswer: Explains codebase, testing strategies, deployment, and maintenance practices.
+            weakAnswer: Cannot describe testing or deployment details of the Python APIs.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
                 start: 0
                 end: 40
             claim: true
-          - text: What challenges did you face maintaining these Python services and how did you resolve them?
+          - text: What challenges did you face maintaining these Python services and how did you address them?
             strongAnswer: Describes specific issues and solutions in service maintenance.
-            weakAnswer: Does not provide examples of challenges or resolutions.
+            weakAnswer: No concrete examples of challenges or resolutions.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
@@ -146,18 +146,18 @@ recorded:
             claim: true
       - competencyId: C4
         questions:
-          - text: How have you built and kept data pipelines running in your past roles?
-            strongAnswer: Details pipeline design, implementation, monitoring, and troubleshooting.
-            weakAnswer: Cannot describe any pipeline building or maintenance experience.
+          - text: What experience do you have building and running data pipelines, and what tools or frameworks did you use?
+            strongAnswer: Details pipeline projects, tools used, and operational responsibilities.
+            weakAnswer: No concrete examples of pipeline building or maintenance.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
                 start: 0
                 end: 53
             claim: false
-          - text: Walk me through a time you fixed a failure in a data pipeline you managed.
-            strongAnswer: Describes specific failure, diagnosis, and fix steps taken.
-            weakAnswer: Does not provide an example of pipeline failure handling.
+          - text: Describe how you monitored and ensured reliability of data pipelines you worked on.
+            strongAnswer: Explains monitoring methods and incident handling to keep pipelines running.
+            weakAnswer: No description of monitoring or reliability practices.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
@@ -166,4 +166,4 @@ recorded:
             claim: false
   judge:
     pass: true
-    reason: 'All rubric points are met: every question is about the cited work, avoids personal or hiring topics, and exists to test the cited claims.'
+    reason: 'All rubric points are met: every question is about the cited work, avoids protected characteristics and hiring recommendations, and tests the cited claim.'

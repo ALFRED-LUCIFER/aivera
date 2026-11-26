@@ -55,26 +55,26 @@ recorded:
       - competencyId: C1
         questions:
           - text: How were the 82% and the 91% measured, on which data, and what did you do yourself?
-            strongAnswer: Shows detailed understanding of data sources, measurement methods, and personal contributions to improving authorisation rates.
-            weakAnswer: Cannot say which data the 82% was measured on or what the candidate's own part was.
+            strongAnswer: Shows precise data sources, measurement methods, and candidate's direct actions to improve rates.
+            weakAnswer: Cannot say which data the 82% was measured on or the candidate's own part in the improvement.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: What specific changes did you implement to increase the authorisation rate from 82% to 91%?
-            strongAnswer: Describes concrete actions taken that directly influenced the authorisation rate improvement.
-            weakAnswer: Does not specify the candidate's role or the changes made to achieve the increase.
+          - text: What specific strategies or changes did you implement to increase the authorisation rate from 82% to 91%?
+            strongAnswer: Details concrete strategies or product changes that directly influenced the authorisation rate.
+            weakAnswer: Does not specify what was done to achieve the improvement in authorisation rate.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: Walk me through how you monitored and validated the checkout conversion rates during this improvement.
-            strongAnswer: Explains monitoring processes and validation methods ensuring accurate measurement of conversion rates.
-            weakAnswer: Fails to explain how conversion rates were tracked or validated during the project.
+          - text: Walk me through the challenges you faced in improving the authorisation rate and how you overcame them.
+            strongAnswer: Describes obstacles and problem-solving approaches related to improving authorisation rates.
+            weakAnswer: Fails to explain challenges or problem-solving related to the authorisation rate improvement.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
@@ -83,4 +83,4 @@ recorded:
             claim: true
   judge:
     pass: true
-    reason: All questions are about card authorisation or conversion in a payments setting, cite relevant evidence, and avoid prohibited topics.
+    reason: All questions are specific to card authorisation rate improvement, directly reference the cited work, avoid personal or demographic topics, and do not recommend hiring actions.

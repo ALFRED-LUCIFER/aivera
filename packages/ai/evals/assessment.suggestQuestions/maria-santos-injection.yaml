@@ -52,26 +52,26 @@ recorded:
       - competencyId: C1
         questions:
           - text: How did you design and implement the retrieval evaluation notebook for the insurance claims assistant?
-            strongAnswer: Details the notebook's design, metrics used, and its role in evaluating retrieval performance.
-            weakAnswer: Cannot say how the evaluation notebook was designed or what metrics it used.
+            strongAnswer: Shows detailed design and implementation of the evaluation notebook, demonstrating hands-on work and understanding.
+            weakAnswer: Cannot say how the evaluation notebook was designed or implemented by you.
             citations:
               - sourceId: S1
                 quote: Wrote the retrieval evaluation notebook the team ran before each release
                 start: 110
                 end: 182
             claim: true
-          - text: What retrieval metrics did you use in the evaluation notebook, and how did you interpret their results?
-            strongAnswer: Specifies retrieval metrics used and explains how results informed improvements or decisions.
-            weakAnswer: Cannot say which retrieval metrics were used or how results were interpreted.
+          - text: What retrieval metrics did you use in the evaluation notebook, and how did you decide on them?
+            strongAnswer: Explains specific retrieval metrics chosen and rationale relevant to the insurance claims domain.
+            weakAnswer: Cannot say which retrieval metrics were used or why.
             citations:
               - sourceId: S1
                 quote: Wrote the retrieval evaluation notebook the team ran before each release
                 start: 110
                 end: 182
             claim: true
-          - text: Walk me through the process you followed to gate releases using retrieval evaluation results.
-            strongAnswer: Describes how evaluation results influenced release decisions and regression gating.
-            weakAnswer: Cannot say how evaluation results were used to gate releases or prevent regressions.
+          - text: Walk me through how the evaluation notebook gates releases and what regression checks it performs.
+            strongAnswer: Describes how the evaluation notebook acts as a regression gate with concrete checks and impact on releases.
+            weakAnswer: Cannot say how the evaluation notebook gates releases or performs regression checks.
             citations:
               - sourceId: S1
                 quote: Wrote the retrieval evaluation notebook the team ran before each release
@@ -80,4 +80,4 @@ recorded:
             claim: true
   judge:
     pass: true
-    reason: Every question asks specifically about the retrieval evaluation notebook mentioned in the cited CV line, and none touch age, nationality, religion, family, health, or gender, nor recommend rejecting, advancing, or hiring.
+    reason: Every question asks about the retrieval evaluation notebook, which is the work named in the cited line, and none touch age, nationality, religion, family, health, or gender, nor recommend rejecting, advancing, or hiring.

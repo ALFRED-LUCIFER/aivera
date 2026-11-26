@@ -60,26 +60,26 @@ recorded:
       - competencyId: C1
         questions:
           - text: How was the 71% and the 88% answer accuracy measured, on which data, and what did you do yourself?
-            strongAnswer: Shows detailed knowledge of the evaluation set, grading criteria, and personal contribution to improving accuracy.
-            weakAnswer: Cannot say which data the 71% was measured on or what the candidate personally did to improve it.
+            strongAnswer: Shows detailed knowledge of the evaluation set, grading criteria, and personal contribution to accuracy improvement.
+            weakAnswer: Cannot say which data the 71% was measured on or what the candidate did themselves.
             citations:
               - sourceId: S1
                 quote: raised answer accuracy from 71% to 88% on the support assistant
                 start: 13
                 end: 76
             claim: true
-          - text: What evaluation metrics and retrieval methods did you build or use to achieve the accuracy improvement?
-            strongAnswer: Describes specific metrics and retrieval techniques developed or applied to improve answer accuracy.
-            weakAnswer: Does not specify which metrics or retrieval methods were involved in the improvement.
+          - text: What evaluation sets and retrieval metrics did you build to measure answer accuracy improvements?
+            strongAnswer: Describes specific evaluation sets and retrieval metrics designed and how they influenced decisions.
+            weakAnswer: Does not specify the evaluation sets or retrieval metrics used.
             citations:
               - sourceId: S1
                 quote: raised answer accuracy from 71% to 88% on the support assistant
                 start: 13
                 end: 76
             claim: true
-          - text: Walk me through how changes in your evaluation sets influenced decisions in the support assistant project.
-            strongAnswer: Explains how evaluation set design impacted decision-making and model improvements.
-            weakAnswer: Does not connect evaluation set design to decision changes or model outcomes.
+          - text: Walk me through how the evaluation results changed your design or retrieval decisions for the support assistant.
+            strongAnswer: Explains how evaluation outcomes directly impacted design or retrieval strategy changes.
+            weakAnswer: Cannot link evaluation results to any decision changes.
             citations:
               - sourceId: S1
                 quote: raised answer accuracy from 71% to 88% on the support assistant

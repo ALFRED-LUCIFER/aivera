@@ -66,18 +66,18 @@ recorded:
     gaps:
       - competencyId: C1
         questions:
-          - text: How was the 40% cost reduction on the merchant assistant measured, what data was used, and what was your specific role in achieving it?
-            strongAnswer: Shows understanding of cost metrics, data sources, and personal contribution to cost reduction.
-            weakAnswer: Cannot say how the 40% was measured, on which data, or what you did yourself.
+          - text: How was the 40% cost reduction measured, on which data, and what did you do yourself?
+            strongAnswer: Shows clear data sources, measurement methods, and personal contributions to cost reduction.
+            weakAnswer: Cannot say which data the 40% was measured on or the candidate's own part.
             citations:
               - sourceId: S1
                 quote: Cut cost per request by 40% on the merchant assistant
                 start: 0
                 end: 53
             claim: true
-          - text: What reliability or latency metrics did you track before and after your changes, and how did you ensure they met the required standards?
-            strongAnswer: Demonstrates knowledge of latency or reliability metrics and methods to maintain or improve them.
-            weakAnswer: Does not specify which latency or reliability metrics were tracked or how they were managed.
+          - text: What reliability or latency metrics did you track before and after your changes, and how did you improve them?
+            strongAnswer: Describes specific metrics, baseline and improved values, and actions taken to enhance reliability or latency.
+            weakAnswer: Does not specify metrics or personal role in improving reliability or latency.
             citations:
               - sourceId: S2
                 quote: 'fastapi-ml-serve: contract tests on every endpoint'
@@ -86,18 +86,18 @@ recorded:
             claim: false
       - competencyId: C2
         questions:
-          - text: Walk me through how you built the Gulf Arabic evaluation set, including data collection, annotation, and validation processes.
-            strongAnswer: Details the full process of building an Arabic evaluation set with concrete steps and quality controls.
-            weakAnswer: Cannot describe the data collection or validation steps for the Gulf Arabic evaluation set.
+          - text: Walk me through how you built the Gulf Arabic evaluation set and the models you developed using it.
+            strongAnswer: Details data collection, annotation, model design, and evaluation processes for Gulf Arabic NLP.
+            weakAnswer: Cannot describe the evaluation set construction or model development steps.
             citations:
               - sourceId: S3
                 quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
                 start: 0
                 end: 70
             claim: false
-          - text: Describe the bilingual NLP models you developed, including the languages involved and how you evaluated their performance.
-            strongAnswer: Explains model languages, architecture, and evaluation methods with concrete examples.
-            weakAnswer: Does not specify which bilingual models were built or how their performance was evaluated.
+          - text: What challenges did you face in creating bilingual NLP models, and how did you address them?
+            strongAnswer: Explains specific bilingual NLP challenges and solutions implemented.
+            weakAnswer: Does not discuss bilingual NLP challenges or solutions.
             citations:
               - sourceId: S3
                 quote: States they built a Gulf Arabic evaluation set. Nothing to inspect yet
@@ -106,4 +106,4 @@ recorded:
             claim: false
   judge:
     pass: true
-    reason: Every question asks about the work its cited line names, avoids personal or demographic topics, and does not recommend a hiring decision.
+    reason: Every question asks about the work named in its cited line, avoids personal characteristics, and does not recommend a hiring decision.
