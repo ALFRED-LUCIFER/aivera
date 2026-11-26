@@ -625,7 +625,7 @@ describe('Scorecard drafts (AIV-P2-004)', () => {
       tx.execute(sql`update interviews.interview set status = 'completed' where id = ${round1}`),
     );
     await expect(as(LINA, w1, (ctx) => interviews.saveScorecardDraft(ctx, round1, draft()))).rejects.toMatchObject({
-      code: 'scorecard_closed',
+      code: 'scorecard_submitted',
     });
     expect(await as(LINA, w1, (ctx) => interviews.getScorecard(ctx, round1))).toMatchObject({ canEdit: false });
     await withWorkspace(app, w1, (tx) => tx.execute(sql`delete from interviews.interview where id = ${round1}`));

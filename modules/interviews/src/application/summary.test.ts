@@ -102,7 +102,7 @@ function setup(interview = INTERVIEW) {
   const decisions = {
     latestAssessment: vi.fn<DecisionPorts['latestAssessment']>(async () => ({ id: id(90) })),
     previewScoreChange: vi.fn<DecisionPorts['previewScoreChange']>(async () => PREVIEW),
-    applyScoreChange: vi.fn<DecisionPorts['applyScoreChange']>(async () => void calls.push('apply')),
+    applyScoreChange: vi.fn<DecisionPorts['applyScoreChange']>(async () => (calls.push('apply'), { id: 'snapshot' })),
     recordSummaryEvidence: vi.fn<DecisionPorts['recordSummaryEvidence']>(async () => {
       calls.push('evidence');
       return { itemIds: [id(95)] };

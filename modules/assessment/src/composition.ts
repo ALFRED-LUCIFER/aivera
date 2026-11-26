@@ -116,7 +116,6 @@ export function createAssessmentHandlers(config: {
     newId: () => uuidv7(),
     now: config.now ?? (() => new Date()),
   };
-  // shortcut: scorecard.submitted is not consumed: the scorecard submit (AIV-P2-006) adds its handler here.
   return [
     {
       event: EvidenceMappedV1,

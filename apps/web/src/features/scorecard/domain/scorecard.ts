@@ -1,5 +1,6 @@
 import type { Strength } from '@credalent/evidence';
 import {
+  rebuildDraft,
   scorecardDraftSchema,
   scorecardRatingsSchema,
   type Round,
@@ -24,10 +25,42 @@ export const previewInput = z.strictObject({
 });
 export type PreviewRatings = z.infer<typeof previewInput>['ratings'];
 
+/**
+ * What the browser sends to submit (AIV-P2-006): the preview the person saw (null with nothing rated), so the
+ * assessment applies exactly that or refuses. The ratings are the stored draft's, read by the server.
+ */
+export const submitInput = z.strictObject({ interviewId: z.uuid(), previewId: z.string().min(1).max(128).nullable() });
+
+/** How a submit ended, as the form says it. */
+export type SubmitOutcome =
+  | 'updated'
+  | 'unchanged'
+  | 'already'
+  | 'changed'
+  | 'incomplete'
+  | 'notAssessed'
+  | 'rubricChanged'
+  | 'notHeld'
+  | 'closed'
+  | 'failed';
+
+/**
+ * The suggested questions the scorecard shows, by competency: the stored set while it is suggested and the latest
+ * assessment is on the interview's rubric version (`onVersion`), none otherwise (AIV-P1-113). The page and the submit
+ * (AIV-P2-006) both read it, so a mark is judged on the questions shown.
+ */
+export const shownQuestions = <Q>(
+  onVersion: boolean,
+  stored: { status: string; gaps?: readonly { competencyId: string; questions: Q[] }[] } | null,
+): Map<string, Q[]> =>
+  new Map(
+    onVersion && stored?.status === 'suggested' ? (stored.gaps ?? []).map((g) => [g.competencyId, g.questions]) : [],
+  );
+
 type CompetencyState = ScorePreview['changes'][number]['from'];
 
 /** The assessment's preview of the ratings (`previewScorecardRatings`), as far as the panel shows it. */
-export type EffectPreview = Pick<ScorePreview, 'backedScore'> & {
+export type EffectPreview = Pick<ScorePreview, 'backedScore' | 'previewId'> & {
   changes: { competencyId: string; from: CompetencyState; to: CompetencyState }[];
 };
 
@@ -43,7 +76,7 @@ export type EffectLine = {
 /** The panel's states: nothing rated yet, the first preview on its way, not previewable now, or the preview. */
 export type EffectState =
   | { status: 'empty' | 'pending' | 'unavailable' }
-  | { status: 'ready'; lines: EffectLine[]; backedScore: EffectPreview['backedScore'] };
+  | { status: 'ready'; lines: EffectLine[]; backedScore: EffectPreview['backedScore']; previewId: string };
 
 // Strong 4, Medium 3, Supporting 2, Claim only 1, no evidence 0.
 const order = (strength: Strength | null) => (strength ? STRENGTHS.length - STRENGTHS.indexOf(strength) : 0);
@@ -102,6 +135,10 @@ export type ScorecardData = {
   interviewer: string | null;
   /** The candidate's evidence profile for the job, where questions are suggested. */
   profileHref: string;
+  /** The job's ranking, which a submitted scorecard updates. */
+  rankingHref: string;
+  /** The scorecard was submitted: the interview is completed (AIV-P2-006). */
+  submitted: boolean;
   /** The latest assessment on the interview's rubric version: basis "observed". Null: not yet available. */
   assessed: { at: string; backedScore: number } | null;
   competencies: ScorecardCompetency[];
@@ -115,24 +152,11 @@ export type ScorecardData = {
  * shown now with the mark stored for the same words. A competency with no suggested question gets one unnamed entry,
  * the interviewer's own questions, so "Not asked" can still be said of it and it is never rated by default.
  */
-export function startingDraft(
+export const startingDraft = (
   competencies: readonly Pick<ScorecardCompetency, 'competencyId' | 'questions'>[],
   stored: ScorecardDraft | null,
-): ScorecardDraft {
-  return {
-    competencies: competencies.map(({ competencyId, questions }) => {
-      const saved = stored?.competencies.find((c) => c.competencyId === competencyId);
-      const marks = new Map(saved?.questions.map((q) => [q.text, q.mark]));
-      return {
-        competencyId,
-        rating: saved?.rating ?? null,
-        note: saved?.note ?? '',
-        questions: (questions.length > 0 ? questions.map((q) => q.text) : ['']).map((text) => ({
-          text,
-          mark: marks.get(text) ?? null,
-        })),
-      };
-    }),
-    recommendation: stored?.recommendation ?? null,
-  };
-}
+): ScorecardDraft =>
+  rebuildDraft(
+    competencies.map(({ competencyId, questions }) => ({ competencyId, questions: questions.map((q) => q.text) })),
+    stored,
+  );

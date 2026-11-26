@@ -13,8 +13,9 @@ export const STATUSES = ['to_schedule', 'scheduled', 'in_progress', 'scorecard_d
 export type InterviewStatus = (typeof STATUSES)[number];
 
 const MOVES: Record<InterviewStatus, readonly InterviewStatus[]> = {
-  // An unscheduled interview can still be held: the pilot records results without scheduling (#121 adds times).
-  to_schedule: ['scheduled', 'in_progress', 'cancelled'],
+  // An unscheduled interview can still be held: the pilot records results without scheduling (#121 adds times), so its
+  // scorecard can be submitted straight from it (AIV-P2-006).
+  to_schedule: ['scheduled', 'in_progress', 'completed', 'cancelled'],
   scheduled: ['in_progress', 'scorecard_due', 'cancelled'],
   scorecard_due: ['in_progress', 'completed', 'cancelled'],
   in_progress: ['completed'],
@@ -70,8 +71,12 @@ const MESSAGES = {
   competency_not_in_rubric: "This competency is not in the job's approved rubric",
   interviewer_not_on_job: 'The interviewer must be an active member who can see this job.',
   status_move: 'This interview cannot move to that status.',
-  scorecard_closed: 'This interview is completed or cancelled, so its scorecard cannot change.',
+  scorecard_closed: 'This interview is cancelled, so its scorecard cannot change.',
   competency_not_in_interview: 'This competency is not one the interview tests.',
+  // The scorecard submit (AIV-P2-006).
+  scorecard_submitted: 'Already submitted',
+  scorecard_incomplete:
+    'Rate every competency or mark its questions as not tested, and write what you saw or heard for each rating.',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
   // The meeting summary (AIV-P1-115).
   summary_empty: 'Paste the meeting summary first.',

@@ -9,10 +9,11 @@ import { ScorecardClient } from './ScorecardClient.tsx';
 
 // AIV-P2-004: the scorecard form with its controller, the server action and the router faked. Daniel Novak's Round 1
 // on Senior AI Engineer, as the Interview artboard draws it (synthetic cast, personas.md).
-const fake = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn(), preview: vi.fn() }));
+const fake = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn(), preview: vi.fn(), submit: vi.fn(), refresh: vi.fn() }));
 vi.mock('@/features/scorecard/services/saveDraft.ts', () => ({ saveScorecardDraft: fake.save }));
+vi.mock('@/features/scorecard/services/submitScorecard.ts', () => ({ submitScorecard: fake.submit }));
 vi.mock('@/features/scorecard/services/previewEffect.ts', () => ({ previewScorecardRatings: fake.preview }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fake.push, refresh: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fake.push, refresh: fake.refresh }) }));
 vi.mock('@/features/interview-summary/services/summaryActions.ts', () => ({}));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -93,6 +94,8 @@ const data = (over: Partial<ScorecardData> = {}): ScorecardData => ({
   today: true,
   interviewer: null,
   profileHref: '/app/candidates/p-daniel?job=j-ai',
+  rankingHref: '/app/jobs/j-ai/candidates',
+  submitted: false,
   assessed: { at: '2026-11-12T08:00:00.000Z', backedScore: 55 },
   competencies,
   canEdit: true,
@@ -284,27 +287,28 @@ describe('Scenario: Submit needs every competency rated or marked not tested', (
   it('names the competency that is neither rated nor marked, then accepts it once it is', async () => {
     const user = userEvent.setup();
     show();
+    fake.preview.mockResolvedValue(RATED['Clearly shown']);
     await user.click(within(rating('Retrieval and evaluation')).getAllByRole('radio')[2] as HTMLElement);
+    // "Submit scorecard" waits for the preview of the ratings (AIV-P2-006).
+    await within(effectCard()).findByText('Backed score 55 to 67.');
     expect(screen.queryByText(BLOCKED)).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
     expect(within(card('Cost and reliability')).getByRole('alert').textContent).toBe(BLOCKED);
-    expect(within(card('Retrieval and evaluation')).queryByRole('alert')).toBeNull();
+    // Rated, so not blocked; its missing note is said on the note (AIV-P2-006).
+    expect(within(card('Retrieval and evaluation')).queryByText(BLOCKED)).toBeNull();
     expect(rating('Cost and reliability').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.queryByText(/^Your scorecard is complete/)).toBeNull();
 
+    expect(fake.submit).not.toHaveBeenCalled();
     for (const button of within(card('Cost and reliability')).getAllByRole('button', { name: 'Not asked' }))
       await user.click(button);
     expect(screen.queryByText(BLOCKED)).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
-    // It says plainly that nothing was submitted or changed (submitting is AIV-P2-006).
-    expect(
-      screen.getByText(
-        'Your scorecard is complete and saved as a draft. It has not been submitted: the assessment, the stage and the ranking are unchanged.',
-      ),
-    ).toBeTruthy();
-    expect(fake.push).not.toHaveBeenCalled();
   });
 });
+
+// AIV-P2-006: submitting, with the server action faked; the transaction itself is tests/integration.
+const NO_NOTE =
+  'Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes';
+const UPDATED = "Scorecard submitted and logged. Daniel Novak's assessment has been updated.";
 
 describe('Scenario: Recommendation is not a decision', () => {
   it('a recommendation is one field of the draft, beside the line that says who decides', async () => {
@@ -373,6 +377,7 @@ const effectCard = () =>
 const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
 const state = (strength: string | null, provenLevel = 0) => ({ strength, provenLevel });
 const answer = (from: ReturnType<typeof state>, to: ReturnType<typeof state>, score: [number, number]) => ({
+  previewId: `p-${String(to.strength)}`,
   backedScore: { from: score[0], to: score[1] },
   changes: from === to ? [] : [{ competencyId: RETRIEVAL, from, to }],
 });
@@ -503,5 +508,149 @@ describe('a member who may not change the scorecard (AIV-P2-005)', () => {
     expect(screen.queryByRole('heading', { name: 'Effect on the assessment' })).toBeNull();
     await wait(500);
     expect(fake.preview).not.toHaveBeenCalled();
+  });
+});
+
+/** Retrieval rated Clearly shown (previewed), Cost and reliability not tested. */
+async function ready(user: ReturnType<typeof userEvent.setup>, note = NOTE) {
+  fake.preview.mockResolvedValue(RATED['Clearly shown']);
+  show();
+  await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' }));
+  if (note) await user.type(within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard'), note);
+  for (const button of within(card('Cost and reliability')).getAllByRole('button', { name: 'Not asked' }))
+    await user.click(button);
+  await within(effectCard()).findByText('Backed score 55 to 67.');
+}
+
+describe('Scenario: Submitting applies the change', () => {
+  it('saves the draft, submits it with the preview shown, says so with "See the ranking", and re-reads the page', async () => {
+    fake.submit.mockResolvedValue('updated');
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(UPDATED)).toBeTruthy();
+    expect(fake.save).toHaveBeenCalled();
+    // Only the interview and the preview the person saw: the ratings are the saved draft's, and no stage is sent.
+    expect(fake.submit).toHaveBeenCalledWith({ interviewId: data().interviewId, previewId: 'p-medium' });
+    expect(screen.getByRole('link', { name: 'See the ranking' }).getAttribute('href')).toBe(
+      '/app/jobs/j-ai/candidates',
+    );
+    expect(fake.refresh).toHaveBeenCalled();
+  });
+
+  it('a rating with no note blocks the submit and says why, on that note', async () => {
+    const user = userEvent.setup();
+    await ready(user, '');
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    const note = within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard');
+    expect(within(card('Retrieval and evaluation')).getByRole('alert').textContent).toBe(NO_NOTE);
+    expect(note.getAttribute('aria-invalid')).toBe('true');
+    expect(fake.submit).not.toHaveBeenCalled();
+  });
+
+  it('with every competency not tested there is no preview to send', async () => {
+    fake.submit.mockResolvedValue('unchanged');
+    const user = userEvent.setup();
+    show();
+    for (const name of ['Retrieval and evaluation', 'Cost and reliability'])
+      for (const button of within(card(name)).getAllByRole('button', { name: 'Not asked' })) await user.click(button);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText("Scorecard submitted. Daniel Novak's assessment is unchanged.")).toBeTruthy();
+    expect(fake.submit).toHaveBeenCalledWith({ interviewId: data().interviewId, previewId: null });
+  });
+});
+
+const FAILED = 'Not submitted. Your ratings are saved. Try again.';
+
+describe('Scenario: Double submit, and a submit that fails', () => {
+  it('"already" says "Already submitted" as submitted, with the ranking, and Submit stays disabled', async () => {
+    fake.submit.mockResolvedValue('already');
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText('Already submitted')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'See the ranking' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Submit scorecard' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it.each([
+    ['submitted', 'Already submitted'],
+    ['closed', 'Not submitted. This interview was cancelled.'],
+  ] as const)('a draft save refused as %s says "%s", and nothing is submitted', async (saved, text) => {
+    fake.save.mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(text)).toBeTruthy();
+    expect(fake.submit).not.toHaveBeenCalled();
+    expect(fake.refresh).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['failed', FAILED],
+    ['changed', 'The assessment changed since this preview. Check the new preview, then submit again.'],
+    ['notAssessed', 'Not submitted. Daniel Novak has no assessment to change yet.'],
+    ['rubricChanged', "Not submitted. The job's rubric changed after this interview was planned."],
+    ['notHeld', 'Not submitted. This interview has not been held yet.'],
+    ['closed', 'Not submitted. This interview was cancelled.'],
+  ] as const)('"%s" says "%s"', async (outcome, text) => {
+    fake.submit.mockResolvedValue(outcome);
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(text)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'See the ranking' })).toBeNull();
+  });
+
+  it('a submit the network drops says "Not submitted" and keeps the form', async () => {
+    fake.submit.mockRejectedValue(new Error('offline'));
+    const user = userEvent.setup();
+    await ready(user);
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(FAILED)).toBeTruthy();
+    expect(fake.refresh).not.toHaveBeenCalled();
+    expect(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' })).toBeTruthy();
+  });
+});
+
+describe('a submitted scorecard', () => {
+  it('reads as submitted, with no way to change it and a way to the ranking', () => {
+    show({ canEdit: false, submitted: true });
+    expect(screen.getByText('This scorecard is submitted. It can no longer change.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Submit scorecard' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'See the ranking' })).toBeTruthy();
+    // Reopened, not just submitted here: no confirmation is announced again.
+    expect(screen.queryByText('Already submitted')).toBeNull();
+  });
+});
+
+describe('waiting for the preview (AIV-P2-006)', () => {
+  // SAFETY: mutation check: dropped `previewBlock` from the button's disabled -> this test failed (it was enabled).
+  it('with a rating, Submit is disabled and says why until its preview is ready, and while it is unavailable', async () => {
+    const later = Promise.withResolvers();
+    fake.preview.mockReturnValueOnce(later.promise);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' }));
+    const submit = screen.getByRole('button', { name: 'Submit scorecard' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText('Submitting waits for the preview of your ratings.').id).toBe(
+      submit.getAttribute('aria-describedby'),
+    );
+    await waitFor(() => expect(fake.preview).toHaveBeenCalled());
+    await act(async () => later.resolve(null));
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText('Submitting needs the preview of your ratings, which is unavailable now.')).toBeTruthy();
+  });
+});
+
+describe('the note limit', () => {
+  it('a note takes 1,000 characters at most, with its count under it', async () => {
+    const user = userEvent.setup();
+    show();
+    const note = within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard');
+    expect(note.getAttribute('maxlength')).toBe('1000');
+    await user.type(note, 'Built it');
+    expect(within(card('Retrieval and evaluation')).getByText('8 of 1,000 characters')).toBeTruthy();
   });
 });

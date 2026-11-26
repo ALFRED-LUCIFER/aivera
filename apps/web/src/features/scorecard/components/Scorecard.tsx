@@ -3,6 +3,7 @@
 import { useTranslations } from '@credalent/i18n/react';
 import {
   MARKS,
+  NOTE_MAX,
   notAssessed,
   RATINGS,
   RECOMMENDATIONS,
@@ -20,13 +21,14 @@ import {
   RadioGroup,
   SegmentedControl,
   StrengthMeter,
+  SuccessBanner,
   Textarea,
   ValueBasis,
 } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts';
+import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domain/scorecard.ts';
 
 // AIV-P2-004: the Interview artboard (docs/01-design/artboards/Interview.dc.html): breadcrumb, title, subtitle and "Save
 // and close"; the rounds; one card per competency to investigate with its evidence, questions, rating and note; and
@@ -51,10 +53,22 @@ import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts'
 //   its name (AGENTS.md 1.9);
 // - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
 //   its own controller and component, `ScoreEffect`;
-// - "Submit scorecard" checks that every competency is rated or marked as not tested, says which is not, and saves the
-//   draft. It applies nothing, and a line under it and its result say so: submitting, the score change, the
-//   `interview_note` evidence and "Scorecard submitted and logged" are AIV-P2-006 (#120);
-// - no "Audit trail" card: a draft writes no audit entry; the trail comes with the submit (AIV-P2-006);
+// - "Submit scorecard" (AIV-P2-006) first checks that every competency is rated or marked as not tested and that each
+//   rating has a note (kept with it, logged with any change it makes, and the words its evidence cites), saying which is not, and is
+//   disabled while the preview of the current ratings is on its way, so what is applied is what the person saw. Under
+//   "Scorecard submitted and logged" its name is the candidate's full name, not the first name. While the preview of
+//   the ratings is on its way or unavailable a line under the button says why it waits (no preview, no submit,
+//   AGENTS.md 1.5); a submitted scorecard keeps it disabled;
+// - a line under "Submit scorecard" says what submitting does and that the recommendation changes no stage, which
+//   the artboard leaves to the panel above (AGENTS.md 1.5: nothing applies unseen);
+// - the confirmation is the shared SuccessBanner (ok tone, tick and words, a status region) with "See the ranking"
+//   inline, as the artboard's `note note-ok`; the other outcomes ("Not submitted…", "Already submitted") are plain
+//   text in a status region. The ticket's "Your ratings are saved; try again." reads "Your ratings are saved. Try
+//   again.": the catalogue has no semicolons;
+// - a note is at most 1,000 characters, with its count under it: the assessment logs it as the change's reason, which
+//   takes no more;
+// - no "Audit trail" card: the submit's entries are the audit log's (`score.changed`, one per rating), and reading them
+//   back onto this page and the evidence profile ("Interview history and score changes") is AIV-P1-046 (#110);
 // - the draft saves itself a moment after each change, with "Saving your draft…" and "Draft saved…" beside "Save and
 //   close" (the ticket), which is a button that saves and then opens Interviews, not a plain link;
 // - a member who is not the interviewer or an admin, and anyone once the interview is completed or cancelled, reads the
@@ -74,7 +88,10 @@ export type ScorecardHandlers = {
   draft: ScorecardDraft;
   saving: 'idle' | 'saving' | 'saved' | 'failed';
   blocked: string[];
-  complete: boolean;
+  noNote: string[];
+  outcome: SubmitOutcome | 'submitting' | null;
+  /** Why submitting waits: the preview of the ratings now is on its way, or unavailable; null when it is ready. */
+  previewBlock: 'pending' | 'unavailable' | null;
   onRate: (competencyId: string, rating: Rating) => void;
   onNote: (competencyId: string, note: string) => void;
   onMark: (competencyId: string, index: number, mark: Mark) => void;
@@ -108,6 +125,8 @@ const linkIcon = svg(
 );
 
 const INTERVIEWS = '/app/interviews' as Route;
+/** The outcomes after which the scorecard is submitted. */
+const DONE: readonly (SubmitOutcome | 'submitting')[] = ['updated', 'unchanged', 'already'];
 const ROUNDS = ['structured_screen', 'evidence_defence', 'panel'] as const;
 
 export function Scorecard({
@@ -141,6 +160,15 @@ export function Scorecard({
       </>
     );
   const name = view.candidate ?? t('interviews.unnamed');
+  // Just submitted here (announced); `view.submitted` alone is a scorecard reopened after its submit.
+  const done = view.outcome !== null && DONE.includes(view.outcome);
+  const submitted = view.submitted || done;
+  const ranking = (
+    // rankingHref builds the path from an opaque id, which typed routes cannot check.
+    <Link href={view.rankingHref as Route} className="underline underline-offset-2">
+      {t('scorecard.seeRanking')}
+    </Link>
+  );
   const at = view.scheduledAt && new Date(view.scheduledAt);
   const subtitle = [
     view.job,
@@ -175,7 +203,11 @@ export function Scorecard({
             </div>
           )}
         </div>
-        {!view.canEdit && <p className="text-body text-text">{t('scorecard.readOnly')}</p>}
+        {!view.canEdit && (
+          <p className="text-body text-text">
+            {t(view.submitted ? 'scorecard.submittedReadOnly' : 'scorecard.readOnly')}
+          </p>
+        )}
       </div>
       <Rounds view={view} />
       <div className="flex flex-wrap items-start gap-6">
@@ -208,16 +240,38 @@ export function Scorecard({
                   <div>
                     <Button
                       variant={quietSubmit ? 'secondary' : 'primary'}
-                      disabled={view.saving === 'saving'}
+                      disabled={
+                        view.saving === 'saving' ||
+                        view.outcome === 'submitting' ||
+                        submitted ||
+                        view.previewBlock !== null
+                      }
+                      {...(view.previewBlock && { 'aria-describedby': 'submit-waits' })}
                       onClick={view.onSubmit}
                     >
                       {t('scorecard.submit')}
                     </Button>
                   </div>
+                  {view.previewBlock && (
+                    <p id="submit-waits" className="text-meta text-text">
+                      {t(`scorecard.waits.${view.previewBlock}`)}
+                    </p>
+                  )}
                   <p className="text-meta text-text-2">{t('scorecard.submitHelp')}</p>
-                  <output className="text-body text-text">{view.complete ? t('scorecard.complete') : ''}</output>
                 </>
               )}
+              {/* Both stay mounted, outside the editable state the submit ends, so a result is announced. */}
+              <output className="text-body font-medium text-text">
+                {view.outcome && !done && t(`scorecard.outcome.${view.outcome}`, { name })}
+              </output>
+              <SuccessBanner>
+                {done && view.outcome && (
+                  <>
+                    {t(`scorecard.outcome.${view.outcome}`, { name })} {ranking}
+                  </>
+                )}
+              </SuccessBanner>
+              {view.submitted && !done && <div className="text-body">{ranking}</div>}
             </section>
           </Card>
         </div>
@@ -279,6 +333,7 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
   if (!draft) return null;
   const untested = notAssessed(draft);
   const blocked = view.blocked.includes(id);
+  const noNote = view.noNote.includes(id);
   return (
     <Card>
       <section aria-labelledby={`competency-${id}`} className="flex flex-col gap-3.5">
@@ -459,14 +514,24 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
             <Label htmlFor={`note-${id}`}>{t('scorecard.note')}</Label>
             <Textarea
               id={`note-${id}`}
+              aria-invalid={noNote}
+              aria-describedby={noNote ? `no-note-${id} note-count-${id}` : `note-count-${id}`}
               rows={2}
-              maxLength={4000}
+              maxLength={NOTE_MAX}
               className="resize-y"
               placeholder={t('scorecard.notePlaceholder')}
               value={draft.note}
               disabled={!view.canEdit}
               onChange={(event) => view.onNote(id, event.target.value)}
             />
+            <p id={`note-count-${id}`} className="text-meta text-text-2 tabular-nums">
+              {t('scorecard.noteCount', { count: draft.note.length, max: NOTE_MAX })}
+            </p>
+            {noNote && (
+              <p id={`no-note-${id}`} role="alert" className="text-body font-medium text-text">
+                {t('scorecard.addNote')}
+              </p>
+            )}
           </div>
         </div>
       </section>

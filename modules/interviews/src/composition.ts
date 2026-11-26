@@ -25,7 +25,13 @@ import {
   type DecisionPorts,
   type SummaryPorts,
 } from './application/summary.ts';
-import { InterviewScheduledV1, MeetingSummarySubmittedV1, type InterviewsContract } from './contracts/index.ts';
+import { submitUseCases, type SubmitPorts } from './application/submit.ts';
+import {
+  InterviewCompletedV1,
+  InterviewScheduledV1,
+  MeetingSummarySubmittedV1,
+  type InterviewsContract,
+} from './contracts/index.ts';
 import { interviewStore } from './infrastructure/repository.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 import { summaryStore } from './infrastructure/summaryRepository.ts';
@@ -38,7 +44,7 @@ export const SUMMARY_QUEUE = 'assessment';
 const unusualSpans: SummaryPorts['unusualSpans'] = (text) => detectUnusualContent(text);
 
 const notWired = async (): Promise<never> => {
-  throw new Error('Meeting summaries and the score preview are not wired in this app');
+  throw new Error('Meeting summaries, the score preview and the scorecard submit are not wired in this app');
 };
 
 /**
@@ -46,8 +52,9 @@ const notWired = async (): Promise<never> => {
  * composition's `findApplication`. Both are unauthorised reads this module calls only for the job it then authorises.
  * Taken as functions, not modules, so intake can call this contract (AIV-P1-114) without a package cycle.
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. `decisions` are the assessment's and the
- * evidence contract's commands a meeting summary ends in (AIV-P1-115), as functions for the same reason; without them
- * the summary commands throw.
+ * evidence contract's commands a meeting summary (AIV-P1-115) and a submitted scorecard (AIV-P2-006) end in, as
+ * functions for the same reason; without them those commands throw. The submit also needs `suggestedQuestions`, the
+ * questions its page shows.
  */
 export function createInterviews(
   workspaces: Pick<WorkspacesContract, 'authorize' | 'getWorkspace' | 'listMembers' | 'listJobGrants'>,
@@ -55,7 +62,7 @@ export function createInterviews(
   approvedRubric: ApprovedRubricReads['approvedRubric'],
   findApplication: Ports['findApplication'],
   now: () => Date = () => new Date(),
-  decisions?: DecisionPorts,
+  decisions?: DecisionPorts & Partial<Pick<SubmitPorts, 'suggestedQuestions'>>,
 ): InterviewsContract {
   const ports: Ports = {
     storeFor: interviewStore,
@@ -87,6 +94,21 @@ export function createInterviews(
   };
   return {
     ...interviewUseCases(ports),
+    ...(decisions?.suggestedQuestions
+      ? submitUseCases({
+          ...ports,
+          ...decisions,
+          suggestedQuestions: decisions.suggestedQuestions,
+          rubric: approvedRubric,
+          publishInterviewCompleted: (tx, interview) =>
+            enqueue(tx, outbox, InterviewCompletedV1, {
+              workspaceId: interview.workspaceId,
+              payload: { interviewId: interview.id, applicationId: interview.applicationId },
+              dedupeKey: `interview-completed:${interview.id}`,
+              occurredAt: now(),
+            }),
+        })
+      : { submitScorecard: notWired }),
     ...(decisions
       ? summaryUseCases({
           ...ports,

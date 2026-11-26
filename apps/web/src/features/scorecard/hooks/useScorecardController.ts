@@ -1,4 +1,5 @@
 import {
+  unexplained,
   unrated,
   type DraftCompetency,
   type Mark,
@@ -9,16 +10,18 @@ import {
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import type { ScorecardData } from '../domain/scorecard.ts';
+import type { ScorecardData, SubmitOutcome } from '../domain/scorecard.ts';
 import { saveScorecardDraft } from '../services/saveDraft.ts';
+import { submitScorecard } from '../services/submitScorecard.ts';
 
 /** How long after the last change the draft saves itself. */
 const AUTOSAVE_MS = 1500;
 
 /**
  * The scorecard form (AIV-P2-004): the draft the page read, kept in one object, saved by itself a moment after each
- * change and by "Save and close". Nothing here changes the assessment. "Submit scorecard" checks that every
- * competency is rated or marked as not tested and saves the draft: applying it is AIV-P2-006.
+ * change and by "Save and close". "Submit scorecard" (AIV-P2-006) checks that every competency is rated or marked as
+ * not tested, with a note for each rating, saves the draft, then submits it with the preview the person saw: only the
+ * submit changes the assessment, and a failed one leaves the saved draft as it was.
  */
 // One object in useState, not React Hook Form: the form's rules are the interviews module's pure functions over the
 // draft, the same ones the server runs, and React Hook Form is not a dependency of this app (AGENTS.md 4, 6.1).
@@ -28,6 +31,7 @@ export function useScorecardController(data: ScorecardData) {
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   // "Submit scorecard" was chosen: from then on the form says what still blocks it.
   const [checked, setChecked] = useState(false);
+  const [outcome, setOutcome] = useState<SubmitOutcome | 'submitting' | null>(null);
   const latest = useRef(draft);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -37,8 +41,14 @@ export function useScorecardController(data: ScorecardData) {
     setSaving('saving');
     // A throw would reach the error boundary and take the typed notes with it.
     const saved = await saveScorecardDraft({ interviewId: data.interviewId, draft: latest.current }).catch(() => false);
-    setSaving(saved ? 'saved' : 'failed');
-    return saved;
+    setSaving(saved === true ? 'saved' : saved === false ? 'failed' : 'idle');
+    // Submitted from another tab, or by a request that answered after it had committed, or cancelled: the form says
+    // which, and the page reads the closed interview.
+    if (saved === 'submitted' || saved === 'closed') {
+      setOutcome(saved === 'submitted' ? 'already' : 'closed');
+      router.refresh();
+    }
+    return saved === true;
   };
 
   // Leaving by another link within the autosave delay still saves what was typed.
@@ -64,13 +74,16 @@ export function useScorecardController(data: ScorecardData) {
     });
 
   const blocked = checked ? unrated(draft) : [];
+  const noNote = checked ? unexplained(draft) : [];
   return {
     draft,
     saving,
     /** Competencies neither rated nor marked as not tested, once "Submit scorecard" was chosen. */
     blocked,
-    /** "Submit scorecard" found nothing missing and the draft is saved. */
-    complete: checked && blocked.length === 0 && saving === 'saved',
+    /** Rated competencies with no note, once "Submit scorecard" was chosen. */
+    noNote,
+    /** How the last submit ended; `submitting` while it runs. */
+    outcome,
     onRate: (competencyId: string, rating: Rating) => changeCompetency(competencyId, (c) => ({ ...c, rating })),
     onNote: (competencyId: string, note: string) => changeCompetency(competencyId, (c) => ({ ...c, note })),
     /** Marks one question; the same mark again clears it. The two marks exclude each other. */
@@ -83,9 +96,17 @@ export function useScorecardController(data: ScorecardData) {
     onSaveAndClose: async () => {
       if (await save()) router.push('/app/interviews' as Route);
     },
-    onSubmit: () => {
+    /** `previewId`: the preview shown for the ratings now, null with none rated (or none shown yet). */
+    onSubmit: async (previewId: string | null) => {
       setChecked(true);
-      void save();
+      if (unrated(latest.current).length > 0 || unexplained(latest.current).length > 0) return setOutcome(null);
+      setOutcome('submitting');
+      // Saved first, in its own transaction: a submit that fails leaves the ratings saved ("try again").
+      if (!(await save())) return setOutcome((now) => (now === 'already' || now === 'closed' ? now : null));
+      const ended = await submitScorecard({ interviewId: data.interviewId, previewId }).catch(() => 'failed' as const);
+      setOutcome(ended);
+      // Submitted (or already): the page reads the completed interview; changed: it re-reads the new snapshot to preview.
+      if (['updated', 'unchanged', 'already', 'changed'].includes(ended)) router.refresh();
     },
   };
 }

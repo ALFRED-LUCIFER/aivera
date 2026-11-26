@@ -16,6 +16,9 @@ describe('Scenario Outline: Only allowed status transitions', () => {
     // Owner decision, 24 Nov 2026: an interview with no time yet can be held, and scheduled later.
     ['to_schedule', 'in_progress', true],
     ['to_schedule', 'scheduled', true],
+    // The pilot submits a scorecard for an interview it never scheduled (AIV-P2-006).
+    ['to_schedule', 'completed', true],
+    ['scheduled', 'completed', false],
     ['scorecard_due', 'in_progress', true],
     ['in_progress', 'scheduled', false],
   ] as const)('%s to %s: accepted = %s', (from, to, accepted) => {

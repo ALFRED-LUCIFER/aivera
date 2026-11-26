@@ -15,6 +15,11 @@ export type Mark = (typeof MARKS)[number];
 export const RECOMMENDATIONS = ['shortlist', 'more_evidence', 'not_recommended'] as const;
 export type Recommendation = (typeof RECOMMENDATIONS)[number];
 
+/** A note's length limit: the note is the reason the assessment logs with the rating, which takes 1,000 at most. */
+// shortcut: a draft saved before this limit with a longer note (synthetic dev data only) now fails its autosave and
+// its submit until the note is shortened; nothing migrates it, as no real draft exists before the pilot.
+export const NOTE_MAX = 1000;
+
 /**
  * A draft as the browser sends it and the database keeps it. Strict: a field this schema does not name is refused.
  * `questions` are the questions shown for the competency when it was saved, each with its mark, so a draft says which
@@ -27,7 +32,7 @@ export const scorecardDraftSchema = z.strictObject({
         competencyId: z.uuid(),
         rating: z.enum(RATINGS).nullable(),
         /** "What you saw or heard". */
-        note: z.string().max(4000),
+        note: z.string().max(NOTE_MAX),
         questions: z.array(z.strictObject({ text: z.string().max(2000), mark: z.enum(MARKS).nullable() })).max(20),
       }),
     )
@@ -63,6 +68,40 @@ export const assessedRatings = (draft: ScorecardDraft) =>
 /** Competencies that block a submit: neither rated nor marked as not tested. */
 export const unrated = (draft: ScorecardDraft) =>
   draft.competencies.filter((c) => !c.rating && !notAssessed(c)).map((c) => c.competencyId);
+
+/**
+ * Rated competencies with nothing written under "What you saw or heard": the note is the reason logged with the change
+ * and the words its evidence cites (AGENTS.md 1.6, 3.6), so they block a submit too.
+ */
+export const unexplained = (draft: ScorecardDraft) =>
+  assessedRatings(draft)
+    .filter((c) => !c.note)
+    .map((c) => c.competencyId);
+
+/**
+ * The draft for the competencies shown, each with the questions shown for it now (`['']` with none suggested: the
+ * interviewer's own questions), its stored rating and note, and the mark stored for the same words. A competency not in
+ * `stored` starts unrated. The form starts from it, and the submit (AIV-P2-006) rebuilds the stored draft with it, so a
+ * competency is "not assessed" only by the questions the page showed, never by questions a request made up.
+ */
+export function rebuildDraft(
+  competencies: readonly { competencyId: string; questions: readonly string[] }[],
+  stored: ScorecardDraft | null,
+): ScorecardDraft {
+  return {
+    competencies: competencies.map(({ competencyId, questions }) => {
+      const saved = stored?.competencies.find((c) => c.competencyId === competencyId);
+      const marks = new Map(saved?.questions.map((q) => [q.text, q.mark]));
+      return {
+        competencyId,
+        rating: saved?.rating ?? null,
+        note: saved?.note ?? '',
+        questions: (questions.length > 0 ? questions : ['']).map((text) => ({ text, mark: marks.get(text) ?? null })),
+      };
+    }),
+    recommendation: stored?.recommendation ?? null,
+  };
+}
 
 export type InterviewNoteEvidence = {
   kind: 'interview_note';

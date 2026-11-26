@@ -202,6 +202,11 @@ export type RecordInterviewSummaryInput = {
   jobId: string;
   /** When the summary was written; the source is labelled by its day. */
   writtenAt: Date;
+  /**
+   * `scorecard`: the notes of a submitted scorecard (AIV-P2-006), "Interviewer's scorecard, 26 Nov", each item the note
+   * for one rated competency. Otherwise a meeting summary.
+   */
+  from?: 'scorecard';
   items: {
     competencyId: string;
     /** The summary's exact words the change cites. */
@@ -214,6 +219,7 @@ export type RecordInterviewSummaryInput = {
 };
 
 export const INTERVIEW_SUMMARY_LIMIT = "The interviewer's summary of the interview: their word, not inspected work.";
+export const SCORECARD_NOTE_LIMIT = "The interviewer's note on their scorecard: their word, not inspected work.";
 
 // shortcut: recording and linking are open to admins and recruiters (`candidate.create`). Hiring owners and
 // interviewers read through a job: `listEvidenceForCandidate`, `listComparisons` and `getEvidenceMapping` authorise
@@ -320,7 +326,7 @@ export function evidenceUseCases({
     // `submitted` (the closed provenance list has no "interviewer's word"; the profile and scorecard show it as
     // "Interviewer's word" by its source kind), so a later rating of the same interview that takes the change back
     // leaves this item counting, and the day in the label is UTC. Cite the stored interview change on the profile
-    // instead when the assessment offers that read (AIV-P2-006, #120).
+    // instead when the assessment offers that read (AIV-P1-046, #110).
     async recordInterviewSummary(
       ctx: WorkspaceContext,
       input: RecordInterviewSummaryInput,
@@ -331,11 +337,12 @@ export function evidenceUseCases({
       if (input.items.some((i) => i.strength !== 'medium' && i.strength !== 'claim'))
         throw new EvidenceError('strength');
       const date = input.writtenAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+      const scorecard = input.from === 'scorecard';
       return record(ctx, {
         candidateId: input.candidateId,
         source: {
           kind: 'interview_note',
-          label: `Interviewer's summary, ${date}`,
+          label: `Interviewer's ${scorecard ? 'scorecard' : 'summary'}, ${date}`,
           url: null,
           blobFileId: null,
           capturedAt: input.writtenAt,
@@ -347,7 +354,7 @@ export function evidenceUseCases({
           excerptSpan: null,
           provenance: i.strength === 'claim' ? 'claim' : 'submitted',
           strength: i.strength,
-          limit: INTERVIEW_SUMMARY_LIMIT,
+          limit: scorecard ? SCORECARD_NOTE_LIMIT : INTERVIEW_SUMMARY_LIMIT,
           competencies: [{ jobId: input.jobId, competencyId: i.competencyId, level: i.level }],
         })),
         synthetic: input.synthetic,

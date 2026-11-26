@@ -1,7 +1,14 @@
 import { RATINGS as APPLIED } from '@credalent/assessment';
 import { RATINGS, type ScorecardDraft } from '@credalent/interviews';
 import { describe, expect, it } from 'vitest';
-import { effectLines, previewInput, saveDraftInput, startingDraft, type EffectPreview } from './scorecard.ts';
+import {
+  effectLines,
+  previewInput,
+  saveDraftInput,
+  shownQuestions,
+  startingDraft,
+  type EffectPreview,
+} from './scorecard.ts';
 
 // AIV-P2-004. Synthetic cast and opaque ids only.
 const RETRIEVAL = '0190d4a2-0000-7000-9000-000000000040';
@@ -95,10 +102,11 @@ const state = (strength: CompetencyState['strength'], provenLevel: CompetencySta
   provenLevel,
 });
 const effect = (from: CompetencyState, to: CompetencyState, score: [number, number]): EffectPreview => ({
+  previewId: 'p1',
   backedScore: { from: score[0], to: score[1] },
   changes: [{ competencyId: RETRIEVAL, from, to }],
 });
-const unchanged: EffectPreview = { backedScore: { from: 55, to: 55 }, changes: [] };
+const unchanged: EffectPreview = { previewId: 'p1', backedScore: { from: 55, to: 55 }, changes: [] };
 const line = (rating: (typeof RATINGS)[number], preview: EffectPreview) =>
   effectLines([{ competencyId: RETRIEVAL, rating }], preview, daniel);
 
@@ -142,6 +150,7 @@ describe('effectLines', () => {
 
   it('lists every rating in the order sent, and a competency with no evidence stays at none', () => {
     const preview: EffectPreview = {
+      previewId: 'p1',
       backedScore: { from: 55, to: 55 },
       changes: [{ competencyId: RETRIEVAL, from: state('supporting'), to: state('claim') }],
     };
@@ -170,5 +179,23 @@ describe('previewInput', () => {
       false,
     );
     expect(previewInput.safeParse({ interviewId: COST, ratings, assessmentId: RETRIEVAL }).success).toBe(false);
+  });
+});
+
+describe('shownQuestions (AIV-P2-006)', () => {
+  const stored = {
+    status: 'suggested',
+    gaps: [{ competencyId: 'c-retrieval', questions: ['How was the 71% measured?'] }],
+  };
+
+  // SAFETY: mutation check: replaced the `onVersion &&` gate with `true &&` -> this test failed (the questions came back).
+  it('shows no question unless the latest assessment is on the interview’s rubric version', () => {
+    expect(shownQuestions(false, stored)).toEqual(new Map());
+    expect(shownQuestions(true, stored)).toEqual(new Map([['c-retrieval', ['How was the 71% measured?']]]));
+  });
+
+  it('shows none while nothing is suggested', () => {
+    expect(shownQuestions(true, { status: 'not_suggested' })).toEqual(new Map());
+    expect(shownQuestions(true, null)).toEqual(new Map());
   });
 });

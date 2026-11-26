@@ -23,14 +23,15 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
   const rated: PreviewRatings = data.canEdit
     ? assessedRatings(draft).map(({ competencyId, rating }) => ({ competencyId, rating }))
     : [];
-  // The ratings as a string: typing a note changes the draft, not what is previewed.
-  const key = JSON.stringify(rated);
+  // The ratings as a string: typing a note changes the draft, not what is previewed. A new snapshot (the page refreshed
+  // after "preview again", AIV-P2-006) is previewed afresh, whatever the ratings.
+  const key = JSON.stringify([rated, data.assessed?.at ?? null]);
   const [shown, setShown] = useState<{ key: string; effect: EffectPreview | null } | null>(null);
   const { interviewId } = data;
 
   useEffect(() => {
     // From the key, so the effect depends on what is previewed, not on a new array each render.
-    const ratings = JSON.parse(key) as PreviewRatings;
+    const [ratings] = JSON.parse(key) as [PreviewRatings];
     if (ratings.length === 0) return;
     let current = true;
     const timer = setTimeout(() => {
@@ -51,5 +52,6 @@ export function useScoreEffectController(data: ScorecardData, draft: ScorecardDr
     status: 'ready',
     lines: effectLines(rated, shown.effect, data.competencies),
     backedScore: shown.effect.backedScore,
+    previewId: shown.effect.previewId,
   };
 }

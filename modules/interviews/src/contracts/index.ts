@@ -3,6 +3,7 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
+import type { SubmitScorecardInput, SubmittedScorecard } from '../application/submit.ts';
 import type { ApplySummaryInput, MeetingSummaryView, ScorePreview, SummaryPreview } from '../application/summary.ts';
 import type { Interview } from '../domain/interview.ts';
 import type { ScorecardDraft, ScorecardRatings } from '../domain/scorecard.ts';
@@ -25,15 +26,19 @@ export {
 } from '../domain/summary.ts';
 export type { Finding, ProposalStatus, ProposedStrength, SummaryStatus } from '../domain/summary.ts';
 export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
+export type { SubmitScorecardInput, SubmittedScorecard } from '../application/submit.ts';
 export {
   assessedRatings,
   MARKS,
+  NOTE_MAX,
   notAssessed,
   RATINGS,
+  rebuildDraft,
   RECOMMENDATIONS,
   scorecardDraftSchema,
   scorecardRatingsSchema,
   toInterviewNoteEvidence,
+  unexplained,
   unrated,
 } from '../domain/scorecard.ts';
 export type {
@@ -109,8 +114,8 @@ export interface InterviewsContract {
    * Stores the interview's scorecard draft, replacing the earlier one. It changes no score, stage or status: the
    * assessment changes only when the scorecard is submitted (AIV-P2-006). Only the interview's interviewer, on a job
    * they can reach, or a workspace admin: `ForbiddenError`, storing nothing, for anyone else, an interviewer or hiring
-   * owner with no grant on the job included. Throws `InterviewError` `interview_not_found`, `scorecard_closed` (completed or
-   * cancelled), `competency_not_in_interview` (a competency the interview does not test, or one listed twice); a zod
+   * owner with no grant on the job included. Throws `InterviewError` `interview_not_found`, `scorecard_submitted` (completed:
+   * "Already submitted"), `scorecard_closed` (cancelled), `competency_not_in_interview` (a competency the interview does not test, or one listed twice); a zod
    * error for a draft that is not `scorecardDraftSchema`.
    */
   saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, draft: ScorecardDraft): Promise<void>;
@@ -123,6 +128,22 @@ export interface InterviewsContract {
    * refused it: not the latest, evidence not yet scored, an interview not held); a zod error for malformed ratings.
    */
   previewScorecardRatings(ctx: WorkspaceContext, interviewId: string, ratings: ScorecardRatings): Promise<ScorePreview>;
+  /**
+   * Submits the interview's stored scorecard draft (AIV-P2-006), in the caller's one transaction: the interview is
+   * `completed` (from `to_schedule`, `in_progress` or `scorecard_due`) and writes `InterviewCompleted.v1`; the draft,
+   * rebuilt on the questions the page shows, is kept as the submitted scorecard, its recommendation included (it changes
+   * no stage); each rated competency's note is recorded as `interview_note` evidence ("Interviewer's scorecard, 26 Nov"),
+   * except Partly shown, which the preview shows changing nothing;
+   * and the ratings are applied through the assessment's `applyScoreChange` with `previewId`, each note as its reason,
+   * so the new snapshot and one `score.changed` audit entry per rating are the last statements. A competency not assessed
+   * in this round has no rating: no evidence, no change, no entry; it stays a gap. `previewId` is the
+   * `previewScorecardRatings` result the person saw, null with nothing rated. Who as `saveScorecardDraft`. Throws, storing
+   * nothing: `InterviewError` `interview_not_found`, `scorecard_submitted` ("Already submitted": a second submit, or a
+   * double click), `scorecard_closed` (cancelled), `interview_not_held` (scheduled ahead), `scorecard_incomplete` (a
+   * competency neither rated nor marked as not tested, or rated with no note), `not_assessed`, `competency_not_in_rubric`
+   * and `preview_changed` (the assessment is not the one previewed); `ForbiddenError`; a zod error for a malformed input.
+   */
+  submitScorecard(ctx: WorkspaceContext, interviewId: string, input: SubmitScorecardInput): Promise<SubmittedScorecard>;
   /**
    * Stores a pasted meeting summary on the interview (plain text, 1 to 12,000 characters) and writes
    * `MeetingSummarySubmitted.v1`, so the worker proposes evidence changes from it. It changes no score, evidence or
