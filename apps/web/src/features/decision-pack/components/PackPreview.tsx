@@ -41,6 +41,9 @@ import type { PackPreview as Preview } from '../domain/pack.ts';
 //   "Summary unavailable" with the pack's scores, as does every member once another rubric version is approved. The
 //   statements are the evidence profile's own "Why they are ranked here" (RankingWhy, through its index.ts), with no
 //   links to evidence cards: the preview has none;
+// - the score reads "up to N if claims hold", not "up to N": the shared ScoreWithUncertainty caption every pack and
+//   ranking uses (DESIGN.md), which says what the hatched part means. The longer caption shares the 320 px column, so
+//   the bar is shorter than the artboard's;
 // - no Interview, Hold or Pass choice, feedback field or "Send decisions to the recruiter": client choices are
 //   AIV-P2-014 (#128, #129);
 // - the cards' padding is the shared Card's 16 px, not 24 px, and "Powered by Credalent" the 13 px meta size, not 12 px:
