@@ -201,7 +201,7 @@ const ANSWER = {
   round1: null,
   recommendation: {
     action: 'advance',
-    focus: 'probe cost and reliability',
+    focus: 'Cost and reliability',
     citations: [{ sourceId: 'S1', quote: 'Work meets the need on competencies holding 55% of the weight' }],
   },
 };
@@ -415,7 +415,7 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(sara.locator('mark').filter({ hasText: 'raised answer accuracy' })).toHaveCount(0);
   await expect(sara.getByRole('list', { name: 'Outstanding risks' })).toContainText('Claim awaiting validation');
   await expect(sara.getByText("Credalent's recommendation:")).toHaveText(
-    "Credalent's recommendation: advance, and probe cost and reliability",
+    "Credalent's recommendation: advance, and look into Cost and reliability next",
   );
   // No decision option is offered, let alone chosen: recording decisions is AIV-P2-012.
   await expect(page.locator('[aria-pressed="true"], [aria-checked="true"], input:checked')).toHaveCount(0);
@@ -440,6 +440,9 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
 });
 
 // AGENTS.md 1.9: a card's source opens the candidate's profile; a hiring owner there sees summaries and sources only.
+// This app has no storage account, so nobody gets a file link here: that a hiring owner never gets one while a recruiter
+// does is proven in loadProfile.test.ts (a file-backed item; `seesFiles` forced true -> that test failed). Here: Sara's
+// stored email and phone never show.
 test('AIV-P2-011: a hiring owner following a source reaches the evidence, never a raw file or contact detail', async ({
   page,
 }) => {
@@ -546,7 +549,7 @@ test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and
     await expect(card.locator('mark').filter({ hasText: 'authored 301 of 340 commits' })).toBeVisible();
     await expect(card.getByText('Source: rag-service')).toBeVisible();
     await expect(card.getByText("Credalent's recommendation:")).toHaveText(
-      "Credalent's recommendation: advance, and probe cost and reliability",
+      "Credalent's recommendation: advance, and look into Cost and reliability next",
     );
   }
   // Maria Santos is not in the pack.

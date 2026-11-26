@@ -19,8 +19,7 @@ const citation = z.strictObject({
   quote: z.string(),
   claim: z.boolean(),
 });
-/** `claim`: every source it cites is the candidate's own words, as the AI client's citation contract decides. */
-const statement = z.strictObject({ text: z.string().min(1), claim: z.boolean(), citations: z.array(citation).min(1) });
+const statement = z.strictObject({ text: z.string().min(1), citations: z.array(citation).min(1) });
 
 /** As stored in `decisions.member_summary.summary`, parsed again on every read. */
 export const memberSummary = z.strictObject({

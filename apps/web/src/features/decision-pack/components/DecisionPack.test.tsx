@@ -28,20 +28,17 @@ const sara: MemberSummary = {
   strengths: [
     {
       text: 'Checked evidence on the heaviest competencies; 412 of 460 commits in her eval harness.',
-      claim: false,
       citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false }],
     },
   ],
   risks: [
     {
       text: 'Cost reduction and Arabic work are claims with nothing to inspect.',
-      claim: true,
       citations: [{ itemId: CV, label: 'CV', quote: 'cut the cost per request by 38%', claim: true }],
     },
   ],
   round1: {
     text: 'The candidate defended the merchant assistant.',
-    claim: false,
     citations: [
       {
         itemId: NOTE,
@@ -154,11 +151,11 @@ describe('DecisionPack', () => {
 
   // SAFETY: mutation check: set hasFocus to 'no' in SummaryText -> this test failed (no focus)
   it("Scenario: Recommendation is labelled as Credalent's, and no decision option is offered or pre-selected", () => {
-    const huda = { ...sara, recommendation: { ...sara.recommendation, focus: 'probe cost in Round 2' } };
+    const huda = { ...sara, recommendation: { ...sara.recommendation, focus: 'Cost and reliability' } };
     show(page([member('p3', 'Huda Al Mansoori', { status: 'ready', summary: huda })]));
     const card = screen.getByRole('region', { name: 'Huda Al Mansoori' });
     expect(within(card).getByText("Credalent's recommendation:").textContent).toBe(
-      "Credalent's recommendation: advance, and probe cost in Round 2",
+      "Credalent's recommendation: advance, and look into Cost and reliability next",
     );
     expect(screen.queryAllByRole('radio')).toEqual([]);
     expect(screen.queryAllByRole('checkbox')).toEqual([]);

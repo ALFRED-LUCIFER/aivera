@@ -71,11 +71,10 @@ const answer: SummaryAnswer = {
   strengths: [
     {
       text: '[CANDIDATE] authored 412 of 460 commits.',
-      claim: false,
       citations: [{ sourceId: REPO, quote: '412 of 460' }],
     },
   ],
-  risks: [{ text: 'Cost rests on a claim.', claim: true, citations: [{ sourceId: CV, quote: 'cut cost' }] }],
+  risks: [{ text: 'Cost rests on a claim.', citations: [{ sourceId: CV, quote: 'cut cost' }] }],
   round1: null,
   recommendation: { action: 'hold', focus: null, citations: [{ sourceId: 'facts', quote: 'Work meets the need' }] },
 };
@@ -93,7 +92,7 @@ function setup(over: Partial<SummaryPorts> = {}, done: string[] = []) {
     approvedRubric: async () => ({ id: V2, competencies: [{ id: 'llm', name: 'LLM systems in production' }] }),
     evidence: async () => [repo, cv],
     identifiersOf: async () => ({ names: ['Sara Al Qahtani'], emails: [], phones: [] }),
-    summarise: vi.fn(async () => ({ promptVersion: 'decisions.summariseMember@2', answer })),
+    summarise: vi.fn(async () => ({ promptVersion: 'decisions.summariseMember@3', answer })),
     retryAt: vi.fn(async () => undefined),
     now: () => NOW,
     ...over,
@@ -124,19 +123,17 @@ describe('summarisePack', () => {
     expect(store.insertSummary.mock.calls[0]?.[0]).toEqual(
       stored(SARA, {
         status: 'ready',
-        promptVersion: 'decisions.summariseMember@2',
+        promptVersion: 'decisions.summariseMember@3',
         summary: {
           strengths: [
             {
               text: 'The candidate authored 412 of 460 commits.',
-              claim: false,
               citations: [{ itemId: REPO, label: 'llm-eval-harness', quote: '412 of 460', claim: false }],
             },
           ],
           risks: [
             {
               text: 'Cost rests on a claim.',
-              claim: true,
               citations: [{ itemId: CV, label: 'CV', quote: 'cut cost', claim: true }],
             },
           ],
@@ -202,7 +199,7 @@ describe('summarisePack', () => {
     let calls = 0;
     const { store, ports, run } = setup({
       summarise: async () =>
-        calls++ === 0 ? 'model_unavailable' : { promptVersion: 'decisions.summariseMember@2', answer },
+        calls++ === 0 ? 'model_unavailable' : { promptVersion: 'decisions.summariseMember@3', answer },
     });
     await run();
     expect(store.insertSummary.mock.calls.map(([s]) => [s.candidateId, s.status])).toEqual([[ARJUN, 'ready']]);

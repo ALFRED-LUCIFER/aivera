@@ -13,11 +13,8 @@ import {
 } from '../domain/summary.ts';
 import type { PackStore } from './packs.ts';
 
-/**
- * A statement as the model's checked answer gives it: its citations name the caller's source ids, and `claim` is the
- * citation contract's (every source it cites is the candidate's own words).
- */
-type Answered = { text: string; claim: boolean; citations: { sourceId: string; quote: string }[] };
+/** A statement as the model's checked answer gives it: its citations name the caller's source ids. */
+type Answered = { text: string; citations: { sourceId: string; quote: string }[] };
 export type SummaryAnswer = {
   strengths: Answered[];
   risks: Answered[];
@@ -88,7 +85,6 @@ function toSummary(
     });
   const statement = (s: Answered): CitedStatement => ({
     text: s.text.replace(CANDIDATE, 'the candidate').replace(/^\s*\p{L}/u, (c) => c.toUpperCase()),
-    claim: s.claim,
     citations: cite(s.citations),
   });
   return {
