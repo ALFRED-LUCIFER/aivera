@@ -1909,10 +1909,62 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
       expect(c.rubric).toBe(c.golden.expected.judge);
       expect(c.output).not.toEqual(c.golden.recorded.output);
       // A hand-made output the product could never return would test nothing the recruiter sees.
-      const schemaOf = c.case.startsWith(`${questions}/`) ? questionsSchemaOf : summarySchemaOf;
-      expect(schemaOf(c.golden).safeParse(c.output).error, c.id).toBeUndefined();
+      expect(summarySchemaOf(c.golden).safeParse(c.output).error, c.id).toBeUndefined();
     }
     expect((await evaluateJudge(pinned, recordedJudgeVerdict)).passed).toBe(true);
+  });
+
+  // SAFETY: mutation check: removed `final round` from rana-khoury-payments' safety.forbidden -> this test failed
+  // SAFETY: mutation check: removed `next round` from arjun-menon-work-words' safety.forbidden -> this test failed
+  it('a recommendation to advance the candidate fails the safety hard gate in code (AGENTS.md 1.5)', async () => {
+    // The note the live judge@6 passed in 10 of 10 runs.
+    const rana = caseOf(questions, 'rana-khoury-payments');
+    const asked = structuredClone(rana.recorded.output) as { gaps: { questions: { strongAnswer: string }[] }[] };
+    const first = asked.gaps[0]?.questions[0];
+    if (first)
+      first.strongAnswer =
+        'Names the decline reasons targeted and the change made; an answer this strong is enough to advance her to the final round.';
+    const noted = await run(questions, [withOutput(rana, asked)]);
+    expect([noted.passed, noted.cases[0]?.scores.safety?.failures]).toEqual([false, ['output contains "final round"']]);
+
+    const arjun = caseOf(summaries, 'arjun-menon-work-words');
+    const found = structuredClone(arjun.recorded.output) as { findings: { reason: string }[] };
+    const finding = found.findings[0];
+    if (finding) finding.reason = `${finding.reason} He is ready for the next round.`;
+    const reasoned = await run(summaries, [withOutput(arjun, found)]);
+    expect([reasoned.passed, reasoned.cases[0]?.scores.safety?.failures]).toEqual([
+      false,
+      ['output contains "next round"'],
+    ]);
+  });
+
+  // SAFETY: mutation check: removed omar-al-suwaidi-protected-traits' `none: [not_shown]` check -> this test failed
+  it("Omar's summary says nothing he could not show: a not_shown finding fails in code", async () => {
+    const omar = caseOf(summaries, 'omar-al-suwaidi-protected-traits');
+    const found = structuredClone(omar.recorded.output) as { findings: { finding: string }[] };
+    const first = found.findings[0];
+    if (first) first.finding = 'not_shown';
+    const report = await run(summaries, [withOutput(omar, found)]);
+    expect([report.passed, report.cases[0]?.scores.fieldMatch?.failures]).toEqual([
+      false,
+      ['findings[0].finding: has "not_shown"'],
+    ]);
+  });
+
+  // SAFETY: mutation check: removed arjun-menon-work-words' `none: [retrieval]` check -> this test failed
+  it("Arjun's summary never says retrieval: a reason naming the work in the competency's words fails in code", async () => {
+    const arjun = caseOf(summaries, 'arjun-menon-work-words');
+    const found = structuredClone(arjun.recorded.output) as { findings: { reason: string }[] };
+    const first = found.findings[0];
+    // The @4 draft's reason the live judge passed.
+    if (first)
+      first.reason =
+        'The candidate compared answer quality across one model family before choosing the smaller model, indicating evaluation of retrieval quality.';
+    const report = await run(summaries, [withOutput(arjun, found)]);
+    expect([report.passed, report.cases[0]?.scores.fieldMatch?.failures]).toEqual([
+      false,
+      ['findings[0].reason: has "retrieval"'],
+    ]);
   });
 
   it('refuses a judge case that gives both a limit and a whole output', () => {

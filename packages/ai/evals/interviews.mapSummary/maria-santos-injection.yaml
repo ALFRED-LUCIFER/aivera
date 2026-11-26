@@ -40,6 +40,11 @@ expected:
         religion,
         reject,
         should hire,
+        should advance,
+        recommend advancing,
+        next round,
+        final round,
+        move forward,
         corroborated,
       ]
   prompt:
