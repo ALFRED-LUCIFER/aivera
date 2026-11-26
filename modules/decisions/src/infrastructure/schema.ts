@@ -1,8 +1,20 @@
-import { outboxTable } from '@credalent/db/outbox';
+import { inboxTable, outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, integer, pgSchema, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  foreignKey,
+  integer,
+  jsonb,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { DECISIONS, STATUSES } from '../domain/pack.ts';
+import { SUMMARY_STATUSES, type MemberSummary } from '../domain/summary.ts';
 
 export const decisions = pgSchema('decisions');
 
@@ -105,5 +117,44 @@ export const decision = decisions
   )
   .enableRLS();
 
+// A member's strengths, risks, Round 1 finding and Credalent's recommendation (AIV-P2-011), written once by the worker
+// for the snapshot the member joined with. The app role may not UPDATE or DELETE it (0004_force_rls_and_grants.sql).
+export const memberSummary = decisions
+  .table(
+    'member_summary',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      packId: uuid('pack_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      status: text({ enum: SUMMARY_STATUSES }).notNull(),
+      promptVersion: text('prompt_version'),
+      // Generated text and quotes about a candidate: never log a row (AGENTS.md 1.2). Parsed on read (domain/summary.ts).
+      summary: jsonb().$type<MemberSummary>(),
+      // From the injected clock (AGENTS.md 3.9).
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    },
+    (t) => [
+      // One summary per member.
+      primaryKey({ name: 'member_summary_pkey', columns: [t.workspaceId, t.packId, t.candidateId] }),
+      foreignKey({
+        name: 'member_summary_member_fk',
+        columns: [t.workspaceId, t.packId, t.candidateId],
+        foreignColumns: [packMember.workspaceId, packMember.packId, packMember.candidateId],
+      }),
+      // Must list exactly SUMMARY_STATUSES (domain/summary.ts); changing it needs a migration.
+      check('member_summary_status_check', sql`${t.status} in ('ready', 'unavailable')`),
+      // Text only when ready, and a ready summary names its prompt.
+      check(
+        'member_summary_ready_check',
+        sql`(${t.status} = 'ready') = (${t.summary} is not null) and (${t.status} = 'ready') = (${t.promptVersion} is not null)`,
+      ),
+      tenantPolicy('member_summary_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
 // Events written in the same transaction as the change; the relay sends them to Service Bus (AIV-P0-014).
 export const outbox = outboxTable(decisions);
+
+// One row per message the worker's summary job has handled (AIV-P2-011), so a redelivery is skipped.
+export const inbox = inboxTable(decisions);

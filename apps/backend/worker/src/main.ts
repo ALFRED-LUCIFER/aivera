@@ -59,7 +59,8 @@ const { DefaultAzureCredential } = await import('@azure/identity');
 const { ServiceBusClient } = await import('@azure/service-bus');
 const { PersonCreatedV1 } = await import('@credalent/candidates');
 const { createAiClient, providerFromEnv } = await import('@credalent/ai');
-const { ASSESSMENT_QUEUE, createAssessmentHandlers } = await import('@credalent/assessment/composition');
+const { ASSESSMENT_QUEUE, createAssessmentHandlers, readAssessmentAsSystem } =
+  await import('@credalent/assessment/composition');
 const { createAudit } = await import('@credalent/audit/composition');
 const { createContactRecorder, nameUnnamedPerson, readPersonAsSystem } =
   await import('@credalent/candidates/composition');
@@ -87,6 +88,8 @@ const {
   readEvidenceForJobAsSystem,
 } = await import('@credalent/evidence/composition');
 const { createIdentity } = await import('@credalent/identity/composition');
+const { PackMembersAddedV1, PackReadyV1 } = await import('@credalent/decisions');
+const { createPackSummaryHandlers, PACK_SUMMARY_QUEUE } = await import('@credalent/decisions/composition');
 const { InterviewCompletedV1, InterviewScheduledV1, MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
 const { createSummaryHandlers, SUMMARY_QUEUE } = await import('@credalent/interviews/composition');
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
@@ -118,8 +121,9 @@ const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_
 const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
 // `interviews` is relayed for MeetingSummarySubmitted.v1 (AIV-P1-115); its other two events are parked in QUEUES below.
-// shortcut: `decisions` (PackReady.v1, DecisionsRecorded.v1, AIV-P2-009) is left out the same way: they wait unsent in
-// decisions.outbox until their consumers exist (the stage change in intake, the decision email drafts in notifications).
+// `decisions` is relayed for PackReady.v1 and PackMembersAdded.v1, the pack summaries (AIV-P2-011).
+// shortcut: DecisionsRecorded.v1 (AIV-P2-009) has no queue: it waits unsent in decisions.outbox, retried by the relay,
+// until its consumers exist (the stage change in intake, the decision email drafts in notifications) and map it.
 const OUTBOXES = [
   'candidates',
   'jobs',
@@ -127,6 +131,7 @@ const OUTBOXES = [
   'evidence',
   'notifications',
   'interviews',
+  'decisions',
   ...(fileReading ? ['files'] : []),
 ];
 // Evidence mapping (AIV-P1-027) consumes evidence and rubric changes when the worker has a model and the evidence queue
@@ -145,6 +150,9 @@ const QUEUES: Record<string, string> = {
   // A pasted meeting summary to analyse (AIV-P1-115): always consumed; with no model its summary is marked "could not
   // be analysed" instead of waiting for ever.
   [MeetingSummarySubmittedV1.type]: SUMMARY_QUEUE,
+  // A pack's members to summarise (AIV-P2-011): always consumed; with no model each is stored "Summary unavailable".
+  [PackReadyV1.type]: PACK_SUMMARY_QUEUE,
+  [PackMembersAddedV1.type]: PACK_SUMMARY_QUEUE,
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
@@ -270,6 +278,27 @@ const identity = createIdentity(appDb, { trustedIssuer: 'worker: reads display n
       );
     },
     memberName: async (userId) => (await identity.getUser(userId))?.displayName ?? null,
+    scheduler,
+    now,
+  }),
+);
+// The decision pack's cited strengths, risks, Round 1 finding and recommendation per member (AIV-P2-011): written once
+// when the member joins, never inside the page's request. It recommends only; it moves no stage.
+(CONSUMERS[PACK_SUMMARY_QUEUE] ??= []).push(
+  ...createPackSummaryHandlers({
+    ai: model
+      ? createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) })
+      : undefined,
+    ...createApprovedRubricReads(),
+    snapshot: readAssessmentAsSystem,
+    evidence: readEvidenceForJobAsSystem,
+    identifiersOf: async (tx, workspaceId, candidateId) => {
+      const person = await readPersonAsSystem(tx, workspaceId, candidateId);
+      // The intake placeholder is no name: redacting it would hide nothing (AIV-P1-090).
+      return (
+        person && { names: person.unnamed ? [] : [person.displayName], emails: person.emails, phones: person.phones }
+      );
+    },
     scheduler,
     now,
   }),

@@ -1341,7 +1341,8 @@
       "assessed": "{count, number} assessed",
       "imported": "{count, number} imported",
       "afterApproval": "Starts after rubric approval",
-      "notStarted": "Not started"
+      "notStarted": "Not started",
+      "shortlistReady": "Shortlist ready"
     },
     "empty": {
       "interviews": "No interviews yet. Round 1 is planned from the ranking.",
@@ -1742,6 +1743,27 @@
     "loading": "Loading the decision pack…",
     "error": "We could not load the decision pack. Try again.",
     "openPreview": "Preview as the hiring owner sees it",
+    "empty": "This pack has no candidates. Add them from the ranking.",
+    "shared": "Shared packs show evidence summaries and sources, not raw files.",
+    "role": {
+      "needs": "What the role needs",
+      "weights": "Competencies and weights",
+      "weight": "{name} {weight, number}%"
+    },
+    "summary": {
+      "strengths": "Strengths, backed",
+      "risks": "Outstanding risks",
+      "round1": "Round 1 finding",
+      "noStrengths": "No inspected work backs a competency yet.",
+      "noRisks": "No outstanding risks.",
+      "noRound1": "No Round 1 interview notes yet.",
+      "recommendation": "Credalent's recommendation:",
+      "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and {focus}} other {}}",
+      "source": "Source: {label}",
+      "assessment": "Source: the assessment",
+      "preparing": "Preparing summary",
+      "unavailable": "Summary unavailable"
+    },
     "preview": {
       "note": "This is how the hiring owner will see this pack. Nothing is sent or downloaded from this page.",
       "back": "Back to the pack",
@@ -1751,8 +1773,7 @@
       "risks": "Still to test in the interview",
       "noStrengths": "No competency meets the job's need on inspected evidence yet.",
       "noRisks": "Every competency meets the job's need on inspected evidence.",
-      "summary": "Credalent's summary",
-      "unavailable": "Summary unavailable: their assessment or the job's rubric changed after they joined this pack, whose scores are as they were then.",
+      "round1": "Round 1 finding",
       "poweredBy": "Powered by Credalent"
     }
   },

@@ -12,6 +12,7 @@ import type {
 
 export { PackError } from '../domain/pack.ts';
 export type { Decision, DecisionPack, DecisionValue, PackMember, PackStatus } from '../domain/pack.ts';
+export type { CitedStatement, MemberSummary, StoredMemberSummary } from '../domain/summary.ts';
 export type {
   CreatePackInput,
   MemberInput,
@@ -29,6 +30,15 @@ const packEvent = z.strictObject({ packId: z.uuid(), jobId: z.uuid() });
  */
 export const PackReadyV1 = {
   type: 'PackReady.v1',
+  payload: packEvent,
+} satisfies EventDefinition<z.infer<typeof packEvent>>;
+
+/**
+ * Written in the transaction that adds members to a pack (AIV-P2-011), so the worker summarises them as it does a new
+ * pack's: the same shape as `PackReady.v1`, opaque ids only.
+ */
+export const PackMembersAddedV1 = {
+  type: 'PackMembersAdded.v1',
   payload: packEvent,
 } satisfies EventDefinition<z.infer<typeof packEvent>>;
 
@@ -55,8 +65,8 @@ export interface DecisionsContract {
    */
   createPack(ctx: WorkspaceContext, input: CreatePackInput): Promise<{ packId: string }>;
   /**
-   * Adds candidates after the pack's last member, each with their snapshot taken now and who added them, and audits
-   * one `pack.member_added` per candidate added; one already in the pack is ignored and keeps the snapshot it has.
+   * Adds candidates after the pack's last member, each with their snapshot taken now and who added them, writes
+   * `PackMembersAdded.v1`, and audits one `pack.member_added` per candidate added; one already in the pack is ignored and keeps the snapshot it has.
    * Admins and recruiters on the job. Throws `PackError` `pack_not_found`, `pack_decided`, `candidate_not_assessed`
    * (also once the job's approved rubric version is no longer the pack's).
    */
@@ -69,8 +79,9 @@ export interface DecisionsContract {
    */
   listPacks(ctx: WorkspaceContext, jobId: string): Promise<PackSummary[]>;
   /**
-   * The pack, its members in order and its decisions, or null when it does not exist or its job is hidden from the
-   * context. Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.
+   * The pack, its members in order, its decisions and the members' summaries written so far (AIV-P2-011: a member with
+   * none is still being prepared; `unavailable` when no usable cited answer came), or null when it does not exist or
+   * its job is hidden from the context. Admins, recruiters and hiring owners on the job (`pack.view`); `ForbiddenError` for an interviewer.
    */
   getPack(ctx: WorkspaceContext, packId: string): Promise<PackView | null>;
   /**

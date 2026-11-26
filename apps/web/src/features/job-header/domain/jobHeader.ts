@@ -19,7 +19,7 @@ export type StageLine =
   | { key: 'saved'; values: { date: Date } }
   | { key: 'approved' | 'draft' | 'awaiting_approval' | 'returned'; values: { version: number } }
   | { key: 'assessed' | 'imported'; values: { count: number } }
-  | { key: 'afterApproval' | 'notStarted' };
+  | { key: 'afterApproval' | 'notStarted' | 'shortlistReady' };
 
 /** The header as the layout hands it to the browser: plain data, only what it shows. */
 export type JobHeaderView = {
@@ -42,6 +42,8 @@ export function jobHeaderView(
   ownerChange: OwnerChange | null,
   /** The job's applications from every source, intake's count (AIV-P1-101). */
   imported: number,
+  /** The job has an undecided decision pack (AIV-P2-011): "Shortlist ready". */
+  shortlistReady = false,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -60,10 +62,9 @@ export function jobHeaderView(
       : assessed === 0
         ? { key: 'notStarted' }
         : { key: 'assessed', values: { count: assessed } },
-    // shortcut: the interviews (AIV-P2-002) and the job's packs (listed on the Decision tab since AIV-P2-010) report no
-    // stage line yet; the pack page with decisions (AIV-P2-011, #125) adds "Shortlist ready" here.
+    // shortcut: the interviews (AIV-P2-002) report no stage line yet; their list ticket adds one here.
     interviews: { key: 'notStarted' },
-    pack: { key: 'notStarted' },
+    pack: shortlistReady ? { key: 'shortlistReady' } : { key: 'notStarted' },
   };
   return {
     jobId: job.id,

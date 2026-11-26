@@ -65,6 +65,12 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(line(0)?.line).toEqual({ key: 'notStarted' });
   });
 
+  it('AIV-P2-011: the Decision stage reads "Shortlist ready" while the job has an undecided pack', () => {
+    const approved = header({ approved: version(2, 'approved') });
+    expect(jobHeaderView(approved, null, 3, null, 3, true).stages[5]?.line).toEqual({ key: 'shortlistReady' });
+    expect(jobHeaderView(approved, null, 3, null, 3, false).stages[5]?.line).toEqual({ key: 'notStarted' });
+  });
+
   it('only the stage segments are a current page', () => {
     expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');

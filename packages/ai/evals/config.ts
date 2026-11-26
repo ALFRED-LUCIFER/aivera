@@ -11,6 +11,7 @@ import { assistantAnswerRequest } from '../src/prompts/assistant.answer.ts';
 import { explainRankingRequest } from '../src/prompts/assessment.explainRanking.ts';
 import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { mapSummaryRequest } from '../src/prompts/interviews.mapSummary.ts';
+import { summariseMemberRequest } from '../src/prompts/decisions.summariseMember.ts';
 import { identifiersOf, type GoldenCase } from './golden.ts';
 
 const jobInput = z.object({ jobType: z.string().min(1), title: z.string().min(1) });
@@ -170,6 +171,15 @@ export const taskThresholds: Record<
   // shortcut: field match only checks the expected values are present, so an extra finding for a competency the
   // summary never discusses passes; gate "no finding" once AIV-P1-138 (#616) lands.
   'interviews.mapSummary': { statements: ['findings[*]'], fieldMatch: 1, judge: 1 },
+  // AIV-P2-011: every strength, risk, Round 1 finding and the recommendation cites the facts or an excerpt (citation
+  // validity, a hard gate); the action, and which sources a strength and the Round 1 finding rest on, are exact; words
+  // that must or must not appear are code checks (`expected.text`, `safety.forbidden` with the advice phrases); whether
+  // each statement says only what its source shows is the judge's rubric.
+  'decisions.summariseMember': {
+    statements: ['strengths[*]', 'risks[*]', 'round1', 'recommendation'],
+    fieldMatch: 1,
+    judge: 1,
+  },
 };
 
 /**
@@ -260,6 +270,14 @@ export const runners: Record<string, Runner> = {
       ...mapSummaryRequest(summaryInput.parse(golden.input).competencies, golden.sources),
       workspaceId,
       identifiers: { ...identifiersOf(golden), others: golden.people.slice(1) },
+    }),
+  // AIV-P2-011: the member's facts (S1) and the excerpts of their evidence, interview notes as `interview`, as the
+  // decisions module sends them.
+  'decisions.summariseMember': (ai, golden, workspaceId) =>
+    ai.generateStructured({
+      ...summariseMemberRequest(golden.sources),
+      workspaceId,
+      identifiers: identifiersOf(golden),
     }),
 };
 

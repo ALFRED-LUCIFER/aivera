@@ -1,7 +1,8 @@
 import type { Tx } from '@credalent/db/client';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { PackStore } from '../application/packs.ts';
-import { decision, pack, packMember } from './schema.ts';
+import { memberSummary as summaryRow } from '../domain/summary.ts';
+import { decision, memberSummary, pack, packMember } from './schema.ts';
 
 /**
  * The decisions store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer;
@@ -65,6 +66,17 @@ export function packStore(tx: Tx): PackStore {
         ...p,
         candidateIds: members.filter((m) => m.packId === p.id).map((m) => m.candidateId),
       }));
+    },
+    async listSummaries(workspaceId, packId) {
+      const rows = await tx
+        .select()
+        .from(memberSummary)
+        .where(and(eq(memberSummary.workspaceId, workspaceId), eq(memberSummary.packId, packId)));
+      // Our own write, parsed again so a row that drifted from the schema fails loudly, not on the page.
+      return rows.map((row) => ({ ...row, summary: row.summary && summaryRow.parse(row.summary) }));
+    },
+    async insertSummary(row) {
+      await tx.insert(memberSummary).values(row).onConflictDoNothing();
     },
     listDecisions(workspaceId, packId) {
       return tx
