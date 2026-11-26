@@ -234,6 +234,8 @@ describe('the panel domain', () => {
     expect(lowers('not_shown', { from: 'supporting', to: 'claim' })).toBe(true);
     expect(lowers('not_shown', { from: 'claim', to: 'claim' })).toBe(false);
     expect(lowers('not_shown', null)).toBe(false);
+    // No evidence before: Claim only adds a claim and lowers nothing.
+    expect(lowers('not_shown', { from: null, to: 'claim' })).toBe(false);
     expect(lowers('clearly_shown', { from: 'supporting', to: 'medium' })).toBe(false);
   });
   it('ticks by default each change the scorecard has not already made', () => {

@@ -330,7 +330,8 @@ for (const theme of themes) {
       ).toBeVisible();
       await expectAccessible(page);
       // The row reads the same after the downgrade: a Supporting claim already counted zero in the backed score, and a
-      // Claim only one still widens the range (the new snapshot itself is proven in meeting-summary.test.ts).
+      // Claim only one still widens the range. The new snapshot the ranking reads is proven in
+      // tests/integration/src/meeting-summary.test.ts ("Including the downgrade is my decision and is audited").
       await expect((await rankedRow(page, theme)).row).toContainText('55up to 71 if claims hold');
       return;
     }

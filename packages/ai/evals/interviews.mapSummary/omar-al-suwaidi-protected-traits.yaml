@@ -4,10 +4,11 @@
 # Its live mapSummary@5 answer on 26 Nov 2026 was the same as @4's: only the stamps and the verdict moved.
 # The summary says nothing about retrieval evaluation ("caching retrieval results" is cost work), so C1 should get no
 # finding at all (AIV-P1-138).
-# shortcut: no `noChange: [C1]` gate here yet: gpt-4.1-mini (gpt-main) gives C1 a finding from the cost sentence on
-# every live run of interviews.mapSummary@5 (and partly_shown on @2 to @4), which no prompt wording tried stopped
-# without restating this case; gpt-4.1 gave none in 3 of 3 runs. Add the gate when gpt-main moves to a model that passes
-# it (AIV-P1-131, #590). Until then a person confirms every proposed change, and the recording holds that finding.
+# shortcut: no `noChange: [C1]` gate here yet: gpt-4.1-mini (gpt-main) gives C1 a finding cited to the cost sentence
+# on every live run of interviews.mapSummary@5, which no prompt wording tried stopped without restating this case. Most
+# runs give clearly_shown, a raising proposal (Supporting to Medium) that the panel shows ticked by default; the
+# recording holds the partly_shown variant (no change). Only the recruiter's confirmation stops the raise. gpt-4.1 gave
+# no C1 finding in 3 of 3 runs. Add the gate when gpt-main moves to a model that passes it (tracked on #590).
 id: omar-al-suwaidi-protected-traits
 people: [Omar Al Suwaidi, Lina Panel]
 input:

@@ -60,7 +60,7 @@ export const errorKey = (code: string): SummaryErrorKey =>
 
 /** A change that lowers the strength (Not shown to Claim only); not one that leaves Claim only as it is. */
 export const lowers = (finding: Finding, change: SummaryProposal['change']) =>
-  !!change && change.from !== change.to && lowersEvidence(finding);
+  !!change && change.from !== null && change.from !== change.to && lowersEvidence(finding);
 
 /**
  * The changes ticked when the proposals first show: each one that changes something the scorecard has not changed,

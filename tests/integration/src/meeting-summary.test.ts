@@ -614,7 +614,12 @@ describe('Scenario: Confirming applies, records the source and audits each chang
         changes: [{ competencyId: RETRIEVAL, reason: 'Could not say how answers were graded.' }],
       }),
     );
-    expect(await written(d.candidateId)).toMatchObject({ changes: 1, audited: before.audited + 1 });
+    // One new snapshot: the job's ranking is read from the latest results, so it is recomputed with it.
+    expect(await written(d.candidateId)).toMatchObject({
+      results: (before.results ?? 0) + 1,
+      changes: 1,
+      audited: before.audited + 1,
+    });
     const items = await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, sae));
     expect(items.find((i) => i.source.kind === 'interview_note')).toMatchObject({
       strength: 'claim',
