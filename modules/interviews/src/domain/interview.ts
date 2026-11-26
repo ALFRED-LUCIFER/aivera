@@ -71,7 +71,7 @@ const MESSAGES = {
   competency_not_in_rubric: "This competency is not in the job's approved rubric",
   interviewer_not_on_job: 'The interviewer must be an active member who can see this job.',
   status_move: 'This interview cannot move to that status.',
-  scorecard_closed: 'This interview is completed or cancelled, so its scorecard cannot change.',
+  scorecard_closed: 'This interview is cancelled, so its scorecard cannot change.',
   competency_not_in_interview: 'This competency is not one the interview tests.',
   // The scorecard submit (AIV-P2-006).
   scorecard_submitted: 'Already submitted',

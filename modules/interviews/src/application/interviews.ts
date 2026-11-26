@@ -142,6 +142,7 @@ export function interviewUseCases(ports: Ports) {
     async saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, raw: ScorecardDraft): Promise<void> {
       const draft = scorecardDraftSchema.parse(raw);
       const interview = await scorecardHolder(ports, ctx, interviewId);
+      if (interview.status === 'completed') throw new InterviewError('scorecard_submitted');
       if (!open(interview)) throw new InterviewError('scorecard_closed');
       const ids = draft.competencies.map((c) => c.competencyId);
       if (new Set(ids).size !== ids.length || !ids.every((id) => interview.competencyIds.includes(id)))

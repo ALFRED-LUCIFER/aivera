@@ -27,10 +27,8 @@ export async function saveScorecardDraft(input: unknown): Promise<boolean | 'sub
     unstable_rethrow(error);
     if (error instanceof InterviewError && error.code === 'interview_not_found') notFound();
     // Submitted (AIV-P2-006) or cancelled since the page loaded: the form says which instead of "try again".
-    if (error instanceof InterviewError && error.code === 'scorecard_closed') {
-      const read = await inActiveWorkspace((ctx) => getInterviews().getInterview(ctx, interviewId)).catch(() => null);
-      return read?.value?.status === 'completed' ? 'submitted' : 'closed';
-    }
+    if (error instanceof InterviewError && error.code === 'scorecard_submitted') return 'submitted';
+    if (error instanceof InterviewError && error.code === 'scorecard_closed') return 'closed';
     // The name only: an error's detail could repeat a note about the candidate (AGENTS.md 1.2).
     log.warn(
       { area: 'scorecard', 'error.type': error instanceof Error ? error.name : 'unknown' },
