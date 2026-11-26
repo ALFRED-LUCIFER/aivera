@@ -1752,7 +1752,7 @@
       "noStrengths": "No competency meets the job's need on inspected evidence yet.",
       "noRisks": "Every competency meets the job's need on inspected evidence.",
       "summary": "Credalent's summary",
-      "unavailable": "Summary unavailable: their assessment changed after they joined this pack, whose scores are as they were then.",
+      "unavailable": "Summary unavailable: their assessment or the job's rubric changed after they joined this pack, whose scores are as they were then.",
       "poweredBy": "Powered by Credalent"
     }
   },

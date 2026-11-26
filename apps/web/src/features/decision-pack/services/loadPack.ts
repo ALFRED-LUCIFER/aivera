@@ -10,7 +10,7 @@ import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
-import type { PackLink, PackPage, PackPreview } from '../domain/pack.ts';
+import { byNeed, type PackLink, type PackPage, type PackPreview } from '../domain/pack.ts';
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
 
@@ -29,8 +29,11 @@ export const loadPack = (jobId: string, packId: string): Promise<PackPage | 'not
  * explanation (AIV-P1-033). Never a contact detail, CV or evidence file (AGENTS.md 1.9): none is read here. Sends
  * nothing and creates no file.
  */
-// shortcut: one assessment read and one explanation per member, in turn, so the first view of a new snapshot waits for
-// the model (cached after, AIV-P1-033); read them in parallel or stream them if a pilot pack is slow to open.
+// shortcut: one assessment read and one explanation per member, in turn, inside the request, so the first view of a
+// new snapshot waits for the model (cached after, AIV-P1-033). At up to 3 attempts of 45 s per member, a slow model can
+// pass the 240 s ingress timeout from two uncached members on, and a pilot-sized pack (8 to 12) at a few seconds each
+// takes most of a minute; generate the explanations on PackReady (AIV-P2-011, #125) or stream each card under Suspense
+// before packs grow or the model slows.
 export const loadPackPreview = (jobId: string, packId: string): Promise<PackPreview | 'notFound' | null> =>
   withPack(jobId, packId, async (ctx, pack, page) => {
     const workspace = await getWorkspaces().getWorkspace(ctx);
@@ -40,9 +43,10 @@ export const loadPackPreview = (jobId: string, packId: string): Promise<PackPrev
     const onPackRubric = rubric?.id === pack.rubricVersionId;
     const names = new Map(onPackRubric ? rubric.competencies.map((c) => [c.id, c.name] as const) : []);
     const members: PackPreview['members'] = [];
-    for (const [i, m] of pack.members.entries()) {
+    for (const m of pack.members) {
       const { candidateId, backedScore, upperBound } = m;
-      const shown = { candidateId, name: page.members[i]?.name ?? null, backedScore, upperBound };
+      const name = page.members.find((p) => p.candidateId === candidateId)?.name ?? null;
+      const shown = { candidateId, name, backedScore, upperBound };
       const latest = onPackRubric ? await getAssessment().getLatestAssessment(ctx, m.candidateId, jobId) : null;
       // SAFETY: only the assessment the member joined with, so a newer result's reasons never sit beside the pack's scores.
       // shortcut: no read of a snapshot by id, so a member whose assessment moved on shows no summary at all; read the
@@ -51,13 +55,11 @@ export const loadPackPreview = (jobId: string, packId: string): Promise<PackPrev
         members.push({ ...shown, summary: null });
         continue;
       }
-      const rows = needRows(latest.competencies, names);
       const explanation = await getAssessment().explainRanking(ctx, m.candidateId, jobId);
       members.push({
         ...shown,
         summary: {
-          strengths: rows.filter((r) => r.proven >= r.needed),
-          risks: rows.filter((r) => r.proven < r.needed),
+          ...byNeed(needRows(latest.competencies, names)),
           explanation:
             explanation?.resultId === m.assessmentId
               ? { source: explanation.source, statements: explanation.statements }

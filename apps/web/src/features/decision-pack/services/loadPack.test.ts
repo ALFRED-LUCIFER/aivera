@@ -235,11 +235,11 @@ describe('loadPackPreview (AIV-P1-116)', () => {
     expect(preview !== 'notFound' && preview?.members[0]?.summary?.explanation).toBeNull();
   });
 
-  // SAFETY: mutation check: removed the `pack?.jobId !== jobId` check from withPack -> this test failed (TypeError reading the null pack's members)
-  it("a hiring owner not granted the job finds no pack (getPack hides it): not found, and no candidate's assessment is read", async () => {
-    fake.getPack.mockResolvedValue(null);
-    expect(await loadPackPreview(JOB, PACK)).toBe('notFound');
+  // SAFETY: mutation check: removed the `pack?.jobId !== jobId` check from withPack -> this test failed (another job's pack was previewed)
+  it("another job's pack, or none for a hiring owner not granted the job (getPack hides it): not found, no assessment read", async () => {
     fake.getPack.mockResolvedValue(stored(OTHER_JOB));
+    expect(await loadPackPreview(JOB, PACK)).toBe('notFound');
+    fake.getPack.mockResolvedValue(null);
     expect(await loadPackPreview(JOB, PACK)).toBe('notFound');
     expect(fake.latest).not.toHaveBeenCalled();
     expect(fake.explain).not.toHaveBeenCalled();

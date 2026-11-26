@@ -101,7 +101,7 @@ export function CandidateProfile({ view, children }: { view: CandidateProfileVie
           {view.fit.status === 'scored' && (
             <section className="flex min-w-0 flex-[2_1_420px] flex-col gap-2">
               <h3 className="text-card text-text">{t('candidateProfile.whyTitle')}</h3>
-              <Why
+              <RankingWhy
                 explanation={view.explanation}
                 onCards={new Set(view.competencies.flatMap((card) => card.items.map((item) => item.id)))}
               />
@@ -168,7 +168,14 @@ function FitBlock({ fit }: { fit: Fit }) {
   );
 }
 
-function Why({ explanation, onCards }: { explanation: ProfileData['explanation']; onCards: ReadonlySet<string> }) {
+/** "Why they are ranked here" (AIV-P1-033): each statement with its cited words; an item on `onCards` links to its card. */
+export function RankingWhy({
+  explanation,
+  onCards,
+}: {
+  explanation: ProfileData['explanation'];
+  onCards: ReadonlySet<string>;
+}) {
   const t = useTranslations('candidateProfile');
   if (!explanation || explanation.statements.length === 0)
     return <p className="text-body text-text-2">{t('noExplanation')}</p>;

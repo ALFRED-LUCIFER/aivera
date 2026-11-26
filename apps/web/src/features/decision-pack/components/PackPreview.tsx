@@ -1,21 +1,16 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import {
-  Card,
-  EvidenceHighlight,
-  NeedVsProvenBar,
-  ScoreWithUncertainty,
-  ValueBasis,
-  buttonClassName,
-} from '@credalent/ui';
+import { Card, NeedVsProvenBar, ScoreWithUncertainty, ValueBasis, buttonClassName } from '@credalent/ui';
 import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { packHref } from '@/features/ranking/domain/pack.ts';
+import { useId } from 'react';
+import { RankingWhy } from '@/features/evidence-profile';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
+import { packHref } from '@/features/ranking/domain/pack.ts';
 import { initials } from '@/features/shell/domain/shell.ts';
-import type { PackPreview as Preview, PreviewExplanation } from '../domain/pack.ts';
+import type { PackPreview as Preview } from '../domain/pack.ts';
 
 // AIV-P1-116: the decision pack as the hiring owner will see it, in the workspace's branding, from the client view of
 // the shortlist (docs/01-design/artboards/ClientPack.dc.html) with the header and "Powered by Credalent" of the shared
@@ -26,9 +21,12 @@ import type { PackPreview as Preview, PreviewExplanation } from '../domain/pack.
 // Deviations:
 // - it is a frame inside the recruiter shell, under the job header, with "Back to the pack" and a line saying nothing is
 //   sent: a preview the recruiter walks through on screen, not the hiring owner's own page; the secure link (AIV-P2-013,
-//   #127) renders it on its own. So the title is an h2 and each name an h3, under the job header's h1;
+//   #127) renders it on its own. So the title is an h2 and each name an h3, under the job header's h1, and the title
+//   keeps the 28 px title size where the artboard draws clamp(28px, 4vw, 36px): a larger h2 would outrank the job
+//   header's 28 px h1;
 // - the logo is the workspace's initials on the default ink accent, as ELayout draws it, beside the workspace's name:
-//   no logo or accent is stored until AIV-P2-077 (#520), so every workspace has the default header;
+//   no logo or accent is stored until AIV-P2-077 (#520), so every workspace has the default header. The name is the
+//   body font at 18 px bold, as ELayout draws it;
 // - the header's line reads "Prepared <date> · Confidential" (the ticket's wording), not "Shared with you by your
 //   recruiter · <date>": nothing is shared yet. ELayout's "Sent by … through Credalent" line and workspace footer
 //   block are left out: they belong to emails (AIV-P2-077, #521);
@@ -40,9 +38,9 @@ import type { PackPreview as Preview, PreviewExplanation } from '../domain/pack.
 //   (#125) writes the pack's cited strengths;
 // - Credalent's summary is the cited ranking explanation (AIV-P1-033), each cited phrase highlighted with its source,
 //   until AIV-P2-011 (#125) generates the pack's recommendation; a member whose assessment changed after joining shows
-//   "Summary unavailable" with the pack's scores. The statements render as the profile's "Why they are ranked here"
-//   does, without its links to evidence cards (the preview has none); that renderer is the evidence profile's own
-//   component, which a feature may not import, and AIV-P2-011 (#125) replaces this one;
+//   "Summary unavailable" with the pack's scores, as does every member once another rubric version is approved. The
+//   statements are the evidence profile's own "Why they are ranked here" (RankingWhy, through its index.ts), with no
+//   links to evidence cards: the preview has none;
 // - no Interview, Hold or Pass choice, feedback field or "Send decisions to the recruiter": client choices are
 //   AIV-P2-014 (#128, #129);
 // - the cards' padding is the shared Card's 16 px, not 24 px, and "Powered by Credalent" the 13 px meta size, not 12 px:
@@ -73,19 +71,19 @@ export function PackPreview({ jobId, packId, preview }: { jobId: string; packId:
               >
                 {initials(preview.workspace)}
               </span>
-              <span className="font-display text-section font-bold text-text">{preview.workspace}</span>
+              <span className="text-section font-bold text-text">{preview.workspace}</span>
             </span>
             <span className="text-meta text-text-2">
               {t('decisionPack.preview.prepared', { date: preview.preparedAt })}
             </span>
           </div>
         </header>
-        <div className="mx-auto flex max-w-240 flex-col gap-6 px-5 pt-8 pb-12 sm:px-10">
+        <div className="mx-auto flex max-w-240 flex-col gap-6 px-5 pt-[clamp(28px,5vw,56px)] pb-16 sm:px-10">
           <div className="flex flex-col gap-2.5">
             <h2 id="preview-title" className="font-display text-title tracking-tight text-text">
               {t('decisionPack.title', { name: preview.name, job: preview.job })}
             </h2>
-            <p className="max-w-[66ch] text-body text-text-2">
+            <p className="max-w-[66ch] text-[16px] leading-6 text-text-2">
               {t('decisionPack.preview.lead', { count: preview.members.length })}
             </p>
           </div>
@@ -105,6 +103,9 @@ export function PackPreview({ jobId, packId, preview }: { jobId: string; packId:
     </div>
   );
 }
+
+/** The preview has no evidence cards, so a cited phrase links nowhere. */
+const NO_CARDS: ReadonlySet<string> = new Set();
 
 function Member({ member }: { member: Preview['members'][number] }) {
   const t = useTranslations();
@@ -144,9 +145,10 @@ function Member({ member }: { member: Preview['members'][number] }) {
                   empty={t('decisionPack.preview.noRisks')}
                 />
               </div>
-              {member.summary.explanation && member.summary.explanation.statements.length > 0 && (
-                <Summary explanation={member.summary.explanation} />
-              )}
+              <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+                <span className="text-meta font-semibold text-text-2">{t('decisionPack.preview.summary')}</span>
+                <RankingWhy explanation={member.summary.explanation} onCards={NO_CARDS} />
+              </div>
             </>
           ) : (
             <p className="text-body text-text-2">{t('decisionPack.preview.unavailable')}</p>
@@ -159,13 +161,16 @@ function Member({ member }: { member: Preview['members'][number] }) {
 
 function Needs({ title, rows, empty }: { title: string; rows: NeedRow[]; empty: string }) {
   const t = useTranslations();
+  const titleId = useId();
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-meta font-semibold text-text-2">{title}</span>
+      <span id={titleId} className="text-meta font-semibold text-text-2">
+        {title}
+      </span>
       {rows.length === 0 ? (
         <p className="text-body text-text">{empty}</p>
       ) : (
-        <ul aria-label={title} className="flex flex-col divide-y divide-border">
+        <ul aria-labelledby={titleId} className="flex flex-col divide-y divide-border">
           {rows.map((row) => (
             <li key={row.competencyId}>
               <NeedVsProvenBar
@@ -184,39 +189,6 @@ function Needs({ title, rows, empty }: { title: string; rows: NeedRow[]; empty: 
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-function Summary({ explanation }: { explanation: PreviewExplanation }) {
-  const t = useTranslations();
-  return (
-    <div className="flex flex-col gap-1.5 border-t border-border pt-4">
-      <span className="text-meta font-semibold text-text-2">{t('decisionPack.preview.summary')}</span>
-      <ul className="flex list-disc flex-col gap-1.5 ps-4.5 text-body text-text">
-        {explanation.statements.map((statement, i) => (
-          // The model may repeat a sentence, and statements are never reordered.
-          <li key={`${i}:${statement.text}`}>
-            {statement.text}
-            {/* A citation with no item is the snapshot's own figures, which the statement already states. */}
-            {statement.citations.map(({ itemId, label, quote }) =>
-              itemId ? (
-                <span key={itemId + quote} className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <span>
-                    <EvidenceHighlight
-                      text={quote}
-                      citations={[{ start: 0, end: quote.length, sourceId: itemId }]}
-                      markLabel={t('candidateProfile.markLabel')}
-                    />
-                  </span>
-                  <span className="text-meta text-text-2">{t('candidateProfile.source', { label })}</span>
-                </span>
-              ) : null,
-            )}
-          </li>
-        ))}
-      </ul>
-      {explanation.source === 'template' && <p className="text-meta text-text-2">{t('candidateProfile.withoutAi')}</p>}
     </div>
   );
 }

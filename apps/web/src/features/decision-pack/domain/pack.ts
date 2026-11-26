@@ -1,5 +1,5 @@
-import type { ExplanationStatement } from '@credalent/assessment';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
+import type { ProfileData } from '@/features/evidence-profile/domain/profile.ts';
 
 /** A decision pack page as the server hands it to the browser (AIV-P2-010): plain data, scores as snapshotted. */
 export type PackPage = {
@@ -31,19 +31,18 @@ export type PackPreview = Pick<PackPage, 'name' | 'job' | 'preparedAt'> & {
   members: (Pick<PackPage['members'][number], 'candidateId' | 'name' | 'backedScore' | 'upperBound'> & {
     /**
      * From the assessment the member joined with: competencies that meet the job's need, those short of it, and the
-     * cited explanation (AIV-P1-033). Null once a newer assessment replaced it, so nothing newer sits beside the pack's
-     * scores.
+     * cited explanation (AIV-P1-033). Null once a newer assessment replaced it or another rubric version was approved,
+     * so nothing newer sits beside the pack's scores.
      */
-    summary: {
-      strengths: NeedRow[];
-      risks: NeedRow[];
-      explanation: PreviewExplanation | null;
-    } | null;
+    summary: ({ strengths: NeedRow[]; risks: NeedRow[] } & Pick<ProfileData, 'explanation'>) | null;
   })[];
 };
 
-/** Credalent's cited summary of one member in the preview. */
-export type PreviewExplanation = { source: 'ai' | 'template'; statements: ExplanationStatement[] };
+/** "Backed by evidence" and "Still to test in the interview": a competency proven at the level the job needs, or not. */
+export const byNeed = (rows: readonly NeedRow[]) => ({
+  strengths: rows.filter((r) => r.proven >= r.needed),
+  risks: rows.filter((r) => r.proven < r.needed),
+});
 
 /** The pack page's states: loading.tsx and error.tsx render the first two. */
 export type DecisionPackView =
