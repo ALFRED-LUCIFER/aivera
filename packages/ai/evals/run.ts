@@ -178,8 +178,11 @@ export const judgePrompt = {
     'note, a quote, a reason), judge those words alone: what its cited source says never makes an item meet such a ' +
     'point. Fill checks first, one per item the rubric speaks of (each link, each statement, each question), in ' +
     'order: the item as the output words it, what its cited source says on that point (quote it, or "nothing"), ' +
-    'whether that quote contradicts the item (a limit saying the evidence does not show what the quote states is ' +
-    'contradicted), and whether the item meets the rubric. Then give pass and the reason.',
+    'whether that quote contradicts the item, and whether the item meets the rubric. A quote contradicts an item ' +
+    'only when it states the very thing the item says the evidence does not show, all of it, not a related detail: ' +
+    'an authored commit count contradicts a limit saying authorship is not shown; "shipped the billing service to ' +
+    '3,000 shops" does not contradict a limit saying how the service is monitored or reviewed is not shown. Then ' +
+    'give pass and the reason.',
 };
 // AIV-P1-075: on gpt-4.1 and gpt-4.1-mini alike, a bare verdict passed a limit its source contradicts (judge case
 // contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
