@@ -399,7 +399,7 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(sara.getByText("Credalent's recommendation:")).toHaveText(
     "Credalent's recommendation: advance, and probe cost and reliability",
   );
-  // No decision option is offered, let alone chosen: recording decisions is AIV-P2-012.
+  // No decision is chosen: the recommendation decides nothing, and the choices are the hiring owner's (AIV-P2-012).
   await expect(page.locator('[aria-pressed="true"], [aria-checked="true"], input:checked')).toHaveCount(0);
   // The answer citing a source outside Arjun's snapshot is not shown: the assessment's own strengths are.
   const arjun = page.getByRole('region', { name: 'Arjun Menon' });
