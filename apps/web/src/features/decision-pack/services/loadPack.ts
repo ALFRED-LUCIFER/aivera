@@ -1,14 +1,16 @@
-import { PackError } from '@credalent/decisions';
+import { PackError, type PackView } from '@credalent/decisions';
 import { IntakeError } from '@credalent/intake';
-import { ForbiddenError } from '@credalent/workspaces';
+import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
+import { needRows } from '@/features/evidence-profile/domain/needs.ts';
+import { getAssessment } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
-import { getJobs } from '@/server/jobs';
-import { inActiveWorkspace } from '@/server/workspace';
-import type { PackLink, PackPage } from '../domain/pack.ts';
+import { getApprovedRubricReads, getJobs } from '@/server/jobs';
+import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
+import { byNeed, type PackLink, type PackPage, type PackPreview } from '../domain/pack.ts';
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
 
@@ -18,10 +20,66 @@ const isId = (id: string) => z.uuid().safeParse(id).success;
  * it (`pack.view`: admins, recruiters and hiring owners on the job); an interviewer gets the 403 page. 'notFound' for a
  * pack of another job or workspace, or a malformed id; null with no workspace.
  */
-export async function loadPack(jobId: string, packId: string): Promise<PackPage | 'notFound' | null> {
+export const loadPack = (jobId: string, packId: string): Promise<PackPage | 'notFound' | null> =>
+  withPack(jobId, packId, async (_ctx, _pack, page) => page);
+
+/**
+ * The pack as the hiring owner will see it (AIV-P1-116), with `loadPack`'s access and answers. Per member, from the
+ * assessment they joined with: the competencies that meet the job's need and those short of it, and the cited
+ * explanation (AIV-P1-033). Never a contact detail, CV or evidence file (AGENTS.md 1.9): none is read here. Sends
+ * nothing and creates no file.
+ */
+// shortcut: one assessment read and one explanation per member, in turn, inside the request, so the first view of a
+// new snapshot waits for the model (cached after, AIV-P1-033). One uncached member alone can pass the 240 s ingress
+// timeout (explainRanking's worst case is 2 schema x 3 transient attempts x 45 s plus backoff, about 4.5 min), slow but
+// successful answers add up member by member, and a model that only times out trips the circuit breaker after 5
+// failures (about 229 s) before the template shows; generate the explanations on pack creation (AIV-P2-011, #125) or
+// stream each card under Suspense before pilot packs open on a slow model.
+export const loadPackPreview = (jobId: string, packId: string): Promise<PackPreview | 'notFound' | null> =>
+  withPack(jobId, packId, async (ctx, pack, page) => {
+    const workspace = await getWorkspaces().getWorkspace(ctx);
+    // Not authorised itself: `getPack` authorised this job for the member.
+    const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
+    // Every member's snapshot is on the pack's rubric version; once another is approved its competencies have no names.
+    const onPackRubric = rubric?.id === pack.rubricVersionId;
+    const names = new Map(onPackRubric ? rubric.competencies.map((c) => [c.id, c.name] as const) : []);
+    const members: PackPreview['members'] = [];
+    for (const m of pack.members) {
+      const { candidateId, backedScore, upperBound } = m;
+      const name = page.members.find((p) => p.candidateId === candidateId)?.name ?? null;
+      const shown = { candidateId, name, backedScore, upperBound };
+      const latest = onPackRubric ? await getAssessment().getLatestAssessment(ctx, m.candidateId, jobId) : null;
+      // SAFETY: only the assessment the member joined with, so a newer result's reasons never sit beside the pack's scores.
+      // shortcut: no read of a snapshot by id, so a member whose assessment moved on shows no summary at all; read the
+      // pack's own snapshot when AIV-P2-011 (#125) stores the pack's summaries.
+      if (latest?.id !== m.assessmentId) {
+        members.push({ ...shown, summary: null });
+        continue;
+      }
+      const explanation = await getAssessment().explainRanking(ctx, m.candidateId, jobId);
+      members.push({
+        ...shown,
+        summary: {
+          ...byNeed(needRows(latest.competencies, names)),
+          explanation:
+            explanation?.resultId === m.assessmentId
+              ? { source: explanation.source, statements: explanation.statements }
+              : null,
+        },
+      });
+    }
+    return { workspace: workspace?.name ?? '', name: page.name, job: page.job, preparedAt: page.preparedAt, members };
+  });
+
+/** Opens the job's pack for the member as `loadPack` describes, then `read`s from it in the same context. */
+async function withPack<T>(
+  jobId: string,
+  packId: string,
+  read: (ctx: WorkspaceContext, pack: PackView, page: PackPage) => Promise<T>,
+): Promise<T | 'notFound' | null> {
   if (!isId(jobId) || !isId(packId)) return 'notFound';
   try {
-    const result = await inActiveWorkspace(async (ctx): Promise<PackPage | 'notFound'> => {
+    const result = await inActiveWorkspace(async (ctx): Promise<T | 'notFound'> => {
       const pack = await getDecisions().getPack(ctx, packId);
       // SAFETY: the job comes from the stored pack; a pack of another job under this job's address is not found.
       if (pack?.jobId !== jobId) return 'notFound';
@@ -37,8 +95,9 @@ export async function loadPack(jobId: string, packId: string): Promise<PackPage 
           }),
         ),
       );
-      return {
+      return read(ctx, pack, {
         jobId,
+        packId,
         name: pack.name,
         job: header?.job.title ?? '',
         preparedAt: pack.preparedAt,
@@ -54,7 +113,7 @@ export async function loadPack(jobId: string, packId: string): Promise<PackPage 
           };
         }),
         others: new Set(applicants.map((a) => a.personId)).size - pack.members.length,
-      };
+      });
     });
     return result ? result.value : null;
   } catch (error) {

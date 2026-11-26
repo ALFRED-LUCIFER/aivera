@@ -32,6 +32,7 @@ describe('DecisionPack: added by', () => {
             status: 'ready',
             pack: {
               jobId: '0190d4a2-0000-7000-9000-000000000001',
+              packId: '0190d4a2-0000-7000-9000-000000000002',
               name: 'Round 2 shortlist',
               job: 'Senior AI Engineer',
               preparedAt: at,
@@ -50,5 +51,9 @@ describe('DecisionPack: added by', () => {
     expect(screen.getByText('Added by Ayesha Perera on 25 Nov 2026')).toBeTruthy();
     expect(screen.getAllByText(/^Added by/)).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'Arjun Menon' })).toBeTruthy();
+    // AIV-P1-116: the branded preview of this pack.
+    expect(screen.getByRole('link', { name: 'Preview as the hiring owner sees it' }).getAttribute('href')).toBe(
+      '/app/jobs/0190d4a2-0000-7000-9000-000000000001/packs/0190d4a2-0000-7000-9000-000000000002/preview',
+    );
   });
 });
