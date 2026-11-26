@@ -1,0 +1,58 @@
+# AIV-P2-011 review: decisions.summariseMember@1's live answer for Arjun Menon, which says he built and ran the KYC
+# document reader where the excerpt names only its service design and on-call runbook. The judge must fail it.
+id: pack-arjun-built-and-ran
+case: decisions.summariseMember/arjun-hold
+output:
+  strengths:
+    - text: The candidate maintains an open-source queue library, with 1,840 of 2,100 commits since 2022, showing Python
+        services work.
+      citations:
+        - sourceId: S2
+          quote: maintains an open-source queue library, with 1,840 of 2,100 commits since 2022
+        - sourceId: S1
+          quote:
+            'Python services, 15% of the weight, needs level 3: independently checked work shows level 5, which meets the
+            need'
+      claim: false
+    - text: The candidate built and ran a production KYC document reader service with design and on-call runbook.
+      citations:
+        - sourceId: S3
+          quote: service design and on-call runbook for a production KYC document reader
+        - sourceId: S1
+          quote:
+            'LLM systems in production, 25% of the weight, needs level 4: submitted work shows level 4, which meets the
+            need'
+      claim: false
+  risks:
+    - text: Retrieval and evaluation competency is short of the need at level 2, below required level 4.
+      citations:
+        - sourceId: S1
+          quote: 'Retrieval and evaluation, 20% of the weight, needs level 4: submitted work shows level 2, short of the need'
+      claim: false
+    - text: Cost and reliability competency is short of the need at level 2, below required level 3.
+      citations:
+        - sourceId: S1
+          quote: 'Cost and reliability, 15% of the weight, needs level 3: submitted work shows level 2, short of the need'
+      claim: false
+  round1:
+    text: Candidate explained the queue library's back-pressure design in depth but could not give figures for cost per
+      request.
+    citations:
+      - sourceId: S5
+        quote: explained the queue library's back-pressure design in depth; he could not give figures for cost per request
+    claim: false
+  recommendation:
+    action: hold
+    focus: probe product judgement and Arabic and bilingual NLP
+    citations:
+      - sourceId: S1
+        quote: Work meets the need on competencies holding 40% of the weight
+    claim: false
+expected: fail
+recorded:
+  judgePrompt: evals.judge@6
+  verdict:
+    pass: false
+    reason: The second strength fails because it claims the candidate built and ran the KYC document reader, but the
+      cited excerpt only names a service design and on-call runbook, not that the candidate built, ran, or shipped
+      the reader.

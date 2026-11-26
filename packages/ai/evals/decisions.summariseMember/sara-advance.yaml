@@ -70,11 +70,11 @@ expected:
     advance, as the facts say the work meets the need on 60% of the weight, and its focus, if any, names a gap from the
     facts. No statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
-  promptVersion: decisions.summariseMember@1
-  promptHash: 3bd94dafd2ec
+  promptVersion: decisions.summariseMember@2
+  promptHash: 625e6feef090
   output:
     strengths:
-      - text: The candidate authored 412 of 460 commits in llm-eval-harness between March and October, showing work on LLM systems in production.
+      - text: The candidate authored 412 of 460 commits in llm-eval-harness between March and October, showing work on LLM systems in production meeting level 4 need.
         citations:
           - sourceId: S2
             quote: authored 412 of 460 commits in llm-eval-harness between March and October
@@ -85,7 +85,7 @@ recorded:
             start: 63
             end: 186
         claim: false
-      - text: The candidate deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release, supporting retrieval and evaluation competency.
+      - text: The candidate deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release, showing retrieval and evaluation at level 5 meeting the need.
         citations:
           - sourceId: S3
             quote: deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release
@@ -97,19 +97,19 @@ recorded:
             end: 310
         claim: false
     risks:
-      - text: Cost and reliability competency is a claim with nothing to inspect, level 3 if it holds.
+      - text: Cost and reliability is claimed but has no inspected evidence, meeting level 3 if it holds.
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
             start: 415
             end: 523
         claim: false
-      - text: Arabic and bilingual NLP competency is a claim with nothing to inspect, level 4 if it holds.
+      - text: Product judgement has no evidence yet to meet the level 3 need.
         citations:
           - sourceId: S1
-            quote: 'Arabic and bilingual NLP, 10% of the weight, needs level 3: a claim with nothing to inspect, level 4 if it holds'
-            start: 595
-            end: 707
+            quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
+            start: 525
+            end: 593
         claim: false
     round1:
       text: The candidate defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set.
@@ -121,7 +121,7 @@ recorded:
       claim: false
     recommendation:
       action: advance
-      focus: probe product judgement
+      focus: cost and reliability
       citations:
         - sourceId: S1
           quote: Work meets the need on competencies holding 60% of the weight
@@ -130,4 +130,4 @@ recorded:
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and all citations are accurate and copied word for word from the sources.
+    reason: Every item is strictly limited to what its cited excerpt states, with no added work, role, team, result, or judgement, and every claim is called a claim or named as lacking evidence, meeting all rubric points.

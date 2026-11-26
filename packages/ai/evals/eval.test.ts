@@ -1396,7 +1396,7 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch));
 
   it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
-    expect(judgeCases.length).toBe(suggestionCases.length + 6 + 3); // six evidence and three matcher judge cases
+    expect(judgeCases.length).toBe(suggestionCases.length + 7 + 3); // seven evidence and three matcher judge cases
     expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
       ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
       ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
@@ -2216,11 +2216,12 @@ describe('Feature: Decision pack summaries', () => {
     expect(parseCard(withFirst('risks', { text })).success).toBe(false);
   });
 
-  it('the pack rubric is pinned by a known bad output the judge must fail (invented work, a claim called backed), itself on the product schema', () => {
+  it('the pack rubrics are pinned by known bad outputs the judge must fail (invented work, a claim called backed), each on the product schema', () => {
     const pinned = loadJudgeCases(import.meta.dirname, golden).filter(
       (c): c is EvidenceJudgeCase => !('judge' in c) && c.case.startsWith(`${task}/`),
     );
     expect(pinned.map((c) => [c.id, c.case, c.expected])).toEqual([
+      ['pack-arjun-built-and-ran', `${task}/arjun-hold`, 'fail'],
       ['pack-sara-invented-work', `${task}/sara-advance`, 'fail'],
     ]);
     for (const c of pinned) {
