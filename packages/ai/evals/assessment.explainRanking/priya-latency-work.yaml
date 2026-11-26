@@ -42,5 +42,5 @@ recorded:
             quote: 'latency-budget: authored 150 of 170 commits, cutting p95 latency in the benchmark suite'
   judge:
     pass: true
-    reason: Every statement is directly supported by its cited source, uses only placeholder figures as in the source,
-      and does not recommend or name the candidate.
+    reason: Every statement says only what the source it cites shows, every share and count is a placeholder from the
+      facts source, figures are quoted, and no statement recommends or names the candidate.

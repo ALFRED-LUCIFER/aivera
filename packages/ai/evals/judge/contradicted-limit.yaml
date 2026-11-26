@@ -9,4 +9,4 @@ recorded:
     pass: false
     reason:
       The limit for the Python competency is contradicted by the source, which states the candidate authored 412 of
-      460 commits; this fails the rubric as every link's limit must name what its evidence does not show.
+      460 commits.

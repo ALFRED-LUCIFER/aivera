@@ -42,5 +42,5 @@ recorded:
             quote: 'job-queue: authored 301 of 355 commits, including the retry scheduler'
   judge:
     pass: true
-    reason: Every statement is directly supported by its cited source, uses only quoted figures, and contains no
-      recommendations or candidate names.
+    reason: Every statement says only what the source it cites shows, uses only placeholder figures as in the facts
+      source, and does not recommend or name the candidate.

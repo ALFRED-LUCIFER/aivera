@@ -158,8 +158,9 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
 /**
  * The judge's prompt, versioned in code (ADR-006). It sees the rubric, the synthetic sources and the output only.
  * Every change re-runs the judge golden cases live (evals/judge, AIV-P2-084) and records their verdicts.
- * shortcut: @4's authorship sentence is checked against one rubric and source (sara-eval-harness); add judge golden
- * cases for other source kinds when a second judged rubric runs live.
+ * shortcut: @4's authorship sentence, and @6's authorship example of a contradiction, restate the case they are checked
+ * on (contradicted-limit on sara-eval-harness); add a held-out contradicted case (a date or count in another source
+ * kind) when a second judged rubric runs live.
  */
 export const judgePrompt = {
   id: 'evals.judge@6',
@@ -180,16 +181,15 @@ export const judgePrompt = {
     'order: the item as the output words it, what its cited source says on that point (quote it, or "nothing"), ' +
     'whether that quote contradicts the item, and whether the item meets the rubric. A quote contradicts an item ' +
     'only when it states the very thing the item says the evidence does not show, all of it, not a related detail: ' +
-    'an authored commit count contradicts a limit saying authorship is not shown; "shipped the billing service to ' +
-    '3,000 shops" does not contradict a limit saying how the service is monitored or reviewed is not shown. Then ' +
-    'give pass and the reason.',
+    'an authored commit count contradicts a limit saying authorship is not shown; "ran the payroll export for 40 ' +
+    'clients" does not contradict a limit saying its error rate is not shown. Then give pass and the reason.',
 };
 // AIV-P1-075: on gpt-4.1 and gpt-4.1-mini alike, a bare verdict passed a limit its source contradicts (judge case
 // contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
 // schema's order is the order it writes), and code fails the output when any item does not meet the rubric.
 // AIV-P1-144: on @5 a check could quote S1's "authored 412 of 460 commits" for the authorship limit and still mark it
 // as meeting the rubric (about 3 runs in 50). Each check now says whether its quote contradicts the item, and code
-// fails a contradicted item whatever else it says. AIV-P1-137: an item judged on its own words is not met by its source.
+// fails a contradicted item whatever else it says.
 const judgeAnswer = z.object({
   // At least one: an empty list is the bare verdict this replaced.
   checks: z

@@ -7,4 +7,6 @@ recorded:
   judgePrompt: evals.judge@6
   verdict:
     pass: false
-    reason: Every link's limit fails to name what its evidence does not show, as required by the rubric.
+    reason:
+      The output fails because every link's limit does not name what its evidence does not show, as required by the
+      rubric.

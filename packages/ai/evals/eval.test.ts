@@ -1157,6 +1157,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
     expect(await judgeWith(passingCheck(false))(c.rubric, c.golden, c.output)).toEqual({ pass: true, reason: 'fine' });
   });
 
+  // SAFETY: mutation check: `contradicted` made .optional() in judgeAnswer -> this test failed
   it('refuses a judge answer whose check does not say whether its quote contradicts the item, never patching it', async () => {
     const [c] = judgeCases;
     if (!c) throw new Error('no evidence judge case');
@@ -1204,11 +1205,11 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
 
   // SAFETY: mutation check: judge prompt id comparison removed from recordedJudgeVerdict in run.ts -> this test failed
   it('Scenario: A judge prompt change is never graded by stale recordings', async () => {
-    const stale = judgeCases.map((c) => ({ ...c, recorded: { ...c.recorded, judgePrompt: 'evals.judge@3' } }));
+    const stale = judgeCases.map((c) => ({ ...c, recorded: { ...c.recorded, judgePrompt: 'evals.judge@5' } }));
     const report = await evaluateJudge(stale, recordedJudgeVerdict);
     expect(report.passed).toBe(false);
     expect(report.cases[0]?.error).toBe(
-      `judge verdict recorded with evals.judge@3, code is ${judgePrompt.id}: re-run the judge golden cases live`,
+      `judge verdict recorded with evals.judge@5, code is ${judgePrompt.id}: re-run the judge golden cases live`,
     );
   });
 

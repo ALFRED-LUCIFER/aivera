@@ -46,5 +46,5 @@ recorded:
             quote: 'stream-join: authored 96 of 130 commits'
   judge:
     pass: true
-    reason: Every statement is directly supported by its cited source, uses only figures quoted from the source, and
-      contains no recommendations, candidate names, percentages, or number words outside of quoted figures.
+    reason: Every statement says only what the source it cites shows, uses only placeholder figures where required, and
+      does not recommend or name the candidate.

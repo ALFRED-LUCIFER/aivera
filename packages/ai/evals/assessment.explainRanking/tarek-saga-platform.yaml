@@ -42,5 +42,5 @@ recorded:
             quote: 'saga-orchestrator: authored 77 of 90 commits'
   judge:
     pass: true
-    reason: Every statement is directly supported by its cited source, uses only figures quoted from the source, and
-      contains no recommendations, percentages, or number words outside of quoted figures.
+    reason: Every statement says only what the source it cites shows, every share and count is a placeholder as in the
+      facts source, figures are quoted, and no statement recommends or names the candidate.

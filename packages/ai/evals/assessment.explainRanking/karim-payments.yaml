@@ -42,5 +42,5 @@ recorded:
             quote: 'recon-engine: authored 64 of 80 commits'
   judge:
     pass: true
-    reason: Every statement is directly supported by its cited source, uses only quoted figures, and contains no
-      recommendations, candidate names, percentages, or number words outside of quoted figures.
+    reason: Every statement says only what the source it cites shows, uses only placeholder figures as in the facts
+      source, and does not recommend or name the candidate.
