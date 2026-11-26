@@ -1,0 +1,29 @@
+# The company's "about us" pasted in place of a job description (synthetic): it states no work, so nothing is drafted
+# and nothing suggested. Live, @4 suggested "Sustainability expertise" from the mission statement.
+id: not-a-job-description
+input:
+  jobType: product_management
+  title: Product Owner
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      Founded in 2015, we are the leading provider of smart metering in the Gulf, serving 2 million households. Our
+      mission is a sustainable future. Our values are integrity, innovation and teamwork. Visit our website to learn
+      more.
+expected:
+  match:
+    competencies: []
+    suggestions: []
+    suggestions[*].name: []
+recorded:
+  output:
+    competencies: []
+    refused: false
+    reason: null
+    suggestions: []
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 31095db9af53
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts: {}

@@ -112,6 +112,83 @@ for (const theme of themes) {
   });
 }
 
+// AIV-P1-145: the cap is 12. The eval set's qa-automation-long case states ten needs; at a cap of 8 the last were lost.
+const LONG = [
+  'You will own test automation for the checkout and payments web app used by merchants every day.',
+  'What you will do:',
+  '- Design and maintain end-to-end tests in Playwright for the checkout flows.',
+  '- Write API tests for the payments and refunds services.',
+  '- Run the tests in our CI pipeline and keep them fast and stable.',
+  '- Find and fix flaky tests, and report what caused them.',
+  '- Plan test coverage with product managers and engineers before work starts.',
+  '- Test accessibility with screen readers and automated checks.',
+  '- Run load tests before every sales event and report the results.',
+  '- Review pull requests for testability.',
+  '- Write clear bug reports that engineers can reproduce.',
+  '- Mentor two junior testers.',
+].join('\n');
+async function draftLong(page: Page, title: string) {
+  await fill(page, title, LONG);
+  await page.getByLabel('Job type').selectOption({ label: 'QA and test automation' });
+  await draftButton(page).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'From your job description · 10 competencies' })).toBeVisible();
+}
+
+for (const theme of themes) {
+  test(`Scenario: A long description's stated needs all appear in Add a job, from the keyboard (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await draftLong(page, 'Senior QA Automation Engineer, Checkout');
+    // Ten rows under the header row, each quoting one line of the description.
+    const rows = table(page).getByRole('row').filter({ hasText: 'From your description:' });
+    await expect(rows).toHaveCount(10);
+    for (const row of await rows.all()) {
+      const quote = (await row.locator('mark').innerText()).replace('cited from your description', '').trim();
+      expect(LONG.split('\n').some((line) => line.includes(quote))).toBe(true);
+    }
+    // The last stated need, which a cap of 8 dropped.
+    await expect(rowOf(page, 'Mentoring junior testers').locator('mark')).toContainText('Mentor two junior testers.');
+    await expect(page.getByText('Weights total 100%')).toBeVisible();
+    await expectAccessible(page);
+
+    await rowOf(page, 'Mentoring junior testers')
+      .getByRole('button', { name: 'Edit Mentoring junior testers' })
+      .focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Competency name, Mentoring junior testers')).toBeFocused();
+    await table(page).getByRole('button', { name: 'Done' }).click();
+    await rowOf(page, 'Mentoring junior testers')
+      .getByRole('button', { name: 'Remove Mentoring junior testers' })
+      .focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'From your job description · 9 competencies' })).toBeVisible();
+  });
+}
+
+test('Scenario: The longer draft stays a draft the recruiter decides on', async ({ page }) => {
+  const title = `Long QA Engineer ${Date.now()}`;
+  await draftLong(page, title);
+  await expect(
+    page.getByText(
+      'Drafted competencies are suggestions: keep, edit or remove each. Nothing is saved until you choose Save job and rubric.',
+    ),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Remove Bug reporting for reproducibility' }).click();
+  await page.getByRole('button', { name: 'Save job and rubric' }).click();
+  await expect(page.getByText(/Job saved\. These competencies are now version 1/)).toBeVisible();
+
+  // The saved rubric: the rows she kept, without the removed one.
+  await page.goto('/app/jobs');
+  await page.getByRole('link', { name: title }).click();
+  await expect(page.getByText('Mentoring junior testers')).toBeVisible();
+  await expect(page.getByText('Code review for testability')).toBeVisible();
+  await expect(page.getByText('Bug reporting for reproducibility')).toHaveCount(0);
+});
+
 test('Scenario: Before drafting', async ({ page }) => {
   await fill(page, 'Senior AI Engineer', DESCRIPTION);
   await expect(

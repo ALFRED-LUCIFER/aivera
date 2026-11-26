@@ -19,12 +19,14 @@ expected:
       - Payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 9e1d661bd882
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 5f8209b48d88
   output:
     competencies:
       - name: Product Discovery with Merchants
-        evidenceExpected: Led product discovery sessions with merchants to identify needs and define product features.
+        evidenceExpected:
+          Led product discovery sessions with merchants to identify needs and define product features for
+          payments solutions.
         weight: 40
         level: 4
         type: mandatory
@@ -34,8 +36,8 @@ recorded:
             start: 0
             end: 68
         claim: false
-      - name: Outcome Metrics Definition and Reporting
-        evidenceExpected: Defined outcome metrics for product initiatives and regularly reported performance against these metrics.
+      - name: Setting and Reporting Outcome Metrics
+        evidenceExpected: Defined outcome metrics for product success and regularly reported progress and results to stakeholders.
         weight: 30
         level: 4
         type: mandatory
@@ -61,13 +63,14 @@ recorded:
     suggestions:
       - name: Payments Industry Knowledge
         evidenceExpected:
-          Developed or managed payment products or features demonstrating understanding of payment systems and
-          merchant needs.
+          Demonstrated understanding of payments industry trends, regulations, and technologies through product
+          decisions and strategy.
         weight: 50
         level: 4
         type: desirable
-        why: The job title 'Senior Product Manager, Payments' implies the need for payments industry knowledge, but the
-          description does not explicitly mention it.
+        why:
+          The job title specifies payments, implying the need for payments industry knowledge, but the description does not
+          explicitly mention it.
         citations:
           - sourceId: S1
             quote: You will run discovery with merchants and decide what we build next.
@@ -75,13 +78,13 @@ recorded:
             end: 68
         claim: false
       - name: Data Analysis and Interpretation
-        evidenceExpected: Analyzed product data to derive insights and inform product decisions beyond setting outcome metrics.
+        evidenceExpected: Analyzed product and market data to inform decisions and measure product performance.
         weight: 50
         level: 4
         type: desirable
         why:
-          The description mentions setting and reporting outcome metrics but does not explicitly require skills in data
-          analysis and interpretation, which are implied for effective metric use.
+          Setting and reporting outcome metrics implies the need to analyze and interpret data, but the description does not
+          explicitly state this skill.
         citations:
           - sourceId: S1
             quote: You set outcome metrics and report against them.
@@ -90,7 +93,7 @@ recorded:
         claim: false
   matches:
     Discovery to decision: Product Discovery with Merchants
-    Outcomes with metrics: Outcome Metrics Definition and Reporting
+    Outcomes with metrics: Setting and Reporting Outcome Metrics
     Working with engineering and design: Cross-functional Collaboration with Engineering and Design
   suggestions:
     judge: evals.suggestion@2

@@ -18,13 +18,13 @@ expected:
     competencies[*].name: [Onboarding flow design]
     suggestions[*].name: [Arabic and right-to-left design]
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 046556a25826
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 330572f22350
   output:
     competencies:
-      - name: Onboarding Flow Design
-        evidenceExpected: Designed and shipped onboarding flows for merchants to open stores on a marketplace platform.
-        weight: 50
+      - name: Design onboarding flows for merchants
+        evidenceExpected: Designed and shipped onboarding flows that enable merchants to open stores on a marketplace platform.
+        weight: 70
         level: 4
         type: mandatory
         citations:
@@ -33,10 +33,10 @@ recorded:
             start: 0
             end: 107
         claim: false
-      - name: User Testing with Merchants
+      - name: User testing with merchants
         evidenceExpected: Conducted user testing sessions with merchants to validate and improve onboarding flow changes before release.
-        weight: 50
-        level: 4
+        weight: 30
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -47,28 +47,29 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: User Experience Research
-        evidenceExpected: Conducted research to understand merchant needs and behaviors to inform onboarding design improvements.
+      - name: User experience (UX) research
+        evidenceExpected:
+          Planned and executed UX research activities to gather insights on merchant needs and behaviors during
+          onboarding.
         weight: 40
         level: 3
         type: desirable
-        why:
-          The job involves designing onboarding flows and testing changes with merchants, implying a need for understanding
-          user experience and research methods, which the description does not explicitly ask for.
+        why: The description states testing changes with merchants, implying a need for UX research skills, but does not
+          explicitly mention research methods.
         citations:
           - sourceId: S1
-            quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
-            start: 0
-            end: 107
+            quote: You test every change with merchants before it ships.
+            start: 108
+            end: 161
         claim: false
-      - name: Cross-Cultural Design Sensitivity
-        evidenceExpected: Designed onboarding experiences tailored to merchants from diverse cultural backgrounds in the Gulf region.
+      - name: Interaction design
+        evidenceExpected:
+          Created interactive prototypes and detailed interaction designs for onboarding flows to enhance
+          merchant experience.
         weight: 30
-        level: 3
+        level: 4
         type: desirable
-        why:
-          The description states the merchants are across the Gulf, implying the need to consider cultural differences in
-          design, which is not explicitly requested.
+        why: Designing onboarding flows implies interaction design skills, but the description does not explicitly state this.
         citations:
           - sourceId: S1
             quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
@@ -78,5 +79,7 @@ recorded:
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      User Experience Research: null
-      Cross-Cultural Design Sensitivity: null
+      User experience (UX) research: null
+      Interaction design: null
+  matches:
+    Onboarding flow design: Design onboarding flows for merchants

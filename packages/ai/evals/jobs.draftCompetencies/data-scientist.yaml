@@ -19,12 +19,12 @@ expected:
       - Credit risk regulation
       - Explaining results to decision makers
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 6c9198609e1b
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 01a0d4ba123a
   output:
     competencies:
-      - name: Credit Risk Model Development
-        evidenceExpected: Built and evaluated credit risk models deployed in production or research environments.
+      - name: Credit risk model development and evaluation
+        evidenceExpected: Built, tested, and deployed credit risk models with measurable performance improvements.
         weight: 40
         level: 4
         type: mandatory
@@ -34,10 +34,10 @@ recorded:
             start: 0
             end: 47
         claim: false
-      - name: Data Pipeline Ownership
+      - name: Data pipeline ownership and management
         evidenceExpected:
-          Designed, built, and maintained data pipelines that feed credit risk models ensuring data quality and
-          reliability.
+          Designed, implemented, and maintained data pipelines feeding risk models ensuring data quality and
+          availability.
         weight: 30
         level: 4
         type: mandatory
@@ -47,8 +47,8 @@ recorded:
             start: 48
             end: 90
         claim: false
-      - name: Experimental Design for Policy Testing
-        evidenceExpected: Designed and executed experiments to test the impact of policy changes on credit risk outcomes.
+      - name: Experimental design for policy testing
+        evidenceExpected: Designed and executed experiments to test the impact of policy changes on risk outcomes.
         weight: 30
         level: 3
         type: mandatory
@@ -61,41 +61,40 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Statistical Analysis and Inference
-        evidenceExpected:
-          Performed statistical analysis and inference to support model validation and experimental results
-          interpretation.
+      - name: Statistical programming in Python or R
+        evidenceExpected: Developed data science projects using Python or R for statistical modeling and analysis.
         weight: 20
         level: 4
         type: desirable
-        why: The job involves building and evaluating models and designing experiments, which implies a need for strong
-          statistical skills not explicitly stated.
+        why:
+          The job involves building and evaluating risk models and designing experiments, which typically require statistical
+          programming skills not explicitly mentioned in the description.
         citations:
           - sourceId: S1
             quote: You will build and evaluate credit risk models.
             start: 0
             end: 47
         claim: false
-      - name: Programming for Data Science
-        evidenceExpected: Developed code for data processing, model building, and experiment automation using languages like Python or R.
+      - name: Knowledge of credit risk domain
+        evidenceExpected: Applied credit risk domain knowledge to interpret model results and inform policy decisions.
         weight: 20
-        level: 4
+        level: 3
         type: desirable
         why:
-          Owning data pipelines and building models implies programming skills, though not explicitly mentioned in the
-          description.
+          The role focuses on credit risk models and policy changes, implying the need for domain knowledge not explicitly
+          stated.
         citations:
           - sourceId: S1
-            quote: You own the data pipelines that feed them.
-            start: 48
-            end: 90
+            quote: You will build and evaluate credit risk models.
+            start: 0
+            end: 47
         claim: false
   matches:
-    Modelling and evaluation: Credit Risk Model Development
-    Data quality and pipelines: Data Pipeline Ownership
-    Experimentation: Experimental Design for Policy Testing
+    Modelling and evaluation: Credit risk model development and evaluation
+    Data quality and pipelines: Data pipeline ownership and management
+    Experimentation: Experimental design for policy testing
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Statistical Analysis and Inference: null
-      Programming for Data Science: listed
+      Statistical programming in Python or R: null
+      Knowledge of credit risk domain: null

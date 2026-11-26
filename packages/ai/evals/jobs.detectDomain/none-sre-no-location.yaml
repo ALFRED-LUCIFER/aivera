@@ -7,14 +7,16 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will keep our services fast and available. You own monitoring, alerts and incident reviews, and automate what you do twice.'
+    text:
+      'You will keep our services fast and available. You own monitoring, alerts and incident reviews, and automate what
+      you do twice.'
 expected:
   match:
     industry.domain: none
     regions: []
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'b77fca427eea'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '25d8b9af0fa3'
   output:
     industry:
       domain: none

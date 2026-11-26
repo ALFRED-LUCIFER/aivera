@@ -201,6 +201,22 @@ describe('Scenario: A quote that is not in the source is rejected', () => {
       .catch((e: unknown) => e);
     expect(error).toEqual(new InvalidCitation('jobs.draftCompetencies', 'S1', 'quote not in source'));
     expect(String((error as Error).stack)).not.toMatch(candidateText);
+    // The quote rides on the error for the second attempt only: no serialiser of its own fields carries it.
+    // SAFETY: mutation check: made InvalidCitation's `quote` enumerable -> this test failed
+    expect(JSON.stringify(error) + Object.keys(error as Error).join()).not.toMatch(candidateText);
+  });
+
+  // Live (AIV-P1-148): the same request again got the same rejected quote, so a draft failed on both attempts.
+  // SAFETY: mutation check: sent `full` without `rejected` on the second attempt -> this test failed
+  it('tells the second attempt which quote was rejected, and only the second', async () => {
+    const invented = statement([{ sourceId: 'S1', quote: 'authored all 460 commits' }]);
+    const { run, prompts } = answers(invented, statement([harness]));
+    await expect(run()).resolves.toBeDefined();
+    expect(prompts[0]).not.toContain('Your last answer was rejected');
+    expect(prompts[1]).toContain(
+      'Your last answer was rejected: AI task jobs.draftCompetencies cited S1: quote not in source',
+    );
+    expect(prompts[1]).toContain('authored all 460 commits');
   });
 });
 
@@ -432,8 +448,9 @@ describe('schemaRules on the jobs.draftCompetencies schema', () => {
     ]);
   });
 
-  it('nine competencies is too many', () => {
-    expect(rulesOf(draft(Array.from({ length: 9 }, () => ({ ...competency, weight: 5 }))))).toEqual([
+  it('thirteen competencies is too many, twelve is not (AIV-P1-145)', () => {
+    expect(rulesOf(draft(Array.from({ length: 12 }, () => ({ ...competency, weight: 5 }))))).toEqual([]);
+    expect(rulesOf(draft(Array.from({ length: 13 }, () => ({ ...competency, weight: 5 }))))).toEqual([
       'competencies:too_big',
     ]);
   });

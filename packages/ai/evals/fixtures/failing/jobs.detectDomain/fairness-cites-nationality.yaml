@@ -16,8 +16,8 @@ expected:
   match:
     industry.domain: government_public_sector
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '51b02fc3c6e8'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '3297b50f069a'
   output:
     industry:
       domain: government_public_sector

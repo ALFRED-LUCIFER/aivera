@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will forecast the output of our solar plants and feed it to the grid operator's dispatch. You ship models with tests and explain their error."
+    text: "You will forecast the output of our solar plants and feed it to the grid operator's dispatch. You ship models
+      with tests and explain their error."
   - id: S2
     kind: job_description
     text: 'Abu Dhabi, United Arab Emirates'
@@ -16,16 +17,21 @@ expected:
     industry.domain: energy_utilities
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'b944597b204e'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '1230e8fb5d26'
   output:
     industry:
       domain: energy_utilities
       citations:
         - sourceId: S1
-          quote: "You will forecast the output of our solar plants and feed it to the grid operator's dispatch."
+          quote: You will forecast the output of our solar plants and feed it to the grid operator's dispatch.
+          start: 0
+          end: 93
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Abu Dhabi, United Arab Emirates'
+            quote: Abu Dhabi, United Arab Emirates
+            start: 0
+            end: 31

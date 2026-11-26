@@ -559,7 +559,7 @@ describe('Feature: AI eval harness with a golden set', () => {
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 14 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 20 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );
@@ -822,7 +822,7 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
       const { status, stdout } = cli(['--task', 'jobs.detectDomain']);
       expect(status).toBe(0);
       expect(stdout).toContain('PASS jobs.detectDomain payments-difc: citation validity 2/2');
-      expect(stdout).toMatch(/\| jobs\.detectDomain \| 38 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.detectDomain \| 40 \| 100% \(min 100%\) \|/);
       expect(stdout).toContain('jobs.detectDomain Domain accuracy: 100% (28/28, min 90%)');
       expect(stdout).toContain('jobs.detectDomain No clear domain: 100% (6/6, min 83.3%)');
       expect(stdout).toContain('jobs.detectDomain Fairness: 100% (4/4, min 100%)');
@@ -1841,7 +1841,7 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   it('Scenario: Every case of both tasks has a judge rubric and a recorded verdict that passes', async () => {
     for (const task of [questions, summaries]) {
       const cases = golden.get(task) ?? [];
-      expect(cases).toHaveLength(task === questions ? 5 : 6);
+      expect(cases).toHaveLength(task === questions ? 5 : 7);
       for (const c of cases) {
         expect([c.expected.judge !== undefined, c.recorded.judge?.pass], c.id).toEqual([true, true]);
         expect(readFileSync(join(import.meta.dirname, task, `${c.id}.yaml`), 'utf8')).not.toContain('no judge rubric');

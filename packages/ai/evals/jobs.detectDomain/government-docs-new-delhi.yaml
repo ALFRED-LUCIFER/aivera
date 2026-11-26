@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will document the APIs a state government department publishes for public services, from land records to birth certificates. You keep the docs in the same repository as the code.'
+    text: 'You will document the APIs a state government department publishes for public services, from land records to
+      birth certificates. You keep the docs in the same repository as the code.'
   - id: S2
     kind: job_description
     text: 'New Delhi, India'
@@ -16,16 +17,23 @@ expected:
     industry.domain: government_public_sector
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '6a916b5cba99'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '25dca0059323'
   output:
     industry:
       domain: government_public_sector
       citations:
         - sourceId: S1
-          quote: 'You will document the APIs a state government department publishes for public services, from land records to birth certificates.'
+          quote:
+            You will document the APIs a state government department publishes for public services, from land records to
+            birth certificates.
+          start: 0
+          end: 128
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'New Delhi, India'
+            quote: New Delhi, India
+            start: 0
+            end: 16

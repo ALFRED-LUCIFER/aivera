@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer approvals. You write tested services.'
+    text:
+      'You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer
+      approvals. You write tested services.'
   - id: S2
     kind: job_description
     text: 'Kochi, India'
@@ -18,16 +20,23 @@ expected:
     industry.domain: healthcare
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'f69b11bbab0b'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '9101a4d9b5de'
   output:
     industry:
       domain: healthcare
       citations:
         - sourceId: S1
-          quote: 'You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer approvals.'
+          quote:
+            You will build the billing and insurance claims service for our hospital group, from patient invoices to insurer
+            approvals.
+          start: 0
+          end: 123
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Kochi, India'
+            quote: Kochi, India
+            start: 0
+            end: 12

@@ -28,72 +28,26 @@ expected:
       - Platform security
       - Location data at scale
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 976502b51f6d
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 20dec41ba4bf
   output:
     competencies:
       - name: Kubernetes Cluster Management
         evidenceExpected:
-          Built and maintained Kubernetes clusters hosting production services, managing upgrades and networking
-          with Terraform.
-        weight: 25
-        level: 4
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote:
-              You will run the Kubernetes clusters that host every service of our logistics platform. You manage the clusters
-              and their networking with Terraform and keep upgrades routine.
-            start: 0
-            end: 174
-        claim: false
-      - name: Deployment Pipeline Development
-        evidenceExpected: Developed deployment pipelines enabling multiple daily service releases with safe rollback mechanisms.
+          Built, managed, and maintained Kubernetes clusters hosting production services, ensuring stability and
+          scalability.
         weight: 20
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: You build the deployment pipelines that teams use to ship many times a day, with safe rollbacks.
-            start: 175
-            end: 271
+            quote: You will run the Kubernetes clusters that host every service of our logistics platform.
+            start: 0
+            end: 87
         claim: false
-      - name: Monitoring and Alerting Configuration
-        evidenceExpected: Defined metrics, logs, and alerts to detect service health issues and wrote corresponding runbooks.
+      - name: Terraform for Infrastructure and Networking
+        evidenceExpected: Created and managed infrastructure and networking configurations using Terraform for Kubernetes clusters.
         weight: 15
-        level: 4
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote: You define the metrics, logs and alerts that tell us a service is unhealthy, and you write the runbooks for them.
-            start: 272
-            end: 385
-        claim: false
-      - name: Incident Management and On-Call Leadership
-        evidenceExpected: Participated in on-call rotations and led incident reviews focusing on learning without blame.
-        weight: 15
-        level: 4
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote: You take part in the on-call rota and lead incident reviews without blame.
-            start: 386
-            end: 460
-        claim: false
-      - name: Cloud Cost Management
-        evidenceExpected: Monitored and controlled monthly cloud expenses and communicated service costs to teams.
-        weight: 15
-        level: 3
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote: You keep the monthly cloud bill in check and show teams what their services cost.
-            start: 461
-            end: 542
-        claim: false
-      - name: Infrastructure as Code with Terraform
-        evidenceExpected: Managed cluster networking and infrastructure using Terraform scripts and configurations.
-        weight: 10
         level: 4
         type: mandatory
         citations:
@@ -102,47 +56,104 @@ recorded:
             start: 88
             end: 174
         claim: false
-    refused: false
-    reason: null
-    suggestions:
-      - name: Cloud Platform Expertise
-        evidenceExpected: Designed and operated cloud infrastructure supporting Kubernetes clusters and cost optimization.
+      - name: Deployment Pipeline Development
+        evidenceExpected: Built deployment pipelines enabling teams to ship multiple times daily with safe rollback capabilities.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You build the deployment pipelines that teams use to ship many times a day, with safe rollbacks.
+            start: 175
+            end: 271
+        claim: false
+      - name: Monitoring and Alerting Setup
+        evidenceExpected: Defined and implemented metrics, logs, and alerts to detect service health issues effectively.
+        weight: 10
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You define the metrics, logs and alerts that tell us a service is unhealthy, and you write the runbooks for them.
+            start: 272
+            end: 385
+        claim: false
+      - name: Runbook Creation and Maintenance
+        evidenceExpected: Authored runbooks for incident response and operational procedures related to service health and alerts.
         weight: 10
         level: 3
-        type: desirable
-        why:
-          The job involves managing Kubernetes clusters and cloud costs but does not explicitly require cloud platform
-          knowledge, which is implied by managing cloud bills and clusters.
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You define the metrics, logs and alerts that tell us a service is unhealthy, and you write the runbooks for them.
+            start: 272
+            end: 385
+        claim: false
+      - name: Incident Management and On-Call Participation
+        evidenceExpected: Participated in on-call rotations and led incident reviews focusing on learning without blame.
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You take part in the on-call rota and lead incident reviews without blame.
+            start: 386
+            end: 460
+        claim: false
+      - name: Cloud Cost Management and Reporting
+        evidenceExpected: Monitored and controlled cloud infrastructure costs, providing cost transparency to teams.
+        weight: 10
+        level: 3
+        type: mandatory
         citations:
           - sourceId: S1
             quote: You keep the monthly cloud bill in check and show teams what their services cost.
             start: 461
             end: 542
         claim: false
-      - name: Multi-Region Service Reliability
-        evidenceExpected: Built and maintained services with high availability across multiple countries or regions.
-        weight: 10
+    refused: false
+    reason: null
+    suggestions:
+      - name: Cloud Platform Expertise
+        evidenceExpected:
+          Demonstrated experience building and operating services on cloud platforms like AWS, GCP, or Azure,
+          including cost optimization.
+        weight: 5
         level: 3
         type: desirable
         why:
-          The platform tracks delivery drivers across three countries and is used around the clock, implying the need for
-          multi-region reliability and availability.
+          The description mentions managing cloud costs and running Kubernetes clusters, which implies cloud platform usage
+          but does not specify which one.
         citations:
           - sourceId: S1
-            quote:
-              The platform tracks delivery drivers across three countries, and drivers and dispatchers depend on it around the
-              clock.
-            start: 543
-            end: 662
+            quote: You keep the monthly cloud bill in check and show teams what their services cost.
+            start: 461
+            end: 542
+        claim: false
+      - name: Networking Fundamentals
+        evidenceExpected:
+          Designed and implemented network configurations and troubleshooting for distributed systems and
+          Kubernetes clusters.
+        weight: 5
+        level: 3
+        type: desirable
+        why: Managing clusters and their networking with Terraform implies knowledge of networking fundamentals, but the
+          description does not detail this skill explicitly.
+        citations:
+          - sourceId: S1
+            quote: You manage the clusters and their networking with Terraform and keep upgrades routine.
+            start: 88
+            end: 174
         claim: false
   matches:
     Kubernetes operations: Kubernetes Cluster Management
-    Infrastructure as code: Infrastructure as Code with Terraform
+    Infrastructure as code: Terraform for Infrastructure and Networking
     Deployment pipelines: Deployment Pipeline Development
-    Observability and alerting: Monitoring and Alerting Configuration
-    Incident response: Incident Management and On-Call Leadership
+    Observability and alerting: Monitoring and Alerting Setup
+    Incident response: Incident Management and On-Call Participation
+    Cloud cost management: Cloud Cost Management and Reporting
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Cloud Platform Expertise: null
-      Multi-Region Service Reliability: null
+      Networking Fundamentals: null

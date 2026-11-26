@@ -16,8 +16,8 @@ expected:
     industry.domain: none
     regions[*].region: ['uae', 'ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'e5bcac8b514a'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '127e96e8a24e'
   output:
     industry:
       domain: none
@@ -25,8 +25,12 @@ recorded:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Dubai or Riyadh'
+            quote: Dubai or Riyadh
+            start: 0
+            end: 15
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Dubai or Riyadh'
+            quote: Dubai or Riyadh
+            start: 0
+            end: 15

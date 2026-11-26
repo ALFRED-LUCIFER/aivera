@@ -1,0 +1,239 @@
+# A Head of Quality's checklist of fifteen needs (synthetic), more than the cap of 12: related ones are merged and none
+# is dropped or moved to the suggestions. Live, @4 kept 8, dropped two or three and suggested the rest as "missing".
+id: checklist-fifteen-needs
+input:
+  jobType: qa_test_automation
+  title: Senior QA Automation Engineer
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      You will build the end-to-end suite in Playwright. You will write API tests for the payments service. You will own
+      contract tests between services. You will run load tests with k6 and report capacity. You will add accessibility
+      checks to CI. You will test the mobile apps with Appium. You will keep the suite under ten minutes. You will find
+      and fix flaky tests. You will write the test strategy for each release. You will do exploratory testing on new
+      features. You will run security scans and triage findings. You will manage test data and environments. You will
+      report quality metrics to leadership each month. You will mentor two junior testers. You will test Arabic
+      right-to-left screens.
+expected:
+  match:
+    competencies[*].name:
+      - End-to-end tests in Playwright
+      - API testing
+      - Contract testing
+      - Load testing
+      - Accessibility checks in CI
+      - Mobile app testing with Appium
+      - Fixing flaky tests
+      - Test strategy
+      - Exploratory testing
+      - Security scanning
+      - Test data and environments
+      - Quality metrics reporting
+      - Mentoring testers
+      - Right-to-left screen testing
+    suggestions[*].name:
+      - Payments domain
+      - CI pipelines
+recorded:
+  output:
+    competencies:
+      - name: Playwright end-to-end test suite development
+        evidenceExpected:
+          Built and maintained an end-to-end test suite using Playwright that covers critical user flows and
+          integrates with CI pipelines.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will build the end-to-end suite in Playwright.
+            start: 0
+            end: 50
+        claim: false
+      - name: API testing for payment services
+        evidenceExpected: Designed and implemented API tests specifically targeting payment service endpoints to ensure
+          reliability and correctness.
+        weight: 10
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will write API tests for the payments service.
+            start: 51
+            end: 101
+        claim: false
+      - name: Contract testing between services
+        evidenceExpected:
+          Owned and executed contract tests to verify interactions and agreements between microservices to
+          prevent integration issues.
+        weight: 10
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will own contract tests between services.
+            start: 102
+            end: 147
+        claim: false
+      - name: Load testing and capacity reporting with k6
+        evidenceExpected: Ran load tests using k6 tool and reported system capacity and performance metrics to stakeholders.
+        weight: 10
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will run load tests with k6 and report capacity.
+            start: 148
+            end: 200
+        claim: false
+      - name: Accessibility testing integration in CI
+        evidenceExpected: Added accessibility checks into continuous integration pipelines to ensure compliance with
+          accessibility standards.
+        weight: 8
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will add accessibility checks to CI.
+            start: 201
+            end: 241
+        claim: false
+      - name: Mobile app testing with Appium
+        evidenceExpected: Tested mobile applications using Appium to automate functional and regression tests across devices.
+        weight: 8
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will test the mobile apps with Appium.
+            start: 242
+            end: 284
+        claim: false
+      - name: Test suite optimization and flakiness resolution
+        evidenceExpected:
+          Maintained test suite execution time under ten minutes and identified and fixed flaky tests to improve
+          reliability.
+        weight: 7
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will keep the suite under ten minutes. You will find and fix flaky tests.
+            start: 285
+            end: 362
+        claim: false
+      - name: Test strategy development for releases
+        evidenceExpected: Authored comprehensive test strategies for each software release to guide testing efforts and ensure coverage.
+        weight: 7
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will write the test strategy for each release.
+            start: 363
+            end: 413
+        claim: false
+      - name: Exploratory testing of new features
+        evidenceExpected: Performed exploratory testing on new features to uncover defects not covered by automated tests.
+        weight: 6
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will do exploratory testing on new features.
+            start: 414
+            end: 462
+        claim: false
+      - name: Security scanning and triage
+        evidenceExpected: Executed security scans and triaged findings to mitigate vulnerabilities and improve product security.
+        weight: 6
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will run security scans and triage findings.
+            start: 463
+            end: 511
+        claim: false
+      - name: Test data and environment management
+        evidenceExpected: Managed test data sets and testing environments to ensure consistent and reliable test execution.
+        weight: 5
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will manage test data and environments.
+            start: 512
+            end: 555
+        claim: false
+      - name: Quality metrics reporting and mentoring juniors
+        evidenceExpected: Reported quality metrics monthly to leadership and mentored junior testers to improve team capabilities.
+        weight: 8
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will report quality metrics to leadership each month. You will mentor two junior testers.
+            start: 556
+            end: 649
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Right-to-left (RTL) UI testing expertise
+        evidenceExpected:
+          Demonstrated ability to test and validate user interfaces that support right-to-left languages,
+          ensuring proper layout and functionality.
+        weight: 9
+        level: 3
+        type: desirable
+        why:
+          The description states "You will test Arabic right-to-left screens." but does not explicitly list RTL UI testing as
+          a competency; this implies specialized knowledge in RTL UI testing is needed.
+        citations:
+          - sourceId: S1
+            quote: You will test Arabic right-to-left screens.
+            start: 650
+            end: 693
+        claim: false
+      - name: Test automation framework design and maintenance
+        evidenceExpected:
+          Designed and maintained scalable test automation frameworks to support various testing types and tools
+          mentioned in the description.
+        weight: 7
+        level: 4
+        type: desirable
+        why:
+          The description involves multiple testing tools and types (Playwright, Appium, k6, accessibility checks) implying
+          the need for framework design and maintenance skills, which is not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote:
+              You will build the end-to-end suite in Playwright. You will write API tests for the payments service. You will
+              own contract tests between services. You will run load tests with k6 and report capacity. You will add
+              accessibility checks to CI. You will test the mobile apps with Appium.
+            start: 0
+            end: 284
+        claim: false
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 704c0c16b2a0
+  matches:
+    End-to-end tests in Playwright: Playwright end-to-end test suite development
+    API testing: API testing for payment services
+    Contract testing: Contract testing between services
+    Load testing: Load testing and capacity reporting with k6
+    Accessibility checks in CI: Accessibility testing integration in CI
+    Fixing flaky tests: Test suite optimization and flakiness resolution
+    Test strategy: Test strategy development for releases
+    Exploratory testing: Exploratory testing of new features
+    Security scanning: Security scanning and triage
+    Test data and environments: Test data and environment management
+    Quality metrics reporting: Quality metrics reporting and mentoring juniors
+    Mentoring testers: null
+    Right-to-left screen testing: null
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Right-to-left (RTL) UI testing expertise: null
+      Test automation framework design and maintenance: null

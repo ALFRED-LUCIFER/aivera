@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will improve checkout on our online fashion store, where shoppers pay by card or in instalments. You run experiments on the basket and the delivery options.'
+    text: 'You will improve checkout on our online fashion store, where shoppers pay by card or in instalments. You run
+      experiments on the basket and the delivery options.'
   - id: S2
     kind: job_description
     text: 'Riyadh, Saudi Arabia'
@@ -18,16 +19,21 @@ expected:
     industry.domain: ecommerce_marketplaces
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'd537036e282c'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '25f00267f5bb'
   output:
     industry:
       domain: ecommerce_marketplaces
       citations:
         - sourceId: S1
-          quote: 'You will improve checkout on our online fashion store, where shoppers pay by card or in instalments.'
+          quote: You will improve checkout on our online fashion store, where shoppers pay by card or in instalments.
+          start: 0
+          end: 100
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

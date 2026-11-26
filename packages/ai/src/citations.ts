@@ -90,10 +90,15 @@ export class InvalidCitation extends Error {
     task: string,
     label: string,
     reason: 'unknown source' | 'quote not in source' | 'quotes removed text' | 'not a requested pair',
+    /** The quote the model wrote, for the client's second attempt only: never in the message, a log or telemetry. */
+    quote?: string,
   ) {
     // The label comes from the model: named only when it has the shape we gave, so no model text reaches the message.
     super(`AI task ${task} cited ${/^S\d{1,4}$/.test(label) ? label : 'a source'}: ${reason}`);
+    // Not enumerable, so no serialiser (pino's `err`, a span's exception event) carries source text out.
+    Object.defineProperty(this, 'quote', { value: quote, enumerable: false });
   }
+  declare readonly quote?: string;
 }
 
 export const sourceLabel = (index: number) => `S${index + 1}`;
@@ -188,7 +193,7 @@ export function checkOutput<S extends z.ZodType>(
       // The model saw the redacted text, and `<` as `&lt;` (formatSources), so a quote may carry either back.
       const seen = redaction?.sources[index]?.text ?? source.text;
       const found = findQuote(seen, quote) ?? findQuote(seen, quote.replaceAll('&lt;', '<'));
-      if (!found) throw new InvalidCitation(task, label, 'quote not in source');
+      if (!found) throw new InvalidCitation(task, label, 'quote not in source', quote);
       const span = redaction ? redaction.original(index, found) : found;
       if (!span) throw new InvalidCitation(task, label, 'quotes removed text');
       kinds.push(source.kind);

@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will build the platform that reads smart electricity and water meters for our utility's customers. You write tested services and join the on-call rota."
+    text:
+      "You will build the platform that reads smart electricity and water meters for our utility's customers. You write
+      tested services and join the on-call rota."
   - id: S2
     kind: job_description
     text: 'Dammam, Saudi Arabia'
@@ -16,16 +18,21 @@ expected:
     industry.domain: energy_utilities
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '395e8e513e3d'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'aca72441d617'
   output:
     industry:
       domain: energy_utilities
       citations:
         - sourceId: S1
-          quote: "You will build the platform that reads smart electricity and water meters for our utility's customers."
+          quote: You will build the platform that reads smart electricity and water meters for our utility's customers.
+          start: 0
+          end: 102
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Dammam, Saudi Arabia'
+            quote: Dammam, Saudi Arabia
+            start: 0
+            end: 20

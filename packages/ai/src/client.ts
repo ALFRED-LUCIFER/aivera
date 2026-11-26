@@ -1,7 +1,7 @@
 import { annotateSpan, log, withSpan } from '@credalent/observability';
 import { APICallError, embed as sdkEmbed, generateText, Output } from 'ai';
 import type { z } from 'zod';
-import { checkOutput, formatSources, SchemaMismatch, type Checked, type Source } from './citations.ts';
+import { checkOutput, formatSources, InvalidCitation, SchemaMismatch, type Checked, type Source } from './citations.ts';
 import {
   circuitBreaker,
   deployments,
@@ -87,6 +87,10 @@ const CITATION_RULES = [
   'word for word from that source. Never cite a source that is not listed and never reword a quote.',
   'If the sources do not support an item, leave the item out.',
 ].join(' ');
+
+// What a second attempt is reminded of, after the reason its first answer was rejected.
+const RETRY_RULES =
+  'A quote is one unbroken run of its source, copied character for character: no heading or label joined to it, no "...", no word left out, added or re-cased. Each list holds an entry once.';
 
 // Appended once, after CITATION_RULES, to every structured task's system prompt (AIV-P1-070); no prompt repeats or
 // overrides it. Bump the version with any change (it is on telemetry). Adapted from career-ops (MIT, modified):
@@ -301,6 +305,10 @@ export function createAiClient(options: {
           'credalent.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}+${UNTRUSTED_CONTENT_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`,
           'workspace.id': input.workspaceId,
         });
+        // What the second attempt is told about the first: the same request again gets the same rejected answer
+        // (live: a draft quoting a heading with its line failed twice, every time). The contract's own message only,
+        // which holds no output, so nothing a source said leaves its untrusted block.
+        let rejected = '';
         for (let attempts = 1; ; attempts++) {
           const text = await call('chat', task, settings, input.workspaceId, async (abortSignal, remaining) => {
             if ('service' in settings && service) {
@@ -310,7 +318,7 @@ export function createAiClient(options: {
                 {
                   promptVersion: input.promptVersion,
                   system,
-                  prompt: full,
+                  prompt: full + rejected,
                   tokenCap,
                   maxOutputTokens: settings.maxOutputTokens,
                   temperature: settings.temperature,
@@ -327,7 +335,7 @@ export function createAiClient(options: {
               ...sdk,
               model: provider.languageModel(settings.deployment),
               system,
-              prompt: full,
+              prompt: full + rejected,
               output,
               maxOutputTokens: settings.maxOutputTokens,
               temperature: settings.temperature,
@@ -366,6 +374,7 @@ export function createAiClient(options: {
                 'ai schema mismatch',
               );
             if (attempts >= 2) throw error;
+            rejected = `\n\nYour last answer was rejected: ${(error as Error).message}${error instanceof SchemaMismatch ? ` (${error.rules.join(' ')})` : ''}${error instanceof InvalidCitation && error.quote ? `: ${JSON.stringify(error.quote)}` : ''}. Answer again in full: keep every item of that answer and correct only what was rejected. ${RETRY_RULES}`;
           }
         }
       });

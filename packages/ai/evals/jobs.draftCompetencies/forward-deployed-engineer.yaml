@@ -18,15 +18,13 @@ expected:
       - Logistics operations
       - Customer communication
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 1db018f3e8eb
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: b22371fe55ba
   output:
     competencies:
-      - name: Customer Problem Identification
-        evidenceExpected:
-          Built and delivered solutions by working directly with logistics customers to identify and define key
-          problems worth solving.
-        weight: 30
+      - name: Customer Problem Solving
+        evidenceExpected: Built and delivered solutions by identifying and addressing key problems for logistics customers on site.
+        weight: 40
         level: 4
         type: mandatory
         citations:
@@ -36,7 +34,7 @@ recorded:
             end: 81
         claim: false
       - name: System Integration Development
-        evidenceExpected: Shipped integrations into customer systems and APIs to enable seamless operation and data exchange.
+        evidenceExpected: Developed and shipped integrations into customer systems and APIs to ensure seamless operation.
         weight: 30
         level: 4
         type: mandatory
@@ -47,9 +45,9 @@ recorded:
             end: 132
         claim: false
       - name: AI Agent Deployment and Tuning
-        evidenceExpected: Deployed and tuned AI agents customized for each logistics customer to optimize performance and outcomes.
-        weight: 40
-        level: 5
+        evidenceExpected: Deployed and fine-tuned AI agents tailored for each customer's environment and needs.
+        weight: 30
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
@@ -61,31 +59,27 @@ recorded:
     reason: null
     suggestions:
       - name: Logistics Domain Knowledge
-        evidenceExpected:
-          Demonstrated understanding of logistics operations and challenges through delivered solutions or
-          projects in the logistics sector.
+        evidenceExpected: Demonstrated understanding of logistics operations and challenges through project work or system design.
         weight: 20
         level: 3
         type: desirable
         why:
-          The job involves working on site with logistics customers, implying the need for logistics domain knowledge, which
-          the description does not explicitly ask for.
+          The description states working on site with logistics customers, implying the need for logistics domain knowledge,
+          but does not explicitly require it.
         citations:
           - sourceId: S1
             quote: You will work on site with logistics customers to find the problem worth solving.
             start: 0
             end: 81
         claim: false
-      - name: API Design and Documentation
-        evidenceExpected:
-          Created and maintained API designs and documentation to support integrations and facilitate customer
-          and developer use.
-        weight: 15
+      - name: API Development and Management
+        evidenceExpected: Designed, developed, and managed APIs for integration with external systems.
+        weight: 20
         level: 3
         type: desirable
         why:
-          The job requires shipping integrations into customer systems and APIs, implying the need to understand API design
-          and documentation, which is not explicitly stated.
+          The description mentions shipping integrations into systems and APIs, implying API development skills, but does not
+          explicitly state it.
         citations:
           - sourceId: S1
             quote: You ship integrations into their systems and APIs.
@@ -93,11 +87,11 @@ recorded:
             end: 132
         claim: false
   matches:
-    Customer problem discovery: Customer Problem Identification
+    Customer problem discovery: Customer Problem Solving
     Integration engineering: System Integration Development
     Working with AI systems: AI Agent Deployment and Tuning
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Logistics Domain Knowledge: null
-      API Design and Documentation: null
+      API Development and Management: null
