@@ -176,6 +176,11 @@ for (const theme of themes) {
     const notRecommended = page
       .getByRole('radiogroup', { name: 'Next-stage recommendation' })
       .getByRole('radio', { name: 'Do not recommend for Round 2' });
+    // Its autosave runs a moment later and disables Submit while it saves: the submit below waits for it to land.
+    const recommendationSaved = page.waitForResponse((r) => {
+      const body = r.request().postData() ?? '';
+      return body.includes('"draft"') && body.includes('not_recommended');
+    });
     await notRecommended.focus();
     await page.keyboard.press('Space');
     await expect(effect(page).locator('[aria-live="polite"]')).toHaveText('Backed score 55 to 67.');
@@ -185,6 +190,8 @@ for (const theme of themes) {
       route.request().method() === 'POST' && isSubmit(route.request().postData()) ? route.abort() : route.fallback(),
     );
     await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveCount(0);
+    await recommendationSaved;
+    await expect(submit).toBeEnabled();
     await submit.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByText('Not submitted. Your ratings are saved. Try again.')).toBeVisible();
@@ -203,7 +210,7 @@ for (const theme of themes) {
       .filter({ hasText: `Scorecard submitted and logged. Daniel Novak ${theme}'s assessment has been updated.` });
     await expect(confirmed).toBeVisible();
     await expect(confirmed.getByRole('link', { name: 'See the ranking' })).toBeVisible();
-    await expect(page.getByText('This scorecard is submitted and logged. It can no longer change.')).toBeVisible();
+    await expect(page.getByText('This scorecard is submitted. It can no longer change.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Submit scorecard' })).toHaveCount(0);
     await expectAccessible(page);
 

@@ -13,11 +13,15 @@ import type { DecisionPorts, SummaryPorts } from './summary.ts';
 export type SubmitPorts = Pick<Ports, 'storeFor' | 'authorize' | 'jobResource' | 'isSyntheticWorkspace' | 'now'> &
   Pick<SummaryPorts, 'rubric'> &
   Pick<DecisionPorts, 'latestAssessment' | 'applyScoreChange' | 'recordSummaryEvidence'> & {
-    /** The questions the scorecard page shows per competency: the assessment's stored suggested ones (AIV-P1-113). */
+    /**
+     * The questions the scorecard page shows per competency: the assessment's stored suggested ones (AIV-P1-113), and
+     * none unless its latest result is on the interview's rubric version, as the page reads them.
+     */
     suggestedQuestions(
       ctx: WorkspaceContext,
       candidateId: string,
       jobId: string,
+      rubricVersionId: string,
     ): Promise<ReadonlyMap<string, readonly string[]>>;
     /** Writes `InterviewCompleted.v1` to the outbox in `tx`, so it commits only with the submit. */
     publishInterviewCompleted(tx: Tx, interview: Interview): Promise<void>;
@@ -49,7 +53,7 @@ export function submitUseCases(ports: SubmitPorts) {
       const store = storeFor(ctx.tx);
       // SAFETY: rebuilt on the questions the page shows, so a request cannot leave a competency unrated ("not
       // assessed") by marking questions nobody was shown; the ratings are the stored draft's, never the request's.
-      const shown = await ports.suggestedQuestions(ctx, candidateId, jobId);
+      const shown = await ports.suggestedQuestions(ctx, candidateId, jobId, interview.rubricVersionId);
       const draft = rebuildDraft(
         interview.competencyIds.map((id) => ({
           competencyId: id,
@@ -91,8 +95,8 @@ export function submitUseCases(ports: SubmitPorts) {
           from: 'scorecard',
           // Each note as the interviewer's word, cited by the change it backs (AGENTS.md 1.6): Medium at the level the
           // job needs for Clearly or Strongly shown, Claim only at no level for Not shown, as the previewed change.
-          // SAFETY: Partly shown changes nothing in the preview, so it records nothing: its note is the change's reason
-          // in the audit entry, and the scorecard keeps it (AGENTS.md 1.5).
+          // SAFETY: Partly shown changes nothing in the preview, so it records nothing (AGENTS.md 1.5): its note is kept
+          // on the submitted scorecard; the assessment logs it only when the rating takes back this interview's earlier one.
           items: notes.flatMap(({ competencyId, rating, note }) => {
             const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
             if (rubric?.id !== interview.rubricVersionId || level === undefined)

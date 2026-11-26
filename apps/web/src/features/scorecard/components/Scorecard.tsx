@@ -54,7 +54,7 @@ import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domai
 // - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
 //   its own controller and component, `ScoreEffect`;
 // - "Submit scorecard" (AIV-P2-006) first checks that every competency is rated or marked as not tested and that each
-//   rating has a note (the reason logged with it, and the words its evidence cites), saying which is not, and is
+//   rating has a note (kept with it, logged with any change it makes, and the words its evidence cites), saying which is not, and is
 //   disabled while the preview of the current ratings is on its way, so what is applied is what the person saw. Under
 //   "Scorecard submitted and logged" its name is the candidate's full name, not the first name. While the preview of
 //   the ratings is on its way or unavailable a line under the button says why it waits (no preview, no submit,
@@ -160,7 +160,15 @@ export function Scorecard({
       </>
     );
   const name = view.candidate ?? t('interviews.unnamed');
-  const submitted = view.submitted || DONE.some((o) => o === view.outcome);
+  // Just submitted here (announced); `view.submitted` alone is a scorecard reopened after its submit.
+  const done = view.outcome !== null && DONE.includes(view.outcome);
+  const submitted = view.submitted || done;
+  const ranking = (
+    // rankingHref builds the path from an opaque id, which typed routes cannot check.
+    <Link href={view.rankingHref as Route} className="underline underline-offset-2">
+      {t('scorecard.seeRanking')}
+    </Link>
+  );
   const at = view.scheduledAt && new Date(view.scheduledAt);
   const subtitle = [
     view.job,
@@ -254,19 +262,16 @@ export function Scorecard({
               )}
               {/* Both stay mounted, outside the editable state the submit ends, so a result is announced. */}
               <output className="text-body font-medium text-text">
-                {view.outcome && !DONE.includes(view.outcome) && t(`scorecard.outcome.${view.outcome}`, { name })}
+                {view.outcome && !done && t(`scorecard.outcome.${view.outcome}`, { name })}
               </output>
               <SuccessBanner>
-                {submitted && (
+                {done && view.outcome && (
                   <>
-                    {t(`scorecard.outcome.${DONE.find((o) => o === view.outcome) ?? 'already'}`, { name })}{' '}
-                    {/* rankingHref builds the path from an opaque id, which typed routes cannot check. */}
-                    <Link href={view.rankingHref as Route} className="underline underline-offset-2">
-                      {t('scorecard.seeRanking')}
-                    </Link>
+                    {t(`scorecard.outcome.${view.outcome}`, { name })} {ranking}
                   </>
                 )}
               </SuccessBanner>
+              {view.submitted && !done && <div className="text-body">{ranking}</div>}
             </section>
           </Card>
         </div>

@@ -24,8 +24,12 @@ export const getInterviews = (): InterviewsContract =>
       applyScoreChange: (ctx, input) => getAssessment().applyScoreChange(ctx, input),
       recordSummaryEvidence: (ctx, input) => getEvidence().recordInterviewSummary(ctx, input),
       // A submitted scorecard (AIV-P2-006) is judged on the questions its page shows, read as the page reads them.
-      suggestedQuestions: async (ctx, candidateId, jobId) => {
-        const shown = shownQuestions(await getAssessment().getSuggestedQuestions(ctx, candidateId, jobId));
+      suggestedQuestions: async (ctx, candidateId, jobId, rubricVersionId) => {
+        const latest = await getAssessment().getLatestAssessment(ctx, candidateId, jobId);
+        const shown = shownQuestions(
+          latest?.rubricVersionId === rubricVersionId,
+          await getAssessment().getSuggestedQuestions(ctx, candidateId, jobId),
+        );
         return new Map([...shown].map(([id, questions]) => [id, questions.map((q) => q.text)]));
       },
     },

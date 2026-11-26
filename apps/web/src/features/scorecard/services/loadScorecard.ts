@@ -58,7 +58,7 @@ export async function loadScorecard(interviewId: string): Promise<ScorecardData 
     // The stored set only (`getSuggestedQuestions` calls no model); questions are asked for on the evidence profile.
     const stored = assessed && (await getAssessment().getSuggestedQuestions(ctx, candidateId, jobId));
     const view = stored && questionsView(stored, names, evidence);
-    const questions = shownQuestions(view);
+    const questions = shownQuestions(assessed !== null, view);
     const competencies = interview.competencyIds.flatMap((id) => {
       const competency = rubric.find((c) => c.id === id);
       if (!competency) return [];

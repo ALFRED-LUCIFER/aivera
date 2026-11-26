@@ -41,10 +41,11 @@ export function useScorecardController(data: ScorecardData) {
     setSaving('saving');
     // A throw would reach the error boundary and take the typed notes with it.
     const saved = await saveScorecardDraft({ interviewId: data.interviewId, draft: latest.current }).catch(() => false);
-    setSaving(saved === true ? 'saved' : saved === 'closed' ? 'idle' : 'failed');
-    // Submitted from another tab, or by a request that answered after it had committed: the page reads it as such.
-    if (saved === 'closed') {
-      setOutcome('already');
+    setSaving(saved === true ? 'saved' : saved === false ? 'failed' : 'idle');
+    // Submitted from another tab, or by a request that answered after it had committed, or cancelled: the form says
+    // which, and the page reads the closed interview.
+    if (saved === 'submitted' || saved === 'closed') {
+      setOutcome(saved === 'submitted' ? 'already' : 'closed');
       router.refresh();
     }
     return saved === true;
@@ -101,7 +102,7 @@ export function useScorecardController(data: ScorecardData) {
       if (unrated(latest.current).length > 0 || unexplained(latest.current).length > 0) return setOutcome(null);
       setOutcome('submitting');
       // Saved first, in its own transaction: a submit that fails leaves the ratings saved ("try again").
-      if (!(await save())) return setOutcome((now) => (now === 'already' ? now : null));
+      if (!(await save())) return setOutcome((now) => (now === 'already' || now === 'closed' ? now : null));
       const ended = await submitScorecard({ interviewId: data.interviewId, previewId }).catch(() => 'failed' as const);
       setOutcome(ended);
       // Submitted (or already): the page reads the completed interview; changed: it re-reads the new snapshot to preview.

@@ -306,7 +306,8 @@ describe('Scenario: Submit needs every competency rated or marked not tested', (
 });
 
 // AIV-P2-006: submitting, with the server action faked; the transaction itself is tests/integration.
-const NO_NOTE = 'Write what you saw or heard before submitting: it is the reason logged with your rating';
+const NO_NOTE =
+  'Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes';
 const UPDATED = "Scorecard submitted and logged. Daniel Novak's assessment has been updated.";
 
 describe('Scenario: Recommendation is not a decision', () => {
@@ -554,9 +555,7 @@ describe('Scenario: Submitting applies the change', () => {
     for (const name of ['Retrieval and evaluation', 'Cost and reliability'])
       for (const button of within(card(name)).getAllByRole('button', { name: 'Not asked' })) await user.click(button);
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
-    expect(
-      await screen.findByText("Scorecard submitted and logged. Daniel Novak's assessment is unchanged."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Scorecard submitted. Daniel Novak's assessment is unchanged.")).toBeTruthy();
     expect(fake.submit).toHaveBeenCalledWith({ interviewId: data().interviewId, previewId: null });
   });
 });
@@ -574,12 +573,15 @@ describe('Scenario: Double submit, and a submit that fails', () => {
     expect((screen.getByRole('button', { name: 'Submit scorecard' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('a draft save the server refuses as closed reads as "Already submitted", and nothing is submitted', async () => {
-    fake.save.mockResolvedValue('closed');
+  it.each([
+    ['submitted', 'Already submitted'],
+    ['closed', 'Not submitted. This interview was cancelled.'],
+  ] as const)('a draft save refused as %s says "%s", and nothing is submitted', async (saved, text) => {
+    fake.save.mockResolvedValue(saved);
     const user = userEvent.setup();
     await ready(user);
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
-    expect(await screen.findByText('Already submitted')).toBeTruthy();
+    expect(await screen.findByText(text)).toBeTruthy();
     expect(fake.submit).not.toHaveBeenCalled();
     expect(fake.refresh).toHaveBeenCalled();
   });
@@ -614,14 +616,16 @@ describe('Scenario: Double submit, and a submit that fails', () => {
 describe('a submitted scorecard', () => {
   it('reads as submitted, with no way to change it and a way to the ranking', () => {
     show({ canEdit: false, submitted: true });
-    expect(screen.getByText('This scorecard is submitted and logged. It can no longer change.')).toBeTruthy();
+    expect(screen.getByText('This scorecard is submitted. It can no longer change.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Submit scorecard' })).toBeNull();
     expect(screen.getByRole('link', { name: 'See the ranking' })).toBeTruthy();
+    // Reopened, not just submitted here: no confirmation is announced again.
+    expect(screen.queryByText('Already submitted')).toBeNull();
   });
 });
 
 describe('waiting for the preview (AIV-P2-006)', () => {
-  // Mutation check: dropped `previewBlock` from the button's disabled -> this test failed (it was enabled).
+  // SAFETY: mutation check: dropped `previewBlock` from the button's disabled -> this test failed (it was enabled).
   it('with a rating, Submit is disabled and says why until its preview is ready, and while it is unavailable', async () => {
     const later = Promise.withResolvers();
     fake.preview.mockReturnValueOnce(later.promise);

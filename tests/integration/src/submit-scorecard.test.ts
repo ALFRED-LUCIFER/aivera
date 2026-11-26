@@ -339,10 +339,23 @@ describe('Scenario: Only what the preview showed is recorded', () => {
 describe('Scenario: Every change is logged', () => {
   // SAFETY: mutation check: removed the `auditScoreChange` loop from the assessment's `applyScoreChange` -> this test
   // failed (no score.changed entry from Lina).
-  it('one entry with Lina, the time, Supporting to Medium, 55 to 67 and her note; none for the competency not assessed', async () => {
+  // The ticket's Background: "Cost and reliability" rated Partly shown, with a note, which changes nothing.
+  it('one entry with Lina, the time, Supporting to Medium, 55 to 67 and her note; none for Cost and reliability, Partly shown, because nothing changed', async () => {
     const d = await daniel();
     const before = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).length;
-    await submit(d.interviewId, await prepared(d.interviewId, rated()));
+    const background: ScorecardDraft = {
+      ...rated(),
+      competencies: [
+        { competencyId: RETRIEVAL, rating: 'clearly_shown', note: NOTE, questions: [{ text: '', mark: null }] },
+        {
+          competencyId: COST,
+          rating: 'partly_shown',
+          note: 'Explained the fix only',
+          questions: [{ text: '', mark: null }],
+        },
+      ],
+    };
+    await submit(d.interviewId, await prepared(d.interviewId, background));
     const entries = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).slice(before);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({

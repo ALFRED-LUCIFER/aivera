@@ -124,11 +124,11 @@ describe('Scenario: Submitting applies the change', () => {
     expect(vi.mocked(ports.recordSummaryEvidence).mock.calls[0]?.[1].items).toEqual([
       { competencyId: RETRIEVAL, excerpt: 'Could not say how 71% was measured', strength: 'claim', level: 0 },
     ]);
-    // Its note is still the reason logged with its rating.
+    // Its note goes to the assessment as the rating's reason; a first Partly shown changes nothing and is not logged.
     expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].reasons[COST]).toBe('Explained the fix only');
   });
 
-  it('with only Partly shown rated there is no evidence to record, and the rating is still applied and logged', async () => {
+  it('with only Partly shown rated there is no evidence to record, and the rating still goes to the assessment, which decides what it changes', async () => {
     const draft: ScorecardDraft = {
       ...DRAFT,
       competencies: [
