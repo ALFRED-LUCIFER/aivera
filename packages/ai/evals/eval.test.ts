@@ -1712,23 +1712,36 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
   const matchCases = loadJudgeCases(import.meta.dirname, golden).filter(
     (c): c is MatchJudgeCase => 'judge' in c && c.judge === 'match',
   );
+  // Neutral texts: this pins the code's assignment of verdicts, not which skills mean the same.
   const misses = [
-    { expected: 'Incident response', candidates: ['Monitoring', 'On-call incident handling'] },
-    { expected: 'Observability', candidates: ['Monitoring', 'On-call incident handling'] },
+    { expected: 'Skill one', candidates: ['Option A', 'Option B'] },
+    { expected: 'Skill two', candidates: ['Option A', 'Option B'] },
   ];
 
   // SAFETY: mutation check: the `verdicts[miss.expected] === null` guard removed from liveMatch -> this test failed
   // SAFETY: mutation check: the `m.candidates.includes(option)` check removed from liveMatch -> this test failed
   // SAFETY: mutation check: sameText replaced by === in liveMatch -> this test failed
   it('gives each option once, to the miss it names that offered it, and every other miss null', async () => {
-    // Options in order: Monitoring, On-call incident handling, Pager rota. o0 names Incident response bar case, o1 names it
-    // again (it already has one), o2 names Observability, which never offered Pager rota.
-    const match = matchWith(JSON.stringify({ o0: 'incident response', o1: 'Incident response', o2: 'Observability' }));
-    expect(await match([...misses, { expected: 'Paging', candidates: ['Pager rota'] }])).toEqual({
-      'Incident response': 'Monitoring',
-      Observability: null,
-      Paging: null,
+    // Options in order: A, B, C. o0 names Skill one bar case, o1 names it again (it already has one), o2 names Skill two,
+    // which never offered C.
+    const match = matchWith(JSON.stringify({ o0: 'skill one', o1: 'Skill one', o2: 'Skill two' }));
+    expect(await match([...misses, { expected: 'Skill three', candidates: ['Option C'] }])).toEqual({
+      'Skill one': 'Option A',
+      'Skill two': null,
+      'Skill three': null,
     });
+  });
+
+  it('asks no model when every output value is already taken', async () => {
+    let asked = 0;
+    const counting = {
+      generateStructured: () => {
+        asked++;
+        return Promise.reject(new Error('no model call expected'));
+      },
+    };
+    expect(await liveMatch(counting)([{ expected: 'Skill one', candidates: [] }])).toEqual({ 'Skill one': null });
+    expect(asked).toBe(0);
   });
 
   it('Scenario Outline: The matcher keeps meaning, not similarity (recorded verdicts of the live matcher)', async () => {
@@ -1778,7 +1791,7 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
       }),
     );
     expect(() => loadJudgeCases(dir, new Map())).toThrow(
-      'judge/bad.yaml: every expected option must be one of its options',
+      'judge/bad.yaml: every expected and recorded option must be one of its options',
     );
   });
 });

@@ -199,9 +199,11 @@ export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): 
       if (!parsed.success) throw new Error(`${path}: ${z.prettifyError(parsed.error)}`);
       if (parsed.data.id !== basename(file, '.yaml')) throw new Error(`${path}: id must equal the file name`);
       if ('judge' in parsed.data && parsed.data.judge === 'match') {
-        const { options, expected } = parsed.data;
-        if (Object.values(expected).some((option) => option !== null && !options.includes(option)))
-          throw new Error(`${path}: every expected option must be one of its options`);
+        const { options, expected, recorded } = parsed.data;
+        const offered = (verdicts: Record<string, string | null>) =>
+          Object.values(verdicts).every((option) => option === null || options.includes(option));
+        if (!offered(expected) || !offered(recorded.verdicts))
+          throw new Error(`${path}: every expected and recorded option must be one of its options`);
         return parsed.data;
       }
       const [task = '', id] = parsed.data.case.split('/');

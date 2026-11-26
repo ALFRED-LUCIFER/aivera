@@ -227,6 +227,8 @@ type Misses = Parameters<Matcher>[1];
 export function liveMatch(ai: Pick<AiClient, 'generateStructured'>) {
   return async (misses: Misses): Promise<Record<string, string | null>> => {
     const options = [...new Set(misses.flatMap((m) => m.candidates))];
+    const verdicts: Record<string, string | null> = Object.fromEntries(misses.map((m) => [m.expected, null]));
+    if (!options.length) return verdicts; // every output value is taken: nothing to ask
     const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
@@ -239,7 +241,6 @@ export function liveMatch(ai: Pick<AiClient, 'generateStructured'>) {
       schema: z.object(Object.fromEntries(options.map((_, i) => [matchKey(i), z.string().nullable()]))).strict(),
       sources: [],
     });
-    const verdicts: Record<string, string | null> = Object.fromEntries(misses.map((m) => [m.expected, null]));
     // In option order, each option goes to the miss it names, if that miss offered it and has none yet.
     options.forEach((option, i) => {
       const named = answer[matchKey(i)];
