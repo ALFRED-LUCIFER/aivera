@@ -4,7 +4,7 @@ import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
 import { needRows } from '@/features/evidence-profile/domain/needs.ts';
-import { readSnapshot } from '@/server/assessment';
+import { readSnapshotAsSystem } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
@@ -59,7 +59,7 @@ async function cardOf(
   if (!stored) return { status: 'preparing' };
   if (stored.summary) return { status: 'ready', summary: stored.summary };
   // The snapshot the member joined with, never a newer result. Not authorised itself: `getPack` authorised this job.
-  const snapshot = names.size ? await readSnapshot(ctx, member.assessmentId) : null;
+  const snapshot = names.size ? await readSnapshotAsSystem(ctx, member.assessmentId) : null;
   const rows = snapshot ? byNeed(needRows(snapshot.competencies, names)) : null;
   return { status: 'unavailable', strengths: rows?.strengths ?? [], risks: rows?.risks ?? [] };
 }

@@ -13,13 +13,14 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 
 // AIV-P2-010, AIV-P2-011: the decision pack, from the Pack artboard (docs/01-design/artboards/Pack.dc.html). Ported:
-// the pack's name, "prepared <date> · rubric vN", "What the role needs" and "Competencies and weights", one card per
+// the pack's name, "prepared <date> · rubric vN", "What the job needs" and "Competencies and weights", one card per
 // member with their backed score and claim range (as snapshotted when they joined), "Strengths, backed", "Outstanding
 // risks", "Round 1 finding" and "Credalent's recommendation", "Back to ranking", and "Shared packs show evidence
 // summaries and sources, not raw files. N other candidates stay in the ranking and can be added to a later pack.".
 // Added beyond the artboard: "Added by <who added them> on <date>" under each member (AIV-P1-139); the basis "Observed"
-// (AGENTS.md 1.7); under each statement the excerpt it quotes, highlighted, with its source linked to the item on the
-// candidate's profile, or "Source: the assessment" (the ticket: every sentence links to its evidence); "Preparing
+// (AGENTS.md 1.7); under each statement the excerpt it quotes, highlighted as cited evidence, or for the candidate's
+// own words (a CV) under the shared "Claim" tag and never highlighted (AGENTS.md 1.6), with its source linked to the
+// item on the candidate's profile, or "Source: the assessment" (the ticket: every sentence links to its evidence); "Preparing
 // summary" while the worker writes a card, and "Summary unavailable" with the assessment's own strengths when no
 // answer with valid citations came; and the empty pack's line. Credalent's recommendation is advice: the pack summary
 // moves no stage; recorded decisions do, AIV-P2-012 (AGENTS.md 1.5).
@@ -32,8 +33,9 @@ import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 //   their own way rather than as the artboard's examples;
 // - the Round 1 finding is what the interview notes say, with no score change ("rose from 58 to 68"): the card reads
 //   only the snapshot the member joined with, not an earlier one to compare it with;
-// - the recommendation reads "advance" or "hold", with the focus the model gives ("probe product judgement"); "hold"
-//   is not on the artboard, which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
+// - the recommendation reads "advance" or "hold" (decided in code from the snapshot), then "and look into <focus> next"
+//   with the gap the model names ("Product judgement"), not "probe cost in Round 2"; "hold" is not on the artboard,
+//   which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
 // - the decision choices and "Record the decision" (AIV-P2-012) are in RecordDecisions.tsx, with their deviations;
 // - no "Open comparison" (AIV-P1-047, #111);
 // - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded

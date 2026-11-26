@@ -194,7 +194,7 @@ describe('Scenario: The store is unavailable', () => {
       const error = await processWith(model.provider)
         .generateStructured({ ...draft(DEMO), prompt })
         .catch((e: unknown) => e);
-      expect(error).toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store'));
+      expect(error).toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store', true));
       expect(model.sent.requests).toBe(0);
       const text = JSON.stringify({ message: (error as Error).message, stack: (error as Error).stack });
       expect(text).not.toContain('Daniel');
@@ -366,7 +366,7 @@ describe('AIV-P2-038: a per-workspace daily budget', () => {
     const model = exact(1, 1);
     await expect(
       processWith(model.provider).generateStructured(draft('0190d4a2-0000-7000-8000-0000000000ff')),
-    ).rejects.toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store'));
+    ).rejects.toEqual(new AiUnavailable('jobs.draftCompetencies', 'budget store', true));
     expect(model.sent.requests).toBe(0);
   });
 

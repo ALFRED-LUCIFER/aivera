@@ -175,6 +175,10 @@ export const taskThresholds: Record<
   // validity, a hard gate); the action, and which sources a strength and the Round 1 finding rest on, are exact; words
   // that must or must not appear are code checks (`expected.text`, `safety.forbidden` with the advice phrases); whether
   // each statement says only what its source shows is the judge's rubric.
+  // shortcut: under the generic rubric point ("a strength that adds work ... fails") the judge passed invented work in
+  // 5 of 5 runs (pack-arjun-built-and-ran), so each case's rubric names what its excerpts do and do not state, and a
+  // strength naming a competency without its facts line is caught in code (competency_uncited), not by the judge.
+  // Make the rubric generic again when a judge prompt change catches invented work without it (no ticket yet).
   'decisions.summariseMember': {
     statements: ['strengths[*]', 'risks[*]', 'round1', 'recommendation'],
     fieldMatch: 1,

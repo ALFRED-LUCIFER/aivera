@@ -1756,7 +1756,7 @@
       "round1": "Round 1 finding",
       "none": "None stated in this summary.",
       "recommendation": "Credalent's recommendation:",
-      "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and {focus}} other {}}",
+      "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and look into {focus} next} other {}}",
       "source": "Source: {label}",
       "assessment": "Source: the assessment",
       "preparing": "Preparing summary",

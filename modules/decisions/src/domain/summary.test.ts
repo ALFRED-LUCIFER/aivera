@@ -111,7 +111,6 @@ describe('recommendedAction: the recommendation is decided from the snapshot, ne
 describe('memberSummary: what a stored summary may hold', () => {
   const statement = {
     text: 'The candidate built it.',
-    claim: false,
     citations: [{ itemId: null, label: 'Assessment', quote: 'q', claim: false }],
   };
   const summary = {

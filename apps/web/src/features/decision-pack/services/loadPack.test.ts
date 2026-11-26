@@ -28,7 +28,7 @@ vi.mock('@/server/jobs', () => ({
   getJobs: () => ({ getJobHeader: fake.header }),
   getApprovedRubricReads: () => ({ approvedRubric: fake.approvedRubric }),
 }));
-vi.mock('@/server/assessment', () => ({ readSnapshot: fake.snapshot }));
+vi.mock('@/server/assessment', () => ({ readSnapshotAsSystem: fake.snapshot }));
 vi.mock('@/server/auth', () => ({ getIdentity: () => ({ getUser: fake.getUser }) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.applicants }) }));
 vi.mock('next/navigation', () => ({
@@ -192,7 +192,6 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
     strengths: [
       {
         text: 'The candidate authored 412 of 460 commits.',
-        claim: false,
         citations: [{ itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false }],
       },
     ],

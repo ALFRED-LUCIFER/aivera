@@ -27,11 +27,18 @@ export class UnknownAiTask extends Error {
   }
 }
 
-/** The model could not answer. Callers show "Credalent could not draft this right now." */
+/**
+ * The model could not answer. Callers show "Credalent could not draft this right now." `transient` is true when asking
+ * again later may succeed (a timeout, a retryable status, an open circuit, the budget store), and false when it never
+ * will for the same request (a 4xx such as Azure's content filter, an answer over the service's token cap, no AI
+ * service configured), so a worker knows whether to reschedule (AIV-P2-011).
+ */
 export class AiUnavailable extends Error {
   override name = 'AiUnavailable';
-  constructor(task: string, reason: string) {
+  readonly transient: boolean;
+  constructor(task: string, reason: string, transient = false) {
     super(`AI task ${task} unavailable: ${reason}`);
+    this.transient = transient;
   }
 }
 
@@ -165,7 +172,7 @@ export function createAiClient(options: {
       const day = today();
       const unbudgeted = (attempts: number): never => {
         outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': 'budget_store' });
-        throw new AiUnavailable(task, 'budget store');
+        throw new AiUnavailable(task, 'budget store', true);
       };
       const { spent, limit } = await budget.spentToday(workspaceId, day).catch(() => unbudgeted(0));
       // Calls already in flight can overshoot the budget by their own size; it is a daily cap, not a meter. A budget
@@ -181,7 +188,7 @@ export function createAiClient(options: {
         if (!breaker) breakers.set(deployment, (breaker = { failures: 0, openUntil: 0 }));
         if (breaker.openUntil > now()) {
           outcome('circuit_open', { 'credalent.ai.attempts': attempts - 1 });
-          throw new AiUnavailable(task, 'circuit open');
+          throw new AiUnavailable(task, 'circuit open', true);
         }
         let result: { value: T; usage: Usage; cap?: number };
         try {
@@ -199,7 +206,7 @@ export function createAiClient(options: {
           // unavailable too, so retrying never helps; report it as its own outcome (AIV-P1-136, #614).
           if (!transient || attempts >= maxAttempts || breaker.openUntil > now()) {
             outcome('unavailable', { 'credalent.ai.attempts': attempts, 'error.type': reason });
-            throw new AiUnavailable(task, reason);
+            throw new AiUnavailable(task, reason, transient);
           }
           // Azure sends retry-after-ms (and retry-after, seconds) on 429; otherwise back off 1 s, 2 s. Capped at 10 s.
           const headers = APICallError.isInstance(error) ? error.responseHeaders : undefined;

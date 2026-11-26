@@ -71,5 +71,5 @@ export const getAssessment = (): AssessmentContract =>
  * One stored assessment by id, unauthorised: only for a read the caller has already authorised, such as a decision
  * pack member's snapshot after `getPack` authorised the pack's job (AIV-P2-011).
  */
-export const readSnapshot = (ctx: WorkspaceContext, assessmentId: string) =>
+export const readSnapshotAsSystem = (ctx: WorkspaceContext, assessmentId: string) =>
   readAssessmentAsSystem(ctx.tx, ctx.workspaceId, assessmentId);

@@ -52,9 +52,14 @@ test('Scenarios: Saving a change, a value out of range, restore a default', asyn
 
   // A value out of range is explained, not saved.
   const idle = page.getByRole('textbox', { name: 'Sign out after inactivity', exact: true });
-  await idle.fill('24');
-  await save(page).click();
-  await expect(idle).toHaveAccessibleDescription(/Enter a number from 1 to 12/);
+  // A save before the form hydrates is a native submit the form never sees (CI run 45877523565: the first attempt's
+  // description never came, its retry passed); fill and save again until the form answers. An invalid value is never
+  // saved, so repeating it changes nothing.
+  await expect(async () => {
+    await idle.fill('24');
+    await save(page).click();
+    await expect(idle).toHaveAccessibleDescription(/Enter a number from 1 to 12/, { timeout: 1000 });
+  }).toPass();
   await expect(idle).toHaveAttribute('aria-invalid', 'true');
   await page.reload();
   await expect(page.getByRole('textbox', { name: 'Sign out after inactivity', exact: true })).toHaveValue('12');

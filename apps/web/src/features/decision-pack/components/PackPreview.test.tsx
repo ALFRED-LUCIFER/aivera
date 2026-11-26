@@ -40,7 +40,6 @@ const preview: Preview = {
           strengths: [
             {
               text: 'The candidate authored 412 of 460 commits in llm-eval-harness.',
-              claim: false,
               citations: [
                 { itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false },
               ],
@@ -49,7 +48,6 @@ const preview: Preview = {
           risks: [
             {
               text: 'Cost and reliability is a claim with nothing to inspect.',
-              claim: false,
               citations: [
                 { itemId: null, label: 'Assessment', quote: 'Cost and reliability, 15% of the weight', claim: false },
               ],
@@ -58,7 +56,7 @@ const preview: Preview = {
           round1: null,
           recommendation: {
             action: 'advance',
-            focus: 'probe cost and reliability',
+            focus: 'Cost and reliability',
             citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need', claim: false }],
           },
         },
@@ -105,7 +103,7 @@ describe('PackPreview', () => {
     expect(within(sara).getByText('authored 412 of 460 commits').closest('mark')).toBeTruthy();
     expect(within(sara).getByText('Source: llm-eval-harness')).toBeTruthy();
     expect(within(sara).getByText("Credalent's recommendation:").textContent).toBe(
-      "Credalent's recommendation: advance, and probe cost and reliability",
+      "Credalent's recommendation: advance, and look into Cost and reliability next",
     );
     expect(within(sara).getByText('Round 1 finding').nextElementSibling?.textContent).toBe(
       'None stated in this summary.',

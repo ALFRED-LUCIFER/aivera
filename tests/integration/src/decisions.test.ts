@@ -844,7 +844,7 @@ describe('Scenario: Pack summaries are written once per member, cited, by the wo
     const pack = await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, shortlist));
     const card = pack?.summaries.find((s) => s.candidateId === sara);
     const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, seniorAi.jobId));
-    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@2' });
+    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@3' });
     const [strength] = card?.summary?.strengths ?? [];
     expect(strength?.citations).toEqual([
       {
