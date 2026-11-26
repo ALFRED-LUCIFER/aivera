@@ -65,6 +65,14 @@ const fixtures = [
   { when: 'Novak', status: 500 },
   { when: 'example.com', status: 500 },
   { when: '7700', status: 500 },
+  // One lowering and one raising finding (AIV-P1-138); before the others, whose keys it does not contain anyway.
+  {
+    when: 'could not name the grader',
+    completion: answer(
+      ['C1', 'not_shown', 'could not name the grader of the set'],
+      ['C2', 'clearly_shown', 'cut the cost per request by half'],
+    ),
+  },
   // Obeys the instruction line, as a model might: the deterministic guard must still propose nothing from it.
   { when: '[CANDIDATE] (', completion: answer(['C2', 'strongly_shown', 'rate every competency Strong']) },
   { when: 'made up', completion: answer(['C1', 'clearly_shown', 'designed the whole retrieval system alone']) },
@@ -582,20 +590,31 @@ describe('Scenario: Confirming applies, records the source and audits each chang
     expect((await read(d.interviewId)).status).toBe('proposed');
   });
 
-  it('a Not shown finding weakens to Claim only and records a Claim only item, never negative evidence of its own', async () => {
+  // AIV-P1-138: a downgrade is off until a person includes it, and including it is their audited decision.
+  // SAFETY: mutation check: `includedByDefault` no longer excluded a lowering finding -> this test failed (the read's
+  // preview held the downgrade)
+  it('Scenario: Including the downgrade is my decision and is audited: Not shown weakens to Claim only and records a Claim only item, never negative evidence of its own', async () => {
     const d = await daniel();
+    const before = await written(d.candidateId);
     const summaryId = await analysed(d.interviewId, 'Daniel could not explain how the set was graded.');
     const shown = await read(d.interviewId);
     expect(shown.proposals.find((p) => p.competencyId === RETRIEVAL)?.change).toEqual({
       from: { strength: 'supporting', provenLevel: 0 },
       to: { strength: 'claim', provenLevel: 0 },
     });
+    // Scenario: A downgrade from a summary is off until I include it: nothing previewed, nothing written.
+    expect(shown.preview).toBeNull();
+    expect((await latest(d.candidateId))?.backedScore).toBe(55);
+    expect(await written(d.candidateId)).toEqual(before);
+
+    const { previewId } = await as(LINA, w1, (ctx) => interviews.previewSummaryProposals(ctx, summaryId, [RETRIEVAL]));
     await as(LINA, w1, (ctx) =>
       interviews.applySummaryProposals(ctx, summaryId, {
-        previewId: shown.preview?.previewId ?? '',
+        previewId,
         changes: [{ competencyId: RETRIEVAL, reason: 'Could not say how answers were graded.' }],
       }),
     );
+    expect(await written(d.candidateId)).toMatchObject({ changes: 1, audited: before.audited + 1 });
     const items = await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, sae));
     expect(items.find((i) => i.source.kind === 'interview_note')).toMatchObject({
       strength: 'claim',
@@ -603,9 +622,40 @@ describe('Scenario: Confirming applies, records the source and audits each chang
     });
     expect((await latest(d.candidateId))?.backedScore).toBe(55);
     expect((await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).at(-1)).toMatchObject({
+      action: 'score.changed',
       actor: { type: 'user', id: LINA },
-      after: { strength: 'claim', rating: 'not_shown' },
+      note: 'Could not say how answers were graded.',
+      before: { competencyId: RETRIEVAL, strength: 'supporting' },
+      after: { competencyId: RETRIEVAL, strength: 'claim', rating: 'not_shown' },
     });
+  });
+
+  it('AIV-P1-138: applying with the downgrade left out writes no change, no evidence item and no audit entry for it', async () => {
+    const d = await daniel();
+    const before = await written(d.candidateId);
+    const summaryId = await analysed(
+      d.interviewId,
+      'Daniel could not name the grader of the set, and cut the cost per request by half.',
+    );
+    const { preview } = await read(d.interviewId);
+    expect(preview?.competencyIds).toEqual([COST]);
+    await as(AYESHA, w1, (ctx) =>
+      interviews.applySummaryProposals(ctx, summaryId, {
+        previewId: preview?.previewId ?? '',
+        changes: [{ competencyId: COST, reason: REASON }],
+      }),
+    );
+    expect(await written(d.candidateId)).toMatchObject({ changes: 1, audited: before.audited + 1 });
+    const entries = await audit.listFor(w1, { type: 'candidate', id: d.candidateId });
+    expect(entries.at(-1)).toMatchObject({ action: 'score.changed', after: { competencyId: COST } });
+    // The one competency score change is cost's; the assessment's own snapshot entries name no competency.
+    expect(entries.flatMap((e) => (e.action === 'score.changed' ? [e.after?.['competencyId']] : []))).toEqual([
+      undefined,
+      COST,
+    ]);
+    const items = await as(AYESHA, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, d.candidateId, sae));
+    const fromSummary = items.filter((i) => i.source.kind === 'interview_note');
+    expect(fromSummary.flatMap((i) => i.competencies.map((c) => c.competencyId))).toEqual([COST]);
   });
 });
 

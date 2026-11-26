@@ -16,7 +16,13 @@ export type {
   ScorePreview,
   SummaryPreview,
 } from '../application/summary.ts';
-export { FINDINGS, SUMMARY_MAX_CHARS, summaryTextSchema } from '../domain/summary.ts';
+export {
+  FINDINGS,
+  includedByDefault,
+  lowersEvidence,
+  SUMMARY_MAX_CHARS,
+  summaryTextSchema,
+} from '../domain/summary.ts';
 export type { Finding, ProposalStatus, ProposedStrength, SummaryStatus } from '../domain/summary.ts';
 export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
 export {
@@ -133,7 +139,8 @@ export interface InterviewsContract {
    * (finding, the quoted excerpt, the reason, the proposed strength: Claim only, Medium, or none). While `proposed`,
    * each proposal that changes something carries the competency's strength and proven level before and after, from the
    * assessment's own preview, and `alreadyChanged` when the interview's scorecard already changed that competency
-   * (excluded by default); `preview` is the backed score before and after for the proposals included by default.
+   * (excluded by default); a proposal that lowers the evidence (Not shown to Claim only) is excluded by default too
+   * (`includedByDefault`); `preview` is the backed score before and after for the proposals included by default.
    * `previewUnavailable` when the assessment cannot be previewed now. Never the summary's text. Writes nothing.
    */
   getMeetingSummary(ctx: WorkspaceContext, interviewId: string): Promise<{ summary: MeetingSummaryView | null } | null>;

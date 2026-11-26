@@ -9,7 +9,7 @@ import { cited, type Source } from '../citations.ts';
 // AIV-P1-137: @3 could quote the sentence beside the work its finding rests on, and a reason could name the work in
 // the competency's words ("evaluation of retrieval quality" for a comparison of answer quality); the eval checks both.
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
-export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@4';
+export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@5';
 
 export const MAX_REASON_WORDS = 40;
 
@@ -19,21 +19,27 @@ export const SUMMARY_FINDINGS = ['not_shown', 'partly_shown', 'clearly_shown', '
 // The system prompt is exported so eval.test.ts checks it never repeats or overrides the shared untrusted-content rule.
 export const MAP_SUMMARY_SYSTEM = [
   "You read an interviewer's written summary of one interview. The prompt lists the competencies the interview",
-  'tested; the summary is the one source. For each listed competency the summary says something about, give its',
+  'tested; the summary is the one source. First decide which listed competencies the summary covers: one is covered',
+  'only when a sentence describes work its Meaning asks for, that the candidate did, showed or could not show. A',
+  'sentence covers the competency whose Meaning its work is, never one it only shares a word with: cutting cost or',
+  'latency by caching search results covers cost, not search quality. Every competency the summary does not cover',
+  'gets no finding at all, never not_shown: fewer findings than listed competencies, or none, is the right answer',
+  'when the summary is silent on some, and a competency whose reason would say what the summary does not mention,',
+  'discuss or give is not covered. For each covered competency give its',
   `competencyId, copied exactly from the list; reason, at most ${MAX_REASON_WORDS} words, about the work only: what the`,
   'summary says the candidate built, showed or measured for it, in its own words, never adding what it does not say.',
   "The reason names the work as the summary words it, never in the competency's own terms, and never adds what the",
   'work indicates: a summary saying the candidate "rewrote the onboarding emails" gives "The candidate rewrote the',
   'onboarding emails", not "rewrote the onboarding emails, indicating content strategy work";',
-  'then finding: not_shown only when the summary says the candidate could not show or explain it, never because it',
+  'then finding: not_shown only when the summary says the candidate could not show or explain that work, never because it',
   'says nothing on that competency; partly_shown when the candidate',
   'could explain only part of it, or the summary names only an activity (compared, reviewed, worked on, chose)',
   'without the specific thing built, shown or measured; clearly_shown when it names a specific thing the candidate',
   'built, showed or measured (an evaluation set, an endpoint, a figure), even if not everything the Meaning lists;',
   'strongly_shown when it describes that in depth and detail; and one citation quoting the words of the summary the',
   'finding rests on: the words that name the thing built, shown or measured, not a sentence beside them.',
-  'Leave out every competency the summary does not cover, and never guess one from silence. Give at most one finding',
-  'for a competency and none for a competency that is not listed.',
+  'Never guess a finding from silence. Give at most one finding for a competency and none for a competency that is',
+  'not listed.',
   'Judge only what the summary says the candidate did, built, explained or could not explain. A sentence about',
   'manner, confidence, nerves, accent, age, family, health, nationality or religion says nothing about a competency:',
   'give no finding from it and never quote it.',
@@ -103,7 +109,10 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
           .refine((f) => f.citations.length <= 1, rule('one_excerpt'))
           .refine((f) => !f.citations.some((c) => isOffRubric(c.quote)), rule('off_rubric')),
       )
-      .refine((fs) => new Set(fs.map((f) => f.competencyId)).size === fs.length, rule('competency_repeated')),
+      .refine((fs) => new Set(fs.map((f) => f.competencyId)).size === fs.length, rule('competency_repeated'))
+      .describe(
+        'One finding for each listed competency the summary describes work for, and none for any other: a competency the summary is silent on is left out, never not_shown',
+      ),
   });
 
 /** One competency as the prompt lists it. `id` is a label of the caller's ("C1"), so no opaque id reaches the model. */

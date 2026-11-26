@@ -30,6 +30,8 @@ import { approvedWorkspace } from './workspaces.ts';
 // the outbox to the worker's real consumer and handler, with the model stubbed at the port (ai-fixtures.json).
 const SUMMARY = 'Daniel walked through the 200-question evaluation set he built and showed how answers were graded.';
 const QUOTE = 'walked through the 200-question evaluation set he built';
+// AIV-P1-138: a summary whose finding lowers the evidence (Not shown to Claim only).
+const LOWERING = 'Daniel could not explain how the 200-question set was graded and said a colleague built it.';
 
 let creator: string;
 let workspaceId: string;
@@ -215,11 +217,11 @@ async function rankedRow(page: Page, theme: string) {
 }
 
 /** Pastes the summary and chooses "Analyse summary" by keyboard, then lets the worker analyse it. */
-async function pasteAndAnalyse(page: Page) {
+async function pasteAndAnalyse(page: Page, text = SUMMARY) {
   const box = panel(page).getByRole('textbox', { name: 'Summary of the interview' });
   await box.focus();
-  await page.keyboard.insertText(SUMMARY);
-  await expect(panel(page).getByText(`${SUMMARY.length} of 12,000 characters`)).toBeVisible();
+  await page.keyboard.insertText(text);
+  await expect(panel(page).getByText(`${text.length} of 12,000 characters`)).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(panel(page).getByRole('button', { name: 'Analyse summary' })).toBeFocused();
   await page.keyboard.press('Enter');
@@ -227,6 +229,21 @@ async function pasteAndAnalyse(page: Page) {
   await analyse();
   // The page asks again every few seconds while the worker analyses.
   await expect(effect(page)).toBeVisible({ timeout: 15_000 });
+}
+
+/** Scenario: A downgrade from a summary is off until I include it (AIV-P1-138): unticked, with its note, axe clean. */
+async function downgradeIsOff(page: Page) {
+  await pasteAndAnalyse(page, LOWERING);
+  await expect(effect(page).getByText('Retrieval and evaluation: Supporting to Claim only')).toBeVisible();
+  await expect(
+    effect(page).getByText('Lowers the evidence. Include it only if the summary says this was not shown.'),
+  ).toBeVisible();
+  await expect(
+    effect(page).getByRole('checkbox', { name: 'Include this change: Retrieval and evaluation' }),
+  ).not.toBeChecked();
+  await expect(effect(page).getByText('No change is included. The backed score stays as it is.')).toBeVisible();
+  await expect(effect(page).getByRole('button', { name: 'Apply 0 changes' })).toBeDisabled();
+  await expectAccessible(page);
 }
 
 for (const theme of themes) {
@@ -248,6 +265,14 @@ for (const theme of themes) {
     await panel(page).getByRole('button', { name: 'Analyse summary' }).click();
     await expect(panel(page).getByRole('alert')).toHaveText('Paste the meeting summary first.');
     await expectAccessible(page);
+
+    if (theme === 'light') {
+      await downgradeIsOff(page);
+      await effect(page).getByRole('button', { name: 'Decline' }).click();
+      await expect(
+        panel(page).getByText('Declined. Nothing changed, and the summary stays on this interview.'),
+      ).toBeVisible();
+    }
 
     // Scenario: Analysing a summary proposes a change and applies nothing.
     await pasteAndAnalyse(page);
@@ -282,6 +307,28 @@ for (const theme of themes) {
       await expectAccessible(page);
       const after = await rankedRow(page, theme);
       await expect(after.row).toContainText('55up to 71 if claims hold');
+      await after.tab.close();
+
+      // Scenario: Including the downgrade is my decision: ticked by keyboard, given a reason, applied.
+      await downgradeIsOff(page);
+      const include = effect(page).getByRole('checkbox', { name: 'Include this change: Retrieval and evaluation' });
+      await include.focus();
+      await page.keyboard.press('Space');
+      await expect(include).toBeChecked();
+      await expect(effect(page).getByLabel('Reason for Retrieval and evaluation')).not.toHaveValue('');
+      await expect(effect(page).getByText('Backed score 55 to 55')).toBeVisible();
+      const apply = effect(page).getByRole('button', { name: 'Apply 1 change' });
+      await expect(apply).toBeEnabled();
+      await apply.focus();
+      await page.keyboard.press('Enter');
+      await expect(
+        panel(page).getByText(
+          'The changes you confirmed are applied and logged. The assessment and the ranking are updated.',
+        ),
+      ).toBeVisible();
+      await expectAccessible(page);
+      // The ranking is recomputed with the change: the backed score stays 55, as a Supporting claim counted zero.
+      await expect((await rankedRow(page, theme)).row).toContainText('55');
       return;
     }
 

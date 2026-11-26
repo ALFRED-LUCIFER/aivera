@@ -165,6 +165,31 @@ describe('Scenario: Analysing a summary proposes a change and applies nothing', 
     expect((screen.getByRole('button', { name: 'Apply 0 changes' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  // SAFETY: mutation check: the web `includedByDefault` filtered on `p.change && !p.alreadyChanged` again (the module's
+  // rule bypassed) -> this test failed (the downgrade started ticked)
+  it('Scenario: A downgrade from a summary is off until I include it: unticked, with the note, nothing to apply', () => {
+    const lowering: SummaryProposal = {
+      ...RETRIEVAL,
+      finding: 'not_shown',
+      excerpt: 'could not explain how the 200-question set was graded',
+      change: { from: 'supporting', to: 'claim' },
+    };
+    show(panelOf('proposed', [lowering, COST], { preview: null }));
+    expect(screen.getByText('Retrieval and evaluation: Supporting to Claim only')).toBeTruthy();
+    expect(
+      screen.getByText('Lowers the evidence. Include it only if the summary says this was not shown.'),
+    ).toBeTruthy();
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole('button', { name: 'Apply 0 changes' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('No change is included. The backed score stays as it is.')).toBeTruthy();
+  });
+
+  it('Scenario: A raising proposal is unchanged: ticked, with no note', () => {
+    show(panelOf('proposed'));
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByText(/Lowers the evidence/)).toBeNull();
+  });
+
   it('a change with no reason cannot be applied', () => {
     show(panelOf('proposed'), { reasonMissing: true });
     expect((screen.getByRole('button', { name: 'Apply 1 change' }) as HTMLButtonElement).disabled).toBe(true);

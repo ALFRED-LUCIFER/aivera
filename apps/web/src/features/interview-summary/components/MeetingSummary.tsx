@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { SUMMARY_MAX_CHARS, type SummaryPreview } from '@credalent/interviews';
+import { lowersEvidence, SUMMARY_MAX_CHARS, type SummaryPreview } from '@credalent/interviews';
 import {
   Button,
   Card,
@@ -27,7 +27,8 @@ import type { SummaryErrorKey, SummaryPanel, SummaryProposal } from '../domain/s
 //   view, DESIGN.md);
 // - "Effect on the assessment" is the preview card's title, inline at the foot of the left column, not a card in the
 //   right column: the right column is the scorecard's (its live preview is AIV-P2-005, #119);
-// - each change has an include checkbox and its own reason field (the ticket), which the artboard's card has not;
+// - each change has an include checkbox and its own reason field (the ticket), which the artboard's card has not; a
+//   change that lowers the evidence starts unticked with a note saying so (AIV-P1-138), which the artboard has not;
 // - the quoted excerpt is highlighted only on a proposal that changes something: the highlighter marks the evidence a
 //   change cites, and "no change" cites none (AGENTS.md 4, DESIGN.md);
 // - "Backed score 55 to 61" carries two basis markers, "Before: Observed" and "After: Projection" (AGENTS.md 1.7);
@@ -222,6 +223,7 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
         </q>
       )}
       {proposal.alreadyChanged && <span className="text-meta text-text-2">{t('interviewSummary.alreadyChanged')}</span>}
+      {lowersEvidence(proposal.finding) && <span className="text-meta text-text">{t('interviewSummary.lowers')}</span>}
       <Checkbox
         label={t('interviewSummary.include')}
         aria-label={`${t('interviewSummary.include')}: ${name}`}

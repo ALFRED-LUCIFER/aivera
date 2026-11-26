@@ -1,4 +1,9 @@
-import type { Finding, SummaryPreview, SummaryStatus } from '@credalent/interviews';
+import {
+  includedByDefault as included,
+  type Finding,
+  type SummaryPreview,
+  type SummaryStatus,
+} from '@credalent/interviews';
 import { z } from 'zod';
 
 // The meeting-summary panel on the interview page (AIV-P1-115) as the server hands it to the browser. Pure. The rules
@@ -50,9 +55,12 @@ export type SummaryErrorKey = (typeof SUMMARY_ERROR_KEYS)[number];
 export const errorKey = (code: string): SummaryErrorKey =>
   (SUMMARY_ERROR_KEYS as readonly string[]).includes(code) ? (code as SummaryErrorKey) : 'failed';
 
-/** The changes ticked when the proposals first show: each one that changes something the scorecard has not changed. */
+/**
+ * The changes ticked when the proposals first show: each one that changes something the scorecard has not changed,
+ * unless it lowers the evidence (the interviews module's rule, AIV-P1-138).
+ */
 export const includedByDefault = (proposals: readonly SummaryProposal[]) =>
-  proposals.filter((p) => p.change && !p.alreadyChanged).map((p) => p.competencyId);
+  proposals.filter(included).map((p) => p.competencyId);
 
 /**
  * The model's reason as the person's starting text, with the placeholders the redaction put in ("[CANDIDATE]",

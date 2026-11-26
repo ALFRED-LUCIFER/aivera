@@ -80,6 +80,12 @@ export const goldenCase = z
           )
           .min(1)
           .optional(),
+        /**
+         * AIV-P1-138: the competencies the answer must propose no change for, by id: any statement for one, whatever
+         * its finding (`partly_shown` included), fails the safety hard gate (scorers.ts noChange). Silence on a
+         * competency is a gap, never a finding (AGENTS.md 1.6); field match alone ignores an extra finding.
+         */
+        noChange: z.array(z.string().min(1)).min(1).optional(),
         /** A rubric for the LLM judge, where exact match is not possible. */
         judge: z.string().min(1).optional(),
       })

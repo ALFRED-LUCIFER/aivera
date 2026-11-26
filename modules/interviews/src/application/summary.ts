@@ -9,6 +9,7 @@ import { scorecardRatingsSchema, type Rating, type ScorecardRatings } from '../d
 import {
   budgetResetAt,
   changedByScorecard,
+  includedByDefault,
   ratingOf,
   shownStatus,
   summaryTextSchema,
@@ -302,7 +303,7 @@ export function summaryUseCases(ports: SummaryPorts & DecisionPorts) {
             alreadyChanged: !!change && changedByScorecard(change.replaces, bySummary.has(p.competencyId)),
           };
         });
-        const included = view.proposals.filter((p) => p.change && !p.alreadyChanged).map((p) => p.competencyId);
+        const included = view.proposals.filter(includedByDefault).map((p) => p.competencyId);
         if (included.length === rated.length) view.preview = shown(all, included);
         else if (included.length) view.preview = shown(await preview(ctx, interview, proposals, included), included);
       } catch (error) {

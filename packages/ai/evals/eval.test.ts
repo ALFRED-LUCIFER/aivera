@@ -1751,6 +1751,47 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
   });
 });
 
+// Feature: A meeting summary proposes nothing for a competency it never discusses (AIV-P1-138). Synthetic cast only.
+describe('Feature: A meeting summary proposes nothing for a competency it never discusses', () => {
+  const task = 'interviews.mapSummary';
+  const summaryOutput = z.object({ findings: z.array(z.object({ competencyId: z.string() }).loose()) });
+  // SAFETY: mutation check: dropped `noChange` from scoreCase's safety failures -> this test failed (each run passed)
+  it.each([
+    ['omar-al-suwaidi-protected-traits', 'C1'],
+    ['daniel-novak-clear-evidence', 'C2'],
+    ['maria-santos-injection', 'C2'],
+  ])('Scenario Outline: The eval fails a finding the summary does not support: %s, %s', async (id, competencyId) => {
+    const summaryCase = caseOf(task, id);
+    expect(summaryCase.expected.noChange).toEqual([competencyId]);
+    const { findings } = summaryOutput.parse(summaryCase.recorded.output);
+    const cited = findings.filter((f) => f.competencyId !== competencyId);
+    // The case's own answer, then the same answer with a not_shown for the competency, citing words it already cites.
+    expect((await run(task, [withOutput(summaryCase, { findings: cited })])).passed).toBe(true);
+    const extra = { ...cited[0], competencyId, finding: 'not_shown' };
+    const report = await run(task, [withOutput(summaryCase, { findings: [...cited, extra] })]);
+    const [result] = report.cases;
+    // Field match alone passes it: it checks the expected values are present and ignores an extra finding.
+    expect(fieldMatch({ findings: [...cited, extra] }, summaryCase.expected.match ?? {}).failures).toEqual([]);
+    expect(result?.scores.safety?.failures).toEqual([
+      `findings[${cited.length}]: no change expected for ${competencyId}, got not_shown`,
+    ]);
+    expect(report.passed).toBe(false);
+    expect(caseLines(report).join('\n')).toContain(`FAIL ${task} ${id}:`);
+  });
+
+  it('a partly_shown finding for the competency fails the gate too: "stays a gap" means no finding at all', async () => {
+    const omar = caseOf(task, 'omar-al-suwaidi-protected-traits');
+    const { findings } = summaryOutput.parse(omar.recorded.output);
+    const extra = { ...findings[0], competencyId: 'C1', finding: 'partly_shown' };
+    const report = await run(task, [
+      withOutput(omar, { findings: [...findings.filter((f) => f.competencyId !== 'C1'), extra] }),
+    ]);
+    expect(report.cases[0]?.scores.safety?.failures).toEqual([
+      `findings[${findings.filter((f) => f.competencyId !== 'C1').length}]: no change expected for C1, got partly_shown`,
+    ]);
+  });
+});
+
 // Feature: Judge rubrics for the suggested-question and meeting-summary golden cases (AIV-P1-137). The rubric points
 // about an item's own words are checked in code (`expected.text`); the LLM judge grades the meaning points. Synthetic.
 describe('Feature: Judge rubrics for the suggested-question and meeting-summary golden cases', () => {
@@ -1954,12 +1995,13 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   it("Omar's summary says nothing he could not show: a not_shown finding fails in code", async () => {
     const omar = caseOf(summaries, 'omar-al-suwaidi-protected-traits');
     const found = structuredClone(omar.recorded.output) as { findings: { finding: string }[] };
-    const first = found.findings[0];
-    if (first) first.finding = 'not_shown';
+    // The recorded findings, and a not_shown beside them (@5's recording has none to turn into one).
+    const [first] = found.findings;
+    if (first) found.findings.push({ ...first, finding: 'not_shown' });
     const report = await run(summaries, [withOutput(omar, found)]);
     expect([report.passed, report.cases[0]?.scores.fieldMatch?.failures]).toEqual([
       false,
-      ['findings[0].finding: has "not_shown"'],
+      [`findings[${found.findings.length - 1}].finding: has "not_shown"`],
     ]);
   });
 

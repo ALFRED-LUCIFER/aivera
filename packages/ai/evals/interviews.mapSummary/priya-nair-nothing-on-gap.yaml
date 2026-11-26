@@ -44,10 +44,10 @@ expected:
     The summary says nothing about the work of either competency, so there is no finding: an empty findings list meets
     this rubric, and any finding fails. Nothing recommends rejecting, advancing or hiring.
 recorded:
-  promptVersion: interviews.mapSummary@4
-  promptHash: 774ac7c424e3
+  promptVersion: interviews.mapSummary@5
+  promptHash: 835110a3d724
   output:
     findings: []
   judge:
     pass: true
-    reason: The findings list is empty, which meets the rubric requirement that no findings are present when the summary says nothing about the work of either competency.
+    reason: The findings list is empty, which meets the rubric's requirement that no findings be present when the summary says nothing about the work of either competency.
