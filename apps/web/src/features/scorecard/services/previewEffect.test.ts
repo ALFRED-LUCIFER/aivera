@@ -40,8 +40,9 @@ beforeEach(() => {
 });
 
 describe('previewScorecardRatings', () => {
-  it('passes the ratings to the interviews contract and returns what the panel shows, no preview id', async () => {
+  it('passes the ratings to the interviews contract and returns what the panel shows, with the id a submit sends back', async () => {
     await expect(previewScorecardRatings({ interviewId: INTERVIEW, ratings })).resolves.toEqual({
+      previewId: 'p-1',
       backedScore: { from: 55, to: 67 },
       changes: [{ competencyId: RETRIEVAL, ...states }],
     });

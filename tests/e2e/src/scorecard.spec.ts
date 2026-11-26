@@ -175,6 +175,8 @@ test('Scenario: Submit needs every competency rated or marked not tested', async
   await setMark(page, notAsked(page, 1), false);
   await expect(ratingRadio(page, 'Cost and reliability')).toBeEnabled();
   const submit = page.getByRole('button', { name: 'Submit scorecard' });
+  // It waits for the preview of the ratings, so what a submit applies is what was shown (AIV-P2-006).
+  await expect(submit).toBeEnabled();
   await submit.focus();
   await page.keyboard.press('Enter');
   await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(BLOCKED);
@@ -182,16 +184,8 @@ test('Scenario: Submit needs every competency rated or marked not tested', async
 
   await setMark(page, notAsked(page, 1), true);
   await expect(page.getByText(BLOCKED)).toHaveCount(0);
-  // The button is disabled while the first submit's save is in flight; focus would stay on the mark.
-  await expect(submit).toBeEnabled();
-  await submit.focus();
-  await page.keyboard.press('Enter');
-  // Submitting is AIV-P2-006: the page says plainly that nothing was submitted or changed.
-  await expect(
-    page.getByText(
-      'Your scorecard is complete and saved as a draft. It has not been submitted: the assessment, the stage and the ranking are unchanged.',
-    ),
-  ).toBeVisible();
+  // Not submitted here: the seeded interview stays open for the tests after this one. Submitting it is
+  // submit-scorecard.spec.ts, on a workspace of its own (AIV-P2-006).
   await expect(page.getByText(SCORE)).toBeVisible();
 });
 
@@ -227,6 +221,11 @@ for (const theme of themes) {
     await signIn(page, { email: AP });
     await openScorecard(page);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // "Submit scorecard" waits, disabled, for the preview of the saved rating (AIV-P2-006); axe reads its fade back to
+    // ink as low contrast, so it runs once the fade has ended.
+    const submit = page.getByRole('button', { name: 'Submit scorecard' });
+    await expect(submit).toBeEnabled();
+    await submit.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     await expectAccessible(page);
     await setMark(page, notAsked(page, 1), false);
     await page.getByRole('button', { name: 'Submit scorecard' }).click();

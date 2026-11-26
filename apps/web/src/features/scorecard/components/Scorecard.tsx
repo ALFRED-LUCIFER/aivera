@@ -26,7 +26,7 @@ import {
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts';
+import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domain/scorecard.ts';
 
 // AIV-P2-004: the Interview artboard (docs/01-design/artboards/Interview.dc.html): breadcrumb, title, subtitle and "Save
 // and close"; the rounds; one card per competency to investigate with its evidence, questions, rating and note; and
@@ -51,10 +51,12 @@ import type { ScorecardCompetency, ScorecardData } from '../domain/scorecard.ts'
 //   its name (AGENTS.md 1.9);
 // - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
 //   its own controller and component, `ScoreEffect`;
-// - "Submit scorecard" checks that every competency is rated or marked as not tested, says which is not, and saves the
-//   draft. It applies nothing, and a line under it and its result say so: submitting, the score change, the
-//   `interview_note` evidence and "Scorecard submitted and logged" are AIV-P2-006 (#120);
-// - no "Audit trail" card: a draft writes no audit entry; the trail comes with the submit (AIV-P2-006);
+// - "Submit scorecard" (AIV-P2-006) first checks that every competency is rated or marked as not tested and that each
+//   rating has a note (the reason logged with it, and the words its evidence cites), saying which is not, and is
+//   disabled while the preview of the current ratings is on its way, so what is applied is what the person saw. Under
+//   "Scorecard submitted and logged" its name is the candidate's full name, not the first name;
+// - no "Audit trail" card: the submit's entries are the audit log's (`score.changed`, one per rating), and reading them
+//   back onto this page and the evidence profile ("Interview history and score changes") is AIV-P1-046 (#110);
 // - the draft saves itself a moment after each change, with "Saving your draft…" and "Draft saved…" beside "Save and
 //   close" (the ticket), which is a button that saves and then opens Interviews, not a plain link;
 // - a member who is not the interviewer or an admin, and anyone once the interview is completed or cancelled, reads the
@@ -74,7 +76,10 @@ export type ScorecardHandlers = {
   draft: ScorecardDraft;
   saving: 'idle' | 'saving' | 'saved' | 'failed';
   blocked: string[];
-  complete: boolean;
+  noNote: string[];
+  outcome: SubmitOutcome | 'submitting' | null;
+  /** The preview of the ratings now is on its way: submitting waits for it. */
+  previewPending: boolean;
   onRate: (competencyId: string, rating: Rating) => void;
   onNote: (competencyId: string, note: string) => void;
   onMark: (competencyId: string, index: number, mark: Mark) => void;
@@ -175,7 +180,11 @@ export function Scorecard({
             </div>
           )}
         </div>
-        {!view.canEdit && <p className="text-body text-text">{t('scorecard.readOnly')}</p>}
+        {!view.canEdit && (
+          <p className="text-body text-text">
+            {t(view.submitted ? 'scorecard.submittedReadOnly' : 'scorecard.readOnly')}
+          </p>
+        )}
       </div>
       <Rounds view={view} />
       <div className="flex flex-wrap items-start gap-6">
@@ -208,15 +217,26 @@ export function Scorecard({
                   <div>
                     <Button
                       variant={quietSubmit ? 'secondary' : 'primary'}
-                      disabled={view.saving === 'saving'}
+                      disabled={view.saving === 'saving' || view.outcome === 'submitting' || view.previewPending}
                       onClick={view.onSubmit}
                     >
                       {t('scorecard.submit')}
                     </Button>
                   </div>
                   <p className="text-meta text-text-2">{t('scorecard.submitHelp')}</p>
-                  <output className="text-body text-text">{view.complete ? t('scorecard.complete') : ''}</output>
                 </>
+              )}
+              {/* Stays mounted, outside the editable state the submit ends, so its result is announced. */}
+              <output className="text-body font-medium text-text">
+                {view.outcome && t(`scorecard.outcome.${view.outcome}`, { name })}
+              </output>
+              {(view.submitted || view.outcome === 'updated' || view.outcome === 'unchanged') && (
+                <div>
+                  {/* rankingHref builds the path from an opaque id, which typed routes cannot check. */}
+                  <Link href={view.rankingHref as Route} className="text-body underline underline-offset-2">
+                    {t('scorecard.seeRanking')}
+                  </Link>
+                </div>
               )}
             </section>
           </Card>
@@ -279,6 +299,7 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
   if (!draft) return null;
   const untested = notAssessed(draft);
   const blocked = view.blocked.includes(id);
+  const noNote = view.noNote.includes(id);
   return (
     <Card>
       <section aria-labelledby={`competency-${id}`} className="flex flex-col gap-3.5">
@@ -459,6 +480,8 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
             <Label htmlFor={`note-${id}`}>{t('scorecard.note')}</Label>
             <Textarea
               id={`note-${id}`}
+              aria-invalid={noNote}
+              {...(noNote && { 'aria-describedby': `no-note-${id}` })}
               rows={2}
               maxLength={4000}
               className="resize-y"
@@ -467,6 +490,11 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
               disabled={!view.canEdit}
               onChange={(event) => view.onNote(id, event.target.value)}
             />
+            {noNote && (
+              <p id={`no-note-${id}`} role="alert" className="text-body font-medium text-text">
+                {t('scorecard.addNote')}
+              </p>
+            )}
           </div>
         </div>
       </section>

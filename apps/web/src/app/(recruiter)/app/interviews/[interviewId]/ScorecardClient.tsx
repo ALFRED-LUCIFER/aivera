@@ -10,8 +10,8 @@ import { useScorecardController } from '@/features/scorecard/hooks/useScorecardC
 import { MeetingSummaryClient } from './MeetingSummaryClient.tsx';
 
 /**
- * The scorecard form with its draft (AIV-P2-004), the live preview of its ratings for whoever fills it in (AIV-P2-005)
- * and, for the people who may act on it, the meeting-summary panel under the competencies (AIV-P1-115). While the
+ * The scorecard form with its draft (AIV-P2-004), the live preview of its ratings for whoever fills it in (AIV-P2-005),
+ * which "Submit scorecard" applies (AIV-P2-006), and, for the people who may act on it, the meeting-summary panel under the competencies (AIV-P1-115). While the
  * panel's preview card is open, its "Apply" is the view's one primary button.
  */
 export function ScorecardClient({ data, summary = null }: { data: ScorecardData; summary?: SummaryPanel | null }) {
@@ -21,7 +21,14 @@ export function ScorecardClient({ data, summary = null }: { data: ScorecardData;
   const [first] = data.competencies;
   return (
     <Scorecard
-      view={{ status: 'ready', ...data, ...scorecard }}
+      view={{
+        status: 'ready',
+        ...data,
+        ...scorecard,
+        previewPending: effect.status === 'pending',
+        // The preview shown is what the submit applies (AIV-P2-006): the assessment refuses any other.
+        onSubmit: () => void scorecard.onSubmit(effect.status === 'ready' ? effect.previewId : null),
+      }}
       quietSubmit={proposalsOpen}
       effect={data.canEdit && first && <ScoreEffect state={effect} first={first.name} />}
     >

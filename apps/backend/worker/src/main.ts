@@ -149,8 +149,9 @@ const QUEUES: Record<string, string> = {
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
   [JobUnpublishedV1.type]: 'candidates',
-  // shortcut: nothing consumes InterviewScheduled.v1 or InterviewCompleted.v1 (AIV-P2-001) yet, and seeded interviews write
-  // them, so they are parked the same way rather than retried for ever unmapped; the scorecard submit (AIV-P2-006) maps them.
+  // shortcut: nothing consumes InterviewScheduled.v1 or InterviewCompleted.v1 (AIV-P2-001; the scorecard submit writes
+  // the second, AIV-P2-006, which applies its change in its own transaction) yet, and seeded interviews write them, so
+  // they are parked the same way rather than retried for ever unmapped; their first consumer maps them.
   [InterviewScheduledV1.type]: 'candidates',
   [InterviewCompletedV1.type]: 'candidates',
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,

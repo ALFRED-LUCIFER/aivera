@@ -23,7 +23,6 @@ import type { EffectLine, EffectState } from '../domain/scorecard.ts';
 // - the card is not a named region: the meeting summary's preview card has the same title, and two landmarks of one
 //   name fail axe's landmark-unique rule;
 // - it shows only to someone who may fill in the scorecard; a read-only viewer submits nothing.
-// shortcut: panel copy assumes submit applies (AIV-P2-006, #120); true once #120 merges.
 
 export function ScoreEffect({ state, first }: { state: EffectState; first: string }) {
   const t = useTranslations();

@@ -209,7 +209,9 @@ export interface EvidenceContract {
    * ("Interviewer's summary, 24 Nov") with one item per changed competency, each citing its excerpt and linked to that
    * competency of the job: Medium and "Candidate-submitted" provenance for a strengthening, Claim only for a
    * weakening, never Strong and never "Independently corroborated", with the limit "The interviewer's summary of the
-   * interview: their word, not inspected work." Writes `EvidenceRecorded.v1`. Anyone who may submit a scorecard on the
+   * interview: their word, not inspected work." With `from: 'scorecard'` it stores a submitted scorecard's notes
+   * (AIV-P2-006) the same way: "Interviewer's scorecard, 26 Nov", one item per rated competency citing its note, with
+   * the limit "The interviewer's note on their scorecard: their word, not inspected work." Writes `EvidenceRecorded.v1`. Anyone who may submit a scorecard on the
    * job (`scorecard.submit`: a hiring owner or interviewer needs a grant on it); `ForbiddenError` otherwise, storing
    * nothing. Throws `EvidenceError` (`strength`, `excerpt`, `level`).
    */

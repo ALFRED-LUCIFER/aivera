@@ -23,4 +23,16 @@ export const getInterviews = (): InterviewsContract =>
       applyScoreChange: (ctx, input) => getAssessment().applyScoreChange(ctx, input),
       recordSummaryEvidence: (ctx, input) => getEvidence().recordInterviewSummary(ctx, input),
     },
+    // What a submitted scorecard ends in (AIV-P2-006): the same apply, its notes as evidence, and the questions its
+    // page showed.
+    {
+      latestAssessment: (ctx, candidateId, jobId) => getAssessment().getLatestAssessment(ctx, candidateId, jobId),
+      applyScoreChange: (ctx, input) => getAssessment().applyScoreChange(ctx, input),
+      recordScorecardEvidence: (ctx, input) => getEvidence().recordInterviewSummary(ctx, input),
+      suggestedQuestions: async (ctx, candidateId, jobId) => {
+        const stored = await getAssessment().getSuggestedQuestions(ctx, candidateId, jobId);
+        if (stored?.status !== 'suggested') return [];
+        return stored.gaps.map((g) => ({ competencyId: g.competencyId, questions: g.questions.map((q) => q.text) }));
+      },
+    },
   ));

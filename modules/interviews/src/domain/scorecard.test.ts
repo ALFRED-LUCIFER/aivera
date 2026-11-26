@@ -4,8 +4,10 @@ import {
   assessedRatings,
   MARKS,
   notAssessed,
+  rebuildDraft,
   scorecardDraftSchema,
   toInterviewNoteEvidence,
+  unexplained,
   unrated,
   type DraftCompetency,
   type ScorecardDraft,
@@ -77,6 +79,53 @@ describe('Scenario: Submit needs every competency rated or marked not tested', (
   it('names the competency that is neither rated nor marked', () => {
     expect(unrated(draft(rated, competency({})))).toEqual([COST]);
     expect(unrated(draft(rated, competency({ rating: 'not_shown' })))).toEqual([]);
+  });
+});
+
+describe('AIV-P2-006: what a submit reads', () => {
+  it('a rating with nothing under "What you saw or heard" blocks it; a competency not assessed needs no note', () => {
+    const notAsked = competency({ questions: [{ text: 'Q', mark: 'not_asked' }], rating: 'not_shown' });
+    const noNote = competency({ competencyId: RETRIEVAL, rating: 'partly_shown', note: ' ' });
+    expect(unexplained({ competencies: [noNote, notAsked], recommendation: null })).toEqual([RETRIEVAL]);
+  });
+
+  it('rebuilds each competency on the questions shown now, keeping the marks stored for the same words', () => {
+    const stored: ScorecardDraft = {
+      competencies: [
+        competency({
+          rating: 'clearly_shown',
+          note: NOTE,
+          questions: [
+            { text: 'Shown', mark: 'not_asked' },
+            { text: 'Made up', mark: 'not_answered' },
+          ],
+        }),
+      ],
+      recommendation: 'shortlist',
+    };
+    expect(
+      rebuildDraft(
+        [
+          { competencyId: COST, questions: ['Shown', 'Also shown'] },
+          { competencyId: RETRIEVAL, questions: [] },
+        ],
+        stored,
+      ),
+    ).toEqual({
+      competencies: [
+        {
+          competencyId: COST,
+          rating: 'clearly_shown',
+          note: NOTE,
+          questions: [
+            { text: 'Shown', mark: 'not_asked' },
+            { text: 'Also shown', mark: null },
+          ],
+        },
+        { competencyId: RETRIEVAL, rating: null, note: '', questions: [{ text: '', mark: null }] },
+      ],
+      recommendation: 'shortlist',
+    });
   });
 });
 

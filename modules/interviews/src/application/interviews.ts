@@ -146,9 +146,8 @@ export function interviewUseCases(ports: Ports) {
       const ids = draft.competencies.map((c) => c.competencyId);
       if (new Set(ids).size !== ids.length || !ids.every((id) => interview.competencyIds.includes(id)))
         throw new InterviewError('competency_not_in_interview');
-      // shortcut: a draft's questions are stored as the browser sent them, so a crafted request could mark a competency
-      // "not assessed" with questions it was never shown; harmless while a draft scores nothing. The submit (AIV-P2-006)
-      // must rebuild the question list from the stored suggested questions before it applies `assessedRatings`.
+      // A draft's questions are stored as the browser sent them; the submit (AIV-P2-006) rebuilds them on the questions
+      // the page shows before it reads `assessedRatings`, so a made-up question never leaves a competency unscored.
       await storeFor(ctx.tx).saveDraft({
         ...draft,
         workspaceId: ctx.workspaceId,

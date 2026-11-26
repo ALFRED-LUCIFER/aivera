@@ -95,10 +95,11 @@ const state = (strength: CompetencyState['strength'], provenLevel: CompetencySta
   provenLevel,
 });
 const effect = (from: CompetencyState, to: CompetencyState, score: [number, number]): EffectPreview => ({
+  previewId: 'p1',
   backedScore: { from: score[0], to: score[1] },
   changes: [{ competencyId: RETRIEVAL, from, to }],
 });
-const unchanged: EffectPreview = { backedScore: { from: 55, to: 55 }, changes: [] };
+const unchanged: EffectPreview = { previewId: 'p1', backedScore: { from: 55, to: 55 }, changes: [] };
 const line = (rating: (typeof RATINGS)[number], preview: EffectPreview) =>
   effectLines([{ competencyId: RETRIEVAL, rating }], preview, daniel);
 
@@ -142,6 +143,7 @@ describe('effectLines', () => {
 
   it('lists every rating in the order sent, and a competency with no evidence stays at none', () => {
     const preview: EffectPreview = {
+      previewId: 'p1',
       backedScore: { from: 55, to: 55 },
       changes: [{ competencyId: RETRIEVAL, from: state('supporting'), to: state('claim') }],
     };

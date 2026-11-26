@@ -79,6 +79,8 @@ export async function loadScorecard(interviewId: string): Promise<ScorecardData 
       today: row.today,
       interviewer: row.interviewer,
       profileHref: profileHref(candidateId, jobId),
+      rankingHref: `/app/jobs/${jobId}/candidates`,
+      submitted: interview.status === 'completed',
       assessed: assessed && { at: assessed.assessedAt.toISOString(), backedScore: assessed.backedScore },
       competencies,
       canEdit,
