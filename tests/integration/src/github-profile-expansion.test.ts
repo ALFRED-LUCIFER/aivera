@@ -37,8 +37,8 @@ import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/com
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
-import { HttpNetworkFrame } from 'msw/experimental';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-112 acceptance scenarios: a CV that links a GitHub profile has its best own public repositories queued for
@@ -347,12 +347,7 @@ beforeAll(async () => {
   w2 = (await create('Gulf Talent Partners')).id;
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through.
   server.listen({
-    onUnhandledFrame: ({ frame, defaults }) =>
-      void (
-        frame instanceof HttpNetworkFrame &&
-        [DI, API].some((host) => frame.data.request.url.startsWith(host)) &&
-        defaults.error()
-      ),
+    onUnhandledFrame: failUnmocked(DI, API),
   });
 });
 

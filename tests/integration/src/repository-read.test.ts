@@ -28,8 +28,8 @@ import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
-import { HttpNetworkFrame } from 'msw/experimental';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P1-026 acceptance scenarios: the worker job `evidence.repository.read` against real PostgreSQL (as aivera_app)
@@ -342,8 +342,7 @@ beforeAll(async () => {
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through (EPIPE in CI).
   // Every GitHub request must hit a fixture.
   github.listen({
-    onUnhandledFrame: ({ frame, defaults }) =>
-      void (frame instanceof HttpNetworkFrame && frame.data.request.url.startsWith(API) && defaults.error()),
+    onUnhandledFrame: failUnmocked(API),
   });
 });
 

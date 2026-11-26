@@ -28,8 +28,8 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
-import { HttpNetworkFrame } from 'msw/experimental';
 import { setupServer } from 'msw/node';
+import { failUnmocked } from './unmocked.ts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // AIV-P1-028 acceptance scenarios for documents: the worker job that reads them, against real PostgreSQL (as
@@ -267,8 +267,7 @@ beforeAll(async () => {
   w2 = (await create('Gulf Talent Partners')).id;
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through.
   docintel.listen({
-    onUnhandledFrame: ({ frame, defaults }) =>
-      void (frame instanceof HttpNetworkFrame && frame.data.request.url.startsWith(DI) && defaults.error()),
+    onUnhandledFrame: failUnmocked(DI),
   });
 });
 
