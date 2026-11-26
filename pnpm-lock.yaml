@@ -1058,6 +1058,9 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/decisions':
+        specifier: workspace:*
+        version: link:../../modules/decisions
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../../modules/evidence

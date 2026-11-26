@@ -95,6 +95,8 @@ export async function summarisePack(ports: SummaryPorts, tx: Tx, workspaceId: st
   // shortcut: such a pack's members are stored unavailable; read the version by id when the jobs contract offers it.
   const names = rubric?.id === pack.rubricVersionId ? new Map(rubric.competencies.map((c) => [c.id, c.name])) : null;
   for (const member of await store.listMembers(workspaceId, packId)) {
+    // shortcut: a summary is written once and never regenerated, so an `unavailable` one (a model outage) stays; add
+    // the recruiter's "regenerate" action, with its own write path, when a pilot pack needs it (#125's deliverables).
     if (done.has(member.candidateId)) continue;
     const row = (summary: Pick<StoredMemberSummary, 'status' | 'promptVersion' | 'summary'>) =>
       store.insertSummary({ workspaceId, packId, candidateId: member.candidateId, createdAt: ports.now(), ...summary });

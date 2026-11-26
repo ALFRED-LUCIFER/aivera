@@ -1,9 +1,12 @@
-import { createAssessment } from '@credalent/assessment/composition';
+import { createAiClient, fakeProvider, memoryTokenBudget, type AiClient } from '@credalent/ai';
+import { createAssessment, readAssessmentAsSystem } from '@credalent/assessment/composition';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
+import { createCandidates, displayNamesInWorkspace, readPersonAsSystem } from '@credalent/candidates/composition';
 import { withWorkspace } from '@credalent/db';
 import { createDb } from '@credalent/db/client';
-import { createEvidence } from '@credalent/evidence/composition';
+import { createConsumer } from '@credalent/db/consumer';
+import { createPackSummaryHandlers, PACK_SUMMARY_QUEUE } from '@credalent/decisions/composition';
+import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import { createCandidateJobResolver, createIntake } from '@credalent/intake/composition';
 import type { Competency } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -23,12 +26,16 @@ import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 // each (the formula's numbers, not the ticket's illustrative 68, 64 and 61), and Maria Santos not yet scored; and an
 // interviewer granted the job, who may not see its packs. AIV-P1-116 adds the pack's preview as the hiring owner sees
 // it, Sara's stored email and phone that it must leave out, and a hiring owner granted only another job, who is
-// refused it. Serial: the later tests open the pack the first one builds.
+// refused it. AIV-P2-011 adds each member's card text, written by the worker's summary job, which this spec runs itself
+// (no worker runs here) with the fake model: a cited answer for Sara, Huda and Daniel, and for Arjun one citing a
+// source he was never given, so his card is "Summary unavailable"; and a member of another workspace, who gets 404.
+// Serial: the later tests open the pack the first one builds.
 test.describe.configure({ mode: 'serial' });
 
 let creator: string;
 let interviewer: string;
 let otherOwner: string;
+let outsider: string;
 let workspaceId: string;
 let workspaceName: string;
 let jobId: string;
@@ -51,6 +58,8 @@ test.beforeAll(async () => {
   creator = `alex+pack-${stamp}@example.com`;
   interviewer = `rami+pack-${stamp}@example.com`;
   otherOwner = `hana+pack-${stamp}@example.com`;
+  outsider = `omar+pack-${stamp}@example.com`;
+  await approvedWorkspace(outsider, `Elsewhere ${stamp}`);
   workspaceName = `Pack ${stamp}`;
   const made = await approvedWorkspace(creator, workspaceName);
   workspaceId = made.workspaceId;
@@ -165,6 +174,98 @@ test.beforeAll(async () => {
   }
 });
 
+// The answer the fake model gives for each member: every figure quoted, the strength citing the repository (S2), the
+// risk the CV claim (S3), and the recommendation the facts (S1).
+const ANSWER = {
+  strengths: [
+    {
+      text: 'The candidate authored 301 of 340 commits in rag-service.',
+      citations: [{ sourceId: 'S2', quote: 'authored 301 of 340 commits' }],
+    },
+  ],
+  risks: [
+    {
+      text: 'Retrieval and evaluation rests on a claim with nothing to inspect.',
+      citations: [{ sourceId: 'S3', quote: 'raised answer accuracy from 71% to 88%' }],
+    },
+  ],
+  round1: null,
+  recommendation: {
+    action: 'advance',
+    focus: 'probe cost and reliability',
+    citations: [{ sourceId: 'S1', quote: 'Work meets the need on competencies holding 55% of the weight' }],
+  },
+};
+
+/** A fake model that gives `answer` to every request. */
+const model = (answer: object) =>
+  createAiClient({
+    provider: fakeProvider({ completion: JSON.stringify(answer) }),
+    budget: memoryTokenBudget(),
+    sleep: async () => undefined,
+  });
+
+/**
+ * Runs the worker's summary job (AIV-P2-011) on this workspace's pack events, as apps/backend/worker wires it, with the
+ * fake model. The second member asked about (Arjun) gets an answer citing S9, a source he was never given.
+ */
+async function summarisePacks() {
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    const valid = model(ANSWER);
+    const invalid = model({
+      ...ANSWER,
+      strengths: [{ ...ANSWER.strengths[0], citations: [{ sourceId: 'S9', quote: 'authored 301 of 340 commits' }] }],
+    });
+    let asked = 0;
+    const ai: Pick<AiClient, 'generateStructured'> = {
+      generateStructured: (request) => (asked++ === 1 ? invalid : valid).generateStructured(request),
+    };
+    const consumer = createConsumer({
+      db,
+      queue: PACK_SUMMARY_QUEUE,
+      now: () => new Date(),
+      handlers: createPackSummaryHandlers({
+        ai,
+        ...createApprovedRubricReads(),
+        snapshot: readAssessmentAsSystem,
+        evidence: readEvidenceForJobAsSystem,
+        identifiersOf: async (tx, workspace, candidateId) => {
+          const person = await readPersonAsSystem(tx, workspace, candidateId);
+          return person && { names: [person.displayName], emails: person.emails, phones: person.phones };
+        },
+        scheduler: { schedule: async () => '1', cancel: async () => undefined },
+      }),
+    });
+    const events = await withWorkspace(db, workspaceId, (tx) =>
+      tx.execute<{ id: string; type: string; payload: unknown; occurred_at: Date }>(
+        sql`select id, type, payload, occurred_at from decisions.outbox
+          where type in ('PackReady.v1', 'PackMembersAdded.v1') order by occurred_at, id`,
+      ),
+    );
+    for (const e of events) {
+      const settled: string[] = [];
+      await consumer.handle({
+        body: {
+          id: e.id,
+          type: e.type,
+          workspaceId,
+          payload: e.payload,
+          occurredAt: new Date(e.occurred_at).toISOString(),
+          correlationId: null,
+        },
+        deliveryCount: 1,
+        complete: async () => void settled.push('complete'),
+        abandon: async () => void settled.push('abandon'),
+        deadLetter: async (reason) => void settled.push(reason),
+      });
+      expect(settled).toEqual(['complete']);
+    }
+  } finally {
+    await db.$client.end();
+  }
+}
+
 async function openRanking(page: Page) {
   await signIn(page, { email: creator });
   await page.goto('/app/jobs');
@@ -250,15 +351,80 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await expect(page.getByText(addedBy)).toHaveCount(4);
   await expect(page.getByText(/^Added by .+ on \d{1,2} [A-Z][a-z]{2} \d{4}$/)).toHaveCount(4);
   await expect(
-    page.getByText('1 other candidate stays in the ranking and can be added to a later pack.'),
+    page.getByText(
+      'Shared packs show evidence summaries and sources, not raw files. 1 other candidate stays in the ranking and can be added to a later pack.',
+    ),
   ).toBeVisible();
+  // AIV-P2-011 Scenario: Loading: until the worker has written them, each card says so, its score already shown.
+  for (const name of ASSESSED) {
+    const card = page.getByRole('region', { name });
+    await expect(card.getByRole('status')).toHaveText('Preparing summary');
+    await expect(card.getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ })).toBeVisible();
+  }
   // The Decision stage is current on the pack's page, and its tab lists the pack.
   await expect(page.getByRole('link', { name: /^Decision/ })).toHaveAttribute('aria-current', 'page');
+  // AIV-P2-011: the Decision stage reports the undecided pack.
+  await expect(page.getByRole('link', { name: /^Decision/ })).toContainText('Shortlist ready');
   await page.getByRole('link', { name: /^Decision/ }).click();
   await page.getByRole('link', { name: 'Round 2 shortlist' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
   await page.getByRole('link', { name: 'Back to ranking' }).click();
   await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
+});
+
+// SAFETY: mutation check: DecisionPack passed hrefFor={undefined} -> this test failed (no "Source: rag-service" link)
+test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence by keyboard, Credalent's recommendation, and a rejected answer not shown", async ({
+  page,
+}) => {
+  await summarisePacks();
+  await signIn(page, { email: creator });
+  await page.goto(packPath);
+  // The role and its weights, from the pack's rubric version.
+  await expect(page.getByRole('heading', { name: 'What the role needs' })).toBeVisible();
+  await expect(page.getByText('Ships reliable AI features.')).toBeVisible();
+  await expect(
+    page.getByText('Python service engineering 55% · Retrieval and evaluation 20% · Cost and reliability 25%'),
+  ).toBeVisible();
+  const sara = page.getByRole('region', { name: 'Sara Al Qahtani' });
+  await expect(sara.getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ })).toBeVisible();
+  await expect(sara.getByRole('list', { name: 'Strengths, backed' })).toContainText(
+    'The candidate authored 301 of 340 commits in rag-service.',
+  );
+  await expect(sara.getByRole('list', { name: 'Outstanding risks' })).toContainText(
+    'Retrieval and evaluation rests on a claim with nothing to inspect.',
+  );
+  await expect(sara.getByText('Round 1 finding').locator('xpath=following-sibling::*[1]')).toHaveText(
+    'No Round 1 interview notes yet.',
+  );
+  await expect(sara.getByText("Credalent's recommendation:")).toHaveText(
+    "Credalent's recommendation: advance, and probe cost and reliability",
+  );
+  // No decision option is offered, let alone chosen: recording decisions is AIV-P2-012.
+  await expect(page.locator('[aria-pressed="true"], [aria-checked="true"], input:checked')).toHaveCount(0);
+  // The answer citing a source outside Arjun's snapshot is not shown: the assessment's own strengths are.
+  const arjun = page.getByRole('region', { name: 'Arjun Menon' });
+  await expect(arjun.getByText('Summary unavailable')).toBeVisible();
+  await expect(arjun.getByRole('list', { name: 'Strengths, backed' }).getByRole('listitem')).toHaveText([
+    /^Python service engineering/,
+  ]);
+  await expect(arjun.getByText("Credalent's recommendation:")).toHaveCount(0);
+  // Each sentence links to the evidence item it rests on: by keyboard, to the item on Sara's profile.
+  const source = sara.getByRole('link', { name: 'Source: rag-service' });
+  await expect(async () => {
+    await page.keyboard.press('Tab');
+    await expect(source).toBeFocused({ timeout: 250 });
+  }).toPass();
+  expect(await css(source, 'outline-style')).toBe('solid');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(
+    (url) => url.pathname.startsWith('/app/candidates/') && url.hash.startsWith('#evidence-'),
+  );
+});
+
+test('AIV-P2-011 Scenario: Access: a member of another workspace who opens the pack URL gets 404', async ({ page }) => {
+  await signIn(page, { email: outsider });
+  expect((await page.goto(packPath))?.status()).toBe(404);
+  await expect(page.getByText('Sara Al Qahtani')).toHaveCount(0);
 });
 
 for (const theme of themes) {
@@ -306,7 +472,7 @@ async function sentAndStored() {
   }
 }
 
-test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and basis, strengths, risks and cited summary', async ({
+test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and basis, and the cited strengths, risks and recommendation', async ({
   page,
 }) => {
   await openPreview(page);
@@ -321,17 +487,28 @@ test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and
   for (const name of ASSESSED) {
     const card = view.getByRole('region', { name });
     await expect(card.getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ })).toBeVisible();
-    await expect(card.getByRole('list', { name: 'Backed by evidence' }).getByRole('listitem')).toHaveText([
-      /^Python service engineering/,
-    ]);
-    await expect(card.getByRole('list', { name: 'Still to test in the interview' }).getByRole('listitem')).toHaveText([
-      /^Cost and reliability.*3 short$/,
-      /^Retrieval and evaluation.*3 short, claimed$/,
-    ]);
-    await expect(card.getByText("Credalent's summary")).toBeVisible();
-    await expect(card.locator('mark').filter({ hasText: 'authored 301 of 340 commits' }).first()).toBeVisible();
-    await expect(card.getByText('Source: rag-service').first()).toBeVisible();
-    await expect(card.getByText('Summary generated without AI')).toBeVisible();
+    // AIV-P2-011: the pack's own cited text, stored when the member joined; Arjun's was rejected, so his levels show.
+    if (name === 'Arjun Menon') {
+      await expect(card.getByText('Summary unavailable')).toBeVisible();
+      await expect(card.getByRole('list', { name: 'Backed by evidence' }).getByRole('listitem')).toHaveText([
+        /^Python service engineering/,
+      ]);
+      await expect(card.getByRole('list', { name: 'Still to test in the interview' }).getByRole('listitem')).toHaveText(
+        [/^Cost and reliability.*3 short$/, /^Retrieval and evaluation.*3 short, claimed$/],
+      );
+      continue;
+    }
+    await expect(card.getByRole('list', { name: 'Backed by evidence' })).toContainText(
+      'The candidate authored 301 of 340 commits in rag-service.',
+    );
+    await expect(card.getByRole('list', { name: 'Still to test in the interview' })).toContainText(
+      'Retrieval and evaluation rests on a claim with nothing to inspect.',
+    );
+    await expect(card.locator('mark').filter({ hasText: 'authored 301 of 340 commits' })).toBeVisible();
+    await expect(card.getByText('Source: rag-service')).toBeVisible();
+    await expect(card.getByText("Credalent's recommendation:")).toHaveText(
+      "Credalent's recommendation: advance, and probe cost and reliability",
+    );
   }
   // Maria Santos is not in the pack.
   await expect(view.getByRole('region', { name: 'Maria Santos' })).toHaveCount(0);
