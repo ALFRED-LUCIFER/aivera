@@ -41,6 +41,7 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { sql } from 'drizzle-orm';
 import { http, HttpResponse } from 'msw';
+import { HttpNetworkFrame } from 'msw/experimental';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -303,7 +304,10 @@ beforeAll(async () => {
       ).id,
   );
   // Only once Testcontainers is up: msw patches Node's HTTP stack, which its Docker API calls go through.
-  docintel.listen({ onUnhandledRequest: (request, print) => void (request.url.startsWith(DI) && print.error()) });
+  docintel.listen({
+    onUnhandledFrame: ({ frame, defaults }) =>
+      void (frame instanceof HttpNetworkFrame && frame.data.request.url.startsWith(DI) && defaults.error()),
+  });
 });
 
 afterAll(async () => {

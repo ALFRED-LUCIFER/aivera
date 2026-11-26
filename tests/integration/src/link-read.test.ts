@@ -228,7 +228,7 @@ beforeAll(async () => {
     if (url.hostname.endsWith('.example') || /^[\d.]+$|:/.test(url.hostname))
       sent.push(`${url.hostname} ${request.headers.get('host')}${url.pathname}${url.search}`);
   });
-  server.listen({ onUnhandledRequest: 'bypass' });
+  server.listen({ onUnhandledFrame: 'bypass' });
 });
 
 beforeEach(() => {
