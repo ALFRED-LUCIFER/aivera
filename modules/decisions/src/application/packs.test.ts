@@ -52,10 +52,13 @@ function setup(over: Partial<Ports> = {}, stored: DecisionPack | null = pack(), 
     listForJob: vi.fn<PackStore['listForJob']>(async () => [
       { id: PACK, name: 'Round 2 shortlist', status: 'ready', candidateIds: [SARA] },
     ]),
+    listSummaries: vi.fn<PackStore['listSummaries']>(async () => []),
+    insertSummary: vi.fn<PackStore['insertSummary']>(async () => undefined),
   };
   const ports: Ports = {
     storeFor: () => store,
     publishPackReady: vi.fn(async () => undefined),
+    publishMembersAdded: vi.fn(async () => undefined),
     publishDecisionsRecorded: vi.fn(async () => undefined),
     authorize: vi.fn(async () => undefined),
     job: async (_ctx, jobId) => (jobId === JOB.jobId ? JOB : null),
@@ -199,6 +202,15 @@ describe('addMembers', () => {
     );
   });
 
+  // SAFETY: mutation check: removed publishMembersAdded from addMembers -> this test failed (no call)
+  it('announces the added members from their first position, so the worker summarises them (AIV-P2-011); nothing new, nothing announced', async () => {
+    const { useCases, ports } = setup({ now: () => LATER }, pack(), [member(SARA, 0)]);
+    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }]);
+    expect(ports.publishMembersAdded).toHaveBeenCalledWith({}, pack(), 1, LATER);
+    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }]);
+    expect(ports.publishMembersAdded).toHaveBeenCalledTimes(1);
+  });
+
   it('adding only candidates already in the pack writes nothing', async () => {
     const { useCases, store, ports } = setup({}, pack(), [member(SARA, 0)]);
     expect(await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }])).toEqual({ added: 0 });
@@ -285,12 +297,23 @@ describe('recordDecisions', () => {
 });
 
 describe('getPack', () => {
-  it('returns the pack with its members and decisions', async () => {
-    const { useCases, ports } = setup({}, pack(), [member(SARA, 0)]);
+  it("returns the pack with its members, decisions and the members' summaries so far", async () => {
+    const { useCases, ports, store } = setup({}, pack(), [member(SARA, 0)]);
+    const sara = {
+      workspaceId: 'w1',
+      packId: PACK,
+      candidateId: SARA,
+      status: 'unavailable' as const,
+      promptVersion: null,
+      summary: null,
+      createdAt: NOW,
+    };
+    store.listSummaries.mockResolvedValue([sara]);
     expect(await useCases.getPack(ctxAs('hiring_owner', FAISAL), PACK)).toEqual({
       ...pack(),
       members: [member(SARA, 0)],
       decisions: [],
+      summaries: [sara],
     });
     expect(ports.authorize).toHaveBeenCalledWith(ctxAs('hiring_owner', FAISAL), 'pack.view', JOB);
   });

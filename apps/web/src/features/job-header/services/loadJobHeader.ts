@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
+import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getJobs } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
@@ -26,10 +27,22 @@ export async function loadJobHeader(id: string) {
       header && ctx.role === 'admin'
         ? (await getWorkspaces().listMembers(ctx)).filter((m) => m.status === 'active' && m.role === 'hiring_owner')
         : null;
-    return { header, assessed, imported, members, jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter' };
+    // "Shortlist ready" while the job has an undecided pack (AIV-P2-011); interviewers may not read packs (`pack.view`).
+    const shortlistReady =
+      header && ctx.role !== 'interviewer'
+        ? (await getDecisions().listPacks(ctx, id)).some((p) => p.status === 'ready')
+        : false;
+    return {
+      header,
+      assessed,
+      imported,
+      shortlistReady,
+      members,
+      jobScoped: ctx.role !== 'admin' && ctx.role !== 'recruiter',
+    };
   });
   if (!result) return null;
-  const { header, assessed, imported, members, jobScoped } = result.value;
+  const { header, assessed, imported, shortlistReady, members, jobScoped } = result.value;
   if (!header) return { missing: jobScoped ? ('forbidden' as const) : ('notFound' as const) };
   const owner = header.job.hiringOwnerUserId && (await getIdentity().getUser(header.job.hiringOwnerUserId));
   // shortcut: one identity read per hiring-owner member, as the members screen does; batch it with identity.
@@ -46,6 +59,7 @@ export async function loadJobHeader(id: string) {
     header,
     assessed,
     imported,
+    shortlistReady,
     ownerChange,
     hiringOwner: owner ? (owner.displayName ?? owner.email) : null,
     // Adding candidates is `candidate.create`: admins and recruiters; the action checks it again (AIV-P1-019).

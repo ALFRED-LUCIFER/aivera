@@ -4,78 +4,71 @@ import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
 import { needRows } from '@/features/evidence-profile/domain/needs.ts';
-import { getAssessment } from '@/server/assessment';
+import { readSnapshotAsSystem } from '@/server/assessment';
 import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
-import { byNeed, type PackLink, type PackPage, type PackPreview } from '../domain/pack.ts';
+import { byNeed, type CardSummary, type PackLink, type PackPage, type PackPreview } from '../domain/pack.ts';
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
 
 /**
  * One decision pack of the job (AIV-P2-010): its name, the job's title, when it was prepared and on which rubric
- * version, and its members in pack order with the scores snapshotted when they joined. The decisions module authorises
- * it (`pack.view`: admins, recruiters and hiring owners on the job); an interviewer gets the 403 page. 'notFound' for a
- * pack of another job or workspace, or a malformed id; null with no workspace.
+ * version, what the role needs and its weights, and its members in pack order with the scores snapshotted when they
+ * joined and their card text (AIV-P2-011). The decisions module authorises it (`pack.view`: admins, recruiters and
+ * hiring owners on the job); an interviewer gets the 403 page. 'notFound' for a pack of another job or workspace, or a
+ * malformed id; null with no workspace. No model is called: the card text was written when the member joined.
  */
 export const loadPack = (jobId: string, packId: string): Promise<PackPage | 'notFound' | null> =>
-  withPack(jobId, packId, async (_ctx, _pack, page) => page);
+  withPack(jobId, packId, async (_ctx, page) => page);
 
 /**
- * The pack as the hiring owner will see it (AIV-P1-116), with `loadPack`'s access and answers. Per member, from the
- * assessment they joined with: the competencies that meet the job's need and those short of it, and the cited
- * explanation (AIV-P1-033). Never a contact detail, CV or evidence file (AGENTS.md 1.9): none is read here. Sends
- * nothing and creates no file.
+ * The pack as the hiring owner will see it (AIV-P1-116), with `loadPack`'s access, answers and card text. Never a
+ * contact detail, CV or evidence file (AGENTS.md 1.9): none is read here. Sends nothing and creates no file.
  */
-// shortcut: one assessment read and one explanation per member, in turn, inside the request, so the first view of a
-// new snapshot waits for the model (cached after, AIV-P1-033). One uncached member alone can pass the 240 s ingress
-// timeout (explainRanking's worst case is 2 schema x 3 transient attempts x 45 s plus backoff, about 4.5 min), slow but
-// successful answers add up member by member, and a model that only times out trips the circuit breaker after 5
-// failures (about 229 s) before the template shows; generate the explanations on pack creation (AIV-P2-011, #125) or
-// stream each card under Suspense before pilot packs open on a slow model.
 export const loadPackPreview = (jobId: string, packId: string): Promise<PackPreview | 'notFound' | null> =>
-  withPack(jobId, packId, async (ctx, pack, page) => {
+  withPack(jobId, packId, async (ctx, page) => {
     const workspace = await getWorkspaces().getWorkspace(ctx);
-    // Not authorised itself: `getPack` authorised this job for the member.
-    const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
-    // Every member's snapshot is on the pack's rubric version; once another is approved its competencies have no names.
-    const onPackRubric = rubric?.id === pack.rubricVersionId;
-    const names = new Map(onPackRubric ? rubric.competencies.map((c) => [c.id, c.name] as const) : []);
-    const members: PackPreview['members'] = [];
-    for (const m of pack.members) {
-      const { candidateId, backedScore, upperBound } = m;
-      const name = page.members.find((p) => p.candidateId === candidateId)?.name ?? null;
-      const shown = { candidateId, name, backedScore, upperBound };
-      const latest = onPackRubric ? await getAssessment().getLatestAssessment(ctx, m.candidateId, jobId) : null;
-      // SAFETY: only the assessment the member joined with, so a newer result's reasons never sit beside the pack's scores.
-      // shortcut: no read of a snapshot by id, so a member whose assessment moved on shows no summary at all; read the
-      // pack's own snapshot when AIV-P2-011 (#125) stores the pack's summaries.
-      if (latest?.id !== m.assessmentId) {
-        members.push({ ...shown, summary: null });
-        continue;
-      }
-      const explanation = await getAssessment().explainRanking(ctx, m.candidateId, jobId);
-      members.push({
-        ...shown,
-        summary: {
-          ...byNeed(needRows(latest.competencies, names)),
-          explanation:
-            explanation?.resultId === m.assessmentId
-              ? { source: explanation.source, statements: explanation.statements }
-              : null,
-        },
-      });
-    }
-    return { workspace: workspace?.name ?? '', name: page.name, job: page.job, preparedAt: page.preparedAt, members };
+    return {
+      workspace: workspace?.name ?? '',
+      name: page.name,
+      job: page.job,
+      preparedAt: page.preparedAt,
+      members: page.members.map(({ candidateId, name, backedScore, upperBound, summary }) => ({
+        candidateId,
+        name,
+        backedScore,
+        upperBound,
+        summary,
+      })),
+    };
   });
+
+/**
+ * A member's card text: the stored summary, or while none is stored "Preparing summary". An unavailable one carries the
+ * competencies meeting the job's need and those short of it, from the assessment the member joined with.
+ */
+async function cardOf(
+  ctx: WorkspaceContext,
+  member: PackView['members'][number],
+  stored: PackView['summaries'][number] | undefined,
+  names: ReadonlyMap<string, string>,
+): Promise<CardSummary> {
+  if (!stored) return { status: 'preparing' };
+  if (stored.summary) return { status: 'ready', summary: stored.summary };
+  // The snapshot the member joined with, never a newer result. Not authorised itself: `getPack` authorised this job.
+  const snapshot = names.size ? await readSnapshotAsSystem(ctx, member.assessmentId) : null;
+  const rows = snapshot ? byNeed(needRows(snapshot.competencies, names)) : null;
+  return { status: 'unavailable', strengths: rows?.strengths ?? [], risks: rows?.risks ?? [] };
+}
 
 /** Opens the job's pack for the member as `loadPack` describes, then `read`s from it in the same context. */
 async function withPack<T>(
   jobId: string,
   packId: string,
-  read: (ctx: WorkspaceContext, pack: PackView, page: PackPage) => Promise<T>,
+  read: (ctx: WorkspaceContext, page: PackPage) => Promise<T>,
 ): Promise<T | 'notFound' | null> {
   if (!isId(jobId) || !isId(packId)) return 'notFound';
   try {
@@ -95,23 +88,36 @@ async function withPack<T>(
           }),
         ),
       );
-      return read(ctx, pack, {
+      // Every member's snapshot is on the pack's rubric version; once another is approved its competencies have no names.
+      // Not authorised itself: `getPack` authorised this job for the member.
+      const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
+      const onPack = rubric?.id === pack.rubricVersionId && header?.approved?.id === rubric.id ? rubric : null;
+      const competencies = new Map(onPack?.competencies.map((c) => [c.id, c.name] as const) ?? []);
+      const summaries = new Map(pack.summaries.map((s) => [s.candidateId, s] as const));
+      const members: PackPage['members'] = [];
+      for (const m of pack.members) {
+        const by = m.addedBy && adders.get(m.addedBy);
+        members.push({
+          candidateId: m.candidateId,
+          name: names.get(m.candidateId) ?? null,
+          backedScore: m.backedScore,
+          upperBound: m.upperBound,
+          added: by && m.addedAt ? { by, at: m.addedAt } : null,
+          summary: await cardOf(ctx, m, summaries.get(m.candidateId), competencies),
+        });
+      }
+      return read(ctx, {
         jobId,
         packId,
         name: pack.name,
         job: header?.job.title ?? '',
         preparedAt: pack.preparedAt,
         rubricVersion: header?.approved?.id === pack.rubricVersionId ? header.approved.version : null,
-        members: pack.members.map((m) => {
-          const by = m.addedBy && adders.get(m.addedBy);
-          return {
-            candidateId: m.candidateId,
-            name: names.get(m.candidateId) ?? null,
-            backedScore: m.backedScore,
-            upperBound: m.upperBound,
-            added: by && m.addedAt ? { by, at: m.addedAt } : null,
-          };
-        }),
+        role: onPack && {
+          successStatement: header?.approved?.successStatement ?? '',
+          competencies: onPack.competencies.map(({ name, weightPercent }) => ({ name, weightPercent })),
+        },
+        members,
         others: new Set(applicants.map((a) => a.personId)).size - pack.members.length,
       });
     });

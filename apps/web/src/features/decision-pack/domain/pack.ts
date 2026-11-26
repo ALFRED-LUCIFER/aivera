@@ -1,5 +1,16 @@
+import type { MemberSummary } from '@credalent/decisions';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
-import type { ProfileData } from '@/features/evidence-profile/domain/profile.ts';
+
+/**
+ * A member's card text (AIV-P2-011), written by the worker when they joined: `preparing` until it is, `ready` with the
+ * cited strengths, risks, Round 1 finding and Credalent's recommendation, or `unavailable` (no answer with valid
+ * citations) with the assessment's own competencies that meet the job's need and those short of it, from the
+ * assessment the member joined with (empty once a newer one or another rubric version replaced it).
+ */
+export type CardSummary =
+  | { status: 'preparing' }
+  | { status: 'ready'; summary: MemberSummary }
+  | { status: 'unavailable'; strengths: NeedRow[]; risks: NeedRow[] };
 
 /** A decision pack page as the server hands it to the browser (AIV-P2-010): plain data, scores as snapshotted. */
 export type PackPage = {
@@ -10,6 +21,8 @@ export type PackPage = {
   preparedAt: Date;
   /** The approved rubric version the pack is on, or null once the job's approved version has moved on. */
   rubricVersion: number | null;
+  /** "What the role needs" and "Competencies and weights" from the pack's rubric version; null once it has moved on. */
+  role: { successStatement: string; competencies: { name: string; weightPercent: number }[] } | null;
   members: {
     candidateId: string;
     name: string | null;
@@ -17,6 +30,7 @@ export type PackPage = {
     upperBound: number;
     /** Who added the member and when; null on members added before this was stored, or once that account is gone. */
     added: { by: string; at: Date } | null;
+    summary: CardSummary;
   }[];
   /** The job's other applicants: they stay in the ranking and can be added to a later pack. */
   others: number;
@@ -28,14 +42,7 @@ export type PackPage = {
  */
 export type PackPreview = Pick<PackPage, 'name' | 'job' | 'preparedAt'> & {
   workspace: string;
-  members: (Pick<PackPage['members'][number], 'candidateId' | 'name' | 'backedScore' | 'upperBound'> & {
-    /**
-     * From the assessment the member joined with: competencies that meet the job's need, those short of it, and the
-     * cited explanation (AIV-P1-033). Null once a newer assessment replaced it or another rubric version was approved,
-     * so nothing newer sits beside the pack's scores.
-     */
-    summary: ({ strengths: NeedRow[]; risks: NeedRow[] } & Pick<ProfileData, 'explanation'>) | null;
-  })[];
+  members: Pick<PackPage['members'][number], 'candidateId' | 'name' | 'backedScore' | 'upperBound' | 'summary'>[];
 };
 
 /** "Backed by evidence" and "Still to test in the interview": a competency proven at the level the job needs, or not. */

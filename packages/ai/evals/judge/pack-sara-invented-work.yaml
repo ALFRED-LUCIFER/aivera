@@ -1,0 +1,37 @@
+# AIV-P2-011: Sara Al Qahtani's pack card with a strength that adds work no excerpt states ("led the evaluation team")
+# and a cost claim called backed, so the judge must fail it.
+id: pack-sara-invented-work
+case: decisions.summariseMember/sara-advance
+output:
+  strengths:
+    - text: The candidate authored 412 of 460 commits in llm-eval-harness and led the evaluation team.
+      citations:
+        - sourceId: S2
+          quote: authored 412 of 460 commits in llm-eval-harness between March and October
+      claim: false
+  risks:
+    - text: Cost and reliability is backed by a cut in cost per request.
+      citations:
+        - sourceId: S5
+          quote: cut the cost per request of the merchant assistant by 38%
+      claim: true
+  round1:
+    text: The candidate defended the merchant assistant's evaluation design.
+    citations:
+      - sourceId: S7
+        quote: defended the merchant assistant's evaluation design
+    claim: false
+  recommendation:
+    action: advance
+    focus: probe product judgement
+    citations:
+      - sourceId: S1
+        quote: Work meets the need on competencies holding 60% of the weight
+    claim: false
+expected: fail
+recorded:
+  judgePrompt: evals.judge@6
+  verdict:
+    pass: false
+    reason: The strength adds 'led the evaluation team', which is not stated in the cited excerpt, and the risk fails by
+      calling a claim 'backed', which the rubric forbids.

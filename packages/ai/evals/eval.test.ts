@@ -24,6 +24,7 @@ import * as aiPackage from '../src/index.ts';
 import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { mapSummarySchema } from '../src/prompts/interviews.mapSummary.ts';
+import { summariseMemberRequest } from '../src/prompts/decisions.summariseMember.ts';
 import { domainCatalogue, hardGates, questionsInput, runners, summaryInput, taskThresholds } from './config.ts';
 import {
   goldenCase as goldenCaseSchema,
@@ -1395,7 +1396,7 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     evaluateJudge(proxyCase, liveJudgeVerdict(recordedJudge, suggestionJudgeOf(JSON.stringify({ verdicts })), noMatch));
 
   it('Scenario: One mechanism grades both judges: loadJudgeCases holds each fixture with the fault it must get', () => {
-    expect(judgeCases.length).toBe(suggestionCases.length + 5 + 3); // five evidence and three matcher judge cases
+    expect(judgeCases.length).toBe(suggestionCases.length + 7 + 3); // seven evidence and three matcher judge cases
     expect(suggestionCases.map((c) => [c.id, c.from, c.case, Object.values(c.expected)])).toEqual([
       ['suggestion-generic-soft-skill', 'failing', 'jobs.draftCompetencies/generic-soft-skill', [null, 'generic']],
       ['suggestion-golden-pair', 'passing', 'jobs.draftCompetencies/golden-pair', [null, null]],
@@ -1966,7 +1967,7 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
 
   it('Scenario: The summary rubric is pinned by a known bad output the judge must fail, itself on the product schema', async () => {
     const pinned = loadJudgeCases(import.meta.dirname, golden).filter(
-      (c): c is EvidenceJudgeCase => !('judge' in c) && !c.case.startsWith('evidence.'),
+      (c): c is EvidenceJudgeCase => !('judge' in c) && c.case.startsWith('interviews.'),
     );
     expect(pinned.map((c) => [c.id, c.case, c.expected])).toEqual([
       ['summary-arjun-invented-work', `${summaries}/arjun-menon-work-words`, 'fail'],
@@ -2137,5 +2138,186 @@ describe('Feature: The live eval judges reworded competency names by meaning, wi
     expect(() => loadJudgeCases(dir, new Map())).toThrow(
       'judge/bad.yaml: every expected and recorded option must be one of its options',
     );
+  });
+});
+
+/** A pack card with one strength, for the schema's per-strength rules (AIV-P2-011). */
+const shortCard = (text: string, citations: { sourceId: string; quote: string }[]) => ({
+  strengths: [{ text, citations }],
+  risks: [],
+  round1: null,
+  recommendation: { action: 'advance', focus: null, citations: [{ sourceId: 'S1', quote: 'Work meets the need' }] },
+});
+
+// Feature: Decision pack page, a member's cited strengths, risks, Round 1 finding and recommendation (AIV-P2-011).
+// Synthetic data only.
+describe('Feature: Decision pack summaries', () => {
+  const task = 'decisions.summariseMember';
+  const cases = golden.get(task) ?? [];
+  const sara = () => caseOf(task, 'sara-advance');
+  const parseCard = (output: unknown, c = sara()) => summariseMemberRequest(c.sources).schema.safeParse(output);
+  type Said = { text: string; citations: { sourceId: string; quote: string }[] };
+  type Card = {
+    strengths: Said[];
+    risks: Said[];
+    round1: Said | null;
+    recommendation: Omit<Said, 'text'> & { action: string; focus: string | null };
+  };
+  const recorded = () => structuredClone(sara().recorded.output) as Card;
+  /** Sara's recorded answer with its first strength, risk or the Round 1 finding replaced. */
+  const withFirst = (key: 'strengths' | 'risks', said: Partial<Said>) => {
+    const card = recorded();
+    return { ...card, [key]: card[key].map((s, i) => (i === 0 ? { ...s, ...said } : s)) };
+  };
+
+  it('Scenario: the three-candidate pack, each recorded answer on the schema, citations valid 100%, and the gates pass', async () => {
+    expect(cases.map((c) => c.id)).toEqual(['arjun-hold', 'huda-advance-probe-cost', 'sara-advance']);
+    for (const c of cases) expect(parseCard(c.recorded.output, c).error, c.id).toBeUndefined();
+    const report = await run(task, cases);
+    expect(report.passed).toBe(true);
+    expect(report.rates.citationValidity).toBe(1);
+    expect(report.rates.safety).toBe(1);
+    expect(report.rates.prompt).toBe(1);
+  });
+
+  // SAFETY: mutation check: dropped `decisions` from promptSafety's redacted tasks -> this test failed (the prompt held her name)
+  it('the model reads Sara Al Qahtani as "[CANDIDATE]"', async () => {
+    expect(sara().expected.prompt?.forbidden).toEqual(['Sara', 'Qahtani']);
+    expect((await run(task, [sara()])).rates.prompt).toBe(1);
+  });
+
+  // SAFETY: mutation check: removed the figure_not_quoted refine from the statement schema -> this test failed (it parsed)
+  it('a figure no cited quote holds rejects the answer; "Round 2" is not a figure', () => {
+    const output = withFirst('strengths', { text: 'The candidate authored 460 of 512 commits in llm-eval-harness.' });
+    expect(parseCard(output).success).toBe(false);
+    const card = recorded();
+    const probe = { ...card, recommendation: { ...card.recommendation, focus: 'probe product judgement in Round 2' } };
+    expect(parseCard(probe).success).toBe(true);
+  });
+
+  // SAFETY: mutation check: removed the not_backed superRefine -> this test failed (a strength citing only the facts parsed)
+  it('a strength citing only the facts or the CV is refused: "Strengths, backed" rests on inspected work', () => {
+    for (const sourceId of ['S1', 'S5']) {
+      const quote = sourceId === 'S1' ? 'Work meets the need' : 'cut the cost';
+      const output = withFirst('strengths', { text: 'The candidate shows work.', citations: [{ sourceId, quote }] });
+      expect(parseCard(output).success, sourceId).toBe(false);
+    }
+  });
+
+  // SAFETY: mutation check: removed the competency_uncited check from schemaFor -> this test failed (it parsed)
+  it('a strength naming a competency cites the facts line naming it: the excerpt alone is refused', () => {
+    const excerpt = [{ sourceId: 'S2', quote: 'authored 412 of 460 commits in llm-eval-harness' }];
+    const text = 'The candidate authored 412 of 460 commits in llm-eval-harness, backing LLM systems in production.';
+    expect(parseCard(withFirst('strengths', { text, citations: excerpt })).success).toBe(false);
+    const line = { sourceId: 'S1', quote: 'LLM systems in production, 25% of the weight, needs level 4' };
+    expect(parseCard(withFirst('strengths', { text, citations: [...excerpt, line] })).success).toBe(true);
+  });
+
+  // A rubric with short competency names, as a pilot job may have.
+  const shortNames = {
+    ...sara(),
+    sources: [
+      {
+        id: 'S1',
+        kind: 'document' as const,
+        text: [
+          'Work meets the need on competencies holding 50% of the weight.',
+          'AI, 50% of the weight, needs level 3: submitted work shows level 3, which meets the need.',
+          'Go, 50% of the weight, needs level 3: no evidence yet.',
+        ].join('\n'),
+      },
+      { id: 'S2', kind: 'repo' as const, text: 'maintains a scheduling algorithm library' },
+    ],
+  };
+  const library = { sourceId: 'S2', quote: 'maintains a scheduling algorithm library' };
+  // SAFETY: mutation check: matched competency names as plain substrings again -> this test failed ("AI" in "maintains")
+  it('a short competency name inside a word is no mention of it; standing alone, it needs its facts line', () => {
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling algorithm library.', [library]), shortNames).success,
+    ).toBe(true);
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [library]), shortNames).success,
+    ).toBe(false);
+    const line = { sourceId: 'S1', quote: 'AI, 50% of the weight, needs level 3' };
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [library, line]), shortNames).success,
+    ).toBe(true);
+  });
+
+  // SAFETY: mutation check: dropped the `i` flag from the competency matcher -> this test failed (lower-case "ai" parsed)
+  it('a competency named in lower case is still a mention of it', () => {
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for ai.', [library]), shortNames).success,
+    ).toBe(false);
+  });
+
+  // SAFETY: mutation check: dropped the regex escape of competency names -> this test failed (new RegExp threw on "C++")
+  it('a competency name with regex characters ("C++") is matched as written', () => {
+    const cpp = {
+      ...shortNames,
+      sources: [
+        {
+          id: 'S1',
+          kind: 'document' as const,
+          text: [
+            'Work meets the need on competencies holding 50% of the weight.',
+            'C++, 50% of the weight, needs level 3: submitted work shows level 3, which meets the need.',
+            'Go, 50% of the weight, needs level 3: no evidence yet.',
+          ].join('\n'),
+        },
+        { id: 'S2', kind: 'repo' as const, text: 'maintains a scheduling algorithm library' },
+      ],
+    };
+    const text = 'The candidate maintains a scheduling algorithm library in C++.';
+    expect(parseCard(shortCard(text, [library]), cpp).success).toBe(false);
+    const line = { sourceId: 'S1', quote: 'C++, 50% of the weight, needs level 3' };
+    expect(parseCard(shortCard(text, [library, line]), cpp).success).toBe(true);
+  });
+
+  // SAFETY: mutation check: checked that any citation is work instead of the first -> this test failed (it parsed)
+  it("a strength's first citation is the excerpt it is about, the facts line after it", () => {
+    const line = { sourceId: 'S1', quote: 'AI, 50% of the weight, needs level 3' };
+    expect(
+      parseCard(shortCard('The candidate maintains a scheduling library for AI.', [line, library]), shortNames).success,
+    ).toBe(false);
+  });
+
+  // SAFETY: mutation check: removed the not_round1 superRefine -> this test failed (a Round 1 finding citing the CV parsed)
+  it('a Round 1 finding must cite the interview notes, and there is none without them', () => {
+    const card = recorded();
+    const cv = [{ sourceId: 'S6', quote: 'built Arabic intent classification' }];
+    expect(parseCard({ ...card, round1: { text: 'The candidate built it.', citations: cv } }).success).toBe(false);
+    const noNotes = { ...sara(), sources: sara().sources.filter((s) => s.kind !== 'interview') };
+    expect(parseCard(recorded(), noNotes).success).toBe(false);
+    expect(parseCard({ ...recorded(), round1: null }, noNotes).success).toBe(true);
+  });
+
+  // SAFETY: mutation check: removed the advice refine from the statement text -> the three advice rows failed (they parsed)
+  it.each([
+    'The candidate should be rejected on cost.',
+    'Advance the candidate on retrieval work.',
+    'The candidate is unsuitable for cost work.',
+    'Retrieval work was verified by the team.',
+  ])('a statement that advises on the person or overstates is refused: %s', (text) => {
+    expect(parseCard(withFirst('risks', { text })).success).toBe(false);
+  });
+
+  it('the pack rubrics are pinned by known bad outputs the judge must fail (invented work, a claim called backed), each on the product schema', () => {
+    const pinned = loadJudgeCases(import.meta.dirname, golden).filter(
+      (c): c is EvidenceJudgeCase => !('judge' in c) && c.case.startsWith(`${task}/`),
+    );
+    expect(pinned.map((c) => [c.id, c.case, c.expected])).toEqual([
+      ['pack-arjun-built-and-ran', `${task}/arjun-hold`, 'fail'],
+      ['pack-sara-invented-work', `${task}/sara-advance`, 'fail'],
+    ]);
+    for (const c of pinned) {
+      expect(c.rubric).toBe(c.golden.expected.judge);
+      expect(parseCard(c.output, c.golden).error, c.id).toBeUndefined();
+    }
+  });
+
+  it('the recommendation is advance or hold only: never reject', () => {
+    const card = recorded();
+    expect(parseCard({ ...card, recommendation: { ...card.recommendation, action: 'reject' } }).success).toBe(false);
   });
 });

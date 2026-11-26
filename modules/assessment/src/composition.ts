@@ -88,6 +88,14 @@ export function createAssessment(
   };
 }
 
+/**
+ * One stored assessment by id, as the system in a workspace-scoped transaction with no member: for the decision pack's
+ * summary job (AIV-P2-011), which reads the snapshot a pack member joined with. Unauthorised: the worker reads only the
+ * ids a pack in the same workspace holds.
+ */
+export const readAssessmentAsSystem = (tx: Tx, workspaceId: string, id: string) =>
+  assessmentStore(tx).byId(workspaceId, id);
+
 /** Who applied to what, read in the worker's transaction (the intake module's `createApplicationReads`). */
 type ApplicationsPort = {
   jobsForCandidate(tx: Tx, workspaceId: string, candidateId: string): Promise<string[]>;

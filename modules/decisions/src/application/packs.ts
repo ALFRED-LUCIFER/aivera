@@ -14,6 +14,7 @@ import {
   type PackMember,
   type PackStatus,
 } from '../domain/pack.ts';
+import type { StoredMemberSummary } from '../domain/summary.ts';
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type PackStore = {
@@ -29,6 +30,10 @@ export type PackStore = {
   listDecisions(workspaceId: string, packId: string): Promise<Decision[]>;
   /** The job's packs, newest first, each with its members' candidate ids in pack order. */
   listForJob(workspaceId: string, jobId: string): Promise<PackSummary[]>;
+  /** The members' summaries written so far (AIV-P2-011), in no particular order. */
+  listSummaries(workspaceId: string, packId: string): Promise<StoredMemberSummary[]>;
+  /** Written once per member: a second write for the same member is ignored. */
+  insertSummary(summary: StoredMemberSummary): Promise<void>;
 };
 
 /** A pack as the ranking needs it (AIV-P2-010): which packs the job has and who is in each. */
@@ -41,6 +46,8 @@ export type Ports = {
   storeFor(tx: Tx): PackStore;
   /** Writes `PackReady.v1` to the outbox in `tx`, so it commits only with the pack (AIV-P0-014). */
   publishPackReady(tx: Tx, pack: DecisionPack): Promise<void>;
+  /** Writes `PackMembersAdded.v1` to the outbox in `tx` for members added from `position` on (AIV-P2-011). */
+  publishMembersAdded(tx: Tx, pack: DecisionPack, position: number, at: Date): Promise<void>;
   /** Writes one `DecisionsRecorded.v1` for the pack to the outbox in `tx`. */
   publishDecisionsRecorded(tx: Tx, pack: DecisionPack, at: Date): Promise<void>;
   authorize(ctx: WorkspaceContext, action: Action, resource?: JobResource): Promise<void>;
@@ -91,8 +98,15 @@ export const recordDecisionsInputSchema = z.strictObject({
 });
 export type RecordDecisionsInput = z.input<typeof recordDecisionsInputSchema>;
 
-/** A pack with its members in order and the decisions recorded on it (none until it is `decided`). */
-export type PackView = DecisionPack & { members: PackMember[]; decisions: Decision[] };
+/**
+ * A pack with its members in order, the decisions recorded on it (none until it is `decided`), and the members'
+ * summaries written so far (AIV-P2-011): a member with none is still being prepared.
+ */
+export type PackView = DecisionPack & {
+  members: PackMember[];
+  decisions: Decision[];
+  summaries: StoredMemberSummary[];
+};
 
 export function packUseCases(ports: Ports) {
   const { storeFor, authorize, now } = ports;
@@ -185,8 +199,10 @@ export function packUseCases(ports: Ports) {
       // A pack is on one rubric version: once the job's approved version moves on, nobody ranked on it can join.
       const ranking = await ports.ranking(ctx, job.jobId);
       const ranked = ranking?.rubricVersionId === pack.rubricVersionId ? ranking.candidateIds : [];
-      const members = await snapshot(ctx, pack, ranked, fresh, inPack.length, now());
+      const addedAt = now();
+      const members = await snapshot(ctx, pack, ranked, fresh, inPack.length, addedAt);
       await store.insertMembers(members);
+      await ports.publishMembersAdded(ctx.tx, pack, inPack.length, addedAt);
       for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member);
       return { added: fresh.length };
     },
@@ -207,6 +223,7 @@ export function packUseCases(ports: Ports) {
         ...found.pack,
         members: await store.listMembers(ctx.workspaceId, packId),
         decisions: await store.listDecisions(ctx.workspaceId, packId),
+        summaries: await store.listSummaries(ctx.workspaceId, packId),
       };
     },
 

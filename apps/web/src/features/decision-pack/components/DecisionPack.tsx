@@ -1,29 +1,45 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { Button, ScoreWithUncertainty, Skeleton, ValueBasis, buttonClassName } from '@credalent/ui';
+import { Button, Card, ScoreWithUncertainty, Skeleton, ValueBasis, buttonClassName } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
+import { evidenceAnchor, profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { packHref } from '@/features/ranking/domain/pack.ts';
 import type { DecisionPackView, PackPage } from '../domain/pack.ts';
+import { Needs, SummaryText } from './CardSummary.tsx';
 
-// AIV-P2-010: the decision pack a recruiter built from the ranking, from the Pack artboard
-// (docs/01-design/artboards/Pack.dc.html). Ported: the pack's name, "prepared <date> · rubric vN", each member with
-// their backed score and claim range (as snapshotted when they joined) and the basis "Observed" (AGENTS.md 1.7),
-// "Back to ranking", and "N other candidates stay in the ranking and can be added to a later pack.". Added beyond the
-// artboard (AIV-P1-139): "Added by <who added them> on <date>" under each member, so the hiring owner sees who put a
-// candidate in front of them.
+// AIV-P2-010, AIV-P2-011: the decision pack, from the Pack artboard (docs/01-design/artboards/Pack.dc.html). Ported:
+// the pack's name, "prepared <date> · rubric vN", "What the job needs" and "Competencies and weights", one card per
+// member with their backed score and claim range (as snapshotted when they joined), "Strengths, backed", "Outstanding
+// risks", "Round 1 finding" and "Credalent's recommendation", "Back to ranking", and "Shared packs show evidence
+// summaries and sources, not raw files. N other candidates stay in the ranking and can be added to a later pack.".
+// Added beyond the artboard: "Added by <who added them> on <date>" under each member (AIV-P1-139); the basis "Observed"
+// (AGENTS.md 1.7); under each statement the excerpt it quotes, highlighted as cited evidence, or for the candidate's
+// own words (a CV) under the shared "Claim" tag and never highlighted (AGENTS.md 1.6), with its source linked to the
+// item on the candidate's profile, or "Source: the assessment" (the ticket: every sentence links to its evidence); "Preparing
+// summary" while the worker writes a card, and "Summary unavailable" with the assessment's own strengths when no
+// answer with valid citations came; and the empty pack's line. Credalent's recommendation is advice: the pack summary
+// moves no stage; recorded decisions do, AIV-P2-012 (AGENTS.md 1.5).
 // Deviations:
-// - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011);
+// - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011),
+//   and each member's name an h3;
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;
-// - no "What the role needs", strengths, risks, Round 1 findings, Credalent's recommendation, "Record decisions" or the
-//   decision emails: the pack's content and the hiring owner's decisions are AIV-P2-011 (#125);
-// - no "Open comparison" (AIV-P1-047, #111) and no "Shared packs show summaries…" note (AIV-P2-013, #127);
+// - "What the role needs" reads "What the job needs": the copy rules never call a job a role (packages/i18n copy test);
+// - the card's sentences are the model's (decisions.summariseMember), cited and checked in code, so they word things
+//   their own way rather than as the artboard's examples;
+// - the Round 1 finding is what the interview notes say, with no score change ("rose from 58 to 68"): the card reads
+//   only the snapshot the member joined with, not an earlier one to compare it with;
+// - the recommendation reads "advance" or "hold" (decided in code from the snapshot), then "and look into <focus> next"
+//   with the gap the model names ("Product judgement"), not "probe cost in Round 2"; "hold" is not on the artboard,
+//   which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
+// - no decision buttons ("Advance to Round 2", "Hold", "Do not advance"), "Record the decision", "Record decisions" or
+//   the decision emails: recording decisions is AIV-P2-012 (#126), so no decision option is shown, let alone chosen;
+// - no "Open comparison" (AIV-P1-047, #111);
 // - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded
 //   preview inside Credalent; sharing it is AIV-P2-013 (#127);
-// - the job header's Decision stage line stays "Not started" until packs report there (AIV-P2-011, #125);
+// - the cards' padding is the shared Card's 16 px, not 24 px;
 // - no "Decision packs" sidebar count: that item waits behind its flag for the packs list (AIV-P2-E02, #19);
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142).
 
@@ -50,7 +66,7 @@ export function DecisionPack({ view }: { view: DecisionPackView }) {
 function Pack({ pack }: { pack: PackPage }) {
   const t = useTranslations();
   return (
-    <section aria-labelledby="pack-title" className="flex flex-col gap-3 self-stretch">
+    <section aria-labelledby="pack-title" className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="pack-title" className="text-card text-text">
@@ -67,24 +83,70 @@ function Pack({ pack }: { pack: PackPage }) {
           {t('decisionPack.openPreview')}
         </Link>
       </div>
-      <ul className="flex flex-col divide-y divide-border rounded-card border border-border bg-surface">
-        {pack.members.map((m) => (
-          <li key={m.candidateId} className="flex flex-wrap items-center justify-between gap-3 p-3">
-            {/* profileHref builds the path from opaque ids, which typed routes cannot check. */}
-            <span className="flex flex-col">
-              <Link
-                href={profileHref(m.candidateId, pack.jobId) as Route}
-                className="font-semibold text-text underline-offset-2 hover:underline"
-              >
-                {m.name ?? t('ranking.unnamed')}
-              </Link>
+      {pack.role && (
+        <Card>
+          <div className="flex flex-wrap gap-x-10 gap-y-5">
+            <div className="flex min-w-0 flex-[2_1_380px] flex-col gap-2">
+              <h3 className="text-section text-text">{t('decisionPack.role.needs')}</h3>
+              <p className="text-body text-text-2">{pack.role.successStatement}</p>
+            </div>
+            <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-2">
+              <h3 className="text-section text-text">{t('decisionPack.role.weights')}</h3>
+              <p className="text-meta text-text-2 tabular-nums">
+                {pack.role.competencies
+                  .map((c) => t('decisionPack.role.weight', { name: c.name, weight: c.weightPercent }))
+                  .join(' · ')}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+      {pack.members.length === 0 ? (
+        <p className="text-body text-text">{t('decisionPack.empty')}</p>
+      ) : (
+        pack.members.map((m) => <Member key={m.candidateId} jobId={pack.jobId} member={m} />)
+      )}
+      <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
+        <ValueBasis basis="observed" label={t('ranking.observed')} />
+        {t('decisionPack.basis')}
+      </p>
+      <p className="text-meta text-text-2">
+        {t('decisionPack.shared')} {t('decisionPack.others', { count: pack.others })}
+      </p>
+      {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
+      <Link
+        href={jobPageHref(pack.jobId, 'candidates') as Route}
+        className={`self-start ${buttonClassName('secondary')}`}
+      >
+        {t('decisionPack.back')}
+      </Link>
+    </section>
+  );
+}
+
+function Member({ jobId, member: m }: { jobId: string; member: PackPage['members'][number] }) {
+  const t = useTranslations();
+  const titleId = `member-${m.candidateId}`;
+  const profile = profileHref(m.candidateId, jobId);
+  return (
+    <section aria-labelledby={titleId}>
+      <Card>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <span className="flex flex-[1_1_200px] flex-col">
+              <h3 id={titleId} className="text-section text-text">
+                {/* profileHref builds the path from opaque ids, which typed routes cannot check. */}
+                <Link href={profile as Route} className="underline-offset-2 hover:underline">
+                  {m.name ?? t('ranking.unnamed')}
+                </Link>
+              </h3>
               {m.added && (
                 <span className="text-meta text-text-2">
                   {t('decisionPack.addedBy', { name: m.added.by, date: m.added.at })}
                 </span>
               )}
             </span>
-            <span className="min-w-44">
+            <span className="max-w-80 min-w-60 flex-[1_1_240px]">
               <ScoreWithUncertainty
                 compact
                 backed={m.backedScore}
@@ -95,21 +157,27 @@ function Pack({ pack }: { pack: PackPage }) {
                 unavailableLabel={t('score.unavailable')}
               />
             </span>
-          </li>
-        ))}
-      </ul>
-      <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
-        <ValueBasis basis="observed" label={t('ranking.observed')} />
-        {t('decisionPack.basis')}
-      </p>
-      <p className="text-meta text-text-2">{t('decisionPack.others', { count: pack.others })}</p>
-      {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
-      <Link
-        href={jobPageHref(pack.jobId, 'candidates') as Route}
-        className={`self-start ${buttonClassName('secondary')}`}
-      >
-        {t('decisionPack.back')}
-      </Link>
+          </div>
+          {m.summary.status === 'ready' ? (
+            <SummaryText
+              summary={m.summary.summary}
+              labels={{ strengths: t('decisionPack.summary.strengths'), risks: t('decisionPack.summary.risks') }}
+              hrefFor={(itemId) => `${profile}#${evidenceAnchor(itemId)}`}
+            />
+          ) : m.summary.status === 'preparing' ? (
+            <output className="block text-body text-text-2">{t('decisionPack.summary.preparing')}</output>
+          ) : (
+            <>
+              <p className="text-body text-text-2">{t('decisionPack.summary.unavailable')}</p>
+              <Needs
+                title={t('decisionPack.summary.strengths')}
+                rows={m.summary.strengths}
+                empty={t('decisionPack.preview.noStrengths')}
+              />
+            </>
+          )}
+        </div>
+      </Card>
     </section>
   );
 }

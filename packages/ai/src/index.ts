@@ -69,6 +69,11 @@ export {
   type SummaryCompetencyInput,
 } from './prompts/interviews.mapSummary.ts';
 export {
+  RECOMMENDATIONS,
+  SUMMARISE_MEMBER_VERSION,
+  summariseMemberRequest,
+} from './prompts/decisions.summariseMember.ts';
+export {
   ASSISTANT_ANSWER_SYSTEM,
   ASSISTANT_ANSWER_VERSION,
   assistantAnswerRequest,

@@ -41,9 +41,9 @@ const EXPLAIN_RANKING_SYSTEM = [
 
 // Words that state a number, so the model cannot write one in words. "one" is a pronoun too ("no one"): it is rejected only
 // as a count of competencies. A percent sign is rejected separately, and a digit by `quotesItsFigures` below.
-const NUMBER_WORDS =
+export const NUMBER_WORDS =
   /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|(?:hundred|thousand|million|billion|dozen)s?|per\s*cent|percent|half|quarter|third|both|single|once|twice)\b/i;
-const ONE_COUNT = /\bone\s+(?:of\b|(?:\w+\s+){0,2}competenc)/i;
+export const ONE_COUNT = /\bone\s+(?:of\b|(?:\w+\s+){0,2}competenc)/i;
 
 const known = (name: string) => EXPLAIN_PLACEHOLDERS.some((p) => p === name);
 

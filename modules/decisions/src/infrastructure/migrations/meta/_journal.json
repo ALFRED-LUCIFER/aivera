@@ -22,6 +22,20 @@
       "when": 1795630260094,
       "tag": "0002_busy_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795714686935,
+      "tag": "0003_member_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795714696577,
+      "tag": "0004_force_rls_member_summaries",
+      "breakpoints": true
     }
   ]
 }

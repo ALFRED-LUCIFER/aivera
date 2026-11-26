@@ -3,16 +3,18 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { createAiClient, fakeProvider, memoryTokenBudget, type AiClient } from '@credalent/ai';
 import type { AssessmentContract, RubricInput } from '@credalent/assessment';
-import { createAssessment } from '@credalent/assessment/composition';
+import { createAssessment, readAssessmentAsSystem } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
 import { createAudit } from '@credalent/audit/composition';
-import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates/composition';
-import { createDb, DbQueryError, withWorkspace, type Db } from '@credalent/db';
+import { createCandidates, displayNamesInWorkspace, readPersonAsSystem } from '@credalent/candidates/composition';
+import { createDb, DbQueryError, withWorkspace, type Db, type Envelope } from '@credalent/db';
+import { createConsumer, type Delivery } from '@credalent/db/consumer';
 import type { DecisionsContract } from '@credalent/decisions';
-import { createDecisions } from '@credalent/decisions/composition';
+import { createDecisions, createPackSummaryHandlers, PACK_SUMMARY_QUEUE } from '@credalent/decisions/composition';
 import type { EvidenceContract } from '@credalent/evidence';
-import { createEvidence } from '@credalent/evidence/composition';
+import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import type { IntakeContract } from '@credalent/intake';
 import { createIntake } from '@credalent/intake/composition';
 import type { Competency, JobsContract } from '@credalent/jobs';
@@ -20,7 +22,7 @@ import { createApprovedRubricReads, createJobs } from '@credalent/jobs/compositi
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AIV-P2-009 acceptance scenarios against real PostgreSQL, connected as the non-owner aivera_app role (ADR-004, ADR-005).
 // Synthetic cast only (docs/00-product/personas.md).
@@ -278,7 +280,7 @@ describe('Migrations', () => {
       from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass
       where t.schemaname = 'decisions' order by name`);
     expect([...tables]).toEqual(
-      ['decision', 'outbox', 'pack', 'pack_member'].map((name) => ({
+      ['decision', 'inbox', 'member_summary', 'outbox', 'pack', 'pack_member'].map((name) => ({
         name,
         owner: 'aivera_migrator',
         rls: true,
@@ -289,7 +291,7 @@ describe('Migrations', () => {
 
   it('applying the migrations again is a no-op', async () => {
     const applied = await count('migrations.decisions');
-    expect(applied).toBe(3);
+    expect(applied).toBe(5);
     execFileSync(process.execPath, [dbCli, 'migrate'], {
       env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
     });
@@ -716,5 +718,212 @@ describe('Scenario: Pack creation and member additions are audited', () => {
     expect(await rawInW1(sql`update decisions.pack_member set added_by = ${ALEX} where pack_id = ${round4}`)).toBe(
       '42501',
     );
+  });
+});
+
+/** The pack's latest event of `type` from the outbox, as the relay would send it. */
+const eventOf = async (workspaceId: string, packId: string, type: string): Promise<Envelope> => {
+  const [row] = await admin.execute<{ id: string; payload: unknown; occurred_at: Date }>(
+    sql`select id, payload, occurred_at from decisions.outbox
+      where type = ${type} and payload->>'packId' = ${packId} order by occurred_at desc limit 1`,
+  );
+  if (!row) throw new Error(`No ${type} in decisions.outbox`);
+  const occurredAt = new Date(row.occurred_at).toISOString();
+  return { id: row.id, type, workspaceId, payload: row.payload, occurredAt, correlationId: null };
+};
+const summaries = (packId: string) =>
+  admin.execute<{ candidate_id: string; status: string }>(
+    sql`select candidate_id, status from decisions.member_summary where pack_id = ${packId} order by candidate_id`,
+  );
+const byCandidate = async (packId: string) =>
+  Object.fromEntries((await summaries(packId)).map((r) => [r.candidate_id, r.status]));
+
+// AIV-P2-011: the worker's summary of each pack member, as apps/backend/worker wires it, against real PostgreSQL. The
+// model is the fake provider: Arjun's answer cites a source he was never given, the others a valid one.
+describe('Scenario: Pack summaries are written once per member, cited, by the worker', () => {
+  const VALID = JSON.stringify({
+    strengths: [
+      {
+        text: 'The candidate wrote a synthetic work sample.',
+        citations: [{ sourceId: 'S2', quote: 'Synthetic work sample' }],
+      },
+    ],
+    risks: [
+      {
+        text: 'Arabic and bilingual NLP rests on a claim.',
+        citations: [{ sourceId: 'S1', quote: 'Arabic and bilingual NLP, 20% of the weight' }],
+      },
+    ],
+    round1: null,
+    recommendation: {
+      action: 'advance',
+      focus: 'probe arabic and bilingual NLP',
+      citations: [{ sourceId: 'S1', quote: 'Work meets the need' }],
+    },
+  });
+  // Arjun's Arabic line is the only one resting on a claim alone; his answer cites S9, which he was never given.
+  const fixtures = [
+    {
+      when: 'a claim with nothing to inspect, level 3 if it holds',
+      completion: VALID.replace('"sourceId":"S2"', '"sourceId":"S9"'),
+    },
+  ];
+  const client = createAiClient({
+    provider: fakeProvider({ fixtures, completion: VALID }),
+    budget: memoryTokenBudget(),
+    sleep: async () => undefined,
+  });
+  // Every request the worker sends, kept to count the model calls and read what the model was shown.
+  const requests: Parameters<AiClient['generateStructured']>[0][] = [];
+  const ai: Pick<AiClient, 'generateStructured'> = {
+    generateStructured: (request) => {
+      requests.push(request);
+      return client.generateStructured(request);
+    },
+  };
+  const schedule = vi.fn(async (_queue: string, _envelope: Envelope, _at: Date) => '1');
+  const consumer = () =>
+    createConsumer({
+      db: app,
+      queue: PACK_SUMMARY_QUEUE,
+      // As apps/backend/worker wires it.
+      handlers: createPackSummaryHandlers({
+        ai,
+        approvedRubric: createApprovedRubricReads().approvedRubric,
+        snapshot: readAssessmentAsSystem,
+        evidence: readEvidenceForJobAsSystem,
+        identifiersOf: async (tx, workspaceId, candidateId) => {
+          const person = await readPersonAsSystem(tx, workspaceId, candidateId);
+          return person && { names: [person.displayName], emails: person.emails, phones: person.phones };
+        },
+        scheduler: { schedule, cancel: async () => undefined },
+        now: () => NOW,
+      }),
+      now: () => NOW,
+    });
+
+  /** Delivers the envelope as Service Bus would, and returns how it was settled. */
+  const deliver = async (envelope: Envelope) => {
+    const settled: string[] = [];
+    const delivery: Delivery = {
+      body: envelope,
+      deliveryCount: 1,
+      complete: async () => void settled.push('complete'),
+      abandon: async () => void settled.push('abandon'),
+      deadLetter: async (reason) => void settled.push(`deadLetter: ${reason}`),
+    };
+    await consumer().handle(delivery);
+    return settled;
+  };
+  let effects: Awaited<ReturnType<typeof sideEffects>>;
+  let audits: number;
+  beforeAll(async () => {
+    effects = await sideEffects();
+    audits = await count('audit.entry');
+  });
+
+  // SAFETY: mutation check: summarisePack skipped the `done` check -> this test failed (six model calls)
+  it("the shortlist's PackReady.v1: Sara and Huda get a cited summary; delivered again, nothing more is called or written", async () => {
+    const ready = await eventOf(w1, shortlist, 'PackReady.v1');
+    expect(await deliver(ready)).toEqual(['complete']);
+    expect(await byCandidate(shortlist)).toEqual({ [sara]: 'ready', [arjun]: 'unavailable', [huda]: 'ready' });
+    expect(requests).toHaveLength(3);
+    const sent = JSON.stringify(requests.map((request) => request.sources));
+    // Sara's facts are those of the 68 snapshot she joined with (Arabic at level 1), not of her later 84 (level 5).
+    expect(sent).toContain('shows level 1, short of the need; claims would take it to level 5');
+    // Every call names the person, so the client replaces her name in every source (ADR-006 point 7).
+    expect(requests.map((request) => request.identifiers?.names.length)).toEqual([1, 1, 1]);
+    // The same message again (the inbox), and the same event as a new message (each member has its summary).
+    expect(await deliver(ready)).toEqual(['complete']);
+    expect(await deliver({ ...ready, id: crypto.randomUUID() })).toEqual(['complete']);
+    expect(requests).toHaveLength(3);
+    expect(await summaries(shortlist)).toHaveLength(3);
+  });
+
+  it("Sara's card cites the item by id and the facts as the assessment, from the snapshot she joined with", async () => {
+    const pack = await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, shortlist));
+    const card = pack?.summaries.find((s) => s.candidateId === sara);
+    const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, seniorAi.jobId));
+    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@3' });
+    const [strength] = card?.summary?.strengths ?? [];
+    expect(strength?.citations).toEqual([
+      {
+        itemId: expect.any(String),
+        label: expect.stringMatching(/^Write-up /),
+        quote: 'Synthetic work sample',
+        claim: false,
+      },
+    ]);
+    expect(items.map((i) => i.id)).toContain(strength?.citations[0]?.itemId);
+    expect(card?.summary?.recommendation).toEqual({
+      action: 'advance',
+      focus: 'probe arabic and bilingual NLP',
+      citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need', claim: false }],
+    });
+  });
+
+  // SAFETY: mutation check: summarisePack stored the answer as ready when summarise returned 'failed' -> this test failed
+  it("Scenario: Generated text without a valid citation is not shown: Arjun's answer cites a source outside his snapshot, so it is stored unavailable", async () => {
+    const pack = await as(ZAID, w1, (ctx) => decisions.getPack(ctx, shortlist));
+    expect(pack?.summaries.find((s) => s.candidateId === arjun)).toMatchObject({
+      status: 'unavailable',
+      promptVersion: null,
+      summary: null,
+    });
+  });
+
+  it('the recommendation decides nothing: no stage, decision, notification, other outbox or audit entry is written', async () => {
+    expect(await sideEffects()).toEqual(effects);
+    expect(await count('audit.entry')).toBe(audits);
+  });
+
+  it('a member added later is announced (PackMembersAdded.v1) and summarised alone', async () => {
+    const { packId } = await as(ZAID, w1, (ctx) =>
+      decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 2 reserve', members: [{ candidateId: huda }] }),
+    );
+    expect(await deliver(await eventOf(w1, packId, 'PackReady.v1'))).toEqual(['complete']);
+    await as(ZAID, w1, (ctx) => decisions.addMembers(ctx, packId, [{ candidateId: arjun }]));
+    const calls = requests.length;
+    expect(await deliver(await eventOf(w1, packId, 'PackMembersAdded.v1'))).toEqual(['complete']);
+    expect(requests).toHaveLength(calls + 1);
+    expect(await byCandidate(packId)).toEqual({ [huda]: 'ready', [arjun]: 'unavailable' });
+  });
+
+  it("Job scope and isolation: the job's hiring owner reads the summaries; another job's hiring owner, an interviewer and another workspace do not", async () => {
+    expect((await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, shortlist)))?.summaries).toHaveLength(3);
+    expect(await as(FAISAL, w1, (ctx) => decisions.getPack(ctx, shortlist))).toBeNull();
+    await expect(as(LINA, w1, (ctx) => decisions.getPack(ctx, shortlist))).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await as(OMAR, w2, (ctx) => decisions.getPack(ctx, shortlist))).toBeNull();
+  });
+
+  // SAFETY: mutation check: CREATE POLICY leak ON decisions.member_summary USING (true) -> this test failed (W2 rows read in W1)
+  it('RLS alone: in W1 with no WHERE clause only W1 summaries come back, and none without a workspace', async () => {
+    // W2's pack, summarised in W2, so there is another workspace's row to leak.
+    const [w2Pack] = await admin.execute<{ id: string }>(sql`select id from decisions.pack where workspace_id = ${w2}`);
+    expect(await deliver(await eventOf(w2, w2Pack?.id ?? '', 'PackReady.v1'))).toEqual(['complete']);
+    expect(await admin.execute(sql`select 1 from decisions.member_summary where workspace_id = ${w2}`)).toHaveLength(1);
+    for (const table of ['member_summary', 'inbox']) {
+      const from = sql`decisions.${sql.identifier(table)}`;
+      const inW1 = await withWorkspace(app, w1, (tx) =>
+        tx.execute<{ workspace_id: string }>(sql`select workspace_id from ${from}`),
+      );
+      expect(new Set(inW1.map((r) => r.workspace_id)), table).toEqual(new Set([w1]));
+      expect(await app.execute(sql`select 1 from ${from}`), table).toHaveLength(0);
+    }
+  });
+
+  // SAFETY: mutation check: removed the REVOKE on decisions.member_summary from 0004 -> this test failed ('ok')
+  it('the database keeps a summary as written: the app role can neither change nor delete it, nor write a ready one with no text', async () => {
+    expect(await rawInW1(sql`update decisions.member_summary set status = 'ready' where pack_id = ${shortlist}`)).toBe(
+      '42501',
+    );
+    expect(await rawInW1(sql`delete from decisions.member_summary where pack_id = ${shortlist}`)).toBe('42501');
+    const [round3] = await admin.execute<{ id: string }>(
+      sql`select id from decisions.pack where workspace_id = ${w1} and name = 'Round 3'`,
+    );
+    expect(
+      await rawInW1(sql`insert into decisions.member_summary (workspace_id, pack_id, candidate_id, status, created_at)
+        values (${w1}, ${round3?.id ?? ''}, ${arjun}, 'ready', now())`),
+    ).toBe('23514');
   });
 });

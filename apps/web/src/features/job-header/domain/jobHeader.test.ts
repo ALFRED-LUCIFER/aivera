@@ -13,7 +13,7 @@ const header = (more: Partial<JobHeader>): JobHeader => ({
   ...more,
 });
 const lines = (h: JobHeader, assessed = 0) =>
-  Object.fromEntries(jobHeaderView(h, null, assessed, null, 0).stages.map((s) => [s.page, s.line]));
+  Object.fromEntries(jobHeaderView(h, null, assessed, null, 0, false).stages.map((s) => [s.page, s.line]));
 
 describe('Job header stage lines (AIV-P1-011)', () => {
   it('Senior AI Engineer, version 2 approved with 64 assessed', () => {
@@ -23,6 +23,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
       64,
       null,
       0,
+      false,
     );
     expect(view).toMatchObject({ hiringOwner: 'Head of Engineering', assessed: 64, rubric: { approved: true } });
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toEqual({
@@ -45,7 +46,7 @@ describe('Job header stage lines (AIV-P1-011)', () => {
   });
 
   it('a draft rubric: evidence and ranking starts after approval, and the rubric is not done', () => {
-    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0, null, 0);
+    const view = jobHeaderView(header({ latest: version(1, 'draft') }), null, 0, null, 0, false);
     expect(Object.fromEntries(view.stages.map((s) => [s.page, s.line]))).toMatchObject({
       rubric: { key: 'draft', values: { version: 1 } },
       candidates: { key: 'afterApproval' },
@@ -60,9 +61,15 @@ describe('Job header stage lines (AIV-P1-011)', () => {
 
   it('AIV-P1-101: "Bring in candidates" counts applications from every source, before the rubric is approved too', () => {
     const draft = header({ latest: version(1, 'draft') });
-    const line = (imported: number) => jobHeaderView(draft, null, 0, null, imported).stages[2];
+    const line = (imported: number) => jobHeaderView(draft, null, 0, null, imported, false).stages[2];
     expect(line(212)).toEqual({ page: 'import', line: { key: 'imported', values: { count: 212 } }, done: false });
     expect(line(0)?.line).toEqual({ key: 'notStarted' });
+  });
+
+  it('AIV-P2-011: the Decision stage reads "Shortlist ready" while the job has an undecided pack', () => {
+    const approved = header({ approved: version(2, 'approved') });
+    expect(jobHeaderView(approved, null, 3, null, 3, true).stages[5]?.line).toEqual({ key: 'shortlistReady' });
+    expect(jobHeaderView(approved, null, 3, null, 3, false).stages[5]?.line).toEqual({ key: 'notStarted' });
   });
 
   it('only the stage segments are a current page', () => {

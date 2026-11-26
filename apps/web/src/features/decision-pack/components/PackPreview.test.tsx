@@ -35,30 +35,45 @@ const preview: Preview = {
       backedScore: 68,
       upperBound: 84,
       summary: {
-        strengths: [row(id(10), 'LLM systems in production', 4, 4, 3)],
-        risks: [row(id(11), 'Cost and reliability', 1, 4, 2)],
-        explanation: {
-          source: 'template',
-          statements: [
+        status: 'ready',
+        summary: {
+          strengths: [
             {
-              text: 'The cited work behind LLM systems in production.',
+              text: 'The candidate authored 412 of 460 commits in llm-eval-harness.',
               citations: [
-                { itemId: null, label: 'facts', quote: 'LLM systems in production' },
-                { itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits' },
+                { itemId: id(20), label: 'llm-eval-harness', quote: 'authored 412 of 460 commits', claim: false },
               ],
             },
           ],
+          risks: [
+            {
+              text: 'Cost and reliability is a claim with nothing to inspect.',
+              citations: [
+                { itemId: null, label: 'Assessment', quote: 'Cost and reliability, 15% of the weight', claim: false },
+              ],
+            },
+          ],
+          round1: null,
+          recommendation: {
+            action: 'advance',
+            focus: 'Cost and reliability',
+            citations: [{ itemId: null, label: 'Assessment', quote: 'Work meets the need', claim: false }],
+          },
         },
       },
     },
-    { candidateId: id(2), name: 'Arjun Menon', backedScore: 64, upperBound: 76, summary: null },
     {
-      candidateId: id(3),
-      name: 'Huda Al Mansoori',
-      backedScore: 61,
-      upperBound: 82,
-      summary: { strengths: [row(id(12), 'Arabic and bilingual NLP', 3, 3, 3)], risks: [], explanation: null },
+      candidateId: id(2),
+      name: 'Arjun Menon',
+      backedScore: 64,
+      upperBound: 76,
+      summary: {
+        status: 'unavailable',
+        strengths: [row(id(10), 'LLM systems in production', 4, 4, 3)],
+        risks: [row(id(11), 'Cost and reliability', 1, 4, 2)],
+      },
     },
+    { candidateId: id(3), name: 'Huda Al Mansoori', backedScore: 61, upperBound: 82, summary: { status: 'preparing' } },
   ],
 };
 
@@ -74,30 +89,37 @@ function renderPreview() {
 }
 
 describe('PackPreview', () => {
-  it('Scenario: Open the preview: each name, score with its range and basis, strengths, risks and the cited summary', () => {
+  it('Scenario: Open the preview: each name, score with its range and basis, the cited strengths, risks and recommendation', () => {
     renderPreview();
     expect(screen.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeTruthy();
     const sara = screen.getByRole('region', { name: 'Sara Al Qahtani' });
     expect(within(sara).getByRole('img', { name: '68 backed by evidence · up to 84 if claims hold' })).toBeTruthy();
     expect(within(sara).getByRole('list', { name: 'Backed by evidence' }).textContent).toContain(
-      'LLM systems in production',
+      'The candidate authored 412 of 460 commits in llm-eval-harness.',
     );
     expect(within(sara).getByRole('list', { name: 'Still to test in the interview' }).textContent).toContain(
-      'Cost and reliability',
+      'Cost and reliability is a claim with nothing to inspect.',
     );
-    expect(within(sara).getByText("Credalent's summary")).toBeTruthy();
     expect(within(sara).getByText('authored 412 of 460 commits').closest('mark')).toBeTruthy();
     expect(within(sara).getByText('Source: llm-eval-harness')).toBeTruthy();
-    expect(within(sara).getByText('Summary generated without AI')).toBeTruthy();
-    // A member whose assessment moved on keeps the pack's scores, with no reasons from the newer one.
+    expect(within(sara).getByText("Credalent's recommendation:").textContent).toBe(
+      "Credalent's recommendation: advance, and look into Cost and reliability next",
+    );
+    expect(within(sara).getByText('Round 1 finding').nextElementSibling?.textContent).toBe(
+      'None stated in this summary.',
+    );
+    // No usable cited answer: the assessment's own levels against the need, from the snapshot the member joined with.
     const arjun = screen.getByRole('region', { name: 'Arjun Menon' });
     expect(within(arjun).getByRole('img', { name: '64 backed by evidence · up to 76 if claims hold' })).toBeTruthy();
-    expect(within(arjun).getByText(/^Summary unavailable/)).toBeTruthy();
-    // A member with no explanation yet says so under the summary's heading.
-    const huda = screen.getByRole('region', { name: 'Huda Al Mansoori' });
-    expect(within(huda).getByText("Credalent's summary").parentElement?.textContent).toContain(
-      'No explanation is available yet.',
+    expect(within(arjun).getByText('Summary unavailable')).toBeTruthy();
+    expect(within(arjun).getByRole('list', { name: 'Backed by evidence' }).textContent).toContain(
+      'LLM systems in production',
     );
+    expect(within(arjun).getByRole('list', { name: 'Still to test in the interview' }).textContent).toContain(
+      'Cost and reliability',
+    );
+    const huda = screen.getByRole('region', { name: 'Huda Al Mansoori' });
+    expect(within(huda).getByRole('status').textContent).toBe('Preparing summary');
     expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.getByText('Powered by Credalent')).toBeTruthy();
     expect(screen.getByText('Prepared 17 Nov 2026 · Confidential')).toBeTruthy();

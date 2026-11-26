@@ -47,6 +47,9 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../../packages/db
+      '@credalent/decisions':
+        specifier: workspace:*
+        version: link:../../../modules/decisions
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../../../modules/evidence
@@ -353,6 +356,9 @@ importers:
 
   modules/decisions:
     dependencies:
+      '@credalent/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@credalent/assessment':
         specifier: workspace:*
         version: link:../assessment
@@ -362,9 +368,15 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/evidence':
+        specifier: workspace:*
+        version: link:../evidence
       '@credalent/jobs':
         specifier: workspace:*
         version: link:../jobs
+      '@credalent/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@credalent/workspaces':
         specifier: workspace:*
         version: link:../workspaces
@@ -1046,6 +1058,9 @@ importers:
       '@credalent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@credalent/decisions':
+        specifier: workspace:*
+        version: link:../../modules/decisions
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../../modules/evidence
@@ -7099,7 +7114,7 @@ snapshots:
 
   '@types/pg@8.15.6':
     dependencies:
-      '@types/node': 25.9.9
+      '@types/node': 26.6.6
       pg-protocol: 1.16.1
       pg-types: 2.2.0
 
@@ -7113,7 +7128,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 25.9.9
+      '@types/node': 26.6.6
 
   '@types/ssh2-streams@0.1.13':
     dependencies:

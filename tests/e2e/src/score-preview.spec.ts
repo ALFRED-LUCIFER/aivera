@@ -181,6 +181,10 @@ for (const theme of themes) {
     context,
     baseURL,
   }) => {
+    // Seven scenarios with two ranking reads, a reload and several axe scans: about 11 s locally and past the 30 s
+    // default on a CI runner, every navigation taking about 2 s (CI run 45877523565's trace stopped mid-scenario at
+    // 30 s on both attempts), so slow throughout rather than stuck at one step.
+    test.setTimeout(90_000);
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: creator });
     const audits = await auditEntries();
