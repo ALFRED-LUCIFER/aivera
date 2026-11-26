@@ -42,4 +42,5 @@ recorded:
             quote: 'recon-engine: authored 64 of 80 commits'
   judge:
     pass: true
-    reason: Every statement says only what the source it cites shows, every share of the weight and count of competencies is a placeholder matching a line in the facts source, no statement holds a percentage or number word except as quoted, and no statement recommends an action or names the candidate.
+    reason: Every statement is directly supported by its cited source, uses only quoted figures, and contains no
+      recommendations, candidate names, percentages, or number words outside of quoted figures.

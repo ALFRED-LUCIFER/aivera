@@ -3,8 +3,7 @@ id: good
 case: evidence.mapToCompetency/sara-eval-harness
 expected: pass
 recorded:
-  judgePrompt: evals.judge@5
+  judgePrompt: evals.judge@6
   verdict:
     pass: true
-    reason: >-
-      Every link's limit names what its evidence does not show, as required by the rubric.
+    reason: Every link's limit names what its evidence does not show, as required by the rubric.

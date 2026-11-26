@@ -37,4 +37,5 @@ recorded:
             quote: 'eval-suite: authored 88 of 120 commits, with a CI gate on regressions'
   judge:
     pass: true
-    reason: Every statement says only what the source it cites shows, every count is a placeholder for a line in the facts source, and no statement recommends an action or names the candidate.
+    reason: Every statement is directly supported by the quoted source, uses only figures quoted from the source, and
+      contains no percentages, number words, recommendations, or candidate names.

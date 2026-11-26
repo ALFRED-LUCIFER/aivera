@@ -42,4 +42,5 @@ recorded:
             quote: 'saga-orchestrator: authored 77 of 90 commits'
   judge:
     pass: true
-    reason: Every statement says only what the source it cites shows, placeholders match the facts source, and no statement holds a percentage or number word unless quoted from the source.
+    reason: Every statement is directly supported by its cited source, uses only figures quoted from the source, and
+      contains no recommendations, percentages, or number words outside of quoted figures.
