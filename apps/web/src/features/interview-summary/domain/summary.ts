@@ -1,4 +1,10 @@
-import type { Finding, SummaryPreview, SummaryStatus } from '@credalent/interviews';
+import {
+  includedByDefault as included,
+  lowersEvidence,
+  type Finding,
+  type SummaryPreview,
+  type SummaryStatus,
+} from '@credalent/interviews';
 import { z } from 'zod';
 
 // The meeting-summary panel on the interview page (AIV-P1-115) as the server hands it to the browser. Pure. The rules
@@ -18,6 +24,8 @@ export type SummaryProposal = {
   change: { from: Strength | null; to: Strength | null } | null;
   /** "Already changed by the scorecard": excluded by default. */
   alreadyChanged: boolean;
+  /** "Lowers the evidence": the change lowers the strength, so it starts excluded (AIV-P1-138). */
+  lowers: boolean;
 };
 
 /** The panel's data: `summary` null before anything was pasted. Never the summary's text. */
@@ -50,9 +58,16 @@ export type SummaryErrorKey = (typeof SUMMARY_ERROR_KEYS)[number];
 export const errorKey = (code: string): SummaryErrorKey =>
   (SUMMARY_ERROR_KEYS as readonly string[]).includes(code) ? (code as SummaryErrorKey) : 'failed';
 
-/** The changes ticked when the proposals first show: each one that changes something the scorecard has not changed. */
+/** A change that lowers the strength (Not shown to Claim only); not one that leaves Claim only as it is. */
+export const lowers = (finding: Finding, change: SummaryProposal['change']) =>
+  !!change && change.from !== null && change.from !== change.to && lowersEvidence(finding);
+
+/**
+ * The changes ticked when the proposals first show: each one that changes something the scorecard has not changed,
+ * unless it lowers the evidence (the interviews module's rule, AIV-P1-138).
+ */
 export const includedByDefault = (proposals: readonly SummaryProposal[]) =>
-  proposals.filter((p) => p.change && !p.alreadyChanged).map((p) => p.competencyId);
+  proposals.filter(included).map((p) => p.competencyId);
 
 /**
  * The model's reason as the person's starting text, with the placeholders the redaction put in ("[CANDIDATE]",

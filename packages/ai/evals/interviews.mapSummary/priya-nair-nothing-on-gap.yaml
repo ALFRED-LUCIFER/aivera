@@ -1,6 +1,7 @@
 # Priya Nair (AIV-P1-115): the summary covers timing and next steps only. Nothing in it is about either competency, so
 # no finding is given: both stay gaps and nothing is guessed from silence.
 # The recorded answer is the dev deployment's live answer (`pnpm ai:eval --task interviews.mapSummary --live`).
+# Its live mapSummary@5 answer on 26 Nov 2026 was the same as @4's: only the stamps and the verdict moved.
 id: priya-nair-nothing-on-gap
 people: [Priya Nair, Lina Panel]
 input:
@@ -44,10 +45,10 @@ expected:
     The summary says nothing about the work of either competency, so there is no finding: an empty findings list meets
     this rubric, and any finding fails. Nothing recommends rejecting, advancing or hiring.
 recorded:
-  promptVersion: interviews.mapSummary@4
-  promptHash: 774ac7c424e3
+  promptVersion: interviews.mapSummary@5
+  promptHash: 525b80c80a4a
   output:
     findings: []
   judge:
     pass: true
-    reason: The findings list is empty, which meets the rubric requirement that no findings are present when the summary says nothing about the work of either competency.
+    reason: The findings list is empty, which meets the rubric's requirement that there be no findings since the summary says nothing about the work of either competency.

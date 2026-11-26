@@ -3,6 +3,8 @@ import {
   budgetResetAt,
   changedByScorecard,
   FINDINGS,
+  includedByDefault,
+  lowersEvidence,
   proposedStrength,
   ratingOf,
   SUMMARY_MAX_CHARS,
@@ -26,6 +28,7 @@ const found = (more: Partial<SummaryFinding> = {}): SummaryFinding => ({
 });
 
 describe('the finding-to-strength mapping', () => {
+  // SAFETY: mutation check: mapped not_mentioned to 'claim' (silence proposing a change, AIV-P1-138) -> this test failed
   it('is the scorecard scale: Not shown, Claim only; Partly shown and not mentioned, no change; Clearly shown, Medium', () => {
     expect(FINDINGS.map((f) => [f, proposedStrength(f)])).toEqual([
       ['not_mentioned', null],
@@ -94,6 +97,25 @@ describe('"Already changed by the scorecard"', () => {
     expect(changedByScorecard('clearly_shown', false)).toBe(true);
     expect(changedByScorecard('clearly_shown', true)).toBe(false);
     expect(changedByScorecard(null, false)).toBe(false);
+  });
+});
+
+describe('AIV-P1-138: a downgrade from a summary is off until a person includes it', () => {
+  const lowering = { from: 'supporting', to: 'claim' };
+  const raising = { from: 'supporting', to: 'medium' };
+  // SAFETY: mutation check: `includedByDefault` no longer excluded a lowering finding (its `!lowersEvidence` dropped)
+  // -> this test failed
+  it('a lowering proposal (Not shown to Claim only) starts excluded; a raising one starts included', () => {
+    expect(FINDINGS.filter(lowersEvidence)).toEqual(['not_shown']);
+    expect(includedByDefault({ finding: 'not_shown', change: lowering, alreadyChanged: false })).toBe(false);
+    expect(includedByDefault({ finding: 'clearly_shown', change: raising, alreadyChanged: false })).toBe(true);
+    expect(includedByDefault({ finding: 'strongly_shown', change: raising, alreadyChanged: false })).toBe(true);
+  });
+
+  it('a change the scorecard already made, or none at all, starts excluded as before; the Medium cap is unchanged', () => {
+    expect(includedByDefault({ finding: 'clearly_shown', change: raising, alreadyChanged: true })).toBe(false);
+    expect(includedByDefault({ finding: 'clearly_shown', change: null, alreadyChanged: false })).toBe(false);
+    expect(proposedStrength('strongly_shown')).toBe('medium');
   });
 });
 

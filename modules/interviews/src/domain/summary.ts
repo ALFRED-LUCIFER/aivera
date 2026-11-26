@@ -38,6 +38,17 @@ const PROPOSED: Record<Finding, ProposedStrength | null> = {
 /** The strength a finding proposes: Claim only, Medium, or null for no change. */
 export const proposedStrength = (finding: Finding): ProposedStrength | null => PROPOSED[finding];
 
+/** A finding that lowers the evidence: Not shown proposes Claim only (AIV-P1-138). */
+export const lowersEvidence = (finding: Finding) => PROPOSED[finding] === 'claim';
+
+/**
+ * Ticked when the proposals first show: a change the scorecard has not already made that does not lower the evidence.
+ */
+// SAFETY: a lowering change waits for a person to include it: the model may read silence as "not shown", and silence
+// is a gap to close, never a reason to lower (AGENTS.md 1.6). Decided on the finding, not the model's text.
+export const includedByDefault = (p: { finding: Finding; change: unknown; alreadyChanged: boolean }) =>
+  !!p.change && !p.alreadyChanged && !lowersEvidence(p.finding);
+
 /** The rating the shared score change takes for a finding that proposes a change; null when it proposes none. */
 export const ratingOf = (finding: Finding): Rating | null => (PROPOSED[finding] ? (finding as Rating) : null);
 

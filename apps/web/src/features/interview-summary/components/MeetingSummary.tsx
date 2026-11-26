@@ -27,7 +27,8 @@ import type { SummaryErrorKey, SummaryPanel, SummaryProposal } from '../domain/s
 //   view, DESIGN.md);
 // - "Effect on the assessment" is the preview card's title, inline at the foot of the left column, not a card in the
 //   right column: the right column is the scorecard's (its live preview is AIV-P2-005, #119);
-// - each change has an include checkbox and its own reason field (the ticket), which the artboard's card has not;
+// - each change has an include checkbox and its own reason field (the ticket), which the artboard's card has not; a
+//   change that lowers the evidence starts unticked with a note saying so (AIV-P1-138), which the artboard has not;
 // - the quoted excerpt is highlighted only on a proposal that changes something: the highlighter marks the evidence a
 //   change cites, and "no change" cites none (AGENTS.md 4, DESIGN.md);
 // - "Backed score 55 to 61" carries two basis markers, "Before: Observed" and "After: Projection" (AGENTS.md 1.7);
@@ -205,6 +206,7 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
     value ? t(`rubric.strength.${value}`) : t('interviewSummary.noEvidence');
   const included = view.included.includes(competencyId);
   const reasonId = `summary-reason-${competencyId}`;
+  const lowersId = `summary-lowers-${competencyId}`;
   return (
     <div className="flex flex-col gap-2">
       <span className="font-semibold">
@@ -222,9 +224,15 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
         </q>
       )}
       {proposal.alreadyChanged && <span className="text-meta text-text-2">{t('interviewSummary.alreadyChanged')}</span>}
+      {proposal.lowers && (
+        <span id={lowersId} className="text-meta text-text">
+          {t('interviewSummary.lowers')}
+        </span>
+      )}
       <Checkbox
         label={t('interviewSummary.include')}
         aria-label={`${t('interviewSummary.include')}: ${name}`}
+        aria-describedby={proposal.lowers ? lowersId : undefined}
         checked={included}
         disabled={view.busy}
         onChange={(event) => view.onInclude(competencyId, event.target.checked)}

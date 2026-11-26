@@ -218,6 +218,20 @@ export function textChecks(output: unknown, checks: NonNullable<GoldenCase['expe
 }
 
 /**
+ * AIV-P1-138: a statement at one of the task's statement paths for a competency the case expects no change on (its
+ * `competencyId` among `competencyIds`), whatever its finding. A failure names the path, the competency and the
+ * finding, never the output's text (AGENTS.md 1.2).
+ */
+export const noChange = (output: unknown, statementPaths: string[], competencyIds: readonly string[]): string[] =>
+  statementPaths
+    .flatMap((path) => entriesAt(output, path))
+    .flatMap(({ at, value }) =>
+      isRecord(value) && competencyIds.includes(String(value['competencyId']))
+        ? [`${at}: no change expected for ${String(value['competencyId'])}, got ${String(value['finding'])}`]
+        : [],
+    );
+
+/**
  * No forbidden phrase in the sources as the model reads them (AIV-P2-065): the client's own redaction with the case's
  * identifiers, as the evidence, assistant, assessment and interviews runners send them; a job task's sources go as
  * written. Plain substring, so Arabic matches.
