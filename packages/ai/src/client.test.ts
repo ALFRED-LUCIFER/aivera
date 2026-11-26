@@ -217,11 +217,12 @@ describe('Scenario: Transient failures are retried', () => {
       await vi.waitFor(() => expect(timers).toHaveLength(attempt + 1));
       timers[attempt]?.abort(new DOMException('timed out', 'TimeoutError'));
     }
-    expect(await result).toEqual(new AiUnavailable(draft.task, 'timeout'));
+    expect(await result).toEqual(new AiUnavailable(draft.task, 'timeout', true));
     expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.attempts': 3, 'error.type': 'timeout' });
   });
 
-  it('does not retry a request the model refuses (400)', async () => {
+  // SAFETY: mutation check: AiUnavailable thrown transient for every reason -> this test failed (a 400 marked transient)
+  it('does not retry a request the model refuses (400), and reports it as not transient', async () => {
     const { ai, calls } = setup(fake({ failures: [400] }));
     await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 400'));
     expect(calls).toHaveLength(1);
@@ -233,11 +234,11 @@ describe('Scenario: The model is down', () => {
   it('after 5 failures in a row callers get AiUnavailable and the circuit stays open for 30 seconds', async () => {
     const { ai, calls, clock } = setup(fake({ failures: [503, 503, 503, 503, 503] }));
     await expect(ai.generateStructured(draft)).rejects.toBeInstanceOf(AiUnavailable); // attempts 1-3
-    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 503')); // 4-5, opens
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'http 503', true)); // 4-5, opens
     expect(calls).toHaveLength(5);
 
     clock.now += 29_999;
-    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open', true));
     expect(calls).toHaveLength(5);
     expect(lastSpan()?.attributes).toMatchObject({ 'credalent.ai.outcome': 'circuit_open' });
 
@@ -250,7 +251,7 @@ describe('Scenario: The model is down', () => {
     const { ai, calls } = setup(fake({ failures: [503, 503, 503, 503, 503] }));
     const results = await Promise.allSettled(Array.from({ length: 5 }, () => ai.generateStructured(draft)));
     expect(results.every((r) => r.status === 'rejected')).toBe(true);
-    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open'));
+    await expect(ai.generateStructured(draft)).rejects.toThrow(new AiUnavailable(draft.task, 'circuit open', true));
     expect(calls).toHaveLength(5);
   });
 });
@@ -341,7 +342,7 @@ describe('Scenario: Workspace budget', () => {
     async (_, budget, requests) => {
       const { ai, calls } = setup(fake(), undefined, budget);
       const error = await ai.generateStructured(draft).catch((e: unknown) => e);
-      expect(error).toEqual(new AiUnavailable(draft.task, 'budget store'));
+      expect(error).toEqual(new AiUnavailable(draft.task, 'budget store', true));
       expect((error as Error).message).not.toContain('Draft competencies');
       expect(calls).toHaveLength(requests);
       expect(lastSpan()?.attributes).toMatchObject({

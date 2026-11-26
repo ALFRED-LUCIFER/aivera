@@ -2196,6 +2196,15 @@ describe('Feature: Decision pack summaries', () => {
     }
   });
 
+  // SAFETY: mutation check: removed the competency_uncited check from schemaFor -> this test failed (it parsed)
+  it('a strength naming a competency cites the facts line naming it: the excerpt alone is refused', () => {
+    const excerpt = [{ sourceId: 'S2', quote: 'authored 412 of 460 commits in llm-eval-harness' }];
+    const text = 'The candidate authored 412 of 460 commits in llm-eval-harness, backing LLM systems in production.';
+    expect(parseCard(withFirst('strengths', { text, citations: excerpt })).success).toBe(false);
+    const line = { sourceId: 'S1', quote: 'LLM systems in production, 25% of the weight, needs level 4' };
+    expect(parseCard(withFirst('strengths', { text, citations: [...excerpt, line] })).success).toBe(true);
+  });
+
   // SAFETY: mutation check: removed the not_round1 superRefine -> this test failed (a Round 1 finding citing the CV parsed)
   it('a Round 1 finding must cite the interview notes, and there is none without them', () => {
     const card = recorded();

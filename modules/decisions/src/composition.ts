@@ -106,9 +106,10 @@ export function createDecisions(
   });
 }
 
-// The answers a redelivery cannot change: the member is stored `unavailable` and the card shows the assessment's own
-// strengths. A model that stays unavailable (timeouts, an open circuit) is not one of them: the pack is asked again.
-const REJECTED = [SchemaMismatch, InvalidCitation, UncitedOutput, MissingIdentifiers, SourceTooLong];
+// The answers a redelivery cannot change: the member is stored `unavailable` and the card shows the snapshot's own
+// strengths. That includes a non-transient AiUnavailable (a 4xx such as Azure's content filter, an answer over the
+// service's token cap, no AI service); a transient one (a timeout, an open circuit) is asked again.
+const REJECTED = [SchemaMismatch, InvalidCitation, UncitedOutput, MissingIdentifiers, SourceTooLong, AiUnavailable];
 
 type SummaryConfig = {
   ai: Pick<AiClient, 'generateStructured'> | undefined;
@@ -120,7 +121,7 @@ type SummaryConfig = {
   now?: () => Date;
 };
 
-/** The summary job's ports: how each model outcome is classed, and how the pack is asked again. */
+/** The summary job's ports: how each model outcome is classed and how the pack is asked again (for its test). */
 export function packSummaryPorts(config: SummaryConfig): SummaryPorts {
   const now = config.now ?? (() => new Date());
   return {
@@ -131,10 +132,10 @@ export function packSummaryPorts(config: SummaryConfig): SummaryPorts {
     identifiersOf: config.identifiersOf,
     now,
     // shortcut: the model is called inside the consumer's transaction, member by member, as the meeting-summary job
-    // does: a member's worst case is 2 schema x 3 transient attempts x 45 s plus backoff (about 4.5 min), held under the
-    // message lock (1 min, renewed for about 5 min), so a large pack on a slow model can lose its lock and be redelivered
-    // (each member is still written once). Store each member in its own transaction, or call the model outside it, if
-    // pilot packs show redeliveries.
+    // does: a member's worst case is 2 schema x 3 transient attempts x 45 s plus backoff (about 4.5 min), held under
+    // the message lock (1 min, renewed for about 5 min), so a large pack on a slow model can lose its lock and be
+    // redelivered (each member is still written once). Store each member in its own transaction, or call the model
+    // outside it, if pilot packs show redeliveries.
     async summarise({ workspaceId, sources, identifiers }) {
       if (!config.ai) return 'failed';
       const request = summariseMemberRequest(sources);
@@ -145,7 +146,7 @@ export function packSummaryPorts(config: SummaryConfig): SummaryPorts {
         if (error instanceof BudgetExceeded) return 'budget_exceeded';
         // The error's name only: never a source, the prompt or the answer (AGENTS.md 1.2).
         const logged = { 'workspace.id': workspaceId, 'error.type': (error as Error).name };
-        if (error instanceof AiUnavailable) {
+        if (error instanceof AiUnavailable && error.transient) {
           log.warn(logged, 'pack member not summarised: model unavailable, asked again later');
           return 'model_unavailable';
         }
@@ -168,10 +169,10 @@ export function packSummaryPorts(config: SummaryConfig): SummaryPorts {
 /**
  * The worker's job `decisions.pack.summarise` (AIV-P2-011), on `PACK_SUMMARY_QUEUE`: after `PackReady.v1` or
  * `PackMembersAdded.v1` it writes each new member's cited strengths, risks, Round 1 finding and recommendation through
- * `decisions.summariseMember`, in the envelope's workspace transaction, once per message id (`decisions.inbox`) and once
- * per member. `ai` undefined (no model configured) stores every member `unavailable`. A spent daily AI budget schedules
- * `PackReady.v1` again for 00:05 UTC the next day, and a model that stays unavailable for 15 minutes later. The reads
- * come from the worker's composition root.
+ * `decisions.summariseMember`, in the envelope's workspace transaction, once per message id (`decisions.inbox`) and
+ * once per member. `ai` undefined (no model configured) stores every member `unavailable`. A spent daily AI budget
+ * schedules `PackReady.v1` again for 00:05 UTC the next day, and a transient outage 15 minutes later, for up to 6 hours
+ * after the member joined. The reads come from the worker's composition root.
  */
 export function createPackSummaryHandlers(config: SummaryConfig): Handler<unknown>[] {
   const ports = packSummaryPorts(config);

@@ -188,15 +188,36 @@ describe('summarisePack', () => {
   });
 
   // SAFETY: mutation check: summarisePack stored 'model_unavailable' members as unavailable -> this test failed
-  it('a model that stays unavailable stores nothing and asks for the pack again 15 minutes later: an outage is no answer', async () => {
+  it('a transient outage stores nothing and asks for the pack again once, 15 minutes later: an outage is no answer', async () => {
     const { store, ports, run } = setup({ summarise: async () => 'model_unavailable' });
     await run();
     expect(store.insertSummary).not.toHaveBeenCalled();
-    expect(ports.retryAt).toHaveBeenCalledWith(
-      'w1',
-      { packId: PACK, jobId: JOB },
-      new Date('2026-11-17T08:15:00.000Z'),
-    );
+    expect(vi.mocked(ports.retryAt).mock.calls).toEqual([
+      ['w1', { packId: PACK, jobId: JOB }, new Date('2026-11-17T08:15:00.000Z')],
+    ]);
+  });
+
+  // SAFETY: mutation check: summarisePack returned at the first 'model_unavailable' -> this test failed (Arjun not summarised)
+  it("an outage for one member does not hold back the next: Arjun is summarised, and the pack asked again for Sara's", async () => {
+    let calls = 0;
+    const { store, ports, run } = setup({
+      summarise: async () =>
+        calls++ === 0 ? 'model_unavailable' : { promptVersion: 'decisions.summariseMember@2', answer },
+    });
+    await run();
+    expect(store.insertSummary.mock.calls.map(([s]) => [s.candidateId, s.status])).toEqual([[ARJUN, 'ready']]);
+    expect(ports.retryAt).toHaveBeenCalledTimes(1);
+  });
+
+  // SAFETY: mutation check: removed the retry window from summarisePack -> this test failed (rescheduled for ever)
+  it('past 6 hours after the member joined, an outage stores the member unavailable and asks no more', async () => {
+    const { store, ports, run } = setup({
+      summarise: async () => 'model_unavailable',
+      now: () => new Date('2026-11-17T14:00:00.000Z'),
+    });
+    await run();
+    expect(store.insertSummary.mock.calls.map(([s]) => s.status)).toEqual(['unavailable', 'unavailable']);
+    expect(ports.retryAt).not.toHaveBeenCalled();
   });
 
   it('a pack that is gone does nothing', async () => {

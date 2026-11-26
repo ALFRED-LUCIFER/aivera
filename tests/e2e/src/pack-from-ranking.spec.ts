@@ -279,7 +279,9 @@ async function openRanking(page: Page) {
   await signIn(page, { email: creator });
   await page.goto('/app/jobs');
   await page.getByRole('link', { name: 'Senior AI Engineer' }).click();
-  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
+  // The ranking's first server render after sign-in took over 5 s on a CI runner with two workers (run 45877523565,
+  // passed on retry); its title comes with that render.
+  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent', { timeout: 15_000 });
   const table = page.getByRole('table', { name: 'Ranked candidates' });
   // The rows have streamed in, so focus stays where it is put.
   await expect(table.getByRole('checkbox', { name: /^Select / })).toHaveCount(6);

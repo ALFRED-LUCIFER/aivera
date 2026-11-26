@@ -39,9 +39,23 @@ function ports(error: Error) {
 }
 
 describe('packSummaryPorts: each model outcome', () => {
-  // SAFETY: mutation check: removed the AiUnavailable branch from summarise -> this test failed (it threw)
-  it('a model that stays unavailable is no answer: asked again later, never stored unavailable', async () => {
-    expect(await ports(new AiUnavailable(TASK, 'timeout')).summarise()).toBe('model_unavailable');
+  // SAFETY: mutation check: removed the transient AiUnavailable branch from summarise -> this test failed ('failed')
+  it.each([
+    new AiUnavailable(TASK, 'timeout', true),
+    new AiUnavailable(TASK, 'circuit open', true),
+    new AiUnavailable(TASK, 'http 503', true),
+  ])('a transient outage ($message) is no answer: asked again later, never stored unavailable', async (error) => {
+    expect(await ports(error).summarise()).toBe('model_unavailable');
+  });
+
+  // SAFETY: mutation check: summarise treated every AiUnavailable as transient -> this test failed (rescheduled)
+  it.each([
+    new AiUnavailable(TASK, 'http 400'), // Azure's content filter: the same request is refused every time (#614)
+    new AiUnavailable(TASK, 'http 401'),
+    new AiUnavailable(TASK, 'over token cap'), // charged already: asking again would spend the budget again
+    new AiUnavailable(TASK, 'no ai service'),
+  ])('an outage asking again cannot fix ($message) is stored unavailable, not rescheduled', async (error) => {
+    expect(await ports(error).summarise()).toBe('failed');
   });
 
   it('a spent daily budget waits for the reset', async () => {
@@ -63,7 +77,7 @@ describe('packSummaryPorts: each model outcome', () => {
   });
 
   it("asks again with a new PackReady.v1 for the same pack, at the time given, on the summary job's queue", async () => {
-    const { built, schedule } = ports(new AiUnavailable(TASK, 'timeout'));
+    const { built, schedule } = ports(new AiUnavailable(TASK, 'timeout', true));
     const at = new Date('2026-11-17T08:15:00.000Z');
     await built.retryAt('w1', { packId: PACK, jobId: JOB }, at);
     expect(schedule).toHaveBeenCalledWith(

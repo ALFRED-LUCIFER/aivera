@@ -12,9 +12,12 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every summary. */
 // @2 (AIV-P2-011 review): a strength states what its excerpt states, in its words; @1 asked what the candidate "built,
 // ran or measured", and its live answer for Arjun Menon called a design and runbook a service he built and ran.
-export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@2';
+// @3: a strength that names a competency cites the facts line naming it (checked in code, `competency_uncited`); @2's
+// answers named one with only the excerpt cited, which the judge passed. The focus is a noun phrase, which the card
+// reads after "look into next:", and a counting word is named in the number rule.
+export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@3';
 
-/** Advance to the next round, or hold while the gap the focus names is closed. Never "reject": thin evidence is a gap. */
+/** Advance to the next round, or hold while the gap the focus names is closed. Never reject: thin evidence is a gap. */
 export const RECOMMENDATIONS = ['advance', 'hold'] as const;
 
 export const MAX_STATEMENT_WORDS = 30;
@@ -25,8 +28,9 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV): what that excerpt states, in its words, citing the excerpt; it may also name the competency the facts say the',
-  'work backs and cite that line. A strength that cites no excerpt is rejected. It states nothing the excerpt does not:',
+  'CV): what that excerpt states, in its words. Its first citation quotes that excerpt; a strength without one is',
+  'rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
+  'competency; naming a competency without that line is rejected. It states nothing the excerpt does not:',
   'no other activity, role, scale or result, no adjective or adverb of your own about the work or its quality, and',
   'nothing about the person;',
   'risks: at most two statements on the competencies still resting on claims, short of the need or with no evidence',
@@ -34,11 +38,12 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'round1: one statement on what the Round 1 interview notes say the candidate showed, citing those notes, or null',
   'when there are no interview notes;',
   'recommendation: action "advance" when the facts say the work meets the need on at least half of the weight,',
-  'otherwise "hold"; focus, a short phrase without a full stop naming the gap from the facts to look into at the next',
-  'interview, or the evidence to request first, or null; cite the facts lines the recommendation rests on.',
+  'otherwise "hold"; focus, the gap from the facts to look into next, as a noun phrase with no verb and no full stop',
+  '(the competency, or the evidence missing for it), or null; cite the facts lines the recommendation rests on.',
   `Each statement is at most ${MAX_STATEMENT_WORDS} words and says only what the sources it cites state. Never call`,
   'anything verified, proven or confirmed: say "independently checked" only where the facts say so.',
-  'Never write a number word. A figure (a count, a level, a share of the weight) may appear only copied exactly from a',
+  'Never write a number word or a word that counts ("both", "one of"): one risk names one competency. A figure (a',
+  'count, a level, a share of the weight) may appear only copied exactly from a',
   'quote the same statement cites.',
   'Refer to the candidate as "the candidate", never by name, and never quote a placeholder ([CANDIDATE], [EMAIL_1]).',
   'Judge only the evidence of the work, never the person.',
@@ -91,14 +96,21 @@ const cites = (s: { citations: { sourceId: string }[] }, among: ReadonlySet<stri
 
 /**
  * The schema for one request, over the labels the model sees: a strength cites inspected work (a source that is neither
- * the facts nor the CV), and the Round 1 finding is null without interview notes and cites them otherwise. A refine only:
- * the JSON schema the model is given, and so the prompt hash, do not change.
+ * the facts nor the CV) and, when it names a competency, the facts line that names it; and the Round 1 finding is null
+ * without interview notes and cites them otherwise. A refine only: the JSON schema the model is given, and so the
+ * prompt hash, do not change.
  */
 const schemaFor = (sources: readonly Source[]) => {
   const labels = (keep: (s: Source, i: number) => boolean) =>
     new Set(sources.flatMap((s, i) => (keep(s, i) ? [sourceLabel(i)] : [])));
   const work = labels((s, i) => i > 0 && s.kind !== 'cv');
   const interview = labels((s) => s.kind === 'interview');
+  // The competencies the facts name, one per line ("<name>, 25% of the weight, needs level 4: ...").
+  const competencies = (sources[0]?.text ?? '')
+    .split('\n')
+    .flatMap((line) => /^(.+?), \d+% of the weight, needs level/.exec(line)?.[1] ?? [])
+    .map((name) => name.toLowerCase());
+  const facts = sourceLabel(0);
   return summariseMemberSchema.superRefine(({ strengths, round1 }, ctx) => {
     strengths.forEach((s, i) => {
       if (!cites(s, work))
@@ -107,6 +119,16 @@ const schemaFor = (sources: readonly Source[]) => {
           path: ['strengths', i],
           message: 'cites work',
           params: { reason: 'not_backed' },
+        });
+      // That the work backs a competency is the assessment's fact, so a strength naming one cites the line naming it.
+      const named = competencies.filter((name) => s.text.toLowerCase().includes(name));
+      const quoted = s.citations.filter((c) => c.sourceId === facts).map((c) => c.quote.toLowerCase());
+      if (named.some((name) => !quoted.some((quote) => quote.includes(name))))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['strengths', i],
+          message: 'cites the facts line of a competency it names',
+          params: { reason: 'competency_uncited' },
         });
     });
     // With no notes given, any finding cites none of them.
