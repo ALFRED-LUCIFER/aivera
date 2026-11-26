@@ -25,6 +25,10 @@ export type Verdict = z.infer<typeof verdict>;
 export const suggestionFaults = ['unrelated', 'listed', 'proxy', 'generic', 'citation'] as const;
 export type SuggestionFault = (typeof suggestionFaults)[number];
 
+// Matched after `\b` (scorers.ts `has`), which only knows ASCII word characters: a phrase starting with "%", a space or
+// a non-ASCII letter would never match where its author means it to.
+const phrases = z.array(z.string().regex(/^\w/, 'a phrase starts with an ASCII letter, digit or _')).min(1);
+
 export const goldenCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -59,6 +63,22 @@ export const goldenCase = z
         prompt: z
           .object({ forbidden: z.array(z.string().min(1)).min(1) })
           .strict()
+          .optional(),
+        /**
+         * AIV-P1-137: text the output's values at a path must hold (`some`: each phrase in at least one; `every`: each
+         * value at least one of the phrases) or never hold (`none`), checked in code (scorers.ts textChecks) and
+         * counted in field match: the rubric points about an item's own words, which the LLM judge does not grade
+         * reliably.
+         */
+        text: z
+          .array(
+            z.union([
+              z.object({ path: z.string().min(1), some: phrases }).strict(),
+              z.object({ path: z.string().min(1), every: phrases }).strict(),
+              z.object({ path: z.string().min(1), none: phrases }).strict(),
+            ]),
+          )
+          .min(1)
           .optional(),
         /** A rubric for the LLM judge, where exact match is not possible. */
         judge: z.string().min(1).optional(),
@@ -138,11 +158,14 @@ const evidenceJudgeCase = z
     case: caseRef,
     /** Replaces every link's limit in that output; omitted, the recorded output is graded as it is. */
     limit: z.string().min(1).optional(),
+    /** AIV-P1-137: a whole output graded in place of the recorded one, for a task whose output has no links. */
+    output: z.record(z.string(), z.unknown()).optional(),
     expected: z.enum(['pass', 'fail']),
     /** The live judge's verdict and the judge prompt it came from: a recorded run refuses one from another prompt. */
     recorded: z.object({ judgePrompt: z.string().min(1), verdict }).strict(),
   })
-  .strict();
+  .strict()
+  .refine((c) => c.limit === undefined || c.output === undefined, 'give a limit or an output, not both');
 /**
  * A suggestion judge golden case (AIV-P2-088): a hand-made draft (`<dir>/fixtures/<from>/<task>/<id>.yaml`) and, for
  * each of its suggestions in order, the fault the suggestion judge must give it or null. Its recorded verdicts are the
@@ -173,7 +196,7 @@ const matchJudgeCase = z
   })
   .strict();
 type Graded = { golden: GoldenCase; output: unknown };
-export type EvidenceJudgeCase = z.infer<typeof evidenceJudgeCase> & Graded & { rubric: string };
+export type EvidenceJudgeCase = Omit<z.infer<typeof evidenceJudgeCase>, 'output'> & Graded & { rubric: string };
 export type SuggestionJudgeCase = z.infer<typeof suggestionJudgeCase> & Graded;
 export type MatchJudgeCase = z.infer<typeof matchJudgeCase>;
 export type JudgeCase = EvidenceJudgeCase | SuggestionJudgeCase | MatchJudgeCase;
@@ -224,7 +247,7 @@ export function loadJudgeCases(dir: string, golden: Map<string, GoldenCase[]>): 
       const target = golden.get(task)?.find((c) => c.id === id);
       if (!target?.expected.judge) throw new Error(`${path}: no golden case ${parsed.data.case} with a judge rubric`);
       const { limit } = parsed.data;
-      let output = target.recorded.output;
+      let output = parsed.data.output ?? target.recorded.output;
       if (limit !== undefined) {
         const links = withLinks.safeParse(output);
         if (!links.success) throw new Error(`${path}: ${parsed.data.case} has no links whose limit to replace`);

@@ -95,19 +95,24 @@ export function contract(task: string, output: unknown, sources: Sources): Ratio
   }
 }
 
-/** Values at a dotted path; a `[*]` segment fans out over an array. */
-export function valuesAt(value: unknown, path: string): unknown[] {
-  return path.split('.').reduce<unknown[]>(
-    (values, segment) =>
-      values.flatMap((current) => {
+/** Values at a dotted path, each with its own path (`a[0].b`); a `[*]` segment fans out over an array. */
+function entriesAt(value: unknown, path: string): { at: string; value: unknown }[] {
+  return path.split('.').reduce<{ at: string; value: unknown }[]>(
+    (found, segment) =>
+      found.flatMap(({ at, value: current }) => {
         const fanOut = segment.endsWith('[*]');
-        const child = isRecord(current) ? current[fanOut ? segment.slice(0, -3) : segment] : undefined;
-        if (fanOut) return Array.isArray(child) ? child : [];
-        return child === undefined ? [] : [child];
+        const name = fanOut ? segment.slice(0, -3) : segment;
+        const child = isRecord(current) ? current[name] : undefined;
+        const here = at ? `${at}.${name}` : name;
+        if (fanOut) return Array.isArray(child) ? child.map((item, i) => ({ at: `${here}[${i}]`, value: item })) : [];
+        return child === undefined ? [] : [{ at: here, value: child }];
       }),
-    [value],
+    [{ at: '', value }],
   );
 }
+
+/** Values at a dotted path; a `[*]` segment fans out over an array. */
+export const valuesAt = (value: unknown, path: string): unknown[] => entriesAt(value, path).map((e) => e.value);
 
 type Point = { path: string; value: unknown };
 const pointsOf = (match: Json): Point[] =>
@@ -181,6 +186,35 @@ export function safety(output: unknown, expected: NonNullable<GoldenCase['expect
     ...expected.forbidden.filter((f) => has(body, f, false)).map((f) => `output contains "${f}"`),
   ];
   return { n: failures.length === 0 ? 1 : 0, total: 1, failures };
+}
+
+/**
+ * AIV-P1-137: the rubric points code can check, so the LLM judge grades only what needs reading for meaning. One point
+ * per check: each `some` phrase is in at least one text at its path, each text holds one of the `every` phrases, and
+ * no `none` phrase is in any, matched from a word
+ * start, case-insensitive, as `safety` matches. A path holding no text fails, so a mistyped path never passes. A failure
+ * names the path, the position and the case's own phrase, never the output's text (AGENTS.md 1.2).
+ */
+export function textChecks(output: unknown, checks: NonNullable<GoldenCase['expected']['text']>): Ratio {
+  const perCheck = checks.map((check) => {
+    const texts = entriesAt(output, check.path).filter(
+      (e): e is { at: string; value: string } => typeof e.value === 'string',
+    );
+    if (texts.length === 0) return [`${check.path}: no text to check`];
+    if ('some' in check)
+      return check.some
+        .filter((p) => !texts.some((t) => has(t.value.toLowerCase(), p, false)))
+        .map((p) => `${check.path}: none has "${p}"`);
+    if ('every' in check)
+      return texts
+        .filter((t) => !check.every.some((p) => has(t.value.toLowerCase(), p, false)))
+        .map((t) => `${t.at}: has none of the phrases`);
+    return texts.flatMap((t) =>
+      check.none.filter((p) => has(t.value.toLowerCase(), p, false)).map((p) => `${t.at}: has "${p}"`),
+    );
+  });
+  const n = perCheck.filter((failures) => failures.length === 0).length;
+  return { n, total: checks.length, failures: perCheck.flat() };
 }
 
 /**
