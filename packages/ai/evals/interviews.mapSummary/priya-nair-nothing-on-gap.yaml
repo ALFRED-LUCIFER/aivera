@@ -25,6 +25,10 @@ expected:
     forbidden: [nervous, children, nationality, religion, accent, her age, reject, should hire, corroborated]
   prompt:
     forbidden: [Priya, Nair]
+  judge: >-
+    The summary covers only joining late, introductions, the notice period and booking a second call: it says nothing
+    about the work of either competency, so the output gives no finding, and an empty findings list meets this rubric.
+    Any finding fails, as does anything that recommends rejecting, advancing or hiring anyone.
 recorded:
   promptVersion: interviews.mapSummary@3
   promptHash: a86045044b9b

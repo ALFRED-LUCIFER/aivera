@@ -1,0 +1,26 @@
+# AIV-P1-137: Arjun Menon's findings with a reason that adds "evaluation of retrieval metrics", which the summary never
+# says (it names one comparison of answer quality across one model family), so the judge must fail it.
+id: summary-arjun-invented-work
+case: interviews.mapSummary/arjun-menon-work-words
+output:
+  findings:
+    - competencyId: C1
+      reason: The candidate compared answer quality across one model family before choosing the smaller model, and led the evaluation of retrieval metrics.
+      finding: partly_shown
+      citations:
+        - sourceId: S1
+          quote: He compared answer quality across one model family before choosing the smaller model
+      claim: false
+    - competencyId: C2
+      reason: The candidate showed the health-check endpoint he added to the queue service and how its alerts cut the time to spot a stalled worker.
+      finding: clearly_shown
+      citations:
+        - sourceId: S1
+          quote: showed the health-check endpoint he added to the queue service and how its alerts cut the time to spot a stalled worker
+      claim: false
+expected: fail
+recorded:
+  judgePrompt: evals.judge@5
+  verdict:
+    pass: false
+    reason: pending

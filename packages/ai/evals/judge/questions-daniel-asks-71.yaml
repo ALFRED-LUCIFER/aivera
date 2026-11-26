@@ -1,0 +1,28 @@
+# AIV-P1-137: the same questions with one asking how the 71% was measured, on which questions, and who built that set
+# (the Gherkin's example); the judge must pass it.
+id: questions-daniel-asks-71
+case: assessment.suggestQuestions/daniel-novak-accuracy-claim
+output:
+  gaps:
+    - competencyId: C1
+      questions:
+        - text: Walk me through how you built the evaluation set for the support assistant and how its answers were graded.
+          strongAnswer: Names the questions in the set, where they came from, who graded the answers and against what standard.
+          weakAnswer: Cannot say where the questions came from or who graded the answers.
+          citations:
+            - sourceId: S1
+              quote: raised answer accuracy from 71% to 88% on the support assistant
+          claim: true
+        - text: How was the 71% measured, on which questions, and who built that set?
+          strongAnswer: Names the questions the 71% and the 88% were measured on, and who built and graded that set.
+          weakAnswer: Cannot say which questions the 71% was measured on or who built that set.
+          citations:
+            - sourceId: S1
+              quote: raised answer accuracy from 71% to 88% on the support assistant
+          claim: true
+expected: pass
+recorded:
+  judgePrompt: evals.judge@5
+  verdict:
+    pass: true
+    reason: pending

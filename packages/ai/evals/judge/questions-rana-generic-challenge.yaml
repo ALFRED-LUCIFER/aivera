@@ -1,0 +1,35 @@
+# AIV-P1-137: Rana Khoury's questions on the authorisation rate, plus one that could be asked about any project; the
+# rubric asks that every question be about card authorisation, declines or conversion, so the judge must fail it.
+id: questions-rana-generic-challenge
+case: assessment.suggestQuestions/rana-khoury-payments
+output:
+  gaps:
+    - competencyId: C1
+      questions:
+        - text: How did you measure the authorisation rate rising from 82% to 91% across the three Gulf markets?
+          strongAnswer: Names the transactions counted, the period before and after, and how declines were split by reason.
+          weakAnswer: Cannot say which transactions or which period the 82% and the 91% were measured on.
+          citations:
+            - sourceId: S1
+              quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+          claim: true
+        - text: What did you change yourself to cut card declines in those three markets?
+          strongAnswer: Names the decline reasons targeted, the change they made, such as retries or routing, and its effect.
+          weakAnswer: Describes the team's work without naming a decline reason or a change they made themselves.
+          citations:
+            - sourceId: S1
+              quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+          claim: true
+        - text: What challenges did you face in a recent project, and how did you address them?
+          strongAnswer: Names a challenge in lifting the authorisation rate and the step they took to address it.
+          weakAnswer: Names no challenge tied to the authorisation rate or the card payments work.
+          citations:
+            - sourceId: S1
+              quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
+          claim: true
+expected: fail
+recorded:
+  judgePrompt: evals.judge@5
+  verdict:
+    pass: false
+    reason: pending
