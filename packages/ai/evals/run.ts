@@ -33,7 +33,7 @@ import {
 /** Where a case's answer comes from: its recorded output, or the task's runner against a model. */
 export type Answer = (task: string, golden: GoldenCase) => Promise<unknown>;
 /** Judges an output against a rubric where exact match is not possible. */
-export type Judge = (rubric: string, golden: GoldenCase, output: unknown) => Promise<Verdict>;
+export type Judge = (rubric: string, golden: GoldenCase, output: unknown, task: string) => Promise<Verdict>;
 /**
  * For each expected free-text value the output missed word for word, the output value that means the same, or null
  * (AIV-P2-083). Keyed by the expected value.
@@ -162,46 +162,69 @@ export const recordedJudge: Judge = async (_rubric, golden) => {
  * cases for other source kinds when a second judged rubric runs live.
  */
 export const judgePrompt = {
-  id: 'evals.judge@6',
+  id: 'evals.judge@7',
   system:
-    'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output and the ' +
-    'sources the output was given. Pass only if the output meets every point of the rubric; the reason names the ' +
-    'point and item it fails, or confirms the point, in one sentence. Check the rubric item by item: when it speaks ' +
-    'of every item (every link, every statement), check each one and fail if any one does not meet it. Judge what ' +
-    'the output says, not how strong the candidate or the evidence is: a limit that names what its evidence does ' +
-    'not show meets a rubric asking for that, however thin the evidence. Text that names nothing specific (praise, ' +
-    '"see the source") does not meet a point asking the output to name something. Every source is about the ' +
+    'You grade one AI output for Credalent, a hiring tool, against a rubric. Read the rubric, the output, its items ' +
+    'and the sources the output was given. Pass only if the output meets every point of the rubric; the reason names ' +
+    'the point and item it fails, or confirms the point, in one sentence. Judge what the output says, not how strong ' +
+    'the candidate or the evidence is: a limit that names what its evidence does not show meets a rubric asking for ' +
+    'that, however thin the evidence. Text that names nothing specific (praise, "see the source", an answer called ' +
+    'vague or generic) does not meet a point asking the output to name something. Every source is about the ' +
     "candidate: a repository source's authored commit count is the candidate's own authorship. Before you pass a " +
     'limit, compare it with the sources: a limit saying the evidence does not show something a source states (who ' +
     'wrote the work, a count, a date) is false, and a false limit does not meet the rubric. A limit about what the ' +
-    "sources leave out is not false. When a rubric point is about the item's own words (a question, an answer " +
-    'note, a quote, a reason), judge those words alone: what its cited source says never makes an item meet such a ' +
-    'point. Fill checks first, one per item the rubric speaks of (each link, each statement, each question), in ' +
-    'order: the item as the output words it, what its cited source says on that point (quote it, or "nothing"), ' +
-    'whether that quote contradicts the item, and whether the item meets the rubric. A quote contradicts an item ' +
+    'sources leave out is not false. The rubric comes as points under keys (p0, p1, ...) and the output as items ' +
+    'under keys (i0, i1, ...). Under each item key, check that item alone, in order: item: the item as the output ' +
+    'words it; sourceSays: what its cited source says on that point (quote it, or "nothing"); contradicted: whether ' +
+    "that quote contradicts the item; then under each point key, words: the item's own words the point is about, " +
+    "copied (for a point about a question, the question's text only; about its answer notes, its strongAnswer and " +
+    'weakAnswer; about a reason, its reason; about a limit, its limit), and met: whether those words alone meet the ' +
+    'point. A point that begins "One" asks for one item: answer met for an item that is that one. Read the ' +
+    'words on their own: its cited source and its other fields never make them meet a point. A question about "a ' +
+    'recent project" is about no project; a note calling an answer vague or generic names nothing it must show; a ' +
+    'question that does not name a figure does not ask how that figure was measured. A quote contradicts an item ' +
     'only when it states the very thing the item says the evidence does not show, all of it, not a related detail: ' +
     'an authored commit count contradicts a limit saying authorship is not shown; "shipped the billing service to ' +
     '3,000 shops" does not contradict a limit saying how the service is monitored or reviewed is not shown. Then ' +
-    'give pass and the reason.',
+    'give the reason, naming the point and item that fails, or confirming the rubric, in one sentence.',
 };
 // AIV-P1-075: on gpt-4.1 and gpt-4.1-mini alike, a bare verdict passed a limit its source contradicts (judge case
 // contradicted-limit) without comparing the two. The judge now writes one check per item before its verdict (the
 // schema's order is the order it writes), and code fails the output when any item does not meet the rubric.
 // AIV-P1-144: on @5 a check could quote S1's "authored 412 of 460 commits" for the authorship limit and still mark it
 // as meeting the rubric (about 3 runs in 50). Each check now says whether its quote contradicts the item, and code
-// fails a contradicted item whatever else it says. AIV-P1-137: an item judged on its own words is not met by its source.
-const judgeAnswer = z.object({
-  // At least one: an empty list is the bare verdict this replaced.
-  checks: z
-    .array(
+// fails a contradicted item whatever else it says.
+// AIV-P1-137: on @6 the judge checked a suggested question by its cited line (a "recent project" question citing a
+// payments line passed), skipped items or checked rubric points instead. Code now lists the items (the task's
+// statements, config.ts) and each is a required key, as the matcher's options are; each check writes the item's own
+// words read alone before its source; points about the whole output are checked on their own, and code fails any.
+/**
+ * The rubric's points, one per sentence, and the output's items: the task's statements (config.ts), or the output. A
+ * point that begins "One" (one question asks ...) is met by any one item; every other point by every item.
+ */
+export function judgeKeys(rubric: string, task: string, output: unknown) {
+  const statements = (taskThresholds[task]?.statements ?? []).flatMap((path) => valuesAt(output, path));
+  return { points: rubric.split(/(?<=[.!?])\s+(?=[A-Z"(])/), items: statements.length ? statements : [output] };
+}
+const keyed = <T extends z.ZodType>(prefix: string, count: number, schema: T) =>
+  z.object(Object.fromEntries(Array.from({ length: count }, (_, i) => [`${prefix}${i}`, schema]))).strict();
+/** Every point and every item is a required key, as the matcher's options are, so none goes unchecked. */
+export const judgeAnswer = (points: number, items: number) =>
+  z.object({
+    checks: keyed(
+      'i',
+      items,
       z
-        .object({ item: z.string(), sourceSays: z.string(), contradicted: z.boolean(), meetsRubric: z.boolean() })
+        .object({
+          item: z.string(),
+          sourceSays: z.string(),
+          contradicted: z.boolean(),
+          points: keyed('p', points, z.object({ words: z.string(), met: z.boolean() }).strict()),
+        })
         .strict(),
-    )
-    .min(1),
-  pass: z.boolean(),
-  reason: z.string().min(1),
-});
+    ),
+    reason: z.string().min(1),
+  });
 
 export const matchPrompt = {
   id: 'evals.match@2',
@@ -356,24 +379,35 @@ export function liveSuggestionJudge(ai: Pick<AiClient, 'generateStructured'>): S
  * fails with SchemaMismatch, never patched (AGENTS.md 3.7); a pass with a failed check of its own is a fail.
  */
 export function liveJudge(ai: Pick<AiClient, 'generateStructured'>): Judge {
-  return async (rubric, golden, output) => {
+  return async (rubric, golden, output, task) => {
+    const { points, items } = judgeKeys(rubric, task, output);
     const answer = await ai.generateStructured({
       task: 'evals.judge',
       workspaceId: evalWorkspaceId,
       promptVersion: judgePrompt.id,
       system: judgePrompt.system,
-      prompt: JSON.stringify({ rubric, output }),
-      schema: judgeAnswer,
+      prompt: JSON.stringify({
+        rubric: Object.fromEntries(points.map((point, i) => [`p${i}`, point])),
+        output,
+        items: Object.fromEntries(items.map((item, i) => [`i${i}`, item])),
+      }),
+      schema: judgeAnswer(points.length, items.length),
       sources: golden.sources,
       // The judge reads the sources redacted, as the task's model did; the output in its prompt carries the stored
       // text of each quote (synthetic cases only).
       identifiers: identifiersOf(golden),
     });
-    const failed = answer.checks.filter((c) => c.contradicted || !c.meetsRubric).length;
-    // A pass with a failed check is a fail; the reason then counts the items, never quotes them (AGENTS.md 1.2).
-    return failed && answer.pass
-      ? { pass: false, reason: `${failed} item(s) do not meet the rubric.` }
-      : { pass: answer.pass, reason: answer.reason };
+    // Decided in code, as faultOf decides a suggestion's: a contradicted item fails, a point fails on any item that
+    // does not meet it, and a point that begins "One" fails when no item meets it.
+    const checks = Object.values(answer.checks);
+    const metBy = (i: number) => checks.filter((c) => c.points[`p${i}`]?.met).length;
+    const failed =
+      checks.filter((c) => c.contradicted).length +
+      points.filter((point, i) => (/^One\b/.test(point) ? !metBy(i) : metBy(i) < checks.length)).length;
+    // The verdict is the checks': a failure's reason counts them, never quotes them (AGENTS.md 1.2).
+    return failed
+      ? { pass: false, reason: `${failed} item(s) or point(s) do not meet the rubric.` }
+      : { pass: true, reason: answer.reason };
   };
 }
 
@@ -462,7 +496,7 @@ async function scoreCase(
     if (proxies.length) scores.safety = { n: 0, total: 1, failures: [...(scores.safety?.failures ?? []), ...proxies] };
     if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);
     if (expected.judge) {
-      const { pass, reason } = await judge(expected.judge, golden, output);
+      const { pass, reason } = await judge(expected.judge, golden, output, task);
       scores.judge = { n: pass ? 1 : 0, total: 1, failures: pass ? [] : [`judge: ${reason}`] };
     }
     const threshold = thresholdsOf(task);
@@ -610,7 +644,7 @@ export const liveJudgeVerdict = (
   suggestionJudge: SuggestionJudge,
   match: (misses: Misses) => Promise<Record<string, string | null>>,
 ): JudgeVerdict => ({
-  evidence: (c) => judge(c.rubric, c.golden, c.output),
+  evidence: (c) => judge(c.rubric, c.golden, c.output, c.case.split('/')[0] ?? ''),
   suggestion: (c) => suggestionJudge(c.golden, c.output),
   match: (c) => match(Object.keys(c.expected).map((expected) => ({ expected, candidates: c.options }))),
 });
