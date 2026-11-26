@@ -1740,7 +1740,21 @@
     "back": "Back to ranking",
     "list": "Decision packs",
     "loading": "Loading the decision pack…",
-    "error": "We could not load the decision pack. Try again."
+    "error": "We could not load the decision pack. Try again.",
+    "openPreview": "Preview as the hiring owner sees it",
+    "preview": {
+      "note": "This is how the hiring owner will see this pack. Nothing is sent or downloaded from this page.",
+      "back": "Back to the pack",
+      "prepared": "Prepared {date, date, ::d MMM yyyy} · Confidential",
+      "lead": "{count, plural, one {# candidate} other {# candidates}}, scored against the competencies you approved. The solid bar is what their work proves. The hatched part is what still rests on their word. You see summaries and sources, not candidates' raw files.",
+      "strengths": "Backed by evidence",
+      "risks": "Still to test in the interview",
+      "noStrengths": "No competency meets the job's need on inspected evidence yet.",
+      "noRisks": "Every competency meets the job's need on inspected evidence.",
+      "summary": "Credalent's summary",
+      "unavailable": "Summary unavailable: their assessment changed after they joined this pack, whose scores are as they were then.",
+      "poweredBy": "Powered by Credalent"
+    }
   },
   "ranking": {
     "duplicates": {
