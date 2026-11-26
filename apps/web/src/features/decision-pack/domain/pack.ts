@@ -45,15 +45,6 @@ export type PackPreview = Pick<PackPage, 'name' | 'job' | 'preparedAt'> & {
 /** Credalent's cited summary of one member in the preview. */
 export type PreviewExplanation = { source: 'ai' | 'template'; statements: ExplanationStatement[] };
 
-/** The workspace's mark until it has a logo (AIV-P2-077): the first letters of its first two words, "GT". */
-export const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => [...word][0]?.toUpperCase())
-    .join('');
-
 /** The pack page's states: loading.tsx and error.tsx render the first two. */
 export type DecisionPackView =
   { status: 'loading' } | { status: 'error'; onRetry: () => void } | { status: 'ready'; pack: PackPage };

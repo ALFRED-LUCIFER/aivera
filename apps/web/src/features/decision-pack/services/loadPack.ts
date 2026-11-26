@@ -36,15 +36,17 @@ export const loadPackPreview = (jobId: string, packId: string): Promise<PackPrev
     const workspace = await getWorkspaces().getWorkspace(ctx);
     // Not authorised itself: `getPack` authorised this job for the member.
     const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
-    const names = new Map(
-      rubric?.id === pack.rubricVersionId ? rubric.competencies.map((c) => [c.id, c.name] as const) : [],
-    );
+    // Every member's snapshot is on the pack's rubric version; once another is approved its competencies have no names.
+    const onPackRubric = rubric?.id === pack.rubricVersionId;
+    const names = new Map(onPackRubric ? rubric.competencies.map((c) => [c.id, c.name] as const) : []);
     const members: PackPreview['members'] = [];
     for (const [i, m] of pack.members.entries()) {
       const { candidateId, backedScore, upperBound } = m;
       const shown = { candidateId, name: page.members[i]?.name ?? null, backedScore, upperBound };
-      const latest = await getAssessment().getLatestAssessment(ctx, m.candidateId, jobId);
+      const latest = onPackRubric ? await getAssessment().getLatestAssessment(ctx, m.candidateId, jobId) : null;
       // SAFETY: only the assessment the member joined with, so a newer result's reasons never sit beside the pack's scores.
+      // shortcut: no read of a snapshot by id, so a member whose assessment moved on shows no summary at all; read the
+      // pack's own snapshot when AIV-P2-011 (#125) stores the pack's summaries.
       if (latest?.id !== m.assessmentId) {
         members.push({ ...shown, summary: null });
         continue;

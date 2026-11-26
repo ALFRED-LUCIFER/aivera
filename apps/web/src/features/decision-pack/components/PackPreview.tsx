@@ -14,7 +14,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { packHref } from '@/features/ranking/domain/pack.ts';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
-import { initials, type PackPreview as Preview, type PreviewExplanation } from '../domain/pack.ts';
+import { initials } from '@/features/shell/domain/shell.ts';
+import type { PackPreview as Preview, PreviewExplanation } from '../domain/pack.ts';
 
 // AIV-P1-116: the decision pack as the hiring owner will see it, in the workspace's branding, from the client view of
 // the shortlist (docs/01-design/artboards/ClientPack.dc.html) with the header and "Powered by Credalent" of the shared
@@ -28,13 +29,20 @@ import { initials, type PackPreview as Preview, type PreviewExplanation } from '
 //   #127) renders it on its own. So the title is an h2 and each name an h3, under the job header's h1;
 // - the logo is the workspace's initials on the default ink accent, as ELayout draws it, beside the workspace's name:
 //   no logo or accent is stored until AIV-P2-077 (#520), so every workspace has the default header;
+// - the header's line reads "Prepared <date> · Confidential" (the ticket's wording), not "Shared with you by your
+//   recruiter · <date>": nothing is shared yet. ELayout's "Sent by … through Credalent" line and workspace footer
+//   block are left out: they belong to emails (AIV-P2-077, #521);
 // - the title is the pack's name and job ("Round 2 shortlist: Senior AI Engineer"), not "Senior AI Engineer: who should
 //   we interview in Round 2?": the question is not stored;
 // - "Backed by evidence" and "Still to test in the interview" list the competencies that meet the job's need and those
-//   short of it, each on the shared NeedVsProvenBar, not a sentence: the generated sentences are AIV-P2-011 (#125);
+//   short of it, each on the shared NeedVsProvenBar, not a sentence: the generated sentences are AIV-P2-011 (#125).
+//   shortcut: a level names no source here (only the summary cites evidence); cite each level's items when AIV-P2-011
+//   (#125) writes the pack's cited strengths;
 // - Credalent's summary is the cited ranking explanation (AIV-P1-033), each cited phrase highlighted with its source,
 //   until AIV-P2-011 (#125) generates the pack's recommendation; a member whose assessment changed after joining shows
-//   "Summary unavailable" with the pack's scores;
+//   "Summary unavailable" with the pack's scores. The statements render as the profile's "Why they are ranked here"
+//   does, without its links to evidence cards (the preview has none); that renderer is the evidence profile's own
+//   component, which a feature may not import, and AIV-P2-011 (#125) replaces this one;
 // - no Interview, Hold or Pass choice, feedback field or "Send decisions to the recruiter": client choices are
 //   AIV-P2-014 (#128, #129);
 // - the cards' padding is the shared Card's 16 px, not 24 px, and "Powered by Credalent" the 13 px meta size, not 12 px:

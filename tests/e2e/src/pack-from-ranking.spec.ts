@@ -337,6 +337,7 @@ test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and
   await expect(view.getByRole('region', { name: 'Maria Santos' })).toHaveCount(0);
 });
 
+// SAFETY: mutation check: rendered "sara.alqahtani@example.com" under each name in PackPreview -> this test failed
 test('AIV-P1-116 Scenarios: No private data is shown, and Nothing leaves Credalent', async ({ page }) => {
   const before = await sentAndStored();
   await openPreview(page);
@@ -373,11 +374,12 @@ for (const theme of themes) {
     }).toPass();
     expect(await css(back, 'outline-style')).toBe('solid');
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe(packPath);
+    await expect(page).toHaveURL((url) => url.pathname === packPath);
+    await expect(page.getByRole('link', { name: 'Preview as the hiring owner sees it' })).toBeVisible();
   });
 }
 
+// SAFETY: mutation check: the job layout returned its children instead of forbidden() for a job not granted -> this test failed (no 403 page)
 test("AIV-P1-116 Scenario: Only the recruiter's jobs: a hiring owner granted another job is refused the preview", async ({
   page,
 }) => {

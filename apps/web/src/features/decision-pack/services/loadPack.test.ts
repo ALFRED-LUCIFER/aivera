@@ -221,6 +221,14 @@ describe('loadPackPreview (AIV-P1-116)', () => {
     expect(fake.explain).toHaveBeenCalledTimes(1);
   });
 
+  // SAFETY: mutation check: made `latest` read whatever the approved rubric -> this test failed (empty strengths and risks shown)
+  it('once another rubric version is approved, no member has a summary (its competencies would have no names)', async () => {
+    fake.approvedRubric.mockResolvedValue({ id: id(15), competencies: [] });
+    const preview = await loadPackPreview(JOB, PACK);
+    expect(preview !== 'notFound' && preview?.members.map((m) => m.summary)).toEqual([null, null]);
+    expect(fake.explain).not.toHaveBeenCalled();
+  });
+
   it('an explanation of another result is not shown', async () => {
     fake.explain.mockResolvedValue({ ...why, resultId: id(14) });
     const preview = await loadPackPreview(JOB, PACK);

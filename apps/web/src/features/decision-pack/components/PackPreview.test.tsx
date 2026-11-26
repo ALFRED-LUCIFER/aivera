@@ -3,7 +3,7 @@ import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { initials, type PackPreview as Preview } from '../domain/pack.ts';
+import type { PackPreview as Preview } from '../domain/pack.ts';
 import { PackPreview } from './PackPreview.tsx';
 
 // AIV-P1-116: the pack as the hiring owner will see it. Synthetic cast and ids only.
@@ -109,13 +109,4 @@ describe('PackPreview', () => {
       ['Back to the pack', `/app/jobs/${id(30)}/packs/${id(31)}`],
     ]);
   });
-});
-
-describe('initials', () => {
-  it.each([
-    ['Gulf Talent Partners', 'GT'],
-    ['demo', 'D'],
-    ['  Pack   1764 ', 'P1'],
-    ['', ''],
-  ])('%j is %j', (name, mark) => expect(initials(name)).toBe(mark));
 });
