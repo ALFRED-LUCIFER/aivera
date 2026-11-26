@@ -1761,8 +1761,10 @@ describe('Feature: A meeting summary proposes nothing for a competency it never 
     ['daniel-novak-clear-evidence', 'C2'],
     ['maria-santos-injection', 'C2'],
   ])('Scenario Outline: The eval fails a finding the summary does not support: %s, %s', async (id, competencyId) => {
-    const summaryCase = caseOf(task, id);
-    expect(summaryCase.expected.noChange).toEqual([competencyId]);
+    // Omar's case does not carry its gate yet (a shortcut in its YAML): the gate is the same with it set here.
+    const inYaml = caseOf(task, id);
+    expect(inYaml.expected.noChange).toEqual(id.startsWith('omar') ? undefined : [competencyId]);
+    const summaryCase = { ...inYaml, expected: { ...inYaml.expected, noChange: [competencyId] } };
     const { findings } = summaryOutput.parse(summaryCase.recorded.output);
     const cited = findings.filter((f) => f.competencyId !== competencyId);
     // The case's own answer, then the same answer with a not_shown for the competency, citing words it already cites.
@@ -1779,10 +1781,21 @@ describe('Feature: A meeting summary proposes nothing for a competency it never 
     expect(caseLines(report).join('\n')).toContain(`FAIL ${task} ${id}:`);
   });
 
+  // SAFETY: mutation check: removed the `noChange` refine from goldenCase -> this test failed (C9 parsed)
+  it('a no-change id the case does not list is refused when the golden set loads, so the gate cannot pass vacuously', () => {
+    const daniel = caseOf(task, 'daniel-novak-clear-evidence');
+    const typo = { ...daniel, expected: { ...daniel.expected, noChange: ['C9'] } };
+    expect(goldenCaseSchema.safeParse(typo).error?.issues.map((i) => i.message)).toEqual([
+      'expected.noChange names a competency id that input.competencies does not list',
+    ]);
+    expect(goldenCaseSchema.safeParse(daniel).success).toBe(true);
+  });
+
   it('a partly_shown finding for the competency fails the gate too: "stays a gap" means no finding at all', async () => {
-    const omar = caseOf(task, 'omar-al-suwaidi-protected-traits');
+    const recorded = caseOf(task, 'omar-al-suwaidi-protected-traits');
+    const omar = { ...recorded, expected: { ...recorded.expected, noChange: ['C1'] } };
     const { findings } = summaryOutput.parse(omar.recorded.output);
-    const extra = { ...findings[0], competencyId: 'C1', finding: 'partly_shown' };
+    const extra = { ...findings.find((f) => f.competencyId === 'C2'), competencyId: 'C1', finding: 'partly_shown' };
     const report = await run(task, [
       withOutput(omar, { findings: [...findings.filter((f) => f.competencyId !== 'C1'), extra] }),
     ]);
@@ -1994,14 +2007,15 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   // SAFETY: mutation check: removed omar-al-suwaidi-protected-traits' `none: [not_shown]` check -> this test failed
   it("Omar's summary says nothing he could not show: a not_shown finding fails in code", async () => {
     const omar = caseOf(summaries, 'omar-al-suwaidi-protected-traits');
-    const found = structuredClone(omar.recorded.output) as { findings: { finding: string }[] };
-    // The recorded findings, and a not_shown beside them (@5's recording has none to turn into one).
-    const [first] = found.findings;
-    if (first) found.findings.push({ ...first, finding: 'not_shown' });
+    const found = structuredClone(omar.recorded.output) as { findings: { competencyId: string; finding: string }[] };
+    // The recorded retrieval finding (a shortcut in the case's YAML) turned into a not_shown: still schema-valid.
+    const retrieval = found.findings.findIndex((f) => f.competencyId === 'C1');
+    const c1 = found.findings[retrieval];
+    if (c1) c1.finding = 'not_shown';
     const report = await run(summaries, [withOutput(omar, found)]);
     expect([report.passed, report.cases[0]?.scores.fieldMatch?.failures]).toEqual([
       false,
-      [`findings[${found.findings.length - 1}].finding: has "not_shown"`],
+      [`findings[${retrieval}].finding: has "not_shown"`],
     ]);
   });
 

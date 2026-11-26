@@ -54,11 +54,11 @@ expected:
     advancing or hiring.
 recorded:
   promptVersion: interviews.mapSummary@5
-  promptHash: 604751f829ea
+  promptHash: 376d2d76250b
   output:
     findings:
       - competencyId: C1
-        reason: The candidate built a 200-question evaluation set and showed how answers were graded.
+        reason: The candidate walked through the 200-question evaluation set he built and showed how answers were graded.
         finding: clearly_shown
         citations:
           - sourceId: S1
@@ -68,4 +68,4 @@ recorded:
         claim: false
   judge:
     pass: true
-    reason: The finding's reason states only what the summary says the candidate did for that competency, with no added work, metric, or result.
+    reason: The finding's reason matches the summary, stating only what the summary says the candidate did for that competency.

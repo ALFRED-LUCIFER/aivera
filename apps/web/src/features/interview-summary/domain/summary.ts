@@ -1,5 +1,6 @@
 import {
   includedByDefault as included,
+  lowersEvidence,
   type Finding,
   type SummaryPreview,
   type SummaryStatus,
@@ -23,6 +24,8 @@ export type SummaryProposal = {
   change: { from: Strength | null; to: Strength | null } | null;
   /** "Already changed by the scorecard": excluded by default. */
   alreadyChanged: boolean;
+  /** "Lowers the evidence": the change lowers the strength, so it starts excluded (AIV-P1-138). */
+  lowers: boolean;
 };
 
 /** The panel's data: `summary` null before anything was pasted. Never the summary's text. */
@@ -54,6 +57,10 @@ export type SummaryErrorKey = (typeof SUMMARY_ERROR_KEYS)[number];
 /** A refusal's code as a message key; anything the panel has no words for reads "That did not go through". */
 export const errorKey = (code: string): SummaryErrorKey =>
   (SUMMARY_ERROR_KEYS as readonly string[]).includes(code) ? (code as SummaryErrorKey) : 'failed';
+
+/** A change that lowers the strength (Not shown to Claim only); not one that leaves Claim only as it is. */
+export const lowers = (finding: Finding, change: SummaryProposal['change']) =>
+  !!change && change.from !== change.to && lowersEvidence(finding);
 
 /**
  * The changes ticked when the proposals first show: each one that changes something the scorecard has not changed,

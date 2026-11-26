@@ -29,6 +29,14 @@ export type SuggestionFault = (typeof suggestionFaults)[number];
 // a non-ASCII letter would never match where its author means it to.
 const phrases = z.array(z.string().regex(/^\w/, 'a phrase starts with an ASCII letter, digit or _')).min(1);
 
+// The competency ids a case's input lists (interviews.mapSummary's `competencies`); none for any other input.
+const listedIds = (input: Record<string, unknown>) =>
+  z
+    .object({ competencies: z.array(z.object({ id: z.string() }).loose()) })
+    .loose()
+    .safeParse(input)
+    .data?.competencies.map((c) => c.id) ?? [];
+
 export const goldenCase = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -118,7 +126,12 @@ export const goldenCase = z
       .strict(),
   })
   .strict()
-  .refine((c) => !c.expected.judge || c.recorded.judge, 'recorded.judge is required when expected.judge is set');
+  .refine((c) => !c.expected.judge || c.recorded.judge, 'recorded.judge is required when expected.judge is set')
+  // A mistyped id would never match a finding, so the gate would pass whatever the answer.
+  .refine(
+    (c) => (c.expected.noChange ?? []).every((id) => listedIds(c.input).includes(id)),
+    'expected.noChange names a competency id that input.competencies does not list',
+  );
 
 export type GoldenCase = z.infer<typeof goldenCase>;
 

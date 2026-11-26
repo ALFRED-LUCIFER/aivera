@@ -7,6 +7,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   errorKey,
   includedByDefault,
+  lowers,
   reasonDraft,
   type SummaryPanel,
   type SummaryProposal,
@@ -30,6 +31,7 @@ const RETRIEVAL: SummaryProposal = {
   reason: 'Describes the evaluation set he built.',
   change: { from: 'supporting', to: 'medium' },
   alreadyChanged: false,
+  lowers: false,
 };
 const COST: SummaryProposal = {
   competencyId: 'c-cost',
@@ -39,6 +41,7 @@ const COST: SummaryProposal = {
   reason: null,
   change: null,
   alreadyChanged: false,
+  lowers: false,
 };
 const panelOf = (
   status: NonNullable<SummaryPanel['summary']>['status'] | null,
@@ -173,13 +176,20 @@ describe('Scenario: Analysing a summary proposes a change and applies nothing', 
       finding: 'not_shown',
       excerpt: 'could not explain how the 200-question set was graded',
       change: { from: 'supporting', to: 'claim' },
+      lowers: true,
     };
     show(panelOf('proposed', [lowering, COST], { preview: null }));
     expect(screen.getByText('Retrieval and evaluation: Supporting to Claim only')).toBeTruthy();
     expect(
       screen.getByText('Lowers the evidence. Include it only if the summary says this was not shown.'),
     ).toBeTruthy();
-    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    const include = screen.getByRole('checkbox') as HTMLInputElement;
+    expect(include.checked).toBe(false);
+    // The note is the checkbox's description, so a screen reader reads it with the box.
+    expect(include.getAttribute('aria-describedby')).toBe('summary-lowers-c-retrieval');
+    expect(document.getElementById('summary-lowers-c-retrieval')?.textContent).toBe(
+      'Lowers the evidence. Include it only if the summary says this was not shown.',
+    );
     expect((screen.getByRole('button', { name: 'Apply 0 changes' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText('No change is included. The backed score stays as it is.')).toBeTruthy();
   });
@@ -188,6 +198,7 @@ describe('Scenario: Analysing a summary proposes a change and applies nothing', 
     show(panelOf('proposed'));
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
     expect(screen.queryByText(/Lowers the evidence/)).toBeNull();
+    expect(screen.getByRole('checkbox').getAttribute('aria-describedby')).toBeNull();
   });
 
   it('a change with no reason cannot be applied', () => {
@@ -219,6 +230,12 @@ describe('after a decision', () => {
 });
 
 describe('the panel domain', () => {
+  it('"Lowers the evidence" only on a Not shown that lowers the strength, not one that leaves Claim only as it is', () => {
+    expect(lowers('not_shown', { from: 'supporting', to: 'claim' })).toBe(true);
+    expect(lowers('not_shown', { from: 'claim', to: 'claim' })).toBe(false);
+    expect(lowers('not_shown', null)).toBe(false);
+    expect(lowers('clearly_shown', { from: 'supporting', to: 'medium' })).toBe(false);
+  });
   it('ticks by default each change the scorecard has not already made', () => {
     expect(includedByDefault([RETRIEVAL, COST, { ...RETRIEVAL, competencyId: 'c-x', alreadyChanged: true }])).toEqual([
       'c-retrieval',

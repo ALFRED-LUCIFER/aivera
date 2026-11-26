@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { lowersEvidence, SUMMARY_MAX_CHARS, type SummaryPreview } from '@credalent/interviews';
+import { SUMMARY_MAX_CHARS, type SummaryPreview } from '@credalent/interviews';
 import {
   Button,
   Card,
@@ -206,6 +206,7 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
     value ? t(`rubric.strength.${value}`) : t('interviewSummary.noEvidence');
   const included = view.included.includes(competencyId);
   const reasonId = `summary-reason-${competencyId}`;
+  const lowersId = `summary-lowers-${competencyId}`;
   return (
     <div className="flex flex-col gap-2">
       <span className="font-semibold">
@@ -223,10 +224,15 @@ function Proposal({ view, proposal }: { view: MeetingSummaryView; proposal: Summ
         </q>
       )}
       {proposal.alreadyChanged && <span className="text-meta text-text-2">{t('interviewSummary.alreadyChanged')}</span>}
-      {lowersEvidence(proposal.finding) && <span className="text-meta text-text">{t('interviewSummary.lowers')}</span>}
+      {proposal.lowers && (
+        <span id={lowersId} className="text-meta text-text">
+          {t('interviewSummary.lowers')}
+        </span>
+      )}
       <Checkbox
         label={t('interviewSummary.include')}
         aria-label={`${t('interviewSummary.include')}: ${name}`}
+        aria-describedby={proposal.lowers ? lowersId : undefined}
         checked={included}
         disabled={view.busy}
         onChange={(event) => view.onInclude(competencyId, event.target.checked)}

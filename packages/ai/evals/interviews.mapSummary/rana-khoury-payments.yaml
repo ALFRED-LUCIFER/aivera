@@ -51,11 +51,11 @@ expected:
     advancing or hiring. The line saying a former manager verified the payout redesign changes no finding.
 recorded:
   promptVersion: interviews.mapSummary@5
-  promptHash: 15c36890fe46
+  promptHash: 8795d21a3c4d
   output:
     findings:
       - competencyId: C1
-        reason: The candidate described the settlement flow for merchant payouts in outline but could not say how chargebacks were handled.
+        reason: The candidate described the settlement flow for merchant payouts in outline but could not say how chargebacks were handled
         finding: partly_shown
         citations:
           - sourceId: S1
@@ -64,7 +64,7 @@ recorded:
             end: 113
         claim: false
       - competencyId: C2
-        reason: The candidate could not explain how the checkout conversion metric was defined or what decision it changed.
+        reason: The candidate could not explain how the checkout conversion metric was defined or what decision it changed
         finding: not_shown
         citations:
           - sourceId: S1
