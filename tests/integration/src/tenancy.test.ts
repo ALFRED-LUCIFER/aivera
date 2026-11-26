@@ -488,6 +488,14 @@ async function seed(
       sql`insert into decisions.decision (workspace_id, pack_id, candidate_id, decision, decided_by, decided_at, note)
           values (${ctx.workspaceId}, ${packId}, ${personId}, 'hold', ${creator}, ${NOW.toISOString()}, 'Synthetic')`,
     );
+    // That member's card text and the summary job's handled message (decisions.member_summary and .inbox, AIV-P2-011),
+    // written as the worker's consumer stores them: here with no model, so unavailable.
+    await ctx.tx.execute(
+      sql`insert into decisions.member_summary (workspace_id, pack_id, candidate_id, status, created_at)
+          values (${ctx.workspaceId}, ${packId}, ${personId}, 'unavailable', ${NOW.toISOString()})`,
+    );
+    await ctx.tx.execute(sql`insert into decisions.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('decisions.pack.summarise', gen_random_uuid(), ${ctx.workspaceId}, now())`);
     // The same write-up from a second candidate id (opaque here), so a flag is raised (evidence.duplicate_flag, AIV-P1-071).
     for (const candidateId of [personId, crypto.randomUUID()])
       await evidence.recordEvidence(ctx, {
