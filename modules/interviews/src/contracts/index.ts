@@ -114,8 +114,8 @@ export interface InterviewsContract {
    * Stores the interview's scorecard draft, replacing the earlier one. It changes no score, stage or status: the
    * assessment changes only when the scorecard is submitted (AIV-P2-006). Only the interview's interviewer, on a job
    * they can reach, or a workspace admin: `ForbiddenError`, storing nothing, for anyone else, an interviewer or hiring
-   * owner with no grant on the job included. Throws `InterviewError` `interview_not_found`, `scorecard_closed` (completed or
-   * cancelled), `competency_not_in_interview` (a competency the interview does not test, or one listed twice); a zod
+   * owner with no grant on the job included. Throws `InterviewError` `interview_not_found`, `scorecard_submitted` (completed:
+   * "Already submitted"), `scorecard_closed` (cancelled), `competency_not_in_interview` (a competency the interview does not test, or one listed twice); a zod
    * error for a draft that is not `scorecardDraftSchema`.
    */
   saveScorecardDraft(ctx: WorkspaceContext, interviewId: string, draft: ScorecardDraft): Promise<void>;
