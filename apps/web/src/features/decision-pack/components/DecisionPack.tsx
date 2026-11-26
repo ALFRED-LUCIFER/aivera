@@ -6,6 +6,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import { packHref } from '@/features/ranking/domain/pack.ts';
 import type { DecisionPackView, PackPage } from '../domain/pack.ts';
 
 // AIV-P2-010: the decision pack a recruiter built from the ranking, from the Pack artboard
@@ -19,8 +20,9 @@ import type { DecisionPackView, PackPage } from '../domain/pack.ts';
 // - the subtitle leaves out "for the Head of Engineering": the hiring owner's job title is not stored;
 // - no "What the role needs", strengths, risks, Round 1 findings, Credalent's recommendation, "Record decisions" or the
 //   decision emails: the pack's content and the hiring owner's decisions are AIV-P2-011 (#125);
-// - no "Open comparison" (AIV-P1-047, #111) and no "Preview the client view" or "Shared packs show summaries…" note
-//   (AIV-P2-013, #127);
+// - no "Open comparison" (AIV-P1-047, #111) and no "Shared packs show summaries…" note (AIV-P2-013, #127);
+// - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded
+//   preview inside Credalent; sharing it is AIV-P2-013 (#127);
 // - the job header's Decision stage line stays "Not started" until packs report there (AIV-P2-011, #125);
 // - no "Decision packs" sidebar count: that item waits behind its flag for the packs list (AIV-P2-E02, #19);
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142).
@@ -49,15 +51,21 @@ function Pack({ pack }: { pack: PackPage }) {
   const t = useTranslations();
   return (
     <section aria-labelledby="pack-title" className="flex flex-col gap-3 self-stretch">
-      <div>
-        <h2 id="pack-title" className="text-card text-text">
-          {t('decisionPack.title', { name: pack.name, job: pack.job })}
-        </h2>
-        <p className="text-meta text-text-2">
-          {pack.rubricVersion === null
-            ? t('decisionPack.prepared', { date: pack.preparedAt })
-            : t('decisionPack.preparedOn', { date: pack.preparedAt, version: pack.rubricVersion })}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="pack-title" className="text-card text-text">
+            {t('decisionPack.title', { name: pack.name, job: pack.job })}
+          </h2>
+          <p className="text-meta text-text-2">
+            {pack.rubricVersion === null
+              ? t('decisionPack.prepared', { date: pack.preparedAt })
+              : t('decisionPack.preparedOn', { date: pack.preparedAt, version: pack.rubricVersion })}
+          </p>
+        </div>
+        {/* packHref builds the path from opaque ids, which typed routes cannot check. */}
+        <Link href={`${packHref(pack.jobId, pack.packId)}/preview` as Route} className={buttonClassName('secondary')}>
+          {t('decisionPack.openPreview')}
+        </Link>
       </div>
       <ul className="flex flex-col divide-y divide-border rounded-card border border-border bg-surface">
         {pack.members.map((m) => (
