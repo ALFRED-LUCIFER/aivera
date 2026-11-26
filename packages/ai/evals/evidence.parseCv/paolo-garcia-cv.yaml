@@ -16,7 +16,7 @@ sources:
 expected: { 'match': { 'workHistory[*].dates': ['Jan 2021 - Present'], 'skills[*].skill': ['Python', 'Kafka', 'dbt'] } }
 recorded:
   promptVersion: evidence.parseCv@5
-  promptHash: 5df0647804cd
+  promptHash: a9a803db2c5f
   output:
     contact:
       emails: []

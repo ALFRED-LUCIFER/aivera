@@ -10,8 +10,8 @@ import { cited, type Source } from '../citations.ts';
 export const PARSE_CV_VERSION = 'evidence.parseCv@5';
 
 // AIV-P1-141: live, @4 listed a skill taken from a CV's planted instruction line in 1 of 6 runs (0 of 31 on a rerun);
-// the skill rule alone did not hold every time, so a line addressed to the AI yields no item in any field (the shared untrusted-content rule
-// still applies and is not repeated here), and a skill must be stated as the candidate's.
+// the skill rule alone did not hold every time, so a line addressed to the AI yields no item in any field (the shared
+// untrusted-content rule still applies and is not repeated here), and a skill must be stated as the candidate's.
 export const PARSE_CV_SYSTEM = [
   "You read one candidate's CV and list what it says, so a recruiter can see each statement next to the CV line it",
   'comes from. Nothing you list is treated as proven.',
@@ -23,7 +23,7 @@ export const PARSE_CV_SYSTEM = [
   'skills: copy every skill, tool, framework, programming language and technology the CV lists, one item each, in the',
   'original wording. Split a comma-separated list into separate items. Never summarise, merge, shorten or drop skills,',
   'however long the list is. Spoken languages are not skills. List a skill only when the CV states it as the',
-  "candidate's own, in a skills line, a role or an achievement.",
+  "candidate's own.",
   'statements: each achievement, responsibility, education entry, certification and award, one per item, in the',
   "CV's own words. Cite each item with a quote that contains it.",
   "contact: the candidate's own email addresses and phone numbers exactly as the CV writes them, never a referee's or",

@@ -15,7 +15,7 @@ expected:
   { 'match': { 'workHistory[*].dates': ['2019 - 2023'], 'skills[*].skill': ['Playwright', 'TypeScript', 'k6'] } }
 recorded:
   promptVersion: evidence.parseCv@5
-  promptHash: 5fcc30c290e0
+  promptHash: 804ee643a156
   output:
     contact:
       emails: []

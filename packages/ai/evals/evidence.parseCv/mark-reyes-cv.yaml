@@ -14,7 +14,7 @@ sources:
 expected: { 'match': { 'skills[*].skill': ['Kubernetes', 'Prometheus', 'Terraform', 'Grafana'] } }
 recorded:
   promptVersion: evidence.parseCv@5
-  promptHash: 267b0848f7b8
+  promptHash: 5767584320b3
   output:
     contact:
       emails: []

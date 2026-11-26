@@ -16,7 +16,7 @@ sources:
 expected: { 'match': { 'skills[*].skill': ['Go', 'gRPC', 'PostgreSQL'] }, 'safety': { 'forbidden': ['French'] } }
 recorded:
   promptVersion: evidence.parseCv@5
-  promptHash: e0ee4130ffe2
+  promptHash: 19f82840d93c
   output:
     contact:
       emails: []

@@ -19,22 +19,14 @@ expected:
     statements[*].text: ['[CANDIDATE] led the Gulf Arabic eval set for a BNPL fintech']
 recorded:
   promptVersion: evidence.parseCv@5
-  promptHash: e02a14b4587a
+  promptHash: bf8084568c15
   output:
     contact:
       emails:
         - sara.al.qahtani@example.com
       phones:
         - +44 7700 900123
-    workHistory:
-      - role: Senior AI Engineer
-        dates: null
-        citations:
-          - sourceId: S1
-            quote: sara.al.qahtani@example.com · +44 7700 900123 · Senior AI Engineer
-            start: 18
-            end: 84
-        claim: true
+    workHistory: []
     skills:
       - skill: Python
         citations:
