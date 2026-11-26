@@ -14,6 +14,7 @@ import {
   type ReferenceRole,
 } from '../domain/evidence.ts';
 import type { Comparison, Resolution } from '../domain/corroboration.ts';
+import type { RepositoryVia } from '../domain/repository.ts';
 import {
   crossApplicantMatches,
   DUPLICATE_RESOLUTIONS,
@@ -25,8 +26,14 @@ import {
   type Sha1,
 } from '../domain/fingerprint.ts';
 
-/** An item with its source and the links to the asked job's competencies. */
-export type EvidenceItemView = EvidenceItem & { source: EvidenceSource; competencies: CompetencyLink[] };
+/**
+ * An item with its source and the links to the asked job's competencies. `via` is how a repository read came about
+ * (AIV-P1-112): provenance for the source chip (AIV-P1-118), never read by assessment or ranking.
+ */
+export type EvidenceItemView = EvidenceItem & {
+  source: EvidenceSource & { via: RepositoryVia | null };
+  competencies: CompetencyLink[];
+};
 
 /** The store over one workspace-scoped transaction. Every method filters by `workspaceId`. */
 export type EvidenceStore = {

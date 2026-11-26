@@ -36,6 +36,9 @@ import { evidenceAnchor } from '../domain/profile.ts';
 //   "Interview history and score changes" and "Across your roles" are AIV-P1-046 (#110);
 // - the padding is the shared Card's 16 px, not 20 px, and a competency name is the 16 px card size, not 15 px:
 //   @credalent/ui and the tokens have neither;
+// - AIV-P1-118: a repository Credalent read from the GitHub profile a CV links reads "github.com/…/rag-notebook · from
+//   the GitHub profile in the CV": the artboard draws no such chip (AIV-P1-112 added those reads). The suffix is plain
+//   ink in the sans face, inside the link and not underlined; the path stays mono and underlined as drawn;
 // - "Also submitted by another applicant" flags (AIV-P1-071) and a retry for a CV that failed to parse (AIV-P1-025),
 //   both carried to this ticket in its comments, are not shown: neither is in its scenarios, each needs a contract
 //   read the evidence module does not have yet, and neither has a ticket of its own yet.
@@ -66,17 +69,22 @@ const noteIcon = icon(
 
 function Chip({ chip }: { chip: SourceChip }) {
   const t = useTranslations('candidateProfile');
+  const via = useTranslations('evidence.sourceVia');
   if (chip.kind === 'check') return <>{t('checked', { method: chip.method, at: chip.at })}</>;
   if (chip.kind === 'text') return <>{chip.text}</>;
+  // From the closed catalogue only: a `via` with no message shows no suffix, never its raw value.
+  const from = chip.kind === 'link' && chip.via && via.has(chip.via) ? via(chip.via) : null;
   return (
     <a
       // A file opens through the route that issues its 5-minute link and audits the access; the id is opaque.
       href={chip.kind === 'link' ? chip.url : `/api/files/${chip.fileId}/link`}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-2 hover:text-text"
+      className="hover:text-text"
     >
-      {chip.text}
+      <span className="underline underline-offset-2">{chip.text}</span>
+      {/* Provenance in plain ink, inside the link so it is part of its name; never the highlighter (AGENTS.md 4). */}
+      {from && <span className="font-sans">{` · ${from}`}</span>}
       <span className="sr-only"> {t('newTab')}</span>
     </a>
   );

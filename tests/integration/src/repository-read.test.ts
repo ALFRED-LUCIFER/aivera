@@ -424,6 +424,8 @@ describe('Scenario: No GitHub login supplied', () => {
     const { view, items } = await read(maria, null, 'maria-credalent-example', 'ledger-sync');
     expect(view).toMatchObject({ authoredCommits: 30, totalCommits: 35, authorship: 'clear', strengthCap: 'medium' });
     expect(items).toMatchObject([{ excerpt: 'authored 30 of 35 commits', strength: 'medium' }]);
+    // Linked directly, so its chip stays plain (AIV-P1-118).
+    expect(items[0]?.source.via).toBeNull();
     expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
   });
 });
@@ -435,9 +437,14 @@ describe('AIV-P1-112: a repository reached through a GitHub profile in a CV', ()
       commits: [...commits(30, { email: maria.email }), ...commits(5, { login: 'maria-credalent-example' })],
     });
     const { view, items } = await read(maria, null, 'maria-credalent-example', 'rag-notebook', 'cv_profile');
+    // SAFETY: mutation check: `strengthCapOf(cls, githubLogin !== null || read.via !== null)` in getRepositoryRead -> "stays 'Authorship unclear' and capped at Medium" failed (view.strengthCap was 'strong')
     expect(view).toMatchObject({ via: 'cv_profile', authoredCommits: 30, totalCommits: 35, strengthCap: 'medium' });
     expect(items).toMatchObject([{ strength: 'medium' }]);
     expect(items[0]?.limit).toMatch(/^Authorship unclear: no GitHub login supplied\. /);
+    // AIV-P1-118: the profile's evidence read says how the repository was reached, for its source chip, and carries
+    // the repository's name, never the login or emails the read matched commits by.
+    expect(items[0]?.source).toMatchObject({ kind: 'repository', label: 'rag-notebook', via: 'cv_profile' });
+    for (const personal of ['githubLogin', 'emails']) expect(items[0]?.source).not.toHaveProperty(personal);
   });
 });
 
