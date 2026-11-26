@@ -19,7 +19,8 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 // (AGENTS.md 1.7); under each statement the excerpt it quotes, highlighted, with its source linked to the item on the
 // candidate's profile, or "Source: the assessment" (the ticket: every sentence links to its evidence); "Preparing
 // summary" while the worker writes a card, and "Summary unavailable" with the assessment's own strengths when no
-// answer with valid citations came; and the empty pack's line.
+// answer with valid citations came; and the empty pack's line. Credalent's recommendation is advice: the pack summary
+// moves no stage; recorded decisions do, AIV-P2-012 (AGENTS.md 1.5).
 // Deviations:
 // - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011),
 //   and each member's name an h3;
