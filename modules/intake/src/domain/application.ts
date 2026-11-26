@@ -23,6 +23,14 @@ export const STAGES = [
 ] as const;
 export type Stage = (typeof STAGES)[number];
 
+/**
+ * Whether choosing for interview (AIV-P1-114) skips the application: already chosen (`interview`), or past Round 1 by
+ * the hiring owner's recorded decision (AIV-P2-012). A new choice would give a second Round 1 interview, or silently
+ * reverse a recorded outcome, so it is skipped and the preview says why.
+ */
+export const chosenOrDecided = (stage: Stage) =>
+  stage === 'interview' || stage === 'round2_shortlist' || stage === 'not_advanced';
+
 /** A hiring owner's recorded decision on a decision pack, as `DecisionsRecorded.v1`'s consumer reads it (AIV-P2-012). */
 export type RecordedDecision = {
   candidateId: string;

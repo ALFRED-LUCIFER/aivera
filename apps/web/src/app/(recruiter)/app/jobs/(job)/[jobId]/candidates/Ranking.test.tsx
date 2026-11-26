@@ -462,6 +462,10 @@ describe('Scenario: Preview, then confirm (AIV-P1-114)', () => {
   });
 });
 
+/** AIV-P2-012: Sara on the Round 2 shortlist and Arjun not advanced, by the hiring owner's recorded decision. */
+const decidedStage = (name: string | null) =>
+  name === 'Sara Al Qahtani' ? 'round2_shortlist' : name === 'Arjun Menon' ? 'not_advanced' : null;
+
 describe('Scenario: Someone already chosen is not chosen twice (AIV-P1-114)', () => {
   it('marks them "Already chosen for interview", counts only the others, and their row shows the next action', async () => {
     const rows = nine.map((row) => (row.name === 'Sara Al Qahtani' ? { ...row, stage: 'interview' as const } : row));
@@ -473,6 +477,27 @@ describe('Scenario: Someone already chosen is not chosen twice (AIV-P1-114)', ()
     await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
     expect(within(preview()).getByRole('heading').textContent).toBe('Preview: 1 person chosen for interview');
     expect(preview().textContent).toContain('Sara Al QahtaniAlready chosen for interview');
+    expect(within(preview()).getByRole('button', { name: 'Choose 1 for interview' })).toBeTruthy();
+  });
+
+  // AIV-P2-012: a recorded decision is never reversed by choosing the person for Round 1 again.
+  // SAFETY: mutation check: chosenOrDecided returned `stage === 'interview'` only -> this test failed (Sara and Arjun counted to choose)
+  it('someone on the Round 2 shortlist or not advanced is not counted, the preview says why, and their row shows the stage', async () => {
+    choosable(nine.map((row) => ({ ...row, stage: decidedStage(row.name) ?? row.stage })));
+    const rows = bodyRows();
+    expect(rows.find((row) => row.textContent.includes('Sara Al Qahtani'))?.textContent).toContain('Round 2 shortlist');
+    expect(rows.find((row) => row.textContent.includes('Arjun Menon'))?.textContent).toContain('Not advanced');
+    await pick('Sara Al Qahtani');
+    await pick('Arjun Menon');
+    await pick('Daniel Novak');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Choose for interview' }));
+    expect(within(preview()).getByRole('heading').textContent).toBe('Preview: 1 person chosen for interview');
+    expect(preview().textContent).toContain(
+      'Sara Al QahtaniOn the Round 2 shortlist by the hiring owner’s decision, so not chosen again',
+    );
+    expect(preview().textContent).toContain(
+      'Arjun MenonNot advanced by the hiring owner’s decision, so not chosen again',
+    );
     expect(within(preview()).getByRole('button', { name: 'Choose 1 for interview' })).toBeTruthy();
   });
 });

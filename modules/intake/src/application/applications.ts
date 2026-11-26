@@ -4,6 +4,7 @@ import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } 
 import { z } from 'zod';
 import {
   CHOICE_REASON_MAX,
+  chosenOrDecided,
   IntakeError,
   type Application,
   type ApplicationSource,
@@ -299,10 +300,11 @@ export function applicationUseCases({
       const skipped: string[] = [];
       // shortcut: a `withdrawn` application can be chosen too; no command withdraws one yet. Refuse it here when one does.
       for (const application of applications) {
-        // SAFETY: someone already chosen gets no second Round 1 interview. moveStage is conditional, so a concurrent
-        // choice of the same person (the only command that moves a stage) also lands here.
+        // SAFETY: someone already chosen gets no second Round 1 interview, and a recorded decision (Round 2 shortlist,
+        // not advanced) is never reversed by a new choice (AIV-P2-012). moveStage is conditional, so a concurrent choice
+        // of the same person, or the decision consumer moving them meanwhile, also lands here.
         if (
-          application.stage === 'interview' ||
+          chosenOrDecided(application.stage) ||
           !(await store.moveStage(ctx.workspaceId, application.id, application.stage, 'interview'))
         ) {
           skipped.push(application.id);

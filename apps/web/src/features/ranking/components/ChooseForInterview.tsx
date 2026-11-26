@@ -3,7 +3,7 @@
 import { useTranslations } from '@credalent/i18n/react';
 import { Label, PreviewBanner, Textarea } from '@credalent/ui';
 import { useId } from 'react';
-import { CHOICE_REASON_MAX, type ChooseView } from '../domain/choose.ts';
+import { CHOICE_REASON_MAX, chosenOrDecided, type ChooseView } from '../domain/choose.ts';
 import { ScoreCell } from './ScoreCell.tsx';
 
 // AIV-P1-114: "Choose for interview" from the ranking's bulk bar. The shared inline PreviewBanner, where the Candidates
@@ -42,8 +42,16 @@ export function ChooseForInterview({ view }: { view: ChooseView }) {
         {preview.people.map((row) => (
           <li key={row.id} className="flex flex-col gap-1 py-2">
             <span className="font-semibold">{row.name ?? t('unnamed')}</span>
-            {row.stage === 'interview' ? (
-              <span className="text-meta text-text-2">{t('alreadyChosen')}</span>
+            {chosenOrDecided(row.stage) ? (
+              <span className="text-meta text-text-2">
+                {t(
+                  row.stage === 'round2_shortlist'
+                    ? 'onShortlist'
+                    : row.stage === 'not_advanced'
+                      ? 'notAdvanced'
+                      : 'alreadyChosen',
+                )}
+              </span>
             ) : (
               <>
                 {/* Not assessed yet: the score cell says "Not yet scored" and "Not yet available"; no gaps are claimed. */}

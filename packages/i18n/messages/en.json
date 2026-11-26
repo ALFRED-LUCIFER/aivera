@@ -1904,6 +1904,8 @@
       "investigate": "To investigate: {names}",
       "noGaps": "No evidence gap to investigate",
       "alreadyChosen": "Already chosen for interview",
+      "onShortlist": "On the Round 2 shortlist by the hiring owner’s decision, so not chosen again",
+      "notAdvanced": "Not advanced by the hiring owner’s decision, so not chosen again",
       "round": "Round 1, structured screen",
       "interviewer": "Interviewer: You",
       "reason": "Reason",
