@@ -38,7 +38,10 @@
       "compositePrimaryKeys": {
         "inbox_consumer_message_id_pk": {
           "name": "inbox_consumer_message_id_pk",
-          "columns": ["consumer", "message_id"]
+          "columns": [
+            "consumer",
+            "message_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -47,7 +50,9 @@
           "name": "inbox_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"inbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
@@ -173,7 +178,10 @@
         "interview_workspace_id_key": {
           "name": "interview_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         }
       },
       "policies": {
@@ -181,7 +189,9 @@
           "name": "interview_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
@@ -296,8 +306,14 @@
           "tableFrom": "meeting_summaries",
           "tableTo": "interview",
           "schemaTo": "interviews",
-          "columnsFrom": ["workspace_id", "interview_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "interview_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -307,7 +323,10 @@
         "meeting_summaries_workspace_id_key": {
           "name": "meeting_summaries_workspace_id_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "id"]
+          "columns": [
+            "workspace_id",
+            "id"
+          ]
         }
       },
       "policies": {
@@ -315,7 +334,9 @@
           "name": "meeting_summaries_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"meeting_summaries\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"meeting_summaries\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
@@ -422,7 +443,10 @@
         "outbox_workspace_dedupe_key": {
           "name": "outbox_workspace_dedupe_key",
           "nullsNotDistinct": false,
-          "columns": ["workspace_id", "dedupe_key"]
+          "columns": [
+            "workspace_id",
+            "dedupe_key"
+          ]
         }
       },
       "policies": {
@@ -430,7 +454,9 @@
           "name": "outbox_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -438,14 +464,18 @@
           "name": "outbox_relay_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["aivera_relay"],
+          "to": [
+            "aivera_relay"
+          ],
           "using": "true"
         },
         "outbox_relay_mark": {
           "name": "outbox_relay_mark",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["aivera_relay"],
+          "to": [
+            "aivera_relay"
+          ],
           "using": "true",
           "withCheck": "true"
         }
@@ -501,8 +531,14 @@
           "tableFrom": "scorecard_drafts",
           "tableTo": "interview",
           "schemaTo": "interviews",
-          "columnsFrom": ["workspace_id", "interview_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "interview_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -514,7 +550,9 @@
           "name": "scorecard_drafts_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"scorecard_drafts\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"scorecard_drafts\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
@@ -599,8 +637,14 @@
           "tableFrom": "summary_proposals",
           "tableTo": "meeting_summaries",
           "schemaTo": "interviews",
-          "columnsFrom": ["workspace_id", "summary_id"],
-          "columnsTo": ["workspace_id", "id"],
+          "columnsFrom": [
+            "workspace_id",
+            "summary_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -608,7 +652,10 @@
       "compositePrimaryKeys": {
         "summary_proposals_summary_id_competency_id_pk": {
           "name": "summary_proposals_summary_id_competency_id_pk",
-          "columns": ["summary_id", "competency_id"]
+          "columns": [
+            "summary_id",
+            "competency_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -617,7 +664,9 @@
           "name": "summary_proposals_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": ["public"],
+          "to": [
+            "public"
+          ],
           "using": "\"interviews\".\"summary_proposals\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"summary_proposals\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }

@@ -63,7 +63,8 @@ import { StageLine } from './StageLine.tsx';
 //   named in the header (AGENTS.md 3.9); it becomes "Last review" with scorecards (AIV-P2-006, #120);
 // - "Next action" says "In shortlist pack" while they are in an undecided pack (AIV-P2-010), which comes after the
 //   interview in J3 and so wins, then "Open scorecard" for an interview under way or overdue and "Schedule Round 1" for
-//   one with no time (AIV-P2-007), else "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not
+//   one with no time (AIV-P2-007) (the artboard's "Round 1 today, 14:00: Open scorecard" waits until it is started),
+//   else "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not
 //   yet available": evidence requests (AIV-P1-039, #103) and the interview guide (AIV-P2-003, "Guide ready") are not
 //   built yet, and no value is invented (AGENTS.md 1.7);
 // - "Stage: all" and "Missing evidence: any" are native selects, and the Columns menu a disclosure of checkboxes: no

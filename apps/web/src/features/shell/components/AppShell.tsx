@@ -23,7 +23,7 @@ export type AppShellProps = {
   /** The server action that ends the session and lands on the sign-in page. */
   signOutAction: () => Promise<void>;
   /** The top-bar search (AIV-P1-049), composed by the app. */
-  search?: ReactNode;
+  search: ReactNode;
   children: ReactNode;
 };
 
@@ -94,7 +94,7 @@ export function AppShell({
           </svg>
         </Button>
         {/* Deviation from the Main artboard: no "Ask Credalent" until the assistant works (AIV-P2-E06); AIV-P1-095. */}
-        {search && <search className="min-w-0 flex-1 basis-64 sm:max-w-md">{search}</search>}
+        <search className="min-w-0 flex-1 basis-64 sm:max-w-md">{search}</search>
         <div className="ms-auto flex flex-wrap items-center gap-2">
           {member.workspace.synthetic && (
             <span className="inline-flex h-7 items-center gap-1.5 rounded-tag border border-info-border bg-info-bg px-2 text-meta font-semibold text-info-text">

@@ -591,7 +591,6 @@
     "label": "Search jobs and candidates",
     "placeholder": "Search jobs and candidates",
     "close": "Close search",
-    "results": "Search results",
     "groups": {
       "jobs": "Jobs",
       "candidates": "Candidates"
@@ -2113,6 +2112,8 @@
         "pastTime": "Choose a future time",
         "noInterviewer": "Choose an interviewer",
         "notOnJob": "The interviewer must be an active member who can see this job.",
+        "hasDraft": "The current interviewer has a scorecard draft. Keep them as interviewer, or ask them to clear it.",
+        "changed": "This interview already has a time, or has started. Reload the page to see it.",
         "failed": "The interview was not scheduled. Try again."
       },
       "clash": "The interviewer already has an interview at this time ({at, date, ::dMMM}, {at, time, ::HHmm}).",

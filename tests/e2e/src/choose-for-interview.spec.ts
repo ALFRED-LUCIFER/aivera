@@ -211,6 +211,24 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   await expect(dialog).toHaveCount(0);
   await expect(daniel).toContainText('Scheduled');
   await expect(daniel).toContainText('11:00');
+
+  // Scenario: Interviewer clash. Priya at Daniel's time with the same interviewer warns, in light and dark, axe clean.
+  const priya = interviews.getByRole('row').filter({ hasText: 'Priya Nair' });
+  for (const theme of themes) {
+    await page.context().addCookies([{ name: 'theme', value: theme, url: page.url() }]);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expect(() => priya.getByRole('button', { name: 'Schedule Priya Nair' }).click({ timeout: 1000 })).toPass();
+    const clash = page.getByRole('dialog', { name: 'Schedule Round 1, structured screen' });
+    await clash.getByLabel('Date').fill(nextWeek);
+    await clash.getByLabel('Time (Asia/Dubai)').fill('11:30');
+    await clash.getByRole('button', { name: 'Schedule', exact: true }).click();
+    await expect(clash.getByRole('alert')).toContainText('The interviewer already has an interview at this time');
+    await expect(clash.getByRole('button', { name: 'Keep this time' })).toBeVisible();
+    await expectAccessible(page);
+    await clash.getByRole('button', { name: 'Cancel' }).click();
+  }
+  await expect(priya).toContainText('Not scheduled yet');
 });
 
 for (const theme of themes) {

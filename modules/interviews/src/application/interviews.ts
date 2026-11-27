@@ -225,13 +225,18 @@ export function interviewUseCases(ports: Ports) {
       const job = interview && (await jobResource(ctx, interview.jobId));
       if (!interview || !job) throw new InterviewError('interview_not_found');
       await authorize(ctx, 'interview.schedule', job);
-      // A time is set before the interview is held, or moved while it is still only scheduled.
-      if (interview.status !== 'to_schedule' && effectiveStatus(interview, now()) !== 'scheduled')
-        throw new InterviewError('not_schedulable');
+      // shortcut: only an interview with no time yet is scheduled; moving a scheduled one waits for a reschedule ticket.
+      if (interview.status !== 'to_schedule') throw new InterviewError('not_schedulable');
       if (input.scheduledAt <= now()) throw new InterviewError('time_in_past');
       if (!(await ports.canInterview(ctx, input.interviewerUserId, job)))
         throw new InterviewError('interviewer_not_on_job');
       const store = storeFor(ctx.tx);
+      // SAFETY: a draft is its interviewer's unsubmitted word (holdsScorecard): a new interviewer never inherits it.
+      if (
+        input.interviewerUserId !== interview.interviewerUserId &&
+        (await store.findDraft(ctx.workspaceId, interview.id))
+      )
+        throw new InterviewError('interviewer_has_draft');
       const others = (await store.list(ctx.workspaceId, ['scheduled', 'in_progress'], input.interviewerUserId)).filter(
         (other) => other.id !== interview.id,
       );

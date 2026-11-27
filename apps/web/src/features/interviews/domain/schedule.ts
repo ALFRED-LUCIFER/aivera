@@ -15,7 +15,7 @@ export const scheduleSchema = z.strictObject({
 });
 export type ScheduleInput = z.infer<typeof scheduleSchema>;
 
-export type ScheduleError = 'pastTime' | 'noInterviewer' | 'notOnJob' | 'failed';
+export type ScheduleError = 'pastTime' | 'noInterviewer' | 'notOnJob' | 'hasDraft' | 'changed' | 'failed';
 export type ScheduleResult =
   | { ok: true }
   | { ok: false; error: ScheduleError }

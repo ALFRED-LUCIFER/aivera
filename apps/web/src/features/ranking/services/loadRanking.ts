@@ -74,6 +74,7 @@ async function duplicatesOf(ctx: WorkspaceContext, personIds: string[]) {
  * Each application's current interview round (AIV-P2-007), from the interviews the member may see: the contract checks
  * `interview.view` and job scope, and gives an interviewer only their own.
  */
+// shortcut: reads every interview the member may see, not only this job's; filter by job in the contract past ~500.
 async function interviewsOf(ctx: WorkspaceContext) {
   const interviews = getInterviews();
   const now = new Date();

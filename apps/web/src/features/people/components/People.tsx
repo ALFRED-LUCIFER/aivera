@@ -21,7 +21,7 @@ import { ALL_JOBS, type PeopleData, type PersonRow } from '../domain/people.ts';
 // - "Next step" is the ranked table's next action ("In shortlist pack", "Open scorecard", "Schedule Round 1", the
 //   chosen stage), and "Invite to Round 1" for an assessed person with no interview yet, which opens the job's ranking;
 //   "Guide ready" waits for the interview guide (AIV-P2-003) and "Waiting on client for slots" for client slots, so a
-//   scheduled round says "Not yet available"; "In shortlist pack" is text, not a link to the pack: the shared cell
+//   scheduled round says "Chosen for interview" (the chosen stage); "In shortlist pack" is text, not a link to the pack: the shared cell
 //   serves the ranked table too, which links packs from its success line;
 // - a person's other jobs open under the "In N jobs" chip in their row (a native disclosure), not as rows of their own,
 //   and give each job's backed score and claim range as one line of text, not a second score bar per job;

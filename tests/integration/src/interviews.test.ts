@@ -325,10 +325,13 @@ describe('Scenario: Schedule a round, with nobody contacted (AIV-P2-007)', () =>
         keepClash: true,
       }),
     ).toEqual({ status: 'scheduled' });
-    // Scheduling contacts nobody: the invitation is a separate step, confirmed by a person.
+    // Scheduling contacts nobody: the invitation is a separate step, confirmed by a person (AIV-P2-090). Nothing on this
+    // path can queue an email (the module has no notifications port); this count guards against one being wired in.
     expect(await count('notifications.message')).toBe(emailsBefore);
   });
 
+  // Two layers refuse here: `interview.schedule` (its mutation check is in modules/interviews' unit test) and the
+  // member read that validates the interviewer, which only admins and recruiters may make.
   it('an interviewer cannot schedule, even on a job they are granted (403)', async () => {
     const { interviewId } = await unscheduled();
     await expect(

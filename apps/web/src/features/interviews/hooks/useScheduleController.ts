@@ -1,5 +1,4 @@
 import { useTimeZone } from '@credalent/i18n/react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { InterviewRow } from '../domain/interviews.ts';
 import {
@@ -19,7 +18,6 @@ export function useScheduleController(
   interviewers: InterviewerOption[],
   services: Pick<typeof actions, 'scheduleInterview'> = actions,
 ): ScheduleView {
-  const router = useRouter();
   const timeZone = useTimeZone();
   const [row, setRow] = useState<InterviewRow | null>(null);
   const [date, setDate] = useState('');
@@ -77,9 +75,9 @@ export function useScheduleController(
           keepClash,
         });
         if (result.ok) {
+          // The action's revalidatePath brings the new time; no second refresh here.
           setRow(null);
           setDone(true);
-          router.refresh();
         } else if (result.error === 'clash') setClashAt(result.clashAt);
         else setError(result.error);
       } catch {

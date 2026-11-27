@@ -104,11 +104,12 @@ export interface InterviewsContract {
    */
   createInterview(ctx: WorkspaceContext, input: CreateInterviewInput): Promise<{ interviewId: string }>;
   /**
-   * Gives a `to_schedule` interview, or one still `scheduled` and not yet due, its time and interviewer, and writes
-   * `InterviewScheduled.v1` (AIV-P2-007). Contacts nobody. When the interviewer has another scheduled or running interview
-   * within the hour it returns `clash` and writes nothing, unless `keepClash`. Admins and recruiters on the job
-   * (`interview.schedule`; `ForbiddenError` otherwise). Throws `InterviewError` `interview_not_found`, `not_schedulable`,
-   * `time_in_past` (not after the clock's now), `interviewer_not_on_job`, `status_move` (changed meanwhile).
+   * Gives a `to_schedule` interview its time and interviewer, and writes `InterviewScheduled.v1` (AIV-P2-007). Contacts
+   * nobody. When the interviewer has another scheduled or running interview within the hour it returns `clash` and
+   * writes nothing, unless `keepClash`. Admins and recruiters on the job (`interview.schedule`; `ForbiddenError`
+   * otherwise). Throws `InterviewError` `interview_not_found`, `not_schedulable` (it has a time, or started or ended),
+   * `time_in_past` (not after the clock's now), `interviewer_not_on_job`, `interviewer_has_draft` (a new interviewer
+   * while the current one holds a scorecard draft), `status_move` (changed meanwhile).
    */
   scheduleInterview(ctx: WorkspaceContext, input: ScheduleInterviewInput): Promise<ScheduleResult>;
   /**

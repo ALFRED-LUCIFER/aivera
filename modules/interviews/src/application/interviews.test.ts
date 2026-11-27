@@ -136,6 +136,23 @@ describe('scheduleInterview (AIV-P2-007)', () => {
     });
   });
 
+  // SAFETY: mutation check: dropped the interviewer_has_draft check -> this test failed (Ayesha took Lina's draft)
+  it("never hands the current interviewer's scorecard draft to a new interviewer", async () => {
+    const { useCases, store } = setup({}, [unscheduled]);
+    store.list.mockResolvedValue([]);
+    await expect(
+      useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewerUserId: AYESHA })),
+    ).rejects.toMatchObject({ code: 'interviewer_has_draft' });
+    expect(store.schedule).not.toHaveBeenCalled();
+    // The same interviewer keeps their draft; with no draft anyone may take the interview.
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input())).toEqual({ status: 'scheduled' });
+    store.findDraft.mockResolvedValueOnce(null);
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewerUserId: AYESHA }))).toEqual({
+      status: 'scheduled',
+    });
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'interview.schedule', job) from scheduleInterview -> this test failed (the promise resolved)
   it('is refused for a role without interview.schedule', async () => {
     const { useCases, store } = setup(
       {

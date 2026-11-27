@@ -34,6 +34,12 @@ export async function scheduleInterview(input: unknown): Promise<ScheduleResult>
       if (error.code === 'interview_not_found') notFound();
       if (error.code === 'time_in_past') return { ok: false, error: 'pastTime' };
       if (error.code === 'interviewer_not_on_job') return { ok: false, error: 'notOnJob' };
+      if (error.code === 'interviewer_has_draft') return { ok: false, error: 'hasDraft' };
+      // Scheduled, started or changed by someone else meanwhile: retrying cannot help, and nothing failed.
+      if (error.code === 'not_schedulable' || error.code === 'status_move') {
+        log.info({ area: 'interviews', 'error.code': error.code }, 'schedule refused');
+        return { ok: false, error: 'changed' };
+      }
     }
     log.error(
       { area: 'interviews', 'error.type': error instanceof Error ? error.name : 'unknown' },

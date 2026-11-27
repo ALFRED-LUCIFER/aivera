@@ -130,7 +130,9 @@ describe('Recruiter app shell', () => {
     renderShell();
     await userEvent.keyboard('/');
     const box = await screen.findByRole('searchbox', { name: 'Search jobs and candidates' });
-    await userEvent.type(box, 'Sara');
+    // Focus is in the box: the keystrokes go wherever focus is.
+    await userEvent.keyboard('Sara');
+    expect(box).toHaveProperty('value', 'Sara');
     const dialog = screen.getByRole('dialog', { name: 'Search' });
     expect(
       (await within(dialog).findByRole('link', { name: 'Sara Al Qahtani · Senior AI Engineer' })).getAttribute('href'),
@@ -149,7 +151,8 @@ describe('Recruiter app shell', () => {
     });
     renderShell();
     await userEvent.click(screen.getByRole('button', { name: 'Search jobs and candidates' }));
-    await userEvent.type(screen.getByRole('searchbox'), 'QA');
+    await userEvent.keyboard('QA');
+    expect(screen.getByRole('searchbox')).toHaveProperty('value', 'QA');
     await screen.findByRole('link', { name: 'QA Automation Engineer' });
     await userEvent.keyboard('{Enter}');
     expect(push).toHaveBeenCalledWith('/app/jobs/j3');

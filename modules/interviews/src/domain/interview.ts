@@ -61,7 +61,7 @@ const calendarDay = (at: Date, timeZone: string) =>
   );
 
 /** How long an interview is taken to hold its interviewer, for the clash warning (AIV-P2-007). */
-export const INTERVIEW_MINUTES = 60;
+const INTERVIEW_MINUTES = 60;
 
 /**
  * The time of another interview of the same interviewer that overlaps one starting at `at` (each held for
@@ -88,7 +88,9 @@ const MESSAGES = {
   status_move: 'This interview cannot move to that status.',
   // Scheduling (AIV-P2-007).
   time_in_past: 'Choose a future time',
-  not_schedulable: 'This interview has started or ended, so its time cannot change.',
+  not_schedulable: 'This interview already has a time, or has started or ended.',
+  interviewer_has_draft:
+    'The current interviewer has a scorecard draft. Keep them as interviewer, or ask them to clear it.',
   scorecard_closed: 'This interview is cancelled, so its scorecard cannot change.',
   competency_not_in_interview: 'This competency is not one the interview tests.',
   // The scorecard submit (AIV-P2-006).

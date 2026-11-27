@@ -7,6 +7,7 @@
 // - it reads "Search jobs and candidates", not "Search roles, candidates, evidence": the catalogue never calls a job a
 //   role, and evidence by meaning is AIV-P1-162 (#662), so nothing is claimed that cannot be found;
 // - the results are Jobs and Candidates only, for the same reason;
+// - the field's text is text-2, not the artboard's placeholder text-3: it is a button's label, which must meet 4.5:1;
 // - results are links in two headed lists: Tab reaches each, Enter in the box opens the first (native elements, no
 //   hand-made listbox).
 import { useTranslations } from '@credalent/i18n/react';
@@ -20,7 +21,7 @@ const icon = (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
-    className="size-4 shrink-0"
+    className="size-4 shrink-0 text-text-3"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -58,10 +59,15 @@ export function SearchPalette({ view }: { view: SearchView }) {
       title={t('title')}
       closeLabel={t('close')}
       className="sm:max-w-xl"
+      // Typing goes straight into the box, whether opened from the field or with "/".
+      onOpenAutoFocus={(event) => {
+        event.preventDefault();
+        document.getElementById(`${id}-input`)?.focus();
+      }}
       trigger={
         <button
           type="button"
-          className="flex h-10 w-full min-w-0 items-center gap-2 rounded-control border border-border bg-surface px-3 text-start text-body text-text-2 pointer-coarse:h-11 hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="flex h-10 w-full min-w-0 items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-start text-body text-text-2 pointer-coarse:h-11 hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           aria-keyshortcuts="/"
         >
           {icon}

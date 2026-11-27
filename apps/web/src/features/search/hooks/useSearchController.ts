@@ -6,7 +6,7 @@ import * as actions from '../services/searchWorkspace.ts';
 
 const NONE: SearchResults = { jobs: [], candidates: [] };
 /** Debounce: a search runs once typing pauses (AIV-P1-049). */
-export const SEARCH_DELAY_MS = 200;
+const SEARCH_DELAY_MS = 200;
 
 /** Whether a "/" keypress came from somewhere a person types, where it must stay a slash. */
 const typing = (target: EventTarget | null) =>
@@ -25,6 +25,8 @@ export function useSearchController(services: Pick<typeof actions, 'searchWorksp
   const [results, setResults] = useState<SearchResults>(NONE);
   const latest = useRef(0);
 
+  // shortcut: "/" is a one-key shortcut the ticket asks for, with no way yet to turn it off (WCAG 2.1.4); add a member
+  // setting to turn it off when speech-input users report it.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || typing(event.target)) return;

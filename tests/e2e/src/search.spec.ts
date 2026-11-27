@@ -13,7 +13,9 @@ async function search(page: Page, query: string) {
     await page.locator('body').press('/');
     await expect(page.getByRole('searchbox', { name: 'Search jobs and candidates' })).toBeVisible({ timeout: 1000 });
   }).toPass();
-  await page.getByRole('searchbox', { name: 'Search jobs and candidates' }).fill(query);
+  // Focus is in the box after "/": the keystrokes go wherever focus is.
+  await page.keyboard.type(query);
+  await expect(page.getByRole('searchbox', { name: 'Search jobs and candidates' })).toHaveValue(query);
   return page.getByRole('dialog', { name: 'Search' });
 }
 
