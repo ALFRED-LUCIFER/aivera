@@ -65,6 +65,13 @@ export const getAssessment = (): AssessmentContract =>
         return { title: job.title, domainPack: pack?.label.en ?? null };
       },
     },
+    // A comparison's trade-offs (AIV-P1-047), lazy as the explanation is: an unconfigured app answers "unavailable".
+    {
+      ai: aiOrUnavailable('assessment.compareTradeoffs'),
+      approvedRubric: createApprovedRubricReads().approvedRubric,
+      evidence: evidenceOf,
+      identifiersOf,
+    },
   ));
 
 /**

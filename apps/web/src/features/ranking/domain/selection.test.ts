@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CandidateRow } from './ranking.ts';
-import { bulkActionsFor, compareHref, compareState, parseSelected } from './selection.ts';
+import { bulkActionsFor, compareState, parseSelected } from './selection.ts';
 
 // AIV-P1-036. Synthetic ids only.
 const rows = ['a1', 'a2', 'a3'].map((id): CandidateRow => ({
@@ -21,8 +21,8 @@ describe('bulkActionsFor', () => {
     expect(bulkActionsFor('hiring_owner', on)).toEqual([]);
   });
 
-  it('hides an action while its flag is off', () => {
-    expect(bulkActionsFor('recruiter', new Set())).toEqual(['chooseForInterview', 'addToPack']);
+  it('offers Compare with no flag on, now the comparison page exists (AIV-P1-047)', () => {
+    expect(bulkActionsFor('recruiter', new Set())).toEqual(['compare', 'chooseForInterview', 'addToPack']);
   });
 });
 
@@ -35,11 +35,15 @@ describe('parseSelected', () => {
 });
 
 describe('compare', () => {
-  it('needs two or three candidates', () => {
-    expect([0, 1, 2, 3, 4].map(compareState)).toEqual(['tooFew', 'tooFew', 'ready', 'ready', 'tooMany']);
-  });
-
-  it('addresses the comparison by the job and the person ids', () => {
-    expect(compareHref('j1', ['p1', 'p2'])).toBe('/app/jobs/j1/compare?ids=p1,p2');
+  it('takes as many as the recruiter ticks, from two to ten', () => {
+    expect([0, 1, 2, 3, 4, 10, 11].map(compareState)).toEqual([
+      'tooFew',
+      'tooFew',
+      'ready',
+      'ready',
+      'ready',
+      'ready',
+      'tooMany',
+    ]);
   });
 });

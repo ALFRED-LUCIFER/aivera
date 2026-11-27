@@ -3,11 +3,8 @@ import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
-// AIV-P1-036, the J2 step: select three candidates on the ranking and open the comparison, as AP, admin of "Demo"
-// (seed.ts). Proven meanwhile in jsdom by Ranking.test.tsx.
-// shortcut: not run while the `compare` flag is off (domain/selection.ts), since no checkbox shows; AIV-P1-047 (#111)
-// turns the flag on with the comparison page and removes this line.
-test.fixme(true, 'Selection is hidden until the comparison page exists (AIV-P1-047, #111).');
+// AIV-P1-036, the J2 step: select candidates on the ranking and open the comparison, as AP, admin of "Demo" (seed.ts).
+// The comparison page itself is compare.spec.ts (AIV-P1-047).
 
 const AP = 'ap@example.com';
 
@@ -22,6 +19,9 @@ async function openRanking(page: Page) {
   return table;
 }
 const bar = (page: Page) => page.getByRole('region', { name: 'Bulk actions' });
+// A click before the page hydrates is lost; check() does nothing once the box is ticked, so it is safe to repeat.
+const tick = (table: Awaited<ReturnType<typeof openRanking>>, name: string) =>
+  expect(() => table.getByRole('checkbox', { name: `Select ${name}` }).check({ timeout: 1000 })).toPass();
 
 test('Scenario: Compare three, by keyboard', async ({ page }) => {
   const table = await openRanking(page);
@@ -46,14 +46,15 @@ test('Scenario: Compare three, by keyboard', async ({ page }) => {
   await bar(page).getByRole('button', { name: 'Compare' }).focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]{36}\/compare\?ids=[0-9a-f-]{36}(,[0-9a-f-]{36}){2}$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Compare candidates' })).toBeVisible();
 });
 
-test('Scenario: Compare needs two or three, and the selection survives a filter', async ({ page }) => {
+// AIV-P1-047: Compare takes as many as the recruiter ticks, from two (owner decision 26 Nov 2026).
+test('Scenario: Compare takes two or more, and the selection survives a filter', async ({ page }) => {
   const table = await openRanking(page);
-  for (const name of ['Sara Al Qahtani', 'Arjun Menon', 'Tarek Mansour', 'Daniel Novak'])
-    await table.getByRole('checkbox', { name: `Select ${name}` }).check();
+  for (const name of ['Sara Al Qahtani', 'Arjun Menon', 'Tarek Mansour', 'Daniel Novak']) await tick(table, name);
   await expect(bar(page).getByRole('status')).toHaveText('4 selected');
-  await expect(bar(page).getByRole('button', { name: 'Compare up to 3 at a time' })).toBeDisabled();
+  await expect(bar(page).getByRole('button', { name: 'Compare' })).toBeEnabled();
   await page.getByRole('searchbox', { name: 'Search candidates' }).fill('menon');
   await expect(bar(page).getByRole('status')).toHaveText('4 selected · 3 not shown in the table');
 });
@@ -62,11 +63,11 @@ for (const theme of themes) {
   test(`axe passes on the ranking with the bulk bar open (${theme})`, async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     const table = await openRanking(page);
-    await table.getByRole('checkbox', { name: 'Select Sara Al Qahtani' }).check();
-    await expect(bar(page).getByRole('button', { name: 'Choose 2 or 3 to compare' })).toBeDisabled();
+    await tick(table, 'Sara Al Qahtani');
+    await expect(bar(page).getByRole('button', { name: 'Choose 2 or more to compare' })).toBeDisabled();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
-    await table.getByRole('checkbox', { name: 'Select Arjun Menon' }).check();
+    await tick(table, 'Arjun Menon');
     await expect(bar(page).getByRole('button', { name: 'Compare' })).toBeEnabled();
     await expectAccessible(page);
   });

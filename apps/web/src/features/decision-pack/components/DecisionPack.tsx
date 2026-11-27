@@ -6,6 +6,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { evidenceAnchor, profileHref } from '@/features/evidence-profile/domain/profile.ts';
+import { MAX_COMPARE, MIN_COMPARE, compareHref } from '@/features/compare/domain/compare.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { packHref } from '@/features/ranking/domain/pack.ts';
 import type { DecisionPackView, PackPage, RecordView } from '../domain/pack.ts';
@@ -37,7 +38,7 @@ import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 //   with the gap the model names ("Product judgement"), not "probe cost in Round 2"; "hold" is not on the artboard,
 //   which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
 // - the decision choices and "Record the decision" (AIV-P2-012) are in RecordDecisions.tsx, with their deviations;
-// - no "Open comparison" (AIV-P1-047, #111);
+// - "Open comparison" shows for a pack of 2 to 10 candidates, what one comparison holds (AIV-P1-047);
 // - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded
 //   preview inside Credalent; sharing it is AIV-P2-013 (#127);
 // - the cards' padding is the shared Card's 16 px, not 24 px;
@@ -83,10 +84,25 @@ function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined
               : t('decisionPack.preparedOn', { date: pack.preparedAt, version: pack.rubricVersion })}
           </p>
         </div>
-        {/* packHref builds the path from opaque ids, which typed routes cannot check. */}
-        <Link href={`${packHref(pack.jobId, pack.packId)}/preview` as Route} className={buttonClassName('secondary')}>
-          {t('decisionPack.openPreview')}
-        </Link>
+        {/* packHref and compareHref build their paths from opaque ids, which typed routes cannot check. */}
+        <div className="flex flex-wrap gap-2">
+          {pack.members.length >= MIN_COMPARE && pack.members.length <= MAX_COMPARE && (
+            <Link
+              href={
+                compareHref(
+                  pack.jobId,
+                  pack.members.map((m) => m.candidateId),
+                ) as Route
+              }
+              className={buttonClassName('secondary')}
+            >
+              {t('decisionPack.openComparison')}
+            </Link>
+          )}
+          <Link href={`${packHref(pack.jobId, pack.packId)}/preview` as Route} className={buttonClassName('secondary')}>
+            {t('decisionPack.openPreview')}
+          </Link>
+        </div>
       </div>
       {pack.role && (
         <Card>

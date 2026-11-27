@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { assistantAnswerSchema } from './assistant.answer.ts';
+import { compareTradeoffsSchema } from './assessment.compareTradeoffs.ts';
 import { explainRankingSchema } from './assessment.explainRanking.ts';
 import { asksProtectedTrait, suggestQuestionsSchema } from './assessment.suggestQuestions.ts';
 import { schemaRules } from '../citations.ts';
@@ -47,6 +48,7 @@ const SCHEMAS: [string, z.ZodType][] = [
   ['evidence.compareExcerpts', compareExcerptsSchema],
   ['assistant.answer', assistantAnswerSchema],
   ['assessment.explainRanking', explainRankingSchema],
+  ['assessment.compareTradeoffs', compareTradeoffsSchema],
   ['assessment.suggestQuestions', suggestQuestionsSchema([{ id: 'C1', citable: ['S1'] }])],
   ['interviews.mapSummary', mapSummarySchema(['C1'])],
   ['decisions.summariseMember', summariseMemberSchema],

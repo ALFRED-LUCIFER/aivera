@@ -32,6 +32,7 @@ import {
 } from '../domain/ranking.ts';
 import { chosenOrDecided, type ChooseView } from '../domain/choose.ts';
 import { packHref, type PackView } from '../domain/pack.ts';
+import { MAX_COMPARE, MIN_COMPARE } from '@/features/compare/domain/compare.ts';
 import type { CompareState } from '../domain/selection.ts';
 import { AddToPack } from './AddToPack.tsx';
 import { ChooseForInterview } from './ChooseForInterview.tsx';
@@ -45,11 +46,11 @@ import { NotYet, ScoreCell } from './ScoreCell.tsx';
 //   the table, shown only while rows are selected, not the table card's top strip; the checkbox column has a
 //   "Select all N shown" box where the artboard has a hidden "Compare" header; a row's box is named "Select <name>",
 //   not "Select <name> to compare", as it serves every bulk action;
-// - while fewer than 2 or more than 3 are selected, the disabled Compare button reads its reason ("Compare up to 3 at
-//   a time"), as a disabled Button does; the artboard draws only the 3-selected state;
+// - Compare takes 2 to 10 selected candidates, not the artboard's 3 (AIV-P1-047, owner decision 26 Nov 2026); outside
+//   that, the disabled Compare button reads its reason ("Choose 2 or more to compare"), as a disabled Button does;
 // - the bar has "Choose for interview" (AIV-P1-114, deviations in ChooseForInterview.tsx), "Add to decision pack"
-//   (AIV-P2-010, deviations in AddToPack.tsx) and "Compare", which stays hidden behind the `compare` flag until the
-//   comparison page exists (AIV-P1-047, #111). "Request evidence" and its preview are AIV-P1-038 and AIV-P1-039 (#102,
+//   (AIV-P2-010, deviations in AddToPack.tsx) and "Compare", which opens the comparison page (AIV-P1-047).
+//   "Request evidence" and its preview are AIV-P1-038 and AIV-P1-039 (#102,
 //   #103), "Message" waits for Message candidates: each ticket adds its button (domain/selection.ts);
 // - no "Compare 3 selected" primary button beside "Add candidates": the job header is shared by every job page
 //   (AIV-P1-011), and the bar's Compare does the same;
@@ -217,7 +218,7 @@ export function RankingTable({
               ? [
                   {
                     id: 'compare',
-                    label: t(`bulk.compare.${selection.compare}`),
+                    label: t(`bulk.compare.${selection.compare}`, { min: MIN_COMPARE, max: MAX_COMPARE }),
                     disabled: selection.compare !== 'ready',
                     preview: (ids: readonly string[]) => ({ action: 'compare' as const, ids }),
                   },
