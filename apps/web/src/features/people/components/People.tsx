@@ -2,7 +2,7 @@
 
 import type { Messages } from '@credalent/i18n';
 import { useTranslations } from '@credalent/i18n/react';
-import { buttonClassName, DataTable, FilterTabs, type DataTableColumn } from '@credalent/ui';
+import { buttonClassName, Chip, DataTable, FilterTabs, type DataTableColumn } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -17,8 +17,10 @@ import { ALL_JOBS, type PeopleData, type PersonRow } from '../domain/people.ts';
 // - the stage is the application's intake stage ("New", "Chosen for interview"), not the interview round ("Round 1
 //   complete", "Round 2 on 21 Nov"): rounds are AIV-P2-007 (#121), as on the ranked table;
 // - "Next step" is the ranked table's next action ("In shortlist pack", the chosen stage, else "Not yet available"),
-//   which has no "Invite to Round 1" or "Open scorecard" yet (AIV-P2-007);
-// - a person's other jobs open under "In N jobs" in their row (a native disclosure), not as rows of their own;
+//   which has no "Invite to Round 1" or "Open scorecard" yet (AIV-P2-007), and says "In shortlist pack" as text, not a
+//   link to the pack: the shared cell serves the ranked table too, which links packs from its success line;
+// - a person's other jobs open under the "In N jobs" chip in their row (a native disclosure), not as rows of their own,
+//   and give each job's backed score and claim range as one line of text, not a second score bar per job;
 // - every row is shown, not the first 8: pilot workspaces list tens of people (the footer counts them all);
 // - no search field and no assistant panel: AIV-P1-049 and AIV-P2-E06, as in the shell.
 
@@ -105,8 +107,10 @@ function PersonCell({ row }: { row: PersonRow }) {
       </Link>
       {row.others.length > 0 && (
         <details className="text-meta text-text-2">
-          <summary className="flex min-h-10 cursor-pointer items-center pointer-coarse:min-h-11">
-            {t('people.inJobs', { count: row.others.length + 1 })}
+          <summary className="min-h-10 cursor-pointer py-2 pointer-coarse:min-h-11">
+            <Chip tone="info" icon={<PeopleIcon />}>
+              {t('people.inJobs', { count: row.others.length + 1 })}
+            </Chip>
           </summary>
           <ul className="mt-1 flex flex-col gap-1">
             {row.others.map((other) => (
@@ -130,8 +134,26 @@ function JobCell({ row }: { row: PersonRow }) {
   const t = useTranslations('ranking');
   return (
     <>
-      {row.job.jobTitle}
+      <span className="font-semibold">{row.job.jobTitle}</span>
       <span className="block text-meta text-text-2">{t(`stages.${row.job.row.stage}`)}</span>
     </>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5.2a3 3 0 0 1 0 5.6M17.5 14.8c2.1.6 3.5 2.4 3.5 5.2" />
+    </svg>
   );
 }

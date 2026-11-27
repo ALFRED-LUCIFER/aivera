@@ -38,8 +38,9 @@ test('Scenario: Pool and Inbox are not mixed in: nobody not yet assessed is list
   await signIn(page, { email: AP });
   await page.goto('/app/candidates');
   await expect(personRow(page, 'Sara Al Qahtani')).toHaveCount(1);
+  // Youssef Aziz applied to Senior AI Engineer and is not assessed (seed.ts): the Inbox's, not this page's.
+  await expect(page.getByRole('link', { name: 'Youssef Aziz' })).toHaveCount(0);
   await expect(page.getByText('Not yet scored')).toHaveCount(0);
-  await expect(page.getByText('In talent pool')).toHaveCount(0);
 });
 
 test('Scenario: One job tab, by keyboard, kept in the URL', async ({ page }) => {
@@ -65,7 +66,8 @@ test('Scenario: No live jobs: a workspace sees only its own people', async ({ pa
   await expect(page.getByRole('link', { name: 'Sara Al Qahtani' })).toHaveCount(0);
 });
 
-test('an interviewer cannot open Candidates: 404, and no link in the sidebar', async ({ page }) => {
+// SAFETY: mutation check: removed requireScreen('candidates') from the page -> this test failed (no not-found page)
+test('an interviewer cannot open Candidates: not found, and no link in the sidebar', async ({ page }) => {
   await signIn(page, { email: 'noor.panel@example.com' });
   await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Candidates' })).toHaveCount(
     0,

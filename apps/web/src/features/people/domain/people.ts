@@ -3,8 +3,13 @@ import type { CandidateRow, CandidateScore } from '@/features/ranking/domain/ran
 
 // AIV-P1-048: everyone in a live process on one of the workspace's jobs, one row per person.
 
-/** A live process, least to furthest along; a stage outside it (talent pool, withdrawn, not advanced) is not listed. */
+/**
+ * A live process, least to furthest along; the talent pool and withdrawn are outside it and not listed. Not advanced
+ * stays on its live job and can join a later pack (intake's domain), so it is listed, last: its Round 1 ended in a no.
+ * In process has no setter yet; it sits with assessment, before anyone is chosen for interview.
+ */
 const PROGRESS: readonly Stage[] = [
+  'not_advanced',
   'new',
   'first_pass_done',
   'assessing',
@@ -27,8 +32,11 @@ export type PeopleData = { jobs: JobTab[]; people: PersonRow[] };
 /** "All jobs", the tab value when no job is chosen. */
 export const ALL_JOBS = 'all';
 
-// In a shortlist pack is past every stage (the Gherkin "Sorted furthest along first"); then the higher backed score.
-const progress = ({ row }: PersonJob) => (row.inPack ? PROGRESS.length : PROGRESS.indexOf(row.stage));
+// An undecided shortlist pack is past Round 1 interviews (the Gherkin "Sorted furthest along first") but not past a
+// recorded Round 2 shortlist, which a decided pack leads to; then the higher backed score.
+const IN_PACK = PROGRESS.indexOf('interview') + 0.5;
+const progress = ({ row }: PersonJob) =>
+  row.inPack ? Math.max(IN_PACK, PROGRESS.indexOf(row.stage)) : PROGRESS.indexOf(row.stage);
 const furtherFirst = (a: PersonJob, b: PersonJob) =>
   progress(b) - progress(a) || b.row.score.backedScore - a.row.score.backedScore;
 

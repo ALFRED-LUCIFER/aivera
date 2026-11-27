@@ -42,6 +42,7 @@ describe('toPeople', () => {
     ]);
   });
 
+  // mutation check: ranked every pack member above every stage -> this test failed (Arjun before Karim's Round 2 shortlist)
   it('puts people in a shortlist pack before people only assessed, then the higher backed score', () => {
     const data = toPeople([
       {
@@ -51,19 +52,24 @@ describe('toPeople', () => {
           row('arjun', 'Arjun Menon', 64, { inPack: true }),
           row('daniel', 'Daniel Novak', 55, { stage: 'interview' }),
           row('tarek', 'Tarek Mansour', 63),
+          row('karim', 'Karim Nasser', 40, { stage: 'round2_shortlist' }),
+          row('rana', 'Rana Khoury', 58, { stage: 'not_advanced' }),
         ],
       },
     ]);
+    // A recorded Round 2 shortlist, then an undecided pack, then chosen for interview, then assessed, then not advanced.
     expect(data.people.map((p) => p.job.row.name)).toEqual([
+      'Karim Nasser',
       'Arjun Menon',
       'Daniel Novak',
       'Hessa Al Mazrouei',
       'Tarek Mansour',
+      'Rana Khoury',
     ]);
   });
 
   // SAFETY: mutation check: dropped the `!PROGRESS.includes(row.stage)` test -> this test failed (pool and withdrawn listed)
-  it('leaves out the not yet assessed and anyone in the talent pool, withdrawn or not advanced', () => {
+  it('leaves out the not yet assessed and anyone in the talent pool or withdrawn', () => {
     const data = toPeople([
       {
         ...qa,
@@ -72,7 +78,6 @@ describe('toPeople', () => {
           { ...row('omar', 'Omar Al Suwaidi', 0), score: null },
           row('priya', 'Priya Nair', 49, { stage: 'in_pool' }),
           row('layla', 'Layla Haddad', 61, { stage: 'withdrawn' }),
-          row('maria', 'Maria Santos', 50, { stage: 'not_advanced' }),
         ],
       },
     ]);
