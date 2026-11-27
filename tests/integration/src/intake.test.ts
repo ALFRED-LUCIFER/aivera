@@ -126,6 +126,7 @@ describe('Migrations', () => {
       { name: 'application', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'application_source', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'import_batches', owner: 'aivera_migrator', rls: true, forced: true },
+      { name: 'inbox', owner: 'aivera_migrator', rls: true, forced: true },
       { name: 'outbox', owner: 'aivera_migrator', rls: true, forced: true },
     ]);
   });

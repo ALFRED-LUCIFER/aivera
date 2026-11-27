@@ -1,12 +1,14 @@
 // Builds the intake module for an app (ADR-002: only apps import this).
 import type { AuditContract } from '@credalent/audit';
 import type { CandidatesContract } from '@credalent/candidates';
-import { enqueue } from '@credalent/db/outbox';
+import type { Handler } from '@credalent/db/consumer';
+import { enqueue, type EventDefinition } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
 import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases, type InterviewPorts, type Ports } from './application/applications.ts';
+import { applyDecisions, type DecisionStagePorts } from './application/decisions.ts';
 import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract, type Stage } from './contracts/index.ts';
 import {
   applicationRecords,
@@ -15,7 +17,7 @@ import {
   intakeStore,
   jobsForCandidate,
 } from './infrastructure/repository.ts';
-import { outbox } from './infrastructure/schema.ts';
+import { inbox, outbox } from './infrastructure/schema.ts';
 
 /**
  * `now` is the injected clock (AGENTS.md 3.9); tests pass a fixed one. `interviews` are what choosing for interview
@@ -101,6 +103,41 @@ export { findApplication };
  */
 export const markInterviewStageForSeed = (tx: Tx, workspaceId: string, applicationId: string, from: Stage) =>
   intakeStore(tx).moveStage(workspaceId, applicationId, from, 'interview');
+
+/**
+ * The worker job for the decisions module's `DecisionsRecorded.v1` (AIV-P2-012): moves each decided candidate's
+ * application to "Round 2 shortlist" or "Not advanced" (a hold keeps its stage) and audits each move with the hiring
+ * owner as actor and their reason, once per message id (`intake.inbox`). The event and the read of the pack's
+ * decisions come from the worker's composition root, so intake needs no package edge to decisions (which depends on
+ * intake through evidence). Nothing here contacts a candidate (AGENTS.md 1.5).
+ */
+export const createDecisionStageHandler = (config: {
+  event: EventDefinition<{ packId: string; jobId: string }>;
+  decisionsOf: DecisionStagePorts['decisionsOf'];
+  audit: Pick<AuditContract, 'record'>;
+}): Handler<{ packId: string; jobId: string }> => {
+  const ports: DecisionStagePorts = {
+    storeFor: intakeStore,
+    decisionsOf: config.decisionsOf,
+    auditStageChanged: (tx, workspaceId, { applicationId, jobId, packId, from, to, decidedBy, note }) =>
+      config.audit.record(
+        { tx, workspaceId, actor: { type: 'user', id: decidedBy } },
+        {
+          action: 'application.stage_changed',
+          subject: { type: 'application', id: applicationId },
+          note,
+          before: { stage: from },
+          after: { stage: to, jobId, packId },
+        },
+      ),
+  };
+  return {
+    event: config.event,
+    inbox,
+    consumer: 'intake.stage.decisions-recorded',
+    handle: (tx, payload, envelope) => applyDecisions(ports, tx, envelope.workspaceId, payload),
+  };
+};
 
 /** The worker's application reads (AIV-P1-027). */
 export const createApplicationReads = (): ApplicationReads => ({ jobsForCandidate, candidatesForJob });

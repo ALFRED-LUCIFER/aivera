@@ -1,4 +1,4 @@
-import { outboxTable } from '@credalent/db/outbox';
+import { inboxTable, outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
 import { check, foreignKey, index, integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
@@ -28,7 +28,7 @@ export const application = intake
       // Must list exactly STAGES (domain/application.ts), which has no rejected stage; changing it needs a migration.
       check(
         'application_stage_check',
-        sql`${t.stage} in ('new', 'first_pass_done', 'assessing', 'interview', 'in_process', 'in_pool', 'withdrawn')`,
+        sql`${t.stage} in ('new', 'first_pass_done', 'assessing', 'interview', 'in_process', 'in_pool', 'withdrawn', 'round2_shortlist', 'not_advanced')`,
       ),
       tenantPolicy('application_tenant_isolation', t.workspaceId),
     ],
@@ -98,3 +98,6 @@ export const applicationSource = intake
 
 // Events written in the same transaction as the change; the relay sends them to Service Bus (AIV-P0-014).
 export const outbox = outboxTable(intake);
+
+// One row per handled message and consumer: the DecisionsRecorded.v1 stage update runs once per message (AIV-P2-012).
+export const inbox = inboxTable(intake);

@@ -55,7 +55,7 @@ const member = (
   name: string,
   summary: CardSummary,
   added: PackPage['members'][number]['added'] = null,
-) => ({ candidateId, name, backedScore: 68, upperBound: 84, added, summary });
+) => ({ candidateId, name, backedScore: 68, upperBound: 84, added, summary, decision: null });
 const page = (members: PackPage['members']): PackPage => ({
   jobId: JOB,
   packId: PACK,
@@ -76,6 +76,8 @@ const page = (members: PackPage['members']): PackPage => ({
   },
   members,
   others: 4,
+  mayDecide: false,
+  decided: null,
 });
 const show = (pack: PackPage) =>
   render(
@@ -150,14 +152,19 @@ describe('DecisionPack', () => {
   });
 
   // SAFETY: mutation check: set hasFocus to 'no' in SummaryText -> this test failed (no focus)
-  it("Scenario: Recommendation is labelled as Credalent's, and no decision option is offered or pre-selected", () => {
+  // AIV-P2-012 adds the hiring owner's choices: offered, read-only here (no controller), and none pre-selected.
+  it("Scenario: Recommendation is labelled as Credalent's, and no decision option is pre-selected", () => {
     const huda = { ...sara, recommendation: { ...sara.recommendation, focus: 'Cost and reliability' } };
     show(page([member('p3', 'Huda Al Mansoori', { status: 'ready', summary: huda })]));
     const card = screen.getByRole('region', { name: 'Huda Al Mansoori' });
     expect(within(card).getByText("Credalent's recommendation:").textContent).toBe(
       "Credalent's recommendation: advance, and look into Cost and reliability next",
     );
-    expect(screen.queryAllByRole('radio')).toEqual([]);
+    expect(
+      within(card)
+        .getAllByRole('radio')
+        .map((r) => (r as HTMLInputElement).checked),
+    ).toEqual([false, false, false]);
     expect(screen.queryAllByRole('checkbox')).toEqual([]);
     expect(
       document.querySelectorAll('[aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]'),

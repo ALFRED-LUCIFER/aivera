@@ -12,6 +12,7 @@ import {
 } from '@credalent/ai';
 import type { AssessmentContract } from '@credalent/assessment';
 import type { AuditContract } from '@credalent/audit';
+import type { Tx } from '@credalent/db';
 import type { Handler, Scheduler } from '@credalent/db/consumer';
 import { enqueue, newEnvelope } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
@@ -105,6 +106,13 @@ export function createDecisions(
     now,
   });
 }
+
+/**
+ * A pack's recorded decisions as the system reads them, in a worker job's workspace-scoped transaction with no member:
+ * intake's `DecisionsRecorded.v1` handler (AIV-P2-012), wired by the worker. Not authorised itself.
+ */
+export const readDecisionsAsSystem = (tx: Tx, workspaceId: string, packId: string) =>
+  packStore(tx).listDecisions(workspaceId, packId);
 
 // The answers a redelivery cannot change: the member is stored `unavailable` and the card shows the snapshot's own
 // strengths. That includes a non-transient AiUnavailable (a 4xx such as Azure's content filter, an answer over the
