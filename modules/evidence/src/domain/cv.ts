@@ -118,15 +118,17 @@ const rgb = (hex: string | null) => {
 
 function nearBackground(style: CvLayout['styles'][number]): boolean {
   const fg = rgb(style.color);
-  // shortcut: a style with no background is taken to sit on white, the page colour of nearly every CV; read the page
-  // image's colour if a pilot CV hides text on a coloured page.
-  const bg = rgb(style.backgroundColor ?? '#ffffff');
+  // An unknown background is not assumed white: Document Intelligence rarely reports one for a PDF, and white text on a
+  // two-column CV's coloured band is visible (AIV-P1-165). shortcut: white text on a white page with no reported
+  // background goes unflagged (tiny text still is); read the page image's colour behind the line if a pilot CV hides
+  // text that way.
+  const bg = rgb(style.backgroundColor);
   if (!fg || !bg) return false;
   return Math.hypot(...fg.map((c, i) => c - (bg[i] ?? 0))) < NEAR_BACKGROUND;
 }
 
 /**
- * Lines a reader cannot see: font colour near the background, or shorter than 4 pt. One `hidden_text` finding per line,
+ * Lines a reader cannot see: font colour near a background Document Intelligence reports, or shorter than 4 pt. One `hidden_text` finding per line,
  * quoting the line. The text itself stays in the CV text and is extracted like any other statement (a claim).
  */
 export function hiddenText(layout: CvLayout): UnusualContent[] {
