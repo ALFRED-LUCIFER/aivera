@@ -2061,7 +2061,32 @@
       "completed": "Completed",
       "cancelled": "Cancelled"
     },
-    "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}"
+    "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}",
+    "schedule": {
+      "open": "Schedule",
+      "openFor": "Schedule {name}",
+      "title": "Schedule {round}",
+      "description": "{name} · {job}",
+      "competencies": "Competencies to investigate: {list}",
+      "interviewer": "Interviewer",
+      "chooseInterviewer": "Choose an interviewer",
+      "date": "Date",
+      "time": "Time ({timeZone})",
+      "noContact": "Nobody is contacted. The candidate and the interviewer are not emailed from here yet.",
+      "save": "Schedule",
+      "saving": "Scheduling…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "errors": {
+        "pastTime": "Choose a future time",
+        "noInterviewer": "Choose an interviewer",
+        "notOnJob": "The interviewer must be an active member who can see this job.",
+        "failed": "The interview was not scheduled. Try again."
+      },
+      "clash": "The interviewer already has an interview at this time ({at, date, ::dMMM}, {at, time, ::HHmm}).",
+      "keep": "Keep this time",
+      "done": "Scheduled. Nobody has been contacted."
+    }
   },
   "scorecard": {
     "pageTitle": "Interview scorecard",

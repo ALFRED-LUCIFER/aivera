@@ -10,18 +10,29 @@
 // - The summary line carries an "Observed" basis marker, which the artboard lacks (AGENTS.md 1.7), and is left out
 //   until an interview is completed rather than saying "0 interviews".
 // - An interview with no time ("Not scheduled yet", owner decision of 24 Nov 2026) is not on the artboard: it shows
-//   "No time yet" and no action. A completed row has no action either.
+//   "No time yet", and a Schedule button for admins and recruiters (AIV-P2-007). A completed row has no action.
 // - "Scorecard due, 2 days" is a link to the scorecard, not plain text: nothing moves an interview to "In progress"
 //   yet, so a scheduled interview goes straight to due once its time passes, and this is the way to its scorecard.
 // - No search field, "Ask Credalent" or assistant panel: the shell leaves them out until they work (AIV-P1-095).
 import type { InterviewStatus } from '@credalent/interviews';
 import type { Messages } from '@credalent/i18n';
 import { useTranslations } from '@credalent/i18n/react';
-import { Chip, DataTable, FilterTabs, ValueBasis, type ChipTone, type DataTableColumn } from '@credalent/ui';
+import {
+  Button,
+  Chip,
+  DataTable,
+  FilterTabs,
+  SuccessBanner,
+  ValueBasis,
+  type ChipTone,
+  type DataTableColumn,
+} from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { createContext, use, type ReactNode } from 'react';
 import { parseView, rowAction, VIEWS, type InterviewRow, type InterviewView } from '../domain/interviews.ts';
+import type { ScheduleView } from '../domain/schedule.ts';
+import { ScheduleDialog } from './ScheduleDialog.tsx';
 
 export type InterviewsListView =
   | { status: 'loading' }
@@ -35,6 +46,8 @@ export type InterviewsListView =
       /** People and jobs the completed interviews cover. */
       people: number;
       jobs: number;
+      /** The Schedule dialog, for admins and recruiters; null for anyone else (AIV-P2-007). */
+      schedule: ScheduleView | null;
     };
 
 const glyph = (children: ReactNode) => (
@@ -87,13 +100,18 @@ const cells: (Omit<DataTableColumn<InterviewRow>, 'header'> & { id: keyof Messag
   { id: 'action', cell: (row) => <ActionCell row={row} /> },
 ];
 
+/** Opens the Schedule dialog for a row; null when this member cannot schedule (AIV-P2-007). */
+const OnSchedule = createContext<((row: InterviewRow) => void) | null>(null);
+
 /** Ongoing and completed interviews with what each must investigate (AIV-P2-002). */
 export function InterviewsList({ view }: { view: InterviewsListView }) {
   const t = useTranslations('interviews');
   const ready = view.status === 'ready';
   const total = ready ? view.counts.ongoing + view.counts.completed : 0;
+  const schedule = ready ? view.schedule : null;
   return (
     <div className="flex flex-col gap-6">
+      {schedule && <SuccessBanner>{schedule.done && t('schedule.done')}</SuccessBanner>}
       {ready && (
         <FilterTabs
           label={t('viewsLabel')}
@@ -102,20 +120,23 @@ export function InterviewsList({ view }: { view: InterviewsListView }) {
           onValueChange={(value) => view.onViewChange(parseView(value))}
         />
       )}
-      <DataTable
-        caption={t('caption')}
-        columns={cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }))}
-        rows={ready ? view.rows : []}
-        getRowId={(row) => row.id}
-        emptyMessage={
-          total === 0 ? t('empty') : t(ready && view.view === 'completed' ? 'emptyCompleted' : 'emptyOngoing')
-        }
-        loading={view.status === 'loading'}
-        loadingLabel={t('loading')}
-        {...(view.status === 'error' && {
-          error: { message: t('error'), retryLabel: t('retry'), onRetry: view.onRetry },
-        })}
-      />
+      <OnSchedule value={schedule?.onOpen ?? null}>
+        <DataTable
+          caption={t('caption')}
+          columns={cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }))}
+          rows={ready ? view.rows : []}
+          getRowId={(row) => row.id}
+          emptyMessage={
+            total === 0 ? t('empty') : t(ready && view.view === 'completed' ? 'emptyCompleted' : 'emptyOngoing')
+          }
+          loading={view.status === 'loading'}
+          loadingLabel={t('loading')}
+          {...(view.status === 'error' && {
+            error: { message: t('error'), retryLabel: t('retry'), onRetry: view.onRetry },
+          })}
+        />
+      </OnSchedule>
+      {schedule && <ScheduleDialog view={schedule} />}
       {ready && view.counts.completed > 0 && (
         <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
           {t('summary', { count: view.counts.completed, people: view.people, jobs: view.jobs })}
@@ -169,9 +190,19 @@ function StatusCell({ row }: { row: InterviewRow }) {
 
 function ActionCell({ row }: { row: InterviewRow }) {
   const t = useTranslations('interviews');
-  const action = rowAction(row);
+  const onSchedule = use(OnSchedule);
+  const action = rowAction(row, onSchedule !== null);
   if (!action) return null;
   if (action.kind === 'noGuide') return <span className="whitespace-nowrap text-text-2">{t('noGuide')}</span>;
+  if (action.kind === 'schedule')
+    return (
+      <Button
+        onClick={() => onSchedule?.(row)}
+        aria-label={t('schedule.openFor', { name: row.candidate ?? t('unnamed') })}
+      >
+        {t('schedule.open')}
+      </Button>
+    );
   return (
     // scorecardHref builds the path from the interview id, which typed routes cannot check.
     <Link

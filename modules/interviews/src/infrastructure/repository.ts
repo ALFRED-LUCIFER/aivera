@@ -27,6 +27,14 @@ export function interviewStore(tx: Tx): InterviewStore {
         .returning({ id: interview.id });
       return moved.length === 1;
     },
+    async schedule(workspaceId, interviewId, from, scheduledAt, interviewerUserId) {
+      const moved = await tx
+        .update(interview)
+        .set({ status: 'scheduled', scheduledAt, interviewerUserId })
+        .where(and(eq(interview.workspaceId, workspaceId), eq(interview.id, interviewId), eq(interview.status, from)))
+        .returning({ id: interview.id });
+      return moved.length === 1;
+    },
     list(workspaceId, statuses, interviewerUserId) {
       return tx
         .select()

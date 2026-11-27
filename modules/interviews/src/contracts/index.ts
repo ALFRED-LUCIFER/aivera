@@ -2,7 +2,13 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
+import type {
+  CreateInterviewInput,
+  InterviewFilter,
+  ScheduleInterviewInput,
+  ScheduleResult,
+  Scorecard,
+} from '../application/interviews.ts';
 import type { SubmitScorecardInput, SubmittedScorecard } from '../application/submit.ts';
 import type { ApplySummaryInput, MeetingSummaryView, ScorePreview, SummaryPreview } from '../application/summary.ts';
 import type { Interview } from '../domain/interview.ts';
@@ -25,7 +31,13 @@ export {
   summaryTextSchema,
 } from '../domain/summary.ts';
 export type { Finding, ProposalStatus, ProposedStrength, SummaryStatus } from '../domain/summary.ts';
-export type { CreateInterviewInput, InterviewFilter, Scorecard } from '../application/interviews.ts';
+export type {
+  CreateInterviewInput,
+  InterviewFilter,
+  ScheduleInterviewInput,
+  ScheduleResult,
+  Scorecard,
+} from '../application/interviews.ts';
 export type { SubmitScorecardInput, SubmittedScorecard } from '../application/submit.ts';
 export {
   assessedRatings,
@@ -91,6 +103,14 @@ export interface InterviewsContract {
    * member who can see the job); `ForbiddenError` for any other role; a zod error for a malformed input.
    */
   createInterview(ctx: WorkspaceContext, input: CreateInterviewInput): Promise<{ interviewId: string }>;
+  /**
+   * Gives a `to_schedule` interview, or one still `scheduled` and not yet due, its time and interviewer, and writes
+   * `InterviewScheduled.v1` (AIV-P2-007). Contacts nobody. When the interviewer has another scheduled or running interview
+   * within the hour it returns `clash` and writes nothing, unless `keepClash`. Admins and recruiters on the job
+   * (`interview.schedule`; `ForbiddenError` otherwise). Throws `InterviewError` `interview_not_found`, `not_schedulable`,
+   * `time_in_past` (not after the clock's now), `interviewer_not_on_job`, `status_move` (changed meanwhile).
+   */
+  scheduleInterview(ctx: WorkspaceContext, input: ScheduleInterviewInput): Promise<ScheduleResult>;
   /**
    * Moves an interview to `in_progress` from `to_schedule`, `scheduled` or `scorecard_due` (`status_move` otherwise).
    * Admins and recruiters on the job; hiring owners and interviewers only on the interviews they hold

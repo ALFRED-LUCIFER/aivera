@@ -1,6 +1,14 @@
 import { getTranslations } from '@credalent/i18n';
 import { describe, expect, it } from 'vitest';
-import { canMove, effectiveStatus, ROUNDS, scorecardDueDays, STATUSES, type InterviewStatus } from './interview.ts';
+import {
+  canMove,
+  clashingAt,
+  effectiveStatus,
+  ROUNDS,
+  scorecardDueDays,
+  STATUSES,
+  type InterviewStatus,
+} from './interview.ts';
 
 // AIV-P2-001: the status transition table, round labels and the computed scorecard due. Synthetic cast only.
 const t = await getTranslations('en', 'Asia/Dubai');
@@ -85,5 +93,18 @@ describe('Scenario: Scorecard becomes due when the time passes', () => {
       scorecardDueDays(new Date('2026-11-16T19:30:00.000Z'), new Date('2026-11-16T20:30:00.000Z'), 'Asia/Dubai'),
     ).toBe(1);
     expect(scorecardDueDays(listedOn, listedOn, 'Asia/Dubai')).toBe(0);
+  });
+});
+
+describe('Scenario: Interviewer clash (AIV-P2-007)', () => {
+  const at = new Date('2026-11-21T07:00:00.000Z'); // 21 Nov, 11:00 Gulf time
+  const shifted = (minutes: number) => ({ scheduledAt: new Date(at.getTime() + minutes * 60_000) });
+
+  // mutation check: counted exactly an hour apart as a clash (<= hold) -> this test failed
+  it('flags another interview within the hour, either side, and nothing an hour or more away', () => {
+    expect(clashingAt(at, [shifted(0)])).toEqual(at);
+    expect(clashingAt(at, [shifted(90), shifted(-30)])).toEqual(shifted(-30).scheduledAt);
+    expect(clashingAt(at, [shifted(60), shifted(-60), { scheduledAt: null }])).toBeNull();
+    expect(clashingAt(at, [])).toBeNull();
   });
 });

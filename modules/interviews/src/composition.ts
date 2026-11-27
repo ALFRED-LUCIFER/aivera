@@ -70,8 +70,9 @@ export function createInterviews(
       enqueue(tx, outbox, InterviewScheduledV1, {
         workspaceId: interview.workspaceId,
         payload: { interviewId: interview.id, applicationId: interview.applicationId },
-        dedupeKey: `interview-scheduled:${interview.id}`,
-        occurredAt: interview.createdAt,
+        // Per time, so a rescheduled interview is a new event (AIV-P2-007).
+        dedupeKey: `interview-scheduled:${interview.id}:${interview.scheduledAt?.toISOString() ?? ''}`,
+        occurredAt: now(),
       }),
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     jobResource: async (ctx, jobId) => {

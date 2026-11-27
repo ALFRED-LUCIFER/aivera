@@ -121,10 +121,7 @@
       "uniqueConstraints": {
         "interview_workspace_id_key": {
           "name": "interview_workspace_id_key",
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
+          "columns": ["workspace_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -133,9 +130,7 @@
           "name": "interview_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"interview\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         }
@@ -245,10 +240,7 @@
       "uniqueConstraints": {
         "outbox_workspace_dedupe_key": {
           "name": "outbox_workspace_dedupe_key",
-          "columns": [
-            "workspace_id",
-            "dedupe_key"
-          ],
+          "columns": ["workspace_id", "dedupe_key"],
           "nullsNotDistinct": false
         }
       },
@@ -257,9 +249,7 @@
           "name": "outbox_tenant_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid",
           "withCheck": "\"interviews\".\"outbox\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid"
         },
@@ -267,18 +257,14 @@
           "name": "outbox_relay_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "aivera_relay"
-          ],
+          "to": ["aivera_relay"],
           "using": "true"
         },
         "outbox_relay_mark": {
           "name": "outbox_relay_mark",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "aivera_relay"
-          ],
+          "to": ["aivera_relay"],
           "using": "true",
           "withCheck": "true"
         }

@@ -9,6 +9,7 @@ import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { IntakeContract } from '@credalent/intake';
 import { createIntake, findApplication } from '@credalent/intake/composition';
 import {
+  InterviewError,
   scorecardDueDays,
   toInterviewNoteEvidence,
   type InterviewsContract,
@@ -17,7 +18,7 @@ import {
 import { createInterviews } from '@credalent/interviews/composition';
 import type { Competency, JobsContract } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
-import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -265,6 +266,75 @@ describe('Scenario: Schedule a Round 1 interview', () => {
       }),
     ).rejects.toThrow('rolled back');
     expect([await count('interviews.interview'), await count('interviews.outbox')]).toEqual(before);
+  });
+});
+
+// AIV-P2-007 scheduling helpers.
+const TOMORROW_1100 = new Date('2026-11-19T07:00:00.000Z'); // 19 Nov, 11:00 in Dubai
+const unscheduled = () =>
+  as(AYESHA, w1, (ctx) =>
+    interviews.createInterview(ctx, {
+      applicationId: danielApplication,
+      round: 'evidence_defence',
+      interviewerUserId: AYESHA,
+      competencyIds: [idOf('Retrieval and evaluation')],
+    }),
+  );
+const schedule = (userId: string, input: Parameters<InterviewsContract['scheduleInterview']>[1]) =>
+  as(userId, w1, (ctx) => interviews.scheduleInterview(ctx, input));
+const statusOf = async (interviewId: string) =>
+  (await as(AYESHA, w1, (ctx) => interviews.getInterview(ctx, interviewId)))?.status;
+
+describe('Scenario: Schedule a round, with nobody contacted (AIV-P2-007)', () => {
+  // SAFETY: mutation check: removed the clash return from scheduleInterview -> this test failed (the clashing time was stored)
+  it('stores the time and its event, queues no email, refuses the past and warns of a clash until kept', async () => {
+    const emailsBefore = await count('notifications.message');
+    const first = (await unscheduled()).interviewId;
+    await expect(
+      schedule(AYESHA, {
+        interviewId: first,
+        scheduledAt: new Date(NOW.getTime() - 60_000),
+        interviewerUserId: AYESHA,
+      }),
+    ).rejects.toEqual(new InterviewError('time_in_past'));
+    expect(await statusOf(first)).toBe('to_schedule');
+    expect(
+      await schedule(AYESHA, { interviewId: first, scheduledAt: TOMORROW_1100, interviewerUserId: AYESHA }),
+    ).toEqual({ status: 'scheduled' });
+    expect(await as(AYESHA, w1, (ctx) => interviews.getInterview(ctx, first))).toMatchObject({
+      status: 'scheduled',
+      scheduledAt: TOMORROW_1100,
+    });
+    const events = await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`select 1 from interviews.outbox where payload->>'interviewId' = ${first}`),
+    );
+    expect(events).toHaveLength(1);
+
+    const second = (await unscheduled()).interviewId;
+    const halfPast = new Date(TOMORROW_1100.getTime() + 30 * 60_000);
+    expect(await schedule(AYESHA, { interviewId: second, scheduledAt: halfPast, interviewerUserId: AYESHA })).toEqual({
+      status: 'clash',
+      clashAt: TOMORROW_1100,
+    });
+    expect(await statusOf(second)).toBe('to_schedule');
+    expect(
+      await schedule(AYESHA, {
+        interviewId: second,
+        scheduledAt: halfPast,
+        interviewerUserId: AYESHA,
+        keepClash: true,
+      }),
+    ).toEqual({ status: 'scheduled' });
+    // Scheduling contacts nobody: the invitation is a separate step, confirmed by a person.
+    expect(await count('notifications.message')).toBe(emailsBefore);
+  });
+
+  it('an interviewer cannot schedule, even on a job they are granted (403)', async () => {
+    const { interviewId } = await unscheduled();
+    await expect(
+      schedule(LINA, { interviewId, scheduledAt: TOMORROW_1100, interviewerUserId: LINA }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await statusOf(interviewId)).toBe('to_schedule');
   });
 });
 

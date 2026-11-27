@@ -60,6 +60,21 @@ const calendarDay = (at: Date, timeZone: string) =>
     new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at),
   );
 
+/** How long an interview is taken to hold its interviewer, for the clash warning (AIV-P2-007). */
+export const INTERVIEW_MINUTES = 60;
+
+/**
+ * The time of another interview of the same interviewer that overlaps one starting at `at` (each held for
+ * `INTERVIEW_MINUTES`), or null. `others` are that interviewer's other scheduled or running interviews.
+ */
+export function clashingAt(at: Date, others: Pick<Interview, 'scheduledAt'>[]): Date | null {
+  const hold = INTERVIEW_MINUTES * 60_000;
+  return (
+    others.find(({ scheduledAt }) => scheduledAt && Math.abs(scheduledAt.getTime() - at.getTime()) < hold)
+      ?.scheduledAt ?? null
+  );
+}
+
 /** Whole calendar days in the viewer's time zone from the interview's day to today: "Scorecard due, 2 days". */
 export const scorecardDueDays = (scheduledAt: Date, now: Date, timeZone: string) =>
   Math.max(0, Math.round((calendarDay(now, timeZone) - calendarDay(scheduledAt, timeZone)) / 86_400_000));
@@ -71,6 +86,9 @@ const MESSAGES = {
   competency_not_in_rubric: "This competency is not in the job's approved rubric",
   interviewer_not_on_job: 'The interviewer must be an active member who can see this job.',
   status_move: 'This interview cannot move to that status.',
+  // Scheduling (AIV-P2-007).
+  time_in_past: 'Choose a future time',
+  not_schedulable: 'This interview has started or ended, so its time cannot change.',
   scorecard_closed: 'This interview is cancelled, so its scorecard cannot change.',
   competency_not_in_interview: 'This competency is not one the interview tests.',
   // The scorecard submit (AIV-P2-006).
