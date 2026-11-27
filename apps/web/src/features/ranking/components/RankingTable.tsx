@@ -30,7 +30,7 @@ import {
   type HideableColumn,
   type RankingFilters,
 } from '../domain/ranking.ts';
-import type { ChooseView } from '../domain/choose.ts';
+import { chosenOrDecided, type ChooseView } from '../domain/choose.ts';
 import { packHref, type PackView } from '../domain/pack.ts';
 import type { CompareState } from '../domain/selection.ts';
 import { AddToPack } from './AddToPack.tsx';
@@ -448,7 +448,8 @@ function MissingCell({ score }: { score: CandidateScore }) {
 function NextActionCell({ row }: { row: CandidateRow }) {
   const t = useTranslations('ranking');
   if (row.inPack) return <span>{t('pack.inPack')}</span>;
-  return row.stage === 'interview' ? <span>{t('stages.interview')}</span> : <NotYet />;
+  // Chosen for interview, or past Round 1 by the hiring owner's decision (AIV-P2-012): the stage is the next action's state.
+  return chosenOrDecided(row.stage) ? <span>{t(`stages.${row.stage}`)}</span> : <NotYet />;
 }
 
 function ScoredCell({ score }: { score: CandidateScore }) {

@@ -88,12 +88,14 @@ const {
   readEvidenceForJobAsSystem,
 } = await import('@credalent/evidence/composition');
 const { createIdentity } = await import('@credalent/identity/composition');
-const { PackMembersAddedV1, PackReadyV1 } = await import('@credalent/decisions');
-const { createPackSummaryHandlers, PACK_SUMMARY_QUEUE } = await import('@credalent/decisions/composition');
+const { DecisionsRecordedV1, PackMembersAddedV1, PackReadyV1 } = await import('@credalent/decisions');
+const { createPackSummaryHandlers, PACK_SUMMARY_QUEUE, readDecisionsAsSystem } =
+  await import('@credalent/decisions/composition');
 const { InterviewCompletedV1, InterviewScheduledV1, MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
 const { createSummaryHandlers, SUMMARY_QUEUE } = await import('@credalent/interviews/composition');
 const { ApplicationReceivedV1 } = await import('@credalent/intake');
-const { createApplicationReads, readApplicationSourceAsSystem } = await import('@credalent/intake/composition');
+const { createApplicationReads, createDecisionStageHandler, readApplicationSourceAsSystem } =
+  await import('@credalent/intake/composition');
 const { createAiTokenBudget } = await import('@credalent/workspaces/composition');
 const { CatalogueEvalRequestedV1, JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } =
   await import('@credalent/jobs');
@@ -121,9 +123,8 @@ const githubApp = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_
 const fileReading = Boolean(env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && env.AZURE_STORAGE_BLOB_URL);
 // shortcut: `files` (FileClean.v1, FileRejected.v1) is relayed only with file reading, their one consumer (AIV-P1-025).
 // `interviews` is relayed for MeetingSummarySubmitted.v1 (AIV-P1-115); its other two events are parked in QUEUES below.
-// `decisions` is relayed for PackReady.v1 and PackMembersAdded.v1, the pack summaries (AIV-P2-011).
-// shortcut: DecisionsRecorded.v1 (AIV-P2-009) has no queue: it waits unsent in decisions.outbox, retried by the relay,
-// until its consumers exist (the stage change in intake, the decision email drafts in notifications) and map it.
+// `decisions` is relayed for PackReady.v1 and PackMembersAdded.v1, the pack summaries (AIV-P2-011), and for
+// DecisionsRecorded.v1, the stage change in intake (AIV-P2-012).
 const OUTBOXES = [
   'candidates',
   'jobs',
@@ -153,6 +154,10 @@ const QUEUES: Record<string, string> = {
   // A pack's members to summarise (AIV-P2-011): always consumed; with no model each is stored "Summary unavailable".
   [PackReadyV1.type]: PACK_SUMMARY_QUEUE,
   [PackMembersAddedV1.type]: PACK_SUMMARY_QUEUE,
+  // A hiring owner's recorded decisions (AIV-P2-012): intake moves each decided candidate's stage. Always consumed.
+  // shortcut: on the pack summaries' queue, which every environment has; move both to a `decisions` queue
+  // (infra/modules/messaging.bicep) when the decision email drafts (AIV-P2-073) add a consumer of their own.
+  [DecisionsRecordedV1.type]: PACK_SUMMARY_QUEUE,
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
@@ -301,6 +306,14 @@ const identity = createIdentity(appDb, { trustedIssuer: 'worker: reads display n
     },
     scheduler,
     now,
+  }),
+);
+// The stage after a recorded decision (AIV-P2-012): "Round 2 shortlist" or "Not advanced", audited as the hiring owner's.
+(CONSUMERS[PACK_SUMMARY_QUEUE] ??= []).push(
+  createDecisionStageHandler({
+    event: DecisionsRecordedV1,
+    decisionsOf: readDecisionsAsSystem,
+    audit: createAudit(appDb, now),
   }),
 );
 if (mapping)

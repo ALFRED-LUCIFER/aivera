@@ -81,6 +81,19 @@ export function intakeStore(tx: Tx): IntakeStore {
         .where(and(eq(application.workspaceId, workspaceId), eq(application.id, applicationId)));
       return row ?? null;
     },
+    async findForPersonAndJob(workspaceId, personId, jobId) {
+      const [row] = await tx
+        .select()
+        .from(application)
+        .where(
+          and(
+            eq(application.workspaceId, workspaceId),
+            eq(application.personId, personId),
+            eq(application.jobId, jobId),
+          ),
+        );
+      return row ?? null;
+    },
     async moveStage(workspaceId, applicationId, from, to) {
       const moved = await tx
         .update(application)

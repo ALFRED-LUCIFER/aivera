@@ -106,6 +106,8 @@ export type PackView = DecisionPack & {
   members: PackMember[];
   decisions: Decision[];
   summaries: StoredMemberSummary[];
+  /** Whether the reader may record the pack's decisions (`mayDecide`), so the page shows the controls read-only otherwise. */
+  mayDecide: boolean;
 };
 
 export function packUseCases(ports: Ports) {
@@ -224,11 +226,12 @@ export function packUseCases(ports: Ports) {
         members: await store.listMembers(ctx.workspaceId, packId),
         decisions: await store.listDecisions(ctx.workspaceId, packId),
         summaries: await store.listSummaries(ctx.workspaceId, packId),
+        mayDecide: mayDecide(ctx, found.job),
       };
     },
 
     /** Stores the decisions and one event. It moves no stage and contacts nobody (AGENTS.md 1.5). */
-    async recordDecisions(ctx: WorkspaceContext, raw: RecordDecisionsInput): Promise<void> {
+    async recordDecisions(ctx: WorkspaceContext, raw: RecordDecisionsInput): Promise<{ decidedAt: Date }> {
       const input = recordDecisionsInputSchema.parse(raw);
       const found = await visible(ctx, input.packId, true);
       if (!found) throw new PackError('pack_not_found');
@@ -254,6 +257,7 @@ export function packUseCases(ports: Ports) {
       await store.setStatus(ctx.workspaceId, pack.id, 'decided');
       await ports.publishDecisionsRecorded(ctx.tx, pack, decidedAt);
       for (const decision of decisions) await ports.auditDecision(ctx, job.jobId, decision);
+      return { decidedAt };
     },
   };
 }

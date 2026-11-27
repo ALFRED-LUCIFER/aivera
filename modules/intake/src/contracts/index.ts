@@ -12,7 +12,14 @@ import type {
   ReceiveBatchInput,
 } from '../application/applications.ts';
 
-export { CHOICE_REASON_MAX, IntakeError, PERSONAL_DATA_FIELDS, SOURCES, STAGES } from '../domain/application.ts';
+export {
+  CHOICE_REASON_MAX,
+  chosenOrDecided,
+  IntakeError,
+  PERSONAL_DATA_FIELDS,
+  SOURCES,
+  STAGES,
+} from '../domain/application.ts';
 export type { Source, Stage } from '../domain/application.ts';
 export type {
   ApplicationListItem,

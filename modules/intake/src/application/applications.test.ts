@@ -247,6 +247,19 @@ describe('chooseForInterview', () => {
     expect(auditStageChanged).toHaveBeenCalledTimes(1);
   });
 
+  // AIV-P2-012: a recorded decision is never reversed by a new choice for Round 1.
+  // SAFETY: mutation check: chosenOrDecided returned `stage === 'interview'` only -> this test failed (id(1) and id(2) moved back to interview)
+  it('skips someone the hiring owner put on the Round 2 shortlist or did not advance: their stage and decision stand', async () => {
+    const { useCases, calls } = setupChoose([app(1, 'round2_shortlist'), app(2, 'not_advanced'), app(3)]);
+    const result = await useCases.chooseForInterview(recruiter, {
+      jobId: JOB.jobId,
+      applicationIds: [id(1), id(2), id(3)],
+      reason: 'First shortlist',
+    });
+    expect(result).toEqual({ chosen: [{ applicationId: id(3), interviewId: `i-${id(3)}` }], skipped: [id(1), id(2)] });
+    expect(calls).toEqual([`stage:${id(3)}`, `interview:${id(3)}`, `audit:${id(3)}`]);
+  });
+
   it('skips someone a concurrent choice moved first', async () => {
     const { useCases, moveStage, createInterview } = setupChoose([app(1)]);
     moveStage.mockResolvedValueOnce(false);

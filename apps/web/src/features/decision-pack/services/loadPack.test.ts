@@ -45,6 +45,8 @@ const stored = (jobId = JOB) => ({
   preparedAt: at,
   members: [{ candidateId: 'p1', backedScore: 68, upperBound: 84, addedBy: AYESHA, addedAt: at }],
   summaries: [],
+  decisions: [] as { candidateId: string; decision: string; decidedBy: string; decidedAt: Date }[],
+  mayDecide: false,
 });
 const [LLM, COST] = [id(10), id(11)];
 const RUBRIC = {
@@ -95,11 +97,34 @@ describe('loadPack', () => {
           upperBound: 84,
           added: { by: 'Ayesha Perera', at },
           summary: { status: 'preparing' },
+          decision: null,
         },
       ],
       others: 1,
+      mayDecide: false,
+      decided: null,
     });
     expect(fake.getUser).toHaveBeenCalledWith(AYESHA);
+  });
+
+  // AIV-P2-012: "Already decided": the decisions are shown read-only with who recorded them and when.
+  it('a decided pack: each member with their decision, and who recorded the decisions and when', async () => {
+    const HASSAN = id(8);
+    const decidedAt = new Date('2026-11-18T09:30:00.000Z');
+    fake.getPack.mockResolvedValue({
+      ...stored(),
+      mayDecide: true,
+      decisions: [{ candidateId: 'p1', decision: 'advance', decidedBy: HASSAN, decidedAt }],
+    });
+    fake.getUser.mockImplementation(async (userId: string) =>
+      userId === HASSAN ? { id: HASSAN, email: 'hassan@example.com', displayName: 'Hassan Haddad' } : null,
+    );
+    const page = await loadPack(JOB, PACK);
+    expect(page !== 'notFound' && page && [page.mayDecide, page.decided, page.members[0]?.decision]).toEqual([
+      true,
+      { by: 'Hassan Haddad', at: decidedAt },
+      'advance',
+    ]);
   });
 
   it('who added a member: their email with no display name; no line once the account is gone, nor on older members', async () => {

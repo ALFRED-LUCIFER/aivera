@@ -563,6 +563,9 @@ async function seed(
     // A handled jobs message (jobs.inbox, AIV-P2-048).
     await ctx.tx.execute(sql`insert into jobs.inbox (consumer, message_id, workspace_id, handled_at)
       values ('jobs.catalogue.eval', ${crypto.randomUUID()}, ${workspaceId}, now())`);
+    // A handled intake message (intake.inbox, AIV-P2-012).
+    await ctx.tx.execute(sql`insert into intake.inbox (consumer, message_id, workspace_id, handled_at)
+      values ('intake.stage.decisions-recorded', ${crypto.randomUUID()}, ${workspaceId}, now())`);
     // A handled assessment message (assessment.inbox, AIV-P1-031).
     await ctx.tx.execute(sql`insert into assessment.inbox (consumer, message_id, workspace_id, handled_at)
       values ('assessment.evidence-mapped', ${crypto.randomUUID()}, ${workspaceId}, now())`);
