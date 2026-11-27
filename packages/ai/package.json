@@ -15,11 +15,11 @@
     "contract": "node scripts/contract.ts"
   },
   "dependencies": {
-    "@ai-sdk/azure": "4.0.119",
+    "@ai-sdk/azure": "4.0.125",
     "@credalent/db": "workspace:*",
     "@credalent/observability": "workspace:*",
     "@azure/identity": "4.14.1",
-    "ai": "7.0.166",
+    "ai": "7.0.172",
     "drizzle-orm": "0.45.4",
     "yaml": "2.9.1",
     "zod": "4.6.7"
