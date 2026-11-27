@@ -29,7 +29,7 @@
     "@credalent/seed": "workspace:*",
     "@credalent/workspaces": "workspace:*",
     "@opentelemetry/api": "1.10.0",
-    "@opentelemetry/context-async-hooks": "2.12.0",
+    "@opentelemetry/context-async-hooks": "3.1.1",
     "@opentelemetry/core": "3.1.1",
     "@opentelemetry/sdk-metrics": "2.12.1",
     "@opentelemetry/sdk-trace-base": "2.12.0",
