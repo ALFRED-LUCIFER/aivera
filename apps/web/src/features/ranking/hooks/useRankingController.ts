@@ -11,7 +11,8 @@ import {
   type RankingData,
   type RankingFilters,
 } from '../domain/ranking.ts';
-import { compareHref, compareState, parseSelected } from '../domain/selection.ts';
+import { compareHref } from '@/features/compare/domain/compare.ts';
+import { compareState, parseSelected } from '../domain/selection.ts';
 import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 
 /**

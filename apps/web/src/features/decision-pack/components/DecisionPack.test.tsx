@@ -208,3 +208,21 @@ describe('DecisionPack', () => {
     ).toBeTruthy();
   });
 });
+
+// AIV-P1-047: a pack of 2 to 10 candidates opens as a comparison.
+const packOf = (count: number) =>
+  page(Array.from({ length: count }, (_, i) => member(`p${i + 1}`, `Candidate ${i + 1}`, { status: 'preparing' })));
+
+describe('DecisionPack: Open comparison', () => {
+  it("links to the comparison of its members, in the pack's order", () => {
+    show(packOf(3));
+    expect(screen.getByRole('link', { name: 'Open comparison' }).getAttribute('href')).toBe(
+      `/app/jobs/${JOB}/compare?ids=p1,p2,p3`,
+    );
+  });
+
+  it.each([1, 11])('has no comparison for a pack of %i: one comparison holds 2 to 10', (count) => {
+    show(packOf(count));
+    expect(screen.queryByRole('link', { name: 'Open comparison' })).toBeNull();
+  });
+});

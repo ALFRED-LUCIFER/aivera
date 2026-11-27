@@ -10,6 +10,7 @@ import { assessmentUseCases, type Ports } from './application/assessment.ts';
 import { explainUseCases, type ExplainPorts } from './application/explain.ts';
 import { questionUseCases, type QuestionPorts } from './application/questions.ts';
 import { scoreChangeUseCases, type ScoreChangePorts } from './application/scoreChange.ts';
+import { tradeoffUseCases, type TradeoffPorts } from './application/tradeoffs.ts';
 import { assessForJob, type WorkerPorts } from './application/worker.ts';
 import type { AssessmentContract } from './contracts/index.ts';
 import { assessmentStore, explanationStore, questionStore } from './infrastructure/repository.ts';
@@ -56,6 +57,8 @@ export function createAssessment(
   scoreChange?: Pick<ScoreChangePorts, 'evidenceForJob' | 'interviewOf'>,
   // The model, rubric meanings, evidence, identifiers, mapping checks and job behind the suggested questions (AIV-P1-113); without them they throw.
   questions?: Pick<QuestionPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf' | 'changes' | 'jobOf'>,
+  // The model, rubric names, evidence and identifiers behind a comparison's trade-offs (AIV-P1-047); without them it throws.
+  tradeoffs?: Pick<TradeoffPorts, 'ai' | 'approvedRubric' | 'evidence' | 'identifiersOf'>,
 ): AssessmentContract {
   const base: Ports = {
     storeFor: assessmentStore,
@@ -85,6 +88,11 @@ export function createAssessment(
     ...(questions
       ? questionUseCases({ ...base, ...questions, questionsFor: questionStore })
       : { getSuggestedQuestions: questionsNotWired, suggestInterviewQuestions: questionsNotWired }),
+    compareTradeoffs: tradeoffs
+      ? tradeoffUseCases({ ...base, ...tradeoffs }).compareTradeoffs
+      : async () => {
+          throw new Error('Comparison trade-offs are not wired in this app');
+        },
   };
 }
 

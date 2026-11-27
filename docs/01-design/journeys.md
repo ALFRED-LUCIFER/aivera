@@ -20,7 +20,7 @@ Not user-visible. Repository rules, toolchain, migrations, CI, Azure dev environ
 2. Assess fully: evidence from the CV, repositories, documents and shipped products is collected, each piece with provenance and strength, and scored per competency against the rubric.
 3. Ranked candidates: backed score with claim range, "meets the job's need on N of 6", confidence, missing critical evidence, next action; the "Who is ahead, and how sure are we?" chart.
 4. Candidate evidence profile: why they rank there, proven versus needed per competency, competency-by-competency evidence with highlights and limits, needs live verification, interview history, across roles.
-5. Compare up to three candidates side by side, with the trade-offs.
+5. Compare the candidates ticked on the ranking (2 to 10) side by side, with the trade-offs.
 6. Request evidence (single or bulk, always previewed, auto follow-up after 2 days, at most twice) → candidate upload page (two minutes; "I cannot share this" is allowed and costs nothing) → assessment updates.
 
 ## J3 Interviews and decisions (recruiter, interviewer, hiring owner, client)
