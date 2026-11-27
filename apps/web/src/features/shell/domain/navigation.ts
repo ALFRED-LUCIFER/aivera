@@ -20,7 +20,7 @@ export const navigation = [
   { id: 'desk', path: '/app', capability: 'member', flag: null },
   { id: 'inbox', path: '/app/inbox', capability: 'recruiter', flag: 'inbox' },
   { id: 'jobs', path: '/app/jobs', capability: 'member', flag: null },
-  { id: 'candidates', path: '/app/candidates', capability: 'recruiter', flag: 'candidates' },
+  { id: 'candidates', path: '/app/candidates', capability: 'recruiter', flag: null },
   { id: 'pool', path: '/app/pool', capability: 'recruiter', flag: 'pool' },
   // AIV-P2-002: every role; the interviews contract lists only granted jobs and, to an interviewer, their own.
   { id: 'interviews', path: '/app/interviews', capability: 'member', flag: null },

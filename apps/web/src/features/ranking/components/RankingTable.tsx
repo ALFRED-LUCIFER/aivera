@@ -421,7 +421,7 @@ function NameCell({
   );
 }
 
-function MeetsNeedCell({ score }: { score: CandidateScore }) {
+export function MeetsNeedCell({ score }: { score: CandidateScore }) {
   const t = useTranslations('ranking');
   return (
     <LevelMeter
@@ -446,7 +446,7 @@ function MissingCell({ score }: { score: CandidateScore }) {
   );
 }
 
-function NextActionCell({ row }: { row: CandidateRow }) {
+export function NextActionCell({ row }: { row: CandidateRow }) {
   const t = useTranslations('ranking');
   if (row.inPack) return <span>{t('pack.inPack')}</span>;
   // Chosen for interview, or past Round 1 by the hiring owner's decision (AIV-P2-012): the stage is the next action's state.

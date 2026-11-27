@@ -22,7 +22,8 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 // - no "Open decision pack" button: packs are built from the ranking (AIV-P2-010) and opened from its success line and
 //   the job's Decision tab; the profile's button comes with the pack page (AIV-P2-011, #125). With no action, the view
 //   has no primary button until then;
-// - "Candidates" in the breadcrumb is text, not a link: the all-candidates page is AIV-P1-048 (#112), hidden until then;
+// - "Candidates" in the breadcrumb links to Candidates (all jobs, AIV-P1-048) only for members who may open it (admins and
+//   recruiters); for a hiring owner or interviewer it stays text;
 // - the subtitle is the job and the application's intake stage ("Senior AI Engineer · New"), not "Round 1 complete · in
 //   the Round 2 shortlist pack": rounds are AIV-P2-007 (#121) and the pack line AIV-P2-011 (#125);
 // - the feature folder is `evidence-profile`, not the ticket's `candidate-profile`: every `features/candidate-*` folder is
@@ -49,7 +50,16 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 export type CandidateProfileView =
   { status: 'loading' } | { status: 'error'; onRetry: () => void } | ({ status: 'ready' } & ProfileData);
 
-export function CandidateProfile({ view, children }: { view: CandidateProfileView; children?: ReactNode }) {
+export function CandidateProfile({
+  view,
+  linkCandidates = false,
+  children,
+}: {
+  view: CandidateProfileView;
+  /** The server's answer to whether this member may open Candidates (all jobs). */
+  linkCandidates?: boolean;
+  children?: ReactNode;
+}) {
   const t = useTranslations();
   if (view.status !== 'ready')
     return (
@@ -72,7 +82,13 @@ export function CandidateProfile({ view, children }: { view: CandidateProfileVie
     <div className="flex flex-col gap-6 self-stretch">
       <div className="flex flex-col gap-2.5">
         <nav aria-label={t('jobHeader.breadcrumb')} className="flex flex-wrap gap-1.5 text-meta text-text-2">
-          <span>{t('shell.nav.candidates')}</span>
+          {linkCandidates ? (
+            <Link href="/app/candidates" className="underline underline-offset-2 hover:text-text">
+              {t('shell.nav.candidates')}
+            </Link>
+          ) : (
+            <span>{t('shell.nav.candidates')}</span>
+          )}
           <span aria-hidden="true">{'/'}</span>
           <span aria-current="page">{name}</span>
           <span aria-hidden="true">{'·'}</span>
