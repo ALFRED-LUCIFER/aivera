@@ -15,7 +15,11 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 // @3: a strength that names a competency cites the facts line naming it (checked in code, `competency_uncited`); @2's
 // answers named one with only the excerpt cited, which the judge passed. The focus is a noun phrase, which the card
 // reads as "look into <focus> next", and a counting word is named in the number rule.
-export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@3';
+// @4 (AIV-P2-092): one strength per excerpt, and never one resting on the facts alone. Live, @3 wrote a second
+// strength from the facts alone for a candidate with one excerpt, which `not_backed` rejects whole: the card failed in 5
+// of 8 runs. A strength may still rest on Round 1 notes: after a scorecard a level can be backed by the interview alone,
+// and forbidding it rejected that candidate's card in 8 of 8 runs.
+export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@4';
 
 /** Advance to the next round, or hold while the gap the focus names is closed. Never reject: thin evidence is a gap. */
 export const RECOMMENDATIONS = ['advance', 'hold'] as const;
@@ -28,8 +32,9 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV): what that excerpt states, in its words. Its first citation quotes that excerpt; a strength without one is',
-  'rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
+  'CV): what that excerpt states, in its words. One strength per excerpt of work, at most two: one excerpt of work',
+  'gives one strength and none gives none, and a line of the facts source alone is never a strength. Its first citation quotes',
+  'that excerpt; a strength without one is rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
   'competency; naming a competency without that line is rejected. It states nothing the excerpt does not:',
   'no other activity, role, scale or result, no adjective or adverb of your own about the work or its quality, and',
   'nothing about the person;',

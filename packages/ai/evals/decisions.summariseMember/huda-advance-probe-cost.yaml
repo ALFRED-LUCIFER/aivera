@@ -66,33 +66,45 @@ expected:
     advance, as the facts say the work meets the need on 70% of the weight, with a focus on a gap the facts name. No
     statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
-  promptVersion: decisions.summariseMember@3
-  promptHash: 79c8f0d89fa7
+  promptVersion: decisions.summariseMember@4
+  promptHash: e9840c18c6eb
   output:
     strengths:
-      - text: The arabic-ocr-pipeline includes OCR and normalisation for Arabic invoices with a character error rate report per release.
+      - text: OCR and normalisation for Arabic invoices in arabic-ocr-pipeline, with a character error rate report per release
         citations:
           - sourceId: S2
             quote: OCR and normalisation for Arabic invoices in arabic-ocr-pipeline, with a character error rate report per release
             start: 0
             end: 112
+          - sourceId: S1
+            quote:
+              'Arabic and bilingual NLP, 10% of the weight, needs level 3: independently checked work shows level 4, which
+              meets the need'
+            start: 583
+            end: 705
         claim: false
-      - text: The candidate reproduced the retrieval benchmark from the team's paper and published the evaluation notebook.
+      - text: reproduced the retrieval benchmark from the team's paper and published the evaluation notebook
         citations:
           - sourceId: S3
             quote: reproduced the retrieval benchmark from the team's paper and published the evaluation notebook
             start: 0
             end: 94
+          - sourceId: S1
+            quote:
+              'Retrieval and evaluation, 20% of the weight, needs level 4: independently checked work shows level 4, which
+              meets the need'
+            start: 176
+            end: 298
         claim: false
     risks:
-      - text: Cost and reliability is a claim with nothing to inspect, level 3 if it holds.
+      - text: Cost and reliability competency is a claim with nothing to inspect
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
             start: 403
             end: 511
         claim: false
-      - text: Product judgement has no evidence yet.
+      - text: Product judgement competency has no evidence yet
         citations:
           - sourceId: S1
             quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
@@ -100,7 +112,7 @@ recorded:
             end: 581
         claim: false
     round1:
-      text: The candidate walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown.
+      text: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown
       citations:
         - sourceId: S5
           quote: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown
@@ -109,7 +121,7 @@ recorded:
       claim: false
     recommendation:
       action: advance
-      focus: Product judgement
+      focus: Cost and reliability competency
       citations:
         - sourceId: S1
           quote: Work meets the need on competencies holding 70% of the weight
@@ -118,4 +130,6 @@ recorded:
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and all citations are accurate and relevant.
+    reason:
+      Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and
+      all citations are accurate and relevant.

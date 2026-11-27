@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { createAiClient, fakeProvider, memoryTokenBudget, type AiClient } from '@credalent/ai';
+import {
+  createAiClient,
+  fakeProvider,
+  memoryTokenBudget,
+  SUMMARISE_MEMBER_VERSION,
+  type AiClient,
+} from '@credalent/ai';
 import type { AssessmentContract, RubricInput } from '@credalent/assessment';
 import { createAssessment, readAssessmentAsSystem } from '@credalent/assessment/composition';
 import type { AuditContract } from '@credalent/audit';
@@ -844,7 +850,7 @@ describe('Scenario: Pack summaries are written once per member, cited, by the wo
     const pack = await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, shortlist));
     const card = pack?.summaries.find((s) => s.candidateId === sara);
     const items = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, sara, seniorAi.jobId));
-    expect(card).toMatchObject({ status: 'ready', promptVersion: 'decisions.summariseMember@3' });
+    expect(card).toMatchObject({ status: 'ready', promptVersion: SUMMARISE_MEMBER_VERSION });
     const [strength] = card?.summary?.strengths ?? [];
     expect(strength?.citations).toEqual([
       {

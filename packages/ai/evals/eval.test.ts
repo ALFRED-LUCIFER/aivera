@@ -2290,8 +2290,14 @@ describe('Feature: Decision pack summaries', () => {
     return { ...card, [key]: card[key].map((s, i) => (i === 0 ? { ...s, ...said } : s)) };
   };
 
-  it('Scenario: the three-candidate pack, each recorded answer on the schema, citations valid 100%, and the gates pass', async () => {
-    expect(cases.map((c) => c.id)).toEqual(['arjun-hold', 'huda-advance-probe-cost', 'sara-advance']);
+  it('Scenario: the pack and the thin-evidence cases, each recorded answer on the schema, citations valid 100%, and the gates pass', async () => {
+    expect(cases.map((c) => c.id)).toEqual([
+      'arjun-hold',
+      'hala-one-excerpt',
+      'huda-advance-probe-cost',
+      'kristine-cv-only',
+      'sara-advance',
+    ]);
     for (const c of cases) expect(parseCard(c.recorded.output, c).error, c.id).toBeUndefined();
     const report = await run(task, cases);
     expect(report.passed).toBe(true);
