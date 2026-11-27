@@ -27,7 +27,7 @@
     "@credalent/config": "workspace:*",
     "@types/node": "26.6.6",
     "oxlint": "1.94.0",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vitest": "5.1.0",
     "yaml": "2.9.1"
   }
