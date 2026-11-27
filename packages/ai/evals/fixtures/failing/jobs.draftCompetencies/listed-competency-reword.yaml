@@ -21,7 +21,7 @@ expected:
       - Accessibility
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: ef6ce4628437
+  promptHash: 603d2797a05b
   output:
     competencies:
       - name: Interaction design craft

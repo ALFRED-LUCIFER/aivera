@@ -20,13 +20,13 @@ expected:
       - Working under regulation
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 5f8209b48d88
+  promptHash: 37cb23e332e7
   output:
     competencies:
       - name: Product Discovery with Merchants
         evidenceExpected:
-          Led product discovery sessions with merchants to identify needs and define product features for
-          payments solutions.
+          Led product discovery sessions with merchants to identify needs and opportunities, resulting in
+          prioritized product features.
         weight: 40
         level: 4
         type: mandatory
@@ -37,7 +37,9 @@ recorded:
             end: 68
         claim: false
       - name: Setting and Reporting Outcome Metrics
-        evidenceExpected: Defined outcome metrics for product success and regularly reported progress and results to stakeholders.
+        evidenceExpected:
+          Defined clear outcome metrics for product initiatives and regularly reported progress and results to
+          stakeholders.
         weight: 30
         level: 4
         type: mandatory
@@ -48,7 +50,9 @@ recorded:
             end: 117
         claim: false
       - name: Cross-functional Collaboration with Engineering and Design
-        evidenceExpected: Collaborated daily with engineering and design teams to deliver product features and improvements.
+        evidenceExpected:
+          Collaborated daily with engineering and design teams to ensure product development aligned with user
+          needs and business goals.
         weight: 30
         level: 4
         type: mandatory
@@ -65,12 +69,12 @@ recorded:
         evidenceExpected:
           Demonstrated understanding of payments industry trends, regulations, and technologies through product
           decisions and strategy.
-        weight: 50
+        weight: 20
         level: 4
         type: desirable
         why:
-          The job title specifies payments, implying the need for payments industry knowledge, but the description does not
-          explicitly mention it.
+          The job title specifies payments, but the description does not mention payments knowledge explicitly, which is
+          critical for this role.
         citations:
           - sourceId: S1
             quote: You will run discovery with merchants and decide what we build next.
@@ -78,13 +82,13 @@ recorded:
             end: 68
         claim: false
       - name: Data Analysis and Interpretation
-        evidenceExpected: Analyzed product and market data to inform decisions and measure product performance.
-        weight: 50
+        evidenceExpected:
+          Analyzed product data to inform decisions and optimize product outcomes, including use of analytics
+          tools and data-driven insights.
+        weight: 20
         level: 4
         type: desirable
-        why:
-          Setting and reporting outcome metrics implies the need to analyze and interpret data, but the description does not
-          explicitly state this skill.
+        why: Setting and reporting outcome metrics implies a need for strong data analysis skills, though not explicitly stated.
         citations:
           - sourceId: S1
             quote: You set outcome metrics and report against them.

@@ -20,13 +20,14 @@ expected:
       - Docs tooling
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 697977fada1d
+  promptHash: 03f2dd7bc079
   output:
     competencies:
       - name: Technical Writing for Product Documentation
-        evidenceExpected: Created clear and comprehensive task documentation for a software product, such as a merchant
-          dashboard, that helps users understand and use the product effectively.
-        weight: 70
+        evidenceExpected:
+          A set of clear, well-structured task documents explaining product features and usage, published in a
+          help centre or similar platform.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -35,12 +36,12 @@ recorded:
             start: 0
             end: 61
         claim: false
-      - name: Product Knowledge Acquisition
+      - name: Product Knowledge Acquisition and Explanation
         evidenceExpected:
-          Demonstrated ability to learn and understand a product deeply enough to explain its features and
-          functions clearly in documentation.
-        weight: 15
-        level: 3
+          Demonstrated ability to learn a product in depth and produce explanatory content that makes the
+          product understandable to users.
+        weight: 25
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
@@ -48,11 +49,11 @@ recorded:
             start: 62
             end: 110
         claim: false
-      - name: Information Organization for Help Centers
+      - name: Help Centre Content Organization
         evidenceExpected:
-          Organized help center content so that answers are easy to find, improving user experience and support
-          efficiency.
-        weight: 15
+          Experience organizing help centre or knowledge base content to ensure answers are easy to find and
+          logically structured.
+        weight: 25
         level: 3
         type: mandatory
         citations:
@@ -66,30 +67,30 @@ recorded:
     suggestions:
       - name: Collaboration with Support Teams
         evidenceExpected:
-          Worked closely with support agents to draft and review help center articles, ensuring accuracy and
-          relevance of content.
-        weight: 40
+          Work that shows collaboration with support agents or customer service teams to draft or improve help
+          centre articles.
+        weight: 20
         level: 3
         type: desirable
         why:
           The description states that support agents also draft articles for the help centre, implying collaboration with
-          support teams is beneficial but not explicitly required.
+          support teams is important but not explicitly required.
         citations:
           - sourceId: S1
             quote: Support agents also draft articles for the help centre.
             start: 169
             end: 224
         claim: false
-      - name: User Experience (UX) Understanding
+      - name: User Experience (UX) Writing
         evidenceExpected:
-          Applied principles of user experience to structure and write documentation that meets user needs and
-          facilitates easy navigation.
-        weight: 30
+          Samples of writing that enhance user experience by making technical content accessible and easy to
+          understand for end users.
+        weight: 15
         level: 3
         type: desirable
         why:
-          Organizing the help centre so answers are easy to find implies a need to understand user experience, but this is
-          not explicitly stated as a requirement.
+          Organizing help centre content for easy findability implies a need for UX writing skills to improve user navigation
+          and comprehension, though not explicitly stated.
         citations:
           - sourceId: S1
             quote: You organise the help centre so answers are easy to find.
@@ -98,10 +99,10 @@ recorded:
         claim: false
   matches:
     Clear task documentation: Technical Writing for Product Documentation
-    Understanding the product: Product Knowledge Acquisition
-    Information structure: Information Organization for Help Centers
+    Understanding the product: Product Knowledge Acquisition and Explanation
+    Information structure: Help Centre Content Organization
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Collaboration with Support Teams: null
-      User Experience (UX) Understanding: null
+      User Experience (UX) Writing: null

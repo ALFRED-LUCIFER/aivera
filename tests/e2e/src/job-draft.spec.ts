@@ -151,25 +151,25 @@ for (const theme of themes) {
       expect(LONG.split('\n').some((line) => line.includes(quote))).toBe(true);
     }
     // The last stated need, which a cap of 8 dropped.
-    await expect(rowOf(page, 'Mentoring junior testers').locator('mark')).toContainText('Mentor two junior testers.');
+    await expect(rowOf(page, 'Mentoring Junior Testers').locator('mark')).toContainText('Mentor two junior testers.');
     await expect(page.getByText('Weights total 100%')).toBeVisible();
     await expectAccessible(page);
 
-    await rowOf(page, 'Mentoring junior testers')
-      .getByRole('button', { name: 'Edit Mentoring junior testers' })
+    await rowOf(page, 'Mentoring Junior Testers')
+      .getByRole('button', { name: 'Edit Mentoring Junior Testers' })
       .focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByLabel('Competency name, Mentoring junior testers')).toBeFocused();
+    await expect(page.getByLabel('Competency name, Mentoring Junior Testers')).toBeFocused();
     await table(page).getByRole('button', { name: 'Done' }).click();
-    await rowOf(page, 'Mentoring junior testers')
-      .getByRole('button', { name: 'Remove Mentoring junior testers' })
+    await rowOf(page, 'Mentoring Junior Testers')
+      .getByRole('button', { name: 'Remove Mentoring Junior Testers' })
       .focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('heading', { name: 'From your job description · 9 competencies' })).toBeVisible();
   });
 }
 
-test('Scenario: The longer draft stays a draft the recruiter decides on', async ({ page }) => {
+test('Scenario: The longer draft stays a draft the recruiter decides on', async ({ page, context }) => {
   const title = `Long QA Engineer ${Date.now()}`;
   await draftLong(page, title);
   await expect(
@@ -177,16 +177,29 @@ test('Scenario: The longer draft stays a draft the recruiter decides on', async 
       'Drafted competencies are suggestions: keep, edit or remove each. Nothing is saved until you choose Save job and rubric.',
     ),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Remove Bug reporting for reproducibility' }).click();
+  await page.getByRole('button', { name: 'Remove Bug Reporting' }).click();
+  // Nothing was saved by drafting or removing: another tab's Jobs list has no such job.
+  const jobs = await context.newPage();
+  await jobs.goto('/app/jobs');
+  await expect(jobs.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+  await expect(jobs.getByText(title)).toHaveCount(0);
+
   await page.getByRole('button', { name: 'Save job and rubric' }).click();
   await expect(page.getByText(/Job saved\. These competencies are now version 1/)).toBeVisible();
 
-  // The saved rubric: the rows she kept, without the removed one.
-  await page.goto('/app/jobs');
-  await page.getByRole('link', { name: title }).click();
-  await expect(page.getByText('Mentoring junior testers')).toBeVisible();
-  await expect(page.getByText('Code review for testability')).toBeVisible();
-  await expect(page.getByText('Bug reporting for reproducibility')).toHaveCount(0);
+  // Version 1, a draft, with exactly the rows she kept (nine drafted, two suggested) and weights totalling 100.
+  await jobs.reload();
+  await expect(jobs.getByRole('row').filter({ has: jobs.getByRole('link', { name: title }) })).toContainText(
+    'Draft, needs approval',
+  );
+  await jobs.getByRole('link', { name: title }).click();
+  await expect(jobs.getByRole('heading', { name: 'Version 1 is ready for you to approve' })).toBeVisible();
+  const rows = jobs.getByRole('row').filter({ hasText: /\d+%/ });
+  await expect(rows).toHaveCount(11);
+  const weights = (await rows.allInnerTexts()).map((text) => Number(/(\d+)%/.exec(text)?.[1]));
+  expect(weights.reduce((sum, weight) => sum + weight, 0)).toBe(100);
+  await expect(rows.filter({ hasText: 'Mentoring Junior Testers' })).toHaveCount(1);
+  await expect(jobs.getByText('Bug Reporting')).toHaveCount(0);
 });
 
 test('Scenario: Before drafting', async ({ page }) => {

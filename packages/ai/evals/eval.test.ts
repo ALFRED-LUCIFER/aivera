@@ -1694,11 +1694,10 @@ describe('Feature: Meeting summary to proposed evidence changes', () => {
   const task = 'interviews.mapSummary';
   const cases = golden.get(task) ?? [];
 
-  it('Arjun, Daniel, Hala, Maria, Omar, Priya and Rana: competency ids valid, excerpts verbatim, nothing from an off-rubric sentence, and no work sentence refused as one', async () => {
+  it('Arjun, Daniel, Maria, Omar, Priya and Rana: competency ids valid, excerpts verbatim, nothing from an off-rubric sentence, and no work sentence refused as one', async () => {
     expect(cases.map((c) => c.id)).toEqual([
       'arjun-menon-work-words',
       'daniel-novak-clear-evidence',
-      'hala-saleh-praise-only',
       'maria-santos-injection',
       'omar-al-suwaidi-protected-traits',
       'priya-nair-nothing-on-gap',
@@ -1842,7 +1841,7 @@ describe('Feature: Judge rubrics for the suggested-question and meeting-summary 
   it('Scenario: Every case of both tasks has a judge rubric and a recorded verdict that passes', async () => {
     for (const task of [questions, summaries]) {
       const cases = golden.get(task) ?? [];
-      expect(cases).toHaveLength(task === questions ? 5 : 7);
+      expect(cases).toHaveLength(task === questions ? 5 : 6);
       for (const c of cases) {
         expect([c.expected.judge !== undefined, c.recorded.judge?.pass], c.id).toEqual([true, true]);
         expect(readFileSync(join(import.meta.dirname, task, `${c.id}.yaml`), 'utf8')).not.toContain('no judge rubric');

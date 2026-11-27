@@ -18,9 +18,9 @@ recorded:
   output:
     competencies:
       - name: Java programming
-        evidenceExpected: Built, shipped, or wrote backend applications using Java.
-        weight: 15
-        level: 4
+        evidenceExpected: Built, shipped, or wrote backend services or applications using Java.
+        weight: 10
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -29,9 +29,9 @@ recorded:
             end: 4
         claim: false
       - name: Spring Boot framework
-        evidenceExpected: Developed and deployed backend services using Spring Boot.
-        weight: 15
-        level: 4
+        evidenceExpected: Developed and deployed backend applications using Spring Boot framework.
+        weight: 10
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -41,9 +41,9 @@ recorded:
         claim: false
       - name: Kafka messaging system
         evidenceExpected: Implemented event-driven architectures or messaging solutions using Kafka.
-        weight: 10
+        weight: 9
         level: 3
-        type: desirable
+        type: mandatory
         citations:
           - sourceId: S1
             quote: Kafka
@@ -51,8 +51,8 @@ recorded:
             end: 24
         claim: false
       - name: AWS cloud services
-        evidenceExpected: Deployed and managed backend applications on AWS infrastructure.
-        weight: 10
+        evidenceExpected: Deployed, managed, or integrated backend systems on AWS cloud platform.
+        weight: 9
         level: 3
         type: mandatory
         citations:
@@ -62,8 +62,8 @@ recorded:
             end: 29
         claim: false
       - name: Docker containerization
-        evidenceExpected: Containerized applications using Docker for development and production environments.
-        weight: 10
+        evidenceExpected: Containerized applications and managed Docker images for backend services.
+        weight: 9
         level: 3
         type: mandatory
         citations:
@@ -73,8 +73,8 @@ recorded:
             end: 37
         claim: false
       - name: Kubernetes orchestration
-        evidenceExpected: Managed containerized applications using Kubernetes clusters.
-        weight: 10
+        evidenceExpected: Deployed and managed containerized applications using Kubernetes clusters.
+        weight: 9
         level: 3
         type: mandatory
         citations:
@@ -84,8 +84,8 @@ recorded:
             end: 49
         claim: false
       - name: PostgreSQL database management
-        evidenceExpected: Designed and maintained relational databases using PostgreSQL.
-        weight: 10
+        evidenceExpected: Designed, implemented, or maintained backend systems using PostgreSQL databases.
+        weight: 8
         level: 3
         type: mandatory
         citations:
@@ -95,8 +95,8 @@ recorded:
             end: 61
         claim: false
       - name: Redis caching system
-        evidenceExpected: Implemented caching layers or data storage using Redis.
-        weight: 5
+        evidenceExpected: Integrated Redis for caching or data storage in backend applications.
+        weight: 8
         level: 3
         type: mandatory
         citations:
@@ -106,7 +106,7 @@ recorded:
             end: 68
         claim: false
       - name: Microservices architecture
-        evidenceExpected: Built and maintained backend systems using microservices architecture.
+        evidenceExpected: Built and maintained backend systems following microservices architectural patterns.
         weight: 10
         level: 4
         type: mandatory
@@ -118,7 +118,7 @@ recorded:
         claim: false
       - name: CI/CD pipelines
         evidenceExpected: Developed and maintained continuous integration and continuous deployment pipelines.
-        weight: 5
+        weight: 8
         level: 3
         type: mandatory
         citations:
@@ -130,34 +130,36 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Backend API design
-        evidenceExpected: Designed and implemented RESTful or similar backend APIs for client consumption.
-        weight: 5
+      - name: Backend development in Java language
+        evidenceExpected: Developed backend systems primarily using Java language.
+        weight: 10
         level: 3
         type: desirable
-        why: The description implies backend development but does not mention API design explicitly, which is typically
-          essential for backend roles.
+        why:
+          The description lists Java as a required skill but does not explicitly state backend development in Java, which is
+          implied by the job title and tools.
         citations:
           - sourceId: S1
-            quote: Java, Spring Boot, Kafka, AWS, Docker, Kubernetes, PostgreSQL, Redis, microservices, CI/CD
+            quote: Java
             start: 0
-            end: 90
+            end: 4
         claim: false
-      - name: Security best practices
-        evidenceExpected: Implemented security measures such as authentication, authorization, and data protection in backend systems.
-        weight: 5
+      - name: Cloud infrastructure management
+        evidenceExpected: Managed cloud infrastructure and services to support backend applications.
+        weight: 7
         level: 3
         type: desirable
-        why: The description lists backend technologies but omits security practices, which are critical for backend
-          development.
+        why:
+          AWS is listed, implying cloud infrastructure use, but the description does not explicitly state managing cloud
+          infrastructure.
         citations:
           - sourceId: S1
-            quote: Java, Spring Boot, Kafka, AWS, Docker, Kubernetes, PostgreSQL, Redis, microservices, CI/CD
-            start: 0
-            end: 90
+            quote: AWS
+            start: 26
+            end: 29
         claim: false
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 11e500814e90
+  promptHash: 72d5fe1eb78a
   matches:
     Java: Java programming
     Spring Boot: Spring Boot framework
@@ -172,5 +174,5 @@ recorded:
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Backend API design: null
-      Security best practices: null
+      Backend development in Java language: listed
+      Cloud infrastructure management: null

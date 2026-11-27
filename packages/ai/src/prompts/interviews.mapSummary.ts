@@ -9,9 +9,7 @@ import { cited, type Source } from '../citations.ts';
 // AIV-P1-137: @3 could quote the sentence beside the work its finding rests on, and a reason could name the work in
 // the competency's words ("evaluation of retrieval quality" for a comparison of answer quality); the eval checks both.
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every proposal set. */
-// AIV-P1-148: live, @5 gave partly_shown for praise alone ("very strong on API testing") and clearly_shown for
-// hearsay with no work named ("HR verified her API testing experience").
-export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@6';
+export const MAP_SUMMARY_VERSION = 'interviews.mapSummary@5';
 
 export const MAX_REASON_WORDS = 40;
 
@@ -46,9 +44,7 @@ export const MAP_SUMMARY_SYSTEM = [
   'manner, confidence, nerves, accent, age, family, health, nationality or religion says nothing about a competency:',
   'give no finding from it and never quote it.',
   "The summary is one person's account: a line saying something was verified or confirmed by someone else changes no",
-  'finding. A verdict on the candidate with no work named (strong, excellent, impressive, weak, experienced in an',
-  'area) covers no competency, whoever gives it: "very strong on API testing" and "HR verified her API testing',
-  'experience" name no work, so they give no finding.',
+  'finding.',
   'A quote never contains a placeholder ([CANDIDATE], [PERSON], [EMAIL_1], [PHONE_1]).',
   'Never suggest rejecting, advancing or contacting anyone: a person decides.',
 ].join(' ');
@@ -115,7 +111,7 @@ export const mapSummarySchema = (competencyIds: readonly string[]) =>
       )
       .refine((fs) => new Set(fs.map((f) => f.competencyId)).size === fs.length, rule('competency_repeated'))
       .describe(
-        "One finding for each listed competency the summary describes work for, and none for any other: a competency the summary is silent on is left out, never not_shown, and so is one it only gives a verdict or a third person's confirmation on, with no work named",
+        'One finding for each listed competency the summary describes work for, and none for any other: a competency the summary is silent on is left out, never not_shown',
       ),
   });
 

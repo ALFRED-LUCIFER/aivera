@@ -22,7 +22,7 @@ expected:
       - Working under regulation
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 2381b0f889fd
+  promptHash: d86ccc83e97a
   output:
     competencies:
       - name: System design in production

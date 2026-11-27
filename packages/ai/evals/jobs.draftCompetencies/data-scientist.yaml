@@ -20,11 +20,11 @@ expected:
       - Explaining results to decision makers
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 01a0d4ba123a
+  promptHash: c518bb0a9fcb
   output:
     competencies:
-      - name: Credit risk model development and evaluation
-        evidenceExpected: Built, tested, and deployed credit risk models with measurable performance improvements.
+      - name: Credit risk model building and evaluation
+        evidenceExpected: Built and evaluated credit risk models used for decision making in financial contexts.
         weight: 40
         level: 4
         type: mandatory
@@ -36,7 +36,7 @@ recorded:
         claim: false
       - name: Data pipeline ownership and management
         evidenceExpected:
-          Designed, implemented, and maintained data pipelines feeding risk models ensuring data quality and
+          Designed, built, and maintained data pipelines that feed credit risk models, ensuring data quality and
           availability.
         weight: 30
         level: 4
@@ -48,7 +48,7 @@ recorded:
             end: 90
         claim: false
       - name: Experimental design for policy testing
-        evidenceExpected: Designed and executed experiments to test the impact of policy changes on risk outcomes.
+        evidenceExpected: Designed and executed experiments to test the impact of policy changes on credit risk outcomes.
         weight: 30
         level: 3
         type: mandatory
@@ -62,27 +62,29 @@ recorded:
     reason: null
     suggestions:
       - name: Statistical programming in Python or R
-        evidenceExpected: Developed data science projects using Python or R for statistical modeling and analysis.
+        evidenceExpected: Developed and deployed statistical models and data pipelines using Python or R programming languages.
         weight: 20
         level: 4
         type: desirable
         why:
-          The job involves building and evaluating risk models and designing experiments, which typically require statistical
-          programming skills not explicitly mentioned in the description.
+          The job involves building and evaluating credit risk models and owning data pipelines, which typically require
+          statistical programming skills; however, the description does not explicitly mention any programming language.
         citations:
           - sourceId: S1
             quote: You will build and evaluate credit risk models.
             start: 0
             end: 47
         claim: false
-      - name: Knowledge of credit risk domain
-        evidenceExpected: Applied credit risk domain knowledge to interpret model results and inform policy decisions.
+      - name: Knowledge of financial risk and credit industry
+        evidenceExpected:
+          Applied domain knowledge of financial risk and credit industry to develop relevant risk models and
+          interpret experimental results.
         weight: 20
         level: 3
         type: desirable
         why:
-          The role focuses on credit risk models and policy changes, implying the need for domain knowledge not explicitly
-          stated.
+          The role focuses on credit risk models and policy changes related to risk, implying the need for financial risk and
+          credit industry knowledge, which is not explicitly stated.
         citations:
           - sourceId: S1
             quote: You will build and evaluate credit risk models.
@@ -90,11 +92,11 @@ recorded:
             end: 47
         claim: false
   matches:
-    Modelling and evaluation: Credit risk model development and evaluation
+    Modelling and evaluation: Credit risk model building and evaluation
     Data quality and pipelines: Data pipeline ownership and management
     Experimentation: Experimental design for policy testing
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Statistical programming in Python or R: null
-      Knowledge of credit risk domain: null
+      Knowledge of financial risk and credit industry: null

@@ -27,7 +27,7 @@ expected:
       - Arabic and right-to-left design
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 330572f22350
+  promptHash: 1ff9e790eb3f
   output:
     competencies:
       - name: Onboarding flow design

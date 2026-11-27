@@ -60,38 +60,42 @@ expected:
     - path: gaps[*].questions[*].text
       every: [authoris, authoriz, decline, conversion, card, payment, checkout, chargeback, '82%', '91%']
   judge: >-
-    Every question is about card authorisation, declines or conversion in a payments setting. Every question asks
-    about the work its cited line names, not something that could be asked of any candidate. No question touches age,
+    Every question is about card authorisation, declines or conversion in a payments setting. Every question asks about
+    the work its cited line names, not something that could be asked of any candidate. No question touches age,
     nationality, religion, family, health or gender, and nothing recommends rejecting, advancing or hiring. The cited
     lines are claims the questions exist to test: judge what the questions ask, never whether a claim is proven.
 recorded:
-  promptVersion: assessment.suggestQuestions@4
-  promptHash: 5e10bcb0eed7
+  promptVersion: assessment.suggestQuestions@5
+  promptHash: 5806525a8a07
   output:
     gaps:
       - competencyId: C1
         questions:
           - text: How were the 82% and the 91% measured, on which data, and what did you do yourself?
-            strongAnswer: Shows precise data sources, measurement methods, and candidate's direct actions to improve rates.
-            weakAnswer: Cannot say which data the 82% was measured on or the candidate's own part in the improvement.
+            strongAnswer:
+              Shows detailed understanding of data sources, measurement methods, and personal contributions to improving
+              rates.
+            weakAnswer: Cannot say which data the 82% was measured on or what the candidate personally did.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: What specific strategies or changes did you implement to increase the authorisation rate from 82% to 91%?
-            strongAnswer: Details concrete strategies or product changes that directly influenced the authorisation rate.
-            weakAnswer: Does not specify what was done to achieve the improvement in authorisation rate.
+          - text: Walk me through the specific changes you implemented to increase the authorisation rate from 82% to 91%.
+            strongAnswer: Describes concrete actions taken that directly impacted authorisation rates, showing hands-on involvement.
+            weakAnswer: Does not specify what changes were made or how they influenced the rates.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
                 start: 12
                 end: 97
             claim: true
-          - text: Walk me through the challenges you faced in improving the authorisation rate and how you overcame them.
-            strongAnswer: Describes obstacles and problem-solving approaches related to improving authorisation rates.
-            weakAnswer: Fails to explain challenges or problem-solving related to the authorisation rate improvement.
+          - text:
+              What challenges did you face in improving the card payment authorisation rate across the three Gulf markets, and
+              how did you overcome them?
+            strongAnswer: Explains obstacles and problem-solving approaches relevant to the payment domain and markets.
+            weakAnswer: Fails to identify challenges or solutions related to the authorisation rate improvement.
             citations:
               - sourceId: S1
                 quote: lifted authorisation rate from 82% to 91% for card payments across three Gulf markets
@@ -100,4 +104,6 @@ recorded:
             claim: true
   judge:
     pass: true
-    reason: All questions are specific to card authorisation rate improvement, directly reference the cited work, avoid personal or demographic topics, and do not recommend hiring actions.
+    reason:
+      Every question is about card authorisation rates, directly references the cited work, avoids restricted topics,
+      and does not recommend any hiring action.

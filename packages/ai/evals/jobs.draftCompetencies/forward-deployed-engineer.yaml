@@ -19,12 +19,14 @@ expected:
       - Customer communication
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: b22371fe55ba
+  promptHash: b931b8b1b524
   output:
     competencies:
-      - name: Customer Problem Solving
-        evidenceExpected: Built and delivered solutions by identifying and addressing key problems for logistics customers on site.
-        weight: 40
+      - name: Customer Problem Identification
+        evidenceExpected:
+          Built and delivered solutions by working directly on site with logistics customers to identify and
+          prioritize problems worth solving.
+        weight: 35
         level: 4
         type: mandatory
         citations:
@@ -33,8 +35,10 @@ recorded:
             start: 0
             end: 81
         claim: false
-      - name: System Integration Development
-        evidenceExpected: Developed and shipped integrations into customer systems and APIs to ensure seamless operation.
+      - name: Systems and API Integration
+        evidenceExpected:
+          Shipped integrations into customer systems and APIs, demonstrating ability to connect and extend
+          existing software environments.
         weight: 30
         level: 4
         type: mandatory
@@ -45,8 +49,9 @@ recorded:
             end: 132
         claim: false
       - name: AI Agent Deployment and Tuning
-        evidenceExpected: Deployed and fine-tuned AI agents tailored for each customer's environment and needs.
-        weight: 30
+        evidenceExpected: Deployed and tuned AI agents customized for each customer, showing expertise in AI system
+          configuration and optimization.
+        weight: 35
         level: 4
         type: mandatory
         citations:
@@ -58,28 +63,32 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Logistics Domain Knowledge
-        evidenceExpected: Demonstrated understanding of logistics operations and challenges through project work or system design.
+      - name: Knowledge of Logistics Industry
+        evidenceExpected:
+          Demonstrated understanding of logistics industry challenges and workflows relevant to customer problem
+          solving and AI deployment.
         weight: 20
         level: 3
         type: desirable
         why:
-          The description states working on site with logistics customers, implying the need for logistics domain knowledge,
-          but does not explicitly require it.
+          The description states working with logistics customers but does not mention knowledge of the logistics industry
+          explicitly, which is implied as important for effective problem identification and solution deployment.
         citations:
           - sourceId: S1
             quote: You will work on site with logistics customers to find the problem worth solving.
             start: 0
             end: 81
         claim: false
-      - name: API Development and Management
-        evidenceExpected: Designed, developed, and managed APIs for integration with external systems.
-        weight: 20
-        level: 3
+      - name: Programming Language Proficiency
+        evidenceExpected:
+          Developed and shipped integrations and AI agent deployments using relevant programming languages such
+          as Python or JavaScript.
+        weight: 15
+        level: 4
         type: desirable
         why:
-          The description mentions shipping integrations into systems and APIs, implying API development skills, but does not
-          explicitly state it.
+          The description mentions shipping integrations and deploying AI agents but does not specify programming languages,
+          which are implied as necessary to perform the work effectively.
         citations:
           - sourceId: S1
             quote: You ship integrations into their systems and APIs.
@@ -87,11 +96,11 @@ recorded:
             end: 132
         claim: false
   matches:
-    Customer problem discovery: Customer Problem Solving
-    Integration engineering: System Integration Development
+    Customer problem discovery: Customer Problem Identification
+    Integration engineering: Systems and API Integration
     Working with AI systems: AI Agent Deployment and Tuning
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Logistics Domain Knowledge: null
-      API Development and Management: null
+      Knowledge of Logistics Industry: null
+      Programming Language Proficiency: null

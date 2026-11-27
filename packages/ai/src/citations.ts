@@ -120,20 +120,37 @@ export const formatSources = (sources: readonly Source[]) =>
     })
     .join('\n');
 
-/**
- * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space (case and punctuation must
- * match). Offsets index the original text.
- */
-export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
+// What a PDF's layout leaves in extracted text and a model does not copy: list markers, and a dash standing alone
+// between two spaces (a list dash or a range dash). Read as a space on both sides of the comparison.
+const LIST_MARK = /[•‣⁃▪▫●◦■➢·∙]/;
+const DASH = /[-–—]/;
+
+/** `text` as it is compared: compatibility forms folded ("ﬁ" to "fi"), layout marks and whitespace runs as one space. */
+function flatten(text: string): { flat: string; at: number[] } {
   let flat = '';
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
   for (let i = 0; i < text.length; i++) {
-    const space = /\s/.test(text.charAt(i));
+    const char = text.charAt(i);
+    const alone = DASH.test(char) && /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1));
+    const space = /\s/.test(char) || LIST_MARK.test(char) || alone;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
-    flat += space ? ' ' : text.charAt(i);
-    at.push(i);
+    for (const folded of space ? ' ' : char.normalize('NFKC')) {
+      flat += folded;
+      at.push(i);
+    }
   }
-  const needle = quote.trim().replace(/\s+/g, ' ');
+  return { flat, at };
+}
+
+/**
+ * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, list markers and lone
+ * dashes read as a space and compatibility forms folded (case, words and punctuation must match): a CV extracted from
+ * a PDF keeps its bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the
+ * original text, so the stored excerpt is the source's own characters.
+ */
+export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
+  const { flat, at } = flatten(text);
+  const needle = flatten(quote).flat.trim();
   const found = needle === '' ? -1 : flat.indexOf(needle);
   if (found < 0) return undefined;
   return { start: at[found] ?? 0, end: (at[found + needle.length - 1] ?? 0) + 1 };

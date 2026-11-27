@@ -21,9 +21,42 @@ recorded:
     competencies: []
     refused: false
     reason: null
-    suggestions: []
+    suggestions:
+      - name: Product Management
+        evidenceExpected:
+          The candidate has led product lifecycle management, including defining product vision, strategy, and
+          roadmap, and coordinating cross-functional teams to deliver products that meet market needs.
+        weight: 70
+        level: 4
+        type: mandatory
+        why:
+          The job title 'Product Owner' and job type 'product management' imply the need for product management skills, but
+          the description does not explicitly state any competencies.
+        citations:
+          - sourceId: S1
+            quote: Founded in 2015, we are the leading provider of smart metering in the Gulf, serving 2 million households.
+            start: 0
+            end: 105
+        claim: false
+      - name: Smart Metering Industry Knowledge
+        evidenceExpected:
+          The candidate has developed or managed products specifically in the smart metering or utility sector,
+          demonstrating understanding of industry-specific challenges and customer needs.
+        weight: 30
+        level: 3
+        type: desirable
+        why: The description states the company is a leading provider of smart metering, implying that knowledge of this
+          industry would be valuable, but it does not explicitly mention this as a competency.
+        citations:
+          - sourceId: S1
+            quote: Founded in 2015, we are the leading provider of smart metering in the Gulf, serving 2 million households.
+            start: 0
+            end: 105
+        claim: false
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 31095db9af53
+  promptHash: 13e46d5b3919
   suggestions:
     judge: evals.suggestion@2
-    verdicts: {}
+    verdicts:
+      Product Management: null
+      Smart Metering Industry Knowledge: null

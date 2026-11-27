@@ -33,11 +33,11 @@ expected:
       - Retail data knowledge
 recorded:
   promptVersion: jobs.draftCompetencies@5
-  promptHash: 516a90c919cb
+  promptHash: 333ff4dd35a3
   output:
     competencies:
       - name: Batch data pipeline development in Python and SQL
-        evidenceExpected: Built and maintained batch pipelines that load sales data nightly into a data warehouse using Python and SQL.
+        evidenceExpected: Built and maintained batch pipelines that load sales data into a data warehouse nightly using Python and SQL.
         weight: 25
         level: 4
         type: mandatory
@@ -48,7 +48,7 @@ recorded:
             end: 195
         claim: false
       - name: Data warehouse modeling
-        evidenceExpected: Designed and implemented data warehouse table models that support analyst queries and dashboards.
+        evidenceExpected: Designed and modeled warehouse tables that support analyst queries and dashboard reporting.
         weight: 15
         level: 4
         type: mandatory
@@ -59,9 +59,7 @@ recorded:
             end: 260
         claim: false
       - name: Data quality monitoring and checks
-        evidenceExpected:
-          Developed and integrated data quality checks to detect and prevent broken data loads before reports
-          are generated.
+        evidenceExpected: Implemented data quality checks to detect and prevent broken data loads before reports are distributed.
         weight: 15
         level: 4
         type: mandatory
@@ -72,7 +70,7 @@ recorded:
             end: 339
         claim: false
       - name: Streaming data pipeline development
-        evidenceExpected: Migrated slow batch pipelines to streaming pipelines to enable near real-time updates of stock levels.
+        evidenceExpected: Migrated slow batch pipelines to streaming pipelines to update stock levels within minutes.
         weight: 15
         level: 4
         type: mandatory
@@ -82,8 +80,8 @@ recorded:
             start: 342
             end: 420
         claim: false
-      - name: Collaboration with analysts to translate questions into data tables
-        evidenceExpected: Worked closely with analysts to convert their business questions into usable data tables for analysis.
+      - name: Collaboration with analysts to create usable data tables
+        evidenceExpected: Worked directly with analysts to translate their questions into usable data tables for analysis.
         weight: 10
         level: 3
         type: mandatory
@@ -94,7 +92,7 @@ recorded:
             end: 491
         claim: false
       - name: Proficiency in SQL
-        evidenceExpected: Wrote complex SQL queries and scripts to manipulate and extract data for pipelines and analysis.
+        evidenceExpected: Demonstrated strong SQL skills through writing complex queries and managing data warehouse operations.
         weight: 10
         level: 4
         type: mandatory
@@ -105,7 +103,7 @@ recorded:
             end: 530
         claim: false
       - name: Proficiency in Python
-        evidenceExpected: Developed data processing scripts and pipelines using Python for data ingestion and transformation.
+        evidenceExpected: Used Python extensively to build and maintain data pipelines and automate data workflows.
         weight: 10
         level: 4
         type: mandatory
@@ -116,7 +114,7 @@ recorded:
             end: 530
         claim: false
       - name: Experience with Airflow or similar schedulers
-        evidenceExpected: Configured and managed workflows and pipelines using Airflow or comparable scheduling tools.
+        evidenceExpected: Configured and managed workflows using Airflow or comparable scheduling tools to automate data pipelines.
         weight: 10
         level: 3
         type: mandatory
@@ -126,10 +124,8 @@ recorded:
             start: 533
             end: 580
         claim: false
-      - name: Clear written documentation of data assets
-        evidenceExpected:
-          Produced clear and comprehensive documentation for data tables and pipelines owned, facilitating team
-          understanding and maintenance.
+      - name: Clear written documentation
+        evidenceExpected: Produced clear and comprehensive documentation for owned tables and data processes.
         weight: 10
         level: 3
         type: mandatory
@@ -143,13 +139,13 @@ recorded:
     reason: null
     suggestions:
       - name: Data visualization and dashboarding
-        evidenceExpected: Created dashboards and visualizations to present data insights to business users and stakeholders.
-        weight: 5
+        evidenceExpected: Created dashboards or visual reports to present data insights to business users.
+        weight: 8
         level: 3
         type: desirable
         why:
-          The description mentions dashboards that query warehouse tables but does not mention building or maintaining
-          dashboards explicitly, implying visualization skills may be beneficial.
+          The description mentions dashboards querying the warehouse but does not mention building or maintaining dashboards,
+          implying visualization skills would be useful but are not stated explicitly.
         citations:
           - sourceId: S1
             quote: Model the warehouse tables that analysts and dashboards query.
@@ -157,13 +153,13 @@ recorded:
             end: 260
         claim: false
       - name: Cloud data platform experience
-        evidenceExpected: Deployed and managed data pipelines and warehouses on cloud platforms such as AWS, GCP, or Azure.
-        weight: 5
+        evidenceExpected: Deployed and managed data pipelines and warehouses on cloud platforms like AWS, GCP, or Azure.
+        weight: 7
         level: 3
         type: desirable
         why:
-          The job involves building and running data pipelines and warehouses but does not specify the environment; cloud
-          platform experience is commonly relevant and beneficial for such roles.
+          The job involves building and running data pipelines and warehouses but does not specify the environment, implying
+          cloud platform experience would be beneficial though not stated.
         citations:
           - sourceId: S1
             quote: Build and run batch pipelines in Python and SQL that load sales data into our warehouse every night.
@@ -175,9 +171,9 @@ recorded:
     Data modelling: Data warehouse modeling
     Data quality: Data quality monitoring and checks
     Streaming pipelines: Streaming data pipeline development
-    Working with analysts: Collaboration with analysts to translate questions into data tables
+    Working with analysts: Collaboration with analysts to create usable data tables
     Pipeline orchestration: Experience with Airflow or similar schedulers
-    Data documentation: Clear written documentation of data assets
+    Data documentation: Clear written documentation
   suggestions:
     judge: evals.suggestion@2
     verdicts:
