@@ -1,10 +1,4 @@
-import {
-  compareTradeoffsRequest,
-  detectUnusualContent,
-  keptTradeoffs,
-  type Identifiers,
-  type TradeoffGroup,
-} from '@credalent/ai';
+import { compareTradeoffsRequest, keptTradeoffs, type Identifiers, type TradeoffGroup } from '@credalent/ai';
 import { log } from '@credalent/observability';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { FACTS_ID, type ExplanationStatement } from '../domain/explain.ts';
@@ -79,13 +73,10 @@ export function tradeoffUseCases(ports: TradeoffPorts) {
       // SAFETY: fails closed: with one person's identifiers unknown, nobody's sources are sent.
       if (unknownPerson) return unavailable('MissingIdentifiers');
 
+      // The request leaves out an excerpt holding text aimed at an AI ("Unusual content in this source").
       const groups = facts.map((f, i): TradeoffGroup => [
         { id: factsId(i), kind: 'document', text: f.lines.join('\n') },
-        ...f.items
-          // SAFETY: an excerpt holding text aimed at an AI or a reviewer ("Unusual content in this source", AIV-P1-070)
-          // is never offered as a pick, so it cannot be shown here as a trade-off.
-          .filter((s) => detectUnusualContent(s.text).length === 0)
-          .map((s) => ({ id: s.id, kind: s.kind === 'facts' ? ('document' as const) : KIND[s.kind], text: s.text })),
+        ...f.items.map((s) => ({ id: s.id, kind: s.kind === 'facts' ? 'document' : KIND[s.kind], text: s.text })),
       ]);
       let answer;
       try {

@@ -61,7 +61,8 @@ expected:
     forbidden: ['reject', 'should hire', 'do not hire', 'unsuitable', 'best candidate', 'recommend']
   judge: >-
     Every statement's text is, word for word, a line of its own candidate's facts source or an excerpt of that
-    candidate's work, and cites that source. No statement holds a word that is not in the source it cites.
+    candidate's work, and cites that source. No statement holds a word that is not in the source it cites, says who is
+    better, or recommends rejecting, advancing, hiring or contacting anyone.
 recorded:
   promptVersion: assessment.compareTradeoffs@1
   promptHash: 9899d7321de2
@@ -111,4 +112,5 @@ recorded:
                 quote: A published retrieval benchmark whose results a second team reproduced.
   judge:
     pass: true
-    reason: Every statement is word for word from its cited source and cites that source, meeting the rubric.
+    reason: Every statement is word for word from its cited source and cites that source, with no extraneous words or
+      recommendations.

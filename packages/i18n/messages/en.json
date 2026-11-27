@@ -2207,12 +2207,12 @@
     "tradeoffs": {
       "title": "The trade-offs",
       "intro": "Picked by AI from each candidate's snapshot and cited evidence, and shown word for word. It recommends nobody: a person decides.",
-      "work": "Cited work of {name}:",
+      "work": "Cited evidence for {name}:",
       "write": "Show the trade-offs",
       "writing": "Finding the trade-offs…",
       "again": "Try again",
       "unavailable": "Trade-off summary unavailable. The grid above is complete.",
-      "notScored": "The trade-offs can be written once every candidate here is scored.",
+      "notScored": "The trade-offs can be shown once every candidate here is scored.",
       "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} candidates.",
       "couldChange": "Claims still to check could change this order."
     }

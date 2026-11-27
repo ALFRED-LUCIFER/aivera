@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { cited, sourceLabel, type Source } from '../citations.ts';
+import { detectUnusualContent } from '../untrusted.ts';
 
 // "The trade-offs" on the comparison page (AIV-P1-047), ADR-006 point 2: for each compared candidate, the model picks
 // up to three things worth reading first, by citing them: lines of that candidate's facts source, which the assessment
@@ -24,6 +25,18 @@ const COMPARE_TRADEOFFS_SYSTEM = [
 
 /** One compared candidate's sources: the facts source first, then the excerpts of their cited work. */
 export type TradeoffGroup = readonly [facts: Source, ...excerpts: Source[]];
+
+/**
+ * The groups as the model is offered them: an excerpt holding text aimed at an AI or a reviewer ("Unusual content in
+ * this source", AIV-P1-070) is left out, so it can be neither picked nor shown as a trade-off. Facts sources are the
+ * assessment module's own lines and always stay.
+ */
+// SAFETY: applied by the request and by `keptTradeoffs` alike, so no caller can offer or keep such an excerpt.
+const offered = (groups: readonly TradeoffGroup[]): TradeoffGroup[] =>
+  groups.map(([facts, ...excerpts]) => [
+    facts,
+    ...excerpts.filter((excerpt) => detectUnusualContent(excerpt.text).length === 0),
+  ]);
 
 /** The key the model names a candidate by; names never reach it (ADR-006 point 7). */
 const candidateKey = (index: number) => `C${index + 1}`;
@@ -83,15 +96,16 @@ const schemaFor = (groups: readonly TradeoffGroup[]) => {
  * The answer as the product keeps it, from the checked answer of the same `groups`: each citation becomes one
  * statement whose text is what it picks, as it stands in the source. A citation of a candidate's facts source is the
  * one facts line that holds its quote, whole; a citation of an excerpt is that excerpt, whole, whatever part the model
- * quoted (a part could change what it says). Nothing is said twice. The eval scores this, as the assessment module
- * shows it.
+ * quoted (a part could change what it says). Nothing is said twice, and an excerpt the request did not offer is
+ * never kept. The eval scores this, as the assessment module shows it.
  */
 // SAFETY: no word shown is the model's: a comparison is the facts line as the assessment module wrote it, and what is
 // said of a piece of work is that work's own cited excerpt.
 export function keptTradeoffs(
   answer: { candidates: { statements: { citations: { sourceId: string; quote: string }[] }[] }[] },
-  groups: readonly TradeoffGroup[],
+  given: readonly TradeoffGroup[],
 ) {
+  const groups = offered(given);
   return answer.candidates.map(({ statements }, i) => {
     const [facts, ...excerpts] = groups[i] ?? [];
     const said = new Set<string>();
@@ -113,7 +127,8 @@ export function keptTradeoffs(
 }
 
 /** The whole request but its workspace and identifiers: each group is one candidate, in the order they are compared. */
-export const compareTradeoffsRequest = (groups: readonly TradeoffGroup[]) => {
+export const compareTradeoffsRequest = (given: readonly TradeoffGroup[]) => {
+  const groups = offered(given);
   const sources = groups.flat();
   let next = 0;
   const listed = groups.map((group, i) => {

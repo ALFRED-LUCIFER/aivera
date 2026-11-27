@@ -183,11 +183,11 @@ describe('Scenario: Trade-offs cite evidence', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  // SAFETY: mutation check: removed the "Cited work of <name>" label from Tradeoffs -> this test failed (no name on the item)
+  // SAFETY: mutation check: removed the "Cited evidence for <name>" label from Tradeoffs -> this test failed (no name on the item)
   it('names the candidate on a statement about their work too, even when it is their only one', () => {
     tradeoffs(writtenWith([work]));
     const [item] = within(screen.getByRole('list', { name: 'Layla Haddad' })).getAllByRole('listitem');
-    expect(item?.textContent).toMatch(/^Cited work of Layla Haddad:/);
+    expect(item?.textContent).toMatch(/^Cited evidence for Layla Haddad:/);
   });
 
   it('calls no gap small: the order line shows only when claims could change the order', () => {
@@ -209,7 +209,7 @@ describe('Scenario: Trade-offs unavailable', () => {
 
   it('is not offered while a candidate here is not scored', () => {
     tradeoffs(null, [sara, { candidateId: 'p9', name: null, score: null, cells: {} }]);
-    expect(screen.getByText('The trade-offs can be written once every candidate here is scored.')).toBeTruthy();
+    expect(screen.getByText('The trade-offs can be shown once every candidate here is scored.')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
   });
 });

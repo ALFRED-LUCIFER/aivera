@@ -63,7 +63,7 @@ test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page 
   // The model only picks: the fixture quotes part of the line and part of the excerpt, and each is shown whole.
   await expect(layla).toHaveText([
     'Layla Haddad is the only one compared with independently checked work on Arabic and bilingual NLP.',
-    /^Cited work of Layla Haddad:.*arabic-ocr: public and documented, with most commits their own\.Source: /,
+    /^Cited evidence for Layla Haddad:.*arabic-ocr: public and documented, with most commits their own\.Source: /,
   ]);
   await expect(layla.first().getByRole('link', { name: 'Layla Haddad' })).toHaveAttribute(
     'href',
@@ -71,7 +71,7 @@ test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page 
   );
   // Cited work is highlighted with its source and links to that item on the candidate's profile.
   const work = tradeoffs(page).getByRole('list', { name: 'Sara Al Qahtani' }).getByRole('listitem').nth(1);
-  await expect(work).toContainText('Cited work of Sara Al Qahtani:');
+  await expect(work).toContainText('Cited evidence for Sara Al Qahtani:');
   await expect(work.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');
   await expect(work).toContainText('Source: llm-eval-harness');
   await expect(tradeoffs(page)).toContainText(

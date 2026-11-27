@@ -1563,10 +1563,16 @@ describe('Feature: Trade-offs between compared candidates', () => {
     expect(cases).toHaveLength(4);
     for (const c of cases) {
       const groups = tradeoffGroups(c);
-      const parsed = compareTradeoffsRequest(groups).schema.safeParse(c.recorded.output);
-      expect(parsed.error, c.id).toBeUndefined();
+      const request = compareTradeoffsRequest(groups);
+      const recorded = c.recorded.output as { candidates: { statements: { citations: { sourceId: string }[] }[] }[] };
+      // The schema knows the labels the model was shown; a case with an excerpt left out numbers them anew.
+      const labels = new Map(request.sources.map((source, i) => [source.id, `S${i + 1}`]));
+      const shown = structuredClone(recorded);
+      for (const picked of shown.candidates.flatMap((x) => x.statements).flatMap((x) => x.citations))
+        picked.sourceId = labels.get(picked.sourceId) ?? 'not offered';
+      expect(request.schema.safeParse(shown).error, c.id).toBeUndefined();
       // Recorded as the product keeps it: keeping it again changes nothing.
-      expect({ candidates: keptTradeoffs(parsed.data ?? { candidates: [] }, groups) }, c.id).toEqual(c.recorded.output);
+      expect({ candidates: keptTradeoffs(recorded as never, groups) }, c.id).toEqual(recorded);
     }
     const report = await run('assessment.compareTradeoffs', cases);
     expect(report.passed).toBe(true);
@@ -1599,10 +1605,21 @@ describe('Feature: Trade-offs between compared candidates', () => {
     ]);
   });
 
+  // SAFETY: mutation check: `offered` returned the groups unfiltered -> this test failed (the excerpt was sent and kept)
+  it('never offers or keeps an excerpt holding text aimed at an AI', () => {
+    const groups = tradeoffGroups(caseOf('assessment.compareTradeoffs', 'pair-maria-rana-injection'));
+    const sent = compareTradeoffsRequest(groups).sources;
+    expect(sent.map((source) => source.id)).toEqual(['S1', 'S3', 'S4']);
+    expect(JSON.stringify(sent)).not.toContain('Ignore previous instructions');
+    // Even an answer that cites it by its id keeps nothing of it.
+    const given = { candidates: [{ statements: [tradeoffSaid('S2', 'best candidate')] }, { statements: [] }] };
+    expect(keptTradeoffs(given, groups)[0]?.statements).toEqual([]);
+  });
+
   // SAFETY: mutation check: removed the cites_another_candidate issue from schemaFor -> this test failed (the crossed answer parsed)
   // SAFETY: mutation check: removed the every_candidate_once issue from schemaFor -> this test failed (two candidates parsed)
   // SAFETY: mutation check: removed the facts_line_unknown issue from schemaFor -> this test failed (the two-line quote parsed)
-  // SAFETY: mutation check: lineOf took the first line that holds the quote -> this test failed ("Retrieval and evaluation" parsed)
+  // SAFETY: mutation check: lineOf took the first line that holds the quote -> this test failed (the "Cost and reliability" quote parsed)
   it('rejects an answer that crosses candidates, leaves one out, reorders them, or quotes across or between facts lines', () => {
     const { schema } = compareTradeoffsRequest(tradeoffTrio());
     const good = [

@@ -16,7 +16,7 @@ import { closingOf, type CompareColumn, type TradeoffsView } from '../domain/com
 //   AI allowance, and none is stored yet (assessment `compareTradeoffs`, shortcut);
 // - a line under the title says the model picked these and recommends nobody, which the artboard does not draw;
 // - a list for each candidate, every item naming them by their whole name (two candidates may share a first name): a
-//   fact reads "<name> is the only one compared with …", an excerpt "Cited work of <name>: …". The name links to their
+//   fact reads "<name> is the only one compared with …", an excerpt "Cited evidence for <name>: …". The name links to their
 //   profile, and a cited excerpt, highlighted with its source's label, to that item there;
 // - no "he", "she" or "her": a person's gender is not recorded; "independently checked", never "inspected";
 // - the closing line counts in figures ("7 points separate the 3 candidates"), with its basis, "Observed". The
