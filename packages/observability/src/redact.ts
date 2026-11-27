@@ -84,6 +84,9 @@ const ALLOWED = [
   'credalent.intake.chosen',
   // How many of them the job's ranking listed as assessed (AIV-P1-034): a count, never a score.
   'credalent.assessment.ranked',
+  // How many jobs and people a top-bar search found (AIV-P1-049): counts, never the query or a name.
+  'credalent.search.jobs',
+  'credalent.search.candidates',
   // Why a sign-in failed: the cause's class name and code (AIV-P0-930). Trusted only because apps/web auth.ts
   // pattern-checks both; any other code that emits these keys must check them the same way.
   'credalent.auth.cause',

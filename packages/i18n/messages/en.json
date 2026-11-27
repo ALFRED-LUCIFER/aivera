@@ -586,6 +586,22 @@
     "regionCaption": "{region, select, uae {Regional suggestions for the UAE} ksa {Regional suggestions for KSA} india {Regional suggestions for India} other {Regional suggestions for {label}}}",
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
+  "search": {
+    "title": "Search",
+    "label": "Search jobs and candidates",
+    "placeholder": "Search jobs and candidates",
+    "close": "Close search",
+    "results": "Search results",
+    "groups": {
+      "jobs": "Jobs",
+      "candidates": "Candidates"
+    },
+    "candidate": "{name} · {job}",
+    "searching": "Searching…",
+    "found": "{count, plural, one {# result} other {# results}}",
+    "nothing": "Nothing found for {query}",
+    "error": "Search failed. Try again."
+  },
   "people": {
     "intro": "Everyone in a live process on one of your jobs: {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}}. One row per person, however many jobs they are in.",
     "caption": "Candidates in a live process",

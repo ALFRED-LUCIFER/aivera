@@ -8,7 +8,13 @@ import type { Member } from '@/features/shell/domain/shell.ts';
 import { RecruiterShell } from './RecruiterShell.tsx';
 
 let pathname = '/app';
-vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ usePathname: () => pathname, useRouter: () => ({ push }) }));
+// AIV-P1-049: the search action, faked; its reads and logging are tested in features/search/services.
+const search = vi.fn();
+vi.mock('@/features/search/services/searchWorkspace.ts', () => ({
+  searchWorkspace: (input: unknown) => search(input),
+}));
 const setTheme = vi.fn(async (_theme: string) => {});
 vi.mock('@/features/shell/services/theme.ts', () => ({ setTheme: (theme: string) => setTheme(theme) }));
 const signOut = vi.fn(async () => {});
@@ -101,10 +107,53 @@ describe('Recruiter app shell', () => {
     expect(screen.queryByText(banner)).toBeNull();
   });
 
-  it('Scenario: Search and the assistant are absent until they work', () => {
+  it('Scenario: the top bar has the search; the assistant stays absent until it works', () => {
     renderShell();
-    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Search jobs and candidates' }).getAttribute('aria-keyshortcuts')).toBe(
+      '/',
+    );
     expect(screen.queryByRole('button', { name: /^Ask/ })).toBeNull();
+  });
+
+  // AIV-P1-049, synthetic cast only.
+  it('Scenario: Find a candidate, from "/", and No results', async () => {
+    search.mockImplementation(async ({ query }: { query: string }) =>
+      query === 'Sara'
+        ? {
+            jobs: [],
+            candidates: [
+              { personId: 'p1', name: 'Sara Al Qahtani', job: 'Senior AI Engineer', href: '/app/candidates/p1?job=j1' },
+            ],
+          }
+        : { jobs: [], candidates: [] },
+    );
+    renderShell();
+    await userEvent.keyboard('/');
+    const box = await screen.findByRole('searchbox', { name: 'Search jobs and candidates' });
+    await userEvent.type(box, 'Sara');
+    const dialog = screen.getByRole('dialog', { name: 'Search' });
+    expect(
+      (await within(dialog).findByRole('link', { name: 'Sara Al Qahtani · Senior AI Engineer' })).getAttribute('href'),
+    ).toBe('/app/candidates/p1?job=j1');
+    expect(within(dialog).getByRole('heading', { name: 'Candidates' })).toBeTruthy();
+    expect(search).toHaveBeenLastCalledWith({ query: 'Sara' });
+    await userEvent.clear(box);
+    await userEvent.type(box, 'zzzz');
+    expect(await within(dialog).findByText('Nothing found for zzzz')).toBeTruthy();
+  });
+
+  it('Scenario: Keyboard use: Enter opens the first result', async () => {
+    search.mockResolvedValue({
+      jobs: [{ id: 'j3', title: 'QA Automation Engineer', href: '/app/jobs/j3' }],
+      candidates: [],
+    });
+    renderShell();
+    await userEvent.click(screen.getByRole('button', { name: 'Search jobs and candidates' }));
+    await userEvent.type(screen.getByRole('searchbox'), 'QA');
+    await screen.findByRole('link', { name: 'QA Automation Engineer' });
+    await userEvent.keyboard('{Enter}');
+    expect(push).toHaveBeenCalledWith('/app/jobs/j3');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('Scenario: Keyboard users can skip the navigation', async () => {
