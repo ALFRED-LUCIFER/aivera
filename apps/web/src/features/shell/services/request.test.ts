@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { requireScreen } from './request.ts';
+import { mayOpen, requireScreen } from './request.ts';
 import { setTheme } from './theme.ts';
 
 const cookieSet = vi.fn();
@@ -37,6 +37,17 @@ describe('requireScreen', () => {
       membership.mockResolvedValueOnce({ name: 'Lina Panel', role, synthetic: true });
       await expect(requireScreen('settings')).rejects.toThrow('NEXT_NOT_FOUND');
     }
+  });
+});
+
+describe('mayOpen', () => {
+  it('answers like requireScreen: Candidates for a recruiter, not for an interviewer or with no workspace (AIV-P1-048)', async () => {
+    membership.mockResolvedValueOnce({ name: 'Alex Recruiter', role: 'recruiter', synthetic: true });
+    expect(await mayOpen('candidates')).toBe(true);
+    membership.mockResolvedValueOnce({ name: 'Lina Panel', role: 'interviewer', synthetic: true });
+    expect(await mayOpen('candidates')).toBe(false);
+    membership.mockResolvedValueOnce(null);
+    expect(await mayOpen('candidates')).toBe(false);
   });
 });
 

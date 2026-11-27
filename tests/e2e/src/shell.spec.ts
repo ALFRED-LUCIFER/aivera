@@ -94,6 +94,8 @@ test('the shell shows built sections only, and no search field or Ask button', a
     'Credalent',
     /^My desk/,
     /^Jobs/,
+    // AIV-P1-048: built, so no longer behind its flag.
+    /^Candidates/,
     // AIV-P2-002; Demo Hiring Co has no ongoing interview, so no count.
     'Interviews',
     'Settings',
@@ -103,7 +105,7 @@ test('the shell shows built sections only, and no search field or Ask button', a
 });
 
 test('a section that is not built answers 404 by direct address, not only by hiding the link', async ({ page }) => {
-  for (const section of ['inbox', 'candidates', 'pool', 'packs', 'value']) {
+  for (const section of ['inbox', 'pool', 'packs', 'value']) {
     expect((await page.goto(`/app/${section}`))?.status(), section).toBe(404);
     await expect(page.getByRole('heading', { level: 1, name: 'We could not find that page.' }), section).toBeVisible();
   }

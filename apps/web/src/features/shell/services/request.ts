@@ -15,12 +15,22 @@ export async function currentMember(): Promise<Member | null> {
   return membership && shellMember(membership);
 }
 
+const opens = (member: Member, id: ScreenId) => {
+  const screen = navigation.find((s) => s.id === id);
+  return !!screen && canOpen(screen, member.capabilities, enabledFlags);
+};
+
 /** The route guard every recruiter page awaits: no member, no capability or flag off is a 404. */
 export async function requireScreen(id: ScreenId): Promise<Member> {
   const member = await currentMember();
-  const screen = navigation.find((s) => s.id === id);
-  if (!member || !screen || !canOpen(screen, member.capabilities, enabledFlags)) notFound();
+  if (!member || !opens(member, id)) notFound();
   return member;
+}
+
+/** Whether the signed-in member may open a section, for a link to it outside the sidebar. */
+export async function mayOpen(id: ScreenId): Promise<boolean> {
+  const member = await currentMember();
+  return !!member && opens(member, id);
 }
 
 export async function readTheme() {
