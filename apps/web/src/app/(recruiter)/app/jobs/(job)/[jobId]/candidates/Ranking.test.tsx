@@ -37,8 +37,7 @@ vi.mock('next/navigation', () => ({
 const replaceState = window.history.replaceState.bind(window.history);
 window.history.replaceState = (...args) => {
   replaceState(...args);
-  // In a microtask, as the controller mirrors the selection from an effect, where React is still rendering.
-  queueMicrotask(() => act(() => fake.urlListeners.forEach((listener) => listener())));
+  act(() => fake.urlListeners.forEach((listener) => listener()));
 };
 vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
 vi.mock('@/features/ranking/services/chooseForInterview.ts', () => ({ chooseForInterview: fake.choose }));
@@ -389,7 +388,7 @@ describe('Scenario: Compare three (AIV-P1-036)', () => {
     selectable();
     await pick('Sara Al Qahtani');
     expect(window.location.search).toBe('?selected=a1');
-    await act(async () => window.history.replaceState(null, '', '/'));
+    window.history.replaceState(null, '', '/');
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Select Sara Al Qahtani' }).checked).toBe(true);
     expect(within(bar()).getByRole('status').textContent).toBe('1 selected');
   });

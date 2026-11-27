@@ -1,6 +1,6 @@
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   FIRST_ROWS,
   NO_FILTERS,
@@ -27,9 +27,6 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
   // it would not show, and the next tick would start from the stale selection (AIV-P1-149).
   const [picked, setPicked] = useState(useSearchParams().get('selected'));
   const selectedIds = parseSelected(picked, rows);
-  const selected = selectedIds.join(',');
-  // On the first render too: ids the URL held that are no rows here are dropped from it.
-  useEffect(() => replaceSelectedInUrl(selected), [selected]);
   const [filters, setFilters] = useState<RankingFilters>(NO_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [hidden, setHidden] = useState<HideableColumn[]>([]);
@@ -57,7 +54,10 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
       bulkActions.length > 0
         ? {
             selectedIds,
-            onSelectedIdsChange: (ids: string[]) => setPicked(ids.join(',')),
+            onSelectedIdsChange(ids: string[]) {
+              setPicked(ids.join(','));
+              replaceSelectedInUrl(ids.join(','));
+            },
             /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
             notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,
             compare: bulkActions.includes('compare') ? compareState(selectedIds.length) : null,

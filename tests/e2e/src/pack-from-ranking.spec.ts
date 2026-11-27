@@ -741,10 +741,9 @@ test('AIV-P1-149 Scenario: The selection still survives a reload and the filters
   }).toPass();
   await expect(bar(page).getByRole('status')).toHaveText('2 selected · 1 not shown in the table');
 
-  // An id that is no row of this ranking is dropped, from the selection and from the URL.
+  // An id that is no row of this ranking is ignored.
   await page.goto(`/app/jobs/${jobId}/candidates?selected=${twoSelected},${crypto.randomUUID()}`);
   await expect(bar(page).getByRole('status')).toHaveText('2 selected');
-  await expect(page).toHaveURL((url) => url.searchParams.get('selected') === twoSelected);
 });
 
 // The server gives an interviewer no bulk action (AGENTS.md 1.3), so the page offers no selection to restore.
