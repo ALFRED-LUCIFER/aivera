@@ -21,6 +21,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
+import { scorecardHref } from '@/features/interviews/domain/interviews.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import type { DuplicatesView } from '../domain/duplicates.ts';
 import {
@@ -38,6 +39,7 @@ import { AddToPack } from './AddToPack.tsx';
 import { ChooseForInterview } from './ChooseForInterview.tsx';
 import { DuplicateActions } from './DuplicateActions.tsx';
 import { NotYet, ScoreCell } from './ScoreCell.tsx';
+import { StageLine } from './StageLine.tsx';
 
 // AIV-P1-034: the ranked candidates table, from the Candidates artboard (docs/01-design/artboards/Candidates.dc.html).
 // Deviations, each for a later ticket or a rule:
@@ -55,14 +57,15 @@ import { NotYet, ScoreCell } from './ScoreCell.tsx';
 // - no "Compare 3 selected" primary button beside "Add candidates": the job header is shared by every job page
 //   (AIV-P1-011), and the bar's Compare does the same;
 // - only admins and recruiters select: interviewers and hiring owners get no checkboxes (the server decides);
-// - the line under each name is the application's intake stage ("New"), not the interview round ("Round 1 complete"),
-//   which interviews and scorecards record (AIV-P2-E01, #18);
+// - the line under each name is the current interview round ("Round 1 on 20 Nov", "Round 1 complete", AIV-P2-007),
+//   else the application's intake stage ("New"), not the artboard's "Evidence assessed";
 // - "Last review" is "Last scored" (owner's decision): when the stored result last changed (an unchanged re-run stores nothing), in the workspace time zone
 //   named in the header (AGENTS.md 3.9); it becomes "Last review" with scorecards (AIV-P2-006, #120);
 // - "Next action" says "In shortlist pack" while they are in an undecided pack (AIV-P2-010), which comes after the
-//   interview in J3 and so wins, else "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not yet
-//   available": its other sources are evidence requests (AIV-P1-039, #103) and later interview rounds (AIV-P2-007,
-//   #121), not built yet, and no value is invented (AGENTS.md 1.7);
+//   interview in J3 and so wins, then "Open scorecard" for an interview under way or overdue and "Schedule Round 1" for
+//   one with no time (AIV-P2-007), else "Chosen for interview" once a person chose them (AIV-P1-114), otherwise "Not
+//   yet available": evidence requests (AIV-P1-039, #103) and the interview guide (AIV-P2-003, "Guide ready") are not
+//   built yet, and no value is invented (AGENTS.md 1.7);
 // - "Stage: all" and "Missing evidence: any" are native selects, and the Columns menu a disclosure of checkboxes: no
 //   menu or popover component exists in @credalent/ui, and a native control keeps its keyboard path;
 // - a line under the filters gives the scores' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
@@ -413,7 +416,9 @@ function NameCell({
       ) : (
         <span className="font-semibold">{name}</span>
       )}
-      <span className="block text-meta text-text-2">{t(`stages.${row.stage}`)}</span>
+      <span className="block text-meta text-text-2">
+        <StageLine row={row} />
+      </span>
       {row.duplicates && duplicates && (
         <DuplicateActions rowId={row.id} duplicates={row.duplicates} view={duplicates} />
       )}
@@ -449,6 +454,24 @@ function MissingCell({ score }: { score: CandidateScore }) {
 export function NextActionCell({ row }: { row: CandidateRow }) {
   const t = useTranslations('ranking');
   if (row.inPack) return <span>{t('pack.inPack')}</span>;
+  // AIV-P2-007: an interview under way or overdue opens its scorecard; one with no time is scheduled on Interviews.
+  const { interview } = row;
+  if (interview?.status === 'in_progress' || interview?.status === 'scorecard_due')
+    return (
+      // scorecardHref builds the path from the interview id, which typed routes cannot check.
+      <Link
+        href={scorecardHref(interview.id) as Route}
+        className="font-semibold text-text underline underline-offset-2"
+      >
+        {t('openScorecard')}
+      </Link>
+    );
+  if (interview?.status === 'to_schedule')
+    return (
+      <Link href="/app/interviews" className="font-semibold text-text underline underline-offset-2">
+        {t('scheduleRound', { round: t(`roundShort.${interview.round}`) })}
+      </Link>
+    );
   // Chosen for interview, or past Round 1 by the hiring owner's decision (AIV-P2-012): the stage is the next action's state.
   return chosenOrDecided(row.stage) ? <span>{t(`stages.${row.stage}`)}</span> : <NotYet />;
 }

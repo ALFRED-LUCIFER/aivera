@@ -599,6 +599,7 @@
       "nextStep": "Next step"
     },
     "inJobs": "In {count} jobs",
+    "invite": "Invite to Round 1",
     "otherJob": "{job} · {stage} · {backed} backed by evidence · up to {upTo} if claims hold",
     "footer": "Showing {count, plural, one {# person} other {# people}}, furthest along first. To see one job's candidates ranked against its rubric, open the job from <jobs>Jobs</jobs>.",
     "empty": "No one in a live process yet",
@@ -1898,6 +1899,21 @@
       "round2_shortlist": "Round 2 shortlist",
       "not_advanced": "Not advanced"
     },
+    "roundShort": {
+      "structured_screen": "Round 1",
+      "evidence_defence": "Round 2",
+      "panel": "Round 3"
+    },
+    "roundLine": {
+      "to_schedule": "{round}, not scheduled yet",
+      "scheduled": "{round} on {at, date, ::dMMM}",
+      "today": "{round} today, {at, time, ::HHmm}",
+      "in_progress": "{round} in progress",
+      "scorecard_due": "{round}, scorecard due",
+      "completed": "{round} complete"
+    },
+    "openScorecard": "Open scorecard",
+    "scheduleRound": "Schedule {round}",
     "meetsNeed": "{meets} of {count}",
     "confidence": {
       "High": "High",

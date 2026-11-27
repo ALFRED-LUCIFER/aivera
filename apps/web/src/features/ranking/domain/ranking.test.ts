@@ -1,7 +1,16 @@
 import type { RankingRow } from '@credalent/assessment';
 import type { ApplicationListItem } from '@credalent/intake';
 import { describe, expect, it } from 'vitest';
-import { NO_FILTERS, filterRows, missingOptions, stageOptions, toCandidateRows } from './ranking.ts';
+import type { Interview } from '@credalent/interviews';
+import {
+  currentInterviews,
+  NO_FILTERS,
+  filterRows,
+  missingOptions,
+  roundLabelKey,
+  stageOptions,
+  toCandidateRows,
+} from './ranking.ts';
 
 // AIV-P1-034. Synthetic cast only (docs/00-product/personas.md).
 const at = new Date('2026-11-14T08:00:00.000Z');
@@ -94,5 +103,60 @@ describe('filterRows', () => {
   it('offers the stages and missing competencies the rows have, in rank order', () => {
     expect(stageOptions(rows)).toEqual(['new', 'in_process']);
     expect(missingOptions(rows)).toEqual(['Product judgement', 'Retrieval and evaluation']);
+  });
+});
+
+const held = (over: Partial<Interview>): Interview => ({
+  id: 'i1',
+  workspaceId: 'w1',
+  applicationId: 'a-sara',
+  jobId: 'j-ai',
+  candidateId: 'p-sara',
+  round: 'structured_screen',
+  interviewerUserId: 'u1',
+  scheduledAt: new Date('2026-11-14T10:00:00.000Z'),
+  status: 'completed',
+  rubricVersionId: 'v2',
+  competencyIds: [],
+  createdBy: 'u1',
+  createdAt: new Date('2026-11-10T08:00:00.000Z'),
+  ...over,
+});
+
+describe('current interviews and their round line (AIV-P2-007)', () => {
+  it('prefers the open round over a held one, the latest held round otherwise, and never a cancelled one', () => {
+    const round2 = held({
+      id: 'i2',
+      round: 'evidence_defence',
+      status: 'scheduled',
+      scheduledAt: new Date('2026-11-21T07:00:00.000Z'),
+      createdAt: new Date('2026-11-15T08:00:00.000Z'),
+    });
+    const daniel = held({ id: 'i3', applicationId: 'a-daniel', status: 'cancelled' });
+    const arjun1 = held({ id: 'i4', applicationId: 'a-arjun' });
+    const arjun2 = held({
+      id: 'i5',
+      applicationId: 'a-arjun',
+      round: 'evidence_defence',
+      createdAt: new Date('2026-11-16T08:00:00.000Z'),
+    });
+    const current = currentInterviews([round2, held({}), daniel, arjun2, arjun1], () => false);
+    expect(current.get('a-sara')).toEqual({
+      id: 'i2',
+      round: 'evidence_defence',
+      status: 'scheduled',
+      scheduledAt: '2026-11-21T07:00:00.000Z',
+      today: false,
+    });
+    expect(current.has('a-daniel')).toBe(false);
+    expect(current.get('a-arjun')?.id).toBe('i5');
+  });
+
+  it('reads "today" only for a scheduled round on the viewer\'s day', () => {
+    const when = { scheduledAt: '2026-11-20T10:00:00.000Z' };
+    expect(roundLabelKey({ ...when, status: 'scheduled', today: true })).toBe('today');
+    expect(roundLabelKey({ ...when, status: 'scheduled', today: false })).toBe('scheduled');
+    expect(roundLabelKey({ ...when, status: 'completed', today: true })).toBe('completed');
+    expect(roundLabelKey({ scheduledAt: null, status: 'to_schedule', today: false })).toBe('to_schedule');
   });
 });
