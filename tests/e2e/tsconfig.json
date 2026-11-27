@@ -9,6 +9,7 @@
     "mock-oidc.ts",
     "seed.ts",
     "confirmedBatch.ts",
+    "gulfDay.ts",
     "warm.ts"
   ]
 }

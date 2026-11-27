@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { seededInterviewLabels } from '../gulfDay.ts';
 import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { css, expectAccessible, themes } from './gallery.ts';
@@ -45,8 +46,11 @@ test('Scenario: Scorecard shows what to test', async ({ page }) => {
   await signIn(page, { email: AP });
   await openScorecard(page);
   await expect(page).toHaveTitle('Interview scorecard · Credalent');
+  // "Today, 14:00" on the seed's Gulf day, its date after Gulf midnight (AIV-P1-149).
   await expect(
-    page.getByText(/^Senior AI Engineer · structured screen · Today, 14:00 · interviewer: you$/),
+    page.getByText(`Senior AI Engineer · structured screen · ${seededInterviewLabels().daniel} · interviewer: you`, {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: /^Interviews/ }),

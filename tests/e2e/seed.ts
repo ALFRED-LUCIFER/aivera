@@ -7,6 +7,7 @@ import { withWorkspace } from '@credalent/db/with-workspace';
 import { createIdentity } from '@credalent/identity/composition';
 import { createEvidence, createEvidenceRecords } from '@credalent/evidence/composition';
 import { receiveConfirmed } from './confirmedBatch.ts';
+import { gulfTime as gulfTimeFrom } from './gulfDay.ts';
 import { applicationRecords, createIntake, findApplication } from '@credalent/intake/composition';
 import { createInterviews } from '@credalent/interviews/composition';
 import type { Source } from '@credalent/intake';
@@ -28,11 +29,12 @@ const question = (text: string, strongAnswer: string, weakAnswer: string, itemId
   citations: [{ itemId, quote }],
 });
 
-/** `time` in the Gulf (UTC+4), `days` from today there: the demo interviews count from the run (AIV-P2-002). */
-const gulfTime = (days: number, time: string) =>
-  new Date(`${new Date(Date.now() + (4 + 24 * days) * 3_600_000).toISOString().slice(0, 10)}T${time}:00+04:00`);
+/** The demo interviews count from this instant's Gulf day (AIV-P2-002); the specs read it to know that day (AIV-P1-149). */
+const seededAt = new Date();
+const gulfTime = (days: number, time: string) => gulfTimeFrom(seededAt, days, time);
 
 export default async function seed() {
+  process.env['E2E_SEEDED_AT'] = seededAt.toISOString();
   // The same database as the dev server in playwright.config.ts.
   const db = createDb(process.env['E2E_DATABASE_URL'] ?? 'postgres://aivera_app:local_dev_only@localhost:5432/aivera', {
     max: 1,

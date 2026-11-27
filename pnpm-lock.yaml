@@ -1064,6 +1064,9 @@ importers:
       '@credalent/evidence':
         specifier: workspace:*
         version: link:../../modules/evidence
+      '@credalent/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@credalent/identity':
         specifier: workspace:*
         version: link:../../modules/identity
