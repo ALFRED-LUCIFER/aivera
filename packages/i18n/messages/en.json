@@ -1762,6 +1762,7 @@
       "preparing": "Preparing summary",
       "unavailable": "Summary unavailable"
     },
+    "openComparison": "Open comparison",
     "preview": {
       "note": "This is how the hiring owner will see this pack. Nothing is sent or downloaded from this page.",
       "back": "Back to the pack",
@@ -1946,8 +1947,8 @@
       "selectRow": "Select {name}",
       "compare": {
         "ready": "Compare",
-        "tooFew": "Choose 2 or 3 to compare",
-        "tooMany": "Compare up to 3 at a time"
+        "tooFew": "Choose {min} or more to compare",
+        "tooMany": "Compare up to {max} at a time"
       }
     }
   },
@@ -2182,6 +2183,38 @@
       "interview_not_held": "This interview has not been held yet, so its summary cannot be analysed.",
       "preview_changed": "The assessment changed since this preview. Check the changes again.",
       "failed": "That did not go through. Nothing was changed."
+    }
+  },
+  "compare": {
+    "title": "Compare candidates",
+    "crumb": "Compare",
+    "subtitle": "{job} · rubric v{version}. {count, plural, one {The same competency} other {The same # competencies}}, side by side, each judged against the level the job needs and showing what the assessment rests on.",
+    "awaitingRubric": "{job}. Jobs without an approved rubric are not assessed, so there is nothing to compare yet.",
+    "changeSelection": "Change selection",
+    "openPack": "Open decision pack",
+    "tooFew": "Choose {min} to {max} candidates to compare",
+    "notOnJob": "These candidates are not all on this job",
+    "loading": "Loading the comparison…",
+    "error": "We could not load this comparison. Try again.",
+    "tableLabel": "Candidates compared by competency",
+    "competency": "Competency",
+    "rowMeta": "Weight {weight}% · job needs {needed} of 5",
+    "verdict": {
+      "above": "Above the need · {proven} against {needed}",
+      "meets": "Meets the need · {proven} against {needed}",
+      "below": "Below the need · {proven} against {needed}"
+    },
+    "tradeoffs": {
+      "title": "The trade-offs",
+      "intro": "Picked by AI from each candidate's snapshot and cited evidence, and shown word for word. It recommends nobody: a person decides.",
+      "work": "Cited evidence for {name}:",
+      "write": "Show the trade-offs",
+      "writing": "Finding the trade-offs…",
+      "again": "Try again",
+      "unavailable": "Trade-off summary unavailable. The grid above is complete.",
+      "notScored": "The trade-offs can be shown once every candidate here is scored.",
+      "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} candidates.",
+      "couldChange": "Claims still to check could change this order."
     }
   }
 }

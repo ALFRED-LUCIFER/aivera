@@ -344,7 +344,7 @@ describe('Scenario: Exact duplicates merged, and undo for admins', () => {
   });
 });
 
-// AIV-P1-036: a recruiter the server allows Compare (the `compare` flag is on).
+// AIV-P1-036: a recruiter the server allows Compare.
 const selectable = () => showRanking(nine, false, ['compare']);
 const pick = (name: string) => userEvent.click(screen.getByRole('checkbox', { name: `Select ${name}` }));
 const bar = () => screen.getByRole('region', { name: 'Bulk actions' });
@@ -395,19 +395,20 @@ describe('Scenario: Compare three (AIV-P1-036)', () => {
   });
 });
 
-describe('Scenario: Compare needs two or three (AIV-P1-036)', () => {
-  it('with four selected "Compare" is disabled and reads "Compare up to 3 at a time"; with one, "Choose 2 or 3 to compare"', async () => {
+// AIV-P1-047: any number the recruiter ticks, from two (owner decision 26 Nov 2026); the upper limit of ten is
+// selection.test.ts's.
+describe('Scenario: Compare takes two or more (AIV-P1-036, AIV-P1-047)', () => {
+  it('with one selected "Compare" is disabled and reads "Choose 2 or more to compare"; with four it opens all four', async () => {
     selectable();
     await pick('Sara Al Qahtani');
-    const one = within(bar()).getByRole<HTMLButtonElement>('button', { name: 'Choose 2 or 3 to compare' });
+    const one = within(bar()).getByRole<HTMLButtonElement>('button', { name: 'Choose 2 or more to compare' });
     expect(one.disabled).toBe(true);
+    await userEvent.click(one);
+    expect(fake.push).not.toHaveBeenCalled();
     for (const name of ['Arjun Menon', 'Layla Haddad', 'Daniel Novak']) await pick(name);
     expect(within(bar()).getByRole('status').textContent).toBe('4 selected');
-    const four = within(bar()).getByRole<HTMLButtonElement>('button', { name: 'Compare up to 3 at a time' });
-    expect(four.disabled).toBe(true);
-    await userEvent.click(four);
-    expect(fake.push).not.toHaveBeenCalled();
-    expect(within(bar()).queryByRole('button', { name: 'Compare' })).toBeNull();
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Compare' }));
+    expect(fake.push).toHaveBeenCalledExactlyOnceWith(`/app/jobs/${JOB}/compare?ids=p1,p2,p3,p4`);
   });
 });
 

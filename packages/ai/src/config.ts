@@ -43,6 +43,8 @@ export const generateTasks = {
     maxOutputTokens: 2_500,
     temperature: 0.2,
   },
+  // One to three short statements for each of at most ten compared candidates, each with a quote (AIV-P1-047).
+  'assessment.compareTradeoffs': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 3_000, temperature: 0 },
   // One short finding with a quote for each competency an interview tested (AIV-P1-115), as repeatable as the model allows.
   'interviews.mapSummary': { deployment: 'gpt-main', timeoutMs: 60_000, maxOutputTokens: 1_500, temperature: 0 },
   // At most six short cited statements on one pack member, in the worker when the member joins (AIV-P2-011).

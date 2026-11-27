@@ -15,7 +15,8 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 // "Against what the job needs" under it is AgainstNeed (AIV-P1-044) and "Competency by competency" is EvidenceCards
 // (AIV-P1-045), each with its own deviations.
 // Deviations, each for a later ticket or a rule:
-// - no "Compare" button: the comparison page is AIV-P1-047 (#111), and a link to nothing is not shipped;
+// - no "Compare" button: a comparison starts from the candidates ticked on the ranking (AIV-P1-047), and one
+//   candidate alone is nothing to compare;
 // - no "Request evidence" button, preview card or "sent" note: the drafted preview is AIV-P1-038 (#102) and sending is
 //   AIV-P1-039 (#103); no preview is faked here;
 // - no "Open decision pack" button: packs are built from the ranking (AIV-P2-010) and opened from its success line and

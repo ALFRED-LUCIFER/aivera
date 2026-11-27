@@ -18,6 +18,7 @@ import {
 } from '../src/prompts/jobs.draftCompetencies.ts';
 import { mapToCompetencySchema } from '../src/prompts/evidence.mapToCompetency.ts';
 import { explainRankingRequest, explainRankingSchema } from '../src/prompts/assessment.explainRanking.ts';
+import { compareTradeoffsRequest, keptTradeoffs } from '../src/prompts/assessment.compareTradeoffs.ts';
 import { suggestQuestionsRequest } from '../src/prompts/assessment.suggestQuestions.ts';
 import { compareExcerptsSchema, flaggedPairs } from '../src/prompts/evidence.compareExcerpts.ts';
 import * as aiPackage from '../src/index.ts';
@@ -25,7 +26,15 @@ import { CONTACT_EXTRACTION_TASKS, redactSources } from '../src/identifiers.ts';
 import { detectUnusualContent } from '../src/untrusted.ts';
 import { mapSummarySchema } from '../src/prompts/interviews.mapSummary.ts';
 import { summariseMemberRequest } from '../src/prompts/decisions.summariseMember.ts';
-import { domainCatalogue, hardGates, questionsInput, runners, summaryInput, taskThresholds } from './config.ts';
+import {
+  domainCatalogue,
+  hardGates,
+  questionsInput,
+  runners,
+  summaryInput,
+  taskThresholds,
+  tradeoffGroups,
+} from './config.ts';
 import {
   goldenCase as goldenCaseSchema,
   identifiersOf,
@@ -1535,6 +1544,102 @@ describe('Feature: The suggestion judge is re-graded live on its golden good and
     expect(() => loadJudgeCases(dir, golden)).toThrow(
       'judge/empty.yaml: no fixture failing/jobs.draftCompetencies/proxy that suggests',
     );
+  });
+});
+
+// Feature: Compare candidates side by side (AIV-P1-047), "The trade-offs". Synthetic data only.
+const tradeoffTrio = () => tradeoffGroups(caseOf('assessment.compareTradeoffs', 'trio-sara-arjun-layla'));
+const tradeoffSaid = (sourceId: string, quote: string) => ({ citations: [{ sourceId, quote }] });
+const tradeoffOne = (candidate: string, sourceId: string, quote: string) => ({
+  candidate,
+  statements: [tradeoffSaid(sourceId, quote)],
+});
+
+describe('Feature: Trade-offs between compared candidates', () => {
+  const cases = golden.get('assessment.compareTradeoffs') ?? [];
+
+  it("Scenario: the demo trio and three more comparisons, each recorded answer on its request's schema, and the runner passes the gates", async () => {
+    expect(cases.map((c) => c.id)).toContain('trio-sara-arjun-layla');
+    expect(cases).toHaveLength(4);
+    for (const c of cases) {
+      const groups = tradeoffGroups(c);
+      const request = compareTradeoffsRequest(groups);
+      const recorded = c.recorded.output as { candidates: { statements: { citations: { sourceId: string }[] }[] }[] };
+      // The schema knows the labels the model was shown; a case with an excerpt left out numbers them anew.
+      const labels = new Map(request.sources.map((source, i) => [source.id, `S${i + 1}`]));
+      const shown = structuredClone(recorded);
+      for (const picked of shown.candidates.flatMap((x) => x.statements).flatMap((x) => x.citations))
+        picked.sourceId = labels.get(picked.sourceId) ?? 'not offered';
+      expect(request.schema.safeParse(shown).error, c.id).toBeUndefined();
+      // Recorded as the product keeps it: keeping it again changes nothing.
+      expect({ candidates: keptTradeoffs(recorded as never, groups) }, c.id).toEqual(recorded);
+    }
+    const report = await run('assessment.compareTradeoffs', cases);
+    expect(report.passed).toBe(true);
+    expect(report.rates.citationValidity).toBe(1);
+  });
+
+  const LAYLA = 'is the only one compared with independently checked work on Arabic and bilingual NLP.';
+
+  // SAFETY: mutation check: keptTradeoffs returned the model's quote in place of the facts line -> this test failed
+  // SAFETY: mutation check: keptTradeoffs returned the model's quote in place of the whole excerpt -> this test failed
+  it('keeps each pick as it stands in its source: the whole facts line, the whole excerpt, each said once', () => {
+    const given = {
+      candidates: [
+        { statements: [tradeoffSaid('S1', 'has independently checked work on Retrieval and evaluation.')] },
+        { statements: [tradeoffSaid('S4', 'still rests on claims for Cost and reliability.')] },
+        {
+          statements: [
+            tradeoffSaid('S7', 'the only one compared'),
+            tradeoffSaid('S7', 'independently checked work on Arabic'),
+            // A part of an excerpt could change what it says: "not public" quoted as "public".
+            tradeoffSaid('S9', 'public and documented'),
+          ],
+        },
+      ],
+    };
+    const EXCERPT = 'Arabic OCR pipeline, public and documented, for scanned forms in Gulf Arabic.';
+    expect(keptTradeoffs(given, tradeoffTrio())[2]?.statements).toEqual([
+      { text: LAYLA, citations: [{ sourceId: 'S7', quote: LAYLA }] },
+      { text: EXCERPT, citations: [{ sourceId: 'S9', quote: EXCERPT }] },
+    ]);
+  });
+
+  // SAFETY: mutation check: `offered` returned the groups unfiltered -> this test failed (the excerpt was sent and kept)
+  it('never offers or keeps an excerpt holding text aimed at an AI', () => {
+    const groups = tradeoffGroups(caseOf('assessment.compareTradeoffs', 'pair-maria-rana-injection'));
+    const sent = compareTradeoffsRequest(groups).sources;
+    expect(sent.map((source) => source.id)).toEqual(['S1', 'S3', 'S4']);
+    expect(JSON.stringify(sent)).not.toContain('Ignore previous instructions');
+    // Even an answer that cites it by its id keeps nothing of it.
+    const given = { candidates: [{ statements: [tradeoffSaid('S2', 'best candidate')] }, { statements: [] }] };
+    expect(keptTradeoffs(given, groups)[0]?.statements).toEqual([]);
+  });
+
+  // SAFETY: mutation check: removed the cites_another_candidate issue from schemaFor -> this test failed (the crossed answer parsed)
+  // SAFETY: mutation check: removed the every_candidate_once issue from schemaFor -> this test failed (two candidates parsed)
+  // SAFETY: mutation check: removed the facts_line_unknown issue from schemaFor -> this test failed (the two-line quote parsed)
+  // SAFETY: mutation check: lineOf took the first line that holds the quote -> this test failed (the "Cost and reliability" quote parsed)
+  it('rejects an answer that crosses candidates, leaves one out, reorders them, or quotes across or between facts lines', () => {
+    const { schema } = compareTradeoffsRequest(tradeoffTrio());
+    const good = [
+      tradeoffOne('C1', 'S1', 'still rests on claims'),
+      tradeoffOne('C2', 'S4', 'still rests on claims'),
+      tradeoffOne('C3', 'S7', LAYLA),
+    ];
+    const rules = (candidates: unknown[]) =>
+      schema.safeParse({ candidates }).error?.issues.map((i) => (i as { params?: { reason?: string } }).params?.reason);
+    expect(rules(good)).toBeUndefined();
+    expect(rules([good[0], good[1], tradeoffOne('C3', 'S3', '412 of the 460 commits')])).toEqual([
+      'cites_another_candidate',
+    ]);
+    expect(rules([good[0], good[1]])).toEqual(['every_candidate_once']);
+    expect(rules([good[1], good[0], good[2]])).toContain('every_candidate_once');
+    expect(rules([tradeoffOne('C1', 'S1', 'Retrieval and evaluation.\nis below the level'), good[1], good[2]])).toEqual(
+      ['facts_line_unknown'],
+    );
+    // "Cost and reliability" is in two of Sara's lines: no one line is picked.
+    expect(rules([tradeoffOne('C1', 'S1', 'Cost and reliability'), good[1], good[2]])).toEqual(['facts_line_unknown']);
   });
 });
 

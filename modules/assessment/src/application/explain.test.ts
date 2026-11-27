@@ -198,6 +198,15 @@ describe("Scenario: Sara's explanation", () => {
   });
 });
 
+describe('one competency whose name holds "and"', () => {
+  // AIV-P1-047: listText wrote ", and Cost and reliability" for a single such name.
+  it('is named as it is in the facts, with no list comma before it', () => {
+    const oneClaim = EVIDENCE.filter((e) => e.id !== 'e6');
+    const facts = factsOf(snapshot('r1', oneClaim), new Map(NAMES.map(([id, name]) => [id, name])), oneClaim);
+    expect(facts.values['claimNames']).toBe('Cost and reliability');
+  });
+});
+
 describe('Scenario: A reworded facts line is rejected, never shown', () => {
   // SAFETY: mutation check: explainRankingRequest given the static explainRankingSchema -> this test failed (the paraphrase was shown)
   it('falls back to the template, uncached, when a statement citing the facts source rewords its line', async () => {

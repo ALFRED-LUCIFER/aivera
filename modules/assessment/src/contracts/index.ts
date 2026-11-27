@@ -4,6 +4,7 @@ import type { WorkspaceContext } from '@credalent/workspaces';
 import type { AssessCandidateInput, JobRanking, StoredAssessment } from '../application/assessment.ts';
 import type { RankingExplanation } from '../application/explain.ts';
 import type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
+import type { Tradeoffs } from '../application/tradeoffs.ts';
 import type { ApplyScoreChangeInput, ScoreChangeInput, ScoreChangePreview } from '../application/scoreChange.ts';
 
 export { ScoreChangeError } from '../application/scoreChange.ts';
@@ -30,6 +31,8 @@ export type { RankingExplanation } from '../application/explain.ts';
 export type { ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
 export type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
 export type { QuestionCitation, SuggestedGap, SuggestedQuestion } from '../domain/questions.ts';
+export type { Tradeoffs } from '../application/tradeoffs.ts';
+export { MAX_COMPARED } from '../domain/tradeoffs.ts';
 
 /**
  * Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction, so
@@ -122,4 +125,15 @@ export interface AssessmentContract {
     candidateId: string,
     jobId: string,
   ): Promise<SuggestQuestionsResult | null>;
+  /**
+   * "The trade-offs" between 2 to `MAX_COMPARED` candidates of one job (AIV-P1-047): one model call, on demand, that
+   * picks one to three statements per candidate, in the order asked. No word of a statement is the model's: each is a
+   * fact of the candidate's snapshot written from the compared snapshots ("is the only one compared with independently
+   * checked work on …", `itemId` null) or an excerpt of their cited work, whole, citing that evidence item by id.
+   * `unavailable` when the model cannot be asked (no AI, the daily budget spent), its answer is rejected (off the
+   * schema, citing another candidate's source, leaving a candidate out) or nothing is picked for one candidate. Null
+   * unless every candidate is a different person with a snapshot on the approved rubric version. Stores nothing; it
+   * ranks, rejects, advances and contacts nobody (AGENTS.md 1.5). `candidate.view` on the job for every candidate.
+   */
+  compareTradeoffs(ctx: WorkspaceContext, jobId: string, candidateIds: readonly string[]): Promise<Tradeoffs | null>;
 }

@@ -57,6 +57,12 @@ export {
 } from './prompts/evidence.compareExcerpts.ts';
 export { EXPLAIN_RANKING_VERSION, explainRankingRequest, figuresQuoted } from './prompts/assessment.explainRanking.ts';
 export {
+  COMPARE_TRADEOFFS_VERSION,
+  compareTradeoffsRequest,
+  keptTradeoffs,
+  type TradeoffGroup,
+} from './prompts/assessment.compareTradeoffs.ts';
+export {
   SUGGEST_QUESTIONS_SYSTEM,
   SUGGEST_QUESTIONS_VERSION,
   suggestQuestionsRequest,

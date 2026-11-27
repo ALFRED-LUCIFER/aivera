@@ -434,9 +434,13 @@ export default async function seed() {
       const results =
         name === 'Sara Al Qahtani'
           ? await saraCompetencies(personId)
-          : name === 'Maria Santos'
-            ? await mariaProfileRepositories(personId)
-            : (daniel?.results ?? []);
+          : name === 'Arjun Menon'
+            ? await oneCheckedCompetency(personId, 'arjun', 'queue-library', 'Python service engineering')
+            : name === 'Layla Haddad'
+              ? await oneCheckedCompetency(personId, 'layla', 'arabic-ocr', 'Arabic and bilingual NLP')
+              : name === 'Maria Santos'
+                ? await mariaProfileRepositories(personId)
+                : (daniel?.results ?? []);
       if (name === 'Maria Santos') await mariaCvNote(personId);
       const resultId = crypto.randomUUID();
       await withWorkspace(db, workspaceId, async (tx) => {
@@ -622,6 +626,48 @@ export default async function seed() {
      * Sara's levels on rubric v2, as her seeded row reads (meets the need on 4 of 6, Product judgement missing): two
      * competencies proven by an independently checked repository, two by submitted work, two resting on claims.
      */
+    /**
+     * AIV-P1-047: the Compare artboard's other two candidates. Each has one competency proven at level 5 by a
+     * repository checked by commit history, and nothing cited for the rest; their seeded scores (64 up to 76, 61 up to
+     * 82) are hand-written, as every row's are.
+     */
+    async function oneCheckedCompetency(personId: string, owner: string, label: string, checked: string) {
+      const { itemIds } = await as((ctx) =>
+        evidence.recordEvidence(ctx, {
+          candidateId: personId,
+          source: {
+            kind: 'repository',
+            label,
+            url: `https://code.credalent.example/${owner}/${label}`,
+            blobFileId: null,
+            capturedAt: new Date('2026-11-12T08:00:00.000Z'),
+            checkedAt: new Date('2026-11-12T08:00:00.000Z'),
+            checkMethod: 'Commit history',
+          },
+          items: [
+            {
+              excerpt: `${label}: public and documented, with most commits their own.`,
+              excerptSpan: null,
+              provenance: 'corroborated',
+              strength: 'strong',
+              limit: 'Shows the repository, not the work at their employer.',
+              competencies: [{ jobId: sae, competencyId: competency(checked), level: 5 }],
+            },
+          ],
+          synthetic: true,
+        }),
+      );
+      return (rubric?.competencies ?? []).map((c) => ({
+        competencyId: c.id,
+        weightPercent: c.weightPercent,
+        levelNeeded: c.levelNeeded,
+        mandatory: c.type === 'mandatory',
+        proven: c.name === checked ? { level: 5, itemIds } : { level: 0, itemIds: [] },
+        claimedLevel: c.name === checked ? 5 : 0,
+        claimItemIds: [],
+      }));
+    }
+
     async function saraCompetencies(personId: string) {
       // [competency, proven, claimed, the repository whose item proves it]
       const levels: [string, number, number, string | null][] = [

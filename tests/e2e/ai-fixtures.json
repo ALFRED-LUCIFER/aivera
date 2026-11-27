@@ -42,5 +42,13 @@
   {
     "when": "Map the interview summary to the competencies below.",
     "completion": "{\"findings\": [{\"competencyId\": \"C1\", \"finding\": \"clearly_shown\", \"reason\": \"Describes the evaluation set he built and how its answers were graded.\", \"citations\": [{\"sourceId\": \"S1\", \"quote\": \"walked through the 200-question evaluation set he built\"}]}]}"
+  },
+  {
+    "when": "C1: facts S1, excerpts S2, S3.",
+    "completion": "{\"candidates\":[{\"candidate\":\"C1\",\"statements\":[{\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"412 of 460\"}]}]},{\"candidate\":\"C2\",\"statements\":[{\"citations\":[{\"sourceId\":\"S4\",\"quote\":\"is the only one compared with independently checked work on\"}]}]},{\"candidate\":\"C3\",\"statements\":[{\"citations\":[{\"sourceId\":\"S6\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S7\",\"quote\":\"public and documented\"}]}]}]}"
+  },
+  {
+    "when": "C1: facts S1, excerpts S2.",
+    "status": 503
   }
 ]
