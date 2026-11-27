@@ -32,7 +32,5 @@ recorded:
         claim: false
   judge:
     pass: true
-    reason:
-      Every statement says only what the source it cites shows, and every share of the weight, count of competencies
-      and list of claim names is a placeholder that stands for a line the facts source has, with no statement holding a
-      percentage or a number word.
+    reason: Every statement is a placeholder that stands for a line the facts source has, and no statement holds a
+      percentage or a number word, meeting all rubric points.

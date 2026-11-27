@@ -9,6 +9,12 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // explains an order; it never advises on anyone (AGENTS.md 1.5).
 
 /** Bump with any change to the request the model is sent (its prompt hash): the system prompt, the prompt or the JSON schema. */
+// AIV-P1-148: @8 adds that a facts source's only line is the one statement: live on 27 Nov 2026, with no change to
+// @7, gpt-main had begun to answer a one-line facts source with no statement at all.
+// shortcut: with two facts lines and an excerpt, @8 gives the checked line and the work and leaves the "Still resting
+// on claims" line out (priya-latency-work, 5 of 5 live runs; @7's recording had it). Asking for every facts line fixed
+// that and lost omar-two-repos its second excerpt (three statements cannot hold two lines and two excerpts). The
+// template explanation always states the claims line; gate it in field match when the statement cap is revisited.
 export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@8';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */

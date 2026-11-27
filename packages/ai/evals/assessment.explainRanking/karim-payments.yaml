@@ -54,5 +54,5 @@ recorded:
   judge:
     pass: true
     reason:
-      Every statement says only what the source it cites shows, uses only placeholder figures as in the facts source,
-      and does not recommend or name the candidate.
+      Every statement says only what the source it cites shows, uses only figures quoted from the source, and every
+      share of weight, count of competencies, and list of claim names is a placeholder as in the facts source.

@@ -39,14 +39,7 @@ recorded:
             start: 0
             end: 123
         claim: false
-      - text: 'Still resting on claims: {claimNames}, {claimWeight} of the weight.'
-        citations:
-          - sourceId: S1
-            quote: 'Still resting on claims: {claimNames}, {claimWeight} of the weight'
-            start: 125
-            end: 191
-        claim: false
-      - text: The candidate authored 301 of 355 commits, including the retry scheduler.
+      - text: 'job-queue: authored 301 of 355 commits, including the retry scheduler.'
         citations:
           - sourceId: S2
             quote: 'job-queue: authored 301 of 355 commits, including the retry scheduler'
@@ -56,5 +49,5 @@ recorded:
   judge:
     pass: true
     reason:
-      Every statement is directly supported by its cited source, uses only placeholder figures as in the source, and
-      does not recommend any action or name the candidate.
+      Every statement is directly quoted from its cited source, contains no percentage or number word, and does not
+      recommend any action or name the candidate, thus meeting every rubric point.

@@ -162,8 +162,16 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     expect(findQuote('\u2460 Led the migration', '1 Led the migration')).toBeUndefined();
     expect(findQuote('AED 5 - 10k a month', 'AED 5 10k a month')).toBeUndefined();
     expect(findQuote('3\u00B75 years', '3 5 years')).toBeUndefined();
-    // A character that folds outside the basic plane keeps the offsets in step.
-    const folded = '\uD850\uDEEE led the payments migration';
+    // SAFETY: mutation check: read a lone dash between two figures as layout -> this test failed
+    expect(findQuote('AED 5  -  10k a month', 'AED 5 10k a month')).toBeUndefined();
+    expect(findQuote('2019\n -\n2021', '2019 2021')).toBeUndefined();
+    expect(findQuote('\u0665 - \u0661\u0660 years', '\u0665 \u0661\u0660 years')).toBeUndefined();
+    // A run of rating marks is content, not layout: one dot of five is not five of five.
+    // SAFETY: mutation check: read every list mark as layout, wherever it stands -> this test failed
+    expect(findQuote('Python \u25CF\u25E6\u25E6\u25E6\u25E6', 'Python \u25CF\u25CF\u25CF\u25CF\u25CF')).toBeUndefined();
+    expect(findQuote('5\u25CF0 engineers', '5 0 engineers')).toBeUndefined();
+    // After a character that folds to two, the offsets still index the source.
+    const folded = '\uFB01xed the payments migration';
     const later = findQuote(folded, 'payments migration');
     expect(folded.slice(later?.start, later?.end)).toBe('payments migration');
   });
