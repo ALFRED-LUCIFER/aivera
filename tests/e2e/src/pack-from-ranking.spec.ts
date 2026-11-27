@@ -440,6 +440,10 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(arjun.getByText("Credalent's recommendation:")).toHaveCount(0);
   // Each sentence links to the evidence item it rests on: by keyboard, to the item on Sara's profile.
   const source = sara.getByRole('link', { name: 'Source: rag-service' });
+  // From her name, the stop before her card's sources. From the top of the page Tab crosses the sidebar, the job's
+  // stages and the pack's actions first, and toPass waits up to a second between tries: about 20 s of this test's 30 s,
+  // and past them on a slow runner (run 45926230699, retried).
+  await sara.getByRole('link', { name: 'Sara Al Qahtani' }).focus();
   await expect(async () => {
     await page.keyboard.press('Tab');
     await expect(source).toBeFocused({ timeout: 250 });
