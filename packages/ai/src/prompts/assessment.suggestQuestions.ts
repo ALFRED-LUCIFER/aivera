@@ -12,6 +12,8 @@ import { cited, sourceLabel, type Source } from '../citations.ts';
 // AIV-P1-148: on CVs extracted from real PDF layouts (short fragments, one per line) @4 quoted whole passages stitched
 // across lines or shortened with "...", which are not in the source: the question set was rejected for about half of
 // them. @5 asks for the few words the question tests, from one line, as evidence.mapToCompetency does.
+// shortcut: "at most 12 words, from a single line" is advice the model may break (a recorded quote has 14);
+// nothing enforces it. Enforce it in the schema if long excerpts hurt the interview guide.
 export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@5';
 
 export const MAX_QUESTION_WORDS = 30;

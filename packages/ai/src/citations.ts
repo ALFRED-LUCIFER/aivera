@@ -121,30 +121,41 @@ export const formatSources = (sources: readonly Source[]) =>
     .join('\n');
 
 // What a PDF's layout leaves in extracted text and a model does not copy: list markers, and a dash standing alone
-// between two spaces (a list dash or a range dash). Read as a space on both sides of the comparison.
-const LIST_MARK = /[•‣⁃▪▫●◦■➢·∙]/;
-const DASH = /[-–—]/;
+// between two spaces (a list dash or a date-range dash; never one between two figures, where it is a range of numbers).
+// Read as a space on both sides of the comparison.
+// shortcut: a quote may therefore run from one list item into the next, as it already could across a line break, though
+// the prompts ask for one line; the words are the source's and in its order, but two items read together can say what
+// neither says alone. Make a list mark a boundary a quote cannot cross once AIV-P1-156 (#654) drops a bad link alone.
+const LIST_MARK = /[\u2022\u2023\u2043\u25AA\u25AB\u25CF\u25E6\u25A0\u27A2]/;
+const DASH = /[-\u2013\u2014]/;
 
-/** `text` as it is compared: compatibility forms folded ("ﬁ" to "fi"), layout marks and whitespace runs as one space. */
+/**
+ * `text` as it is compared: letters in compatibility forms folded ("\uFB01" to "fi"), layout marks and whitespace runs
+ * as one space. A numeric character is never folded: a superscript or a circled digit is not the plain figure.
+ */
 function flatten(text: string): { flat: string; at: number[] } {
   let flat = '';
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
   for (let i = 0; i < text.length; i++) {
     const char = text.charAt(i);
-    const alone = DASH.test(char) && /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1));
+    const alone =
+      DASH.test(char) &&
+      /^\s?$/.test(text.charAt(i - 1)) &&
+      /^\s?$/.test(text.charAt(i + 1)) &&
+      !(/\d\s?$/.test(text.slice(Math.max(0, i - 2), i)) && /^\s?\d/.test(text.slice(i + 1, i + 3)));
     const space = /\s/.test(char) || LIST_MARK.test(char) || alone;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
-    for (const folded of space ? ' ' : char.normalize('NFKC')) {
-      flat += folded;
-      at.push(i);
-    }
+    const folded = space ? ' ' : /\p{N}/u.test(char) ? char : char.normalize('NFKC');
+    // One entry per code unit, so an offset never drifts when a character folds to several.
+    for (let k = 0; k < folded.length; k++) at.push(i);
+    flat += folded;
   }
   return { flat, at };
 }
 
 /**
  * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, list markers and lone
- * dashes read as a space and compatibility forms folded (case, words and punctuation must match): a CV extracted from
+ * dashes read as a space and letters' compatibility forms folded (case, words, figures and punctuation must match): a CV extracted from
  * a PDF keeps its bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the
  * original text, so the stored excerpt is the source's own characters.
  */

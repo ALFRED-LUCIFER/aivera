@@ -156,6 +156,16 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     expect(findQuote('end-to-end tests', 'end to end tests')).toBeUndefined();
     expect(findQuote(cv, 'Validation of watermarks')).toBeUndefined();
     expect(findQuote(cv, 'May 2019 - Oct 2020')).toBeUndefined();
+    // A figure is never folded or joined: a superscript is not the plain digits, and a range of numbers keeps its dash.
+    // SAFETY: mutation check: folded numeric characters with NFKC like letters -> this test failed
+    expect(findQuote('served 10\u2076 requests a day', '106 requests a day')).toBeUndefined();
+    expect(findQuote('\u2460 Led the migration', '1 Led the migration')).toBeUndefined();
+    expect(findQuote('AED 5 - 10k a month', 'AED 5 10k a month')).toBeUndefined();
+    expect(findQuote('3\u00B75 years', '3 5 years')).toBeUndefined();
+    // A character that folds outside the basic plane keeps the offsets in step.
+    const folded = '\uD850\uDEEE led the payments migration';
+    const later = findQuote(folded, 'payments migration');
+    expect(folded.slice(later?.start, later?.end)).toBe('payments migration');
   });
 });
 
