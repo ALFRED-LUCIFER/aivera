@@ -10,7 +10,7 @@ Several Claude Code sessions (or people) can work on different tickets at once. 
 6. **Never** restart Docker, prune volumes, merge, or force-push anything but your own stack branch (`--force-with-lease`, AGENTS.md 7.1) without the owner. `main` is never force-pushed.
 7. **Report status on GitHub**: `status:` label, a comment, and the Project 2 Status, at start and finish (AGENTS.md 2.1).
 8. **Share the GitHub API limit.** Every agent on the account draws on one 5,000-an-hour budget; a 30-second `gh pr checks` loop plus a few agents exhausted it in under an hour (27 Nov 2026). Poll every 2 minutes or more, and only one loop per PR.
-9. **A red CI job is a fault until a rerun says otherwise.** Read the failure first. Rerun only the failed job or shard (`gh run rerun <run-id> --failed`), once, when the failure matches a known flake in [local-development.md](local-development.md#known-quirks-found-by-agents-nov-2026) or a one-off AI eval miss; a second failure is a real fault to fix, and every rerun is named in the PR or issue comment.
+9. **A red CI job is a fault unless it matches a known flake.** Read the failure first. Rerun only the failed job or shard (`gh run rerun <run-id> --failed`), once, when the failure matches a known flake in [local-development.md](local-development.md#known-quirks); a second failure is a real fault to fix, and every rerun is named in the PR or issue comment.
 
 ## Stacked PRs
 
