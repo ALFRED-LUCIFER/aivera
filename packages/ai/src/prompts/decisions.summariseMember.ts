@@ -31,8 +31,8 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV and never the interview notes, which have the round1 line): what that excerpt states, in its words. One strength for one excerpt, so one excerpt of work gives one',
-  'strength and none gives none: a line of the facts source alone is never a strength. Its first citation quotes',
+  'CV and never the interview notes, which have the round1 line): what that excerpt states, in its words. One strength per excerpt of work, at most two: one excerpt of work',
+  'gives one strength and none gives none, and a line of the facts source alone is never a strength. Its first citation quotes',
   'that excerpt; a strength without one is rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
   'competency; naming a competency without that line is rejected. It states nothing the excerpt does not:',
   'no other activity, role, scale or result, no adjective or adverb of your own about the work or its quality, and',
@@ -100,7 +100,7 @@ const cites = (s: { citations: { sourceId: string }[] }, among: ReadonlySet<stri
 
 /**
  * The schema for one request, over the labels the model sees: a strength's first citation is inspected work (a source
- * that is neither the facts nor the CV) and, when it names a competency, it cites the facts line that names it; and the Round 1 finding is null
+ * that is neither the facts, the CV nor an interview note) and, when it names a competency, it cites the facts line that names it; and the Round 1 finding is null
  * without interview notes and cites them otherwise. A refine only: the JSON schema the model is given, and so the
  * prompt hash, do not change.
  */

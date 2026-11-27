@@ -1,6 +1,7 @@
-# Kristine Dela Cruz (AIV-P2-092): a CV and nothing inspected. No strength is written (a CV line is a claim, never a
-# strength), the claims are named as risks, there is no Round 1 line, and the recommendation is to hold: thin evidence
-# is a gap to close, never a reason to reject (AGENTS.md 1.6).
+# Kristine Dela Cruz (AIV-P2-092): a CV and nothing inspected; the facts are worded as the decisions module writes
+# them (sourcesOf). No strength is written (a CV line is a claim, never a strength), the claims are named as risks,
+# there is no Round 1 line, and the recommendation is to hold: thin evidence is a gap to close, never a reason to reject
+# (AGENTS.md 1.6).
 # The recorded answer is the dev deployment's live answer.
 id: kristine-cv-only
 people: ['Kristine Dela Cruz']
@@ -10,8 +11,8 @@ sources:
     kind: document
     text: |-
       Work meets the need on competencies holding 0% of the weight.
-      Manual test design, 50% of the weight, needs level 3: a claim nobody has inspected shows level 3; no inspected work yet.
-      Defect reporting, 30% of the weight, needs level 3: a claim nobody has inspected shows level 3; no inspected work yet.
+      Manual test design, 50% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds.
+      Defect reporting, 30% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds.
       Test automation, 20% of the weight, needs level 2: no evidence yet.
   - id: S2
     kind: cv
@@ -52,40 +53,35 @@ recorded:
   output:
     strengths: []
     risks:
-      - text: Manual test design rests on a claim with no inspected work yet.
+      - text: Test automation has no evidence yet.
         citations:
           - sourceId: S1
-            quote:
-              'Manual test design, 50% of the weight, needs level 3: a claim nobody has inspected shows level 3; no inspected
-              work yet'
-            start: 62
-            end: 181
+            quote: 'Test automation, 20% of the weight, needs level 2: no evidence yet'
+            start: 276
+            end: 342
         claim: false
-      - text: Defect reporting rests on a claim with no inspected work yet.
+      - text: Manual test design is a claim with nothing to inspect.
         citations:
           - sourceId: S1
-            quote:
-              'Defect reporting, 30% of the weight, needs level 3: a claim nobody has inspected shows level 3; no inspected
-              work yet'
-            start: 183
-            end: 300
+            quote: 'Manual test design, 50% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
+            start: 62
+            end: 168
         claim: false
     round1: null
     recommendation:
       action: hold
-      focus: Manual test design
+      focus: manual test design
       citations:
         - sourceId: S1
-          quote:
-            'Manual test design, 50% of the weight, needs level 3: a claim nobody has inspected shows level 3; no inspected
-            work yet'
+          quote: 'Manual test design, 50% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
           start: 62
-          end: 181
+          end: 168
       claim: false
   judge:
     pass: true
     reason:
-      'Every rubric item is met: each risk is named as a claim, the recommendation is to hold and names a gap, there
-      is no Round 1 finding, and no statement names the candidate or recommends rejecting, hiring or advancing anyone.'
+      'Every rubric item is met: all risks are named as claims or gaps, there are no strengths, no Round 1 finding,
+      the recommendation is to hold and names a gap, and no statement names the candidate or recommends rejecting,
+      hiring or advancing.'
   promptVersion: decisions.summariseMember@4
-  promptHash: ba31114bdc02
+  promptHash: 7afa73961d33

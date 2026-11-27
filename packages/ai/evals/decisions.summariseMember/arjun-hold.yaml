@@ -64,7 +64,7 @@ expected:
     advancing anyone.
 recorded:
   promptVersion: decisions.summariseMember@4
-  promptHash: d6b4c60ac88c
+  promptHash: 050ed2050315
   output:
     strengths:
       - text: Maintains an open-source queue library, with 1,840 of 2,100 commits since 2022.
@@ -116,14 +116,18 @@ recorded:
       claim: false
     recommendation:
       action: hold
-      focus: Retrieval and evaluation
+      focus: Product judgement
       citations:
         - sourceId: S1
           quote: Work meets the need on competencies holding 40% of the weight
           start: 0
           end: 61
+        - sourceId: S1
+          quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
+          start: 505
+          end: 573
       claim: false
   judge:
     pass: true
     reason: Every item is strictly limited to what its cited excerpt states, with no added work, role, team, result, or
-      figure, and the recommendation is to hold with a focus on a gap from the facts.
+      figure, and all citations are accurate and directly quoted from the sources.

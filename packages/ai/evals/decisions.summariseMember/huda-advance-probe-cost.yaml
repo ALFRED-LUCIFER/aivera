@@ -67,12 +67,10 @@ expected:
     statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
   promptVersion: decisions.summariseMember@4
-  promptHash: f5da5daac7d9
+  promptHash: b2a82673b51b
   output:
     strengths:
-      - text:
-          The arabic-ocr-pipeline includes OCR and normalisation for Arabic invoices, with a character error rate report per
-          release.
+      - text: OCR and normalisation for Arabic invoices in arabic-ocr-pipeline, with a character error rate report per release
         citations:
           - sourceId: S2
             quote: OCR and normalisation for Arabic invoices in arabic-ocr-pipeline, with a character error rate report per release
@@ -85,7 +83,7 @@ recorded:
             start: 583
             end: 705
         claim: false
-      - text: The candidate reproduced the retrieval benchmark from the team's paper and published the evaluation notebook.
+      - text: reproduced the retrieval benchmark from the team's paper and published the evaluation notebook
         citations:
           - sourceId: S3
             quote: reproduced the retrieval benchmark from the team's paper and published the evaluation notebook
@@ -99,14 +97,14 @@ recorded:
             end: 298
         claim: false
     risks:
-      - text: Cost and reliability competency is a claim with nothing to inspect yet.
+      - text: Cost and reliability competency is a claim with nothing to inspect
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
             start: 403
             end: 511
         claim: false
-      - text: Product judgement competency has no evidence yet.
+      - text: Product judgement competency has no evidence yet
         citations:
           - sourceId: S1
             quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
@@ -114,9 +112,7 @@ recorded:
             end: 581
         claim: false
     round1:
-      text:
-        The candidate walked through the error analysis of the Arabic OCR pipeline; product decisions were described but
-        not shown.
+      text: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown.
       citations:
         - sourceId: S5
           quote: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown
@@ -125,7 +121,7 @@ recorded:
       claim: false
     recommendation:
       action: advance
-      focus: Cost and reliability
+      focus: Cost and reliability competency
       citations:
         - sourceId: S1
           quote: Work meets the need on competencies holding 70% of the weight
