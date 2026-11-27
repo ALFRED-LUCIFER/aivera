@@ -145,8 +145,9 @@ function flatten(text: string): { flat: string; at: number[] } {
   let flat = '';
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
   // By whole character, so a letter outside the basic plane (a mathematical bold letter) folds too.
-  for (let i = 0; i < text.length; i = charEnd(text, i)) {
-    const char = text.slice(i, charEnd(text, i));
+  for (let i = 0, next = 0; i < text.length; i = next) {
+    next = charEnd(text, i);
+    const char = text.slice(i, next);
     // Layout only when it stands alone: whitespace (or an end of the text) on both sides, and never beside another
     // mark or between two figures, however far apart: a rating drawn in dots and a range of numbers are content.
     const mark = LIST_MARK.test(char);

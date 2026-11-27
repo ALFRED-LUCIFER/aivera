@@ -589,6 +589,21 @@ describe('Feature: Identifiers and traits are found whatever compatibility forms
     },
   );
 
+  // Only letters are folded: a symbol or punctuation mark that NFKC turns into a letter, a combining mark, "_", "."
+  // or "," would hide the edge of the name or phone beside it.
+  // SAFETY: mutation check: folded every non-numeric character in foldLetters (fold.ts) -> every row failed (the
+  // name or the phone was sent)
+  it.each([
+    ['´Kristine´ led it', '´[CANDIDATE]´ led it'],
+    ['Kristine™ Dela Cruz™', '[CANDIDATE]™ [CANDIDATE]™'],
+    ['＿Kristine and №Kristine', '＿[CANDIDATE] and №[CANDIDATE]'],
+    ['call №050 123 4567 now', 'call №[PHONE_1] now'],
+    ['Tel．050 123 4567', 'Tel．[PHONE_1]'],
+    ['℡+971 50 123 4567™', '℡[PHONE_1]™'],
+  ])('a symbol beside a name or a phone never hides it: %s', (written, expected) =>
+    expect(sent(written)).toBe(expected),
+  );
+
   // SAFETY: mutation check: sliced the redacted text from the folded text in redactSources -> this test failed
   it('keeps every character that is not an identifier exactly as written', () => {
     const text = '𝐒𝐤𝐢𝐥𝐥𝐬: veriﬁed workﬂows, 10⁶ requests, ｋ６ · Kriﬆine · ① Playwright';
