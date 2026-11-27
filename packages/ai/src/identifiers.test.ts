@@ -563,6 +563,9 @@ describe('Feature: Identifiers and traits are found whatever compatibility forms
     const ligatureRecord = { ...kristine, names: ['Kriﬆine Dela Cruz'] };
     expect(sent('Kristine Dela Cruz and Kriﬆine', false, ligatureRecord)).toBe('[CANDIDATE] and [CANDIDATE]');
     expect(sent('Kriﬆine™ led it', false, ligatureRecord)).toBe('[CANDIDATE]™ led it');
+    // SAFETY: mutation check: ran the folded pass only when the source folds (dropped `!recordFolds`) in
+    // redactSources -> this assertion failed ("Kristine [CANDIDATE] led it" was sent)
+    expect(sent('Kristine Dela Cruz led it', false, ligatureRecord)).toBe('[CANDIDATE] led it');
   });
 
   // SAFETY: mutation check: matched the source as written with the folded record in redactSources -> this test
