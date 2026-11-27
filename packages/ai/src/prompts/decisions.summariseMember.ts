@@ -15,9 +15,10 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 // @3: a strength that names a competency cites the facts line naming it (checked in code, `competency_uncited`); @2's
 // answers named one with only the excerpt cited, which the judge passed. The focus is a noun phrase, which the card
 // reads as "look into <focus> next", and a counting word is named in the number rule.
-// @4 (AIV-P2-092): one strength for one excerpt of work, and never one resting on the facts, the CV or the interview
-// notes. Live, @3 wrote a second strength from the facts alone for a candidate with one excerpt, which `not_backed`
-// rejects whole: the card failed in 5 of 8 runs. The rule also counted interview notes as inspected work.
+// @4 (AIV-P2-092): one strength per excerpt, and never one resting on the facts alone. Live, @3 wrote a second
+// strength from the facts alone for a candidate with one excerpt, which `not_backed` rejects whole: the card failed in 5
+// of 8 runs. A strength may still rest on Round 1 notes: after a scorecard a level can be backed by the interview alone,
+// and forbidding it rejected that candidate's card in 8 of 8 runs.
 export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@4';
 
 /** Advance to the next round, or hold while the gap the focus names is closed. Never reject: thin evidence is a gap. */
@@ -31,7 +32,7 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV and never the interview notes, which have the round1 line): what that excerpt states, in its words. One strength per excerpt of work, at most two: one excerpt of work',
+  'CV): what that excerpt states, in its words. One strength per excerpt of work, at most two: one excerpt of work',
   'gives one strength and none gives none, and a line of the facts source alone is never a strength. Its first citation quotes',
   'that excerpt; a strength without one is rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
   'competency; naming a competency without that line is rejected. It states nothing the excerpt does not:',
@@ -100,14 +101,14 @@ const cites = (s: { citations: { sourceId: string }[] }, among: ReadonlySet<stri
 
 /**
  * The schema for one request, over the labels the model sees: a strength's first citation is inspected work (a source
- * that is neither the facts, the CV nor an interview note) and, when it names a competency, it cites the facts line that names it; and the Round 1 finding is null
+ * that is neither the facts nor the CV) and, when it names a competency, it cites the facts line that names it; and the Round 1 finding is null
  * without interview notes and cites them otherwise. A refine only: the JSON schema the model is given, and so the
  * prompt hash, do not change.
  */
 const schemaFor = (sources: readonly Source[]) => {
   const labels = (keep: (s: Source, i: number) => boolean) =>
     new Set(sources.flatMap((s, i) => (keep(s, i) ? [sourceLabel(i)] : [])));
-  const work = labels((s, i) => i > 0 && s.kind !== 'cv' && s.kind !== 'interview');
+  const work = labels((s, i) => i > 0 && s.kind !== 'cv');
   const interview = labels((s) => s.kind === 'interview');
   // The competencies the facts name, one per line ("<name>, 25% of the weight, needs level 4: ..."), each matched as a
   // whole phrase, so a short name ("AI", "Go") inside a word ("maintains", "algorithm") is not a mention of it.

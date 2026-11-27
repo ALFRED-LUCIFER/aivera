@@ -2280,7 +2280,6 @@ describe('Feature: Decision pack summaries', () => {
       'arjun-hold',
       'hala-one-excerpt',
       'huda-advance-probe-cost',
-      'imran-notes-no-work',
       'kristine-cv-only',
       'sara-advance',
     ]);
@@ -2296,19 +2295,6 @@ describe('Feature: Decision pack summaries', () => {
   it('the model reads Sara Al Qahtani as "[CANDIDATE]"', async () => {
     expect(sara().expected.prompt?.forbidden).toEqual(['Sara', 'Qahtani']);
     expect((await run(task, [sara()])).rates.prompt).toBe(1);
-  });
-
-  // A strength is about inspected work: the interviewer's word has the Round 1 line. Live, @3 wrote a second strength
-  // from the facts alone for a candidate with one excerpt (the facts and CV halves are the test below).
-  // SAFETY: mutation check: counted interview notes as inspected work in schemaFor -> this test failed (it parsed)
-  it('a strength resting on the interview notes rejects the answer as not_backed', () => {
-    const hala = caseOf(task, 'hala-one-excerpt');
-    const card = structuredClone(hala.recorded.output) as Card;
-    expect(card.strengths).toHaveLength(1);
-    const fromNotes = { sourceId: 'S4', quote: 'showed how she cut its run time' };
-    const said = { text: 'The candidate cut the run time of the suite.', citations: [fromNotes] };
-    const parsed = parseCard({ ...card, strengths: [...card.strengths, said] }, hala);
-    expect(parsed.error?.issues.map((issue) => 'params' in issue && issue.params?.['reason'])).toEqual(['not_backed']);
   });
 
   // SAFETY: mutation check: removed the figure_not_quoted refine from the statement schema -> this test failed (it parsed)

@@ -67,7 +67,7 @@ expected:
     statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
   promptVersion: decisions.summariseMember@4
-  promptHash: b2a82673b51b
+  promptHash: e9840c18c6eb
   output:
     strengths:
       - text: OCR and normalisation for Arabic invoices in arabic-ocr-pipeline, with a character error rate report per release
@@ -112,7 +112,7 @@ recorded:
             end: 581
         claim: false
     round1:
-      text: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown.
+      text: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown
       citations:
         - sourceId: S5
           quote: walked through the error analysis of the Arabic OCR pipeline; product decisions were described but not shown
@@ -130,5 +130,6 @@ recorded:
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added claims, judgements, or
-      unsupported details, and all citations are accurate and relevant.
+    reason:
+      Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and
+      all citations are accurate and relevant.

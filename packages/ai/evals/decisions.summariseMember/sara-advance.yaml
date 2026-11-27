@@ -73,7 +73,7 @@ expected:
     facts. No statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
   promptVersion: decisions.summariseMember@4
-  promptHash: de413a6651eb
+  promptHash: 4e6b22221c41
   output:
     strengths:
       - text: authored 412 of 460 commits in llm-eval-harness between March and October
@@ -103,21 +103,19 @@ recorded:
             end: 310
         claim: false
     risks:
-      - text: Cost and reliability is a claim with nothing to inspect
+      - text: Cost and reliability is a claim with nothing to inspect, level 3 if it holds
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
             start: 415
             end: 523
         claim: false
-      - text: Arabic and bilingual NLP is a claim with nothing to inspect
+      - text: Product judgement has no evidence yet
         citations:
           - sourceId: S1
-            quote:
-              'Arabic and bilingual NLP, 10% of the weight, needs level 3: a claim with nothing to inspect, level 4 if it
-              holds'
-            start: 595
-            end: 707
+            quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
+            start: 525
+            end: 593
         claim: false
     round1:
       text: defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set
@@ -139,5 +137,6 @@ recorded:
   judge:
     pass: true
     reason:
-      Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and
-      every risk names a claim as such, so all rubric points are met.
+      'All items meet the rubric: strengths are strictly limited to what the cited excerpts state, risks are correctly
+      called claims or gaps per the facts, the Round 1 finding matches the interview note, and the recommendation is to
+      advance based on 60% of the weight, with the focus naming a gap from the facts.'

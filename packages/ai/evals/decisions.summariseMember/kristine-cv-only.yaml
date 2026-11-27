@@ -53,14 +53,14 @@ recorded:
   output:
     strengths: []
     risks:
-      - text: Test automation has no evidence yet.
+      - text: Test automation has no evidence yet
         citations:
           - sourceId: S1
             quote: 'Test automation, 20% of the weight, needs level 2: no evidence yet'
             start: 276
             end: 342
         claim: false
-      - text: Manual test design is a claim with nothing to inspect.
+      - text: Manual test design is a claim with nothing to inspect
         citations:
           - sourceId: S1
             quote: 'Manual test design, 50% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
@@ -70,18 +70,25 @@ recorded:
     round1: null
     recommendation:
       action: hold
-      focus: manual test design
+      focus: Manual test design
       citations:
         - sourceId: S1
           quote: 'Manual test design, 50% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
           start: 62
           end: 168
+        - sourceId: S1
+          quote: 'Defect reporting, 30% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
+          start: 170
+          end: 274
+        - sourceId: S1
+          quote: 'Test automation, 20% of the weight, needs level 2: no evidence yet'
+          start: 276
+          end: 342
       claim: false
   judge:
     pass: true
-    reason:
-      'Every rubric item is met: all risks are named as claims or gaps, there are no strengths, no Round 1 finding,
-      the recommendation is to hold and names a gap, and no statement names the candidate or recommends rejecting,
-      hiring or advancing.'
+    reason: 'Every rubric item is met: all risks are named as claims or lacking evidence, no strengths are given, the
+      recommendation is to hold and names a gap, there is no Round 1 finding, and no statement names the candidate or
+      recommends rejecting, hiring, or advancing.'
   promptVersion: decisions.summariseMember@4
-  promptHash: 7afa73961d33
+  promptHash: 474162a1063b
