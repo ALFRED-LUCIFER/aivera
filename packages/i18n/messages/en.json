@@ -586,6 +586,27 @@
     "regionCaption": "{region, select, uae {Regional suggestions for the UAE} ksa {Regional suggestions for KSA} india {Regional suggestions for India} other {Regional suggestions for {label}}}",
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
+  "people": {
+    "intro": "Everyone in a live process on one of your jobs: {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}}. One row per person, however many jobs they are in.",
+    "caption": "Candidates in a live process",
+    "filterLabel": "Filter by job",
+    "allJobs": "All jobs",
+    "columns": {
+      "person": "Person",
+      "job": "Job and stage",
+      "score": "Backed score for that job",
+      "meetsNeed": "Meets the job's need",
+      "nextStep": "Next step"
+    },
+    "inJobs": "In {count} jobs",
+    "otherJob": "{job} · {stage} · {backed} backed by evidence · up to {upTo} if claims hold",
+    "footer": "Showing {count, plural, one {# person} other {# people}}, furthest along first. To see one job's candidates ranked against its rubric, open the job from <jobs>Jobs</jobs>.",
+    "empty": "No one in a live process yet",
+    "addJob": "Add a job",
+    "loading": "Loading candidates…",
+    "error": "We could not load your candidates. Try again.",
+    "retry": "Try again"
+  },
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after a version is approved.",
     "add": "Add a job",

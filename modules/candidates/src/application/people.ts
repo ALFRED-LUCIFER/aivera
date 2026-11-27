@@ -156,7 +156,7 @@ export function peopleUseCases({
       if (!(await storeFor(ctx.tx).deleteSyntheticPeople(ctx.workspaceId))) throw new CandidateError('not_synthetic');
     },
 
-    // shortcut: no paging; the people page (AIV-P1-048) adds it.
+    // shortcut: no paging; add it when a page lists a workspace's people from here (Candidates reads the rankings).
     async listPeople(ctx: WorkspaceContext): Promise<Person[]> {
       await authorize(ctx, 'candidate.view');
       return storeFor(ctx.tx).listPeople(ctx.workspaceId);

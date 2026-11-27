@@ -500,3 +500,83 @@ describe('The evidence each competency rests on (AIV-P1-045)', () => {
     });
   });
 });
+
+// AIV-P1-048: what Candidates (all jobs) reads, on real PostgreSQL as aivera_app. loadPeople (apps/web, unit-tested
+// with its fold in features/people) lists the workspace's open jobs and each ranked job's rows; a person in two jobs
+// keeps one person id, which is what folds them into one row. A test package may not import the app (AGENTS.md 9.4).
+describe('Scenario: All jobs: one person across two ranked jobs, only in their own workspace', () => {
+  it("reads Sara's rows on two jobs under one person id, and never Gulf Talent Partners' jobs or people", async () => {
+    const sbe = await as(ALEX, demo, async (ctx) => {
+      const job = await jobs.createJob(ctx, {
+        title: 'Staff Backend Engineer',
+        jobType: 'ai_llm_engineering',
+        hiringOwnerUserId: null,
+        description: 'Staff Backend Engineer, synthetic demo job.',
+        synthetic: true,
+      });
+      return job.id;
+    });
+    const version = await as(ALEX, demo, (ctx) =>
+      jobs.saveRubric(ctx, sbe, {
+        successStatement: 'Runs services that stay up.',
+        competencies: [
+          {
+            name: 'Python service engineering',
+            evidenceExpected: 'A repository',
+            weightPercent: 100,
+            levelNeeded: 3,
+            type: 'mandatory',
+            origin: 'from_description',
+          },
+        ],
+      }),
+    );
+    await as(ALEX, demo, (ctx) => jobs.submitRubric(ctx, version.id));
+    await as(ALEX, demo, (ctx) => jobs.approveRubric(ctx, version.id));
+    const rubric = await withWorkspace(app, demo, (tx) => createApprovedRubricReads().approvedRubric(tx, demo, sbe));
+    if (!rubric) throw new Error('The Staff Backend Engineer rubric was not approved.');
+    const applied = await as(ALEX, demo, (ctx) =>
+      receiveConfirmed(intake, ctx, {
+        jobId: sbe,
+        person: {
+          displayName: 'Sara Al Qahtani',
+          identifiers: [{ type: 'cv_hash', value: '1'.padStart(64, '0') }],
+          synthetic: true,
+        },
+        source: 'linkedin',
+        fileIds: [crypto.randomUUID()],
+      }),
+    );
+    expect(applied.personId).toBe(sara);
+    await as(ALEX, demo, async (ctx) =>
+      assessment.assessCandidate(ctx, {
+        candidateId: sara,
+        jobId: sbe,
+        rubric: { versionId: rubric.id, competencies: rubric.competencies },
+        evidence: await evidence.listEvidenceForCandidate(ctx, sara, sbe),
+      }),
+    );
+
+    // loadPeople's reads, in the member's workspace transaction.
+    const read = (userId: string, workspaceId: string) =>
+      as(userId, workspaceId, async (ctx) => {
+        const rows: { jobId: string; personId: string }[] = [];
+        for (const job of await jobs.listJobs(ctx)) {
+          const ranking = await assessment.listRanking(ctx, job.id);
+          if (ranking.status === 'ranked')
+            rows.push(...ranking.rows.map((r) => ({ jobId: job.id, personId: r.candidateId })));
+        }
+        return rows;
+      });
+    const demoRows = await read(RANA, demo);
+    expect(
+      demoRows
+        .filter((r) => r.personId === sara)
+        .map((r) => r.jobId)
+        .toSorted(),
+    ).toEqual([sae, sbe].toSorted());
+    expect(demoRows.map((r) => r.jobId)).not.toContain(gulfJob);
+    expect(demoRows.map((r) => r.personId)).not.toContain(maria);
+    expect((await read(OMAR, gulf)).map((r) => r.personId)).not.toContain(sara);
+  });
+});

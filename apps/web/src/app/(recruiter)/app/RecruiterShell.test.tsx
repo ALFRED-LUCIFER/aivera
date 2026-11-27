@@ -56,7 +56,7 @@ describe('Recruiter app shell', () => {
   // SAFETY: mutation check: aria-current compared against undefined -> this test failed
   it('Scenario: The sidebar shows the built sections, and a count only where one is supplied (AIV-P2-002)', () => {
     renderShell();
-    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Interviews 5', 'Settings']);
+    expect(sectionNames()).toEqual(['Credalent', 'My desk', 'Jobs', 'Candidates', 'Interviews 5', 'Settings']);
     expect(within(sidebar()).getByRole('link', { name: 'My desk' }).getAttribute('aria-current')).toBe('page');
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     // The Main artboard draws the Credalent mark beside the wordmark (AIV-P0-035).
