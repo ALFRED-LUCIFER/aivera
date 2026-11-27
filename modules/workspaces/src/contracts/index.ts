@@ -155,9 +155,9 @@ export interface WorkspacesContract {
   /** Admins. The member must be an active hiring owner or interviewer (`grant_role`, `not_found`). Idempotent. */
   grantJobAccess(ctx: WorkspaceContext, input: GrantJobAccessInput): Promise<void>;
   /**
-   * Admins and recruiters, when a job is saved with a hiring owner (AIV-P1-056): the owner gets a grant on that job and
-   * the previous owner loses theirs (a client grant they hold stays). Throws `owner_role` unless the new owner is an
-   * active hiring owner. Audited as `job_access.granted` / `job_access.revoked`.
+   * Admins and recruiters, when a job is saved with a hiring owner (AIV-P1-056): a hiring owner gets a grant on that job
+   * (an admin needs none) and the previous owner loses theirs (a client grant they hold stays). Throws `owner_role`
+   * unless the new owner is an active hiring owner or admin (AIV-P1-165). Audited as `job_access.granted` / `job_access.revoked`.
    */
   setJobOwner(ctx: WorkspaceContext, input: SetJobOwnerInput): Promise<void>;
   /** Admins. Takes effect on the member's next request. Idempotent. */

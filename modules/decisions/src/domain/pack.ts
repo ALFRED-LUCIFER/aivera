@@ -56,13 +56,14 @@ export type Decision = {
 };
 
 /**
- * Who may record a pack's decisions: the hiring owner named on the job, while they still hold that role. The role and
- * job grant are checked by `decision.record` first; this narrows it, so an admin, a recruiter or another hiring owner
- * on the job may not decide.
+ * Who may record a pack's decisions: the member named on the job as its hiring owner, while they are a hiring owner or
+ * an admin (owner decision (b), AIV-P1-165: a solo recruiter names themselves, as `approvesAs` lets them approve the
+ * rubric). The role and job grant are checked by `decision.record` first; this narrows it, so a recruiter, an admin not
+ * named on the job, or another hiring owner on the job may not decide.
  * shortcut: no delegated authority; nothing in the workspace model records a delegation yet, add it here when one does.
  */
 export const mayDecide = (user: { userId: string; role: string }, job: { hiringOwnerUserId: string | null }) =>
-  user.role === 'hiring_owner' && job.hiringOwnerUserId === user.userId;
+  (user.role === 'hiring_owner' || user.role === 'admin') && job.hiringOwnerUserId === user.userId;
 
 /** The entries to add: each candidate once, first mention wins, and none already in the pack. */
 export function newMembers<T extends { candidateId: string }>(inPack: readonly string[], adding: readonly T[]): T[] {

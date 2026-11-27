@@ -320,10 +320,11 @@ describe('getPack', () => {
   });
 
   // AIV-P2-012: the page shows the decision controls read-only to anyone who may not record them.
-  it('says only the hiring owner named on the job may decide: not a recruiter, nor an admin', async () => {
+  it('says only the member named on the job may decide: not a recruiter, nor an admin who is not named', async () => {
     const { useCases } = setup();
     expect((await useCases.getPack(ctxAs('recruiter'), PACK))?.mayDecide).toBe(false);
     expect((await useCases.getPack(ctxAs('admin', ALEX), PACK))?.mayDecide).toBe(false);
+    expect((await useCases.getPack(ctxAs('admin', FAISAL), PACK))?.mayDecide).toBe(true);
   });
 
   // SAFETY: mutation check: made visible() ignore a null job -> this test failed (pack returned)

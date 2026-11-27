@@ -127,9 +127,11 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
     },
 
     /**
-     * Admins and recruiters, as part of saving the job (AIV-P1-056): the new hiring owner, who must be an active hiring
-     * owner (`owner_role`), gets a grant on the job; the previous one, if a hiring owner, loses their grant on that job
-     * (also one an admin made by hand: the ticket's rule). Interviewers' grants are never touched here. Both audited, last.
+     * Admins and recruiters, as part of saving the job (AIV-P1-056): the new hiring owner must be an active hiring owner
+     * or an active admin (`owner_role`; an admin names themselves to record decisions, AIV-P1-165). A hiring owner gets a
+     * grant on the job; an admin needs none, as they see every job. The previous one, if a hiring owner, loses their grant
+     * on that job (also one an admin made by hand: the ticket's rule). Interviewers' grants are never touched here. Both
+     * audited, last.
      * shortcut: the job id is trusted; only the jobs module calls this, for the job it is saving (architecture rule
      * `job-owner-from-jobs`); check it through a jobs port if another caller ever needs it.
      */
@@ -140,15 +142,15 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
       if (!grant && !revoke) return;
       // Locks the members in changeRole's order, so a concurrent role change cannot slip between check and write.
       const members = await store.lockMembers(ctx.workspaceId);
-      const isOwner = (userId: string | null) =>
-        members.some((m) => m.userId === userId && m.status === 'active' && m.role === 'hiring_owner');
-      if (grant && !isOwner(grant)) throw new WorkspaceError('owner_role');
+      const roleOf = (userId: string) => members.find((m) => m.userId === userId && m.status === 'active')?.role;
+      const grantRole = grant && roleOf(grant);
+      if (grant && grantRole !== 'hiring_owner' && grantRole !== 'admin') throw new WorkspaceError('owner_role');
       const removed =
         revoke && members.some((m) => m.userId === revoke && m.role === 'hiring_owner')
           ? await store.deleteJobGrant(ctx.workspaceId, revoke, input.jobId)
           : null;
       const added =
-        grant &&
+        grantRole === 'hiring_owner' &&
         (await store.insertGrant(ctx.workspaceId, {
           id: newId(),
           userId: grant,

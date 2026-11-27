@@ -130,7 +130,7 @@ const MESSAGES = {
   client_name: "Enter the client's name.",
   client_not_found: 'No such client in this workspace',
   grant_role: 'Only hiring owners and interviewers get job access.',
-  owner_role: 'Only an active hiring owner can be a job’s hiring owner.',
+  owner_role: 'Only an active hiring owner or admin can be a job’s hiring owner.',
   not_synthetic: 'Only a synthetic demo workspace can be seeded or purged.',
   no_workspace: 'No such workspace',
   status_conflict: 'The workspace status has changed. Reload and try again.',
