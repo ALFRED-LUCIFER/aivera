@@ -47,6 +47,7 @@ const sara: CompareColumn = {
 const ready = (columns: CompareColumn[]): CompareData => ({
   ...base,
   status: 'ready',
+  preparedAt: new Date('2026-11-27T21:30:00Z'),
   rubricVersion: 2,
   rows: [{ competencyId: 'arabic', name: 'Arabic and bilingual NLP', weightPercent: 10, needed: 2 }],
   columns,
@@ -103,6 +104,19 @@ describe('Scenario: Candidates side by side', () => {
     show(ready([sara, layla]));
     expect(screen.getByRole('link', { name: 'Change selection' }).getAttribute('href')).toBe(base.selectionHref);
     expect(screen.getByRole('link', { name: 'Open decision pack' }).getAttribute('href')).toBe(`/app/jobs/${JOB}/pack`);
+  });
+});
+
+describe('Scenario: The print view is a clean, safe hand-off', () => {
+  it('prints the job, the date prepared in the workspace time zone and "Confidential", and no breadcrumb or action', () => {
+    const { container } = show(ready([sara, layla]));
+    // 21:30 UTC on 27 Nov is 28 Nov in Dubai.
+    const prepared = screen.getByText('Prepared 28 Nov 2026 · Confidential');
+    expect(prepared.className).toMatch(/\bhidden\b.*\bprint:block\b/);
+    expect(screen.getByText(/^Senior AI Engineer · rubric v2/)).toBeTruthy();
+    expect(screen.getByRole('navigation').className).toContain('print:hidden');
+    expect(screen.getByRole('link', { name: 'Open decision pack' }).parentElement?.className).toContain('print:hidden');
+    expect(container.querySelector('.overflow-x-auto')?.className).toContain('print:overflow-visible');
   });
 });
 

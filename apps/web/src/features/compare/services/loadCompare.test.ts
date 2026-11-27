@@ -117,6 +117,7 @@ describe('loadCompare', () => {
     assessed();
     expect(await loadCompare(JOB, `${SARA},${LAYLA}`)).toEqual({
       status: 'ready',
+      preparedAt: expect.any(Date),
       jobId: JOB,
       jobTitle: 'Senior AI Engineer',
       selectionHref: `/app/jobs/${JOB}/candidates?selected=a1,a3`,
@@ -167,6 +168,20 @@ describe('loadCompare', () => {
         },
       ],
     });
+  });
+
+  it('Scenario: The print view is a clean, safe hand-off: no email or phone from an excerpt reaches the page', async () => {
+    assessed();
+    const contact = 'Support search prototype. Reach me at layla.haddad@example.com or +971 50 123 4567.';
+    fake.evidence.mockImplementation(async (_ctx, id: string) =>
+      id === LAYLA ? [item('i3', contact, 'medium', 'submitted'), ...(EVIDENCE[LAYLA] ?? []).slice(1)] : EVIDENCE[id],
+    );
+    const compare = await loadCompare(JOB, `${SARA},${LAYLA}`);
+    // SAFETY: mutation check: summary read as card.items[0].excerpt, without withoutContacts -> this test failed
+    expect(compare).toMatchObject({
+      columns: [{}, { cells: { llm: { summary: 'Support search prototype. Reach me at … or ….' } } }],
+    });
+    expect(JSON.stringify(compare)).not.toMatch(/example\.com|123 4567/);
   });
 
   it('keeps a ticked candidate who is not scored yet, with no score and no cell', async () => {

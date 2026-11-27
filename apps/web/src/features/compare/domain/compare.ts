@@ -34,6 +34,27 @@ export const tradeoffsInput = z.object({
   candidateIds: z.array(z.uuid()).min(MIN_COMPARE).max(MAX_COMPARE),
 });
 
+// The shapes @credalent/ai's redaction replaces before a prompt (packages/ai identifiers.ts), which the browser cannot import.
+const CONTACT = new RegExp(
+  [
+    String.raw`[\p{L}\p{M}\p{N}_.%+-]+@[\w-]+(?:\.[\w-]+)+`,
+    String.raw`(?:https?:\/\/)?(?:[\w-]+\.)?linkedin\.com\/\S*`,
+    String.raw`(?<![\w+(.,])\(?(?:\+|00)?\(?\d(?:[ ()-]{0,2}\d){7,14}(?![\w]|[.,]\d)`,
+  ].join('|'),
+  'giu',
+);
+// A phone starts with +, 00, 0 or a bracket, or has a run of four digits; a run of years or an ISO date is not one.
+const contactShaped = (match: string) =>
+  /[@/]/.test(match) ||
+  ((/^\(?(?:\+|0)/.test(match) || /\d{4}/.test(match)) && !/^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/.test(match));
+
+/**
+ * An excerpt with every email, phone and LinkedIn address cut to "…", as a quote elides: a comparison is handed off
+ * printed, and contact details stay private until the candidate accepts an introduction (AGENTS.md 1.9).
+ */
+// shortcut: emails, phones and LinkedIn addresses only (no postal address or other profile site); widen from pilot excerpts.
+export const withoutContacts = (text: string) => text.replace(CONTACT, (m) => (contactShaped(m) ? '…' : m));
+
 export type Verdict = 'above' | 'meets' | 'below';
 /** "Above the need · 5 against 4": the proven level against the level the job needs. A claim counts zero (AGENTS.md 1.6). */
 export const verdictOf = (proven: number, needed: number): Verdict =>
@@ -72,6 +93,8 @@ export type CompareData =
   | (Base & { status: 'notOnJob' })
   | (Base & {
       status: 'ready';
+      /** When the page was read: the printed hand-off's "Prepared" date. */
+      preparedAt: Date;
       /** Null until a rubric version is approved: nothing is assessed before that. */
       rubricVersion: number | null;
       rows: CompareRow[];

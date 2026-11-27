@@ -595,6 +595,62 @@ test('AIV-P1-116 Scenarios: No private data is shown, and Nothing leaves Credale
   expect(await sentAndStored()).toEqual(before);
 });
 
+// AIV-P1-165: the browser's own print of the preview is the hand-off. Light ink in either theme: the dark tokens are
+// screen-only, so a printout from the dark theme is not pale text on paper.
+for (const theme of themes) {
+  test(`AIV-P1-165 Scenarios: The print view is a clean, safe hand-off, and Printing creates and sends nothing (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    const before = await sentAndStored();
+    await openPreview(page);
+    const marks = await shortlist(page).locator('mark').count();
+    const sources = await shortlist(page)
+      .getByText(/^Source: /)
+      .count();
+    const sent: string[] = [];
+    page.on('request', (request) => {
+      if (request.method() !== 'GET') sent.push(request.method());
+    });
+    let downloads = 0;
+    page.on('download', () => downloads++);
+    await page.emulateMedia({ media: 'print' });
+    // The app, not the Next.js dev tools the e2e server shows.
+    const app = page.locator('body > :not(nextjs-portal)');
+
+    // No sidebar, top bar, job header, buttons or other controls.
+    await expect(app.getByRole('navigation')).toHaveCount(0);
+    await expect(app.getByRole('banner')).toHaveCount(0);
+    await expect(app.getByRole('heading', { level: 1 })).toHaveCount(0);
+    await expect(app.getByRole('button')).toHaveCount(0);
+    await expect(app.getByRole('link')).toHaveCount(0);
+    await expect(page.getByText('This is how the hiring owner will see this pack.', { exact: false })).toBeHidden();
+    // The job, the date prepared and "Confidential", in ink.
+    const title = shortlist(page).getByRole('heading', { level: 2 });
+    await expect(title).toHaveText('Round 2 shortlist: Senior AI Engineer');
+    expect(await css(title, 'color')).toBe('rgb(27, 23, 32)');
+    await expect(shortlist(page).getByText(/^Prepared \d{1,2} [A-Z][a-z]{2} \d{4} · Confidential$/)).toBeVisible();
+    // The top summary and each card, with every citation and value-basis marker shown on screen.
+    await expect(shortlist(page).getByText(/^4 candidates, /)).toBeVisible();
+    for (const name of ASSESSED) await expect(shortlist(page).getByRole('region', { name })).toBeVisible();
+    await expect(shortlist(page).locator('mark:visible')).toHaveCount(marks);
+    await expect(shortlist(page).getByText(/^Source: /)).toHaveCount(sources);
+    await expect(shortlist(page).getByText('Observed', { exact: true })).toBeVisible();
+    // No email, phone or other contact detail.
+    const text = await page.locator('body').innerText();
+    expect(text).not.toContain(SARA_EMAIL);
+    expect(text.replace(/\D/g, '')).not.toContain(SARA_PHONE.slice(1));
+    expect(text).not.toMatch(/[^\s@]+@[^\s@]+\.[^\s@]+/);
+    expect(text).not.toMatch(/\+\d[\d\s().-]{7,}\d/);
+    // Nothing generated, downloaded, queued or sent.
+    expect(sent).toEqual([]);
+    expect(downloads).toBe(0);
+    expect(await sentAndStored()).toEqual(before);
+  });
+}
+
 for (const theme of themes) {
   test(`AIV-P1-116 Scenario: Keyboard and contrast: Tab reaches "Back to the pack" with a visible focus, axe passes (${theme})`, async ({
     page,

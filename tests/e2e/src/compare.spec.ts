@@ -1,7 +1,7 @@
 import { type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { css, expectAccessible, themes } from './gallery.ts';
 
 // AIV-P1-047, the J2 step: compare the candidates ticked on the ranking, side by side, with the trade-offs. In AP's
 // workspace "Demo" (seed.ts) Sara Al Qahtani (68 up to 84), Arjun Menon (64 up to 76) and Layla Haddad (61 up to 82,
@@ -117,5 +117,60 @@ for (const theme of themes) {
     await tradeoffs(page).getByRole('button', { name: 'Show the trade-offs' }).click();
     await expect(tradeoffs(page).getByRole('listitem')).not.toHaveCount(0);
     await expectAccessible(page);
+  });
+}
+
+// AIV-P1-165: the browser's own print of the comparison, with the trade-offs shown, is the hand-off. Light ink in
+// either theme: the dark tokens are screen-only.
+for (const theme of themes) {
+  test(`AIV-P1-165 Scenarios: The print view is a clean, safe hand-off, and Printing creates and sends nothing (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await compare(page, TRIO);
+    await tradeoffs(page).getByRole('button', { name: 'Show the trade-offs' }).click();
+    await expect(tradeoffs(page).getByRole('listitem')).not.toHaveCount(0);
+    const marks = await page.locator('main mark').count();
+    const bases = await page.locator('main').getByText('Observed', { exact: true }).filter({ visible: true }).count();
+    const sent: string[] = [];
+    page.on('request', (request) => {
+      if (request.method() !== 'GET') sent.push(request.method());
+    });
+    let downloads = 0;
+    page.on('download', () => downloads++);
+    await page.emulateMedia({ media: 'print' });
+    // The app, not the Next.js dev tools the e2e server shows.
+    const app = page.locator('body > :not(nextjs-portal)');
+
+    // No sidebar, top bar, breadcrumb, buttons or other controls.
+    await expect(app.getByRole('navigation')).toHaveCount(0);
+    await expect(app.getByRole('banner')).toHaveCount(0);
+    await expect(app.getByRole('button')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Change selection' })).toBeHidden();
+    await expect(page.getByRole('link', { name: 'Open decision pack' })).toBeHidden();
+    // The job, the date prepared and "Confidential", in ink.
+    const heading = page.getByRole('heading', { level: 1, name: 'Compare candidates' });
+    expect(await css(heading, 'color')).toBe('rgb(27, 23, 32)');
+    await expect(page.getByText(/^Senior AI Engineer · rubric v2\./)).toBeVisible();
+    await expect(page.getByText(/^Prepared \d{1,2} [A-Z][a-z]{2} \d{4} · Confidential$/)).toBeVisible();
+    // Every candidate, the trade-offs, and every citation and value-basis marker shown on screen.
+    for (const name of TRIO)
+      await expect(grid(page).getByRole('columnheader', { name: new RegExp(`^${name}`) })).toBeVisible();
+    await expect(tradeoffs(page).getByRole('list', { name: 'Layla Haddad' }).getByRole('listitem').first()).toHaveText(
+      'Layla Haddad is the only one compared with independently checked work on Arabic and bilingual NLP.',
+    );
+    await expect(page.locator('main mark:visible')).toHaveCount(marks);
+    await expect(page.locator('main').getByText('Observed', { exact: true }).filter({ visible: true })).toHaveCount(
+      bases,
+    );
+    // No email, phone or other contact detail.
+    const text = await page.locator('body').innerText();
+    expect(text).not.toMatch(/[^\s@]+@[^\s@]+\.[^\s@]+/);
+    expect(text).not.toMatch(/\+\d[\d\s().-]{7,}\d/);
+    // Nothing generated, downloaded or sent.
+    expect(sent).toEqual([]);
+    expect(downloads).toBe(0);
   });
 }
