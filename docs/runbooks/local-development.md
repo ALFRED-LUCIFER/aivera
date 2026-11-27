@@ -4,7 +4,8 @@
 
 ```sh
 nvm use                      # Node 24 from .nvmrc
-corepack enable              # pnpm 11 from package.json
+corepack enable              # pnpm 11 from package.json; if `pnpm -v` still says 10, run `corepack pnpm` (pnpm 10 rewrites the lockfile)
+export CI=true               # agents and scripts: pnpm otherwise waits on a TTY prompt
 pnpm install                 # also installs the lefthook Git hooks
 pnpm services:up             # PostgreSQL 17 + pgvector on localhost:5432, with the aivera_migrator, aivera_app and aivera_relay roles
 cp .env.example .env.local   # then set the two database URLs below
@@ -59,9 +60,17 @@ Recruiter sign-in needs the External ID settings ([recruiter-sign-in.md](recruit
 
 **Visual baselines are Linux only.** macOS renders text differently, so on a Mac `pnpm e2e` skips every screenshot comparison and runs everything else. Baselines are made and compared in `mcr.microsoft.com/playwright:v<version>-noble`, the same image the CI `e2e` job runs in, on `linux/amd64` like the runner (emulated on Apple Silicon, so the update takes a few minutes; arm64 Chromium antialiases differently).
 
-To approve a visual change: run `pnpm e2e:update` (needs Docker; with Colima, nothing else), look at every changed PNG under `tests/e2e/src/*-snapshots/` in the diff, and commit them with the change. Never commit a `*-darwin.png`. When CI fails on a snapshot, download the failing shard's `playwright-report-<shard>` artifact from the run (`gallery-1` to `gallery-3`, or `publish-unconfigured`) and open `index.html` to see the expected, actual and diff images.
+To approve a visual change: run `pnpm e2e:update` (needs Docker), look at every changed PNG under `tests/e2e/src/*-snapshots/` in the diff, and commit them with the change. Never commit a `*-darwin.png`. When CI fails on a snapshot, download the failing shard's `playwright-report-<shard>` artifact from the run (`gallery-1` to `gallery-3`, or `publish-unconfigured`) and open `index.html` to see the expected, actual and diff images.
 
 When `@playwright/test` is upgraded, change the image tag in `.github/workflows/pr.yml` to the same version and rerun `pnpm e2e:update`.
+
+### Known quirks
+
+- **`pnpm e2e:update` starts no database.** `tests/e2e/docker.sh` passes no `E2E_DATABASE_URL`, so pages behind sign-in cannot render in it. For those baselines, run by hand: a `pgvector` container on a private Docker network with `packages/db/sql/roles.sql` mounted as an initdb script; in the Playwright image `pnpm install --frozen-lockfile --ignore-scripts` (inside the container leave `CI` unset: with it, the later `pnpm e2e` reinstalls and lefthook fails with no `.git`); `node src/cli.ts migrate` in `packages/db` with `DATABASE_MIGRATOR_URL`; then `pnpm e2e --project=gallery --workers=1 --update-snapshots=changed <specs>` with `E2E_DATABASE_URL` set (the flag needs `=mode` before spec arguments).
+- **Some baselines depend on spec order.** `shell-desk-*` and `shell-menu-open-768` show "Applied AI Engineer, version 3" only when `rubric-edit.spec.ts` ran first. A partial update includes it, on one worker, before `shell.spec.ts`.
+- **A sidebar change** touches seven Linux baselines (`shell-desk-{light,dark}`, `shell-menu-open-768`, `jobs-list-{light,dark}`, `import-{light,dark}`) and `apps/web/src/app/(recruiter)/app/RecruiterShell.test.tsx`, which lists the sidebar sections: run `vitest run src` in `apps/web`, not only `src/features`.
+- **Platform-only and flaky specs.** `import.spec.ts` "ArrowDown" fails on macOS by design (Linux Chromium only). `clients.spec.ts` "add clients… archive one" has flaked once in CI (the archive dialog not found, then its retry fails on leftover state); rerun the failed shard before treating it as a fault.
+- **Running every suite at once** times out `tests/architecture`'s whole-repo scans and Testcontainers start-up. Rerun the suite alone before calling it a failure.
 
 ## Adding a module's schema change
 
@@ -78,13 +87,13 @@ The migration has to be safe on a live database (AIV-P2-061). `tests/architectur
 - **CHECK constraints on `audit` are added `NOT VALID`.** A plain `ADD CONSTRAINT … CHECK` checks every row of the audit log under an exclusive lock. Edit the generated SQL to `ADD CONSTRAINT … CHECK (…) NOT VALID`. Widening an allowed list needs nothing more: every existing row already met the narrower check. Put any `VALIDATE CONSTRAINT` in a migration that ships in a later deploy. The runner applies all of a module's pending migrations in one transaction, so a `VALIDATE` in the same deploy still holds the exclusive lock.
 - **No `CREATE INDEX CONCURRENTLY`.** It cannot run inside that transaction. Plain `CREATE INDEX` blocks writes to the table while it builds, so keep it to tables that are small at the time.
 
-## Docker with Colima
+## Docker: Docker Desktop or Colima
 
-Testcontainers does not find Colima's socket by itself. Before integration tests:
+Docker Desktop needs nothing. Testcontainers does not find Colima's socket by itself; with Colima (`docker context ls` shows which is active), before integration tests:
 
 ```sh
 export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 ```
 
-Docker Desktop needs nothing. Never restart Colima or prune volumes on a shared machine (AGENTS.md 2.10).
+Never restart Docker or Colima or prune volumes on a shared machine (AGENTS.md 2.10).
