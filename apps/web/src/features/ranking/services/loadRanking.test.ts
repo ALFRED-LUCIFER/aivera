@@ -9,6 +9,7 @@ const JOB = '0190d4a2-0000-7000-9000-000000001031';
 const VERSION = '0190d4a2-0000-7000-9000-000000000002';
 const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'recruiter', tx: {} };
 const fake = vi.hoisted(() => ({
+  interviews: vi.fn(async (_ctx: unknown, _filter: string): Promise<unknown[]> => []),
   list: vi.fn(),
   ranking: vi.fn(),
   rubric: vi.fn(),
@@ -25,6 +26,8 @@ vi.mock('@/server/flags', () => ({ enabledFlags: new Set(['compare']) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ listPacks: fake.packs }) }));
+// AIV-P2-007: each application's current round; none unless a test sets them.
+vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ listInterviews: fake.interviews }) }));
 vi.mock('@/server/jobs', () => ({
   getApprovedRubricReads: () => ({ approvedRubric: fake.rubric }),
   getJobs: () => ({ listJobs: fake.jobs }),
@@ -185,6 +188,32 @@ describe('loadRanking', () => {
     expect(data !== 'notFound' && data?.packs).toEqual([{ id: 'k1', name: 'Round 2 shortlist', candidateIds: ['p1'] }]);
     expect(data !== 'notFound' && data?.rows[0]?.inPack).toBe(true);
     expect(fake.packs).toHaveBeenCalledWith(ctx, JOB);
+  });
+
+  it("gives each row its application's current interview round, read from the member's interviews (AIV-P2-007)", async () => {
+    fake.list.mockResolvedValue([sara]);
+    fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [ranked] });
+    fake.rubric.mockResolvedValue(rubric(VERSION));
+    const round1 = {
+      id: 'i1',
+      applicationId: 'a1',
+      round: 'structured_screen',
+      status: 'scheduled',
+      scheduledAt: new Date('2099-11-20T10:00:00.000Z'),
+      createdAt: at,
+    };
+    fake.interviews.mockImplementation(async (_ctx, filter) => (filter === 'ongoing' ? [round1] : []));
+    const data = await loadRanking(JOB);
+    expect(data !== 'notFound' && data?.rows[0]?.interview).toEqual({
+      id: 'i1',
+      round: 'structured_screen',
+      status: 'scheduled',
+      scheduledAt: '2099-11-20T10:00:00.000Z',
+      today: false,
+    });
+    expect(fake.interviews.mock.calls.map(([, filter]) => filter)).toEqual(['ongoing', 'completed']);
+    fake.interviews.mockReset();
+    fake.interviews.mockResolvedValue([]);
   });
 
   // SAFETY: mutation check: read the packs for every role -> this test failed (listPacks called for an interviewer)

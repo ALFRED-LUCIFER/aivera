@@ -7,18 +7,22 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
-import { MeetsNeedCell, NextActionCell, ScoreCell } from '@/features/ranking';
+import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import { MeetsNeedCell, NextActionCell, ScoreCell, StageLine } from '@/features/ranking';
+import { chosenOrDecided } from '@/features/ranking/domain/choose.ts';
 import { ALL_JOBS, type PeopleData, type PersonRow } from '../domain/people.ts';
 
 // AIV-P1-048: Candidates (all jobs), from the People artboard (docs/01-design/artboards/People.dc.html).
 // Deviations, each for a later ticket or a rule:
 // - no Inbox, Candidates and Talent pool cards: the Inbox (AIV-P1-021) and the talent pool (AIV-P2-022) are not built,
 //   and a link to nothing is not shipped; the cards come with the first of them;
-// - the stage is the application's intake stage ("New", "Chosen for interview"), not the interview round ("Round 1
-//   complete", "Round 2 on 21 Nov"): rounds are AIV-P2-007 (#121), as on the ranked table;
-// - "Next step" is the ranked table's next action ("In shortlist pack", the chosen stage, else "Not yet available"),
-//   which has no "Invite to Round 1" or "Open scorecard" yet (AIV-P2-007), and says "In shortlist pack" as text, not a
-//   link to the pack: the shared cell serves the ranked table too, which links packs from its success line;
+// - the stage is the current interview round ("Round 1 on 20 Nov", "Round 1 today, 14:00", "Round 1 complete",
+//   AIV-P2-007), else the application's intake stage ("New"), not the artboard's "Evidence assessed";
+// - "Next step" is the ranked table's next action ("In shortlist pack", "Open scorecard", "Schedule Round 1", the
+//   chosen stage), and "Invite to Round 1" for an assessed person with no interview yet, which opens the job's ranking;
+//   "Guide ready" waits for the interview guide (AIV-P2-003) and "Waiting on client for slots" for client slots, so a
+//   scheduled round says "Chosen for interview" (the chosen stage); "In shortlist pack" is text, not a link to the pack: the shared cell
+//   serves the ranked table too, which links packs from its success line;
 // - a person's other jobs open under the "In N jobs" chip in their row (a native disclosure), not as rows of their own,
 //   and give each job's backed score and claim range as one line of text, not a second score bar per job;
 // - every row is shown, not the first 8: pilot workspaces list tens of people (the footer counts them all);
@@ -35,7 +39,7 @@ const cells: (Omit<DataTableColumn<PersonRow>, 'header'> & { id: keyof Messages[
   { id: 'job', cell: (row) => <JobCell row={row} /> },
   { id: 'score', cell: (row) => <ScoreCell row={row.job.row} /> },
   { id: 'meetsNeed', cell: (row) => <MeetsNeedCell score={row.job.row.score} /> },
-  { id: 'nextStep', cell: (row) => <NextActionCell row={row.job.row} /> },
+  { id: 'nextStep', cell: (row) => <NextStepCell row={row} /> },
 ];
 
 const jobsLink = (chunks: ReactNode) => (
@@ -131,12 +135,33 @@ function PersonCell({ row }: { row: PersonRow }) {
 }
 
 function JobCell({ row }: { row: PersonRow }) {
-  const t = useTranslations('ranking');
   return (
     <>
       <span className="font-semibold">{row.job.jobTitle}</span>
-      <span className="block text-meta text-text-2">{t(`stages.${row.job.row.stage}`)}</span>
+      <span className="block text-meta text-text-2">
+        <StageLine row={row.job.row} />
+      </span>
     </>
+  );
+}
+
+/**
+ * The ranked table's next action; for an assessed person with no interview, pack or decision yet, "Invite to Round 1",
+ * which opens the job's ranking, where "Choose for interview" is (AIV-P1-114). Nobody is contacted from either.
+ */
+function NextStepCell({ row }: { row: PersonRow }) {
+  const t = useTranslations('people');
+  const { row: candidate, jobId } = row.job;
+  if (candidate.inPack || candidate.interview || chosenOrDecided(candidate.stage))
+    return <NextActionCell row={candidate} />;
+  return (
+    // jobPageHref builds the path from the job id, which typed routes cannot check.
+    <Link
+      href={jobPageHref(jobId, 'candidates') as Route}
+      className="font-semibold text-text underline underline-offset-2"
+    >
+      {t('invite')}
+    </Link>
   );
 }
 

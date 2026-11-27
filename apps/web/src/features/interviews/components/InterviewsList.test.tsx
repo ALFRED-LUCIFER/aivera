@@ -28,6 +28,7 @@ const row = (over: Partial<InterviewRow>): InterviewRow => ({
   job: 'Senior AI Engineer',
   round: 'structured_screen',
   interviewer: null,
+  interviewerUserId: '0190d4a2-0000-7000-8000-0000000a1e5a',
   scheduledAt: '2026-11-18T10:00:00.000Z',
   today: true,
   status: 'in_progress',
@@ -66,6 +67,7 @@ const ready = (over: Partial<Extract<InterviewsListView, { status: 'ready' }>> =
   counts: { ongoing: 3, completed: 0 },
   people: 0,
   jobs: 0,
+  schedule: null,
   ...over,
 });
 

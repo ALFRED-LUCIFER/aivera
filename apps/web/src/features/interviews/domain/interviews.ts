@@ -1,4 +1,5 @@
 import type { InterviewStatus, Round } from '@credalent/interviews';
+import type { InterviewerOption } from './schedule.ts';
 
 /** One row of the Interviews list (AIV-P2-002): names for people to read, joined on the server from opaque ids. */
 export type InterviewRow = {
@@ -9,6 +10,8 @@ export type InterviewRow = {
   round: Round;
   /** Their title in the workspace, else their name; null for the signed-in member, shown as "You". */
   interviewer: string | null;
+  /** The interviewer's opaque user id, which the Schedule dialog starts from (AIV-P2-007). */
+  interviewerUserId: string;
   /** ISO time; null while the interview has no time. */
   scheduledAt: string | null;
   /** On the viewer's calendar day: "Today, 14:00". */
@@ -27,6 +30,8 @@ export type InterviewsData = Record<InterviewView, InterviewRow[]> & {
   /** How many people and jobs the completed interviews cover, for the summary line. */
   people: number;
   jobs: number;
+  /** Who may be chosen as interviewer, for admins and recruiters; null for members who cannot schedule (AIV-P2-007). */
+  interviewers: InterviewerOption[] | null;
 };
 
 /** The scorecard page of one interview (AIV-P2-004). */
@@ -34,13 +39,19 @@ export const scorecardHref = (interviewId: string) => `/app/interviews/${intervi
 
 export type RowAction =
   | { kind: 'openScorecard'; href: string }
+  /** No time yet: admins and recruiters schedule it (AIV-P2-007). */
+  | { kind: 'schedule' }
   | { kind: 'scorecardDue'; days: number; href: string }
   // shortcut: "Guide ready" needs the interview guide, which does not exist yet; AIV-P2-003 adds it and that state here.
   | { kind: 'noGuide' }
   | null;
 
-/** What the Action column offers for a row; nothing while there is no time, or once it is completed. */
-export function rowAction({ id, status, dueDays }: Pick<InterviewRow, 'id' | 'status' | 'dueDays'>): RowAction {
+/** What the Action column offers for a row: Schedule while there is no time (for those who may), nothing once completed. */
+export function rowAction(
+  { id, status, dueDays }: Pick<InterviewRow, 'id' | 'status' | 'dueDays'>,
+  canSchedule = false,
+): RowAction {
+  if (status === 'to_schedule') return canSchedule ? { kind: 'schedule' } : null;
   if (status === 'in_progress') return { kind: 'openScorecard', href: scorecardHref(id) };
   // A scheduled interview whose time has passed reads as due, so this is how its scorecard is reached.
   if (status === 'scorecard_due') return { kind: 'scorecardDue', days: dueDays ?? 0, href: scorecardHref(id) };

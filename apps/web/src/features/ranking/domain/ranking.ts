@@ -1,4 +1,5 @@
 import type { RankingRow } from '@credalent/assessment';
+import type { Interview, InterviewStatus, Round } from '@credalent/interviews';
 import type { ApplicationListItem, Stage } from '@credalent/intake';
 import type { RowDuplicates } from './duplicates.ts';
 import type { BulkActionId } from './selection.ts';
@@ -27,7 +28,68 @@ export type CandidateRow = {
   duplicates?: RowDuplicates;
   /** In an undecided decision pack of this job (AIV-P2-010): the next action reads "In shortlist pack". */
   inPack?: true;
+  /** The application's current interview round (AIV-P2-007): the stage reads "Round 1 on 20 Nov", "Round 1 complete". */
+  interview?: RowInterview;
 };
+
+/** An application's current interview, as a row shows it: plain data, the time as ISO. */
+export type RowInterview = {
+  id: string;
+  round: Round;
+  status: Exclude<InterviewStatus, 'cancelled'>;
+  scheduledAt: string | null;
+  /** Its time falls on the viewer's calendar day, decided on the server: "Round 1 today, 14:00". */
+  today: boolean;
+};
+
+const OPEN: readonly InterviewStatus[] = ['to_schedule', 'scheduled', 'in_progress', 'scorecard_due'];
+
+const standing = (i: Interview) => (OPEN.includes(i.status) ? 2 : i.status === 'completed' ? 1 : 0);
+
+/**
+ * Each application's current interview: an open one (the latest round when several), else the last one held. A
+ * cancelled interview is never shown. `interviews` are those the interviews contract returned for the member; `today`
+ * says whether a time falls on the viewer's day.
+ */
+export function currentInterviews(interviews: Interview[], today: (at: Date) => boolean): Map<string, RowInterview> {
+  const current = new Map<string, Interview>();
+  for (const i of interviews) {
+    if (standing(i) === 0) continue;
+    const held = current.get(i.applicationId);
+    if (!held || standing(i) > standing(held) || (standing(i) === standing(held) && i.createdAt > held.createdAt))
+      current.set(i.applicationId, i);
+  }
+  return new Map(
+    [...current].flatMap(([applicationId, i]) =>
+      i.status === 'cancelled'
+        ? []
+        : [
+            [
+              applicationId,
+              {
+                id: i.id,
+                round: i.round,
+                status: i.status,
+                scheduledAt: i.scheduledAt?.toISOString() ?? null,
+                today: !!i.scheduledAt && today(i.scheduledAt),
+              },
+            ] as const,
+          ],
+    ),
+  );
+}
+
+/** The row with its application's current interview, when it has one (rows are keyed by application id). */
+export const withInterview = <T extends { id: string }>(row: T, interviews: Map<string, RowInterview>) => {
+  const interview = interviews.get(row.id);
+  return interview ? { ...row, interview } : row;
+};
+
+/** Which round line a row shows ("Round 1 today, 14:00" when it falls on the viewer's day). */
+export function roundLabelKey({ status, scheduledAt, today }: Pick<RowInterview, 'status' | 'scheduledAt' | 'today'>) {
+  if (status === 'scheduled' && scheduledAt) return today ? 'today' : 'scheduled';
+  return status === 'scheduled' ? 'to_schedule' : status;
+}
 
 /** An undecided decision pack of the job, for "Add to decision pack" (AIV-P2-010); its members by person id. */
 export type PackChoice = { id: string; name: string; candidateIds: string[] };

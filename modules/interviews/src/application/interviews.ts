@@ -9,6 +9,7 @@ import {
 import { z } from 'zod';
 import {
   canMove,
+  clashingAt,
   effectiveStatus,
   InterviewError,
   ONGOING,
@@ -24,6 +25,17 @@ export type InterviewStore = {
   find(workspaceId: string, interviewId: string): Promise<Interview | null>;
   /** Moves the stored status only while it is still `from`, so two concurrent moves cannot both apply. */
   moveStatus(workspaceId: string, interviewId: string, from: InterviewStatus, to: InterviewStatus): Promise<boolean>;
+  /**
+   * Sets the time and interviewer while the stored status is still `from` (so a concurrent start or cancel wins), and
+   * makes it `scheduled`.
+   */
+  schedule(
+    workspaceId: string,
+    interviewId: string,
+    from: InterviewStatus,
+    scheduledAt: Date,
+    interviewerUserId: string,
+  ): Promise<boolean>;
   /** Interviews with a stored status in `statuses`, soonest first and those with no time last; one interviewer's if given. */
   list(workspaceId: string, statuses: readonly InterviewStatus[], interviewerUserId?: string): Promise<Interview[]>;
   findDraft(workspaceId: string, interviewId: string): Promise<ScorecardDraft | null>;
@@ -71,6 +83,18 @@ export const createInterviewInputSchema = z.strictObject({
   competencyIds: z.array(z.uuid()).max(50),
 });
 export type CreateInterviewInput = z.input<typeof createInterviewInputSchema>;
+
+export const scheduleInterviewInputSchema = z.strictObject({
+  interviewId: z.uuid(),
+  scheduledAt: z.date(),
+  interviewerUserId: z.uuid(),
+  /** The person saw the clash warning and chose to keep the time (AIV-P2-007 "can still choose to keep it"). */
+  keepClash: z.boolean().default(false),
+});
+export type ScheduleInterviewInput = z.input<typeof scheduleInterviewInputSchema>;
+
+/** Scheduled, or not yet: the interviewer already has an interview at `clashAt`, and nothing was written. */
+export type ScheduleResult = { status: 'scheduled' } | { status: 'clash'; clashAt: Date };
 
 export type InterviewFilter = 'ongoing' | 'completed';
 
@@ -191,6 +215,51 @@ export function interviewUseCases(ports: Ports) {
       await storeFor(ctx.tx).insert(interview);
       if (scheduledAt) await ports.publishInterviewScheduled(ctx.tx, interview);
       return { interviewId: interview.id };
+    },
+
+    async scheduleInterview(ctx: WorkspaceContext, raw: ScheduleInterviewInput): Promise<ScheduleResult> {
+      const input = scheduleInterviewInputSchema.parse(raw);
+      const interview = await storeFor(ctx.tx).find(ctx.workspaceId, input.interviewId);
+      // The job comes from the stored interview; one the context cannot see hides the interview. Authorised before
+      // anything else, so a granted interviewer or hiring owner is refused (403), not told it does not exist.
+      const job = interview && (await jobResource(ctx, interview.jobId));
+      if (!interview || !job) throw new InterviewError('interview_not_found');
+      await authorize(ctx, 'interview.schedule', job);
+      // shortcut: only an interview with no time yet is scheduled; moving a scheduled one waits for a reschedule ticket.
+      if (interview.status !== 'to_schedule') throw new InterviewError('not_schedulable');
+      if (input.scheduledAt <= now()) throw new InterviewError('time_in_past');
+      if (!(await ports.canInterview(ctx, input.interviewerUserId, job)))
+        throw new InterviewError('interviewer_not_on_job');
+      const store = storeFor(ctx.tx);
+      // SAFETY: a draft is its interviewer's unsubmitted word (holdsScorecard): a new interviewer never inherits it.
+      if (
+        input.interviewerUserId !== interview.interviewerUserId &&
+        (await store.findDraft(ctx.workspaceId, interview.id))
+      )
+        throw new InterviewError('interviewer_has_draft');
+      const others = (await store.list(ctx.workspaceId, ['scheduled', 'in_progress'], input.interviewerUserId)).filter(
+        (other) => other.id !== interview.id,
+      );
+      const clashAt = clashingAt(input.scheduledAt, others);
+      if (clashAt && !input.keepClash) return { status: 'clash', clashAt };
+      if (
+        !(await store.schedule(
+          ctx.workspaceId,
+          interview.id,
+          interview.status,
+          input.scheduledAt,
+          input.interviewerUserId,
+        ))
+      )
+        throw new InterviewError('status_move');
+      // Nobody is contacted here: the event has no consumer, and the invitation is a separate, confirmed step.
+      await ports.publishInterviewScheduled(ctx.tx, {
+        ...interview,
+        scheduledAt: input.scheduledAt,
+        interviewerUserId: input.interviewerUserId,
+        status: 'scheduled',
+      });
+      return { status: 'scheduled' };
     },
 
     async startInterview(ctx: WorkspaceContext, interviewId: string): Promise<void> {

@@ -71,7 +71,7 @@ export function createInterviews(
         workspaceId: interview.workspaceId,
         payload: { interviewId: interview.id, applicationId: interview.applicationId },
         dedupeKey: `interview-scheduled:${interview.id}`,
-        occurredAt: interview.createdAt,
+        occurredAt: now(),
       }),
     authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
     jobResource: async (ctx, jobId) => {
