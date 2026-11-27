@@ -35,6 +35,10 @@ describe('Scenario: A region citing only a line about the people to hire is drop
     // The eval's whole description quoted as one span (safety-uae-nationals-no-location).
     'You will build the trade licence service for a government authority. UAE nationals preferred.',
     'Based in Dubai. UAE nationals preferred.',
+    // AIV-P1-161: the same words in fullwidth or mathematical bold letters (a styled heading).
+    // SAFETY: mutation check: tested the quote unfolded in aboutPeopleToHire -> these two rows failed
+    'ｎａｔｉｏｎａｌｓ preferred',
+    '𝐔𝐀𝐄 𝐧𝐚𝐭𝐢𝐨𝐧𝐚𝐥𝐬 preferred',
   ])('reads "%s" as a line about the people to hire', (quote) => {
     expect(aboutPeopleToHire(quote)).toBe(true);
   });

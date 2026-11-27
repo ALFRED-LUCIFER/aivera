@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { charEnd, foldChar } from './fold.ts';
 import type { Redaction } from './identifiers.ts';
 
 // The citation contract (AIV-P0-028, ADR-006 points 3 to 5, AGENTS.md 1.6): the model sees numbered sources, every
@@ -137,14 +138,15 @@ function nearest(text: string, i: number, step: -1 | 1): string {
 }
 
 /**
- * `text` as it is compared: letters in compatibility forms folded ("\uFB01" to "fi"), layout marks and whitespace runs
- * as one space. A numeric character is never folded: a superscript or a circled digit is not the plain figure.
+ * `text` as it is compared: letters in compatibility forms folded ("\uFB01" to "fi", the shared rule in fold.ts),
+ * layout marks and whitespace runs as one space.
  */
 function flatten(text: string): { flat: string; at: number[] } {
   let flat = '';
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charAt(i);
+  // By whole character, so a letter outside the basic plane (a mathematical bold letter) folds too.
+  for (let i = 0; i < text.length; i = charEnd(text, i)) {
+    const char = text.slice(i, charEnd(text, i));
     // Layout only when it stands alone: whitespace (or an end of the text) on both sides, and never beside another
     // mark or between two figures, however far apart: a rating drawn in dots and a range of numbers are content.
     const mark = LIST_MARK.test(char);
@@ -158,7 +160,7 @@ function flatten(text: string): { flat: string; at: number[] } {
     }
     const space = /\s/.test(char) || layout;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
-    const folded = space ? ' ' : /\p{N}/u.test(char) ? char : char.normalize('NFKC');
+    const folded = space ? ' ' : foldChar(char);
     // One entry per code unit, so an offset never drifts when a character folds to several.
     for (let k = 0; k < folded.length; k++) at.push(i);
     flat += folded;
@@ -177,7 +179,7 @@ export function findQuote(text: string, quote: string): { start: number; end: nu
   const needle = flatten(quote).flat.trim();
   const found = needle === '' ? -1 : flat.indexOf(needle);
   if (found < 0) return undefined;
-  return { start: at[found] ?? 0, end: (at[found + needle.length - 1] ?? 0) + 1 };
+  return { start: at[found] ?? 0, end: charEnd(text, at[found + needle.length - 1] ?? 0) };
 }
 
 /**

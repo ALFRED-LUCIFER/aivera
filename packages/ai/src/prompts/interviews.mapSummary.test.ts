@@ -104,6 +104,10 @@ describe('interviews.mapSummary schema', () => {
     'has two kids at home',
     'she has three young children',
     'in poor health last year',
+    // AIV-P1-161: the same words in fullwidth or mathematical bold letters.
+    // SAFETY: mutation check: tested the text unfolded in isOffRubric -> these two rows failed (the finding parsed)
+    'his ｎａｔｉｏｎａｌｉｔｙ came up',
+    'talked about 𝐡𝐢𝐬 𝐰𝐢𝐟𝐞 and the move',
   ])('a sentence about the person is refused: "%s"', (quote) => {
     expect(rulesOf(finding({ reason: 'Describes the work.', citations: [{ sourceId: 'S1', quote }] }))).toEqual([
       'findings.0:off_rubric',

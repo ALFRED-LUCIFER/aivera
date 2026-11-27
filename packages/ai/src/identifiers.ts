@@ -1,4 +1,5 @@
 import type { Source } from './citations.ts';
+import { charEnd, fold, foldLetters } from './fold.ts';
 
 // Fairness inputs (ADR-006 point 7, AIV-P1-080): the candidate's name and every email and phone are replaced with
 // placeholders in each source before a prompt is built, once, here, for every task. Pure: the placeholder-to-value
@@ -210,7 +211,16 @@ export type Redaction = {
  * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
  * `keepContact`, emails and phones stay as written.
  */
-export function redactSources(sources: readonly Source[], identifiers: Identifiers, keepContact: boolean): Redaction {
+export function redactSources(sources: readonly Source[], record: Identifiers, keepContact: boolean): Redaction {
+  // Identifiers are found on the folded text (fold.ts, AIV-P1-161), the record's own values folded the same way: a
+  // name written with a ligature or in fullwidth letters is still the name. Every slice and offset below indexes the
+  // source as written; the folded text and its index map never leave this call.
+  const identifiers: Identifiers = {
+    names: record.names.map(fold),
+    emails: record.emails.map(fold),
+    phones: record.phones,
+    others: record.others?.map(fold) ?? [],
+  };
   const plain = patternFor(identifiers, false, false);
   const traits = patternFor(identifiers, true, false);
   const cv = patternFor(identifiers, true, true);
@@ -231,9 +241,13 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    const masked = source.text.replace(emailPattern, mask);
+    const { folded, at } = foldLetters(source.text);
+    const masked = folded.replace(emailPattern, mask);
     for (const match of masked.matchAll(patternOf(source.kind))) {
-      const value = source.text.slice(match.index, match.index + match[0].length);
+      const value = folded.slice(match.index, match.index + match[0].length);
+      // The whole characters the match came from: one that folds to several ("ﬆ" to "st") is replaced whole.
+      const from = at[match.index] ?? 0;
+      const until = charEnd(source.text, at[match.index + value.length - 1] ?? 0);
       const { email, own, phone, trait, other } = match.groups ?? {};
       let to = trait ? PROTECTED_PLACEHOLDER : other ? OTHER_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
       if (email || own || phone) {
@@ -243,10 +257,10 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
           ? numbered('EMAIL', value.toLowerCase())
           : numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''));
       }
-      text += source.text.slice(last, match.index);
-      cuts.push({ at: text.length, length: to.length, from: match.index, fromLength: value.length, trait: !!trait });
+      text += source.text.slice(last, from);
+      cuts.push({ at: text.length, length: to.length, from, fromLength: until - from, trait: !!trait });
       text += to;
-      last = match.index + value.length;
+      last = until;
     }
     cutsOf.push(cuts);
     return { ...source, text: text + source.text.slice(last) };

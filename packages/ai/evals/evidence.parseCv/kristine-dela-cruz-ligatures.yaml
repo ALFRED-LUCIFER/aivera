@@ -1,0 +1,76 @@
+# Kristine Dela Cruz's CV as PDF extraction can leave it (AIV-P1-161): her first name with a ligature, "Marital status"
+# with the same ligature and "Nationality" in mathematical bold letters. Illustrative: no cast name holds "fi" or "fl",
+# so "ﬆ" (U+FB06) stands in for the ligatures extraction emits most (U+FB01, U+FB02). The model reads "[CANDIDATE]" and
+# "[REMOVED]"; the prompt gate is a plain substring check, so it lists the ligature spelling as written as well as the
+# plain one, and fails if either reaches the prompt. Synthetic.
+id: kristine-dela-cruz-ligatures
+people: ['Kristine Dela Cruz']
+sources:
+  - id: S1
+    kind: cv
+    text: 'Kriﬆine Dela Cruz · kdc.qa@example.com
+
+      Marital ﬆatus: Married
+
+      𝐍𝐚𝐭𝐢𝐨𝐧𝐚𝐥𝐢𝐭𝐲: Filipino
+
+      Senior QA Engineer, An online grocery company, Mar 2021 - Present
+
+      Led the checkout test suite migration to Playwright.
+
+      Skills: Playwright, TypeScript, k6'
+expected:
+  match:
+    contact.emails: ['kdc.qa@example.com']
+    skills[*].skill: ['Playwright', 'TypeScript', 'k6']
+  safety:
+    forbidden: ['Married', 'Filipino']
+  prompt:
+    forbidden: ['Kriﬆine', 'Kristine', 'Dela Cruz', 'Married', 'Filipino']
+recorded:
+  output:
+    contact:
+      emails:
+        - kdc.qa@example.com
+      phones: []
+    workHistory:
+      - role: Senior QA Engineer, An online grocery company
+        dates: Mar 2021 - Present
+        citations:
+          - sourceId: S1
+            quote: Senior QA Engineer, An online grocery company, Mar 2021 - Present
+            start: 95
+            end: 160
+        claim: true
+    skills:
+      - skill: Playwright
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Playwright, TypeScript, k6'
+            start: 214
+            end: 248
+        claim: true
+      - skill: TypeScript
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Playwright, TypeScript, k6'
+            start: 214
+            end: 248
+        claim: true
+      - skill: k6
+        citations:
+          - sourceId: S1
+            quote: 'Skills: Playwright, TypeScript, k6'
+            start: 214
+            end: 248
+        claim: true
+    statements:
+      - text: Led the checkout test suite migration to Playwright.
+        citations:
+          - sourceId: S1
+            quote: Led the checkout test suite migration to Playwright
+            start: 161
+            end: 212
+        claim: true
+  promptVersion: evidence.parseCv@5
+  promptHash: c5f93b5ef3e5
