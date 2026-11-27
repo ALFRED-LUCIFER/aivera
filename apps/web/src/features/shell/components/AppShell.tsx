@@ -22,6 +22,8 @@ export type AppShellProps = {
   onToggleTheme: () => void;
   /** The server action that ends the session and lands on the sign-in page. */
   signOutAction: () => Promise<void>;
+  /** The top-bar search (AIV-P1-049), composed by the app. */
+  search: ReactNode;
   children: ReactNode;
 };
 
@@ -43,6 +45,7 @@ export function AppShell({
   theme,
   onToggleTheme,
   signOutAction,
+  search,
   children,
 }: AppShellProps) {
   const t = useTranslations('shell');
@@ -90,8 +93,8 @@ export function AppShell({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </Button>
-        {/* Deviation from the Main artboard: no search field and no "Ask Credalent" until they work (AIV-P1-049,
-            AIV-P2-E06); AIV-P1-095. */}
+        {/* Deviation from the Main artboard: no "Ask Credalent" until the assistant works (AIV-P2-E06); AIV-P1-095. */}
+        <search className="min-w-0 flex-1 basis-64 sm:max-w-md">{search}</search>
         <div className="ms-auto flex flex-wrap items-center gap-2">
           {member.workspace.synthetic && (
             <span className="inline-flex h-7 items-center gap-1.5 rounded-tag border border-info-border bg-info-bg px-2 text-meta font-semibold text-info-text">

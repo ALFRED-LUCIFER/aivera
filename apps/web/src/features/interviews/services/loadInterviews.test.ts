@@ -14,10 +14,11 @@ const fake = vi.hoisted(() => ({
   membership: vi.fn(),
   user: vi.fn(),
   workspace: vi.fn(),
+  members: vi.fn(async (): Promise<unknown[]> => []),
 }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: (fn: (c: typeof ctx) => Promise<unknown>) => fake.workspace(fn),
-  getWorkspaces: () => ({ getMembership: fake.membership }),
+  getWorkspaces: () => ({ getMembership: fake.membership, listMembers: fake.members }),
 }));
 vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ listInterviews: fake.list }) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.applicants }) }));
@@ -86,6 +87,11 @@ describe('loadInterviews', () => {
       ],
     });
     fake.membership.mockResolvedValue({ title: 'CPO, Payments' });
+    fake.members.mockResolvedValue([
+      { userId: CPO, status: 'active' },
+      { userId: 'u-gone', status: 'removed' },
+    ]);
+    fake.user.mockResolvedValue({ displayName: 'Head of Product', email: 'cpo@example.com' });
 
     const data = await loadInterviews();
 
@@ -96,6 +102,7 @@ describe('loadInterviews', () => {
         job: 'Senior AI Engineer',
         round: 'structured_screen',
         interviewer: null,
+        interviewerUserId: ME,
         scheduledAt: '2026-11-18T10:00:00.000Z',
         today: true,
         status: 'in_progress',
@@ -108,6 +115,7 @@ describe('loadInterviews', () => {
         job: 'Senior AI Engineer',
         round: 'structured_screen',
         interviewer: 'CPO, Payments',
+        interviewerUserId: CPO,
         scheduledAt: '2026-11-16T07:00:00.000Z',
         today: false,
         status: 'scorecard_due',
@@ -119,7 +127,9 @@ describe('loadInterviews', () => {
     // One job, read once for both interviews; the signed-in member is never looked up to be called "You".
     expect(fake.job).toHaveBeenCalledOnce();
     expect(fake.membership).toHaveBeenCalledExactlyOnceWith(CPO, 'w1');
-    expect(fake.user).not.toHaveBeenCalled();
+    // AIV-P2-007: a recruiter is offered the active members as interviewers, by name.
+    expect(data?.interviewers).toEqual([{ value: CPO, label: 'Head of Product' }]);
+    expect(fake.user).toHaveBeenCalledExactlyOnceWith(CPO, ctx);
   });
 
   it('the summary counts the people and jobs of the completed interviews', async () => {
@@ -131,6 +141,15 @@ describe('loadInterviews', () => {
     fake.applicants.mockResolvedValue([]);
     fake.rubric.mockResolvedValue(null);
     expect(await loadInterviews()).toMatchObject({ ongoing: [], people: 2, jobs: 2 });
+  });
+
+  it('offers no interviewers to a member who cannot schedule (AIV-P2-007)', async () => {
+    fake.workspace.mockImplementation(async (fn: (c: typeof ctx) => Promise<unknown>) => ({
+      value: await fn({ ...ctx, role: 'interviewer' }),
+    }));
+    fake.list.mockResolvedValue([]);
+    expect(await loadInterviews()).toMatchObject({ interviewers: null });
+    expect(fake.members).not.toHaveBeenCalled();
   });
 
   it('is null with no workspace', async () => {

@@ -169,7 +169,8 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
     .getByRole('table', { name: 'Ranked candidates' })
     .getByRole('row')
     .filter({ hasText: 'Daniel Novak' });
-  await expect(ranked).toContainText('Daniel NovakNew55up to 78 if claims hold3 of 6Medium');
+  // AIV-P2-007: the line under his name is his round, still under way: the scorecard draft changed nothing.
+  await expect(ranked).toContainText('Daniel NovakRound 1 in progress55up to 78 if claims hold3 of 6Medium');
 });
 
 // The seeded scores are hand-written (seed.ts), so the assessment cannot preview a rating of Daniel's: it reads them as

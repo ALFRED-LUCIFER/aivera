@@ -9,6 +9,7 @@ import { getInterviews } from '@/server/interviews';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
 import { inListOrder, sameDay, type InterviewRow, type InterviewsData } from '../domain/interviews.ts';
+import type { InterviewerOption } from '../domain/schedule.ts';
 
 /**
  * Interviews as list rows: each one's candidate, job, interviewer and competencies by name. Call it only with interviews
@@ -60,6 +61,7 @@ export async function toInterviewRows(
       job: job?.title ?? '',
       round: i.round,
       interviewer: i.interviewerUserId === ctx.userId ? null : (interviewers.get(i.interviewerUserId) ?? ''),
+      interviewerUserId: i.interviewerUserId,
       scheduledAt: i.scheduledAt?.toISOString() ?? null,
       today: !!i.scheduledAt && sameDay(i.scheduledAt, now, defaultTimeZone),
       status: i.status,
@@ -70,6 +72,22 @@ export async function toInterviewRows(
       competencies: i.competencyIds.flatMap((id) => rubric?.get(id) ?? []),
     };
   });
+}
+
+/**
+ * The active members a recruiter may pick as interviewer, by name (AIV-P2-007). The module refuses one the job does
+ * not grant, so the dialog says "The interviewer must be an active member who can see this job" for them.
+ */
+async function interviewerOptions(ctx: WorkspaceContext): Promise<InterviewerOption[]> {
+  const members = (await getWorkspaces().listMembers(ctx)).filter((m) => m.status === 'active');
+  // shortcut: one identity read per member; a batch read in identity when a workspace has more than a handful.
+  const options = await Promise.all(
+    members.map(async ({ userId }) => {
+      const user = await getIdentity().getUser(userId, ctx);
+      return user && { value: userId, label: user.displayName ?? user.email };
+    }),
+  );
+  return options.filter((o) => o !== null).toSorted((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
@@ -86,6 +104,7 @@ export async function loadInterviews(): Promise<InterviewsData | null> {
       completed: await toInterviewRows(ctx, completed, now),
       people: new Set(completed.map((i) => i.candidateId)).size,
       jobs: new Set(completed.map((i) => i.jobId)).size,
+      interviewers: ctx.role === 'admin' || ctx.role === 'recruiter' ? await interviewerOptions(ctx) : null,
     };
   });
   return result && result.value;

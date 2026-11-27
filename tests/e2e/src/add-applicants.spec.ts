@@ -119,12 +119,14 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
   ]);
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(7);
-  // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it.
+  // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it. Her line is
+  // her seeded Round 1, held four days ago (AIV-P2-007), not her intake stage.
   await expect(rows.nth(0)).toHaveText(
-    'Select Sara Al Qahtani1Sara Al QahtaniNew1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+    'Select Sara Al Qahtani1Sara Al QahtaniRound 1 complete1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
   );
   await expect(rows.nth(1)).toHaveText(
-    /^Select Arjun Menon2Arjun MenonNew64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
+    // His seeded Round 2 is three days from today (seed.ts), so its date is a pattern.
+    /^Select Arjun Menon2Arjun MenonRound 2 on \d{1,2} \w{3}64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
   );
   await expect(rows.nth(2)).toHaveText(/^Select Tarek Mansour3Tarek MansourNew63up to 80 if claims hold/);
   await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
