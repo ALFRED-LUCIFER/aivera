@@ -71,6 +71,7 @@ import {
   claimLabelling,
   contract,
   fieldMatch,
+  promptSafety,
   safety,
   suggestionMatch,
   textChecks,
@@ -320,9 +321,9 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('AIV-P1-025: twelve CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
+  it('AIV-P1-025: thirteen CVs, every recorded parse valid against the product schema, and the runner passes the gates', async () => {
     const cases = golden.get('evidence.parseCv') ?? [];
-    expect(cases).toHaveLength(12);
+    expect(cases).toHaveLength(13);
     for (const c of cases) expect(parseCvSchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const runner = runners['evidence.parseCv'];
     if (!runner) throw new Error('no runner for evidence.parseCv');
@@ -347,6 +348,20 @@ describe('the golden set', () => {
     const report = await run('evidence.parseCv', [kept]);
     expect(report.cases[0]?.scores.prompt?.failures).toEqual(['prompt contains "Arabic OCR"']);
     expect(report.passed).toBe(false);
+  });
+
+  // SAFETY: mutation check: matched the text as written only in identifiers.ts redactSources -> this test failed
+  // (prompt contains "Kriﬆine", "Married", "Filipino"), and `pnpm ai:eval --task evidence.parseCv` exited 1 on
+  // kristine-dela-cruz-ligatures (the request the case was recorded with no longer matched: "re-record")
+  it('AIV-P1-161: a name and traits written with compatibility forms pass only if none is left in the prompt', async () => {
+    const kristine = caseOf('evidence.parseCv', 'kristine-dela-cruz-ligatures');
+    expect(kristine.sources[0]?.text.startsWith('Kriﬆine Dela Cruz')).toBe(true);
+    const forbidden = ['Kriﬆine', 'Kristine', 'Dela Cruz', 'Married', 'Filipino'];
+    expect(kristine.expected.prompt?.forbidden).toEqual(forbidden);
+    expect(promptSafety('evidence.parseCv', kristine, forbidden).failures).toEqual([]);
+    const report = await run('evidence.parseCv', [kristine]);
+    expect(report.cases[0]?.scores.prompt).toEqual({ n: 1, total: 1, failures: [] });
+    expect(report.passed).toBe(true);
   });
 
   describe('AIV-P1-078: AI contradiction comparison', () => {

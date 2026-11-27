@@ -532,3 +532,133 @@ describe('Feature: Protected traits never reach the model', () => {
     expect(requests[0]).not.toMatch(/ليلى|Egyptian|1990|Married/);
   });
 });
+
+// Feature: Identifiers and protected traits are found in a source whatever compatibility forms its letters use
+// (AIV-P1-161, AGENTS.md 1.2). Synthetic. Illustrative: no cast name holds "fi" or "fl", so "ﬆ" (the st ligature)
+// stands in for the ligatures PDF extraction emits most, U+FB01 and U+FB02.
+describe('Feature: Identifiers and traits are found whatever compatibility forms the letters use', () => {
+  const kristine = { names: ['Kristine Dela Cruz'], emails: ['kristine.delacruz@example.com'], phones: [] };
+  const sent = (text: string, keepContact = false, record: typeof kristine = kristine) =>
+    redactSources([source(text, 'cv')], record, keepContact).sources[0]?.text;
+  const firstName = /Kristine|Kriﬆine|ＫＲＩＳＴＩＮＥ/i;
+
+  // SAFETY: mutation check: matched the text as written only in redactSources (the code before AIV-P1-161) -> the
+  // three compatibility-form rows failed ("Kriﬆine [CANDIDATE]" was sent)
+  it.each([
+    ['Kriﬆine Dela Cruz', '[CANDIDATE]'],
+    ['ＫＲＩＳＴＩＮＥ Dela Cruz', '[CANDIDATE]'],
+    ["Kriﬆine Dela Cruz's checkout suite", '[CANDIDATE] checkout suite'],
+    ['Kristine Dela Cruz', '[CANDIDATE]'],
+  ])('Scenario: A name written with a compatibility form is replaced whole: %s', (written, expected) => {
+    for (const keepContact of [false, true]) {
+      expect(sent(written, keepContact)).toBe(expected);
+      expect(sent(`${written}\nLed the checkout test suite.`, keepContact)).not.toMatch(firstName);
+    }
+  });
+
+  // SAFETY: mutation check: matched the folded source with the record as written in redactSources -> the first
+  // assertion failed; matched the source as written with the folded record -> the second failed (the folded trade
+  // mark sign hid the name's edge)
+  it('a record that holds the compatibility form itself still matches the plain spelling, and the reverse', () => {
+    const ligatureRecord = { ...kristine, names: ['Kriﬆine Dela Cruz'] };
+    expect(sent('Kristine Dela Cruz and Kriﬆine', false, ligatureRecord)).toBe('[CANDIDATE] and [CANDIDATE]');
+    expect(sent('Kriﬆine™ led it', false, ligatureRecord)).toBe('[CANDIDATE]™ led it');
+    // SAFETY: mutation check: ran the folded pass only when the source folds (dropped `!recordFolds`) in
+    // redactSources -> this assertion failed ("Kristine [CANDIDATE] led it" was sent)
+    expect(sent('Kristine Dela Cruz led it', false, ligatureRecord)).toBe('[CANDIDATE] led it');
+  });
+
+  // SAFETY: mutation check: matched the source as written with the folded record in redactSources -> this test
+  // failed (the record email, folded, matched short and the address glued after it was sent whole)
+  it('a record email that holds a compatibility form never shortens what is replaced', () => {
+    const ligatureEmail = { ...kristine, emails: ['kriﬆine.delacruz@example.com'] };
+    expect(sent('Mail kristine.delacruz@example.comhala.saleh@example.com', false, ligatureEmail)).toBe(
+      'Mail [EMAIL_1]@example.com',
+    );
+  });
+
+  // SAFETY: mutation check: keyed the email placeholder on the source's own characters, not their fold, in
+  // redactSources -> this test failed ("[EMAIL_1] · [EMAIL_2]")
+  it('Scenario: The same email written with and without a ligature gets one placeholder', () => {
+    expect(sent('kriﬆine.delacruz@example.com · kristine.delacruz@example.com')).toBe('[EMAIL_1] · [EMAIL_1]');
+  });
+
+  // SAFETY: mutation check: matched the text as written only in redactSources -> this test failed (the Arabic name
+  // line stayed); used the folded text's offsets as the source's (dropped the index map) -> this test failed
+  it('an email written with a ligature still marks its line as the name line, and is kept as written for parseCv', () => {
+    const email = 'kriﬆine@example.com';
+    expect(sent(`${email}\nكريستين ديلا كروز\nLed the checkout test suite.`, true)).toBe(
+      `${email}\n[CANDIDATE]\nLed the checkout test suite.`,
+    );
+  });
+
+  // SAFETY: mutation check: matched the text as written only in redactSources -> the first two rows failed (the
+  // line was sent as written)
+  it.each(['Marital ﬆatus: Married', '𝐍𝐚𝐭𝐢𝐨𝐧𝐚𝐥𝐢𝐭𝐲: Filipino', 'Nationality: Filipino'])(
+    'Scenario: A protected-trait field written with compatibility forms is removed: %s',
+    (written) => {
+      expect(sent(written, true)).toBe('[REMOVED]');
+      expect(sent(`Led the checkout test suite.\n${written}\nPlaywright, k6`, true)).toBe(
+        'Led the checkout test suite.\n[REMOVED]\nPlaywright, k6',
+      );
+    },
+  );
+
+  // Folding can hide an edge the patterns rely on: a symbol or punctuation mark that NFKC turns into a letter, a
+  // combining mark, "_", "." or ","; a fullwidth letter that becomes a word character before a phone; U+0140, which
+  // folds to "l" and a middle dot; U+FE76, to a space and a mark. So the text as written is matched as well.
+  // SAFETY: mutation check: matched the folded text only in redactSources (dropped the as-written pass) -> every
+  // row of the next two tests failed (the name, the phone or the rest of the trait value was sent)
+  it.each([
+    ['´Kristine´ led it', '´[CANDIDATE]´ led it'],
+    ['Kristine™ Dela Cruz™', '[CANDIDATE]™ [CANDIDATE]™'],
+    ['＿Kristine and №Kristine', '＿[CANDIDATE] and №[CANDIDATE]'],
+    ['call №050 123 4567 now', 'call №[PHONE_1] now'],
+    ['Tel．050 123 4567', 'Tel．[PHONE_1]'],
+    ['℡+971 50 123 4567™', '℡[PHONE_1]™'],
+  ])('a symbol beside a name or a phone never hides it: %s', (written, expected) =>
+    expect(sent(written)).toBe(expected),
+  );
+
+  it.each([
+    ['Ｔｅｌ0501234567', 'Ｔｅｌ[PHONE_1]'],
+    ['Tel 0501234567ﬁ', 'Tel [PHONE_1]ﬁ'],
+    ['Nationality: Coŀombian', '[REMOVED]'],
+    ['Place of birth:\nAbu Dhabi, United Arab Emirates, Khaliﬀa\nSenior QA engineer', '[REMOVED]\nSenior QA engineer'],
+    ['كريستين ديلا كروزﹶ\nSenior QA engineer', '[CANDIDATE]\nSenior QA engineer'],
+  ])('a folded letter beside a phone, a trait value or a name never hides it: %s', (written, expected) =>
+    expect(sent(written)).toBe(expected),
+  );
+
+  // SAFETY: mutation check: used the folded text's offsets as the source's in redactSources -> this test failed
+  it('keeps every character that is not an identifier exactly as written', () => {
+    const text = '𝐒𝐤𝐢𝐥𝐥𝐬: veriﬁed workﬂows, 10⁶ requests, ｋ６ · Kriﬆine · ① Playwright';
+    expect(sent(text)).toBe(text.replace('Kriﬆine', '[CANDIDATE]'));
+  });
+
+  // SAFETY: mutation check: used the folded text's offsets as the source's (dropped the index map) in redactSources
+  // -> this test failed (the redacted text and the stored quote no longer matched the source)
+  it('Scenario: Offsets still index the original text and a quote never brings the name back', () => {
+    const schema = z.object({ items: z.array(cited(z.object({}))) });
+    const work = 'Led the checkout test suite migration to Playwright';
+    const cv = source(`𝐍𝐚𝐦𝐞: Kriﬆine Dela Cruz\n${work}`, 'cv');
+    const redaction = redactSources([cv], kristine, false);
+    expect(redaction.sources[0]?.text).toBe(`𝐍𝐚𝐦𝐞: [CANDIDATE]\n${work}`);
+    const stored = (quote: string) =>
+      checkOutput('evidence.mapToCompetency', answer(quote), schema, [cv], undefined, redaction).items[0]?.citations[0];
+    const cited1 = stored(`[CANDIDATE] ${work}`);
+    expect(cited1?.quote).toBe(work);
+    expect(cv.text.slice(cited1?.start, cited1?.end)).toBe(work);
+    // A quote of the heading in plain letters is the source's own characters, and stops before the name.
+    const heading = stored('Name: [CANDIDATE]');
+    expect(heading?.quote).toBe('𝐍𝐚𝐦𝐞');
+    expect(cv.text.slice(heading?.start, heading?.end)).toBe('𝐍𝐚𝐦𝐞');
+    expect(`${cited1?.quote} ${heading?.quote}`).not.toMatch(firstName);
+  });
+
+  it('Scenario: Nothing about the fold leaves the call', () => {
+    const redaction = redactSources([source('Kriﬆine Dela Cruz', 'cv')], kristine, false);
+    expect(Object.keys(redaction)).toEqual(['sources', 'original']);
+    expect(redaction.sources).toEqual([{ id: 'e1', kind: 'cv', text: '[CANDIDATE]' }]);
+  });
+});

@@ -183,6 +183,11 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     const folded = '\uFB01xed the payments migration';
     const later = findQuote(folded, 'payments migration');
     expect(folded.slice(later?.start, later?.end)).toBe('payments migration');
+    // AIV-P1-161: a letter outside the basic plane (mathematical bold) folds too, and the span keeps it whole.
+    // SAFETY: mutation check: folded by code unit, not by whole character, in flatten -> this assertion failed
+    const styled = '𝐒𝐤𝐢𝐥𝐥𝐬 Playwright';
+    expect(findQuote(styled, 'Skills')).toEqual({ start: 0, end: 12 });
+    expect(findQuote(styled, 'Skills Playwright')).toEqual({ start: 0, end: styled.length });
   });
 });
 

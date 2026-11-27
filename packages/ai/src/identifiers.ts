@@ -1,4 +1,5 @@
 import type { Source } from './citations.ts';
+import { charEnd, fold, foldWithMap } from './fold.ts';
 
 // Fairness inputs (ADR-006 point 7, AIV-P1-080): the candidate's name and every email and phone are replaced with
 // placeholders in each source before a prompt is built, once, here, for every task. Pure: the placeholder-to-value
@@ -205,12 +206,8 @@ export type Redaction = {
   original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
 
-/**
- * Replaces the candidate's name parts (and possessives) with `[CANDIDATE]`, and every email and phone with
- * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
- * `keepContact`, emails and phones stay as written.
- */
-export function redactSources(sources: readonly Source[], identifiers: Identifiers, keepContact: boolean): Redaction {
+/** The patterns for one set of identifiers: the email mask, and the pattern for each source kind. */
+function matcherFor(identifiers: Identifiers) {
   const plain = patternFor(identifiers, false, false);
   const traits = patternFor(identifiers, true, false);
   const cv = patternFor(identifiers, true, true);
@@ -218,7 +215,31 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
   const { ownWord } = namePartsOf(identifiers.names);
   const named = ownWord ? new RegExp(ownWord, 'iu') : null;
   const mask = (email: string) => (named?.test(email) ? NAMED_MASK : MASK).repeat(email.length);
-  const patternOf = (kind: Source['kind']) => (kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
+  return (text: string, kind: Source['kind']) =>
+    text.replace(emailPattern, mask).matchAll(kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
+}
+
+/**
+ * Replaces the candidate's name parts (and possessives) with `[CANDIDATE]`, and every email and phone with
+ * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
+ * `keepContact`, emails and phones stay as written.
+ */
+export function redactSources(sources: readonly Source[], record: Identifiers, keepContact: boolean): Redaction {
+  // Identifiers are found twice and joined (fold.ts, AIV-P1-161): on each source as written with the record as
+  // written, exactly as before the fold existed, and on the folded source with the folded record, so a name written
+  // with a ligature or in fullwidth letters is still the name. Folding can hide an edge the patterns rely on (a
+  // fullwidth letter before a phone becomes a word character, a letter that folds to "l·" ends a trait's value), so
+  // the fold only ever adds to what is found. Every slice and offset below indexes the source as written; the folded
+  // text and its index map never leave this call.
+  const foldedRecord: Identifiers = {
+    names: record.names.map(fold),
+    emails: record.emails.map(fold),
+    phones: record.phones,
+    others: (record.others ?? []).map(fold),
+  };
+  const recordFolds = [...record.names, ...record.emails, ...(record.others ?? [])].some((v) => fold(v) !== v);
+  const asWritten = matcherFor(record);
+  const onFolded = recordFolds ? matcherFor(foldedRecord) : asWritten;
   const numbers = { EMAIL: new Map<string, string>(), PHONE: new Map<string, string>() };
   const numbered = (kind: keyof typeof numbers, key: string) => {
     const seen = numbers[kind];
@@ -228,25 +249,56 @@ export function redactSources(sources: readonly Source[], identifiers: Identifie
   };
   const cutsOf: Cut[][] = [];
   const redacted = sources.map((source) => {
+    const { folded, at } = foldWithMap(source.text);
+    const found: { from: number; until: number; kind: 'email' | 'phone' | 'trait' | 'other' | 'name' }[] = [];
+    // The second pass only when it can differ: the fold changes the source or the record.
+    for (const map of folded === source.text && !recordFolds ? [undefined] : [undefined, at]) {
+      const read = map ? folded : source.text;
+      for (const match of (map ? onFolded : asWritten)(read, source.kind)) {
+        const end = match.index + match[0].length;
+        const value = read.slice(match.index, end);
+        const { email, own, phone, trait, other } = match.groups ?? {};
+        if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
+        if ((email || own || phone) && keepContact) continue;
+        found.push({
+          // The whole characters the match came from: one that folds to several ("ﬆ" to "st") is replaced whole.
+          from: map ? (map[match.index] ?? 0) : match.index,
+          until: map ? charEnd(source.text, map[end - 1] ?? 0) : end,
+          kind: email ? 'email' : own || phone ? 'phone' : trait ? 'trait' : other ? 'other' : 'name',
+        });
+      }
+    }
+    found.sort((a, b) => a.from - b.from || b.until - a.until);
+    const spans: typeof found = [];
+    for (const next of found) {
+      const span = spans.at(-1);
+      if (!span || next.from >= span.until) spans.push(next);
+      else {
+        // Two finds that overlap are one replacement; a trait wins, so no quote can bring any of it back.
+        span.until = Math.max(span.until, next.until);
+        if (next.kind === 'trait') span.kind = 'trait';
+      }
+    }
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    const masked = source.text.replace(emailPattern, mask);
-    for (const match of masked.matchAll(patternOf(source.kind))) {
-      const value = source.text.slice(match.index, match.index + match[0].length);
-      const { email, own, phone, trait, other } = match.groups ?? {};
-      let to = trait ? PROTECTED_PLACEHOLDER : other ? OTHER_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
-      if (email || own || phone) {
-        if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
-        if (keepContact) continue;
-        to = email
-          ? numbered('EMAIL', value.toLowerCase())
-          : numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''));
-      }
-      text += source.text.slice(last, match.index);
-      cuts.push({ at: text.length, length: to.length, from: match.index, fromLength: value.length, trait: !!trait });
+    for (const { from, until, kind } of spans) {
+      const trait = kind === 'trait';
+      // Keyed on the folded value, so one address or number written two ways gets one placeholder.
+      const value = fold(source.text.slice(from, until));
+      const to = trait
+        ? PROTECTED_PLACEHOLDER
+        : kind === 'other'
+          ? OTHER_PLACEHOLDER
+          : kind === 'email'
+            ? numbered('EMAIL', value.toLowerCase())
+            : kind === 'phone'
+              ? numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''))
+              : CANDIDATE_PLACEHOLDER;
+      text += source.text.slice(last, from);
+      cuts.push({ at: text.length, length: to.length, from, fromLength: until - from, trait });
       text += to;
-      last = match.index + value.length;
+      last = until;
     }
     cutsOf.push(cuts);
     return { ...source, text: text + source.text.slice(last) };

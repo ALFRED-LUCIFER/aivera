@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { cited, type Source } from '../citations.ts';
+import { matchesFolded } from '../fold.ts';
 
 // "Meeting summary to proposed evidence changes" (AIV-P1-115), ADR-006 point 2: what an interviewer's pasted summary
 // says about each competency the interview tested, each finding quoting the summary's own words. Versioned here so
@@ -74,7 +75,7 @@ const OFF_RUBRIC = new RegExp(
 );
 
 /** Whether the text is about the person rather than the work (AGENTS.md 1.5): the schema rejects a finding built on it. */
-export const isOffRubric = (text: string) => OFF_RUBRIC.test(text);
+export const isOffRubric = (text: string) => matchesFolded(OFF_RUBRIC, text);
 
 // The rule's name goes on telemetry in place of zod's `custom` (citations.ts schemaRules): never output text.
 const rule = (reason: string) => ({ params: { reason } });
