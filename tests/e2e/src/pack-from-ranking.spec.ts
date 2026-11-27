@@ -683,7 +683,8 @@ for (const theme of themes) {
     await page.route(
       (url) => url.pathname === `/app/jobs/${jobId}/candidates`,
       async (route) => {
-        if (route.request().headers()['rsc'] !== '1') return route.fallback();
+        const headers = route.request().headers();
+        if (headers['rsc'] !== '1' || headers['next-router-prefetch']) return route.fallback();
         const response = await route.fetch();
         held.resolve();
         await released.promise;
@@ -733,8 +734,11 @@ test('AIV-P1-149 Scenario: The selection still survives a reload and the filters
   for (const name of ['Sara Al Qahtani', 'Arjun Menon'])
     await expect(table.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
   await expect(bar(page).getByRole('status')).toHaveText('2 selected');
-  await page.getByRole('searchbox', { name: 'Search candidates' }).fill('menon');
-  await expect(table.getByRole('checkbox', { name: /^Select [A-Z]/ })).toHaveCount(1);
+  // The ticked boxes come with the server's HTML, so they do not show the page has hydrated: typing before it is lost.
+  await expect(async () => {
+    await page.getByRole('searchbox', { name: 'Search candidates' }).fill('menon');
+    await expect(table.getByRole('checkbox', { name: /^Select [A-Z]/ })).toHaveCount(1, { timeout: 1000 });
+  }).toPass();
   await expect(bar(page).getByRole('status')).toHaveText('2 selected · 1 not shown in the table');
 
   // An id that is no row of this ranking is dropped, from the selection and from the URL.
@@ -745,6 +749,8 @@ test('AIV-P1-149 Scenario: The selection still survives a reload and the filters
 
 // The server gives an interviewer no bulk action (AGENTS.md 1.3), so the page offers no selection to restore.
 test('AIV-P1-149 Scenario: A member with no bulk action gets no selection, whatever the URL says', async ({ page }) => {
+  // Two valid ids, from the test before this one.
+  expect(twoSelected).toMatch(/^[0-9a-f-]{36},[0-9a-f-]{36}$/);
   await signIn(page, { email: interviewer });
   await page.goto(`/app/jobs/${jobId}/candidates?selected=${twoSelected}`);
   const table = page.getByRole('table', { name: 'Ranked candidates' });

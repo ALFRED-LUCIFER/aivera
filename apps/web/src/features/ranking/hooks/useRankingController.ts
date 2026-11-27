@@ -17,17 +17,15 @@ import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 /**
  * The ranked table's search, filters, Columns menu and "Show all". The rows arrive whole from the server; filtering
  * and the first-7 cut happen here. The selection (AIV-P1-036) is client state, read from the URL once and mirrored to
- * it, so it survives the filters, "Show all" and a reload. It is never read back from the URL: while a server refresh
- * is in flight Next's useSearchParams does not follow the URL, so a tick would not show and the next one would start
- * from the stale selection (AIV-P1-149). It is offered only when the server allows this member a bulk action.
+ * it, so it survives the filters, "Show all" and a reload; it is offered only when the server allows a bulk action.
  */
 // shortcut: filters live in state, not the URL; move them to the URL if recruiters ask to link a filtered ranking.
 export function useRankingController({ jobId, awaitingRubric, rows, bulkActions }: RankingData) {
   const router = useRouter();
-  const inUrl = useSearchParams().get('selected');
-  const [picked, setPicked] = useState(() => parseSelected(inUrl, rows));
-  // Only rows still on the ranking, in rank order: a refresh may bring fewer rows.
-  const selectedIds = rows.filter((row) => picked.includes(row.id)).map((row) => row.id);
+  // Read once: useSearchParams does not follow the URL while a server refresh is in flight, so a tick read back from
+  // it would not show, and the next tick would start from the stale selection (AIV-P1-149).
+  const [picked, setPicked] = useState(useSearchParams().get('selected'));
+  const selectedIds = parseSelected(picked, rows);
   const selected = selectedIds.join(',');
   // On the first render too: ids the URL held that are no rows here are dropped from it.
   useEffect(() => replaceSelectedInUrl(selected), [selected]);
@@ -58,7 +56,7 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
       bulkActions.length > 0
         ? {
             selectedIds,
-            onSelectedIdsChange: setPicked,
+            onSelectedIdsChange: (ids: string[]) => setPicked(ids.join(',')),
             /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
             notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,
             compare: bulkActions.includes('compare') ? compareState(selectedIds.length) : null,
