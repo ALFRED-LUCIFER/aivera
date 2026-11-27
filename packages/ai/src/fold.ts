@@ -14,7 +14,7 @@ export const foldChar = (char: string): string =>
 export const charEnd = (text: string, i: number): number => i + ((text.codePointAt(i) ?? 0) > 0xffff ? 2 : 1);
 
 /** `text` folded, and for each code unit of `folded` the index in `text` of the character it came from. */
-export function foldLetters(text: string): { folded: string; at: number[] } {
+export function foldWithMap(text: string): { folded: string; at: number[] } {
   let folded = '';
   const at: number[] = [];
   let i = 0;

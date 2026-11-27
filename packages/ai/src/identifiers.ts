@@ -1,5 +1,5 @@
 import type { Source } from './citations.ts';
-import { charEnd, fold, foldLetters } from './fold.ts';
+import { charEnd, fold, foldWithMap } from './fold.ts';
 
 // Fairness inputs (ADR-006 point 7, AIV-P1-080): the candidate's name and every email and phone are replaced with
 // placeholders in each source before a prompt is built, once, here, for every task. Pure: the placeholder-to-value
@@ -206,6 +206,10 @@ export type Redaction = {
   original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
 
+// The record's values as written and folded: as written too, so the as-written pass of redactSources stays what it
+// was for a record that itself holds a compatibility form.
+const both = (values: readonly string[] = []) => [...values, ...values.map(fold)];
+
 /**
  * Replaces the candidate's name parts (and possessives) with `[CANDIDATE]`, and every email and phone with
  * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
@@ -216,10 +220,10 @@ export function redactSources(sources: readonly Source[], record: Identifiers, k
   // a name written with a ligature or in fullwidth letters is still the name. Every slice and offset below indexes
   // the source as written; the folded text and its index map never leave this call.
   const identifiers: Identifiers = {
-    names: record.names.map(fold),
-    emails: record.emails.map(fold),
+    names: both(record.names),
+    emails: both(record.emails),
     phones: record.phones,
-    others: record.others?.map(fold) ?? [],
+    others: both(record.others),
   };
   const plain = patternFor(identifiers, false, false);
   const traits = patternFor(identifiers, true, false);
@@ -241,7 +245,7 @@ export function redactSources(sources: readonly Source[], record: Identifiers, k
     // Found twice and joined: on the text as written, exactly as before the fold existed, and on the folded text. A
     // folded letter can hide an edge the patterns rely on (a fullwidth letter before a phone becomes a word character,
     // a letter that folds to "l·" ends a trait's value), so the fold only ever adds to what is found.
-    const { folded, at } = foldLetters(source.text);
+    const { folded, at } = foldWithMap(source.text);
     const found: { from: number; until: number; kind: 'email' | 'phone' | 'trait' | 'other' | 'name' }[] = [];
     for (const map of folded === source.text ? [undefined] : [undefined, at]) {
       const read = map ? folded : source.text;
