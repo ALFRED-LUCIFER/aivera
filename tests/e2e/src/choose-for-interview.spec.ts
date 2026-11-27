@@ -170,8 +170,12 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   await expect(
     page.getByText('2 people chosen for interview. They are on the Interviews page, not scheduled yet.'),
   ).toBeVisible();
-  for (const name of ['Daniel Novak', 'Priya Nair'])
-    await expect(table.getByRole('row').filter({ hasText: name })).toContainText('Chosen for interview');
+  for (const name of ['Daniel Novak', 'Priya Nair']) {
+    const row = table.getByRole('row').filter({ hasText: name });
+    // AIV-P2-007: the row shows their round, with no time yet, and where to schedule it.
+    await expect(row).toContainText('Round 1, not scheduled yet');
+    await expect(row.getByRole('link', { name: 'Schedule Round 1' })).toHaveAttribute('href', '/app/interviews');
+  }
   // AIV-P1-149: the rows above came with the server refresh after Confirm, and the selection is cleared for good, so a
   // new bulk action never starts from the people just chosen (AGENTS.md 1.5).
   await expect(table.getByRole('checkbox', { checked: true })).toHaveCount(0);
@@ -189,6 +193,24 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
     await expect(row).toContainText('Not scheduled yet');
   }
   await expect(interviews.getByRole('row').filter({ hasText: 'Omar Al Suwaidi' })).toHaveCount(0);
+
+  // AIV-P2-007: schedule Daniel's Round 1 from the Interviews page. Nobody is contacted.
+  const daniel = interviews.getByRole('row').filter({ hasText: 'Daniel Novak' });
+  await expect(() => daniel.getByRole('button', { name: 'Schedule Daniel Novak' }).click({ timeout: 1000 })).toPass();
+  const dialog = page.getByRole('dialog', { name: 'Schedule Round 1, structured screen' });
+  await expect(dialog).toContainText('Nobody is contacted.');
+  await expectAccessible(page);
+  // Scenario: Validation. No time yet: nothing is created.
+  await dialog.getByRole('button', { name: 'Schedule', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Choose a future time');
+  const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  await dialog.getByLabel('Date').fill(nextWeek);
+  await dialog.getByLabel('Time (Asia/Dubai)').fill('11:00');
+  await dialog.getByRole('button', { name: 'Schedule', exact: true }).click();
+  await expect(page.getByText('Scheduled. Nobody has been contacted.')).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await expect(daniel).toContainText('Scheduled');
+  await expect(daniel).toContainText('11:00');
 });
 
 for (const theme of themes) {
