@@ -23,3 +23,12 @@
     background-size: 100% 100%;
   }
 }
+
+/* A printed hand-off (AIV-P1-165) keeps the highlighter on cited evidence, the hatched claim range and the meters,
+   which browsers drop with every background unless told otherwise. */
+@media print {
+  :root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

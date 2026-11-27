@@ -1,6 +1,14 @@
 import { MAX_COMPARED } from '@credalent/assessment';
 import { describe, expect, it } from 'vitest';
-import { MAX_COMPARE, closingOf, compareHref, parseIds, tradeoffsInput, verdictOf } from './compare.ts';
+import {
+  MAX_COMPARE,
+  closingOf,
+  compareHref,
+  parseIds,
+  tradeoffsInput,
+  verdictOf,
+  withoutContacts,
+} from './compare.ts';
 
 // AIV-P1-047. Synthetic ids only.
 const P1 = '0190d4a2-0000-7000-8000-00000000c001';
@@ -65,5 +73,21 @@ describe('the closing line', () => {
 
   it('is absent until every candidate is scored', () => {
     expect(closingOf([column(68, 84), { score: null }])).toBeNull();
+  });
+});
+
+describe('an excerpt handed off (AIV-P1-165)', () => {
+  it('cuts every email, phone and LinkedIn address to "…", keeping the words around it', () => {
+    expect(
+      withoutContacts(
+        'Contact sara.alqahtani@example.com or +971 50 123 4567, (04) 123 4567, linkedin.com/in/sara-q. Shipped it.',
+      ),
+    ).toBe('Contact … or …, …, … Shipped it.');
+    expect(withoutContacts('Call 050-123-4567 or 00971501234567.')).toBe('Call … or ….');
+  });
+
+  it('keeps figures, years and dates that are not a contact detail', () => {
+    const text = 'About 9,000 merchants, 300 pilot users, 2019-2023, 2024-06-01, latency 120 340 560 ms, 0.82 F1.';
+    expect(withoutContacts(text)).toBe(text);
   });
 });

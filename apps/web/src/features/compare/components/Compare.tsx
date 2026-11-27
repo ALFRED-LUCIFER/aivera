@@ -38,7 +38,9 @@ import { MAX_COMPARE, MIN_COMPARE, verdictOf, type CompareCell, type CompareData
 // - "Open decision pack" opens the job's Decision page, where its packs are listed: a job may have several packs;
 // - the subtitle is the 14/20 px body size, not 15/22 px, and the cards' padding is the shared Card's 16 px, not 24 px:
 //   the tokens and @credalent/ui have neither;
-// - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
+// - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's;
+// - printed (AIV-P1-165), the breadcrumb and actions are left out, the grid is not cut at the page's edge, and a line
+//   under the subtitle reads "Prepared <date> · Confidential": a hand-off the browser prints, nothing sent or generated.
 
 export type CompareView = { status: 'loading' } | { status: 'error'; onRetry: () => void } | CompareData;
 
@@ -68,7 +70,7 @@ export function Compare({ view, children }: { view: CompareView; children?: Reac
     </Link>
   );
   const breadcrumb = (
-    <nav aria-label={t('jobHeader.breadcrumb')} className="flex flex-wrap gap-1.5 text-meta text-text-2">
+    <nav aria-label={t('jobHeader.breadcrumb')} className="flex flex-wrap gap-1.5 text-meta text-text-2 print:hidden">
       <Link href="/app/jobs" className="underline underline-offset-2 hover:text-text">
         {t('shell.nav.jobs')}
       </Link>
@@ -110,8 +112,11 @@ export function Compare({ view, children }: { view: CompareView; children?: Reac
                 ? t('compare.awaitingRubric', { job: view.jobTitle })
                 : t('compare.subtitle', { job: view.jobTitle, version: view.rubricVersion, count: view.rows.length })}
             </p>
+            <p className="hidden text-meta text-text-2 print:block">
+              {t('decisionPack.preview.prepared', { date: view.preparedAt })}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 print:hidden">
             {changeSelection('secondary')}
             <Link href={jobPageHref(view.jobId, 'pack') as Route} className={buttonClassName('primary')}>
               {t('compare.openPack')}
@@ -121,7 +126,7 @@ export function Compare({ view, children }: { view: CompareView; children?: Reac
       </div>
       <Card className="min-w-0">
         {/* Every column's name is a link, so the keyboard reaches (and scrolls to) each one. */}
-        <div className="-mx-4 overflow-x-auto">
+        <div className="-mx-4 overflow-x-auto print:overflow-visible">
           <table aria-label={t('compare.tableLabel')} className="w-full border-collapse text-start text-body">
             <thead>
               <tr>

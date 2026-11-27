@@ -13,17 +13,20 @@ export default async function JobLayout({ children, params }: LayoutProps<'/app/
   if ('missing' in loaded) return loaded.missing === 'forbidden' ? forbidden() : notFound();
   return (
     <>
-      <JobHeaderNav
-        view={jobHeaderView(
-          loaded.header,
-          loaded.hiringOwner,
-          loaded.assessed,
-          loaded.ownerChange,
-          loaded.imported,
-          loaded.shortlistReady,
-        )}
-        canImport={loaded.canImport}
-      />
+      {/* Its stage links and actions are controls, left out of a printed job page (AIV-P1-165). */}
+      <div className="contents print:hidden">
+        <JobHeaderNav
+          view={jobHeaderView(
+            loaded.header,
+            loaded.hiringOwner,
+            loaded.assessed,
+            loaded.ownerChange,
+            loaded.imported,
+            loaded.shortlistReady,
+          )}
+          canImport={loaded.canImport}
+        />
+      </div>
       {children}
     </>
   );

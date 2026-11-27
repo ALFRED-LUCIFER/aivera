@@ -41,13 +41,15 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 // - no Interview, Hold or Pass choice, feedback field or "Send decisions to the recruiter": client choices are
 //   AIV-P2-014 (#128, #129);
 // - the cards' padding is the shared Card's 16 px, not 24 px, and "Powered by Credalent" the 13 px meta size, not 12 px:
-//   @credalent/ui and the tokens have neither.
+//   @credalent/ui and the tokens have neither;
+// - printed (AIV-P1-165), the line above the frame and "Back to the pack" are left out: the printout is the frame, with
+//   its "Prepared <date> · Confidential", the job in its title, and every card. The browser prints it; nothing is sent.
 
 export function PackPreview({ jobId, packId, preview }: { jobId: string; packId: string; preview: Preview }) {
   const t = useTranslations();
   return (
     <div className="flex flex-col gap-4 self-stretch">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <p className="text-body text-text-2">{t('decisionPack.preview.note')}</p>
         {/* packHref builds the path from opaque ids, which typed routes cannot check. */}
         <Link href={packHref(jobId, packId) as Route} className={buttonClassName('secondary')}>
