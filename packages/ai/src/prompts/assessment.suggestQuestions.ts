@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { cited, sourceLabel, type Source } from '../citations.ts';
-import { fold } from '../fold.ts';
+import { matchesFolded } from '../fold.ts';
 
 // "Suggest interview questions" (AIV-P1-113), ADR-006 point 2: for each gap in a candidate's evidence, two or three
 // open questions a person may ask, each citing the evidence it tests, with what a strong and a weak answer show.
@@ -60,7 +60,7 @@ const PROTECTED_TRAIT =
   /\b(?:your|their|his|her) (?:own )?(?:age|nationality|citizenship|religion|faith|family|health|gender|marital status|children|spouse|wife|husband|disability|ethnicity)\b|\bhow old\b|\bwhere (?:are|were) you (?:from|born)\b/i;
 
 /** Whether the text asks about a protected trait (AGENTS.md 1.5, 1.8): the schema rejects it and the eval fails it. */
-export const asksProtectedTrait = (text: string) => PROTECTED_TRAIT.test(fold(text));
+export const asksProtectedTrait = (text: string) => matchesFolded(PROTECTED_TRAIT, text);
 
 // The rule's name goes on telemetry in place of zod's `custom` (citations.ts schemaRules): never output text.
 const rule = (reason: string) => ({ params: { reason } });

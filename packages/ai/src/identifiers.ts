@@ -212,9 +212,9 @@ export type Redaction = {
  * `keepContact`, emails and phones stay as written.
  */
 export function redactSources(sources: readonly Source[], record: Identifiers, keepContact: boolean): Redaction {
-  // Identifiers are found on the folded text (fold.ts, AIV-P1-161), the record's own values folded the same way: a
-  // name written with a ligature or in fullwidth letters is still the name. Every slice and offset below indexes the
-  // source as written; the folded text and its index map never leave this call.
+  // Identifiers are also found on the folded text (fold.ts, AIV-P1-161), the record's own values folded the same way:
+  // a name written with a ligature or in fullwidth letters is still the name. Every slice and offset below indexes
+  // the source as written; the folded text and its index map never leave this call.
   const identifiers: Identifiers = {
     names: record.names.map(fold),
     emails: record.emails.map(fold),
@@ -238,27 +238,56 @@ export function redactSources(sources: readonly Source[], record: Identifiers, k
   };
   const cutsOf: Cut[][] = [];
   const redacted = sources.map((source) => {
+    // Found twice and joined: on the text as written, exactly as before the fold existed, and on the folded text. A
+    // folded letter can hide an edge the patterns rely on (a fullwidth letter before a phone becomes a word character,
+    // a letter that folds to "l·" ends a trait's value), so the fold only ever adds to what is found.
+    const { folded, at } = foldLetters(source.text);
+    const found: { from: number; until: number; kind: 'email' | 'phone' | 'trait' | 'other' | 'name' }[] = [];
+    for (const map of folded === source.text ? [undefined] : [undefined, at]) {
+      const read = map ? folded : source.text;
+      for (const match of read.replace(emailPattern, mask).matchAll(patternOf(source.kind))) {
+        const end = match.index + match[0].length;
+        const value = read.slice(match.index, end);
+        const { email, own, phone, trait, other } = match.groups ?? {};
+        if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
+        if ((email || own || phone) && keepContact) continue;
+        found.push({
+          // The whole characters the match came from: one that folds to several ("ﬆ" to "st") is replaced whole.
+          from: map ? (map[match.index] ?? 0) : match.index,
+          until: map ? charEnd(source.text, map[end - 1] ?? 0) : end,
+          kind: email ? 'email' : own || phone ? 'phone' : trait ? 'trait' : other ? 'other' : 'name',
+        });
+      }
+    }
+    found.sort((a, b) => a.from - b.from || b.until - a.until);
+    const spans: typeof found = [];
+    for (const next of found) {
+      const span = spans.at(-1);
+      if (!span || next.from >= span.until) spans.push(next);
+      else {
+        // Two finds that overlap are one replacement; a trait wins, so no quote can bring any of it back.
+        span.until = Math.max(span.until, next.until);
+        if (next.kind === 'trait') span.kind = 'trait';
+      }
+    }
     const cuts: Cut[] = [];
     let text = '';
     let last = 0;
-    const { folded, at } = foldLetters(source.text);
-    const masked = folded.replace(emailPattern, mask);
-    for (const match of masked.matchAll(patternOf(source.kind))) {
-      const value = folded.slice(match.index, match.index + match[0].length);
-      // The whole characters the match came from: one that folds to several ("ﬆ" to "st") is replaced whole.
-      const from = at[match.index] ?? 0;
-      const until = charEnd(source.text, at[match.index + value.length - 1] ?? 0);
-      const { email, own, phone, trait, other } = match.groups ?? {};
-      let to = trait ? PROTECTED_PLACEHOLDER : other ? OTHER_PLACEHOLDER : CANDIDATE_PLACEHOLDER;
-      if (email || own || phone) {
-        if (phone && (!phoneShaped(value) || yearsOrDate.test(value))) continue;
-        if (keepContact) continue;
-        to = email
-          ? numbered('EMAIL', value.toLowerCase())
-          : numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''));
-      }
+    for (const { from, until, kind } of spans) {
+      const trait = kind === 'trait';
+      // Keyed on the folded value, so one address or number written two ways gets one placeholder.
+      const value = fold(source.text.slice(from, until));
+      const to = trait
+        ? PROTECTED_PLACEHOLDER
+        : kind === 'other'
+          ? OTHER_PLACEHOLDER
+          : kind === 'email'
+            ? numbered('EMAIL', value.toLowerCase())
+            : kind === 'phone'
+              ? numbered('PHONE', value.replace(/\D/g, '').replace(/^00/, ''))
+              : CANDIDATE_PLACEHOLDER;
       text += source.text.slice(last, from);
-      cuts.push({ at: text.length, length: to.length, from, fromLength: until - from, trait: !!trait });
+      cuts.push({ at: text.length, length: to.length, from, fromLength: until - from, trait });
       text += to;
       last = until;
     }

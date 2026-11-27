@@ -222,6 +222,8 @@ describe('assessment.suggestQuestions schema (AIV-P1-113)', () => {
     // SAFETY: mutation check: tested the text unfolded in asksProtectedTrait -> these two assertions failed
     expect(asksProtectedTrait('What is your marital ﬆatus?')).toBe(true);
     expect(asksProtectedTrait('What is your ｎａｔｉｏｎａｌｉｔｙ?')).toBe(true);
+    // SAFETY: mutation check: tested the folded text only (fold.ts matchesFolded) -> this assertion failed
+    expect(asksProtectedTrait('What is your ageＸ')).toBe(true);
     expect(rulesOf(suggested({ text: 'What does your religion mean for working hours?' }))).toEqual([
       'gaps.0.questions.0.text:protected_trait',
     ]);

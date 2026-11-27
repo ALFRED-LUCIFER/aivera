@@ -350,7 +350,7 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  // SAFETY: mutation check: matched on source.text unfolded in identifiers.ts redactSources -> this test failed
+  // SAFETY: mutation check: matched the text as written only in identifiers.ts redactSources -> this test failed
   // (prompt contains "Kriﬆine", "Married", "Filipino"), and `pnpm ai:eval --task evidence.parseCv` exited 1 on
   // kristine-dela-cruz-ligatures (the request the case was recorded with no longer matched: "re-record")
   it('AIV-P1-161: a name and traits written with compatibility forms pass only if none is left in the prompt', async () => {
