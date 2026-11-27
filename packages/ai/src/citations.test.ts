@@ -170,6 +170,10 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     // SAFETY: mutation check: read every list mark as layout, wherever it stands -> this test failed
     expect(findQuote('Python \u25CF\u25E6\u25E6\u25E6\u25E6', 'Python \u25CF\u25CF\u25CF\u25CF\u25CF')).toBeUndefined();
     expect(findQuote('5\u25CF0 engineers', '5 0 engineers')).toBeUndefined();
+    expect(
+      findQuote('Python \u25CF \u25E6 \u25E6 \u25E6 \u25E6', 'Python \u25CF \u25CF \u25CF \u25CF \u25CF'),
+    ).toBeUndefined();
+    expect(findQuote('AED 5        -        10k a month', 'AED 5 10k a month')).toBeUndefined();
     // After a character that folds to two, the offsets still index the source.
     const folded = '\uFB01xed the payments migration';
     const later = findQuote(folded, 'payments migration');

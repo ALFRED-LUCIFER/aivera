@@ -12,9 +12,11 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // AIV-P1-148: @8 adds that a facts source's only line is the one statement: live on 27 Nov 2026, with no change to
 // @7, gpt-main had begun to answer a one-line facts source with no statement at all.
 // shortcut: with two facts lines and an excerpt, @8 gives the checked line and the work and leaves the "Still resting
-// on claims" line out (priya-latency-work, 5 of 5 live runs; @7's recording had it). Asking for every facts line fixed
-// that and lost omar-two-repos its second excerpt (three statements cannot hold two lines and two excerpts). The
-// template explanation always states the claims line; gate it in field match when the statement cap is revisited.
+// on claims" line out (priya-latency-work in 5 of 5 live runs, arjun-checked-not-heaviest in its recording; @7's
+// recordings had it). Asking for every facts line fixed that and lost omar-two-repos its second excerpt (three
+// statements cannot hold two lines and two excerpts). The recruiter still sees the claims beside the explanation:
+// the score caption "N backed by evidence, up to M if their claims hold" comes from code. Gate the claims line in
+// field match when the statement cap is revisited.
 export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@8';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */

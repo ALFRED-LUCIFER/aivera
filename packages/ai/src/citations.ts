@@ -130,6 +130,12 @@ export const formatSources = (sources: readonly Source[]) =>
 const LIST_MARK = /[\u2022\u2023\u2043\u25AA\u25AB\u25CF\u25E6\u25A0\u27A2]/;
 const DASH = /[-\u2013\u2014]/;
 
+/** The nearest character that is not whitespace before (`step` -1) or after (`step` 1) `i`, or '' at an end. */
+function nearest(text: string, i: number, step: -1 | 1): string {
+  for (let k = i + step; k >= 0 && k < text.length; k += step) if (!/\s/.test(text.charAt(k))) return text.charAt(k);
+  return '';
+}
+
 /**
  * `text` as it is compared: letters in compatibility forms folded ("\uFB01" to "fi"), layout marks and whitespace runs
  * as one space. A numeric character is never folded: a superscript or a circled digit is not the plain figure.
@@ -139,12 +145,14 @@ function flatten(text: string): { flat: string; at: number[] } {
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
   for (let i = 0; i < text.length; i++) {
     const char = text.charAt(i);
-    // Layout only when it stands alone: whitespace (or an end of the text) on both sides. A mark inside a word or a
-    // run of marks (a skill rating drawn in dots) is the source's content.
+    // Layout only when it stands alone: whitespace (or an end of the text) on both sides, and never beside another
+    // mark or between two figures, however far apart: a rating drawn in dots and a range of numbers are content.
     const apart = /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1));
-    const betweenFigures =
-      /\p{Nd}\s*$/u.test(text.slice(Math.max(0, i - 8), i)) && /^\s*\p{Nd}/u.test(text.slice(i + 1, i + 9));
-    const space = /\s/.test(char) || (apart && (LIST_MARK.test(char) || (DASH.test(char) && !betweenFigures)));
+    const [before, after] = [nearest(text, i, -1), nearest(text, i, 1)];
+    const inRun = LIST_MARK.test(before) || LIST_MARK.test(after);
+    const betweenFigures = /\p{Nd}/u.test(before) && /\p{Nd}/u.test(after);
+    const layout = apart && ((LIST_MARK.test(char) && !inRun) || (DASH.test(char) && !betweenFigures));
+    const space = /\s/.test(char) || layout;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
     const folded = space ? ' ' : /\p{N}/u.test(char) ? char : char.normalize('NFKC');
     // One entry per code unit, so an offset never drifts when a character folds to several.
