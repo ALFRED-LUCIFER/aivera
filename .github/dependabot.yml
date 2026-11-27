@@ -9,10 +9,10 @@ updates:
     groups:
       minor-patch: { update-types: [minor, patch] }
     ignore:
-      # The Azure Monitor distro builds the production LoggerProvider on sdk-logs 0.x, and the scrubber's safety tests
-      # must run on that SDK (AIV-P1-163). Lift when @azure/monitor-opentelemetry depends on sdk-logs 3.x.
+      # The Azure Monitor distro's sdk-node builds the production LoggerProvider on sdk-logs 0.221.0 exactly; the scrubber's
+      # safety tests must run on that SDK, so only 0.221.x patches (AIV-P1-163). Lift when the distro moves to sdk-logs 3.x.
       - dependency-name: '@opentelemetry/sdk-logs'
-        update-types: ['version-update:semver-major']
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }
