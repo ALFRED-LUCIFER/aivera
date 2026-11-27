@@ -221,6 +221,7 @@ for (const theme of themes) {
       .getByRole('row')
       .filter({ hasText: `Daniel Novak ${theme}` });
     await expect(row).toContainText('67');
-    await expect(row).toContainText('New');
+    // The submit completes the round (AIV-P2-007 shows it) and changes no intake stage: the recommendation moves nobody.
+    await expect(row).toContainText('Round 1 complete');
   });
 }

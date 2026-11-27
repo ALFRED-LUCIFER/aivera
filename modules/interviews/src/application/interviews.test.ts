@@ -48,6 +48,7 @@ function setup(over: Partial<Ports> = {}, rows: Interview[] = [stored()]) {
     insert: vi.fn<InterviewStore['insert']>(async () => undefined),
     find: vi.fn<InterviewStore['find']>(async (_w, interviewId) => rows.find((r) => r.id === interviewId) ?? null),
     moveStatus: vi.fn<InterviewStore['moveStatus']>(async () => true),
+    schedule: vi.fn<InterviewStore['schedule']>(async () => true),
     list: vi.fn<InterviewStore['list']>(async () => rows),
     findDraft: vi.fn<InterviewStore['findDraft']>(async () => DRAFT),
     saveDraft: vi.fn<InterviewStore['saveDraft']>(async () => undefined),
@@ -77,6 +78,95 @@ const round1 = (over: Record<string, unknown> = {}) => ({
   scheduledAt: new Date('2026-11-18T10:00:00.000Z'),
   competencyIds: [RETRIEVAL, COST],
   ...over,
+});
+
+describe('scheduleInterview (AIV-P2-007)', () => {
+  const unscheduled = stored({ scheduledAt: null, status: 'to_schedule' });
+  const at = new Date('2026-11-21T07:00:00.000Z');
+  const input = (over: Record<string, unknown> = {}) => ({
+    interviewId: unscheduled.id,
+    scheduledAt: at,
+    interviewerUserId: LINA,
+    ...over,
+  });
+
+  it('gives a "to_schedule" interview its time and interviewer, and announces it without contacting anyone', async () => {
+    const { useCases, store, ports } = setup({}, [unscheduled]);
+    store.list.mockResolvedValue([]);
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input())).toEqual({ status: 'scheduled' });
+    expect(ports.authorize).toHaveBeenCalledWith(ctxAs('recruiter'), 'interview.schedule', JOB);
+    expect(store.schedule).toHaveBeenCalledWith('w1', unscheduled.id, 'to_schedule', at, LINA);
+    expect(ports.publishInterviewScheduled).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ id: unscheduled.id, scheduledAt: at, status: 'scheduled' }),
+    );
+  });
+
+  // SAFETY: mutation check: dropped the `scheduledAt <= now()` check -> this test failed (a past time was stored)
+  it('refuses a time that is not in the future, and writes nothing', async () => {
+    const { useCases, store } = setup({}, [unscheduled]);
+    await expect(useCases.scheduleInterview(ctxAs('recruiter'), input({ scheduledAt: NOW }))).rejects.toMatchObject({
+      code: 'time_in_past',
+    });
+    expect(store.schedule).not.toHaveBeenCalled();
+  });
+
+  it("warns of the interviewer's other interview within the hour, writes nothing, and keeps the time when asked", async () => {
+    const other = stored({ id: id(62), scheduledAt: new Date(at.getTime() + 30 * 60_000) });
+    const { useCases, store } = setup({}, [unscheduled]);
+    store.list.mockResolvedValue([other, unscheduled]);
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input())).toEqual({
+      status: 'clash',
+      clashAt: other.scheduledAt,
+    });
+    expect(store.schedule).not.toHaveBeenCalled();
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input({ keepClash: true }))).toEqual({
+      status: 'scheduled',
+    });
+    expect(store.list).toHaveBeenCalledWith('w1', ['scheduled', 'in_progress'], LINA);
+  });
+
+  it('refuses an interviewer who cannot see the job, and an interview already held', async () => {
+    const { useCases } = setup({}, [unscheduled, stored({ id: id(63), status: 'in_progress' })]);
+    await expect(
+      useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewerUserId: id(99) })),
+    ).rejects.toMatchObject({ code: 'interviewer_not_on_job' });
+    await expect(useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewId: id(63) }))).rejects.toMatchObject({
+      code: 'not_schedulable',
+    });
+  });
+
+  // SAFETY: mutation check: dropped the interviewer_has_draft check -> this test failed (Ayesha took Lina's draft)
+  it("never hands the current interviewer's scorecard draft to a new interviewer", async () => {
+    const { useCases, store } = setup({}, [unscheduled]);
+    store.list.mockResolvedValue([]);
+    await expect(
+      useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewerUserId: AYESHA })),
+    ).rejects.toMatchObject({ code: 'interviewer_has_draft' });
+    expect(store.schedule).not.toHaveBeenCalled();
+    // The same interviewer keeps their draft; with no draft anyone may take the interview.
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input())).toEqual({ status: 'scheduled' });
+    store.findDraft.mockResolvedValueOnce(null);
+    expect(await useCases.scheduleInterview(ctxAs('recruiter'), input({ interviewerUserId: AYESHA }))).toEqual({
+      status: 'scheduled',
+    });
+  });
+
+  // SAFETY: mutation check: removed authorize(ctx, 'interview.schedule', job) from scheduleInterview -> this test failed (the promise resolved)
+  it('is refused for a role without interview.schedule', async () => {
+    const { useCases, store } = setup(
+      {
+        authorize: async () => {
+          throw new ForbiddenError();
+        },
+      },
+      [unscheduled],
+    );
+    await expect(useCases.scheduleInterview(ctxAs('interviewer', LINA), input())).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(store.schedule).not.toHaveBeenCalled();
+  });
 });
 
 describe('createInterview', () => {

@@ -88,7 +88,7 @@ for (const theme of themes) {
 }
 
 // AIV-P1-095: the search field and the assistant return with their tickets (AIV-P1-049, AIV-P2-E06).
-test('the shell shows built sections only, and no search field or Ask button', async ({ page }) => {
+test('the shell shows built sections only, the search, and no Ask button', async ({ page }) => {
   await page.goto('/app');
   await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link')).toHaveText([
     'Credalent',
@@ -100,7 +100,8 @@ test('the shell shows built sections only, and no search field or Ask button', a
     'Interviews',
     'Settings',
   ]);
-  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  // AIV-P1-049: the search opens from the top bar; the box itself is in its palette.
+  await expect(page.getByRole('button', { name: 'Search jobs and candidates' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask Credalent' })).toHaveCount(0);
 });
 

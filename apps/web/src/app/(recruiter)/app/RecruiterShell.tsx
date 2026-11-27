@@ -5,6 +5,8 @@ import type { ComponentProps } from 'react';
 import { AppShell, type AppShellProps } from '@/features/shell/components/AppShell.tsx';
 import type { Theme } from '@/features/shell/domain/shell.ts';
 import { useShellController } from '@/features/shell/hooks/useShellController.ts';
+import { SearchPalette } from '@/features/search/components/SearchPalette.tsx';
+import { useSearchController } from '@/features/search/hooks/useSearchController.ts';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 
 type Props = Pick<AppShellProps, 'member' | 'screens' | 'counts' | 'children'> & {
@@ -14,9 +16,10 @@ type Props = Pick<AppShellProps, 'member' | 'screens' | 'counts' | 'children'> &
 
 export function RecruiterShell({ intl, theme, ...props }: Props) {
   const controller = useShellController(theme);
+  const search = useSearchController();
   return (
     <IntlProvider {...intl}>
-      <AppShell {...props} {...controller} signOutAction={signOut} />
+      <AppShell {...props} {...controller} signOutAction={signOut} search={<SearchPalette view={search} />} />
     </IntlProvider>
   );
 }

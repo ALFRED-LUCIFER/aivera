@@ -5,6 +5,7 @@ import { loadPeople } from './loadPeople.ts';
 // Synthetic cast and ids only.
 const ctx = { userId: 'u1', workspaceId: '0190d4a2-0000-7000-8000-000000000001', role: 'recruiter', tx: {} };
 const fake = vi.hoisted(() => ({
+  interviews: vi.fn(async (_ctx: unknown, _filter: string): Promise<unknown[]> => []),
   workspace: vi.fn(),
   jobs: vi.fn(),
   list: vi.fn(),
@@ -16,6 +17,8 @@ vi.mock('@/server/jobs', () => ({ getJobs: () => ({ listJobs: fake.jobs }) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ listPacks: fake.packs }) }));
+// AIV-P2-007: each application's current round; none unless a test sets them.
+vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ listInterviews: fake.interviews }) }));
 
 const at = new Date('2026-11-14T08:00:00.000Z');
 const applicant = (jobId: string) => ({

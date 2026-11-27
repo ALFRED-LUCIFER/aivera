@@ -586,6 +586,21 @@
     "regionCaption": "{region, select, uae {Regional suggestions for the UAE} ksa {Regional suggestions for KSA} india {Regional suggestions for India} other {Regional suggestions for {label}}}",
     "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
   },
+  "search": {
+    "title": "Search",
+    "label": "Search jobs and candidates",
+    "placeholder": "Search jobs and candidates",
+    "close": "Close search",
+    "groups": {
+      "jobs": "Jobs",
+      "candidates": "Candidates"
+    },
+    "candidate": "{name} · {job}",
+    "searching": "Searching…",
+    "found": "{count, plural, one {# result} other {# results}}",
+    "nothing": "Nothing found for {query}",
+    "error": "Search failed. Try again."
+  },
   "people": {
     "intro": "Everyone in a live process on one of your jobs: {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}}. One row per person, however many jobs they are in.",
     "caption": "Candidates in a live process",
@@ -599,6 +614,7 @@
       "nextStep": "Next step"
     },
     "inJobs": "In {count} jobs",
+    "invite": "Invite to Round 1",
     "otherJob": "{job} · {stage} · {backed} backed by evidence · up to {upTo} if claims hold",
     "footer": "Showing {count, plural, one {# person} other {# people}}, furthest along first. To see one job's candidates ranked against its rubric, open the job from <jobs>Jobs</jobs>.",
     "empty": "No one in a live process yet",
@@ -1898,6 +1914,21 @@
       "round2_shortlist": "Round 2 shortlist",
       "not_advanced": "Not advanced"
     },
+    "roundShort": {
+      "structured_screen": "Round 1",
+      "evidence_defence": "Round 2",
+      "panel": "Round 3"
+    },
+    "roundLine": {
+      "to_schedule": "{round}, not scheduled yet",
+      "scheduled": "{round} on {at, date, ::dMMM}",
+      "today": "{round} today, {at, time, ::HHmm}",
+      "in_progress": "{round} in progress",
+      "scorecard_due": "{round}, scorecard due",
+      "completed": "{round} complete"
+    },
+    "openScorecard": "Open scorecard",
+    "scheduleRound": "Schedule {round}",
     "meetsNeed": "{meets} of {count}",
     "confidence": {
       "High": "High",
@@ -2061,7 +2092,34 @@
       "completed": "Completed",
       "cancelled": "Cancelled"
     },
-    "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}"
+    "scorecardDueFor": "Scorecard due, {days, plural, =0 {today} one {# day} other {# days}}",
+    "schedule": {
+      "open": "Schedule",
+      "openFor": "Schedule {name}",
+      "title": "Schedule {round}",
+      "description": "{name} · {job}",
+      "competencies": "Competencies to investigate: {list}",
+      "interviewer": "Interviewer",
+      "chooseInterviewer": "Choose an interviewer",
+      "date": "Date",
+      "time": "Time ({timeZone})",
+      "noContact": "Nobody is contacted. The candidate and the interviewer are not emailed from here yet.",
+      "save": "Schedule",
+      "saving": "Scheduling…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "errors": {
+        "pastTime": "Choose a future time",
+        "noInterviewer": "Choose an interviewer",
+        "notOnJob": "The interviewer must be an active member who can see this job.",
+        "hasDraft": "The current interviewer has a scorecard draft. Keep them as interviewer, or ask them to clear it.",
+        "changed": "This interview already has a time, or has started. Reload the page to see it.",
+        "failed": "The interview was not scheduled. Try again."
+      },
+      "clash": "The interviewer already has an interview at this time ({at, date, ::dMMM}, {at, time, ::HHmm}).",
+      "keep": "Keep this time",
+      "done": "Scheduled. Nobody has been contacted."
+    }
   },
   "scorecard": {
     "pageTitle": "Interview scorecard",
