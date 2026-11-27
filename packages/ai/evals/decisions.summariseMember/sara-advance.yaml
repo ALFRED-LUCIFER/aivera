@@ -33,7 +33,9 @@ sources:
     text: built Arabic intent classification for a bilingual support bot
   - id: S7
     kind: interview
-    text: Sara defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set.
+    text:
+      Sara defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation
+      set.
 expected:
   match:
     recommendation.action: advance
@@ -70,49 +72,55 @@ expected:
     advance, as the facts say the work meets the need on 60% of the weight, and its focus, if any, names a gap from the
     facts. No statement names the candidate or recommends rejecting, hiring or advancing anyone.
 recorded:
-  promptVersion: decisions.summariseMember@3
-  promptHash: a260cfdaf6db
+  promptVersion: decisions.summariseMember@4
+  promptHash: 560d50c8116a
   output:
     strengths:
-      - text: The candidate authored 412 of 460 commits in llm-eval-harness between March and October.
-        citations:
-          - sourceId: S2
-            quote: authored 412 of 460 commits in llm-eval-harness between March and October
-            start: 0
-            end: 73
-          - sourceId: S1
-            quote: 'LLM systems in production, 25% of the weight, needs level 4: independently checked work shows level 4, which meets the need'
-            start: 63
-            end: 186
-        claim: false
-      - text: The candidate deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release.
+      - text: Deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release.
         citations:
           - sourceId: S3
             quote: deployed the retrieval service behind the merchant assistant, with an evaluation set gating each release
             start: 0
             end: 104
           - sourceId: S1
-            quote: 'Retrieval and evaluation, 20% of the weight, needs level 4: independently checked work shows level 5, which meets the need'
+            quote:
+              'Retrieval and evaluation, 20% of the weight, needs level 4: independently checked work shows level 5, which
+              meets the need'
             start: 188
             end: 310
         claim: false
+      - text: Authored 412 of 460 commits in llm-eval-harness between March and October.
+        citations:
+          - sourceId: S2
+            quote: authored 412 of 460 commits in llm-eval-harness between March and October
+            start: 0
+            end: 73
+          - sourceId: S1
+            quote:
+              'LLM systems in production, 25% of the weight, needs level 4: independently checked work shows level 4, which
+              meets the need'
+            start: 63
+            end: 186
+        claim: false
     risks:
-      - text: Cost and reliability is a claim with nothing to inspect, level 3 if it holds.
+      - text: Cost and reliability competency is a claim with nothing to inspect.
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: a claim with nothing to inspect, level 3 if it holds'
             start: 415
             end: 523
         claim: false
-      - text: Product judgement has no evidence yet.
+      - text: Arabic and bilingual NLP competency is a claim with nothing to inspect.
         citations:
           - sourceId: S1
-            quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
-            start: 525
-            end: 593
+            quote:
+              'Arabic and bilingual NLP, 10% of the weight, needs level 3: a claim with nothing to inspect, level 4 if it
+              holds'
+            start: 595
+            end: 707
         claim: false
     round1:
-      text: The candidate defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set.
+      text: Defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set.
       citations:
         - sourceId: S7
           quote: defended the merchant assistant's evaluation design and explained how each release is gated on the evaluation set
@@ -127,7 +135,24 @@ recorded:
           quote: Work meets the need on competencies holding 60% of the weight
           start: 0
           end: 61
+        - sourceId: S1
+          quote:
+            'LLM systems in production, 25% of the weight, needs level 4: independently checked work shows level 4, which
+            meets the need'
+          start: 63
+          end: 186
+        - sourceId: S1
+          quote:
+            'Retrieval and evaluation, 20% of the weight, needs level 4: independently checked work shows level 5, which
+            meets the need'
+          start: 188
+          end: 310
+        - sourceId: S1
+          quote: 'Python services, 15% of the weight, needs level 3: submitted work shows level 4, which meets the need'
+          start: 312
+          end: 413
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or result, and all citations are accurate and direct quotes from the sources.
+    reason: Every item is strictly limited to what its cited excerpt states, with no added judgement, role, or claim of
+      support, and all citations are correct and verbatim.

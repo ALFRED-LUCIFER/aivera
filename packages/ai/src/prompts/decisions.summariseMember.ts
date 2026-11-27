@@ -15,7 +15,10 @@ import { NUMBER_WORDS, ONE_COUNT } from './assessment.explainRanking.ts';
 // @3: a strength that names a competency cites the facts line naming it (checked in code, `competency_uncited`); @2's
 // answers named one with only the excerpt cited, which the judge passed. The focus is a noun phrase, which the card
 // reads as "look into <focus> next", and a counting word is named in the number rule.
-export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@3';
+// @4 (AIV-P2-092): one strength for one excerpt of work, and never one resting on the facts, the CV or the interview
+// notes. Live, @3 wrote a second strength from the facts alone for a candidate with one excerpt, which `not_backed`
+// rejects whole: the card failed in 5 of 8 runs. The rule also counted interview notes as inspected work.
+export const SUMMARISE_MEMBER_VERSION = 'decisions.summariseMember@4';
 
 /** Advance to the next round, or hold while the gap the focus names is closed. Never reject: thin evidence is a gap. */
 export const RECOMMENDATIONS = ['advance', 'hold'] as const;
@@ -28,8 +31,9 @@ const SUMMARISE_MEMBER_SYSTEM = [
   'on. The other sources are excerpts of the evidence: repositories, documents, references, the CV and Round 1',
   'interview notes. Write, each statement citing the sources it rests on with an exact quote:',
   'strengths: at most two statements, each about one excerpt of inspected work (a source after the first, never the',
-  'CV): what that excerpt states, in its words. Its first citation quotes that excerpt; a strength without one is',
-  'rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
+  'CV and never the interview notes, which have the round1 line): what that excerpt states, in its words. One strength for one excerpt, so one excerpt of work gives one',
+  'strength and none gives none: a line of the facts source alone is never a strength. Its first citation quotes',
+  'that excerpt; a strength without one is rejected. If it also names the competency the work backs, its second citation quotes the facts line naming that',
   'competency; naming a competency without that line is rejected. It states nothing the excerpt does not:',
   'no other activity, role, scale or result, no adjective or adverb of your own about the work or its quality, and',
   'nothing about the person;',
@@ -103,7 +107,7 @@ const cites = (s: { citations: { sourceId: string }[] }, among: ReadonlySet<stri
 const schemaFor = (sources: readonly Source[]) => {
   const labels = (keep: (s: Source, i: number) => boolean) =>
     new Set(sources.flatMap((s, i) => (keep(s, i) ? [sourceLabel(i)] : [])));
-  const work = labels((s, i) => i > 0 && s.kind !== 'cv');
+  const work = labels((s, i) => i > 0 && s.kind !== 'cv' && s.kind !== 'interview');
   const interview = labels((s) => s.kind === 'interview');
   // The competencies the facts name, one per line ("<name>, 25% of the weight, needs level 4: ..."), each matched as a
   // whole phrase, so a short name ("AI", "Go") inside a word ("maintains", "algorithm") is not a mention of it.

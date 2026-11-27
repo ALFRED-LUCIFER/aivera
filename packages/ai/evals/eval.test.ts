@@ -2276,7 +2276,13 @@ describe('Feature: Decision pack summaries', () => {
   };
 
   it('Scenario: the three-candidate pack, each recorded answer on the schema, citations valid 100%, and the gates pass', async () => {
-    expect(cases.map((c) => c.id)).toEqual(['arjun-hold', 'huda-advance-probe-cost', 'sara-advance']);
+    expect(cases.map((c) => c.id)).toEqual([
+      'arjun-hold',
+      'hala-one-excerpt',
+      'huda-advance-probe-cost',
+      'kristine-cv-only',
+      'sara-advance',
+    ]);
     for (const c of cases) expect(parseCard(c.recorded.output, c).error, c.id).toBeUndefined();
     const report = await run(task, cases);
     expect(report.passed).toBe(true);
@@ -2289,6 +2295,30 @@ describe('Feature: Decision pack summaries', () => {
   it('the model reads Sara Al Qahtani as "[CANDIDATE]"', async () => {
     expect(sara().expected.prompt?.forbidden).toEqual(['Sara', 'Qahtani']);
     expect((await run(task, [sara()])).rates.prompt).toBe(1);
+  });
+
+  // A strength is about inspected work: the interviewer's word has the Round 1 line, and the facts are the assessment's.
+  // Live, @3 wrote a second strength from the facts alone for a candidate with one excerpt, and the card was rejected.
+  // SAFETY: mutation check: counted interview notes as inspected work in schemaFor -> this test failed (it parsed)
+  it('a strength resting on the interview notes, or on the facts alone, rejects the answer; one on the work parses', () => {
+    const hala = caseOf(task, 'hala-one-excerpt');
+    const card = structuredClone(hala.recorded.output) as Card;
+    expect(parseCard(card, hala).error).toBeUndefined();
+    expect(card.strengths).toHaveLength(1);
+    const withStrength = (said: Said) => ({ ...card, strengths: [...card.strengths, said] });
+    const fromNotes = { sourceId: 'S3', quote: 'showed how she cut its run time' };
+    expect(
+      parseCard(withStrength({ text: 'The candidate cut the run time of the suite.', citations: [fromNotes] }), hala)
+        .success,
+    ).toBe(false);
+    const fromFacts = { sourceId: 'S1', quote: 'End-to-end test automation, 40% of the weight, needs level 4' };
+    expect(parseCard(withStrength({ text: 'The work meets the need.', citations: [fromFacts] }), hala).success).toBe(
+      false,
+    );
+    // With no inspected work at all, no strength is the answer.
+    const kristine = caseOf(task, 'kristine-cv-only');
+    expect((kristine.recorded.output as Card).strengths).toEqual([]);
+    expect(parseCard(kristine.recorded.output, kristine).error).toBeUndefined();
   });
 
   // SAFETY: mutation check: removed the figure_not_quoted refine from the statement schema -> this test failed (it parsed)
