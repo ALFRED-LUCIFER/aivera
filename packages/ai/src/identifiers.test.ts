@@ -556,12 +556,22 @@ describe('Feature: Identifiers and traits are found whatever compatibility forms
     }
   });
 
-  // SAFETY: mutation check: left the record's names unfolded in redactSources -> the first assertion failed; built
-  // the patterns from the folded names only -> the second failed (the folded trade mark sign hid the name's edge)
+  // SAFETY: mutation check: matched the folded source with the record as written in redactSources -> the first
+  // assertion failed; matched the source as written with the folded record -> the second failed (the folded trade
+  // mark sign hid the name's edge)
   it('a record that holds the compatibility form itself still matches the plain spelling, and the reverse', () => {
     const ligatureRecord = { ...kristine, names: ['Kriﬆine Dela Cruz'] };
     expect(sent('Kristine Dela Cruz and Kriﬆine', false, ligatureRecord)).toBe('[CANDIDATE] and [CANDIDATE]');
     expect(sent('Kriﬆine™ led it', false, ligatureRecord)).toBe('[CANDIDATE]™ led it');
+  });
+
+  // SAFETY: mutation check: matched the source as written with the folded record in redactSources -> this test
+  // failed (the record email, folded, matched short and the address glued after it was sent whole)
+  it('a record email that holds a compatibility form never shortens what is replaced', () => {
+    const ligatureEmail = { ...kristine, emails: ['kriﬆine.delacruz@example.com'] };
+    expect(sent('Mail kristine.delacruz@example.comhala.saleh@example.com', false, ligatureEmail)).toBe(
+      'Mail [EMAIL_1]@example.com',
+    );
   });
 
   // SAFETY: mutation check: keyed the email placeholder on the source's own characters, not their fold, in

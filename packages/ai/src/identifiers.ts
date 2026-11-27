@@ -206,25 +206,8 @@ export type Redaction = {
   original(index: number, span: { start: number; end: number }): { start: number; end: number } | undefined;
 };
 
-// The record's values as written and folded: as written too, so the as-written pass of redactSources stays what it
-// was for a record that itself holds a compatibility form.
-const both = (values: readonly string[] = []) => [...values, ...values.map(fold)];
-
-/**
- * Replaces the candidate's name parts (and possessives) with `[CANDIDATE]`, and every email and phone with
- * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
- * `keepContact`, emails and phones stay as written.
- */
-export function redactSources(sources: readonly Source[], record: Identifiers, keepContact: boolean): Redaction {
-  // Identifiers are also found on the folded text (fold.ts, AIV-P1-161), the record's own values folded the same way:
-  // a name written with a ligature or in fullwidth letters is still the name. Every slice and offset below indexes
-  // the source as written; the folded text and its index map never leave this call.
-  const identifiers: Identifiers = {
-    names: both(record.names),
-    emails: both(record.emails),
-    phones: record.phones,
-    others: both(record.others),
-  };
+/** The patterns for one set of identifiers: the email mask, and the pattern for each source kind. */
+function matcherFor(identifiers: Identifiers) {
   const plain = patternFor(identifiers, false, false);
   const traits = patternFor(identifiers, true, false);
   const cv = patternFor(identifiers, true, true);
@@ -232,7 +215,31 @@ export function redactSources(sources: readonly Source[], record: Identifiers, k
   const { ownWord } = namePartsOf(identifiers.names);
   const named = ownWord ? new RegExp(ownWord, 'iu') : null;
   const mask = (email: string) => (named?.test(email) ? NAMED_MASK : MASK).repeat(email.length);
-  const patternOf = (kind: Source['kind']) => (kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
+  return (text: string, kind: Source['kind']) =>
+    text.replace(emailPattern, mask).matchAll(kind === 'cv' ? cv : TRAIT_KINDS.has(kind) ? traits : plain);
+}
+
+/**
+ * Replaces the candidate's name parts (and possessives) with `[CANDIDATE]`, and every email and phone with
+ * `[EMAIL_n]` and `[PHONE_n]`, numbered per call so the same value always gets the same placeholder. With
+ * `keepContact`, emails and phones stay as written.
+ */
+export function redactSources(sources: readonly Source[], record: Identifiers, keepContact: boolean): Redaction {
+  // Identifiers are found twice and joined (fold.ts, AIV-P1-161): on each source as written with the record as
+  // written, exactly as before the fold existed, and on the folded source with the folded record, so a name written
+  // with a ligature or in fullwidth letters is still the name. Folding can hide an edge the patterns rely on (a
+  // fullwidth letter before a phone becomes a word character, a letter that folds to "l·" ends a trait's value), so
+  // the fold only ever adds to what is found. Every slice and offset below indexes the source as written; the folded
+  // text and its index map never leave this call.
+  const foldedRecord: Identifiers = {
+    names: record.names.map(fold),
+    emails: record.emails.map(fold),
+    phones: record.phones,
+    others: (record.others ?? []).map(fold),
+  };
+  const recordFolds = [...record.names, ...record.emails, ...(record.others ?? [])].some((v) => fold(v) !== v);
+  const asWritten = matcherFor(record);
+  const onFolded = recordFolds ? matcherFor(foldedRecord) : asWritten;
   const numbers = { EMAIL: new Map<string, string>(), PHONE: new Map<string, string>() };
   const numbered = (kind: keyof typeof numbers, key: string) => {
     const seen = numbers[kind];
@@ -242,14 +249,12 @@ export function redactSources(sources: readonly Source[], record: Identifiers, k
   };
   const cutsOf: Cut[][] = [];
   const redacted = sources.map((source) => {
-    // Found twice and joined: on the text as written, exactly as before the fold existed, and on the folded text. A
-    // folded letter can hide an edge the patterns rely on (a fullwidth letter before a phone becomes a word character,
-    // a letter that folds to "l·" ends a trait's value), so the fold only ever adds to what is found.
     const { folded, at } = foldWithMap(source.text);
     const found: { from: number; until: number; kind: 'email' | 'phone' | 'trait' | 'other' | 'name' }[] = [];
-    for (const map of folded === source.text ? [undefined] : [undefined, at]) {
+    // The second pass only when it can differ: the fold changes the source or the record.
+    for (const map of folded === source.text && !recordFolds ? [undefined] : [undefined, at]) {
       const read = map ? folded : source.text;
-      for (const match of read.replace(emailPattern, mask).matchAll(patternOf(source.kind))) {
+      for (const match of (map ? onFolded : asWritten)(read, source.kind)) {
         const end = match.index + match[0].length;
         const value = read.slice(match.index, end);
         const { email, own, phone, trait, other } = match.groups ?? {};
