@@ -15,7 +15,7 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // on claims" line out (priya-latency-work in 5 of 5 live runs, arjun-checked-not-heaviest in its recording; @7's
 // recordings had it). Asking for every facts line fixed that and lost omar-two-repos its second excerpt (three
 // statements cannot hold two lines and two excerpts). The recruiter still sees the claims beside the explanation:
-// the score caption "N backed by evidence, up to M if their claims hold" comes from code. Gate the claims line in
+// the score caption (backed by evidence, up to a figure if claims hold) comes from code. Gate the claims line in
 // field match when the statement cap is revisited.
 export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@8';
 

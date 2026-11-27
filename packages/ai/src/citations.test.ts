@@ -174,6 +174,11 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
       findQuote('Python \u25CF \u25E6 \u25E6 \u25E6 \u25E6', 'Python \u25CF \u25CF \u25CF \u25CF \u25CF'),
     ).toBeUndefined();
     expect(findQuote('AED 5        -        10k a month', 'AED 5 10k a month')).toBeUndefined();
+    // A source of mostly whitespace at the size cap is still matched in linear time (it was quadratic: 35 s).
+    const sparse = `${' '.repeat(60_000)}payments migration`;
+    const started = performance.now();
+    expect(findQuote(sparse, 'payments migration')).toEqual({ start: 60_000, end: 60_018 });
+    expect(performance.now() - started).toBeLessThan(1_000);
     // After a character that folds to two, the offsets still index the source.
     const folded = '\uFB01xed the payments migration';
     const later = findQuote(folded, 'payments migration');

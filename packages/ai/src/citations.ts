@@ -147,11 +147,15 @@ function flatten(text: string): { flat: string; at: number[] } {
     const char = text.charAt(i);
     // Layout only when it stands alone: whitespace (or an end of the text) on both sides, and never beside another
     // mark or between two figures, however far apart: a rating drawn in dots and a range of numbers are content.
-    const apart = /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1));
-    const [before, after] = [nearest(text, i, -1), nearest(text, i, 1)];
-    const inRun = LIST_MARK.test(before) || LIST_MARK.test(after);
-    const betweenFigures = /\p{Nd}/u.test(before) && /\p{Nd}/u.test(after);
-    const layout = apart && ((LIST_MARK.test(char) && !inRun) || (DASH.test(char) && !betweenFigures));
+    const mark = LIST_MARK.test(char);
+    let layout = false;
+    // Only for a mark or a dash standing alone, so a long run of whitespace is walked once, not once per character.
+    if ((mark || DASH.test(char)) && /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1))) {
+      const [before, after] = [nearest(text, i, -1), nearest(text, i, 1)];
+      layout = mark
+        ? !LIST_MARK.test(before) && !LIST_MARK.test(after)
+        : !(/\p{Nd}/u.test(before) && /\p{Nd}/u.test(after));
+    }
     const space = /\s/.test(char) || layout;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
     const folded = space ? ' ' : /\p{N}/u.test(char) ? char : char.normalize('NFKC');
