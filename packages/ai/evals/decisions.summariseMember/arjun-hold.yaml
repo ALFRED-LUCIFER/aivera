@@ -63,22 +63,24 @@ expected:
     the facts to close, never a reason to reject. No statement names the candidate or recommends rejecting, hiring or
     advancing anyone.
 recorded:
-  promptVersion: decisions.summariseMember@3
-  promptHash: 5e4d47b4ba69
+  promptVersion: decisions.summariseMember@4
+  promptHash: 1da027e7fcba
   output:
     strengths:
-      - text: The candidate maintains an open-source queue library, with 1,840 of 2,100 commits since 2022.
+      - text: Maintains an open-source queue library, with 1,840 of 2,100 commits since 2022
         citations:
           - sourceId: S2
             quote: maintains an open-source queue library, with 1,840 of 2,100 commits since 2022
             start: 0
             end: 78
           - sourceId: S1
-            quote: 'Python services, 15% of the weight, needs level 3: independently checked work shows level 5, which meets the need'
+            quote:
+              'Python services, 15% of the weight, needs level 3: independently checked work shows level 5, which meets the
+              need'
             start: 285
             end: 398
         claim: false
-      - text: The candidate provided service design and on-call runbook for a production KYC document reader.
+      - text: Service design and on-call runbook for a production KYC document reader
         citations:
           - sourceId: S3
             quote: service design and on-call runbook for a production KYC document reader
@@ -90,14 +92,14 @@ recorded:
             end: 174
         claim: false
     risks:
-      - text: Retrieval and evaluation competency is short of the need at level 2.
+      - text: Retrieval and evaluation competency short of the need at level 2
         citations:
           - sourceId: S1
             quote: 'Retrieval and evaluation, 20% of the weight, needs level 4: submitted work shows level 2, short of the need'
             start: 176
             end: 283
         claim: false
-      - text: Cost and reliability competency is short of the need at level 2.
+      - text: Cost and reliability competency short of the need at level 2
         citations:
           - sourceId: S1
             quote: 'Cost and reliability, 15% of the weight, needs level 3: submitted work shows level 2, short of the need'
@@ -105,7 +107,7 @@ recorded:
             end: 503
         claim: false
     round1:
-      text: The candidate explained the queue library's back-pressure design in depth; he could not give figures for cost per request.
+      text: Explained the queue library's back-pressure design in depth; could not give figures for cost per request
       citations:
         - sourceId: S5
           quote: explained the queue library's back-pressure design in depth; he could not give figures for cost per request
@@ -117,10 +119,12 @@ recorded:
       focus: Product judgement
       citations:
         - sourceId: S1
-          quote: 'Product judgement, 15% of the weight, needs level 3: no evidence yet'
-          start: 505
-          end: 573
+          quote: Work meets the need on competencies holding 40% of the weight
+          start: 0
+          end: 61
       claim: false
   judge:
     pass: true
-    reason: Every item is strictly limited to what its cited excerpt states, with no added work, role, team, or result, and all figures are copied from the sources; all risks and the recommendation are based on explicit evidence gaps or shortfalls as stated in the sources.
+    reason:
+      Every item is strictly limited to what its cited excerpt states, with no added claims, figures, or judgements,
+      and all citations are accurate and directly quoted from the sources.
