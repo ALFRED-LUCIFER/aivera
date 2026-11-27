@@ -16,12 +16,15 @@ expected:
     industry.domain: government_public_sector
     regions: []
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '51b02fc3c6e8'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '3297b50f069a'
   output:
     industry:
       domain: government_public_sector
       citations:
         - sourceId: S1
-          quote: 'You will build the trade licence service for a government authority.'
+          quote: You will build the trade licence service for a government authority.
+          start: 0
+          end: 68
+      claim: false
     regions: []

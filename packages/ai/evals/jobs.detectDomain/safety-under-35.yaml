@@ -18,16 +18,21 @@ expected:
     industry.domain: telecom
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'e5e3a952ac61'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'e7930293968a'
   output:
     industry:
       domain: telecom
       citations:
         - sourceId: S1
-          quote: 'You will plan and run the radio access network of our mobile operator.'
+          quote: You will plan and run the radio access network of our mobile operator.
+          start: 0
+          end: 70
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

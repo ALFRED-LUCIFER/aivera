@@ -227,7 +227,7 @@ export const blankCompetency = (): DraftCompetency => ({
 export const weightsTotal = (rows: readonly DraftRow[]) =>
   rows.reduce((sum, row) => (row.removed ? sum : sum + row.weightPercent), 0);
 
-/** At most this many competencies in a rubric: 8 drafted, 2 suggested, a pack's core and regional hints, and room. */
+/** At most this many competencies in a rubric: 12 drafted, 2 suggested, a pack's core and regional hints, and room. */
 export const RUBRIC_MAX = 30;
 
 const competency = z.object({

@@ -1,0 +1,162 @@
+# An agency's advert (synthetic): benefits and boilerplate around the work, and a "Nice to have:" label on the same line
+# as its first item. Live, @4 quoted the label with the second item ("Nice to have: Experience with ..."), which is not
+# in the description, so the whole draft was rejected on both attempts in 5 of 6 runs.
+id: advert-inline-heading
+input:
+  jobType: software_engineering
+  title: Senior Frontend Engineer
+sources:
+  - id: S1
+    kind: job_description
+    text: |-
+      About us: We are a fast-growing, award-winning travel company with offices in 4 countries and a culture of ownership. We offer free lunch, a gym pass, 30 days of leave and annual flights home.
+      The role: You will build the booking flow in React and TypeScript and own it in production. You will make pages fast on slow mobile networks and measure it with Core Web Vitals. You will make every screen usable with a keyboard and a screen reader. You will write component tests and end-to-end tests. You will review other engineers' pull requests. You will work with designers on the design system.
+      Nice to have: experience with Next.js server rendering. Experience with right-to-left layouts for Arabic.
+      We are an equal opportunity employer. Apply now, limited seats!
+expected:
+  match:
+    competencies[*].name:
+      - React and TypeScript in production
+      - Fast pages on slow mobile networks
+      - Keyboard and screen reader accessibility
+      - Component and end-to-end tests
+      - Code review
+      - Design system work with designers
+      - Next.js server rendering
+      - Right-to-left layouts
+    competencies[*].type: [mandatory, desirable]
+    suggestions[*].name:
+      - Travel booking domain
+      - Cross-browser testing
+  text:
+    - path: competencies[*].name
+      none: [lunch, gym, leave, flights, award]
+recorded:
+  output:
+    competencies:
+      - name: React and TypeScript development
+        evidenceExpected: Built and shipped a booking flow application using React and TypeScript, maintaining it in production.
+        weight: 25
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will build the booking flow in React and TypeScript and own it in production.
+            start: 203
+            end: 284
+        claim: false
+      - name: Performance optimization for slow mobile networks
+        evidenceExpected: Improved page load speed and Core Web Vitals scores on slow mobile networks for a web application.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will make pages fast on slow mobile networks and measure it with Core Web Vitals.
+            start: 285
+            end: 370
+        claim: false
+      - name: Accessibility implementation
+        evidenceExpected: Developed web pages fully usable with keyboard navigation and screen readers.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will make every screen usable with a keyboard and a screen reader.
+            start: 371
+            end: 441
+        claim: false
+      - name: Component and end-to-end testing
+        evidenceExpected: Wrote component tests and end-to-end tests for frontend components and flows.
+        weight: 15
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will write component tests and end-to-end tests.
+            start: 442
+            end: 494
+        claim: false
+      - name: Code review and collaboration
+        evidenceExpected: Reviewed pull requests from other engineers and collaborated on code quality improvements.
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will review other engineers' pull requests.
+            start: 495
+            end: 542
+        claim: false
+      - name: Design system collaboration
+        evidenceExpected: Worked with designers to implement and maintain a design system for consistent UI components.
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: You will work with designers on the design system.
+            start: 543
+            end: 593
+        claim: false
+      - name: Next.js server-side rendering (desirable)
+        evidenceExpected: Built or maintained web applications using Next.js with server-side rendering capabilities.
+        weight: 10
+        level: 3
+        type: desirable
+        citations:
+          - sourceId: S1
+            quote: 'Nice to have: experience with Next.js server rendering.'
+            start: 594
+            end: 649
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Web development in English
+        evidenceExpected: Developed frontend applications primarily in English language environments.
+        weight: 5
+        level: 3
+        type: desirable
+        why:
+          The job involves building user-facing web pages and collaborating with designers, implying English as the working
+          language, but the description does not explicitly state it.
+        citations:
+          - sourceId: S1
+            quote: You will build the booking flow in React and TypeScript and own it in production.
+            start: 203
+            end: 284
+        claim: false
+      - name: Internationalization and localization
+        evidenceExpected:
+          Implemented support for multiple languages and layouts in web applications, including right-to-left
+          text direction.
+        weight: 5
+        level: 3
+        type: desirable
+        why:
+          The mention of right-to-left layouts for Arabic implies a need for internationalization skills, but the description
+          only lists it as nice to have and does not elaborate.
+        citations:
+          - sourceId: S1
+            quote: 'Nice to have: experience with Next.js server rendering.'
+            start: 594
+            end: 649
+        claim: false
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: d9dddea362ff
+  matches:
+    React and TypeScript in production: React and TypeScript development
+    Fast pages on slow mobile networks: Performance optimization for slow mobile networks
+    Keyboard and screen reader accessibility: Accessibility implementation
+    Component and end-to-end tests: Component and end-to-end testing
+    Code review: Code review and collaboration
+    Design system work with designers: Design system collaboration
+    Next.js server rendering: Next.js server-side rendering (desirable)
+    Right-to-left layouts: null
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Web development in English: null
+      Internationalization and localization: unrelated

@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will own the basket and checkout of our online grocery store. You decide what ships with design and engineering and read the conversion data.'
+    text: 'You will own the basket and checkout of our online grocery store. You decide what ships with design and
+      engineering and read the conversion data.'
   - id: S2
     kind: job_description
     text: 'Riyadh, Saudi Arabia'
@@ -16,16 +17,21 @@ expected:
     industry.domain: ecommerce_marketplaces
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '56db6622eec6'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '9c626158e591'
   output:
     industry:
       domain: ecommerce_marketplaces
       citations:
         - sourceId: S1
-          quote: 'You will own the basket and checkout of our online grocery store.'
+          quote: You will own the basket and checkout of our online grocery store.
+          start: 0
+          end: 65
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

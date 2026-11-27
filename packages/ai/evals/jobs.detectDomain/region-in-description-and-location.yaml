@@ -1,0 +1,30 @@
+# The description names the country and the location names a city in it (synthetic): the region is listed once. Live,
+# @2 listed "ksa" twice, once per source, which the schema rejects, on both attempts in 4 of 4 runs.
+id: region-in-description-and-location
+input:
+  jobType: sales
+  title: Enterprise Account Executive
+sources:
+  - id: S1
+    kind: job_description
+    text: 'You will sell our HR software to companies across KSA. You will forecast in Salesforce every week.'
+  - id: S2
+    kind: job_description
+    text: 'Riyadh'
+expected:
+  match:
+    industry.domain: none
+    regions[*].region: [ksa]
+recorded:
+  output:
+    industry:
+      domain: none
+    regions:
+      - region: ksa
+        citations:
+          - sourceId: S1
+            quote: You will sell our HR software to companies across KSA.
+            start: 0
+            end: 54
+  promptVersion: jobs.detectDomain@3
+  promptHash: cc34d5927fcf

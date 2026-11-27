@@ -19,15 +19,15 @@ expected:
       - Editing other writers
       - Docs tooling
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 46c8bef6eff9
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 03f2dd7bc079
   output:
     competencies:
-      - name: Technical Documentation Writing
+      - name: Technical Writing for Product Documentation
         evidenceExpected:
-          Candidate wrote clear, structured task documentation for a software product's user interface, such as
-          a merchant dashboard.
-        weight: 40
+          A set of clear, well-structured task documents explaining product features and usage, published in a
+          help centre or similar platform.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -36,10 +36,11 @@ recorded:
             start: 0
             end: 61
         claim: false
-      - name: Product Knowledge Acquisition
-        evidenceExpected: Candidate demonstrated ability to learn a product thoroughly to explain its features and usage
-          effectively in documentation.
-        weight: 20
+      - name: Product Knowledge Acquisition and Explanation
+        evidenceExpected:
+          Demonstrated ability to learn a product in depth and produce explanatory content that makes the
+          product understandable to users.
+        weight: 25
         level: 4
         type: mandatory
         citations:
@@ -50,9 +51,9 @@ recorded:
         claim: false
       - name: Help Centre Content Organization
         evidenceExpected:
-          Candidate organized help centre content to ensure answers are easy to find and logically arranged for
-          user accessibility.
-        weight: 20
+          Experience organizing help centre or knowledge base content to ensure answers are easy to find and
+          logically structured.
+        weight: 25
         level: 3
         type: mandatory
         citations:
@@ -61,46 +62,35 @@ recorded:
             start: 111
             end: 168
         claim: false
-      - name: Collaboration with Support Agents
+    refused: false
+    reason: null
+    suggestions:
+      - name: Collaboration with Support Teams
         evidenceExpected:
-          Candidate collaborated with support agents who draft articles, integrating their input into the help
-          centre documentation.
+          Work that shows collaboration with support agents or customer service teams to draft or improve help
+          centre articles.
         weight: 20
-        level: 2
+        level: 3
         type: desirable
+        why:
+          The description states that support agents also draft articles for the help centre, implying collaboration with
+          support teams is important but not explicitly required.
         citations:
           - sourceId: S1
             quote: Support agents also draft articles for the help centre.
             start: 169
             end: 224
         claim: false
-    refused: false
-    reason: null
-    suggestions:
-      - name: User Interface Understanding
+      - name: User Experience (UX) Writing
         evidenceExpected:
-          Candidate demonstrated ability to understand and interpret user interfaces to produce accurate task
-          documentation.
-        weight: 30
+          Samples of writing that enhance user experience by making technical content accessible and easy to
+          understand for end users.
+        weight: 15
         level: 3
-        type: mandatory
+        type: desirable
         why:
-          The job involves writing task documentation for a merchant dashboard, implying understanding of user interfaces is
-          needed, but the description does not explicitly state this.
-        citations:
-          - sourceId: S1
-            quote: You will write task documentation for our merchant dashboard.
-            start: 0
-            end: 61
-        claim: false
-      - name: Information Architecture
-        evidenceExpected: Candidate designed or improved the structure and navigation of help centre content to enhance user experience.
-        weight: 25
-        level: 3
-        type: mandatory
-        why:
-          Organizing the help centre so answers are easy to find implies skills in information architecture, which is not
-          explicitly requested.
+          Organizing help centre content for easy findability implies a need for UX writing skills to improve user navigation
+          and comprehension, though not explicitly stated.
         citations:
           - sourceId: S1
             quote: You organise the help centre so answers are easy to find.
@@ -108,11 +98,11 @@ recorded:
             end: 168
         claim: false
   matches:
-    Clear task documentation: Technical Documentation Writing
-    Understanding the product: Product Knowledge Acquisition
+    Clear task documentation: Technical Writing for Product Documentation
+    Understanding the product: Product Knowledge Acquisition and Explanation
     Information structure: Help Centre Content Organization
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      User Interface Understanding: null
-      Information Architecture: null
+      Collaboration with Support Teams: null
+      User Experience (UX) Writing: null

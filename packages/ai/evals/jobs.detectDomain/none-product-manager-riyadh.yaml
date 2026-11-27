@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will own a product area from discovery to launch. You talk to customers, write specs and decide what ships with design and engineering.'
+    text:
+      'You will own a product area from discovery to launch. You talk to customers, write specs and decide what ships
+      with design and engineering.'
   - id: S2
     kind: job_description
     text: 'Riyadh, Saudi Arabia'
@@ -16,8 +18,8 @@ expected:
     industry.domain: none
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '99c7d80b6b80'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '2bb1be642d3d'
   output:
     industry:
       domain: none
@@ -25,4 +27,6 @@ recorded:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

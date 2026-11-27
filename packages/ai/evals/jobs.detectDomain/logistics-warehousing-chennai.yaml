@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will own the product for our warehouses: receiving, picking, packing and dispatching parcels to couriers. You work with operations leads and decide what ships.'
+    text:
+      'You will own the product for our warehouses: receiving, picking, packing and dispatching parcels to couriers. You
+      work with operations leads and decide what ships.'
   - id: S2
     kind: job_description
     text: 'Chennai, India'
@@ -16,16 +18,21 @@ expected:
     industry.domain: logistics_mobility
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '2f8a8721abb0'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '82831cae9a66'
   output:
     industry:
       domain: logistics_mobility
       citations:
         - sourceId: S1
           quote: 'You will own the product for our warehouses: receiving, picking, packing and dispatching parcels to couriers.'
+          start: 0
+          end: 109
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Chennai, India'
+            quote: Chennai, India
+            start: 0
+            end: 14

@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will model wait times and no-shows for our telemedicine consultations between patients and doctors. You ship models with tests and explain them to clinical staff.'
+    text:
+      'You will model wait times and no-shows for our telemedicine consultations between patients and doctors. You ship
+      models with tests and explain them to clinical staff.'
   - id: S2
     kind: job_description
     text: 'Hyderabad, India'
@@ -16,16 +18,21 @@ expected:
     industry.domain: healthcare
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'b663788e2be0'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '4705e4d29890'
   output:
     industry:
       domain: healthcare
       citations:
         - sourceId: S1
-          quote: 'You will model wait times and no-shows for our telemedicine consultations between patients and doctors.'
+          quote: You will model wait times and no-shows for our telemedicine consultations between patients and doctors.
+          start: 0
+          end: 103
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Hyderabad, India'
+            quote: Hyderabad, India
+            start: 0
+            end: 16

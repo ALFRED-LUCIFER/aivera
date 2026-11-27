@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will automate tests for our UPI payment flows and merchant settlement reports. You follow the RBI's rules for payment aggregators when you design test data. You own the regression suite in CI."
+    text:
+      "You will automate tests for our UPI payment flows and merchant settlement reports. You follow the RBI's rules for
+      payment aggregators when you design test data. You own the regression suite in CI."
   - id: S2
     kind: job_description
     text: 'Bengaluru, India'
@@ -16,16 +18,23 @@ expected:
     industry.domain: payments_fintech
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'c917a8f98576'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'dfcf312e36bc'
   output:
     industry:
       domain: payments_fintech
       citations:
         - sourceId: S1
-          quote: 'You will automate tests for our UPI payment flows and merchant settlement reports.'
+          quote:
+            You will automate tests for our UPI payment flows and merchant settlement reports. You follow the RBI's rules for
+            payment aggregators when you design test data.
+          start: 0
+          end: 160
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Bengaluru, India'
+            quote: Bengaluru, India
+            start: 0
+            end: 16

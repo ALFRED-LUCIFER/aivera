@@ -1,0 +1,28 @@
+# "The Gulf" names no single region (synthetic), and there is no location. Live, @2 answered "ksa" in 3 of 3 runs.
+id: wider-area-names-no-region
+input:
+  jobType: software_engineering
+  title: Backend Engineer, Billing
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      We are the leading provider of smart metering in the Gulf, serving 2 million households. You will build the
+      billing service that turns meter readings into invoices.
+expected:
+  match:
+    industry.domain: energy_utilities
+    regions: []
+recorded:
+  output:
+    industry:
+      domain: energy_utilities
+      citations:
+        - sourceId: S1
+          quote: We are the leading provider of smart metering in the Gulf, serving 2 million households.
+          start: 0
+          end: 88
+      claim: false
+    regions: []
+  promptVersion: jobs.detectDomain@3
+  promptHash: a18547c23fb2

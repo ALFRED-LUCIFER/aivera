@@ -568,7 +568,7 @@ describe('Feature: AI eval harness with a golden set', () => {
       expect(stdout).toMatch(
         /\| Task \| Cases \| Citation validity \| Citation contract \| Claim labelling \| Field match \|/,
       );
-      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 14 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.draftCompetencies \| 20 \| 100% \(min 100%\) \|/);
     },
     cliTimeout,
   );
@@ -831,7 +831,7 @@ describe('Feature: Evals for industry detection (AIV-P1-066)', () => {
       const { status, stdout } = cli(['--task', 'jobs.detectDomain']);
       expect(status).toBe(0);
       expect(stdout).toContain('PASS jobs.detectDomain payments-difc: citation validity 2/2');
-      expect(stdout).toMatch(/\| jobs\.detectDomain \| 38 \| 100% \(min 100%\) \|/);
+      expect(stdout).toMatch(/\| jobs\.detectDomain \| 40 \| 100% \(min 100%\) \|/);
       expect(stdout).toContain('jobs.detectDomain Domain accuracy: 100% (28/28, min 90%)');
       expect(stdout).toContain('jobs.detectDomain No clear domain: 100% (6/6, min 83.3%)');
       expect(stdout).toContain('jobs.detectDomain Fairness: 100% (4/4, min 100%)');

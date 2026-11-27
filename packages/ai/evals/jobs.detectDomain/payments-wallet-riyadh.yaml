@@ -8,7 +8,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will own the mobile wallet that lets customers pay merchants and send money to family. Our wallet operates under a SAMA licence, so you plan releases with the compliance team. You write clear specs and decide what ships.'
+    text:
+      'You will own the mobile wallet that lets customers pay merchants and send money to family. Our wallet operates
+      under a SAMA licence, so you plan releases with the compliance team. You write clear specs and decide what ships.'
   - id: S2
     kind: job_description
     text: 'Riyadh, Saudi Arabia'
@@ -17,16 +19,23 @@ expected:
     industry.domain: payments_fintech
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'c17165ee7649'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '2f6d8215ee3a'
   output:
     industry:
       domain: payments_fintech
       citations:
         - sourceId: S1
-          quote: 'You will own the mobile wallet that lets customers pay merchants and send money to family.'
+          quote:
+            You will own the mobile wallet that lets customers pay merchants and send money to family. Our wallet operates
+            under a SAMA licence, so you plan releases with the compliance team.
+          start: 0
+          end: 179
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

@@ -18,13 +18,15 @@ expected:
       - Retail industry knowledge
       - CRM and forecasting
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: ed31f96d6ecf
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 5664f85c0a73
   output:
     competencies:
-      - name: New Business Closing
-        evidenceExpected: Candidate built and closed deals with new mid-size retail clients, demonstrating successful sales closures.
-        weight: 40
+      - name: New Business Closing with Mid-Size Retailers
+        evidenceExpected:
+          A record of successfully closing sales deals with mid-size retail clients, demonstrating the ability
+          to convert prospects into customers.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -33,10 +35,10 @@ recorded:
             start: 0
             end: 52
         claim: false
-      - name: Prospect Pipeline Development
+      - name: Pipeline Building and Prospecting
         evidenceExpected:
-          Candidate created and managed a pipeline of potential clients independently to ensure continuous sales
-          opportunities.
+          Evidence of independently building and managing a sales pipeline, including identifying and qualifying
+          potential clients.
         weight: 30
         level: 4
         type: mandatory
@@ -46,11 +48,9 @@ recorded:
             start: 53
             end: 94
         claim: false
-      - name: Contract Negotiation with Procurement
-        evidenceExpected:
-          Candidate negotiated contracts directly with procurement teams, securing favorable terms and closing
-          agreements.
-        weight: 30
+      - name: Contract Negotiation with Procurement Teams
+        evidenceExpected: Experience negotiating contract terms and conditions with procurement teams to secure favorable agreements.
+        weight: 20
         level: 4
         type: mandatory
         citations:
@@ -64,29 +64,30 @@ recorded:
     suggestions:
       - name: Retail Industry Knowledge
         evidenceExpected:
-          Candidate demonstrated understanding of retail market dynamics and client needs by tailoring sales
-          approaches to mid-size retailers.
-        weight: 20
+          Demonstrated understanding of the retail industry, including market trends and customer needs, to
+          effectively engage mid-size retailers.
+        weight: 40
         level: 3
         type: desirable
-        why: The job requires closing new business with mid-size retailers, implying knowledge of the retail industry is
-          important, but the description does not explicitly ask for it.
+        why:
+          The description states closing new business with mid-size retailers and building a pipeline of prospects, implying
+          the need for retail industry knowledge but does not explicitly mention it.
         citations:
           - sourceId: S1
             quote: You will close new business with mid-size retailers.
             start: 0
             end: 52
         claim: false
-      - name: CRM and Sales Tools Proficiency
+      - name: Sales Communication Skills
         evidenceExpected:
-          Candidate used CRM systems and sales tools to track prospects, manage pipeline, and support sales
-          processes effectively.
-        weight: 15
-        level: 3
+          Examples of persuasive communication and presentation skills used to engage clients and negotiate
+          deals successfully.
+        weight: 30
+        level: 4
         type: desirable
         why:
-          Building and managing a pipeline of prospects implies the use of CRM or sales tools, but the description does not
-          explicitly mention this skill.
+          Negotiating contracts and building a pipeline imply the need for strong sales communication skills, which the
+          description does not explicitly state.
         citations:
           - sourceId: S1
             quote: You build your own pipeline of prospects.
@@ -94,11 +95,11 @@ recorded:
             end: 94
         claim: false
   matches:
-    Closing sales: New Business Closing
-    Prospecting and pipeline: Prospect Pipeline Development
-    Negotiation: Contract Negotiation with Procurement
+    Closing sales: New Business Closing with Mid-Size Retailers
+    Prospecting and pipeline: Pipeline Building and Prospecting
+    Negotiation: Contract Negotiation with Procurement Teams
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Retail Industry Knowledge: null
-      CRM and Sales Tools Proficiency: null
+      Sales Communication Skills: null

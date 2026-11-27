@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will own the app our engineers use to inspect power lines, substations and transformers for our electricity distribution company. You decide what ships with design and engineering.'
+    text:
+      'You will own the app our engineers use to inspect power lines, substations and transformers for our electricity
+      distribution company. You decide what ships with design and engineering.'
   - id: S2
     kind: job_description
     text: 'Ahmedabad, India'
@@ -16,16 +18,23 @@ expected:
     industry.domain: energy_utilities
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '043db7b06d9e'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '4984782f8b71'
   output:
     industry:
       domain: energy_utilities
       citations:
         - sourceId: S1
-          quote: 'You will own the app our engineers use to inspect power lines, substations and transformers for our electricity distribution company.'
+          quote:
+            You will own the app our engineers use to inspect power lines, substations and transformers for our electricity
+            distribution company.
+          start: 0
+          end: 133
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Ahmedabad, India'
+            quote: Ahmedabad, India
+            start: 0
+            end: 16

@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will design the app patients use to book appointments at our clinics and see their lab results. You test designs with patients and doctors. You follow the Department of Health rules for patient data.'
+    text: 'You will design the app patients use to book appointments at our clinics and see their lab results. You test
+      designs with patients and doctors. You follow the Department of Health rules for patient data.'
   - id: S2
     kind: job_description
     text: 'Abu Dhabi, United Arab Emirates'
@@ -16,16 +17,21 @@ expected:
     industry.domain: healthcare
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'f1eb6b24261c'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'edd9bdbedc68'
   output:
     industry:
       domain: healthcare
       citations:
         - sourceId: S1
-          quote: 'You will design the app patients use to book appointments at our clinics and see their lab results.'
+          quote: You will design the app patients use to book appointments at our clinics and see their lab results.
+          start: 0
+          end: 99
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Abu Dhabi, United Arab Emirates'
+            quote: Abu Dhabi, United Arab Emirates
+            start: 0
+            end: 31

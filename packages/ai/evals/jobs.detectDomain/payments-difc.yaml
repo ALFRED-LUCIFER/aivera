@@ -18,16 +18,21 @@ expected:
     industry.domain: payments_fintech
     regions[*].region: [uae]
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'a06380057be9'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '1cd1abb87d50'
   output:
     industry:
       domain: payments_fintech
       citations:
         - sourceId: S1
           quote: You will build the card acquiring platform that settles merchant payments across the Gulf.
+          start: 0
+          end: 90
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'DIFC, Dubai'
+            quote: DIFC, Dubai
+            start: 0
+            end: 11

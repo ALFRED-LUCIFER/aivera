@@ -7,7 +7,8 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build the core banking services that post deposits, loans and transfers for a retail bank. You write Java services with tests and run them in production.'
+    text: 'You will build the core banking services that post deposits, loans and transfers for a retail bank. You write
+      Java services with tests and run them in production.'
   - id: S2
     kind: job_description
     text: 'Riyadh'
@@ -16,16 +17,21 @@ expected:
     industry.domain: banking_islamic_finance
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '37f5cd10f4c1'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '8d9a3381b86b'
   output:
     industry:
       domain: banking_islamic_finance
       citations:
         - sourceId: S1
-          quote: 'You will build the core banking services that post deposits, loans and transfers for a retail bank.'
+          quote: You will build the core banking services that post deposits, loans and transfers for a retail bank.
+          start: 0
+          end: 99
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh'
+            quote: Riyadh
+            start: 0
+            end: 6

@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will win and grow small business accounts for our bank's current account and trade finance products. You meet owners, understand their cash flow and bring in deposits."
+    text:
+      "You will win and grow small business accounts for our bank's current account and trade finance products. You meet
+      owners, understand their cash flow and bring in deposits."
   - id: S2
     kind: job_description
     text: 'Mumbai, India'
@@ -16,16 +18,21 @@ expected:
     industry.domain: banking_islamic_finance
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'e17f72e0c79e'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '14c6d33874a0'
   output:
     industry:
       domain: banking_islamic_finance
       citations:
         - sourceId: S1
-          quote: "You will win and grow small business accounts for our bank's current account and trade finance products."
+          quote: You will win and grow small business accounts for our bank's current account and trade finance products.
+          start: 0
+          end: 104
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Mumbai, India'
+            quote: Mumbai, India
+            start: 0
+            end: 13

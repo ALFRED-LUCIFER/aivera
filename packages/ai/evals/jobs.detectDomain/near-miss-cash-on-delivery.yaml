@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build the courier app our drivers use to deliver parcels and collect cash on delivery. You write tested Kotlin code.'
+    text:
+      'You will build the courier app our drivers use to deliver parcels and collect cash on delivery. You write tested
+      Kotlin code.'
   - id: S2
     kind: job_description
     text: 'Sharjah'
@@ -18,16 +20,21 @@ expected:
     industry.domain: logistics_mobility
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'bebcb4b34085'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'ad01f63a400d'
   output:
     industry:
       domain: logistics_mobility
       citations:
         - sourceId: S1
-          quote: 'You will build the courier app our drivers use to deliver parcels and collect cash on delivery.'
+          quote: You will build the courier app our drivers use to deliver parcels and collect cash on delivery.
+          start: 0
+          end: 95
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Sharjah'
+            quote: Sharjah
+            start: 0
+            end: 7
