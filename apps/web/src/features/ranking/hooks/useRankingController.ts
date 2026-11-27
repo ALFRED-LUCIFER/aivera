@@ -56,7 +56,7 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
             selectedIds,
             onSelectedIdsChange(ids: string[]) {
               setPicked(ids.join(','));
-              replaceSelectedInUrl(ids.join(','));
+              replaceSelectedInUrl(ids);
             },
             /** Selected rows the filters or the first-7 cut do not show: the bar says so. */
             notShown: selectedIds.filter((id) => !shown.some((row) => row.id === id)).length,

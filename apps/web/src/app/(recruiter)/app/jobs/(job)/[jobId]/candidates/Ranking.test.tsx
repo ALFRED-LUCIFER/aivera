@@ -377,7 +377,7 @@ describe('Scenario: Compare three (AIV-P1-036)', () => {
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Select Arjun Menon' }).checked).toBe(true);
   });
 
-  it('a selection in the URL is restored, and ids that are not rows of this job are dropped', () => {
+  it('a selection in the URL is restored, and ids that are not rows of this job are ignored', () => {
     replaceState(null, '', '/?selected=a2,not-a-row,a1');
     selectable();
     expect(within(bar()).getByRole('status').textContent).toBe('2 selected');
