@@ -9,7 +9,15 @@ import { citation, sourceLabel, type Source } from '../citations.ts';
 // explains an order; it never advises on anyone (AGENTS.md 1.5).
 
 /** Bump with any change to the request the model is sent (its prompt hash): the system prompt, the prompt or the JSON schema. */
-export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@7';
+// AIV-P1-148: @8 adds that a facts source's only line is the one statement: live on 27 Nov 2026, with no change to
+// @7, gpt-main had begun to answer a one-line facts source with no statement at all.
+// shortcut: with two facts lines and an excerpt, @8 gives the checked line and the work and leaves the "Still resting
+// on claims" line out (priya-latency-work in 5 of 5 live runs, arjun-checked-not-heaviest in its recording; @7's
+// recordings had it). Asking for every facts line fixed that and lost omar-two-repos its second excerpt (three
+// statements cannot hold two lines and two excerpts). The recruiter still sees the claims beside the explanation:
+// the score caption (backed by evidence, up to a figure if claims hold) comes from code. Gate the claims line in
+// field match when the statement cap is revisited.
+export const EXPLAIN_RANKING_VERSION = 'assessment.explainRanking@8';
 
 /** The only placeholders a statement may hold; the assessment module's domain/explain.ts fills each from the snapshot. */
 const EXPLAIN_PLACEHOLDERS = [
@@ -28,7 +36,7 @@ const EXPLAIN_RANKING_SYSTEM = [
   'That statement ends where the excerpt ends: never add what the work shows about the candidate or how much it matters ("showing',
   'significant contribution", "demonstrating strong skill"). Add nothing a cited source does not state: no judgement of size, importance or',
   'quality such as "significant", "strong", "extensive" or "substantial", and no "entirely", "all" or "including" the facts source does not say.',
-  'A statement that cites the facts source is one of its lines, copied exactly as it stands.',
+  'A statement that cites the facts source is one of its lines, copied exactly as it stands. Every line of the facts source is worth a statement: when it has only one line, that line is your one statement, never an empty list.',
   'Never write a number of your own: no percentage, number word or count word such as "one of", "both", "single", "once" or "third". Where a count, a share of the weight or a list of competencies belongs, write',
   `one of these placeholders instead: ${EXPLAIN_PLACEHOLDERS.map((p) => `{${p}}`).join(', ')}. The facts source already holds them: copy a placeholder exactly as it stands, braces included.`,
   "A figure from an excerpt of the candidate's work (a count, or a term that holds a digit) may appear in a statement only copied exactly, and only when that statement cites the excerpt with a quote that holds the same figure. Never write a percent sign.",

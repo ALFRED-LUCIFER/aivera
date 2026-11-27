@@ -8,15 +8,15 @@ sources:
   - id: S1
     kind: job_description
     text: >-
-      You will design and run services in production. You write tested code and review your teammates' changes. You
-      join the on-call rota and fix what breaks.
+      You will design and run services in production. You write tested code and review your teammates' changes. You join
+      the on-call rota and fix what breaks.
 expected:
   match:
     industry.domain: none
     regions: []
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '9e40b671540d'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '8defa1aa1d92'
   output:
     industry:
       domain: none

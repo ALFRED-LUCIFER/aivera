@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will lead the support team for our online marketplace, answering buyers and sellers by chat and phone. Native Arabic speaker.'
+    text:
+      'You will lead the support team for our online marketplace, answering buyers and sellers by chat and phone. Native
+      Arabic speaker.'
   - id: S2
     kind: job_description
     text: 'Bengaluru, India'
@@ -18,16 +20,21 @@ expected:
     industry.domain: ecommerce_marketplaces
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '9af2eece3b46'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '327138e91e17'
   output:
     industry:
       domain: ecommerce_marketplaces
       citations:
         - sourceId: S1
-          quote: 'You will lead the support team for our online marketplace, answering buyers and sellers by chat and phone.'
+          quote: You will lead the support team for our online marketplace, answering buyers and sellers by chat and phone.
+          start: 0
+          end: 106
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Bengaluru, India'
+            quote: Bengaluru, India
+            start: 0
+            end: 16

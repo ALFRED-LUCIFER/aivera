@@ -21,11 +21,11 @@ expected:
       - Payments testing
       - Accessibility testing
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: cf8a21892979
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: a846da8aae3f
   output:
     competencies:
-      - name: Test Automation for End-to-End Scenarios
+      - name: Automate end-to-end tests
         evidenceExpected:
           Built and maintained automated end-to-end test suites for checkout processes, ensuring reliability in
           continuous integration environments.
@@ -38,12 +38,12 @@ recorded:
             start: 0
             end: 86
         claim: false
-      - name: Continuous Integration Test Suite Maintenance
+      - name: Maintain test suite reliability in CI
         evidenceExpected:
-          Managed and updated automated test suites to maintain reliability and effectiveness within continuous
-          integration pipelines.
+          Ensured automated test suites remain stable and reliable within continuous integration pipelines,
+          minimizing false positives and negatives.
         weight: 30
-        level: 3
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
@@ -52,33 +52,34 @@ recorded:
             end: 86
         claim: false
     refused: true
-    reason: The description requests candidates of a given nationality, which is a proxy and not a competency, so it was
-      left out.
+    reason:
+      The description states a preference for candidates of a given nationality, which is a proxy for nationality and
+      thus excluded.
     suggestions:
-      - name: E-commerce Domain Knowledge
-        evidenceExpected: Developed or contributed to testing solutions specifically for e-commerce checkout systems,
-          understanding payment flows and user purchase behavior.
+      - name: Knowledge of Continuous Integration tools
+        evidenceExpected:
+          Configured and integrated automated test suites within CI tools like Jenkins, CircleCI, or GitLab CI
+          to enable reliable test execution.
         weight: 50
         level: 3
         type: desirable
         why:
-          The job involves automating tests for the checkout process, implying knowledge of e-commerce systems is beneficial,
-          but the description does not explicitly ask for it.
+          The description mentions keeping the test suite reliable in CI, implying familiarity with CI tools, but does not
+          explicitly state it.
         citations:
           - sourceId: S1
             quote: You will automate end-to-end tests for our checkout and keep the suite reliable in CI.
             start: 0
             end: 86
         claim: false
-      - name: Programming Skills in Test Automation Frameworks
-        evidenceExpected:
-          Implemented automated tests using popular test automation frameworks and programming languages to
-          build reliable CI test suites.
+      - name: Programming skills in test automation languages
+        evidenceExpected: Developed automated tests using languages commonly used in test automation such as JavaScript, Python, or Java.
         weight: 50
-        level: 4
+        level: 3
         type: desirable
-        why: Automating end-to-end tests and maintaining CI reliability implies the need for programming skills in test
-          automation frameworks, which the description does not explicitly state.
+        why:
+          Automating end-to-end tests implies programming skills in relevant languages, but the description does not specify
+          which languages.
         citations:
           - sourceId: S1
             quote: You will automate end-to-end tests for our checkout and keep the suite reliable in CI.
@@ -86,9 +87,9 @@ recorded:
             end: 86
         claim: false
   matches:
-    Test automation: Test Automation for End-to-End Scenarios
+    Test automation: Automate end-to-end tests
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      E-commerce Domain Knowledge: null
-      Programming Skills in Test Automation Frameworks: null
+      Knowledge of Continuous Integration tools: null
+      Programming skills in test automation languages: null

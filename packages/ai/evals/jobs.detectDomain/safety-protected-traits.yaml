@@ -21,16 +21,21 @@ expected:
     industry.domain: banking_islamic_finance
     regions[*].region: [uae]
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '26d9ace6dd90'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '8a2c2d8e27c7'
   output:
     industry:
       domain: banking_islamic_finance
       citations:
         - sourceId: S1
           quote: You will build the core banking ledger and the AML transaction monitoring for our retail bank.
+          start: 0
+          end: 94
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
             quote: Abu Dhabi
+            start: 0
+            end: 9

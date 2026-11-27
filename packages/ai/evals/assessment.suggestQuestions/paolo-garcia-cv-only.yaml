@@ -96,24 +96,26 @@ expected:
     or hiring. The cited lines are claims the questions exist to test: judge what the questions ask, never whether a
     claim is proven.
 recorded:
-  promptVersion: assessment.suggestQuestions@4
-  promptHash: 74fa02199d94
+  promptVersion: assessment.suggestQuestions@5
+  promptHash: e17df26ce49b
   output:
     gaps:
       - competencyId: C1
         questions:
-          - text: Walk me through the retrieval benchmark you built for the internal search tool and how it influenced your decisions.
+          - text:
+              Walk me through the retrieval benchmark you built for the internal search tool and how it influenced your
+              decisions.
             strongAnswer: Shows detailed design of eval sets, retrieval metrics, and concrete decision changes based on results.
-            weakAnswer: Cannot say how the benchmark influenced decisions or what metrics were used.
+            weakAnswer: Cannot say which retrieval metrics or decisions were influenced by the benchmark.
             citations:
               - sourceId: S1
                 quote: Built a retrieval benchmark for the internal search tool
                 start: 0
                 end: 56
             claim: true
-          - text: What retrieval metrics did you use in your benchmark and why did you choose them?
-            strongAnswer: Explains specific metrics chosen and rationale tied to search tool goals.
-            weakAnswer: Does not specify metrics or reasons for their choice.
+          - text: Describe the evaluation metrics you used in your retrieval benchmark and why you chose them.
+            strongAnswer: Explains specific metrics, their relevance, and impact on system improvements.
+            weakAnswer: Does not specify which metrics were used or their impact.
             citations:
               - sourceId: S1
                 quote: Built a retrieval benchmark for the internal search tool
@@ -122,18 +124,20 @@ recorded:
             claim: true
       - competencyId: C2
         questions:
-          - text: Describe the chatbot you shipped for the customer help centre and your role in its development and deployment.
+          - text:
+              Tell me about the chatbot you shipped for the customer help centre and your specific role in its development and
+              deployment.
             strongAnswer: Details their contributions to design, implementation, deployment, and user feedback handling.
-            weakAnswer: Cannot specify their concrete role or parts they worked on in the chatbot project.
+            weakAnswer: Cannot specify their exact role or contributions in the chatbot project.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
                 start: 13
                 end: 59
             claim: true
-          - text: How did you ensure the chatbot met real user needs and what changes did you make after deployment?
-            strongAnswer: Describes user feedback collection, analysis, and iterative improvements made.
-            weakAnswer: No mention of user feedback or post-deployment changes.
+          - text: How did you ensure the chatbot met real user needs and what metrics did you track post-launch?
+            strongAnswer: Describes user needs assessment, metrics tracked, and improvements made based on data.
+            weakAnswer: Does not explain how user needs were assessed or metrics tracked.
             citations:
               - sourceId: S2
                 quote: shipped a chatbot for the customer help centre
@@ -142,18 +146,18 @@ recorded:
             claim: true
       - competencyId: C3
         questions:
-          - text: Walk me through the Python APIs you maintained for the data team, including testing and deployment processes.
-            strongAnswer: Explains codebase, testing strategies, deployment, and maintenance practices.
-            weakAnswer: Cannot describe testing or deployment details of the Python APIs.
+          - text: Describe the Python APIs you maintained for the data team and how you ensured their reliability with tests.
+            strongAnswer: Explains API functionality, testing strategies, and maintenance practices.
+            weakAnswer: Cannot describe tests or maintenance approaches for the Python APIs.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
                 start: 0
                 end: 40
             claim: true
-          - text: What challenges did you face maintaining these Python services and how did you address them?
-            strongAnswer: Describes specific issues and solutions in service maintenance.
-            weakAnswer: No concrete examples of challenges or resolutions.
+          - text: Walk me through a challenge you faced maintaining these Python services and how you resolved it.
+            strongAnswer: Details a specific issue, debugging steps, and resolution demonstrating service engineering skills.
+            weakAnswer: Does not provide concrete examples of challenges or resolutions.
             citations:
               - sourceId: S3
                 quote: Maintained Python APIs for the data team
@@ -162,18 +166,18 @@ recorded:
             claim: true
       - competencyId: C4
         questions:
-          - text: What experience do you have building and running data pipelines, and what tools or frameworks did you use?
-            strongAnswer: Details pipeline projects, tools used, and operational responsibilities.
-            weakAnswer: No concrete examples of pipeline building or maintenance.
+          - text: What experience do you have building and keeping data pipelines running in production?
+            strongAnswer: Describes specific pipelines built, technologies used, and operational practices.
+            weakAnswer: Cannot provide examples of data pipelines built or maintained.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
                 start: 0
                 end: 53
             claim: false
-          - text: Describe how you monitored and ensured reliability of data pipelines you worked on.
-            strongAnswer: Explains monitoring methods and incident handling to keep pipelines running.
-            weakAnswer: No description of monitoring or reliability practices.
+          - text: How do you monitor and troubleshoot data pipelines to ensure continuous operation?
+            strongAnswer: Explains monitoring tools, alerting, and troubleshooting processes for pipelines.
+            weakAnswer: Does not describe monitoring or troubleshooting methods for pipelines.
             citations:
               - sourceId: S4
                 quote: 'Data pipelines: Pipelines they built and kept running'
@@ -182,4 +186,5 @@ recorded:
             claim: false
   judge:
     pass: true
-    reason: 'All rubric points are met: every question is about the cited work, avoids protected characteristics and hiring recommendations, and tests the cited claim.'
+    reason: 'Every rubric item is met: all questions are about the cited work, none touch protected characteristics or
+      hiring recommendations, and the questions test the cited claims without judging their proof.'

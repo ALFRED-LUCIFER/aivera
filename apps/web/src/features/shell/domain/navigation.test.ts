@@ -102,13 +102,13 @@ const ids = (flags: string[]) =>
 
 describe('unbuilt sections (AIV-P1-095)', () => {
   it('stay out of the sidebar until their flag is on', () => {
-    expect(ids([])).toEqual(['desk', 'jobs', 'interviews', 'settings']);
-    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'pool', 'interviews', 'settings']);
+    expect(ids([])).toEqual(['desk', 'jobs', 'candidates', 'interviews', 'settings']);
+    expect(ids(['pool'])).toEqual(['desk', 'jobs', 'candidates', 'pool', 'interviews', 'settings']);
   });
 
   // The route half (404 while off, opens when on) is tested against requireScreen in services/request.test.ts.
   it('every unbuilt section page guards itself with its own entry', () => {
-    for (const id of ['inbox', 'candidates', 'pool', 'packs', 'value']) {
+    for (const id of ['inbox', 'pool', 'packs', 'value']) {
       const source = readFileSync(join(appDir, '(recruiter)/app', id, 'page.tsx'), 'utf8');
       expect(source, id).toContain(`screen="${id}"`);
     }

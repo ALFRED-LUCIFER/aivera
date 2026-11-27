@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will sell fibre, private 5G and SIM plans from our telecom operator to large companies. You build a pipeline and close multi-year contracts.'
+    text:
+      'You will sell fibre, private 5G and SIM plans from our telecom operator to large companies. You build a pipeline
+      and close multi-year contracts.'
   - id: S2
     kind: job_description
     text: 'Riyadh, Saudi Arabia'
@@ -16,16 +18,21 @@ expected:
     industry.domain: telecom
     regions[*].region: ['ksa']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'd200b3aa6a4f'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'ce8cabd33162'
   output:
     industry:
       domain: telecom
       citations:
         - sourceId: S1
-          quote: 'You will sell fibre, private 5G and SIM plans from our telecom operator to large companies.'
+          quote: You will sell fibre, private 5G and SIM plans from our telecom operator to large companies.
+          start: 0
+          end: 91
+      claim: false
     regions:
       - region: ksa
         citations:
           - sourceId: S2
-            quote: 'Riyadh, Saudi Arabia'
+            quote: Riyadh, Saudi Arabia
+            start: 0
+            end: 20

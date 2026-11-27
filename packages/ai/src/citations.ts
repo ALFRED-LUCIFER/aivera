@@ -90,10 +90,15 @@ export class InvalidCitation extends Error {
     task: string,
     label: string,
     reason: 'unknown source' | 'quote not in source' | 'quotes removed text' | 'not a requested pair',
+    /** The quote the model wrote, for the client's second attempt only: never in the message, a log or telemetry. */
+    quote?: string,
   ) {
     // The label comes from the model: named only when it has the shape we gave, so no model text reaches the message.
     super(`AI task ${task} cited ${/^S\d{1,4}$/.test(label) ? label : 'a source'}: ${reason}`);
+    // Not enumerable, so no serialiser (pino's `err`, a span's exception event) carries source text out.
+    Object.defineProperty(this, 'quote', { value: quote, enumerable: false });
   }
+  declare readonly quote?: string;
 }
 
 export const sourceLabel = (index: number) => `S${index + 1}`;
@@ -115,20 +120,61 @@ export const formatSources = (sources: readonly Source[]) =>
     })
     .join('\n');
 
+// What a PDF's layout leaves in extracted text and a model does not copy: list markers, and a dash standing alone
+// between two spaces (a list dash or a date-range dash; never one between two figures, where it is a range of numbers).
+// Read as a space on both sides of the comparison.
+// shortcut: a quote may therefore run from one list item into the next, as it already could across a line break, though
+// the prompts ask for one line; the words are the source's and in its order, but two items read together can say what
+// neither says alone. Make a list mark a boundary a quote cannot cross once AIV-P1-156 (#654, the scenario added in
+// its comment of 27 Nov 2026) drops a bad link alone.
+const LIST_MARK = /[\u2022\u2023\u2043\u25AA\u25AB\u25CF\u25E6\u25A0\u27A2]/;
+const DASH = /[-\u2013\u2014]/;
+
+/** The nearest character that is not whitespace before (`step` -1) or after (`step` 1) `i`, or '' at an end. */
+function nearest(text: string, i: number, step: -1 | 1): string {
+  for (let k = i + step; k >= 0 && k < text.length; k += step) if (!/\s/.test(text.charAt(k))) return text.charAt(k);
+  return '';
+}
+
 /**
- * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space (case and punctuation must
- * match). Offsets index the original text.
+ * `text` as it is compared: letters in compatibility forms folded ("\uFB01" to "fi"), layout marks and whitespace runs
+ * as one space. A numeric character is never folded: a superscript or a circled digit is not the plain figure.
  */
-export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
+function flatten(text: string): { flat: string; at: number[] } {
   let flat = '';
   const at: number[] = []; // at[i]: the index in `text` of flat[i]
   for (let i = 0; i < text.length; i++) {
-    const space = /\s/.test(text.charAt(i));
+    const char = text.charAt(i);
+    // Layout only when it stands alone: whitespace (or an end of the text) on both sides, and never beside another
+    // mark or between two figures, however far apart: a rating drawn in dots and a range of numbers are content.
+    const mark = LIST_MARK.test(char);
+    let layout = false;
+    // Only for a mark or a dash standing alone, so a long run of whitespace is walked once, not once per character.
+    if ((mark || DASH.test(char)) && /^\s?$/.test(text.charAt(i - 1)) && /^\s?$/.test(text.charAt(i + 1))) {
+      const [before, after] = [nearest(text, i, -1), nearest(text, i, 1)];
+      layout = mark
+        ? !LIST_MARK.test(before) && !LIST_MARK.test(after)
+        : !(/\p{Nd}/u.test(before) && /\p{Nd}/u.test(after));
+    }
+    const space = /\s/.test(char) || layout;
     if (space && (flat === '' || flat.endsWith(' '))) continue;
-    flat += space ? ' ' : text.charAt(i);
-    at.push(i);
+    const folded = space ? ' ' : /\p{N}/u.test(char) ? char : char.normalize('NFKC');
+    // One entry per code unit, so an offset never drifts when a character folds to several.
+    for (let k = 0; k < folded.length; k++) at.push(i);
+    flat += folded;
   }
-  const needle = quote.trim().replace(/\s+/g, ' ');
+  return { flat, at };
+}
+
+/**
+ * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, list markers and lone
+ * dashes read as a space and letters' compatibility forms folded (case, words, figures and punctuation must match): a CV extracted from
+ * a PDF keeps its bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the
+ * original text, so the stored excerpt is the source's own characters.
+ */
+export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
+  const { flat, at } = flatten(text);
+  const needle = flatten(quote).flat.trim();
   const found = needle === '' ? -1 : flat.indexOf(needle);
   if (found < 0) return undefined;
   return { start: at[found] ?? 0, end: (at[found + needle.length - 1] ?? 0) + 1 };
@@ -188,7 +234,7 @@ export function checkOutput<S extends z.ZodType>(
       // The model saw the redacted text, and `<` as `&lt;` (formatSources), so a quote may carry either back.
       const seen = redaction?.sources[index]?.text ?? source.text;
       const found = findQuote(seen, quote) ?? findQuote(seen, quote.replaceAll('&lt;', '<'));
-      if (!found) throw new InvalidCitation(task, label, 'quote not in source');
+      if (!found) throw new InvalidCitation(task, label, 'quote not in source', quote);
       const span = redaction ? redaction.original(index, found) : found;
       if (!span) throw new InvalidCitation(task, label, 'quotes removed text');
       kinds.push(source.kind);

@@ -9,7 +9,12 @@ import { cited, sourceLabel, type Source } from '../citations.ts';
 // AIV-P1-137: @3 asked about a figure without naming it and wrote notes such as "Gives vague or generic answers", which
 // the eval now fails in code; @4 has the question write the figure and the notes name what an answer must show.
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored with every question set. */
-export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@4';
+// AIV-P1-148: on CVs extracted from real PDF layouts (short fragments, one per line) @4 quoted whole passages stitched
+// across lines or shortened with "...", which are not in the source: the question set was rejected for about half of
+// them. @5 asks for the few words the question tests, from one line, as evidence.mapToCompetency does.
+// shortcut: "at most 12 words, from a single line" is advice the model may break (a recorded quote has 14);
+// nothing enforces it. Enforce it in the schema if long excerpts hurt the interview guide.
+export const SUGGEST_QUESTIONS_VERSION = 'assessment.suggestQuestions@5';
 
 export const MAX_QUESTION_WORDS = 30;
 export const MAX_NOTE_WORDS = 25;
@@ -29,7 +34,9 @@ export const SUGGEST_QUESTIONS_SYSTEM = [
   'naming what a weak answer leaves out about it ("Cannot say which data the 9% was measured on"). A note names only',
   "that thing (how a figure was measured, the data or questions behind it, the system, the candidate's own part) and",
   "never describes the answer's manner: no note calls an answer vague, general, generic or lacking detail.",
-  'citations, quoting the words of a source listed under that gap\'s "Cite only" that the question tests.',
+  'citations, quoting the words of a source listed under that gap\'s "Cite only" that the question tests: the few',
+  'words or numbers it rests on (at most 12 words), from a single line of the source, copied as one unbroken run',
+  'exactly as written, never shortened with "..." and never joined from separate lines.',
   'A source listed under "Notes to aim the questions" says what the evidence does not show and what would change it:',
   'use it to aim a question, but never cite it, not even beside another citation; quote the evidence the question',
   'tests instead.',

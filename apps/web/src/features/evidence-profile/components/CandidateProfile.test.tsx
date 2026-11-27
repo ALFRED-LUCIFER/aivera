@@ -47,10 +47,10 @@ const ready = (
   notes: [],
   ...more,
 });
-const show = (view: CandidateProfileView) =>
+const show = (view: CandidateProfileView, linkCandidates = false) =>
   render(
     <IntlProvider {...intl}>
-      <CandidateProfile view={view} />
+      <CandidateProfile view={view} linkCandidates={linkCandidates} />
     </IntlProvider>,
   );
 
@@ -73,6 +73,17 @@ describe('CandidateProfile states', () => {
     expect(screen.getByText('Not yet scored')).toBeTruthy();
     expect(screen.getByText('Not yet available')).toBeTruthy();
     expect(screen.queryByText('Why they are ranked here')).toBeNull();
+  });
+
+  it('links "Candidates" in the breadcrumb only when the server says this member may open it (AIV-P1-048)', () => {
+    show(ready(scored), true);
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByRole('link', { name: 'Candidates' }).getAttribute('href')).toBe('/app/candidates');
+    cleanup();
+    show(ready(scored));
+    expect(
+      within(screen.getByRole('navigation', { name: 'Breadcrumb' })).queryByRole('link', { name: 'Candidates' }),
+    ).toBeNull();
   });
 
   it('a scored candidate with no explanation says none is available yet', () => {

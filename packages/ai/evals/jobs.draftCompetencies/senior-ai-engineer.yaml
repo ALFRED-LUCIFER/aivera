@@ -24,12 +24,12 @@ expected:
       - Arabic and bilingual NLP
       - Product judgement
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: 729fa2a23ace
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 50cf6b122260
   output:
     competencies:
-      - name: LLM Assistant and Retrieval System Development
-        evidenceExpected: Built and deployed LLM assistants and retrieval systems used by real merchants in production environments.
+      - name: LLM assistant and retrieval system development
+        evidenceExpected: Built, shipped, and maintained LLM assistants and retrieval systems used by real merchants.
         weight: 30
         level: 4
         type: mandatory
@@ -39,9 +39,9 @@ recorded:
             start: 0
             end: 93
         claim: false
-      - name: Evaluation Set and Retrieval Metric Construction
-        evidenceExpected: Created evaluation datasets and retrieval metrics to assess and decide production readiness of AI systems.
-        weight: 20
+      - name: Evaluation set and retrieval metric creation
+        evidenceExpected: Created evaluation sets and retrieval metrics to determine product readiness for shipping.
+        weight: 15
         level: 4
         type: mandatory
         citations:
@@ -50,8 +50,8 @@ recorded:
             start: 94
             end: 170
         claim: false
-      - name: Production Python Service Development
-        evidenceExpected: Wrote production-grade Python services with comprehensive tests and deployed them independently.
+      - name: Production Python service development and deployment
+        evidenceExpected: Wrote production Python services with tests and deployed them independently.
         weight: 20
         level: 4
         type: mandatory
@@ -61,8 +61,8 @@ recorded:
             start: 171
             end: 251
         claim: false
-      - name: System Performance and Reliability Management
-        evidenceExpected: Monitored and optimized system latency, cost per request, and incident rates to maintain service quality.
+      - name: Latency, cost, and incident management
+        evidenceExpected: Monitored and optimized latency, cost per request, and incident rates for deployed services.
         weight: 15
         level: 4
         type: mandatory
@@ -72,9 +72,9 @@ recorded:
             start: 252
             end: 310
         claim: false
-      - name: Multilingual Assistant Support (Arabic and English)
-        evidenceExpected: Developed AI assistants capable of answering merchants in both Arabic and English languages.
-        weight: 15
+      - name: Multilingual assistant support (Arabic and English)
+        evidenceExpected: Developed or maintained assistants capable of answering merchants in Arabic and English.
+        weight: 20
         level: 3
         type: mandatory
         citations:
@@ -86,33 +86,28 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Cloud Deployment and Infrastructure Management
-        evidenceExpected:
-          Deployed and managed cloud infrastructure for scalable AI services ensuring high availability and
-          fault tolerance.
+      - name: Cloud infrastructure and deployment
+        evidenceExpected: Deployed and managed AI services on cloud platforms ensuring scalability and reliability.
         weight: 10
         level: 3
         type: desirable
-        why: The job requires deploying production Python services and managing latency and incidents, implying cloud or
-          infrastructure deployment skills, which the description does not explicitly ask for.
+        why:
+          The description mentions writing and deploying production services but does not specify the deployment environment
+          or infrastructure, implying cloud deployment knowledge is beneficial.
         citations:
           - sourceId: S1
             quote: You will write production Python services, with tests, and deploy them yourself.
             start: 171
             end: 251
-          - sourceId: S1
-            quote: You keep latency, cost per request and incidents in check.
-            start: 252
-            end: 310
         claim: false
-      - name: Data Engineering for Large-scale Retrieval Systems
-        evidenceExpected: Built data pipelines and processed large datasets to support retrieval systems and evaluation set construction.
+      - name: Machine learning model evaluation and tuning
+        evidenceExpected: Evaluated and tuned machine learning models to improve retrieval accuracy and assistant performance.
         weight: 10
         level: 3
         type: desirable
         why:
-          Building eval sets and retrieval metrics for LLM assistants implies handling and engineering large datasets, which
-          is not explicitly requested.
+          Building eval sets and retrieval metrics implies knowledge of ML model evaluation and tuning, though not explicitly
+          stated.
         citations:
           - sourceId: S1
             quote: You will build the eval sets and retrieval metrics that decide what we ship.
@@ -120,12 +115,12 @@ recorded:
             end: 170
         claim: false
   matches:
-    LLM systems in production: LLM Assistant and Retrieval System Development
-    Retrieval and evaluation: Evaluation Set and Retrieval Metric Construction
-    Python service engineering: Production Python Service Development
-    Cost and reliability: System Performance and Reliability Management
+    LLM systems in production: LLM assistant and retrieval system development
+    Retrieval and evaluation: Evaluation set and retrieval metric creation
+    Python service engineering: Production Python service development and deployment
+    Cost and reliability: Latency, cost, and incident management
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Cloud Deployment and Infrastructure Management: null
-      Data Engineering for Large-scale Retrieval Systems: null
+      Cloud infrastructure and deployment: null
+      Machine learning model evaluation and tuning: null

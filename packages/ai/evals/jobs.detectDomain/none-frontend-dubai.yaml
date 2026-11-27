@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build the web app our customers use every day in React and TypeScript. You write tested components and care about accessibility.'
+    text:
+      'You will build the web app our customers use every day in React and TypeScript. You write tested components and
+      care about accessibility.'
   - id: S2
     kind: job_description
     text: 'Dubai'
@@ -16,8 +18,8 @@ expected:
     industry.domain: none
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '276aa48d9a10'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '26e60553309a'
   output:
     industry:
       domain: none
@@ -25,4 +27,6 @@ recorded:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Dubai'
+            quote: Dubai
+            start: 0
+            end: 5

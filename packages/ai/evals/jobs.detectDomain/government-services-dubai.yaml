@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will design the digital services residents use to renew permits and pay fees to a government entity. You test designs with residents and staff.'
+    text:
+      'You will design the digital services residents use to renew permits and pay fees to a government entity. You test
+      designs with residents and staff.'
   - id: S2
     kind: job_description
     text: 'Dubai'
@@ -16,16 +18,21 @@ expected:
     industry.domain: government_public_sector
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: '29434a9790ef'
+  promptVersion: jobs.detectDomain@3
+  promptHash: 'a42c31d65e86'
   output:
     industry:
       domain: government_public_sector
       citations:
         - sourceId: S1
-          quote: 'You will design the digital services residents use to renew permits and pay fees to a government entity.'
+          quote: You will design the digital services residents use to renew permits and pay fees to a government entity.
+          start: 0
+          end: 104
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Dubai'
+            quote: Dubai
+            start: 0
+            end: 5

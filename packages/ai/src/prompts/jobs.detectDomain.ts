@@ -5,14 +5,17 @@ import { cited, type Source } from '../citations.ts';
 // the eval set (evals/jobs.detectDomain/). The jobs module calls it with its domain catalogue; the eval runner the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const DETECT_DOMAIN_VERSION = 'jobs.detectDomain@2';
+export const DETECT_DOMAIN_VERSION = 'jobs.detectDomain@3';
 
 export const DETECT_DOMAIN_SYSTEM = [
   "You read a job description and say which industry the hiring company is in, so Credalent can suggest that industry's",
   'skills. Choose one domain from the list in the schema only when the description clearly shows the company works in',
   'it, and cite the sentence that shows it. When no industry is clear, answer domain "none" with no citation.',
   'Regions: list a region from the schema only for where the job or the company is based or operates, each citing the',
-  'location or the description sentence that says so. Never infer a region, or anything else, from a line about the',
+  'location or the description sentence that says so. List a region once: when the location and the description both',
+  'show it, give one entry that cites the location. A region is listed only when the text names that country or a',
+  'city in it: "the Gulf", "GCC", "MENA", "the Middle East" or "Asia" alone names none, so it gives no region. Never',
+  'infer a region, or anything else, from a line about the',
   'people to hire: nationality, residency, where someone is from, an employer they worked at, age or gender.',
 ].join(' ');
 

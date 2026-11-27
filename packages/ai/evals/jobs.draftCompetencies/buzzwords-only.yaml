@@ -1,0 +1,62 @@
+# A description of traits any job asks for and no work (synthetic). Live, @4 drafted "Self-Starter Attitude" and
+# "Communication Skills" as mandatory competencies, a rubric no evidence can back: a product manager's interviews and
+# measured results then mapped to nothing. No competency is drafted, so Add a job offers the starter competencies.
+id: buzzwords-only
+input:
+  jobType: product_management
+  title: Product Manager
+sources:
+  - id: S1
+    kind: job_description
+    text: >-
+      We are looking for a rockstar product ninja who is passionate, a self-starter and a team player with excellent
+      communication skills and a can-do attitude. You will wear many hats, drive synergy across stakeholders and take
+      ownership. Must thrive in a fast-paced environment.
+expected:
+  match:
+    competencies: []
+    suggestions[*].name: []
+  text:
+    - path: suggestions[*].name
+      none: [communication, self-starter, team player, passion, attitude, fast-paced, ownership, synergy, stakeholder]
+recorded:
+  output:
+    competencies: []
+    refused: false
+    reason: null
+    suggestions:
+      - name: Stakeholder Management
+        evidenceExpected: Examples of coordinating and aligning multiple stakeholders to achieve product goals.
+        weight: 60
+        level: 4
+        type: mandatory
+        why:
+          The description states the need to 'drive synergy across stakeholders', implying strong stakeholder management
+          skills are essential.
+        citations:
+          - sourceId: S1
+            quote: drive synergy across stakeholders
+            start: 180
+            end: 213
+        claim: false
+      - name: Product Ownership
+        evidenceExpected: Demonstrated experience in taking full ownership of a product or feature from conception to launch.
+        weight: 40
+        level: 4
+        type: mandatory
+        why:
+          The description requires the candidate to 'take ownership', indicating responsibility for product outcomes is
+          critical.
+        citations:
+          - sourceId: S1
+            quote: take ownership
+            start: 218
+            end: 232
+        claim: false
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 092324cbc9eb
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Stakeholder Management: null
+      Product Ownership: null

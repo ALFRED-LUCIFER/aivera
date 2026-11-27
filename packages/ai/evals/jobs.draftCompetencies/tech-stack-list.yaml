@@ -1,0 +1,178 @@
+# A recruiter who was only given the stack (synthetic): ten tools and no sentence. Each is one competency; live, @4
+# listed 8 and suggested the last two as "missing from your description".
+id: tech-stack-list
+input:
+  jobType: software_engineering
+  title: Backend Developer
+sources:
+  - id: S1
+    kind: job_description
+    text: 'Java, Spring Boot, Kafka, AWS, Docker, Kubernetes, PostgreSQL, Redis, microservices, CI/CD'
+expected:
+  match:
+    competencies[*].name: [Java, Spring Boot, Kafka, AWS, Docker, Kubernetes, PostgreSQL, Redis, Microservices, CI/CD]
+    suggestions[*].name:
+      - API design
+      - Automated testing
+recorded:
+  output:
+    competencies:
+      - name: Java programming
+        evidenceExpected: Built, shipped, or wrote backend services or applications using Java.
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Java
+            start: 0
+            end: 4
+        claim: false
+      - name: Spring Boot framework
+        evidenceExpected: Developed and deployed backend applications using Spring Boot framework.
+        weight: 10
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Spring Boot
+            start: 6
+            end: 17
+        claim: false
+      - name: Kafka messaging system
+        evidenceExpected: Implemented event-driven architectures or messaging solutions using Kafka.
+        weight: 9
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Kafka
+            start: 19
+            end: 24
+        claim: false
+      - name: AWS cloud services
+        evidenceExpected: Deployed, managed, or integrated backend systems on AWS cloud platform.
+        weight: 9
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: AWS
+            start: 26
+            end: 29
+        claim: false
+      - name: Docker containerization
+        evidenceExpected: Containerized applications and managed Docker images for backend services.
+        weight: 9
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Docker
+            start: 31
+            end: 37
+        claim: false
+      - name: Kubernetes orchestration
+        evidenceExpected: Deployed and managed containerized applications using Kubernetes clusters.
+        weight: 9
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Kubernetes
+            start: 39
+            end: 49
+        claim: false
+      - name: PostgreSQL database management
+        evidenceExpected: Designed, implemented, or maintained backend systems using PostgreSQL databases.
+        weight: 8
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: PostgreSQL
+            start: 51
+            end: 61
+        claim: false
+      - name: Redis caching system
+        evidenceExpected: Integrated Redis for caching or data storage in backend applications.
+        weight: 8
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: Redis
+            start: 63
+            end: 68
+        claim: false
+      - name: Microservices architecture
+        evidenceExpected: Built and maintained backend systems following microservices architectural patterns.
+        weight: 10
+        level: 4
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: microservices
+            start: 70
+            end: 83
+        claim: false
+      - name: CI/CD pipelines
+        evidenceExpected: Developed and maintained continuous integration and continuous deployment pipelines.
+        weight: 8
+        level: 3
+        type: mandatory
+        citations:
+          - sourceId: S1
+            quote: CI/CD
+            start: 85
+            end: 90
+        claim: false
+    refused: false
+    reason: null
+    suggestions:
+      - name: Backend development in Java language
+        evidenceExpected: Developed backend systems primarily using Java language.
+        weight: 10
+        level: 3
+        type: desirable
+        why:
+          The description lists Java as a required skill but does not explicitly state backend development in Java, which is
+          implied by the job title and tools.
+        citations:
+          - sourceId: S1
+            quote: Java
+            start: 0
+            end: 4
+        claim: false
+      - name: Cloud infrastructure management
+        evidenceExpected: Managed cloud infrastructure and services to support backend applications.
+        weight: 7
+        level: 3
+        type: desirable
+        why:
+          AWS is listed, implying cloud infrastructure use, but the description does not explicitly state managing cloud
+          infrastructure.
+        citations:
+          - sourceId: S1
+            quote: AWS
+            start: 26
+            end: 29
+        claim: false
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: 72d5fe1eb78a
+  matches:
+    Java: Java programming
+    Spring Boot: Spring Boot framework
+    Kafka: Kafka messaging system
+    AWS: AWS cloud services
+    Docker: Docker containerization
+    Kubernetes: Kubernetes orchestration
+    PostgreSQL: PostgreSQL database management
+    Redis: Redis caching system
+    Microservices: Microservices architecture
+    CI/CD: CI/CD pipelines
+  suggestions:
+    judge: evals.suggestion@2
+    verdicts:
+      Backend development in Java language: listed
+      Cloud infrastructure management: null

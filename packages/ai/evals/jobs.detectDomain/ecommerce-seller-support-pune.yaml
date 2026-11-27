@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will help sellers on our marketplace list products, handle returns and read their payout reports. You write help articles and answer tickets.'
+    text:
+      'You will help sellers on our marketplace list products, handle returns and read their payout reports. You write
+      help articles and answer tickets.'
   - id: S2
     kind: job_description
     text: 'Pune, India'
@@ -16,16 +18,21 @@ expected:
     industry.domain: ecommerce_marketplaces
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'eb54c5027271'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '31fb5edd660d'
   output:
     industry:
       domain: ecommerce_marketplaces
       citations:
         - sourceId: S1
-          quote: 'You will help sellers on our marketplace list products, handle returns and read their payout reports.'
+          quote: You will help sellers on our marketplace list products, handle returns and read their payout reports.
+          start: 0
+          end: 101
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Pune, India'
+            quote: Pune, India
+            start: 0
+            end: 11

@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: "You will build the prepaid recharge and billing services for our mobile operator's subscribers. You write tested services and join the on-call rota."
+    text:
+      "You will build the prepaid recharge and billing services for our mobile operator's subscribers. You write tested
+      services and join the on-call rota."
   - id: S2
     kind: job_description
     text: 'Gurugram, India'
@@ -16,16 +18,21 @@ expected:
     industry.domain: telecom
     regions[*].region: ['india']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'cd1666c8f2bd'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '150f66ee4782'
   output:
     industry:
       domain: telecom
       citations:
         - sourceId: S1
-          quote: "You will build the prepaid recharge and billing services for our mobile operator's subscribers."
+          quote: You will build the prepaid recharge and billing services for our mobile operator's subscribers.
+          start: 0
+          end: 95
+      claim: false
     regions:
       - region: india
         citations:
           - sourceId: S2
-            quote: 'Gurugram, India'
+            quote: Gurugram, India
+            start: 0
+            end: 15

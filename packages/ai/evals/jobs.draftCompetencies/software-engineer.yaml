@@ -19,13 +19,13 @@ expected:
       - Banking and payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@4
-  promptHash: a73c5cffcdf3
+  promptVersion: jobs.draftCompetencies@5
+  promptHash: d86ccc83e97a
   output:
     competencies:
-      - name: Backend service design and operation
-        evidenceExpected: Built and maintained backend services that handle merchant payment settlements in production environments.
-        weight: 40
+      - name: Design and run payment settlement services
+        evidenceExpected: Built and maintained production services that settle merchant payments reliably.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -34,9 +34,9 @@ recorded:
             start: 0
             end: 77
         claim: false
-      - name: Writing tested code and code review
-        evidenceExpected: Authored well-tested code and participated in peer code reviews to ensure code quality and reliability.
-        weight: 25
+      - name: Write tested code and perform code reviews
+        evidenceExpected: Authored well-tested code and reviewed teammates' code changes to maintain quality.
+        weight: 30
         level: 4
         type: mandatory
         citations:
@@ -45,9 +45,9 @@ recorded:
             start: 78
             end: 135
         claim: false
-      - name: Incident response and on-call support
-        evidenceExpected: Participated in on-call rotations and resolved production issues promptly to maintain service uptime.
-        weight: 25
+      - name: Participate in on-call rotation and incident resolution
+        evidenceExpected: Participated in on-call duties and fixed production issues promptly.
+        weight: 20
         level: 3
         type: mandatory
         citations:
@@ -59,40 +59,40 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Payment systems domain knowledge
-        evidenceExpected: Developed or contributed to payment processing systems or services handling merchant transactions.
-        weight: 10
-        level: 3
-        type: desirable
+      - name: Backend programming language proficiency
+        evidenceExpected: Developed backend services using a relevant programming language such as Java, Python, or Go.
+        weight: 40
+        level: 4
+        type: mandatory
         why:
-          The job involves designing and running services that settle merchant payments, implying knowledge of payment
-          systems is important but not explicitly stated.
+          The job involves designing and running backend payment services, implying the need for backend programming skills,
+          but no language is specified in the description.
         citations:
           - sourceId: S1
             quote: You will design and run services that settle merchant payments in production.
             start: 0
             end: 77
         claim: false
-      - name: Production monitoring and alerting
-        evidenceExpected: Implemented monitoring and alerting solutions to detect and respond to production issues in backend services.
-        weight: 10
+      - name: Payment systems and financial transaction knowledge
+        evidenceExpected: Built or contributed to systems handling payment processing or financial transactions.
+        weight: 35
         level: 3
         type: desirable
         why:
-          The job requires joining an on-call rota and fixing issues, implying the need for skills in production monitoring
-          and alerting, though not explicitly mentioned.
+          The job is about settling merchant payments, implying knowledge of payment systems and financial transactions, but
+          the description does not explicitly state this knowledge.
         citations:
           - sourceId: S1
-            quote: You join the on-call rota and fix what breaks.
-            start: 136
-            end: 182
+            quote: You will design and run services that settle merchant payments in production.
+            start: 0
+            end: 77
         claim: false
   matches:
-    System design in production: Backend service design and operation
-    Code quality and testing: Writing tested code and code review
-    Reliability and operations: Incident response and on-call support
+    System design in production: Design and run payment settlement services
+    Code quality and testing: Write tested code and perform code reviews
+    Reliability and operations: Participate in on-call rotation and incident resolution
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Payment systems domain knowledge: null
-      Production monitoring and alerting: null
+      Backend programming language proficiency: null
+      Payment systems and financial transaction knowledge: null

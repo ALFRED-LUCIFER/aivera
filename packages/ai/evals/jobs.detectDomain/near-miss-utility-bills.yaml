@@ -7,7 +7,9 @@ input:
 sources:
   - id: S1
     kind: job_description
-    text: 'You will build the app our electricity and water customers use to read their bills and pay them online. You write tested Swift and Kotlin code.'
+    text:
+      'You will build the app our electricity and water customers use to read their bills and pay them online. You write
+      tested Swift and Kotlin code.'
   - id: S2
     kind: job_description
     text: 'Dubai'
@@ -18,16 +20,21 @@ expected:
     industry.domain: energy_utilities
     regions[*].region: ['uae']
 recorded:
-  promptVersion: jobs.detectDomain@2
-  promptHash: 'b1e6886e4b20'
+  promptVersion: jobs.detectDomain@3
+  promptHash: '3ca1d7712c5d'
   output:
     industry:
       domain: energy_utilities
       citations:
         - sourceId: S1
-          quote: 'You will build the app our electricity and water customers use to read their bills and pay them online.'
+          quote: You will build the app our electricity and water customers use to read their bills and pay them online.
+          start: 0
+          end: 103
+      claim: false
     regions:
       - region: uae
         citations:
           - sourceId: S2
-            quote: 'Dubai'
+            quote: Dubai
+            start: 0
+            end: 5

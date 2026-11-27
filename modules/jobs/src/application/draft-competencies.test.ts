@@ -3,6 +3,7 @@ import {
   DRAFT_COMPETENCIES_SYSTEM,
   draftCompetenciesSchema,
   fakeProvider,
+  SchemaMismatch,
   UncitedOutput,
   type AiProvider,
 } from '@credalent/ai';
@@ -151,7 +152,37 @@ describe('Scenario: Every drafted competency cites the description', () => {
     expect(prompts).toHaveLength(2);
   });
 
-  // SAFETY: mutation check: removed .max(8) on competencies and .max(400) on evidenceExpected in draftCompetenciesSchema
+  // AIV-P1-145: up to the cap, whatever weights the model gave, the draft totals exactly 100 with every weight at least 1.
+  it.each([
+    [12, 2],
+    [10, 0],
+    [1, 2],
+  ])('accepts %i drafted and %i suggested, scaled to 100', async (drafted, suggested) => {
+    const [first] = answer.competencies;
+    const many = {
+      ...answer,
+      competencies: Array.from({ length: drafted }, (_, i) => ({ ...first, name: `Competency ${i}`, weight: 7 + i })),
+      suggestions: answer.suggestions.slice(0, suggested),
+    };
+    const draft = await setup(many).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
+    expect([draft.competencies.length, draft.suggestions.length]).toEqual([drafted, suggested]);
+    const weights = [...draft.competencies, ...draft.suggestions].map((c) => c.weightPercent);
+    expect(weights.reduce((sum, w) => sum + w, 0)).toBe(100);
+    expect(Math.min(...weights)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('refuses an answer over the cap after one retry, keeping none of it', async () => {
+    const [first] = answer.competencies;
+    const over = {
+      ...answer,
+      competencies: Array.from({ length: 13 }, (_, i) => ({ ...first, name: `Competency ${i}` })),
+    };
+    const { drafting, prompts } = setup(over);
+    await expect(drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1)).rejects.toBeInstanceOf(SchemaMismatch);
+    expect(prompts).toHaveLength(2);
+  });
+
+  // SAFETY: mutation check: removed .max(MAX_DRAFTED) on competencies and .max(400) on evidenceExpected in draftCompetenciesSchema
   // -> this test failed
   it('refuses a weight, a level, a list or a text out of range rather than patching it', () => {
     const first = answer.competencies[0];
@@ -164,8 +195,10 @@ describe('Scenario: Every drafted competency cites the description', () => {
       { ...first, evidenceExpected: 'e'.repeat(401) },
     ])
       expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: [broken] }).success).toBe(false);
-    const nine = Array.from({ length: 9 }, (_, i) => ({ ...first, name: `Competency ${i}` }));
-    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: nine }).success).toBe(false);
+    // AIV-P1-145: the cap is 12, so a long description's needs are all drafted; a thirteenth is refused.
+    const drafted = (length: number) => Array.from({ length }, (_, i) => ({ ...first, name: `Competency ${i}` }));
+    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: drafted(12) }).success).toBe(true);
+    expect(draftCompetenciesSchema.safeParse({ ...answer, competencies: drafted(13) }).success).toBe(false);
   });
 });
 
@@ -185,7 +218,7 @@ describe('Scenario: No candidate data reaches the prompt', () => {
     expect(system && text(system)).toContain(DRAFT_COMPETENCIES_SYSTEM);
     // The citation rules and the numbered source wrapper are the AI package's; what varies is exactly our three fields.
     expect(user).toBe(
-      `Job type: ai_llm_engineering\nTitle: Senior AI Engineer\n\nSources:\n` +
+      `Job type: ai llm engineering\nTitle: Senior AI Engineer\n\nSources:\n` +
         `<source id="S1" kind="job_description" trust="untrusted">\n${description}\n</source>`,
     );
   });
