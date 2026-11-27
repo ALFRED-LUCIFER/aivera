@@ -22,7 +22,7 @@ const fake = vi.hoisted(() => ({
   push: vi.fn(),
   urlListeners: new Set<() => void>(),
 }));
-// As Next does, useSearchParams follows window.history.replaceState, which is how the selection is kept (AIV-P1-036).
+// As Next does, useSearchParams follows window.history.replaceState, where the selection is mirrored (AIV-P1-036).
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: fake.refresh, push: fake.push }),
   useSearchParams: () => {
@@ -377,10 +377,20 @@ describe('Scenario: Compare three (AIV-P1-036)', () => {
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Select Arjun Menon' }).checked).toBe(true);
   });
 
-  it('a selection in the URL is restored, and ids that are not rows of this job are dropped', () => {
+  it('a selection in the URL is restored, and ids that are not rows of this job are ignored', () => {
     replaceState(null, '', '/?selected=a2,not-a-row,a1');
     selectable();
     expect(within(bar()).getByRole('status').textContent).toBe('2 selected');
+  });
+
+  // AIV-P1-149. SAFETY: mutation check: read the selection from useSearchParams() on every render -> this test failed
+  it('the URL is only a mirror: what useSearchParams says after the first render does not undo a tick', async () => {
+    selectable();
+    await pick('Sara Al Qahtani');
+    expect(window.location.search).toBe('?selected=a1');
+    window.history.replaceState(null, '', '/');
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Select Sara Al Qahtani' }).checked).toBe(true);
+    expect(within(bar()).getByRole('status').textContent).toBe('1 selected');
   });
 });
 
@@ -459,6 +469,9 @@ describe('Scenario: Preview, then confirm (AIV-P1-114)', () => {
     expect(fake.refresh).toHaveBeenCalledOnce();
     expect(screen.queryByRole('region', { name: /^Preview: / })).toBeNull();
     expect(screen.getByText(/2 people chosen for interview\. They are on the Interviews page/)).toBeTruthy();
+    // The selection is cleared for good: no bar, no ticked row, nothing in the URL (AIV-P1-149).
+    expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull();
+    expect(within(table()).queryAllByRole('checkbox', { checked: true })).toEqual([]);
     expect(new URLSearchParams(window.location.search).get('selected')).toBeNull();
   });
 });
@@ -603,6 +616,10 @@ describe('Scenario: Preview, then add (AIV-P2-010)', () => {
     expect(screen.getByRole('link', { name: 'Open the pack' }).getAttribute('href')).toBe(
       `/app/jobs/${JOB}/packs/${PACK}`,
     );
+    // The selection is cleared for good: no bar, no ticked row, nothing in the URL (AIV-P1-149).
+    expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull();
+    expect(within(table()).queryAllByRole('checkbox', { checked: true })).toEqual([]);
+    expect(new URLSearchParams(window.location.search).get('selected')).toBeNull();
   });
 });
 

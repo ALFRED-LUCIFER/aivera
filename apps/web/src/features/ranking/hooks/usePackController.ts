@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { addToPackSchema, NEW_PACK, packPreview, type PackView } from '../domain/pack.ts';
 import type { RankingData } from '../domain/ranking.ts';
 import * as actions from '../services/addToDecisionPack.ts';
-import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 
 /**
  * "Add to decision pack" on the ranking (AIV-P2-010): the preview of the people selected when it opened, the pack to
@@ -12,6 +11,7 @@ import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
  */
 export function usePackController(
   { jobId, rows, packs = [] }: Pick<RankingData, 'jobId' | 'rows' | 'packs'>,
+  clearSelection: () => void,
   services: Pick<typeof actions, 'addToDecisionPack'> = actions,
 ): PackView {
   const router = useRouter();
@@ -54,7 +54,8 @@ export function usePackController(
       }
       setIds(null);
       setDone({ packId: result.packId, added: result.added, name: existing?.name ?? name.trim() });
-      replaceSelectedInUrl([]);
+      // Or the next bulk action would start from the rows just confirmed (AGENTS.md 1.5).
+      clearSelection();
       router.refresh();
     },
     onCancel: () => setIds(null),

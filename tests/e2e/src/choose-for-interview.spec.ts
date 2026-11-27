@@ -132,6 +132,7 @@ async function openRanking(page: Page) {
 const bar = (page: Page) => page.getByRole('region', { name: 'Bulk actions' });
 const preview = (page: Page) => page.getByRole('region', { name: /^Preview: / });
 
+// SAFETY: mutation check: dropped clearSelection() from useChooseController's onConfirm -> this test failed (2 rows stayed checked)
 test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   const table = await openRanking(page);
   await table.getByRole('checkbox', { name: 'Select all 4 shown' }).focus();
@@ -171,6 +172,11 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   ).toBeVisible();
   for (const name of ['Daniel Novak', 'Priya Nair'])
     await expect(table.getByRole('row').filter({ hasText: name })).toContainText('Chosen for interview');
+  // AIV-P1-149: the rows above came with the server refresh after Confirm, and the selection is cleared for good, so a
+  // new bulk action never starts from the people just chosen (AGENTS.md 1.5).
+  await expect(table.getByRole('checkbox', { checked: true })).toHaveCount(0);
+  await expect(bar(page)).toHaveCount(0);
+  await expect(page).toHaveURL((url) => !url.searchParams.has('selected'));
   // Everyone else stays in the ranking, unchanged.
   for (const name of ['Omar Al Suwaidi', 'Maria Santos'])
     await expect(table.getByRole('row').filter({ hasText: name })).not.toContainText('Chosen for interview');

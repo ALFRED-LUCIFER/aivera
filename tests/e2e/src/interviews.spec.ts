@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { seededInterviewLabels } from '../gulfDay.ts';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
 // AIV-P2-002, journey J3: the Interviews list. AP's workspace "Demo" has four ongoing interviews and one completed on
-// its Senior AI Engineer job, on days counted from the seed's run (seed.ts); Nadia's workspace has none.
+// its Senior AI Engineer job, on days counted from the seed's run (seed.ts), so the day-relative labels come from
+// seededInterviewLabels: a run across Gulf midnight reads the next day's (AIV-P1-149). Nadia's workspace has none.
 const AP = 'ap@example.com';
 const EMPTY = 'No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.';
 
@@ -34,7 +36,7 @@ test('Scenario: Ongoing interviews', async ({ page }) => {
     'Daniel NovakSenior AI Engineer',
     'Round 1, structured screen',
     'You',
-    'Today, 14:00',
+    seededInterviewLabels().daniel,
     'In progress',
     'Retrieval and evaluation, Cost and reliability',
     'Open scorecard',
@@ -58,8 +60,9 @@ test('Scenario: Overdue scorecard', async ({ page }) => {
   await page.goto('/app/interviews');
   const cells = row(page, 'Layla Haddad').getByRole('cell');
   await expect(cells.nth(4)).toHaveText('Scorecard due');
-  await expect(cells.nth(6)).toHaveText('Scorecard due, 2 days');
-  await expect(cells.nth(6).getByRole('link', { name: 'Scorecard due, 2 days' })).toHaveAttribute(
+  const { layla } = seededInterviewLabels();
+  await expect(cells.nth(6)).toHaveText(layla);
+  await expect(cells.nth(6).getByRole('link', { name: layla })).toHaveAttribute(
     'href',
     /^\/app\/interviews\/[0-9a-f-]+$/,
   );

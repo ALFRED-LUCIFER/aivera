@@ -29,6 +29,8 @@ import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 // refused it. AIV-P2-011 adds each member's card text, written by the worker's summary job, which this spec runs itself
 // (no worker runs here) with the fake model: a cited answer for Sara, Huda and Daniel, and for Arjun one citing a
 // source he was never given, so his card is "Summary unavailable"; and a member of another workspace, who gets 404.
+// AIV-P1-149 adds what the selection must survive (a server refresh that started before the tick, a reload, the
+// filters) and must not survive (a confirmed bulk action).
 // Serial: the later tests open the pack the first one builds.
 test.describe.configure({ mode: 'serial' });
 
@@ -41,6 +43,8 @@ let workspaceId: string;
 let workspaceName: string;
 let jobId: string;
 let packPath: string;
+/** Sara's and Arjun's application ids, as the ranking's URL carried them (AIV-P1-149). */
+let twoSelected: string;
 const ASSESSED = ['Sara Al Qahtani', 'Arjun Menon', 'Huda Al Mansoori', 'Daniel Novak'];
 const SARA_EMAIL = 'sara.alqahtani@example.com';
 const SARA_PHONE = '+971500000116';
@@ -300,6 +304,7 @@ const tick = (page: Page, name: string) =>
       .check({ timeout: 1000 }),
   ).toPass();
 
+// SAFETY: mutation check: dropped clearSelection() from usePackController's onConfirm -> this test failed (3 rows stayed checked)
 test('Scenario: Preview, then add, by keyboard; then add to the existing pack', async ({ page }) => {
   const table = await openRanking(page);
   await table.getByRole('checkbox', { name: 'Select all 5 shown' }).focus();
@@ -333,8 +338,13 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await page.keyboard.press('Enter');
 
   await expect(page.getByText('3 candidates added to Round 2 shortlist.')).toBeVisible();
+  // The rows say so once the server refresh after Confirm has arrived.
   for (const name of ['Sara Al Qahtani', 'Arjun Menon', 'Huda Al Mansoori'])
     await expect(row(page, name)).toContainText('In shortlist pack');
+  // AIV-P1-149 Scenario: A confirmed bulk action clears the selection for good, the refresh included.
+  await expect(table.getByRole('checkbox', { checked: true })).toHaveCount(0);
+  await expect(bar(page)).toHaveCount(0);
+  await expect(page).toHaveURL((url) => !url.searchParams.has('selected'));
   // Candidates outside the pack stay visible, unchanged: Daniel at 55, Maria not yet scored.
   for (const name of ['Daniel Novak', 'Maria Santos']) {
     await expect(row(page, name)).toBeVisible();
@@ -345,8 +355,10 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   ).toBeVisible();
   await expect(row(page, 'Maria Santos')).toContainText('Not yet scored');
 
-  // Add to an existing pack: Daniel joins the undecided one, offered first.
+  // Add to an existing pack: Daniel joins the undecided one, offered first. The new bulk action starts from him alone
+  // ("Add 1"), never from the three just added (AGENTS.md 1.5).
   await tick(page, 'Daniel Novak');
+  await expect(bar(page).getByRole('status')).toHaveText('1 selected');
   await bar(page).getByRole('button', { name: 'Add to decision pack' }).click();
   await expect(preview(page).getByRole('radio', { name: 'Round 2 shortlist (3 candidates)' })).toBeChecked();
   await preview(page).getByRole('button', { name: 'Add 1 to the pack' }).click();
@@ -428,12 +440,19 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(arjun.getByText("Credalent's recommendation:")).toHaveCount(0);
   // Each sentence links to the evidence item it rests on: by keyboard, to the item on Sara's profile.
   const source = sara.getByRole('link', { name: 'Source: rag-service' });
+  // From her name, the stop before her card's sources. From the top of the page Tab crosses the sidebar, the job's
+  // stages and the pack's actions first, and toPass waits up to a second between tries: about 20 s of this test's 30 s,
+  // and past them on a slow runner (run 45926230699, retried).
+  await sara.getByRole('link', { name: 'Sara Al Qahtani' }).focus();
   await expect(async () => {
     await page.keyboard.press('Tab');
     await expect(source).toBeFocused({ timeout: 250 });
   }).toPass();
   expect(await css(source, 'outline-style')).toBe('solid');
   await page.keyboard.press('Enter');
+  // The profile's first render through a client-side navigation: `next dev` compiled it for over 5 s on a CI runner
+  // (runs 45884971232 and 45887025808), and the URL changes only when that render arrives. Its heading comes with it.
+  await expect(page.getByRole('heading', { level: 1, name: 'Sara Al Qahtani' })).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(
     (url) => url.pathname.startsWith('/app/candidates/') && url.hash.startsWith('#evidence-'),
   );
@@ -625,5 +644,120 @@ for (const theme of themes) {
     await preview(page).getByRole('button', { name: 'Cancel' }).click();
     await expect(preview(page)).toHaveCount(0);
     await expect(row(page, 'Maria Santos')).not.toContainText('In shortlist pack');
+    // Cancel keeps the selection (AIV-P1-149).
+    await expect(row(page, 'Maria Santos').getByRole('checkbox')).toBeChecked();
+    await expect(bar(page).getByRole('status')).toHaveText('1 selected');
   });
 }
+
+/** Sets the job's title in the database: a change the ranking shows only once a server refresh has arrived. */
+async function retitle(title: string) {
+  const db = createDb(databaseUrl, { max: 1 });
+  try {
+    await withWorkspace(db, workspaceId, async (tx) => {
+      // The job table's second policy: a member's job scope, here every job as for an admin.
+      await tx.execute(sql`select set_config('app.job_scope', 'all', true)`);
+      await tx.execute(sql`update jobs.job set title = ${title} where id = ${jobId}`);
+    });
+  } finally {
+    await db.$client.end();
+  }
+}
+
+for (const theme of themes) {
+  // SAFETY: mutation check: useRankingController read the selection from useSearchParams() on every render, as before
+  // AIV-P1-149 -> this test failed (Sara's box stayed unticked while the refresh was held: Next's useSearchParams does
+  // not follow the URL until the refresh lands, so a second tick started from the stale selection and lost the first)
+  test(`AIV-P1-149 Scenario: A server refresh in flight does not wipe a tick (${theme})`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    const table = await openRanking(page);
+    // Hydrated: a tick and its undo both took. From here one key press is one tick, with no retry to hide a lost one.
+    // click(), not uncheck(): the mutation check must reach the held refresh, and uncheck() fails the old code here.
+    await tick(page, 'Maria Santos');
+    await table.getByRole('checkbox', { name: 'Select Maria Santos' }).click();
+    await expect(bar(page)).toHaveCount(0);
+
+    const held = Promise.withResolvers<void>();
+    const released = Promise.withResolvers<void>();
+    // The refresh's response (React Server Components payload), fetched from the server and then held back.
+    await page.route(
+      (url) => url.pathname === `/app/jobs/${jobId}/candidates`,
+      async (route) => {
+        const headers = route.request().headers();
+        if (headers['rsc'] !== '1' || headers['next-router-prefetch']) return route.fallback();
+        const response = await route.fetch();
+        held.resolve();
+        await released.promise;
+        await route.fulfill({ response });
+      },
+    );
+    await retitle('Senior AI Engineer, refreshed');
+    try {
+      // The router Next exposes on the page: the same refresh a confirmed bulk action or a merge starts.
+      await page.evaluate(() => (window as unknown as { next: { router: { refresh(): void } } }).next.router.refresh());
+      await held.promise;
+      await table.getByRole('checkbox', { name: 'Select all 5 shown' }).focus();
+      const sara = table.getByRole('checkbox', { name: 'Select Sara Al Qahtani' });
+      await expect(async () => {
+        await page.keyboard.press('Tab');
+        await expect(sara).toBeFocused({ timeout: 250 });
+      }).toPass();
+      await page.keyboard.press('Space');
+      await expect(sara).toBeChecked();
+      released.resolve();
+      // The refresh has arrived: the page shows the title it was rendered with.
+      await expect(page).toHaveTitle('Senior AI Engineer, refreshed: Evidence and ranking · Credalent');
+      await expect(sara).toBeChecked();
+      await expect(table.getByRole('checkbox', { checked: true })).toHaveCount(1);
+      await expect(bar(page).getByRole('status')).toHaveText('1 selected');
+      await expect(bar(page).getByRole('button', { name: 'Add to decision pack' })).toBeVisible();
+      // One opaque application id and nothing else: no name, email or score (AGENTS.md 1.2).
+      await expect(page).toHaveURL((url) => /^\?selected=[0-9a-f-]{36}$/.test(url.search));
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expectAccessible(page);
+    } finally {
+      released.resolve();
+      await retitle('Senior AI Engineer');
+    }
+  });
+}
+
+test('AIV-P1-149 Scenario: The selection still survives a reload and the filters; an id not on this ranking is ignored', async ({
+  page,
+}) => {
+  const table = await openRanking(page);
+  await tick(page, 'Sara Al Qahtani');
+  await tick(page, 'Arjun Menon');
+  await expect(page).toHaveURL((url) => /^\?selected=[0-9a-f-]{36}(%2C|,)[0-9a-f-]{36}$/.test(url.search));
+  twoSelected = new URL(page.url()).searchParams.get('selected') ?? '';
+  await page.reload();
+  for (const name of ['Sara Al Qahtani', 'Arjun Menon'])
+    await expect(table.getByRole('checkbox', { name: `Select ${name}` })).toBeChecked();
+  await expect(bar(page).getByRole('status')).toHaveText('2 selected');
+  // The ticked boxes come with the server's HTML, so they do not show the page has hydrated: typing before it is lost.
+  await expect(async () => {
+    await page.getByRole('searchbox', { name: 'Search candidates' }).fill('menon');
+    await expect(table.getByRole('checkbox', { name: /^Select [A-Z]/ })).toHaveCount(1, { timeout: 1000 });
+  }).toPass();
+  await expect(bar(page).getByRole('status')).toHaveText('2 selected · 1 not shown in the table');
+
+  // An id that is no row of this ranking is ignored.
+  await page.goto(`/app/jobs/${jobId}/candidates?selected=${twoSelected},${crypto.randomUUID()}`);
+  await expect(bar(page).getByRole('status')).toHaveText('2 selected');
+});
+
+// The server gives an interviewer no bulk action (AGENTS.md 1.3), so the page offers no selection to restore.
+test('AIV-P1-149 Scenario: A member with no bulk action gets no selection, whatever the URL says', async ({ page }) => {
+  // Two valid ids, from the test before this one.
+  expect(twoSelected).toMatch(/^[0-9a-f-]{36},[0-9a-f-]{36}$/);
+  await signIn(page, { email: interviewer });
+  await page.goto(`/app/jobs/${jobId}/candidates?selected=${twoSelected}`);
+  const table = page.getByRole('table', { name: 'Ranked candidates' });
+  await expect(table.getByRole('row').filter({ hasText: 'Sara Al Qahtani' })).toBeVisible();
+  await expect(table.getByRole('checkbox')).toHaveCount(0);
+  await expect(bar(page)).toHaveCount(0);
+});

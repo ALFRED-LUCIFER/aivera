@@ -10,11 +10,13 @@ import { useRankingController } from '@/features/ranking/hooks/useRankingControl
 
 export function Ranking(data: RankingData) {
   const t = useTranslations('ranking.choose');
-  const choose = useChooseController(data, t('defaultReason'));
-  const pack = usePackController(data);
+  const view = useRankingController(data);
+  const clearSelection = () => view.selection?.onSelectedIdsChange([]);
+  const choose = useChooseController(data, t('defaultReason'), clearSelection);
+  const pack = usePackController(data, clearSelection);
   return (
     <RankingTable
-      view={useRankingController(data)}
+      view={view}
       duplicates={useDuplicatesController()}
       // Each offered only when the server gave this member the action (admins and recruiters, AGENTS.md 1.3).
       choose={data.bulkActions.includes('chooseForInterview') ? choose : undefined}

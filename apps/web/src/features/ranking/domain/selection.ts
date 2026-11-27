@@ -28,7 +28,10 @@ export const bulkActionsFor = (role: string, flags: ReadonlySet<string>): BulkAc
     ? BULK_ACTIONS.filter(({ flag }) => flag === null || flags.has(flag)).map(({ id }) => id)
     : [];
 
-/** The URL's `selected` value: comma-separated application ids. Only ids of this job's rows are kept, in rank order. */
+/**
+ * The `selected` value, in the URL and in the ranking's state: comma-separated application ids. Only ids of this job's
+ * rows are kept, in rank order.
+ */
 export const parseSelected = (param: string | null, rows: CandidateRow[]): string[] => {
   const asked = new Set((param ?? '').split(','));
   return rows.filter((row) => asked.has(row.id)).map((row) => row.id);

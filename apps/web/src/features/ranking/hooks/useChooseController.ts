@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { choosePreview, chooseSchema, type ChooseView } from '../domain/choose.ts';
 import type { RankingData } from '../domain/ranking.ts';
 import * as actions from '../services/chooseForInterview.ts';
-import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 
 /**
  * "Choose for interview" on the ranking (AIV-P1-114): the preview of the people selected when it opened, the required
@@ -13,6 +12,7 @@ import { replaceSelectedInUrl } from '../services/selectionUrl.ts';
 export function useChooseController(
   { jobId, rows }: Pick<RankingData, 'jobId' | 'rows'>,
   defaultReason: string,
+  clearSelection: () => void,
   services: Pick<typeof actions, 'chooseForInterview'> = actions,
 ): ChooseView {
   const router = useRouter();
@@ -44,7 +44,8 @@ export function useChooseController(
       }
       setIds(null);
       setDone(result.chosen);
-      replaceSelectedInUrl([]);
+      // Or the next bulk action would start from the rows just confirmed (AGENTS.md 1.5).
+      clearSelection();
       router.refresh();
     },
     onCancel: () => setIds(null),
