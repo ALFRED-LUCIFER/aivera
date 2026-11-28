@@ -1,0 +1,78 @@
+# Kristine Dela Cruz's CV names work she did (AIV-P1-157): the pair of lukas-schmidt-self-rating on the same rubric.
+# Every link is still a claim (CV only), but its level reflects the work described, so her "up to N" bound is above
+# his; the order as numbers is pinned in modules/assessment/src/domain/assess.test.ts. Synthetic.
+id: kristine-dela-cruz-described-work
+people: [Kristine Dela Cruz]
+input:
+  competencies:
+    - id: c-e2e
+      name: End-to-end test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+    - id: c-api
+      name: REST API testing
+      evidenceExpected: Automated tests the candidate wrote against real REST APIs.
+    - id: c-ci
+      name: Tests in the delivery pipeline
+      evidenceExpected: Tests the candidate wired into CI so they gate a merge or a release.
+    - id: c-performance
+      name: Performance testing
+      evidenceExpected: A load test the candidate designed, with the limit it found.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Kristine Dela Cruz
+      QA Automation Engineer, Falcon Ridge Payments, 2022 to now
+      Built the Playwright suite of 300 tests for the card onboarding flow.
+      Made that suite a required check on every merge request in GitHub Actions.
+      Wrote Postman collections that test 60 payment APIs on every build.
+      Ran a k6 load test that found the checkout API slowed past 400 requests a second.
+expected:
+  match:
+    links[*].competencyId: [c-e2e, c-api, c-ci, c-performance]
+    links[*].label: [claim]
+    links[*].strength: [supporting]
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 42215181ecc6
+  output:
+    links:
+      - competencyId: c-e2e
+        strength: supporting
+        label: claim
+        level: 4
+        limit: Does not show the full scope or maintenance details of the suite.
+        citations:
+          - sourceId: S1
+            quote: Built the Playwright suite of 300 tests for the card onboarding flow
+      - competencyId: c-ci
+        strength: supporting
+        label: claim
+        level: 4
+        limit: Does not show the full pipeline or all tests gated.
+        citations:
+          - sourceId: S1
+            quote: Made that suite a required check on every merge request in GitHub Actions
+      - competencyId: c-api
+        strength: supporting
+        label: claim
+        level: 4
+        limit: Does not show the depth or coverage of the API tests.
+        citations:
+          - sourceId: S1
+            quote: Wrote Postman collections that test 60 payment APIs on every build
+      - competencyId: c-performance
+        strength: supporting
+        label: claim
+        level: 4
+        limit: Does not show the full design or all findings of the load test.
+        citations:
+          - sourceId: S1
+            quote: Ran a k6 load test that found the checkout API slowed past 400 requests a second
+    changes:
+      - competencyId: c-e2e
+        text: Provide evidence of ongoing maintenance and coverage details of the Playwright test suite.
+      - competencyId: c-api
+        text: Show detailed results or coverage reports of the Postman API tests.
+      - competencyId: c-performance
+        text: Include the design details and additional findings of the k6 load test.

@@ -22,6 +22,8 @@ import {
   fieldMatch,
   missedPoints,
   noChange,
+  maxLevel,
+  noLink,
   promptSafety,
   safety,
   suggestionMatch,
@@ -467,6 +469,9 @@ async function scoreCase(
           : [],
       ),
       ...noChange(output, statementPaths, expected.noChange ?? []),
+      // AIV-P1-157: a self-rating line above its level, or a link by word association, raises a claims-only bound.
+      ...maxLevel(output, statementPaths, expected.maxLevel ?? {}),
+      ...noLink(output, statementPaths, expected.noLink ?? []),
     ];
     if (unfair.length) scores.safety = { n: 0, total: 1, failures: [...(scores.safety?.failures ?? []), ...unfair] };
     if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);

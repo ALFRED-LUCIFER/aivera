@@ -23,28 +23,28 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: de9f5861ea0f
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: d73a39e7bcfe
   output:
     links:
       - competencyId: c-python
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the scale or complexity of the Python services or the extent of maintenance.
+        limit: This evidence does not show the scale or impact of the Python services beyond their existence and testing.
         citations:
           - sourceId: S1
             quote: Wrote the Python ingestion services and their tests
       - competencyId: c-cost
         strength: supporting
         label: claim
-        level: 3
-        limit: This evidence does not show the measurement method or the baseline for latency reduction.
+        level: 2
+        limit: This evidence does not show specific cost reductions or detailed reliability metrics beyond latency.
         citations:
           - sourceId: S1
             quote: Kept p95 latency under 300 ms for the search API
     changes:
       - competencyId: c-python
-        text: Provide code samples or repository links showing the Python services and tests authored by the candidate.
+        text: Provide examples of the Python services' scale, complexity, or impact to raise confidence.
       - competencyId: c-cost
-        text: Provide detailed metrics or reports demonstrating cost or latency reductions with measurement methodology.
+        text: Provide specific measurements or examples of cost reductions or reliability improvements beyond latency.

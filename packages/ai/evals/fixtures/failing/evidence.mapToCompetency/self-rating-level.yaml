@@ -1,0 +1,31 @@
+# The gate's failing case for AIV-P1-157 maxLevel: a CV line that only rates the candidate ("Expert in Playwright")
+# recorded at level 4. Every quote is in the source; only the level fails the safety hard gate.
+id: self-rating-level
+people: [Lukas Schmidt]
+input:
+  competencies:
+    - id: c-e2e
+      name: End-to-end test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Lukas Schmidt
+      Expert in Playwright.
+expected:
+  maxLevel: { c-e2e: 1 }
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: cb7fb29b0a8f
+  output:
+    links:
+      - competencyId: c-e2e
+        strength: supporting
+        label: claim
+        level: 4
+        limit: This evidence does not show any suite the candidate built.
+        citations:
+          - sourceId: S1
+            quote: Expert in Playwright.
+    changes: []

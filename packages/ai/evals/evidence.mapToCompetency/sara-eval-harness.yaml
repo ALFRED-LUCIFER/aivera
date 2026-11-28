@@ -1,6 +1,8 @@
-# Sara Al Qahtani: her eval harness repository backs Python; its "Retrieval and evaluation" link quotes only the
-# repository name, which the product caps at Supporting (sourceText marks the name as a declaration span). Her CV lines
-# stay claims at Supporting or below. Each limit states what the evidence does not show, which only a judge can check.
+# Sara Al Qahtani: her eval harness repository backs Python. Its name alone is no evidence of "Retrieval and evaluation"
+# (the prompt's repository rule): from @5 (AIV-P1-157) the model no longer links it on any live run, so c-retrieval is
+# not expected (owner, 28 Nov 2026); were it linked, the product would cap it at Supporting (the name is a declaration
+# span). Her CV lines stay claims at Supporting or below. Each limit states what the evidence does not show, which only
+# a judge can check.
 id: sara-eval-harness
 people: [Sara Al Qahtani]
 input:
@@ -36,22 +38,22 @@ sources:
       request by 40% with response caching. Built a Gulf Arabic evaluation set for the assistant.
 expected:
   match:
-    links[*].competencyId: [c-retrieval, c-python, c-cost]
+    links[*].competencyId: [c-python, c-cost]
     links[*].label: [submitted, claim]
     links[*].strength: [strong, supporting]
   judge: >-
     Every link's limit names what its evidence does not show, such as who reviewed the work, its effect on product
     decisions, or that a CV line has nothing to inspect.
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 88d58689f47d
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: da0f9071e1cf
   output:
     links:
       - competencyId: c-llm
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the monitoring details or scale beyond merchant count.
+        limit: This evidence does not show the monitoring or scale of the LLM system beyond the merchant count.
         citations:
           - sourceId: S2
             quote: Led the merchant assistant used by about 9,000 merchants
@@ -59,7 +61,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the measurement details or latency improvements.
+        limit: This evidence does not show the exact measurement methods or reliability improvements.
         citations:
           - sourceId: S2
             quote: Cut cost per request by 40% with response caching
@@ -67,35 +69,22 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the models or evaluations beyond dataset creation.
+        limit: This evidence does not show the scale or impact of the Arabic evaluation set.
         citations:
           - sourceId: S2
             quote: Built a Gulf Arabic evaluation set for the assistant
-      - competencyId: c-retrieval
-        strength: strong
-        label: submitted
-        level: 4
-        limit: This evidence does not show the scale or impact of the eval harness.
-        citations:
-          - sourceId: S1
-            quote: llm-eval-harness
       - competencyId: c-python
         strength: strong
         label: submitted
         level: 4
-        limit: This evidence does not show the candidate's maintenance or testing practices explicitly.
+        limit: This evidence does not show the scale or production deployment of the Python services.
         citations:
           - sourceId: S1
             quote: authored 412 of 460 commits
     changes:
-      - competencyId: c-llm
-        text: Provide monitoring data or user feedback for the merchant assistant to confirm production use and impact.
-      - competencyId: c-cost
-        text: Show detailed cost or latency measurements before and after optimizations to validate improvements.
-      - competencyId: c-arabic
-        text:
-          Include examples of models trained or evaluations performed using the Gulf Arabic dataset to demonstrate applied
-          expertise.
+      - competencyId: c-retrieval
+        text: Provide evidence of building or maintaining an evaluation harness or retrieval metrics for retrieval and
+          evaluation competency.
   judge:
     pass: true
     reason: Every link's limit names what its evidence does not show, as required by the rubric.

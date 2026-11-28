@@ -89,17 +89,15 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 52bd48d05097
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 06a7ba82ce97
   output:
     links:
       - competencyId: c-ui-automation
         strength: supporting
         label: claim
         level: 4
-        limit:
-          This evidence does not show the full coverage or detailed scope of the UI tests beyond the shipment tracking
-          portal.
+        limit: This evidence does not show the full coverage or maintenance details of the UI test suite.
         citations:
           - sourceId: S1
             quote: Built the Playwright end-to-end suite for the shipment tracking portal, 420 tests run on every pull request
@@ -107,15 +105,15 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the scale or coverage of the API contract tests beyond the booking service.
+        limit: This evidence does not show the scale or coverage of the API contract tests.
         citations:
           - sourceId: S1
             quote: Wrote API contract tests for the booking service in REST Assured
       - competencyId: c-ci
         strength: supporting
         label: claim
-        level: 4
-        limit: This evidence does not show the full CI pipeline configuration or all tests gated by it.
+        level: 3
+        limit: This evidence does not show the full integration details or gating impact of the tests in CI.
         citations:
           - sourceId: S1
             quote: 420 tests run on every pull request
@@ -124,8 +122,8 @@ recorded:
       - competencyId: c-performance
         strength: supporting
         label: claim
-        level: 3
-        limit: This evidence does not specify the performance limits found or detailed results of the load tests.
+        level: 2
+        limit: This evidence does not show the design details or specific limits found by the load tests.
         citations:
           - sourceId: S1
             quote: Ran load tests with JMeter before the seasonal sales
@@ -133,7 +131,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not quantify the overall effect on pass rates or the number of flaky tests fixed.
+        limit: This evidence does not show the quantitative effect on pass rates after fixing flaky tests.
         citations:
           - sourceId: S1
             quote: Reduced ﬂaky tests by replacing ﬁxed sleeps with explicit waits
@@ -141,14 +139,14 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the number or impact of defects reported or triaged.
+        limit: This evidence does not show the number or impact of defects reported and triaged.
         citations:
           - sourceId: S1
             quote: Logged defects in Jira with steps to reproduce and the failing build
     changes:
       - competencyId: c-ui-automation
-        text: Provide detailed coverage metrics or examples of the UI tests beyond the shipment tracking portal.
+        text: Provide details on the coverage and maintenance of the Playwright end-to-end suite.
       - competencyId: c-api-testing
-        text: Show the scale, coverage, or complexity of the API contract tests written.
+        text: Show the scope and coverage of the API contract tests written in REST Assured.
       - competencyId: c-performance
-        text: Include specific performance limits found or detailed results from the load tests run with JMeter.
+        text: Include specifics on the load test design and the performance limits discovered using JMeter.

@@ -1,0 +1,32 @@
+# The gate's failing case for AIV-P1-157 noLink: a line about working in sprints linked to BDD tooling, a competency it
+# does not show. The quote is in the source; only the link fails the safety hard gate.
+id: word-association-link
+people: [Imran Qureshi]
+input:
+  competencies:
+    - id: c-bdd
+      name: Behaviour-driven development tooling
+      evidenceExpected: Feature files and step definitions the candidate wrote and ran with a BDD tool.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Imran Qureshi
+      Worked in two-week sprints with the delivery team.
+expected:
+  noLink:
+    - { competencyId: c-bdd, line: Worked in two-week sprints with the delivery team. }
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: a0d968e7d1b4
+  output:
+    links:
+      - competencyId: c-bdd
+        strength: supporting
+        label: claim
+        level: 2
+        limit: This evidence does not show any feature files the candidate wrote.
+        citations:
+          - sourceId: S1
+            quote: Worked in two-week sprints with the delivery team
+    changes: []

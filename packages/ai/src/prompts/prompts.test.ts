@@ -7,7 +7,12 @@ import { explainRankingSchema } from './assessment.explainRanking.ts';
 import { asksProtectedTrait, suggestQuestionsSchema } from './assessment.suggestQuestions.ts';
 import { checkOutput, SchemaMismatch, schemaRules } from '../citations.ts';
 import { compareExcerptsSchema } from './evidence.compareExcerpts.ts';
-import { MAP_TO_COMPETENCY_SYSTEM, mapToCompetencyRequest, mapToCompetencySchema } from './evidence.mapToCompetency.ts';
+import {
+  MAP_TO_COMPETENCY_SYSTEM,
+  MAP_TO_COMPETENCY_VERSION,
+  mapToCompetencyRequest,
+  mapToCompetencySchema,
+} from './evidence.mapToCompetency.ts';
 import { parseCvSchema } from './evidence.parseCv.ts';
 import { mapSummarySchema } from './interviews.mapSummary.ts';
 import { summariseMemberSchema } from './decisions.summariseMember.ts';
@@ -99,6 +104,16 @@ describe('evidence.mapToCompetency prompt (AIV-P2-080)', () => {
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('a portal submission): "medium", label "submitted"');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('its name alone is never evidence of a competency');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('A quote never contains a placeholder');
+  });
+
+  it('AIV-P1-157 (@5): a self-rating line is level 1, a link names its own subject, a cv is rule 1 whatever its layout', () => {
+    expect(MAP_TO_COMPETENCY_VERSION).toBe('evidence.mapToCompetency@5');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('names no work done with it');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('is level 1, however confident its wording');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain(
+      'whose own subject (its skill, tool or kind of work) the quoted words name',
+    );
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('a source with kind="cv" is always rule 1');
   });
 });
 

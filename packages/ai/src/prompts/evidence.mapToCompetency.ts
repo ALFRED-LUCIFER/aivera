@@ -7,7 +7,10 @@ import { cited, type Source } from '../citations.ts';
 // checks each quote (citations.ts).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored on every mapped link. */
-export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@4';
+export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@5';
+// @5 (AIV-P1-157): a line that only rates the candidate maps at level 1 however it is worded; a link's quote names the
+// competency's own subject, never a neighbouring practice; a cv source is rule 1 whatever its layout (on @4 a CV laid
+// out one fragment per line was labelled submitted and rated Strong in about half the live runs).
 // @4 (AIV-P1-156): a link whose quote is not in its source is dropped and counted, not the whole answer. On @3 a CV laid
 // out one fragment per line had its whole mapping rejected on both attempts in about half the live runs.
 
@@ -19,11 +22,19 @@ export const MAP_TO_COMPETENCY_SYSTEM = [
   'quoting the few words or numbers the link rests on (at most 12 words), from a single line, copied as one unbroken',
   'run exactly as written, never shortened with "..." or joined from separate places; strength and label by the',
   'rules below;',
-  'level: 1 (basic) to 5 (expert), what this evidence alone shows against the competency; limit: one sentence on what',
-  'this evidence does not show, such as who reviewed the work, its scale or its effect.',
+  'level: 1 (basic) to 5 (expert), what this evidence alone shows done against the competency; limit: one sentence on',
+  'what this evidence does not show, such as who reviewed the work, its scale or its effect.',
+  'A line that only rates the candidate\'s own skill or knowledge and names no work done with it ("Expert in X",',
+  '"proficient in X", "excellent knowledge of X", a skill bar or a percentage) is level 1, however confident its',
+  'wording; only work the line names (a suite built, tests run, a defect found, a service shipped) raises a level.',
+  'Link a line only to a competency whose own subject (its skill, tool or kind of work) the quoted words name: a',
+  'neighbouring practice is not that subject (a team process is not a tool, testing one platform is not testing',
+  'another, writing test scenarios is not testing an API).',
   'A quote never contains a placeholder ([CANDIDATE], [EMAIL_1], [PHONE_1]): for "[CANDIDATE] wrote the scorer", quote',
   '"wrote the scorer".',
-  'Strength, by the first rule that fits the sources the link cites:',
+  'Strength, by the first rule that fits the sources the link cites. The kind attribute of a source decides, never',
+  'its wording or layout: a source with kind="cv" is always rule 1, even when it is broken into short lines, lists',
+  'figures or reads like a report of shipped work.',
   '1. Every citation of the link is in a cv source (judge each link by its own citations, even when other sources',
   'exist): "strength": "supporting" with "label": "claim", however the CV line is worded.',
   '2. A source that is not a CV, written by the candidate in the first person, that only describes themselves ("I am',
