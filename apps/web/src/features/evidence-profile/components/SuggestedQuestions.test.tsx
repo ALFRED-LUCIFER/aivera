@@ -56,8 +56,8 @@ const show = (view: QuestionsView, more: Partial<SuggestedQuestionsProps> = {}) 
 describe('SuggestedQuestions', () => {
   it('Scenario: A candidate with no gaps: says so, with no button to suggest questions', () => {
     show({ status: 'no_gaps' });
-    expect(screen.getByRole('heading', { level: 2, name: 'Needs live verification' })).toBeDefined();
-    expect(screen.getByText('No open gaps. Nothing here needs live verification.')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Interview questions' })).toBeDefined();
+    expect(screen.getByText("No open gaps. No competency is below the job's need or rests on a claim.")).toBeDefined();
     expect(screen.queryByRole('button')).toBeNull();
   });
 

@@ -7,7 +7,8 @@ import { expectAccessible, themes } from './gallery.ts';
 // its Senior AI Engineer job, on days counted from the seed's run (seed.ts), so the day-relative labels come from
 // seededInterviewLabels: a run across Gulf midnight reads the next day's (AIV-P1-149). Nadia's workspace has none.
 const AP = 'ap@example.com';
-const EMPTY = 'No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.';
+const EMPTY =
+  'No interviews yet. To choose candidates for interview, open a job’s ranking, tick them and choose “Choose for interview”.';
 
 const row = (page: Page, candidate: string) => page.getByRole('row').filter({ hasText: candidate });
 
@@ -34,7 +35,7 @@ test('Scenario: Ongoing interviews', async ({ page }) => {
   ]);
   await expect(row(page, 'Daniel Novak').getByRole('cell')).toHaveText([
     'Daniel NovakSenior AI Engineer',
-    'Round 1, structured screen',
+    'Round 1',
     'You',
     seededInterviewLabels().daniel,
     'In progress',
@@ -42,16 +43,20 @@ test('Scenario: Ongoing interviews', async ({ page }) => {
     'Open scorecard',
   ]);
   // Round 2 with another interviewer, on a later day at 11:00 in the workspace time zone. No guide exists until
-  // AIV-P2-003, so the list never says "Guide ready".
+  // AIV-P2-003, so the list never says "Guide ready"; AP plans interviews, so the row offers "Start interview"
+  // (AIV-P1-165 §12).
   await expect(row(page, 'Arjun Menon').getByRole('cell')).toHaveText([
     'Arjun MenonSenior AI Engineer',
-    'Round 2, evidence defence',
+    'Round 2',
     'Head of Engineering',
     /^\d{1,2} [A-Z][a-z]{2}, 11:00$/,
     'Scheduled',
     'Retrieval and evaluation',
-    'No guide yet',
+    'Start interview',
   ]);
+  await expect(
+    row(page, 'Arjun Menon').getByRole('button', { name: 'Start interview with Arjun Menon' }),
+  ).toBeVisible();
   await expect(page.getByText('Guide ready')).toHaveCount(0);
 });
 

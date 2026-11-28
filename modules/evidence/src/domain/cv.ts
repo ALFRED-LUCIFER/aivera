@@ -17,22 +17,40 @@ export type CvParseStatus = (typeof CV_PARSE_STATUSES)[number];
 export const PARSE_GIVE_UP_MS = 30 * 60_000;
 
 const NOT_A_NAME =
-  /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|united|emirates|arab|saudi|kingdom|dubai|riyadh|abu|dhabi)\b/iu;
+  /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|tester|qa|software|data|product|project|technical|professional|career|work|employment|history|key|core|achievements|competencies|qualifications|certifications|projects|languages|references|details|united|emirates|arab|saudi|kingdom|dubai|riyadh|abu|dhabi)\b/iu;
 const PARTICLE = /^(?:bin|bint|ben|ibn|van|von|de|del|da|di|al|el)$/u;
 const NAME_WORD = /^(?!\p{Ll})\p{L}[\p{L}\p{M}'’.-]*$/u;
 
+/** What may follow the name on its line, after a spaced dash, bar or dot: "Priya Nair – Senior AI Engineer". */
+const AFTER_NAME = /\s+[–—|·•-]\s+/u;
+/** Particles that stay in lower case when a name written in capitals is put in name case: "TARIQ BIN NASSER". */
+const LOWER_PARTICLE = /^(?:bin|bint|ben|ibn|van|von|de|del|da|di)$/u;
+
+/** "MARIA SANTOS" -> "Maria Santos", "O'BRIEN-AL NUAIMI" -> "O'Brien-Al Nuaimi"; a name not all in capitals is kept. */
+// shortcut: capitals inside a part are lost ("MCDONALD" -> "Mcdonald"); the recruiter corrects the name on the profile.
+const nameCase = (name: string) =>
+  name === name.toUpperCase()
+    ? name
+        .toLowerCase()
+        .split(' ')
+        .map((word) => (LOWER_PARTICLE.test(word) ? word : word.replace(/(^|[-'’])\p{L}/gu, (c) => c.toUpperCase())))
+        .join(' ')
+    : name;
+
 /**
  * The applicant's name, read locally from the first lines of the CV (two to four words of letters, none starting in
- * lower case), so it is known before any text goes to the model (AIV-P1-090). Null when no line looks like a name.
+ * lower case), so it is known before any text goes to the model (AIV-P1-090). A section heading is never the name, what
+ * follows the name on its line after a spaced dash or bar is cut, and a name in capitals is put in name case
+ * (AIV-P1-165 §8). Null when no line looks like a name.
  */
-// shortcut: a name that is not alone on one of the first six lines is not found (the parse then fails closed), and a
+// shortcut: a name that does not start one of the first six lines is not found (the parse then fails closed), and a
 // non-name line of two to four capitalised words that avoids the deny list above can be taken for one (it then renames the
-// applicant and redacts the wrong words); upgrade to corroborating the name with the CV's email address, or a name-only
-// pass, if pilot CVs show either.
+// applicant and redacts the wrong words; the recruiter corrects it on the profile, AIV-P1-165); upgrade to
+// corroborating the name with the CV's email address, or a name-only pass, if pilot CVs show either.
 export function nameFromCv(text: string): string | null {
   const lines = text
     .split('\n')
-    .map((l) => l.trim())
+    .map((l) => l.trim().split(AFTER_NAME)[0] ?? '')
     .filter(Boolean)
     .slice(0, 6);
   const line = lines.find((l) => {
@@ -46,7 +64,7 @@ export function nameFromCv(text: string): string | null {
       words.every((w) => NAME_WORD.test(w) || PARTICLE.test(w))
     );
   });
-  return line ? line.split(/\s+/).join(' ') : null;
+  return line ? nameCase(line.split(/\s+/).join(' ')) : null;
 }
 
 /** Why a note was raised: `detectUnusualContent`'s reasons and `hidden_text` (below). */

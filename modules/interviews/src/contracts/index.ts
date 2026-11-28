@@ -50,8 +50,9 @@ export {
   scorecardDraftSchema,
   scorecardRatingsSchema,
   toInterviewNoteEvidence,
+  NOT_SHOWN_REASON,
+  nothingAssessed,
   unexplained,
-  unrated,
 } from '../domain/scorecard.ts';
 export type {
   DraftCompetency,

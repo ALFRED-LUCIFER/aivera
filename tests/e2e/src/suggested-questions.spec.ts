@@ -22,7 +22,7 @@ async function openProfile(page: Page, name: string) {
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
 }
 
-const block = (page: Page) => page.getByRole('region', { name: 'Needs live verification' });
+const block = (page: Page) => page.getByRole('region', { name: 'Interview questions' });
 
 /** The suggested questions as the fixture gives them, each under its gap with its source and both notes. */
 async function expectQuestions(page: Page) {
@@ -66,7 +66,7 @@ test('Scenario: Questions for each gap, each cited: asked by keyboard, and her s
 }) => {
   await signIn(page, { email: AP });
   await openProfile(page, 'Sara Al Qahtani');
-  await expect(block(page).getByRole('heading', { level: 2, name: 'Needs live verification' })).toBeVisible();
+  await expect(block(page).getByRole('heading', { level: 2, name: 'Interview questions' })).toBeVisible();
   await expect(block(page).getByText('they change no score, stage or rank')).toBeVisible();
   const suggest = block(page).getByRole('button', { name: 'Suggest interview questions' });
   // A retry, or a local database an earlier run left, already holds the stored set: it is shown with no button, and

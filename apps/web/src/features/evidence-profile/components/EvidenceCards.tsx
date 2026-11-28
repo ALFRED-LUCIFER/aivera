@@ -1,10 +1,11 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { Card, EvidenceHighlight, ProvenanceTag, StrengthMeter } from '@credalent/ui';
+import { Card, EvidenceHighlight } from '@credalent/ui';
 import type { ReactNode } from 'react';
 import type { EvidenceCard, SourceChip, SourceNoteView } from '../domain/evidenceCards.ts';
 import { evidenceAnchor } from '../domain/profile.ts';
+import { LimitLine, Standing } from './Standing.tsx';
 
 // AIV-P1-045: "Competency by competency" of the Candidate artboard (docs/01-design/artboards/Candidate.dc.html): the
 // heading and intro, then one row per competency, heaviest first: name and weight, strength, provenance tag, the cited
@@ -20,6 +21,11 @@ import { evidenceAnchor } from '../domain/profile.ts';
 // - an item whose strength or provenance differs from the row's (the strongest proven item's) carries its own
 //   strength and tag beside it, which the artboard, with one item a row, does not draw: no item borrows a stronger
 //   label;
+// - a claim reads "Claim only" on the shared StrengthMeter, in neutral ink, whatever strength it is stored with, and
+//   carries no "Claim awaiting validation" pill: the artboard's warning-coloured pill on every CV-only row read as a
+//   failed check (AIV-P1-165 §11). The row still says it is a claim and that it counts zero (AGENTS.md 1.6);
+// - a row states its limit once: a claim-only row the one claim line, any other row its cited items' limits on one
+//   line, where the artboard and the ticket drew one "Limit:" line per limit (AIV-P1-165 §11);
 // - "Awaiting live defence" (the ticket's Gherkin and the artboard) reads "To check in interview": the catalogue's one
 //   label for that provenance (`evidence.provenance`), shared with the rubric and the gallery;
 // - "checked 12 Nov" (Gherkin and artboard) carries the year, "checked 12 Nov 2026": the catalogue's one short date
@@ -97,9 +103,9 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
   const anchored = new Map(cards.toReversed().flatMap((card) => card.items.map((i) => [i.id, card.competencyId])));
   return (
     <Card>
-      <section aria-labelledby="evidence-title" className="flex flex-col">
+      <section aria-labelledby="evidence" className="flex flex-col">
         <div className="flex flex-col gap-0.5 pb-3.5">
-          <h2 id="evidence-title" className="font-display text-section text-text">
+          <h2 id="evidence" tabIndex={-1} className="scroll-mt-6 font-display text-section text-text">
             {t('candidateProfile.evidenceTitle')}
           </h2>
           <p className="text-meta text-text-2">{t('candidateProfile.evidenceIntro')}</p>
@@ -117,15 +123,7 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                   {t('candidateProfile.weight', { weight: card.weightPercent })}
                 </span>
               </h3>
-              {card.lead && (
-                <>
-                  <StrengthMeter strength={card.lead.strength} label={t(`rubric.strength.${card.lead.strength}`)} />
-                  <ProvenanceTag
-                    provenance={card.lead.provenance}
-                    label={t(`evidence.provenance.${card.lead.provenance}`)}
-                  />
-                </>
-              )}
+              {card.lead && <Standing {...card.lead} />}
             </div>
             {card.items.length === 0 ? (
               <p className="text-body text-text-2">{t('candidateProfile.noEvidence')}</p>
@@ -150,15 +148,7 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                       )}
                     </span>
                     {/* SAFETY: an item weaker than the row's lead says so itself; it never reads under the lead's tag. */}
-                    {item.own && (
-                      <>
-                        <StrengthMeter strength={item.own.strength} label={t(`rubric.strength.${item.own.strength}`)} />
-                        <ProvenanceTag
-                          provenance={item.own.provenance}
-                          label={t(`evidence.provenance.${item.own.provenance}`)}
-                        />
-                      </>
-                    )}
+                    {item.own && <Standing {...item.own} under={card.lead} />}
                   </li>
                 ))}
               </ul>
@@ -178,12 +168,7 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                 ))}
               </ul>
             )}
-            {/* SAFETY: a row resting only on claims says it counts zero, whatever strength the claim is stored with. */}
-            {[...card.limits, ...(card.claimOnly ? [t('candidateProfile.claimLimit')] : [])].map((limit) => (
-              <p key={limit} className="text-meta text-text-2">
-                <strong className="font-semibold text-text">{t('candidateProfile.limit')}</strong> {limit}
-              </p>
-            ))}
+            <LimitLine card={card} />
           </article>
         ))}
         {notes.length > 0 && (

@@ -11,8 +11,14 @@
 //   until an interview is completed rather than saying "0 interviews".
 // - An interview with no time ("Not scheduled yet", owner decision of 24 Nov 2026) is not on the artboard: it shows
 //   "No time yet", and a Schedule button for admins and recruiters (AIV-P2-007). A completed row has no action.
-// - "Scorecard due, 2 days" is a link to the scorecard, not plain text: nothing moves an interview to "In progress"
-//   yet, so a scheduled interview goes straight to due once its time passes, and this is the way to its scorecard.
+// - "Scorecard due, 2 days" is a link to the scorecard, not plain text: it is the way to a scorecard whose interview
+//   nobody started before its time passed.
+// - "Start interview" on an interview that has not started (AIV-P1-165 §12), for its interviewer and for admins and
+//   recruiters, where the artboard draws "Guide ready": it marks the interview started and opens its scorecard. It is
+//   a secondary button, beside "Schedule" on a row with no time yet.
+// - The rounds read "Round 1", "Round 2" and "Round 3", not "Round 1, structured screen" (AIV-P1-165 §12).
+// - `empty`, when given, replaces the table while there is no interview at all: a job's Interviews tab says how to
+//   choose candidates and offers "Go to ranking" (AIV-P1-165 §12). The artboard draws no empty state.
 // - No search field, "Ask Credalent" or assistant panel: the shell leaves them out until they work (AIV-P1-095).
 import type { InterviewStatus } from '@credalent/interviews';
 import type { Messages } from '@credalent/i18n';
@@ -30,7 +36,15 @@ import {
 import type { Route } from 'next';
 import Link from 'next/link';
 import { createContext, use, type ReactNode } from 'react';
-import { parseView, rowAction, VIEWS, type InterviewRow, type InterviewView } from '../domain/interviews.ts';
+import {
+  parseView,
+  rowAction,
+  startable,
+  VIEWS,
+  type InterviewRow,
+  type InterviewView,
+  type StartView,
+} from '../domain/interviews.ts';
 import type { ScheduleView } from '../domain/schedule.ts';
 import { ScheduleDialog } from './ScheduleDialog.tsx';
 
@@ -48,6 +62,8 @@ export type InterviewsListView =
       jobs: number;
       /** The Schedule dialog, for admins and recruiters; null for anyone else (AIV-P2-007). */
       schedule: ScheduleView | null;
+      /** "Start interview" (AIV-P1-165 §12). */
+      start: StartView;
     };
 
 const glyph = (children: ReactNode) => (
@@ -100,15 +116,22 @@ const cells: (Omit<DataTableColumn<InterviewRow>, 'header'> & { id: keyof Messag
   { id: 'action', cell: (row) => <ActionCell row={row} /> },
 ];
 
-/** Opens the Schedule dialog for a row; null when this member cannot schedule (AIV-P2-007). */
-const OnSchedule = createContext<((row: InterviewRow) => void) | null>(null);
+/** What a row's actions call: `onSchedule` is null when this member cannot schedule (AIV-P2-007). */
+const RowActions = createContext<{ onSchedule: ((row: InterviewRow) => void) | null; start: StartView | null }>({
+  onSchedule: null,
+  start: null,
+});
 
-/** Ongoing and completed interviews with what each must investigate (AIV-P2-002). */
-export function InterviewsList({ view }: { view: InterviewsListView }) {
+/**
+ * Ongoing and completed interviews with what each must investigate (AIV-P2-002). `empty` stands in for the table while
+ * there is no interview at all.
+ */
+export function InterviewsList({ view, empty }: { view: InterviewsListView; empty?: ReactNode }) {
   const t = useTranslations('interviews');
   const ready = view.status === 'ready';
   const total = ready ? view.counts.ongoing + view.counts.completed : 0;
   const schedule = ready ? view.schedule : null;
+  if (ready && total === 0 && empty) return empty;
   return (
     <div className="flex flex-col gap-6">
       {schedule && <SuccessBanner>{schedule.done && t('schedule.done')}</SuccessBanner>}
@@ -120,7 +143,7 @@ export function InterviewsList({ view }: { view: InterviewsListView }) {
           onValueChange={(value) => view.onViewChange(parseView(value))}
         />
       )}
-      <OnSchedule value={schedule?.onOpen ?? null}>
+      <RowActions value={{ onSchedule: schedule?.onOpen ?? null, start: ready ? view.start : null }}>
         <DataTable
           caption={t('caption')}
           columns={cells.map((column) => ({ ...column, header: t(`columns.${column.id}`) }))}
@@ -135,7 +158,7 @@ export function InterviewsList({ view }: { view: InterviewsListView }) {
             error: { message: t('error'), retryLabel: t('retry'), onRetry: view.onRetry },
           })}
         />
-      </OnSchedule>
+      </RowActions>
       {schedule && <ScheduleDialog view={schedule} />}
       {ready && view.counts.completed > 0 && (
         <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
@@ -190,19 +213,27 @@ function StatusCell({ row }: { row: InterviewRow }) {
 
 function ActionCell({ row }: { row: InterviewRow }) {
   const t = useTranslations('interviews');
-  const onSchedule = use(OnSchedule);
+  const { onSchedule, start } = use(RowActions);
   const action = rowAction(row, onSchedule !== null);
+  const name = row.candidate ?? t('unnamed');
+  const starts = start && startable(row, onSchedule !== null) && (
+    <Button disabled={start.pending} onClick={() => start.onStart(row.id)} aria-label={t('startFor', { name })}>
+      {t('start')}
+    </Button>
+  );
+  if (starts || action?.kind === 'schedule')
+    return (
+      <span className="flex flex-wrap gap-2">
+        {action?.kind === 'schedule' && (
+          <Button onClick={() => onSchedule?.(row)} aria-label={t('schedule.openFor', { name })}>
+            {t('schedule.open')}
+          </Button>
+        )}
+        {starts}
+      </span>
+    );
   if (!action) return null;
   if (action.kind === 'noGuide') return <span className="whitespace-nowrap text-text-2">{t('noGuide')}</span>;
-  if (action.kind === 'schedule')
-    return (
-      <Button
-        onClick={() => onSchedule?.(row)}
-        aria-label={t('schedule.openFor', { name: row.candidate ?? t('unnamed') })}
-      >
-        {t('schedule.open')}
-      </Button>
-    );
   return (
     // scorecardHref builds the path from the interview id, which typed routes cannot check.
     <Link

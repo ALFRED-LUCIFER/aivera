@@ -43,9 +43,10 @@ describe('Scenario Outline: Only allowed status transitions', () => {
 
 describe('round and status labels', () => {
   it.each([
-    ['structured_screen', 'Round 1, structured screen'],
-    ['evidence_defence', 'Round 2, evidence defence'],
-    ['panel', 'Round 3, panel'],
+    // AIV-P1-165 §12: plain words, never "structured screen", "evidence defence" or "panel".
+    ['structured_screen', 'Round 1'],
+    ['evidence_defence', 'Round 2'],
+    ['panel', 'Round 3'],
   ] as const)('%s reads "%s"', (round, label) => {
     expect(t(`interviews.round.${round}`)).toBe(label);
   });

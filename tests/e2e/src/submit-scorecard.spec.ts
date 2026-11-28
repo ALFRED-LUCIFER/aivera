@@ -147,7 +147,28 @@ for (const theme of themes) {
     await page.goto(`/app/interviews/${interviewOf.get(theme)}`);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 
-    // Rate by keyboard, with the note; "Cost and reliability" was not tested, so it stays a gap.
+    // AIV-P1-165 §12, plain words: "Round 1", and a notes placeholder that says what to write.
+    await expect(page.getByRole('list', { name: 'Interview rounds' })).toContainText('Round 1Current round');
+    await expect(page.locator('#content')).not.toContainText(/structured screen|evidence defence|panel/i);
+    await expect(card(page, 'Retrieval and evaluation').getByLabel('What you saw or heard')).toHaveAttribute(
+      'placeholder',
+      'What the candidate said or did',
+    );
+
+    // Scenario: Rate only what was tested (AIV-P1-165 §12). With nothing rated, the scorecard says nothing yet.
+    const submit = page.getByRole('button', { name: 'Submit scorecard' });
+    const rateOne = page.getByText(
+      'Rate at least one competency before submitting, or mark its questions Not asked or Not answered. Leave the rest unrated: they stay gaps.',
+    );
+    // A click before the page hydrates is lost, so it is repeated until the form answers.
+    await expect(async () => {
+      await submit.focus();
+      await page.keyboard.press('Enter');
+      await expect(rateOne).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await expectAccessible(page);
+
+    // Rate one competency by keyboard, with the note; "Cost and reliability" is left unrated, so it stays a gap.
     const radio = page
       .getByRole('radiogroup', { name: /^Your assessment ?: Retrieval and evaluation$/ })
       .getByRole('radio', { name: 'Clearly shown' });
@@ -155,24 +176,12 @@ for (const theme of themes) {
     await page.keyboard.press('Space');
     await card(page, 'Retrieval and evaluation').getByLabel('What you saw or heard').fill(NOTE);
     await expect(effect(page).locator('[aria-live="polite"]')).toHaveText('Backed score 55 to 67.');
-
-    // Scenario: Submit needs every competency rated or marked not tested.
-    const submit = page.getByRole('button', { name: 'Submit scorecard' });
-    await submit.focus();
-    await page.keyboard.press('Enter');
-    await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveText(
-      'Rate this competency, or mark its questions Not asked or Not answered, before submitting',
-    );
-    await expect(card(page, 'Retrieval and evaluation').getByRole('alert')).toHaveCount(0);
-    await expectAccessible(page);
-    const notAsked = card(page, 'Cost and reliability')
-      .getByRole('group', { name: 'Your own questions on this competency' })
-      .getByRole('button', { name: 'Not asked' });
-    await notAsked.focus();
-    await page.keyboard.press('Space');
+    await expect(rateOne).toHaveCount(0);
     await expect(
-      card(page, 'Cost and reliability').getByText('Not assessed in this round · stays a gap'),
-    ).toBeVisible();
+      page.getByRole('radiogroup', { name: /^Your assessment ?: Cost and reliability$/ }).getByRole('radio', {
+        checked: true,
+      }),
+    ).toHaveCount(0);
     const notRecommended = page
       .getByRole('radiogroup', { name: 'Next-stage recommendation' })
       .getByRole('radio', { name: 'Do not recommend for Round 2' });
@@ -189,7 +198,6 @@ for (const theme of themes) {
     await page.route('**/*', (route) =>
       route.request().method() === 'POST' && isSubmit(route.request().postData()) ? route.abort() : route.fallback(),
     );
-    await expect(card(page, 'Cost and reliability').getByRole('alert')).toHaveCount(0);
     await recommendationSaved;
     await expect(submit).toBeEnabled();
     await submit.focus();

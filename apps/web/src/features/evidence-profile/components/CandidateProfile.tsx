@@ -1,14 +1,25 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { Button, Card, EvidenceHighlight, ScoreWithUncertainty, ValueBasis } from '@credalent/ui';
+import {
+  Button,
+  buttonClassName,
+  Card,
+  EvidenceHighlight,
+  ScoreWithUncertainty,
+  SuccessBanner,
+  ValueBasis,
+} from '@credalent/ui';
 import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import type { ProfileActions } from '../domain/actions.ts';
 import type { CvRetryView, CvView } from '../domain/cvStatus.ts';
-import { evidenceAnchor, type Fit, type ProfileData } from '../domain/profile.ts';
+import type { NameView } from '../domain/name.ts';
+import { evidenceAnchor, SECTIONS, type Fit, type ProfileData } from '../domain/profile.ts';
 import { AgainstNeed } from './AgainstNeed.tsx';
+import { CorrectName } from './CorrectName.tsx';
 import { CvStatusLine } from './CvStatusLine.tsx';
 import { EvidenceCards } from './EvidenceCards.tsx';
 
@@ -21,9 +32,12 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 //   candidate alone is nothing to compare;
 // - no "Request evidence" button, preview card or "sent" note: the drafted preview is AIV-P1-038 (#102) and sending is
 //   AIV-P1-039 (#103); no preview is faked here;
-// - no "Open decision pack" button: packs are built from the ranking (AIV-P2-010) and opened from its success line and
-//   the job's Decision tab; the profile's button comes with the pack page (AIV-P2-011, #125). With no action, the view
-//   has no primary button until then;
+// - the one primary button is "Choose for interview", then "Add to decision pack" once chosen (AIV-P1-165 §11), where
+//   the artboard draws "Open decision pack": each opens the ranking's own preview (`banner`), and nothing changes
+//   until a person confirms. A candidate already in a pack, or decided on, has no primary button;
+// - "Previous candidate" and "Next candidate", in the ranking's order, "Start interview" or "Open scorecard" for a
+//   candidate with an open interview, "Correct name" and the "On this page" links, none of which the artboard draws
+//   (AIV-P1-165 §8, §11, §12);
 // - "Candidates" in the breadcrumb links to Candidates (all jobs, AIV-P1-048) only for members who may open it (admins and
 //   recruiters); for a hiring owner or interviewer it stays text;
 // - the subtitle is the job and the application's intake stage ("Senior AI Engineer · New"), not "Round 1 complete · in
@@ -51,7 +65,8 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 //   applicant" (AIV-P1-165 §7);
 // - a line under the fit card says how many CV lines could not be cited, so were not mapped (AIV-P1-156), which the
 //   artboard does not draw;
-// - "Needs live verification" is the page's `children`, SuggestedQuestions (AIV-P1-113), with its own deviations;
+// - "Needs live verification" is the page's `children`, SuggestedQuestions (AIV-P1-113), headed "Interview questions"
+//   (AIV-P1-165 §11), with its own deviations;
 // - no "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
 
@@ -62,6 +77,9 @@ export function CandidateProfile({
   view,
   linkCandidates = false,
   retry,
+  actions,
+  rename,
+  banner,
   children,
 }: {
   view: CandidateProfileView;
@@ -69,6 +87,13 @@ export function CandidateProfile({
   linkCandidates?: boolean;
   /** "Try again" on a CV that could not be read or assessed; offered only where the server put a retry on the CV. */
   retry?: CvRetryView | undefined;
+  /** The primary action, the interview and Previous / Next (AIV-P1-165 §11, §12). */
+  actions?: ProfileActions | undefined;
+  /** "Correct name", for the members the server allows it (admins and recruiters, AIV-P1-165 §8). */
+  rename?: NameView | undefined;
+  /** The primary action's preview and its success message, from the feature that owns the action. */
+  banner?: ReactNode;
+  /** "Interview questions"; absent when the candidate has no result on the approved rubric. */
   children?: ReactNode;
 }) {
   const t = useTranslations();
@@ -111,17 +136,47 @@ export function CandidateProfile({
             {t('candidateProfile.backToRanking', { job: view.jobTitle })}
           </Link>
         </nav>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <h1 className="font-display text-title tracking-tight">{name}</h1>
-          <p className="max-w-[72ch] text-body text-text-2">
-            {[view.jobTitle, t(`ranking.stages.${view.stage}`)].join(' · ')}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <h1 className="font-display text-title tracking-tight">{name}</h1>
+              {rename && <CorrectName view={rename} />}
+            </div>
+            <p className="max-w-[72ch] text-body text-text-2">
+              {[view.jobTitle, t(`ranking.stages.${view.stage}`)].join(' · ')}
+            </p>
+          </div>
+          {actions && <Actions actions={actions} />}
         </div>
+        <nav aria-label={t('candidateProfile.index.label')}>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-meta">
+            {SECTIONS.filter(
+              (section) =>
+                section === 'fit' ||
+                (section === 'needs' && view.needs.length > 0) ||
+                (section === 'evidence' && (view.competencies.length > 0 || view.notes.length > 0)) ||
+                (section === 'questions' && Boolean(children)),
+            ).map((section) => (
+              <li key={section}>
+                <a
+                  href={`#${section}`}
+                  className="rounded-xs text-text underline underline-offset-2"
+                  // The heading takes focus, so the next Tab and a screen reader start from the section (WCAG 2.4.3).
+                  onClick={() => document.getElementById(section)?.focus()}
+                >
+                  {t(`candidateProfile.index.${section}`)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
+      {rename && <SuccessBanner>{rename.done && t('candidateProfile.name.done')}</SuccessBanner>}
+      {banner}
       <Card>
         <div className="flex flex-wrap items-start gap-x-10 gap-y-6">
           <section className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5">
-            <h2 className="font-display text-section text-text">
+            <h2 id="fit" tabIndex={-1} className="scroll-mt-6 font-display text-section text-text">
               {t('candidateProfile.fitTitle', { job: view.jobTitle })}
             </h2>
             <FitBlock fit={view.fit} cv={view.cv} name={name} retry={retry} />
@@ -156,6 +211,47 @@ export function CandidateProfile({
         <EvidenceCards cards={view.competencies} notes={view.notes} />
       )}
       {children}
+    </div>
+  );
+}
+
+/** "Previous candidate" or "Next candidate": at either end of the ranking it stays in place, disabled. */
+function Neighbour({ href, label }: { href: string | null; label: string }) {
+  return href ? (
+    // profileHref builds the path from opaque ids, which typed routes cannot check.
+    <Link href={href as Route} className={buttonClassName('secondary', 'compact')}>
+      {label}
+    </Link>
+  ) : (
+    <Button size="compact" disabled>
+      {label}
+    </Button>
+  );
+}
+
+/** The header's actions: one primary button, the interview, and Previous / Next in the ranking's order. */
+function Actions({ actions }: { actions: ProfileActions }) {
+  const t = useTranslations();
+  const { primary, interview, previous, next } = actions;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Neighbour href={previous} label={t('candidateProfile.previous')} />
+      <Neighbour href={next} label={t('candidateProfile.next')} />
+      {interview?.kind === 'start' && (
+        <Button disabled={interview.pending} onClick={interview.onStart}>
+          {t('interviews.start')}
+        </Button>
+      )}
+      {interview?.kind === 'open' && (
+        <Link href={interview.href as Route} className={buttonClassName('secondary')}>
+          {t('interviews.openScorecard')}
+        </Link>
+      )}
+      {primary && (
+        <Button variant="primary" onClick={primary.onOpen}>
+          {t(primary.kind === 'choose' ? 'ranking.bulk.choose' : 'ranking.bulk.pack')}
+        </Button>
+      )}
     </div>
   );
 }

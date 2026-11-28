@@ -4,8 +4,10 @@ import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { ProfileActions } from '../domain/actions.ts';
 import type { CvRetryView } from '../domain/cvStatus.ts';
 import type { EvidenceCard } from '../domain/evidenceCards.ts';
+import type { NameView } from '../domain/name.ts';
 import type { Fit, ProfileData } from '../domain/profile.ts';
 import { CandidateProfile, type CandidateProfileView } from './CandidateProfile.tsx';
 
@@ -41,6 +43,7 @@ const ready = (
   jobTitle: 'Senior AI Engineer',
   name: 'Sara Al Qahtani',
   stage: 'new',
+  canRename: false,
   fit,
   explanation,
   competencies: [],
@@ -51,12 +54,164 @@ const ready = (
   uncitedLinkCount: 0,
   ...more,
 });
-const show = (view: CandidateProfileView, linkCandidates = false, retry?: CvRetryView) =>
+const show = (
+  view: CandidateProfileView,
+  linkCandidates = false,
+  retry?: CvRetryView,
+  more: Partial<Pick<Parameters<typeof CandidateProfile>[0], 'actions' | 'rename' | 'children'>> = {},
+) =>
   render(
     <IntlProvider {...intl}>
-      <CandidateProfile view={view} linkCandidates={linkCandidates} retry={retry} />
+      <CandidateProfile view={view} linkCandidates={linkCandidates} retry={retry} {...more} />
     </IntlProvider>,
   );
+
+// AIV-P1-165 §8, §11, §12.
+const JOB_Q = '?job=0190d4a2-0000-7000-9000-000000001031';
+const actions = (over: Partial<ProfileActions> = {}): ProfileActions => ({
+  primary: { kind: 'choose', onOpen: vi.fn() },
+  interview: null,
+  previous: `/app/candidates/p-before${JOB_Q}`,
+  next: `/app/candidates/p-after${JOB_Q}`,
+  ...over,
+});
+const rename = (over: Partial<NameView> = {}): NameView => ({
+  open: false,
+  onOpenChange: vi.fn(),
+  name: 'Maria Santo',
+  onNameChange: vi.fn(),
+  reason: '',
+  onReasonChange: vi.fn(),
+  valid: false,
+  pending: false,
+  failed: false,
+  done: false,
+  onSave: vi.fn(),
+  ...over,
+});
+
+describe('Scenario: One primary action and next / previous (AIV-P1-165 §11)', () => {
+  it('the one primary button is "Choose for interview", and opens its preview', async () => {
+    const view = actions();
+    show(ready(scored), false, undefined, { actions: view });
+    const primary = screen.getByRole('button', { name: 'Choose for interview' });
+    expect(primary.className).toContain('bg-action');
+    expect(screen.queryByRole('button', { name: 'Add to decision pack' })).toBeNull();
+    await userEvent.click(primary);
+    expect(view.primary?.onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('once chosen it is "Add to decision pack", still the only primary button', () => {
+    show(ready(scored), false, undefined, {
+      actions: actions({
+        primary: { kind: 'pack', onOpen: vi.fn() },
+        interview: { kind: 'start', pending: false, onStart: vi.fn() },
+      }),
+    });
+    expect(screen.getByRole('button', { name: 'Add to decision pack' }).className).toContain('bg-action');
+    expect(screen.queryByRole('button', { name: 'Choose for interview' })).toBeNull();
+    // "Start interview" is beside it, as a secondary button.
+    expect(screen.getByRole('button', { name: 'Start interview' }).className).not.toContain('bg-action');
+  });
+
+  it('"Previous candidate" and "Next candidate" are links to the neighbours, by opaque ids', () => {
+    show(ready(scored), false, undefined, { actions: actions() });
+    expect(screen.getByRole('link', { name: 'Previous candidate' }).getAttribute('href')).toBe(
+      `/app/candidates/p-before${JOB_Q}`,
+    );
+    expect(screen.getByRole('link', { name: 'Next candidate' }).getAttribute('href')).toBe(
+      `/app/candidates/p-after${JOB_Q}`,
+    );
+  });
+
+  it('at the top of the ranking "Previous candidate" stays in place, disabled', () => {
+    show(ready(scored), false, undefined, { actions: actions({ previous: null }) });
+    expect(screen.getByRole('button', { name: 'Previous candidate' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('link', { name: 'Next candidate' })).toBeTruthy();
+  });
+
+  it('a member with no action to take sees no primary button', () => {
+    show(ready(scored), false, undefined, { actions: actions({ primary: null }) });
+    expect(screen.queryByRole('button', { name: /Choose for interview|Add to decision pack/ })).toBeNull();
+  });
+});
+
+describe('Scenario: A scheduled interview can be started from the profile (AIV-P1-165 §12)', () => {
+  it('"Start interview" starts it; a started one offers "Open scorecard" instead', async () => {
+    const onStart = vi.fn();
+    show(ready(scored), false, undefined, {
+      actions: actions({ interview: { kind: 'start', pending: false, onStart } }),
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Start interview' }));
+    expect(onStart).toHaveBeenCalledOnce();
+    cleanup();
+    show(ready(scored), false, undefined, {
+      actions: actions({ interview: { kind: 'open', href: '/app/interviews/i1' } }),
+    });
+    expect(screen.getByRole('link', { name: 'Open scorecard' }).getAttribute('href')).toBe('/app/interviews/i1');
+  });
+});
+
+describe('Scenario: Interview questions one click away (AIV-P1-165 §11)', () => {
+  it('"On this page" links to each section drawn, and activating one moves focus to its heading', async () => {
+    show(ready(scored, null, { competencies: [retrieval] }), false, undefined, {
+      children: (
+        <h2 id="questions" tabIndex={-1}>
+          Interview questions
+        </h2>
+      ),
+    });
+    const index = within(screen.getByRole('navigation', { name: 'On this page' }));
+    expect(index.getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['Fit', '#fit'],
+      ['Competency by competency', '#evidence'],
+      ['Interview questions', '#questions'],
+    ]);
+    await userEvent.click(index.getByRole('link', { name: 'Interview questions' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Interview questions' }));
+  });
+
+  it('a candidate with no result on the approved rubric has no "Interview questions" link', () => {
+    show(ready({ status: 'not_scored' }));
+    expect(
+      within(screen.getByRole('navigation', { name: 'On this page' }))
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Fit']);
+  });
+});
+
+describe('Scenario: The recruiter can correct a name (AIV-P1-165 §8)', () => {
+  it('"Correct name" is offered only where the server allows it', () => {
+    show(ready(scored));
+    expect(screen.queryByRole('button', { name: 'Correct name' })).toBeNull();
+    cleanup();
+    show(ready(scored), false, undefined, { rename: rename() });
+    expect(screen.getByRole('button', { name: 'Correct name' })).toBeTruthy();
+  });
+
+  it('the dialog asks for the name and a reason, and saves only when both are given', async () => {
+    const blank = rename({ open: true });
+    show(ready(scored), false, undefined, { rename: blank });
+    const dialog = within(screen.getByRole('dialog', { name: "Correct the candidate's name" }));
+    expect(dialog.getByLabelText('Name')).toHaveProperty('value', 'Maria Santo');
+    expect(dialog.getByLabelText('Reason, recorded in the audit log')).toHaveProperty('required', true);
+    expect(dialog.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', true);
+    cleanup();
+    const filled = rename({ open: true, name: 'Maria Santos', reason: 'Typo in read name', valid: true });
+    show(ready(scored), false, undefined, { rename: filled });
+    await userEvent.click(screen.getByRole('button', { name: 'Save name' }));
+    expect(filled.onSave).toHaveBeenCalledOnce();
+  });
+
+  it('a refused save says nothing was changed; a saved one says it is recorded', () => {
+    show(ready(scored), false, undefined, { rename: rename({ open: true, failed: true }) });
+    expect(screen.getByRole('alert').textContent).toBe('That did not go through. Nothing was changed. Try again.');
+    cleanup();
+    show(ready(scored), false, undefined, { rename: rename({ done: true }) });
+    expect(screen.getByRole('status').textContent).toBe('Name corrected and recorded in the audit log.');
+  });
+});
 
 describe('CandidateProfile states', () => {
   it('a slow read says the profile is loading', () => {
@@ -298,7 +453,7 @@ describe('CandidateProfile: competency by competency', () => {
     expect(card.getByText('Claim only')).toBeTruthy();
     expect(card.getByText('To check in interview')).toBeTruthy();
     expect(card.getByText(/^Limit:/).parentElement?.textContent).toBe(
-      'Limit: Claim only. Counts as zero in the backed score.',
+      'Limit: A claim, not inspected work. It counts zero in the backed score.',
     );
     expect(card.getByText('States they built a Gulf Arabic evaluation set.')).toBeTruthy();
     // The one highlighted text on the page is the cited excerpt: not the claim, a limit, a source or the note.
@@ -333,34 +488,67 @@ describe('CandidateProfile: competency by competency', () => {
     expect(row('authored 412 of 460 commits').queryByText(/Strong|Medium|Supporting/)).toBeNull();
     expect(row('contract tests on every endpoint').getByText('Medium')).toBeTruthy();
     expect(row('contract tests on every endpoint').getByText('Candidate-submitted')).toBeTruthy();
+    // AIV-P1-165 §11: a claim reads "Claim only" in neutral ink, never the strength it is stored with, and has no
+    // warning-coloured pill.
     const claim = row('Argued against a fully automatic refund bot.');
-    expect(claim.getByText('Supporting')).toBeTruthy();
-    expect(claim.getByText('Claim awaiting validation')).toBeTruthy();
+    expect(claim.getByText('Claim only')).toBeTruthy();
+    expect(claim.queryByText('Supporting')).toBeNull();
+    expect(card.queryByText('Claim awaiting validation')).toBeNull();
     expect(marks()).toEqual([
       'cited evidence authored 412 of 460 commits',
       'cited evidence contract tests on every endpoint',
     ]);
   });
 
-  // SAFETY: mutation check: the limit line drawn from `card.lead?.strength === 'claim'` again -> this test failed (no "counts as zero" line on the Supporting row)
-  it('a row resting only on a CV claim stored as Supporting still says it counts as zero', () => {
+  // SAFETY: mutation check: the limit line drawn from `card.lead?.strength === 'claim'` again -> this test failed (no "counts zero" line on the Supporting row)
+  // SAFETY: mutation check: `Standing` drew the stored strength for a claim -> this test failed ("Supporting", a filled bar, on a claim)
+  it('Scenario: Calm evidence cards: a CV claim stored as Supporting is called a claim, says once that it counts zero, in neutral ink', () => {
     const cost: EvidenceCard = {
       ...arabic,
       competencyId: 'cost',
       name: 'Cost and reliability',
       lead: { strength: 'supporting', provenance: 'claim' },
-      items: [{ id: 'i5', excerpt: 'cut cost per request by 40%', highlighted: false, own: null }],
-      limits: ['A claim until a document or a second source supports it.'],
+      items: [
+        { id: 'i5', excerpt: 'cut cost per request by 40%', highlighted: false, own: null },
+        // A second claim, stored at another strength: it reads under the row's "Claim only", with no label of its own.
+        {
+          id: 'i6',
+          excerpt: 'ran the on-call rota',
+          highlighted: false,
+          own: { strength: 'claim', provenance: 'claim' },
+        },
+      ],
+      limits: ['CV statement only; nothing to inspect yet.'],
     };
     show(ready(scored, null, { competencies: [cost] }));
     const card = cardOf('Cost and reliability');
-    expect(card.getByText('Supporting')).toBeTruthy();
-    expect(card.getByText('Claim awaiting validation')).toBeTruthy();
+    expect(card.getAllByText('Claim only')).toHaveLength(1);
+    expect(card.queryByText('Supporting')).toBeNull();
+    // Never the warning-coloured "Claim awaiting validation" pill, nor any status colour on the row.
+    expect(card.queryByText('Claim awaiting validation')).toBeNull();
+    expect(card.getByText('Claim only').closest('article')?.innerHTML).not.toMatch(
+      /\b(?:bg|text|border)-(?:warn|err|ok)/,
+    );
+    // One limit line, not two.
     expect(card.getAllByText(/^Limit:/).map((el) => el.parentElement?.textContent)).toEqual([
-      'Limit: A claim until a document or a second source supports it.',
-      'Limit: Claim only. Counts as zero in the backed score.',
+      'Limit: A claim, not inspected work. It counts zero in the backed score.',
     ]);
     expect(marks()).toEqual([]);
+  });
+
+  it('a row resting on inspected work states its cited limits on one line', () => {
+    show(
+      ready(scored, null, {
+        competencies: [{ ...retrieval, limits: [...retrieval.limits, 'One repository, read on one day.'] }],
+      }),
+    );
+    expect(
+      cardOf('Retrieval and evaluation')
+        .getAllByText(/^Limit:/)
+        .map((el) => el.parentElement?.textContent),
+    ).toEqual([
+      'Limit: Shows the tooling, not how results changed product decisions. One repository, read on one day.',
+    ]);
   });
 
   it('a competency the assessment cites nothing for says so, with no strength, tag or limit', () => {

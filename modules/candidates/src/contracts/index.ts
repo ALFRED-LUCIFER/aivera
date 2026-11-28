@@ -3,19 +3,20 @@ import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import type { DuplicateReport, MergePreview } from '../application/merge.ts';
-import type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
+import type { CorrectNameInput, FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 import type { Person } from '../domain/person.ts';
 
 export {
   CandidateError,
   IDENTIFIER_TYPES,
   MERGE_REASON_MAX,
+  NAME_MAX,
   PERSONAL_DATA_FIELDS,
   UNNAMED_APPLICANT,
 } from '../domain/person.ts';
 export type { CandidateErrorCode, Identifier, IdentifierType, Person } from '../domain/person.ts';
 export type { LikelyReason } from '../domain/duplicates.ts';
-export type { FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
+export type { CorrectNameInput, FindOrCreatePersonInput, FindOrCreatePersonResult } from '../application/people.ts';
 export type { DuplicateReport, MergePreview, PersonMergeSummary } from '../application/merge.ts';
 
 /**
@@ -77,4 +78,12 @@ export interface CandidatesContract {
    * (`merge_not_found`, `undo_expired`, `undo_blocked`, `merge_reason`).
    */
   unmergePeople(ctx: WorkspaceContext, mergeId: string, reason: string): Promise<void>;
+  /**
+   * A person corrects a candidate's display name, with a reason (AIV-P1-165 §8): the name every screen shows for them
+   * from then on. Audited last as `candidate.renamed` with the member, time and reason, never either name. Admins and
+   * recruiters (`candidate.rename`; `ForbiddenError` otherwise); the caller checks the candidate is on a job the
+   * member works on. Throws `CandidateError` (`display_name`, `name_too_long`, `name_reason`, `person_not_found` for
+   * another workspace's person or one merged into another).
+   */
+  correctName(ctx: WorkspaceContext, personId: string, input: CorrectNameInput): Promise<void>;
 }

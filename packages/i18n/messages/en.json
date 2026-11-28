@@ -2183,19 +2183,41 @@
     "checked": "{method}, checked {at, date, short}",
     "newTab": "(opens in a new tab)",
     "limit": "Limit:",
-    "claimLimit": "Claim only. Counts as zero in the backed score.",
+    "claimLimit": "A claim, not inspected work. It counts zero in the backed score.",
+    "previous": "Previous candidate",
+    "next": "Next candidate",
+    "index": {
+      "label": "On this page",
+      "fit": "Fit",
+      "needs": "Against what the job needs",
+      "evidence": "Competency by competency",
+      "questions": "Interview questions"
+    },
+    "name": {
+      "open": "Correct name",
+      "title": "Correct the candidate's name",
+      "description": "The new name shows everywhere for this candidate. The correction is recorded in the audit log with your name, the time and your reason.",
+      "label": "Name",
+      "reason": "Reason, recorded in the audit log",
+      "save": "Save name",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "done": "Name corrected and recorded in the audit log."
+    },
     "noteHidden": "{citation} · Some text is not visible on the page ({count, plural, one {# place} other {# places}})",
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again.",
     "uncited": "{count, plural, =1 {One line from this CV could not be cited, so it was not mapped.} other {# lines from this CV could not be cited, so they were not mapped.}} The CV is unchanged. Read it in full for them."
   },
   "suggestedQuestions": {
-    "title": "Needs live verification",
+    "title": "Interview questions",
     "intro": "Competencies whose evidence is below the job's need or rests on a claim. The questions are suggestions for the person who interviews: they change no score, stage or rank.",
     "suggest": "Suggest interview questions",
     "suggestAgain": "Suggest again",
     "suggesting": "Suggesting interview questions…",
-    "noGaps": "No open gaps. Nothing here needs live verification.",
+    "noGaps": "No open gaps. No competency is below the job's need or rests on a claim.",
     "stale": "Evidence changed since these questions were suggested.",
     "waiting": "Waiting for tomorrow's AI allowance",
     "failed": "Questions could not be suggested. You can write your own.",
@@ -2229,19 +2251,23 @@
       "none": "No time yet"
     },
     "openScorecard": "Open scorecard",
+    "start": "Start interview",
+    "startFor": "Start interview with {name}",
     "noGuide": "No guide yet",
     "summary": "{count, plural, one {# interview} other {# interviews}} completed with {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}} so far.",
     "observed": "Observed",
-    "empty": "No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.",
+    "empty": "No interviews yet. To choose candidates for interview, open a job’s ranking, tick them and choose “Choose for interview”.",
+    "emptyJob": "No candidate is chosen for interview yet. On the ranking, tick the candidates to interview and choose “Choose for interview”. Nobody is contacted.",
+    "goToRanking": "Go to ranking",
     "emptyOngoing": "No ongoing interviews.",
     "emptyCompleted": "No completed interviews yet.",
     "loading": "Loading interviews…",
     "error": "We could not load the interviews. Try again.",
     "retry": "Try again",
     "round": {
-      "structured_screen": "Round 1, structured screen",
-      "evidence_defence": "Round 2, evidence defence",
-      "panel": "Round 3, panel"
+      "structured_screen": "Round 1",
+      "evidence_defence": "Round 2",
+      "panel": "Round 3"
     },
     "status": {
       "to_schedule": "Not scheduled yet",
@@ -2292,11 +2318,6 @@
       "evidence_defence": "{name}, Round 2",
       "panel": "{name}, Round 3"
     },
-    "kind": {
-      "structured_screen": "structured screen",
-      "evidence_defence": "evidence defence",
-      "panel": "panel"
-    },
     "interviewer": "interviewer: {name}",
     "interviewerYou": "interviewer: you",
     "saveAndClose": "Save and close",
@@ -2325,7 +2346,7 @@
     },
     "notAssessed": "Not assessed in this round · stays a gap",
     "note": "What you saw or heard",
-    "notePlaceholder": "Evidence, not impressions",
+    "notePlaceholder": "What the candidate said or did",
     "recommendation": "Your recommendation",
     "recommendationGroup": "Next-stage recommendation",
     "recommendations": {
@@ -2341,15 +2362,15 @@
       "unavailable": "Submitting needs the preview of your ratings, which is unavailable now."
     },
     "noteCount": "{count, number} of {max, number} characters",
-    "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
-    "addNote": "Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes",
+    "rateOrMark": "Rate at least one competency before submitting, or mark its questions Not asked or Not answered. Leave the rest unrated: they stay gaps.",
+    "addNote": "Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes. Not shown needs no note.",
     "outcome": {
       "submitting": "Submitting your scorecard…",
       "updated": "Scorecard submitted and logged. {name}'s assessment has been updated.",
       "unchanged": "Scorecard submitted. {name}'s assessment is unchanged.",
       "already": "Already submitted",
       "changed": "The assessment changed since this preview. Check the new preview, then submit again.",
-      "incomplete": "Not submitted. Rate or mark every competency and write a note for each rating, then submit again.",
+      "incomplete": "Not submitted. Rate at least one competency and write a note for each rating except Not shown, then submit again.",
       "failed": "Not submitted. Your ratings are saved. Try again.",
       "notAssessed": "Not submitted. {name} has no assessment to change yet.",
       "rubricChanged": "Not submitted. The job's rubric changed after this interview was planned.",

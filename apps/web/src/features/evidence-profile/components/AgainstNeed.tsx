@@ -2,7 +2,7 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { Card, NeedVsProvenBar } from '@credalent/ui';
-import { needSummary, RADAR, radarPoint, radarShape, type NeedRow } from '../domain/needs.ts';
+import { needSummary, RADAR, radarLabel, radarPoint, radarShape, type NeedRow } from '../domain/needs.ts';
 
 // AIV-P1-044: "Against what the job needs" of the Candidate artboard (docs/01-design/artboards/Candidate.dc.html): the
 // heading and intro, the radar of proven, claimed and needed levels with its legend, then "Meets the need on 4 of 6
@@ -14,9 +14,10 @@ import { needSummary, RADAR, radarPoint, radarShape, type NeedRow } from '../dom
 //   artboard's "Proven 1 of 5, claimed 4, the job needs 2": it names its competency, so it reads alone;
 // - the rows and the radar's axes are in the order of "Competency by competency" (heaviest first, the rubric's order
 //   between equal weights), so the artboard's "Product judgement" before "Cost and reliability" can come out reversed;
-// - the radar's axis labels are the rubric's competency names, cut to 22 characters with "…", not the artboard's
-//   hand-shortened "LLM in production" or "Arabic NLP": nothing stores a short name. The full names are in the rows
-//   beside it and in the radar's text equivalent;
+// - the radar's axis labels are the rubric's competency names on one or two lines of 18 characters, in ink, not the
+//   artboard's hand-shortened "LLM in production" or "Arabic NLP" in muted grey: nothing stores a short name, and a
+//   label must stay whole inside the chart in light and dark (AIV-P1-165 §11). A name too long for two lines ends in
+//   "…"; the full names are in the rows beside it and in the radar's text equivalent;
 // - the radar's text equivalent says "6 competencies", not "six target competencies", and names each competency with
 //   all three of its levels, not three separate lists: one message that reads right for any number of them;
 // - with fewer than three competencies there is no radar, legend or "proven shape" sentence: two axes enclose no
@@ -30,9 +31,6 @@ import { needSummary, RADAR, radarPoint, radarShape, type NeedRow } from '../dom
 //   @credalent/ui and the tokens have neither;
 // - the verdict chips keep the shared Chip's "ok" and "warn" tones, as the artboard draws them (chip-ok, chip-warn),
 //   each with its icon and words; the bars and the radar are neutral ink.
-
-/** Characters of a competency name an axis label has room for beside the radar. */
-const LABEL_ROOM = 22;
 
 function Radar({ rows }: { rows: readonly NeedRow[] }) {
   const t = useTranslations('againstNeed');
@@ -92,18 +90,23 @@ function Radar({ rows }: { rows: readonly NeedRow[] }) {
         // 24 past the outer ring, and 5 down so the text's middle, not its baseline, sits on the axis.
         const [x, y] = radarPoint(i, n, RADAR.r + 24);
         const side = Math.round(x - RADAR.cx);
+        const lines = radarLabel(row.name);
+        // Two lines are centred on the axis, 16 apart; above the centre they grow upward, away from the rings.
+        const first = y + 5 - (lines.length - 1) * (y < RADAR.cy ? 16 : y > RADAR.cy ? 0 : 8);
         return (
           <text
             key={row.competencyId}
-            x={x}
-            y={y + 5}
             // Logical anchors would flip with the page's direction; the chart's geometry does not.
             textAnchor={side === 0 ? 'middle' : side > 0 ? 'start' : 'end'}
             direction="ltr"
             fontSize="13"
-            className="fill-text-2"
+            className="fill-text"
           >
-            {row.name.length > LABEL_ROOM ? `${row.name.slice(0, LABEL_ROOM - 1).trimEnd()}…` : row.name}
+            {lines.map((line, at) => (
+              <tspan key={`${at}:${line}`} x={x} y={first + at * 16}>
+                {line}
+              </tspan>
+            ))}
           </text>
         );
       })}
@@ -117,9 +120,9 @@ export function AgainstNeed({ rows }: { rows: readonly NeedRow[] }) {
   const charted = rows.length >= 3;
   return (
     <Card>
-      <section aria-labelledby="against-need-title" className="flex flex-wrap items-center gap-x-10 gap-y-6">
+      <section aria-labelledby="needs" className="flex flex-wrap items-center gap-x-10 gap-y-6">
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-3">
-          <h2 id="against-need-title" className="font-display text-section text-text">
+          <h2 id="needs" tabIndex={-1} className="scroll-mt-6 font-display text-section text-text">
             {t('againstNeed.title')}
           </h2>
           <p className="text-meta text-text-2">

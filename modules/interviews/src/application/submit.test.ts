@@ -1,7 +1,7 @@
 import { ForbiddenError, type Role, type WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it, vi } from 'vitest';
 import type { Interview } from '../domain/interview.ts';
-import type { ScorecardDraft } from '../domain/scorecard.ts';
+import { NOT_SHOWN_REASON, type ScorecardDraft } from '../domain/scorecard.ts';
 import type { InterviewStore } from './interviews.ts';
 import { submitUseCases, type SubmitPorts } from './submit.ts';
 
@@ -170,29 +170,82 @@ describe('Scenario: A competency not assessed in this round stays a gap', () => 
   });
 
   // SAFETY: mutation check: rebuilt the draft on its own stored questions instead of `suggestedQuestions` -> this test
-  // failed (the made-up question left Cost and reliability "not assessed" and the submit went through).
+  // failed (the made-up question left Cost and reliability "not assessed", so its rating was dropped).
   it('is judged on the questions the page shows, never on questions a request made up', async () => {
     const draft: ScorecardDraft = {
       ...DRAFT,
       competencies: [
         DRAFT.competencies[0] as ScorecardDraft['competencies'][number],
-        { competencyId: COST, rating: null, note: '', questions: [{ text: 'A made-up question', mark: 'not_asked' }] },
+        {
+          competencyId: COST,
+          rating: 'not_shown',
+          note: 'Could not name the alert',
+          questions: [{ text: 'A made-up question', mark: 'not_asked' }],
+        },
       ],
     };
     const { submit, ports } = setup({}, interview(), draft);
-    await expect(submit(ctxAs('interviewer'), id(60), { previewId: 'p1' })).rejects.toMatchObject({
-      code: 'scorecard_incomplete',
+    await submit(ctxAs('interviewer'), id(60), { previewId: 'p1' });
+    expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].changes.map((c) => c.competencyId)).toEqual([
+      RETRIEVAL,
+      COST,
+    ]);
+  });
+});
+
+describe('Scenario: Rate only what was tested (AIV-P1-165 §12)', () => {
+  it('submits with one rating: the competency left unrated changes nothing and stays a gap', async () => {
+    const draft: ScorecardDraft = {
+      ...DRAFT,
+      competencies: [
+        DRAFT.competencies[0] as ScorecardDraft['competencies'][number],
+        { competencyId: COST, rating: null, note: '', questions: [] },
+      ],
+    };
+    const { submit, ports } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
+    await submit(ctxAs('interviewer'), id(60), { previewId: 'p1' });
+    expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1].changes).toEqual([
+      { competencyId: RETRIEVAL, rating: 'clearly_shown' },
+    ]);
+  });
+
+  // SAFETY: mutation check: sent the empty note as the reason (`r.note`) -> this test failed (the assessment refuses
+  // an empty reason, so a score change would have had none on record).
+  it('"Not shown" with no note is applied with a recorded reason, and cites no words', async () => {
+    const draft: ScorecardDraft = {
+      ...DRAFT,
+      competencies: [
+        { competencyId: RETRIEVAL, rating: 'not_shown', note: '', questions: [] },
+        { competencyId: COST, rating: null, note: '', questions: [] },
+      ],
+    };
+    const { submit, ports } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
+    await submit(ctxAs('interviewer'), id(60), { previewId: 'p1' });
+    expect(ports.recordSummaryEvidence).not.toHaveBeenCalled();
+    expect(vi.mocked(ports.applyScoreChange).mock.calls[0]?.[1]).toMatchObject({
+      changes: [{ competencyId: RETRIEVAL, rating: 'not_shown' }],
+      reason: NOT_SHOWN_REASON,
+      reasons: { [RETRIEVAL]: NOT_SHOWN_REASON },
     });
-    expect(ports.applyScoreChange).not.toHaveBeenCalled();
   });
 });
 
 describe('refusals write nothing', () => {
+  const blank = { rating: null, note: '', questions: [] };
   it.each([
-    ['a competency neither rated nor marked', { competencyId: COST, rating: null, note: '', questions: [] }],
-    ['a rating with no note', { competencyId: COST, rating: 'partly_shown' as const, note: '  ', questions: [] }],
-  ])('%s is "scorecard_incomplete"', async (_case, cost) => {
-    const draft = { ...DRAFT, competencies: [DRAFT.competencies[0], cost] } as ScorecardDraft;
+    [
+      'nothing rated and nothing marked',
+      [
+        { competencyId: RETRIEVAL, ...blank },
+        { competencyId: COST, ...blank },
+      ],
+    ],
+    [
+      'a rating with no note',
+      [DRAFT.competencies[0], { competencyId: COST, rating: 'partly_shown' as const, note: '  ', questions: [] }],
+    ],
+  ])('%s is "scorecard_incomplete"', async (_case, competencies) => {
+    const draft = { ...DRAFT, competencies } as ScorecardDraft;
     const { submit, calls } = setup({ suggestedQuestions: async () => new Map() }, interview(), draft);
     await expect(submit(ctxAs('interviewer'), id(60), { previewId: 'p1' })).rejects.toMatchObject({
       code: 'scorecard_incomplete',

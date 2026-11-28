@@ -5,15 +5,16 @@ import { enqueue } from '@credalent/db/outbox';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { mergeUseCases, type MergePorts } from './application/merge.ts';
-import { peopleUseCases, recordCvContact } from './application/people.ts';
+import { correctNameUseCase, peopleUseCases, recordCvContact } from './application/people.ts';
 import { PersonCreatedV1, type CandidatesContract } from './contracts/index.ts';
 import { UNNAMED_APPLICANT } from './domain/person.ts';
 import { candidateStore } from './infrastructure/repository.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 /**
- * What merging duplicates (AIV-P1-018) needs from other modules, wired by the app: the audit log, and intake's and
- * evidence's records about a person (their compositions' `applicationRecords` and `evidenceRecords`).
+ * What merging duplicates (AIV-P1-018) needs from other modules, wired by the app: the audit log (which a name
+ * correction writes to as well, AIV-P1-165), and intake's and evidence's records about a person (their compositions'
+ * `applicationRecords` and `evidenceRecords`).
  */
 type MergeWiring = {
   audit: Pick<AuditContract, 'record'>;
@@ -79,6 +80,17 @@ export function createCandidates(
     previewMerge: merges?.previewMerge ?? notWired,
     mergePeople: merges?.mergePeople ?? notWired,
     unmergePeople: merges?.unmergePeople ?? notWired,
+    correctName: merging
+      ? correctNameUseCase({
+          storeFor: candidateStore,
+          authorize,
+          audit: (ctx, personId, reason) =>
+            merging.audit.record(
+              { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
+              { action: 'candidate.renamed', subject: { type: 'candidate', id: personId }, note: reason },
+            ),
+        })
+      : notWired,
   };
 }
 

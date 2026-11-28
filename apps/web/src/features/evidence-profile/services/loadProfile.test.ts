@@ -176,6 +176,7 @@ describe('loadProfile', () => {
       jobTitle: 'Senior AI Engineer',
       name: 'Sara Al Qahtani',
       stage: 'new',
+      canRename: true,
       fit: {
         status: 'scored',
         rank: 1,

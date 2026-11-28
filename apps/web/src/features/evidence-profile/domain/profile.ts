@@ -10,6 +10,12 @@ export const profileHref = (candidateId: string, jobId: string) => `/app/candida
 /** The element id of a cited item on its evidence card, which a cited phrase in "Why they are ranked here" scrolls to. */
 export const evidenceAnchor = (itemId: string) => `evidence-${itemId}`;
 
+/**
+ * The profile's sections, in page order: each id is its heading's element id, which "On this page" links to and moves
+ * focus to (AIV-P1-165 §11).
+ */
+export const SECTIONS = ['fit', 'needs', 'evidence', 'questions'] as const;
+
 /** How the candidate fits the job: nothing is assessed before a rubric is approved, and not everyone is scored yet. */
 export type Fit =
   | { status: 'awaiting_rubric' }
@@ -47,6 +53,8 @@ export type ProfileData = {
    * on screen only (AGENTS.md 1.2).
    */
   fileName: string | null;
+  /** Whether this member may correct the candidate's name (admins and recruiters, AIV-P1-165 §8); the server decides. */
+  canRename: boolean;
   /** Lines of the CV the newest mapping could not cite, so did not map (AIV-P1-156): a count, never the lines. */
   uncitedLinkCount: number;
 };

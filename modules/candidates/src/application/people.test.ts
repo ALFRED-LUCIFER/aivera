@@ -1,7 +1,7 @@
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { describe, expect, it, vi } from 'vitest';
 import type { IdentifierType, Person } from '../domain/person.ts';
-import { peopleUseCases, type Ports } from './people.ts';
+import { correctNameUseCase, peopleUseCases, type Ports } from './people.ts';
 
 // Which matches findOrCreatePerson merges automatically (AIV-P1-018); synthetic cast (docs/00-product/personas.md).
 const ctx = { userId: 'ap', workspaceId: 'w1', role: 'recruiter', tx: {} } as unknown as WorkspaceContext;
@@ -59,5 +59,44 @@ describe('findOrCreatePerson merges only exact duplicates of the arrival', () =>
     ]);
     expect(found).toEqual({ personId: 'b', created: false });
     expect(merges).toEqual([]);
+  });
+});
+
+// AIV-P1-165 §8: the order of a name correction; the database scenarios are in tests/integration (duplicates.test.ts).
+const setup = (renamed = true) => {
+  const calls: string[] = [];
+  const correct = correctNameUseCase({
+    storeFor: () =>
+      ({
+        rename: async (_w: string, _p: string, name: string) => (calls.push(`rename:${name}`), renamed),
+      }) as never,
+    authorize: async (_ctx, action) => void calls.push(`authorize:${action}`),
+    audit: async (_ctx, personId, reason) => void calls.push(`audit:${personId}:${reason}`),
+  });
+  return { correct, calls };
+};
+
+describe('correctName', () => {
+  it('authorises first, renames with the name tidied, and audits the reason last', async () => {
+    const { correct, calls } = setup();
+    await correct(ctx, 'p1', { name: '  Maria   Santos ', reason: ' Typo in read name ' });
+    expect(calls).toEqual(['authorize:candidate.rename', 'rename:Maria Santos', 'audit:p1:Typo in read name']);
+  });
+
+  it('writes nothing, and audits nothing, without a name or a reason', async () => {
+    const { correct, calls } = setup();
+    await expect(correct(ctx, 'p1', { name: 'Maria Santos', reason: ' ' })).rejects.toMatchObject({
+      code: 'name_reason',
+    });
+    await expect(correct(ctx, 'p1', { name: ' ', reason: 'Typo' })).rejects.toMatchObject({ code: 'display_name' });
+    expect(calls).toEqual(['authorize:candidate.rename', 'authorize:candidate.rename']);
+  });
+
+  it('audits nothing for a person the workspace does not have', async () => {
+    const { correct, calls } = setup(false);
+    await expect(correct(ctx, 'p9', { name: 'Maria Santos', reason: 'Typo' })).rejects.toMatchObject({
+      code: 'person_not_found',
+    });
+    expect(calls.some((call) => call.startsWith('audit'))).toBe(false);
   });
 });
