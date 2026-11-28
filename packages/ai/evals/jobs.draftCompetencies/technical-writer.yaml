@@ -19,15 +19,13 @@ expected:
       - Editing other writers
       - Docs tooling
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 03f2dd7bc079
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: b9da41a2d606
   output:
     competencies:
       - name: Technical Writing for Product Documentation
-        evidenceExpected:
-          A set of clear, well-structured task documents explaining product features and usage, published in a
-          help centre or similar platform.
-        weight: 50
+        evidenceExpected: Produced clear, structured task documentation explaining product features and usage for end users.
+        weight: 70
         level: 4
         type: mandatory
         citations:
@@ -36,12 +34,10 @@ recorded:
             start: 0
             end: 61
         claim: false
-      - name: Product Knowledge Acquisition and Explanation
-        evidenceExpected:
-          Demonstrated ability to learn a product in depth and produce explanatory content that makes the
-          product understandable to users.
-        weight: 25
-        level: 4
+      - name: Product Knowledge Acquisition
+        evidenceExpected: Demonstrated understanding of the product sufficient to explain its functions and features in documentation.
+        weight: 20
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -51,9 +47,9 @@ recorded:
         claim: false
       - name: Help Centre Content Organization
         evidenceExpected:
-          Experience organizing help centre or knowledge base content to ensure answers are easy to find and
-          logically structured.
-        weight: 25
+          Organized help centre content to ensure answers are easy to find and logically structured for user
+          accessibility.
+        weight: 10
         level: 3
         type: mandatory
         citations:
@@ -66,15 +62,13 @@ recorded:
     reason: null
     suggestions:
       - name: Collaboration with Support Teams
-        evidenceExpected:
-          Work that shows collaboration with support agents or customer service teams to draft or improve help
-          centre articles.
-        weight: 20
+        evidenceExpected: Worked closely with support agents to draft and review help centre articles ensuring accuracy and completeness.
+        weight: 30
         level: 3
         type: desirable
         why:
           The description states that support agents also draft articles for the help centre, implying collaboration with
-          support teams is important but not explicitly required.
+          them is beneficial but not mandatory.
         citations:
           - sourceId: S1
             quote: Support agents also draft articles for the help centre.
@@ -83,14 +77,13 @@ recorded:
         claim: false
       - name: User Experience (UX) Writing
         evidenceExpected:
-          Samples of writing that enhance user experience by making technical content accessible and easy to
-          understand for end users.
-        weight: 15
+          Created user-focused documentation that enhances the usability and accessibility of the product
+          through clear instructions and helpful content.
+        weight: 20
         level: 3
         type: desirable
-        why:
-          Organizing help centre content for easy findability implies a need for UX writing skills to improve user navigation
-          and comprehension, though not explicitly stated.
+        why: The need to organize the help centre so answers are easy to find implies a focus on user experience in
+          documentation, though not explicitly stated.
         citations:
           - sourceId: S1
             quote: You organise the help centre so answers are easy to find.
@@ -99,7 +92,7 @@ recorded:
         claim: false
   matches:
     Clear task documentation: Technical Writing for Product Documentation
-    Understanding the product: Product Knowledge Acquisition and Explanation
+    Understanding the product: Product Knowledge Acquisition
     Information structure: Help Centre Content Organization
   suggestions:
     judge: evals.suggestion@2

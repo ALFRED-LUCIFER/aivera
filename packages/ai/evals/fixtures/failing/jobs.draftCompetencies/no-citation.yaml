@@ -20,8 +20,8 @@ expected:
       - Arabic and right-to-left design
       - Accessibility
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 603d2797a05b
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: f0d65881a3ce
   output:
     competencies:
       - name: Interaction design craft

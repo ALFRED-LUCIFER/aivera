@@ -20,6 +20,8 @@ expected:
     - path: suggestions[*].name
       none: [communication, self-starter, team player, passion, attitude, fast-paced, ownership, synergy, stakeholder]
 recorded:
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: 17b7333fd707
   output:
     competencies: []
     refused: false
@@ -27,36 +29,32 @@ recorded:
     suggestions:
       - name: Stakeholder Management
         evidenceExpected: Examples of coordinating and aligning multiple stakeholders to achieve product goals.
-        weight: 60
+        weight: 70
         level: 4
-        type: mandatory
-        why:
-          The description states the need to 'drive synergy across stakeholders', implying strong stakeholder management
-          skills are essential.
+        type: desirable
+        why: The description states the candidate will 'drive synergy across stakeholders' but does not explicitly list
+          stakeholder management as a competency.
         citations:
           - sourceId: S1
             quote: drive synergy across stakeholders
             start: 180
             end: 213
         claim: false
-      - name: Product Ownership
-        evidenceExpected: Demonstrated experience in taking full ownership of a product or feature from conception to launch.
-        weight: 40
+      - name: Communication Skills
+        evidenceExpected: Demonstrated ability to communicate clearly and effectively with teams and stakeholders.
+        weight: 30
         level: 4
-        type: mandatory
-        why:
-          The description requires the candidate to 'take ownership', indicating responsibility for product outcomes is
-          critical.
+        type: desirable
+        why: The description mentions 'excellent communication skills' but does not specify it as a competency with work
+          evidence.
         citations:
           - sourceId: S1
-            quote: take ownership
-            start: 218
-            end: 232
+            quote: excellent communication skills
+            start: 101
+            end: 131
         claim: false
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 092324cbc9eb
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Stakeholder Management: null
-      Product Ownership: null
+      Communication Skills: generic

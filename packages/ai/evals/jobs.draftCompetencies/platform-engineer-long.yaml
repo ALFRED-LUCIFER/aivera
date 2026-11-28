@@ -28,13 +28,13 @@ expected:
       - Platform security
       - Location data at scale
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 5768a3835e85
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: 97aa31565dda
   output:
     competencies:
-      - name: Kubernetes cluster management
-        evidenceExpected: Built and maintained Kubernetes clusters hosting multiple services, ensuring stability and performance.
-        weight: 20
+      - name: Kubernetes Cluster Management
+        evidenceExpected: Managed and maintained Kubernetes clusters hosting production services, ensuring stability and performance.
+        weight: 25
         level: 4
         type: mandatory
         citations:
@@ -43,8 +43,8 @@ recorded:
             start: 0
             end: 87
         claim: false
-      - name: Terraform for infrastructure and networking
-        evidenceExpected: Managed Kubernetes cluster networking and infrastructure using Terraform, including upgrades and configuration.
+      - name: Infrastructure as Code with Terraform
+        evidenceExpected: Built and maintained infrastructure and networking configurations using Terraform for Kubernetes clusters.
         weight: 15
         level: 4
         type: mandatory
@@ -54,8 +54,8 @@ recorded:
             start: 88
             end: 174
         claim: false
-      - name: Deployment pipeline development with rollback capabilities
-        evidenceExpected: Built deployment pipelines enabling multiple daily releases with safe rollback mechanisms.
+      - name: Deployment Pipeline Development
+        evidenceExpected: Developed deployment pipelines enabling multiple daily releases with safe rollback capabilities.
         weight: 15
         level: 4
         type: mandatory
@@ -65,30 +65,30 @@ recorded:
             start: 175
             end: 271
         claim: false
-      - name: Monitoring and alerting system definition
-        evidenceExpected: Defined metrics, logs, and alerts to detect unhealthy services and maintain platform reliability.
+      - name: Monitoring and Alerting Setup
+        evidenceExpected: Defined and implemented metrics, logs, and alerts to detect service health issues effectively.
         weight: 10
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: You define the metrics, logs and alerts that tell us a service is unhealthy,
+            quote: You define the metrics, logs and alerts that tell us a service is unhealthy, and you write the runbooks for them.
             start: 272
-            end: 348
+            end: 385
         claim: false
-      - name: Runbook authoring for incident response
-        evidenceExpected: Wrote runbooks detailing procedures for handling alerts and incidents effectively.
-        weight: 10
+      - name: Runbook Authoring
+        evidenceExpected: Created runbooks for incident response and operational procedures based on monitoring alerts.
+        weight: 5
         level: 3
         type: mandatory
         citations:
           - sourceId: S1
-            quote: and you write the runbooks for them.
-            start: 349
+            quote: You define the metrics, logs and alerts that tell us a service is unhealthy, and you write the runbooks for them.
+            start: 272
             end: 385
         claim: false
-      - name: Incident management and on-call participation
-        evidenceExpected: Participated in on-call rotations and led incident reviews fostering a blameless culture.
+      - name: Incident Management and On-call Participation
+        evidenceExpected: Participated in on-call rotations and led incident reviews focusing on blameless postmortems.
         weight: 10
         level: 4
         type: mandatory
@@ -98,8 +98,8 @@ recorded:
             start: 386
             end: 460
         claim: false
-      - name: Cloud cost management and reporting
-        evidenceExpected: Monitored and controlled monthly cloud expenses, providing cost transparency to teams.
+      - name: Cloud Cost Management and Reporting
+        evidenceExpected: Monitored and controlled cloud infrastructure costs, providing cost reports to service teams.
         weight: 10
         level: 3
         type: mandatory
@@ -112,27 +112,32 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Log aggregation and analysis
-        evidenceExpected: Built systems to aggregate and analyze logs for troubleshooting and performance monitoring.
+      - name: Logistics Industry Knowledge
+        evidenceExpected: Demonstrated understanding of logistics platform operations and challenges through project work or deployments.
+        weight: 5
+        level: 2
+        type: desirable
+        why:
+          The platform tracks delivery drivers across three countries, and drivers and dispatchers depend on it around the
+          clock, implying domain knowledge in logistics is beneficial but not stated explicitly.
+        citations:
+          - sourceId: S1
+            quote:
+              The platform tracks delivery drivers across three countries, and drivers and dispatchers depend on it around the
+              clock.
+            start: 543
+            end: 662
+        claim: false
+      - name: Cloud Platform Expertise
+        evidenceExpected:
+          Experience deploying and managing services on cloud platforms such as AWS, GCP, or Azure in production
+          environments.
         weight: 5
         level: 3
         type: desirable
         why:
-          The description mentions defining logs and alerts but does not explicitly state experience in log aggregation or
-          analysis, which is implied by monitoring needs.
-        citations:
-          - sourceId: S1
-            quote: You define the metrics, logs and alerts that tell us a service is unhealthy,
-            start: 272
-            end: 348
-        claim: false
-      - name: Cloud platform expertise
-        evidenceExpected: Designed and operated services on a major cloud platform, optimizing for cost and performance.
-        weight: 5
-        level: 3
-        type: desirable
-        why: The description references managing cloud costs and Kubernetes clusters but does not specify cloud platform
-          expertise, which is implied by cloud billing and cluster hosting.
+          Managing Kubernetes clusters and cloud costs implies use of cloud platforms, but the description does not specify
+          which or require explicit cloud platform expertise.
         citations:
           - sourceId: S1
             quote: You keep the monthly cloud bill in check and show teams what their services cost.
@@ -140,14 +145,14 @@ recorded:
             end: 542
         claim: false
   matches:
-    Kubernetes operations: Kubernetes cluster management
-    Infrastructure as code: Terraform for infrastructure and networking
-    Deployment pipelines: Deployment pipeline development with rollback capabilities
-    Observability and alerting: Monitoring and alerting system definition
-    Incident response: Incident management and on-call participation
-    Cloud cost management: Cloud cost management and reporting
+    Kubernetes operations: Kubernetes Cluster Management
+    Infrastructure as code: Infrastructure as Code with Terraform
+    Deployment pipelines: Deployment Pipeline Development
+    Observability and alerting: Monitoring and Alerting Setup
+    Incident response: Incident Management and On-call Participation
+    Cloud cost management: Cloud Cost Management and Reporting
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Log aggregation and analysis: null
-      Cloud platform expertise: null
+      Logistics Industry Knowledge: null
+      Cloud Platform Expertise: null

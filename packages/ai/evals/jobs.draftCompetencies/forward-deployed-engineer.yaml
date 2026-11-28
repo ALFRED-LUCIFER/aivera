@@ -18,14 +18,12 @@ expected:
       - Logistics operations
       - Customer communication
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: b931b8b1b524
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: a50f23e56d6b
   output:
     competencies:
       - name: Customer Problem Identification
-        evidenceExpected:
-          Built and delivered solutions by working directly on site with logistics customers to identify and
-          prioritize problems worth solving.
+        evidenceExpected: Built and delivered solutions by identifying and defining problems directly with logistics customers on site.
         weight: 35
         level: 4
         type: mandatory
@@ -35,7 +33,7 @@ recorded:
             start: 0
             end: 81
         claim: false
-      - name: Systems and API Integration
+      - name: System Integration Development
         evidenceExpected:
           Shipped integrations into customer systems and APIs, demonstrating ability to connect and extend
           existing software environments.
@@ -64,31 +62,27 @@ recorded:
     reason: null
     suggestions:
       - name: Knowledge of Logistics Industry
-        evidenceExpected:
-          Demonstrated understanding of logistics industry challenges and workflows relevant to customer problem
-          solving and AI deployment.
+        evidenceExpected: Demonstrated understanding of logistics domain challenges and workflows through work with logistics customers.
         weight: 20
         level: 3
         type: desirable
         why:
-          The description states working with logistics customers but does not mention knowledge of the logistics industry
-          explicitly, which is implied as important for effective problem identification and solution deployment.
+          The description states working on site with logistics customers but does not explicitly require logistics industry
+          knowledge, which would enhance effectiveness.
         citations:
           - sourceId: S1
             quote: You will work on site with logistics customers to find the problem worth solving.
             start: 0
             end: 81
         claim: false
-      - name: Programming Language Proficiency
-        evidenceExpected:
-          Developed and shipped integrations and AI agent deployments using relevant programming languages such
-          as Python or JavaScript.
+      - name: API Development and Design
+        evidenceExpected: Designed and developed APIs to facilitate integration and communication between systems.
         weight: 15
-        level: 4
+        level: 3
         type: desirable
         why:
-          The description mentions shipping integrations and deploying AI agents but does not specify programming languages,
-          which are implied as necessary to perform the work effectively.
+          The description mentions shipping integrations into systems and APIs but does not specify API development skills,
+          which are implied for effective integration.
         citations:
           - sourceId: S1
             quote: You ship integrations into their systems and APIs.
@@ -97,10 +91,10 @@ recorded:
         claim: false
   matches:
     Customer problem discovery: Customer Problem Identification
-    Integration engineering: Systems and API Integration
+    Integration engineering: System Integration Development
     Working with AI systems: AI Agent Deployment and Tuning
   suggestions:
     judge: evals.suggestion@2
     verdicts:
       Knowledge of Logistics Industry: null
-      Programming Language Proficiency: null
+      API Development and Design: null

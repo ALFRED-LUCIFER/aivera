@@ -18,12 +18,12 @@ expected:
     competencies[*].name: [Onboarding flow design]
     suggestions[*].name: [Arabic and right-to-left design]
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 1ff9e790eb3f
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: 901fcf69f6d5
   output:
     competencies:
       - name: Designing onboarding flows for merchants
-        evidenceExpected: Designed and shipped onboarding flows that enable merchants to open stores on a marketplace platform.
+        evidenceExpected: Built and shipped onboarding flow designs that enable merchants to open stores on a marketplace platform.
         weight: 70
         level: 4
         type: mandatory
@@ -34,7 +34,7 @@ recorded:
             end: 107
         claim: false
       - name: User testing with merchants
-        evidenceExpected: Conducted user testing sessions with merchants to validate onboarding flow changes before release.
+        evidenceExpected: Conducted user testing sessions with merchants to validate and refine onboarding flow changes before release.
         weight: 30
         level: 3
         type: mandatory
@@ -47,38 +47,36 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Knowledge of e-commerce marketplaces
-        evidenceExpected: Demonstrated understanding of e-commerce marketplace dynamics through design or product work.
-        weight: 50
+      - name: User experience research
+        evidenceExpected: Conducted research to understand merchant needs and behaviors to inform onboarding design improvements.
+        weight: 40
         level: 3
         type: desirable
         why:
-          The job involves designing onboarding flows for merchants opening stores on a marketplace, implying knowledge of
-          e-commerce marketplaces is important, but the description does not explicitly state it.
+          The description implies a need to understand merchants through testing but does not explicitly mention broader user
+          research.
+        citations:
+          - sourceId: S1
+            quote: You test every change with merchants before it ships.
+            start: 108
+            end: 161
+        claim: false
+      - name: Interaction design
+        evidenceExpected: Created interactive prototypes and detailed interaction flows for merchant onboarding processes.
+        weight: 30
+        level: 3
+        type: desirable
+        why: Designing onboarding flows implies interaction design skills, but the description does not explicitly state it.
         citations:
           - sourceId: S1
             quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
             start: 0
             end: 107
         claim: false
-      - name: Proficiency in UX design tools
-        evidenceExpected: Created and iterated onboarding flow designs using UX design software such as Figma, Sketch, or Adobe XD.
-        weight: 50
-        level: 3
-        type: desirable
-        why:
-          Designing onboarding flows implies use of UX design tools, but the description does not explicitly mention any
-          design tools.
-        citations:
-          - sourceId: S1
-            quote: You will design the onboarding flows that merchants across the Gulf use to open a store on our marketplace.
-            start: 0
-            end: 107
-        claim: false
+  matches:
+    Onboarding flow design: Designing onboarding flows for merchants
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Knowledge of e-commerce marketplaces: null
-      Proficiency in UX design tools: null
-  matches:
-    Onboarding flow design: Designing onboarding flows for merchants
+      User experience research: null
+      Interaction design: null

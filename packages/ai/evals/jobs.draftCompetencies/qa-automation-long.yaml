@@ -35,13 +35,13 @@ expected:
     suggestions[*].name:
       - Payments domain testing
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: b517d37fdb0f
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: de5409fc513a
   output:
     competencies:
-      - name: Test Automation with Playwright
+      - name: End-to-end test automation with Playwright
         evidenceExpected: Built and maintained end-to-end automated tests for checkout flows using Playwright.
-        weight: 15
+        weight: 20
         level: 4
         type: mandatory
         citations:
@@ -50,9 +50,9 @@ recorded:
             start: 116
             end: 190
         claim: false
-      - name: API Testing
-        evidenceExpected: Developed and executed API tests for payments and refunds services to ensure functionality.
-        weight: 12
+      - name: API test automation
+        evidenceExpected: Developed and executed automated API tests for payments and refunds services.
+        weight: 15
         level: 4
         type: mandatory
         citations:
@@ -61,9 +61,9 @@ recorded:
             start: 193
             end: 247
         claim: false
-      - name: Continuous Integration Testing
-        evidenceExpected: Integrated and ran automated tests within CI pipelines ensuring tests are fast and stable.
-        weight: 12
+      - name: Continuous Integration (CI) test execution and maintenance
+        evidenceExpected: Integrated automated tests into CI pipelines, ensuring tests run fast and remain stable.
+        weight: 15
         level: 4
         type: mandatory
         citations:
@@ -72,8 +72,8 @@ recorded:
             start: 250
             end: 313
         claim: false
-      - name: Flaky Test Identification and Resolution
-        evidenceExpected: Identified flaky tests, fixed them, and reported root causes to improve test reliability.
+      - name: Flaky test identification and resolution
+        evidenceExpected: Identified flaky tests, fixed them, and documented root causes.
         weight: 10
         level: 4
         type: mandatory
@@ -83,10 +83,10 @@ recorded:
             start: 316
             end: 370
         claim: false
-      - name: Test Coverage Planning
+      - name: Test coverage planning with cross-functional teams
         evidenceExpected: Collaborated with product managers and engineers to plan test coverage before development starts.
-        weight: 8
-        level: 4
+        weight: 10
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -94,10 +94,10 @@ recorded:
             start: 373
             end: 447
         claim: false
-      - name: Accessibility Testing
-        evidenceExpected: Performed accessibility testing using screen readers and automated checks to ensure compliance.
-        weight: 8
-        level: 4
+      - name: Accessibility testing using screen readers and automated tools
+        evidenceExpected: Conducted accessibility tests using screen readers and automated accessibility checks.
+        weight: 7
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -105,10 +105,10 @@ recorded:
             start: 450
             end: 510
         claim: false
-      - name: Load Testing
-        evidenceExpected: Conducted load tests prior to sales events and reported performance results.
-        weight: 8
-        level: 4
+      - name: Load testing and reporting
+        evidenceExpected: Executed load tests prior to sales events and reported performance results.
+        weight: 7
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -116,10 +116,10 @@ recorded:
             start: 513
             end: 576
         claim: false
-      - name: Code Review for Testability
-        evidenceExpected: Reviewed pull requests focusing on testability aspects to improve code quality.
-        weight: 7
-        level: 4
+      - name: Code review for testability
+        evidenceExpected: Reviewed pull requests focusing on testability aspects.
+        weight: 5
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -127,9 +127,9 @@ recorded:
             start: 579
             end: 616
         claim: false
-      - name: Bug Reporting
-        evidenceExpected: Wrote clear and reproducible bug reports that facilitated engineering fixes.
-        weight: 7
+      - name: Bug reporting with reproducible steps
+        evidenceExpected: Wrote clear and detailed bug reports that engineers can reproduce.
+        weight: 5
         level: 4
         type: mandatory
         citations:
@@ -138,10 +138,10 @@ recorded:
             start: 619
             end: 672
         claim: false
-      - name: Mentoring Junior Testers
-        evidenceExpected: Mentored and guided junior testers to improve their skills and test quality.
-        weight: 8
-        level: 4
+      - name: Mentoring junior testers
+        evidenceExpected: Mentored and guided junior testers to improve their skills and productivity.
+        weight: 6
+        level: 3
         type: mandatory
         citations:
           - sourceId: S1
@@ -152,44 +152,44 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Web Development Knowledge
-        evidenceExpected:
-          Demonstrated understanding of web app architecture and technologies to effectively automate checkout
-          and payment flows.
-        weight: 10
+      - name: JavaScript or TypeScript programming
+        evidenceExpected: Developed test automation scripts and frameworks in JavaScript or TypeScript, commonly used with Playwright.
+        weight: 8
         level: 3
         type: desirable
-        why: The job involves owning test automation for the checkout and payments web app, implying knowledge of web
-          development is needed but not explicitly stated.
-        citations:
-          - sourceId: S1
-            quote: You will own test automation for the checkout and payments web app used by merchants every day.
-            start: 0
-            end: 95
-        claim: false
-      - name: JavaScript or TypeScript Programming
-        evidenceExpected: Wrote automation scripts and tests in JavaScript or TypeScript, commonly used with Playwright.
-        weight: 10
-        level: 4
-        type: desirable
         why:
-          Playwright tests are typically written in JavaScript or TypeScript, but the description does not explicitly mention
-          programming languages.
+          The description requires designing and maintaining tests in Playwright, which is typically used with JavaScript or
+          TypeScript, but does not explicitly mention programming languages.
         citations:
           - sourceId: S1
             quote: Design and maintain end-to-end tests in Playwright for the checkout flows.
             start: 116
             end: 190
         claim: false
+      - name: Knowledge of e-commerce checkout and payment systems
+        evidenceExpected: Built and tested automation for checkout and payment workflows in e-commerce platforms.
+        weight: 8
+        level: 3
+        type: desirable
+        why: The job focuses on checkout and payments web app used by merchants, implying domain knowledge in e-commerce
+          checkout and payment systems is beneficial but not explicitly stated.
+        citations:
+          - sourceId: S1
+            quote: You will own test automation for the checkout and payments web app used by merchants every day.
+            start: 0
+            end: 95
+        claim: false
   matches:
-    End-to-end test automation: Test Automation with Playwright
-    CI test reliability: Continuous Integration Testing
-    Test planning: Test Coverage Planning
-    Performance testing: Load Testing
-    Bug reporting and code review: Code Review for Testability
-    Mentoring testers: Mentoring Junior Testers
+    End-to-end test automation: End-to-end test automation with Playwright
+    API testing: API test automation
+    CI test reliability: Continuous Integration (CI) test execution and maintenance
+    Test planning: Test coverage planning with cross-functional teams
+    Accessibility testing: Accessibility testing using screen readers and automated tools
+    Performance testing: Load testing and reporting
+    Bug reporting and code review: Code review for testability
+    Mentoring testers: Mentoring junior testers
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Web Development Knowledge: null
-      JavaScript or TypeScript Programming: null
+      JavaScript or TypeScript programming: null
+      Knowledge of e-commerce checkout and payment systems: null

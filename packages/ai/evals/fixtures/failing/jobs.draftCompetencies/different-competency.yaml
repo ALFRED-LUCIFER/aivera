@@ -21,8 +21,8 @@ expected:
       - Banking and payments domain
       - Working under regulation
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: d86ccc83e97a
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: 843bda24edb3
   output:
     competencies:
       - name: System design in production

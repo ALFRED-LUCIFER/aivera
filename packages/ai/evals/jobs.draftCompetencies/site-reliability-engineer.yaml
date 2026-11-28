@@ -19,13 +19,13 @@ expected:
       - Cloud cost control
       - Infrastructure security
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 30251d90ec77
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: cdcefa66d4f4
   output:
     competencies:
       - name: Cloud Infrastructure as Code Management
-        evidenceExpected: Built and maintained cloud infrastructure using code to automate deployment and configuration.
-        weight: 40
+        evidenceExpected: Built and maintained cloud infrastructure using code to automate deployment and management processes.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -34,8 +34,8 @@ recorded:
             start: 0
             end: 49
         claim: false
-      - name: Incident Response Leadership
-        evidenceExpected: Led incident response efforts and authored detailed incident review reports.
+      - name: Incident Response Leadership and Review Writing
+        evidenceExpected: Led incident response efforts and authored detailed incident review reports to improve system reliability.
         weight: 30
         level: 4
         type: mandatory
@@ -46,8 +46,10 @@ recorded:
             end: 99
         claim: false
       - name: Dashboard and Alert Development
-        evidenceExpected: Developed and deployed monitoring dashboards and alerting systems for operational visibility.
-        weight: 30
+        evidenceExpected:
+          Designed and implemented monitoring dashboards and alerting systems to ensure operational visibility
+          and timely issue detection.
+        weight: 20
         level: 3
         type: mandatory
         citations:
@@ -59,31 +61,33 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Cloud Platform Expertise
-        evidenceExpected: Demonstrated experience deploying and managing services on major cloud platforms such as AWS, Azure, or GCP.
-        weight: 20
+      - name: Cloud Security Practices
+        evidenceExpected: Implemented security best practices and policies for cloud infrastructure to protect data and services.
+        weight: 15
         level: 3
         type: desirable
         why:
-          Managing cloud infrastructure as code implies working with cloud platforms, but the description does not specify
-          which ones.
+          Managing cloud infrastructure as code implies working with cloud environments where security is critical, but the
+          description does not mention security explicitly.
         citations:
           - sourceId: S1
             quote: You will manage our cloud infrastructure as code.
             start: 0
             end: 49
         claim: false
-      - name: Monitoring and Observability Tools Knowledge
-        evidenceExpected:
-          Experience implementing and configuring monitoring and observability tools like Prometheus, Grafana,
-          or similar.
-        weight: 20
+      - name: Programming or Scripting Languages for Automation
+        evidenceExpected: Developed automation scripts or tools using languages like Python, Bash, or similar to support
+          infrastructure management and incident response.
+        weight: 15
         level: 3
         type: desirable
-        why:
-          Building dashboards and alerts implies familiarity with monitoring tools, but the description does not specify
-          which tools.
+        why: Managing infrastructure as code and building dashboards and alerts implies use of programming or scripting
+          languages, but the description does not specify any language.
         citations:
+          - sourceId: S1
+            quote: You will manage our cloud infrastructure as code.
+            start: 0
+            end: 49
           - sourceId: S1
             quote: You build the dashboards and alerts we run on.
             start: 100
@@ -91,10 +95,10 @@ recorded:
         claim: false
   matches:
     Infrastructure as code: Cloud Infrastructure as Code Management
-    Incident response: Incident Response Leadership
+    Incident response: Incident Response Leadership and Review Writing
     Observability: Dashboard and Alert Development
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Cloud Platform Expertise: null
-      Monitoring and Observability Tools Knowledge: null
+      Cloud Security Practices: null
+      Programming or Scripting Languages for Automation: null
