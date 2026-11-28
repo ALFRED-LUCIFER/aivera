@@ -36,6 +36,8 @@ export const IN_PROGRESS: readonly CvState[] = ['reading', 'assessing'];
 
 /** How often the ranking and a profile refresh while a CV is read or assessed. */
 export const LIVE_REFRESH_MS = 5000;
+/** How long a page keeps refreshing itself on its own; a reload starts it again (review finding X6). */
+export const LIVE_REFRESH_LIMIT_MS = 15 * 60_000;
 
 /**
  * The state of a candidate not yet scored on the job's approved rubric. A failed mapping wins: the CV was read, so

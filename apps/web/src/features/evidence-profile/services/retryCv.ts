@@ -35,7 +35,9 @@ export async function retryCv(input: unknown): Promise<RetryResult> {
     return { ok: false, error: 'failed' };
   }
   if (!result) forbidden();
-  log.info({ area: 'candidates', ...target }, 'cv retry queued');
+  // `code` is allowlisted telemetry; `kind` would export as "[redacted]". The rest are opaque ids.
+  const { kind, ...ids } = target;
+  log.info({ area: 'candidates', code: kind, ...ids }, 'cv retry queued');
   // The ranking and the profile read the CV's status again.
   revalidatePath('/app', 'layout');
   return { ok: true };

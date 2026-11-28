@@ -814,4 +814,16 @@ describe('Feature: CV reading status (AIV-P1-165 §7)', () => {
       vi.useRealTimers();
     }
   });
+
+  // mutation check: dropped the clearInterval at the limit -> this test failed (refreshed 300 times, not 180)
+  it('stops refreshing itself after 15 minutes, so a stuck CV does not reload the ranking forever', () => {
+    vi.useFakeTimers();
+    try {
+      showRanking(six);
+      vi.advanceTimersByTime(25 * 60_000);
+      expect(fake.refresh).toHaveBeenCalledTimes((15 * 60_000) / 5000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

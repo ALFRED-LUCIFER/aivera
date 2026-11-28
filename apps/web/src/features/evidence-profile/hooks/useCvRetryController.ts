@@ -1,6 +1,12 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { LIVE_REFRESH_MS, retryKey, type CvRetryView, type RetryResult } from '../domain/cvStatus.ts';
+import {
+  LIVE_REFRESH_LIMIT_MS,
+  LIVE_REFRESH_MS,
+  retryKey,
+  type CvRetryView,
+  type RetryResult,
+} from '../domain/cvStatus.ts';
 import { retryCv } from '../services/retryCv.ts';
 
 /**
@@ -29,13 +35,19 @@ export function useCvRetryController(): CvRetryView {
 
 /**
  * Refreshes the page's server data every few seconds while `active` (a CV is being read or assessed), so the ranking
- * and an open profile update on their own (AIV-P1-165 §7; the pattern of useCatalogueEvalController).
+ * and an open profile update on their own (AIV-P1-165 §7; the pattern of useCatalogueEvalController). It stops after
+ * `LIVE_REFRESH_LIMIT_MS`, so a CV stuck where the page cannot see it does not reload the ranking forever.
+ * shortcut: a fixed limit, then nothing until a reload; back off instead if recruiters leave pages open that long.
  */
 export function useLiveRefresh(active: boolean) {
   const router = useRouter();
   useEffect(() => {
     if (!active) return;
-    const timer = setInterval(() => router.refresh(), LIVE_REFRESH_MS);
+    let ticks = 0;
+    const timer = setInterval(() => {
+      router.refresh();
+      if (++ticks * LIVE_REFRESH_MS >= LIVE_REFRESH_LIMIT_MS) clearInterval(timer);
+    }, LIVE_REFRESH_MS);
     return () => clearInterval(timer);
   }, [active, router]);
 }
