@@ -17,6 +17,8 @@ const fake = vi.hoisted(() => ({
   preview: vi.fn(),
   jobs: vi.fn(),
   packs: vi.fn(async (): Promise<unknown[]> => []),
+  statuses: vi.fn(async (_ctx: unknown, _jobId: string, _ids: string[]): Promise<unknown[]> => []),
+  fileNames: vi.fn(async (_ctx: unknown, _ids: string[]) => new Map<string, string>()),
 }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
@@ -26,6 +28,9 @@ vi.mock('@/server/flags', () => ({ enabledFlags: new Set(['compare']) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({ getAssessment: () => ({ listRanking: fake.ranking }) }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ listPacks: fake.packs }) }));
+// AIV-P1-165: each applicant's CV state and file name; none unless a test sets them.
+vi.mock('@/server/evidence', () => ({ getEvidence: () => ({ listCvStatuses: fake.statuses }) }));
+vi.mock('@/server/files', () => ({ getFiles: () => ({ files: { fileNames: fake.fileNames } }) }));
 // AIV-P2-007: each application's current round; none unless a test sets them.
 vi.mock('@/server/interviews', () => ({ getInterviews: () => ({ listInterviews: fake.interviews }) }));
 vi.mock('@/server/jobs', () => ({
@@ -53,6 +58,93 @@ const ranked = {
 const rubric = (id: string) => ({ id, competencies: [{ id: 'c5', name: 'Product judgement' }] });
 
 afterEach(() => vi.restoreAllMocks());
+
+const unnamed = (n: number) => ({
+  ...sara,
+  applicationId: `a${n}`,
+  personId: `p${n}`,
+  displayName: 'Unnamed applicant',
+});
+const cv = (status: string, fileId: string | null = null) => ({ sourceId: `s-${status}`, fileId, status });
+
+describe('loadRanking: each row says its own status while CVs are read (AIV-P1-165 §7)', () => {
+  const FILE = '0190d4a2-0000-7000-8000-0000000000f1';
+  // A file name can name the candidate: this one does, so a leak would show.
+  const FILE_NAME = 'Maria-Santos-CV.pdf';
+  const setUp = () => {
+    fake.list.mockResolvedValue([sara, unnamed(2), unnamed(3), unnamed(4), unnamed(5), unnamed(6), unnamed(7)]);
+    fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [ranked] });
+    fake.rubric.mockResolvedValue(rubric(VERSION));
+    fake.statuses.mockResolvedValue([
+      { candidateId: 'p1', cv: cv('parsed'), mappingFailed: false },
+      { candidateId: 'p2', cv: cv('pending', FILE), mappingFailed: false },
+      { candidateId: 'p3', cv: cv('unreadable'), mappingFailed: false },
+      { candidateId: 'p4', cv: cv('failed'), mappingFailed: false },
+      { candidateId: 'p5', cv: cv('waiting'), mappingFailed: false },
+      { candidateId: 'p6', cv: cv('parsed'), mappingFailed: true },
+      { candidateId: 'p7', cv: null, mappingFailed: false },
+    ]);
+    fake.fileNames.mockResolvedValue(new Map([[FILE, FILE_NAME]]));
+  };
+  afterEach(() => {
+    ctx.role = 'recruiter';
+    fake.statuses.mockResolvedValue([]);
+    fake.fileNames.mockResolvedValue(new Map());
+  });
+
+  it('reading, unreadable, failed, waiting, could not assess and no CV; "Try again" only where it can help', async () => {
+    setUp();
+    const data = await loadRanking(JOB);
+    if (!data || data === 'notFound') throw new Error('no ranking');
+    const byId = new Map(data.rows.map((row) => [row.personId, row]));
+    // Scored: the score speaks, no CV state.
+    expect(byId.get('p1')?.cv).toBeUndefined();
+    expect(byId.get('p2')).toMatchObject({ cv: { state: 'reading', retry: null }, fileName: FILE_NAME });
+    expect(byId.get('p3')?.cv).toEqual({ state: 'unreadable', retry: null });
+    expect(byId.get('p4')?.cv).toEqual({ state: 'failed', retry: { kind: 'cv', sourceId: 's-failed' } });
+    expect(byId.get('p5')?.cv).toEqual({ state: 'waiting', retry: null });
+    expect(byId.get('p6')?.cv).toEqual({
+      state: 'couldNotAssess',
+      retry: { kind: 'mapping', candidateId: 'p6', jobId: JOB },
+    });
+    expect(byId.get('p7')?.cv).toEqual({ state: 'noCv', retry: null });
+    expect(fake.statuses).toHaveBeenCalledWith(ctx, JOB, ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']);
+    // Only the unnamed applicant's CV file is named.
+    expect(fake.fileNames).toHaveBeenCalledWith(ctx, [FILE]);
+  });
+
+  // SAFETY: mutation check: logged the rows' file names under the allowlisted `credalent.intake.applications` key ->
+  // this test failed (the line contained "Maria-Santos-CV")
+  it('the file name reaches the page only: never the log line, nor any link the row builds', async () => {
+    setUp();
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const data = await loadRanking(JOB);
+    expect(data !== 'notFound' && data?.rows.find((r) => r.personId === 'p2')?.fileName).toBe(FILE_NAME);
+    const logged = write.mock.calls.map(([chunk]) => String(chunk)).join('');
+    expect(logged).toContain('ranking listed');
+    expect(logged).not.toMatch(/Maria|Santos|\.pdf/);
+  });
+
+  it.each(['hiring_owner', 'interviewer'])(
+    'a %s sees each status, with no "Try again" and no file name',
+    async (role) => {
+      setUp();
+      ctx.role = role;
+      const data = await loadRanking(JOB);
+      if (!data || data === 'notFound') throw new Error('no ranking');
+      expect(data.rows.every((row) => !row.cv?.retry && !row.fileName)).toBe(true);
+      expect(data.rows.find((r) => r.personId === 'p4')?.cv?.state).toBe('failed');
+      expect(fake.fileNames).not.toHaveBeenCalled();
+    },
+  );
+
+  it('before the rubric is approved a read CV waits for approval, and nothing is "assessing"', async () => {
+    setUp();
+    fake.ranking.mockResolvedValue({ status: 'awaiting_rubric' });
+    const data = await loadRanking(JOB);
+    expect(data !== 'notFound' && data?.rows.find((r) => r.personId === 'p1')?.cv?.state).toBe('afterApproval');
+  });
+});
 
 describe('loadRanking', () => {
   // SAFETY: mutation check: logged the applicants under the allowlisted `credalent.assessment.ranked` key -> this test failed (the line contained "Sara")

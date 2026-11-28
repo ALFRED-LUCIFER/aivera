@@ -4,6 +4,7 @@ import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { CvRetryView } from '../domain/cvStatus.ts';
 import type { EvidenceCard } from '../domain/evidenceCards.ts';
 import type { Fit, ProfileData } from '../domain/profile.ts';
 import { CandidateProfile, type CandidateProfileView } from './CandidateProfile.tsx';
@@ -33,7 +34,7 @@ const cited = {
 const ready = (
   fit: Fit,
   explanation: ProfileData['explanation'] = null,
-  more: Partial<Pick<ProfileData, 'competencies' | 'needs' | 'notes'>> = {},
+  more: Partial<Pick<ProfileData, 'competencies' | 'needs' | 'notes' | 'cv' | 'fileName' | 'uncitedLinkCount'>> = {},
 ): CandidateProfileView => ({
   status: 'ready',
   jobId: '0190d4a2-0000-7000-9000-000000001031',
@@ -45,12 +46,15 @@ const ready = (
   competencies: [],
   needs: [],
   notes: [],
+  cv: null,
+  fileName: null,
+  uncitedLinkCount: 0,
   ...more,
 });
-const show = (view: CandidateProfileView, linkCandidates = false) =>
+const show = (view: CandidateProfileView, linkCandidates = false, retry?: CvRetryView) =>
   render(
     <IntlProvider {...intl}>
-      <CandidateProfile view={view} linkCandidates={linkCandidates} />
+      <CandidateProfile view={view} linkCandidates={linkCandidates} retry={retry} />
     </IntlProvider>,
   );
 
@@ -73,6 +77,54 @@ describe('CandidateProfile states', () => {
     expect(screen.getByText('Not yet scored')).toBeTruthy();
     expect(screen.getByText('Not yet available')).toBeTruthy();
     expect(screen.queryByText('Why they are ranked here')).toBeNull();
+  });
+
+  it('a CV still being read says so with an icon and a word, and the file name stands in for the name (AIV-P1-165)', () => {
+    show(ready({ status: 'not_scored' }, null, { cv: { state: 'reading', retry: null }, fileName: 'cv-0142.pdf' }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('cv-0142.pdf');
+    expect(screen.queryByText('Not yet scored')).toBeNull();
+    const badge = screen.getByText('Reading the CV…');
+    expect(badge.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Try again/ })).toBeNull();
+  });
+
+  it('a CV that failed offers a secondary "Try again" for that CV, and says when it did not work (AIV-P1-134)', async () => {
+    const target = { kind: 'cv' as const, sourceId: '0190d4a2-0000-7000-8000-0000000000c1' };
+    const onRetry = vi.fn();
+    const problemFor = vi.fn(() => 'failed' as const);
+    show(ready({ status: 'not_scored' }, null, { cv: { state: 'failed', retry: target } }), false, {
+      pending: false,
+      problemFor,
+      onRetry,
+    });
+    expect(screen.getByText('We could not read this CV. Try again.')).toBeTruthy();
+    const button = screen.getByRole('button', { name: 'Try again for Sara Al Qahtani' });
+    // Never the view's primary button (DESIGN.md: one primary per view).
+    expect(button.className).not.toContain('bg-ink');
+    await userEvent.click(button);
+    expect(onRetry).toHaveBeenCalledWith(target);
+    expect(screen.getByRole('status').textContent).toBe('That did not work. Try again in a moment.');
+  });
+
+  it('a mapping that failed reads "could not assess"; with no retry allowed there is no button', () => {
+    show(ready({ status: 'not_scored' }, null, { cv: { state: 'couldNotAssess', retry: null } }));
+    expect(screen.getByText('We could not assess this CV. Try again.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Try again/ })).toBeNull();
+  });
+
+  it('says how many CV lines could not be cited, never which, and nothing when none (AIV-P1-156)', () => {
+    show(ready(scored, null, { uncitedLinkCount: 1 }));
+    expect(
+      screen.getByText(
+        'One line from this CV could not be cited, so it was not mapped. The CV is unchanged. Read it in full for them.',
+      ),
+    ).toBeTruthy();
+    cleanup();
+    show(ready(scored, null, { uncitedLinkCount: 3 }));
+    expect(screen.getByText(/^3 lines from this CV could not be cited, so they were not mapped\./)).toBeTruthy();
+    cleanup();
+    show(ready(scored));
+    expect(screen.queryByText(/could not be cited/)).toBeNull();
   });
 
   it('links "Candidates" in the breadcrumb only when the server says this member may open it (AIV-P1-048)', () => {

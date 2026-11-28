@@ -1,6 +1,7 @@
 import type { RankingRow } from '@credalent/assessment';
 import type { Interview, InterviewStatus, Round } from '@credalent/interviews';
 import type { ApplicationListItem, Stage } from '@credalent/intake';
+import { IN_PROGRESS, type CvView } from '@/features/evidence-profile/domain/cvStatus.ts';
 import type { RowDuplicates } from './duplicates.ts';
 import type { BulkActionId } from './selection.ts';
 
@@ -30,7 +31,22 @@ export type CandidateRow = {
   inPack?: true;
   /** The application's current interview round (AIV-P2-007): the stage reads "Round 1 on 20 Nov", "Round 1 complete". */
   interview?: RowInterview;
+  /** Not yet scored: where the CV is, so the row says why (AIV-P1-165 §7). */
+  cv?: CvView;
+  /**
+   * The uploaded CV's file name, while no name is read from it (admins and recruiters): shown on screen in place of
+   * "Unnamed applicant" and nowhere else, never in a log, URL or browser storage (AGENTS.md 1.2).
+   */
+  fileName?: string;
 };
+
+/** The name a row shows: the person's, else the CV's file name until a name is read, else `unnamed`. */
+export const rowName = (row: Pick<CandidateRow, 'name' | 'fileName'>, unnamed: string) =>
+  row.fileName ?? row.name ?? unnamed;
+
+/** Rows whose CV is being read or assessed: "Assessing N CVs", and the page refreshes itself meanwhile. */
+export const inProgress = (rows: CandidateRow[]) =>
+  rows.filter((row) => !row.score && row.cv && IN_PROGRESS.includes(row.cv.state)).length;
 
 /** An application's current interview, as a row shows it: plain data, the time as ISO. */
 export type RowInterview = {
@@ -157,7 +173,7 @@ export function filterRows(rows: CandidateRow[], { query, stage, missing }: Rank
   const q = query.trim().toLocaleLowerCase();
   return rows.filter(
     (row) =>
-      (!q || (row.name ?? '').toLocaleLowerCase().includes(q)) &&
+      (!q || rowName(row, '').toLocaleLowerCase().includes(q)) &&
       (!stage || row.stage === stage) &&
       (!missing || (row.score?.missing.includes(missing) ?? false)),
   );

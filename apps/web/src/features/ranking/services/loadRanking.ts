@@ -1,4 +1,4 @@
-import type { PersonMergeSummary } from '@credalent/candidates';
+import { UNNAMED_APPLICANT, type PersonMergeSummary } from '@credalent/candidates';
 import { defaultTimeZone } from '@credalent/i18n';
 import { sameDay } from '@/features/interviews/domain/interviews.ts';
 import { IntakeError, type Source, type Stage } from '@credalent/intake';
@@ -7,12 +7,15 @@ import { ForbiddenError, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { getAssessment } from '@/server/assessment';
 import { getDecisions } from '@/server/decisions';
+import { getEvidence } from '@/server/evidence';
+import { getFiles } from '@/server/files';
 import { enabledFlags } from '@/server/flags';
 import { getCandidates } from '@/server/people';
 import { getIntake } from '@/server/intake';
 import { getInterviews } from '@/server/interviews';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
+import { cvView, type CvView } from '@/features/evidence-profile/domain/cvStatus.ts';
 import type { MergeSide, RowDuplicates } from '../domain/duplicates.ts';
 import { currentInterviews, toCandidateRows, withInterview, type RankingData } from '../domain/ranking.ts';
 import { bulkActionsFor } from '../domain/selection.ts';
@@ -71,6 +74,31 @@ async function duplicatesOf(ctx: WorkspaceContext, personIds: string[]) {
 }
 
 /**
+ * Each applicant's CV state for the job (AIV-P1-165 §7), and for an admin or recruiter the CV's file name while no name
+ * is read from it. Keyed by person id. The file name goes to the page only: never to a log line (AGENTS.md 1.2).
+ */
+export async function cvsOf(
+  ctx: WorkspaceContext,
+  job: { jobId: string; rubricApproved: boolean },
+  applicants: { personId: string; displayName: string | null }[],
+): Promise<Map<string, { cv: CvView; fileName?: string }>> {
+  const personIds = [...new Set(applicants.map((a) => a.personId))];
+  const statuses = await getEvidence().listCvStatuses(ctx, job.jobId, personIds);
+  const mayRetry = ctx.role === 'admin' || ctx.role === 'recruiter';
+  const unnamed = new Set(applicants.filter((a) => a.displayName === UNNAMED_APPLICANT).map((a) => a.personId));
+  const fileIds = statuses.flatMap((s) => (unnamed.has(s.candidateId) && s.cv?.fileId ? [s.cv.fileId] : []));
+  // `file.upload`: admins and recruiters only; with no storage account there is no file to name.
+  const files = mayRetry && fileIds.length ? getFiles()?.files : undefined;
+  const fileNames = files ? await files.fileNames(ctx, fileIds) : new Map<string, string>();
+  return new Map(
+    statuses.map((status) => {
+      const fileName = status.cv?.fileId ? fileNames.get(status.cv.fileId) : undefined;
+      return [status.candidateId, { cv: cvView(status, job, mayRetry), ...(fileName && { fileName }) }] as const;
+    }),
+  );
+}
+
+/**
  * Each application's current interview round (AIV-P2-007), from the interviews the member may see: the contract checks
  * `interview.view` and job scope, and gives an interviewer only their own.
  */
@@ -100,8 +128,9 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
       const interviews = await interviewsOf(ctx);
       // Decided here from the member's role, not in the browser (AGENTS.md 1.3).
       const bulkActions = bulkActionsFor(ctx.role, enabledFlags);
+      const cvs = await cvsOf(ctx, { jobId, rubricApproved: ranking.status !== 'awaiting_rubric' }, applicants);
       if (ranking.status === 'awaiting_rubric')
-        return { applicants, ranking, names: new Map<string, string>(), duplicates, bulkActions, interviews };
+        return { applicants, ranking, names: new Map<string, string>(), duplicates, bulkActions, interviews, cvs };
       // Read only after listRanking authorised the job. The ranking is on the approved version; names from another
       // version are never shown against it.
       const rubric = await getApprovedRubricReads().approvedRubric(ctx.tx, ctx.workspaceId, jobId);
@@ -115,10 +144,10 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
             .filter((p) => p.status === 'ready')
             .map(({ id, name, candidateIds }) => ({ id, name, candidateIds }))
         : [];
-      return { applicants, ranking, names, duplicates, bulkActions, packs, interviews };
+      return { applicants, ranking, names, duplicates, bulkActions, packs, interviews, cvs };
     });
     if (!result) return null;
-    const { applicants, ranking, names, duplicates, bulkActions, interviews } = result.value;
+    const { applicants, ranking, names, duplicates, bulkActions, interviews, cvs } = result.value;
     const packs = 'packs' in result.value ? result.value.packs : [];
     const inPack = new Set(packs.flatMap((p) => p.candidateIds));
     const ranked = ranking.status === 'ranked' ? ranking.rows : [];
@@ -134,9 +163,10 @@ export async function loadRanking(jobId: string): Promise<RankingData | 'notFoun
     return {
       jobId,
       awaitingRubric: ranking.status === 'awaiting_rubric',
-      rows: toCandidateRows(applicants, ranked, (id) => names.get(id), duplicates).map((row) =>
-        withInterview(inPack.has(row.personId) ? { ...row, inPack: true as const } : row, interviews),
-      ),
+      rows: toCandidateRows(applicants, ranked, (id) => names.get(id), duplicates).map((row) => {
+        const cv = row.score ? undefined : cvs.get(row.personId);
+        return withInterview({ ...row, ...(inPack.has(row.personId) && { inPack: true as const }), ...cv }, interviews);
+      }),
       bulkActions,
       ...(bulkActions.includes('addToPack') && { packs }),
     };

@@ -1,10 +1,10 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { forbidden, notFound } from 'next/navigation';
-import { CandidateProfile } from '@/features/evidence-profile/components/CandidateProfile.tsx';
 import { loadProfile } from '@/features/evidence-profile/services/loadProfile.ts';
 import { loadQuestions } from '@/features/evidence-profile/services/loadQuestions.ts';
 import { mayOpen } from '@/features/shell/services/request.ts';
+import { ProfileLive } from './ProfileLive.tsx';
 import { ProfileQuestions } from './ProfileQuestions.tsx';
 
 // The title names the page, never the person: it reaches the browser's history (AGENTS.md 1.2).
@@ -31,7 +31,7 @@ export default async function CandidateProfilePage({
   // has no result on the approved rubric version, so there is nothing to verify yet.
   const questions = await loadQuestions(candidateId, profile.jobId);
   return (
-    <CandidateProfile view={{ status: 'ready', ...profile }} linkCandidates={await mayOpen('candidates')}>
+    <ProfileLive profile={profile} linkCandidates={await mayOpen('candidates')}>
       {questions && (
         // Keyed by candidate and job: another job's profile (only `?job=` changes) starts from its own stored set.
         <ProfileQuestions
@@ -41,6 +41,6 @@ export default async function CandidateProfilePage({
           initial={questions}
         />
       )}
-    </CandidateProfile>
+    </ProfileLive>
   );
 }

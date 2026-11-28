@@ -25,8 +25,10 @@ import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { scorecardHref } from '@/features/interviews/domain/interviews.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import type { DuplicatesView } from '../domain/duplicates.ts';
+import type { CvRetryView } from '@/features/evidence-profile/domain/cvStatus.ts';
 import {
   HIDEABLE_COLUMNS,
+  rowName,
   type CandidateRow,
   type CandidateScore,
   type HideableColumn,
@@ -71,7 +73,11 @@ import { StageLine } from './StageLine.tsx';
 // - "Stage: all" and "Missing evidence: any" are native selects, and the Columns menu a disclosure of checkboxes: no
 //   menu or popover component exists in @credalent/ui, and a native control keeps its keyboard path;
 // - a line under the filters gives the scores' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
-// - candidates not yet assessed stay listed after the ranked ones as "Not yet scored" (AGENTS.md 1.5);
+// - candidates not yet assessed stay listed after the ranked ones (AGENTS.md 1.5), each saying where its CV is with an
+//   icon and a word ("Reading the CV…", "We could not read this CV. Try again." with a secondary "Try again",
+//   AIV-P1-165 §7 and AIV-P1-134), or "Not yet scored" when nothing is known of a CV; an unnamed applicant shows the
+//   CV's file name; "Assessing N CVs" sits above the table while any CV is read or assessed, and the footer counts
+//   every row ("5 of 6 assessed");
 // - the intro sits under the stages, not under the title: the job header is shared by every job page (AIV-P1-011);
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142);
 // - admins and recruiters see a row's duplicates under the name (AIV-P1-018; deviations in DuplicateActions.tsx).
@@ -87,10 +93,11 @@ export type RankingTableView =
       total: number;
       /** The rule that really ordered the rows: 'claims' when every backed score is 0 (AIV-P1-165 §9). */
       orderBasis: 'backed' | 'claims' | 'none';
-      /** Rows matching the filters, how many of them are assessed, and how many of those are shown. */
+      /** Rows matching the filters and how many of them are assessed: "5 of 6 assessed" (AIV-P1-165 §7). */
       matching: number;
       assessed: number;
-      shown: number;
+      /** Every row whose CV is being read or assessed: "Assessing N CVs". */
+      assessing: number;
       /** A search or filter is set, so the counts are of the matching rows only. */
       filtered: boolean;
       /** The rows shown: the first 7 matching until "Show all". */
@@ -146,11 +153,14 @@ export function RankingTable({
   duplicates,
   choose,
   pack,
+  retry,
 }: {
   view: RankingTableView;
   duplicates?: DuplicatesView;
   choose?: ChooseView | undefined;
   pack?: PackView | undefined;
+  /** "Try again" on a CV that could not be read or assessed (AIV-P1-134); a row offers it only when the server allows. */
+  retry?: CvRetryView | undefined;
 }) {
   const t = useTranslations('ranking');
   const timeZone = useTimeZone();
@@ -161,6 +171,7 @@ export function RankingTable({
     .map((column) => ({
       ...column,
       ...(column.id === 'candidate' && ready && { cell: nameCell(ready.jobId, duplicates) }),
+      ...(column.id === 'score' && retry && { cell: scoreCell(retry) }),
       // The date column names the workspace time zone it shows (AGENTS.md 3.9).
       header: column.id === 'lastScored' ? t('lastScoredIn', { timeZone }) : t(`columns.${column.id}`),
     }));
@@ -249,6 +260,11 @@ export function RankingTable({
           }}
         />
       )}
+      {ready && ready.assessing > 0 && (
+        <output className="flex flex-wrap items-center gap-2 text-body text-text">
+          <StatusBadge status="informational" label={t('assessing', { count: ready.assessing })} />
+        </output>
+      )}
       <DataTable
         caption={t('caption')}
         columns={columns}
@@ -259,7 +275,7 @@ export function RankingTable({
             selectedIds: selection.selectedIds,
             onSelectedIdsChange: selection.onSelectedIdsChange,
             allLabel: t('bulk.selectAll', { count: ready?.rows.length ?? 0 }),
-            rowLabel: (row: CandidateRow) => t('bulk.selectRow', { name: row.name ?? t('unnamed') }),
+            rowLabel: (row: CandidateRow) => t('bulk.selectRow', { name: rowName(row, t('unnamed')) }),
           },
         })}
         emptyMessage={ready && ready.total > 0 ? t('emptyFiltered') : t('empty')}
@@ -270,7 +286,7 @@ export function RankingTable({
             footer: (
               <>
                 <span>
-                  {t('footer', { assessed: ready.assessed, shown: ready.shown, filtered: String(ready.filtered) })}
+                  {t('footer', { assessed: ready.assessed, total: ready.matching, filtered: String(ready.filtered) })}
                 </span>
                 {ready.rows.length < ready.matching && (
                   <Button size="compact" onClick={ready.onShowAll}>
@@ -403,6 +419,7 @@ const isHideable = (id: string): id is HideableColumn => HIDEABLE_COLUMNS.some((
 const nameCell = (jobId: string, duplicates?: DuplicatesView) => (row: CandidateRow) => (
   <NameCell row={row} jobId={jobId} duplicates={duplicates} />
 );
+const scoreCell = (retry: CvRetryView) => (row: CandidateRow) => <ScoreCell row={row} retry={retry} />;
 
 function NameCell({
   row,
@@ -414,7 +431,7 @@ function NameCell({
   duplicates?: DuplicatesView | undefined;
 }) {
   const t = useTranslations('ranking');
-  const name = row.name ?? t('unnamed');
+  const name = rowName(row, t('unnamed'));
   return (
     <>
       {jobId ? (

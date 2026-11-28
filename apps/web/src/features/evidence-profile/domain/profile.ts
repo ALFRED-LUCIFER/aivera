@@ -1,5 +1,6 @@
 import type { ExplanationStatement, RankingRow } from '@credalent/assessment';
 import type { Stage } from '@credalent/intake';
+import type { CvView } from './cvStatus.ts';
 import type { EvidenceCard, SourceNoteView } from './evidenceCards.ts';
 import type { NeedRow } from './needs.ts';
 
@@ -39,4 +40,13 @@ export type ProfileData = {
   needs: NeedRow[];
   /** "Unusual content in this source" notes on the candidate's sources; admins and recruiters only. */
   notes: SourceNoteView[];
+  /** Not scored yet: where the CV is, and "Try again" where a person can act (AIV-P1-165 §7, AIV-P1-134). */
+  cv: CvView | null;
+  /**
+   * The CV's file name while no name is read from it (admins and recruiters): shown in place of "Unnamed applicant",
+   * on screen only (AGENTS.md 1.2).
+   */
+  fileName: string | null;
+  /** Lines of the CV the newest mapping could not cite, so did not map (AIV-P1-156): a count, never the lines. */
+  uncitedLinkCount: number;
 };

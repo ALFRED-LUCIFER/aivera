@@ -6,8 +6,10 @@ import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import type { CvRetryView, CvView } from '../domain/cvStatus.ts';
 import { evidenceAnchor, type Fit, type ProfileData } from '../domain/profile.ts';
 import { AgainstNeed } from './AgainstNeed.tsx';
+import { CvStatusLine } from './CvStatusLine.tsx';
 import { EvidenceCards } from './EvidenceCards.tsx';
 
 // AIV-P1-043: the top of the candidate evidence profile, from the Candidate artboard
@@ -42,7 +44,13 @@ import { EvidenceCards } from './EvidenceCards.tsx';
 //   the tokens and @credalent/ui have neither;
 // - the subtitle is the 14/20 px body size, not 15/22 px, and the "Why" heading the 16 px card size, not 15 px: the
 //   tokens have no 15 px step;
-// - a candidate not yet scored on the approved rubric shows "Not yet scored", basis "Not yet available" (AGENTS.md 1.7);
+// - a candidate not yet scored on the approved rubric shows where their CV is ("Reading the CV…", "We could not read
+//   this CV. Try again.", AIV-P1-165 §7 and AIV-P1-134) with a secondary "Try again" for admins and recruiters, or
+//   "Not yet scored", basis "Not yet available" (AGENTS.md 1.7), when nothing is known of a CV;
+// - until a name is read from the CV, the name is the uploaded file's name (admins and recruiters), never "Unnamed
+//   applicant" (AIV-P1-165 §7);
+// - a line under the fit card says how many CV lines could not be cited, so were not mapped (AIV-P1-156), which the
+//   artboard does not draw;
 // - "Needs live verification" is the page's `children`, SuggestedQuestions (AIV-P1-113), with its own deviations;
 // - no "Interview history and score changes" or "Across your roles": AIV-P1-046 (#110);
 // - no Credalent assistant panel or "Ask Credalent": AIV-P2-028 (#142); the sidebar, search and top bar are the shell's.
@@ -53,11 +61,14 @@ export type CandidateProfileView =
 export function CandidateProfile({
   view,
   linkCandidates = false,
+  retry,
   children,
 }: {
   view: CandidateProfileView;
   /** The server's answer to whether this member may open Candidates (all jobs). */
   linkCandidates?: boolean;
+  /** "Try again" on a CV that could not be read or assessed; offered only where the server put a retry on the CV. */
+  retry?: CvRetryView | undefined;
   children?: ReactNode;
 }) {
   const t = useTranslations();
@@ -77,7 +88,7 @@ export function CandidateProfile({
         )}
       </>
     );
-  const name = view.name ?? t('ranking.unnamed');
+  const name = view.fileName ?? view.name ?? t('ranking.unnamed');
   return (
     <div className="flex flex-col gap-6 self-stretch">
       <div className="flex flex-col gap-2.5">
@@ -113,7 +124,7 @@ export function CandidateProfile({
             <h2 className="font-display text-section text-text">
               {t('candidateProfile.fitTitle', { job: view.jobTitle })}
             </h2>
-            <FitBlock fit={view.fit} />
+            <FitBlock fit={view.fit} cv={view.cv} name={name} retry={retry} />
           </section>
           {view.fit.status === 'scored' && (
             <section className="flex min-w-0 flex-[2_1_420px] flex-col gap-2">
@@ -126,6 +137,20 @@ export function CandidateProfile({
           )}
         </div>
       </Card>
+      {view.uncitedLinkCount > 0 && (
+        <p className="flex max-w-[72ch] items-start gap-2 text-body text-text">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="mt-1 size-3.5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+          >
+            <path strokeWidth="1.75" d="M8 7v4.5M8 4.5v.25M14 8A6 6 0 1 1 2 8a6 6 0 0 1 12 0" />
+          </svg>
+          {t('candidateProfile.uncited', { count: view.uncitedLinkCount })}
+        </p>
+      )}
       {view.needs.length > 0 && <AgainstNeed rows={view.needs} />}
       {(view.competencies.length > 0 || view.notes.length > 0) && (
         <EvidenceCards cards={view.competencies} notes={view.notes} />
@@ -135,10 +160,26 @@ export function CandidateProfile({
   );
 }
 
-function FitBlock({ fit }: { fit: Fit }) {
+function FitBlock({
+  fit,
+  cv,
+  name,
+  retry,
+}: {
+  fit: Fit;
+  cv: CvView | null;
+  name: string;
+  retry: CvRetryView | undefined;
+}) {
   const t = useTranslations();
   if (fit.status === 'awaiting_rubric')
-    return <p className="text-body text-text-2">{t('candidateProfile.awaitingRubric')}</p>;
+    return (
+      <>
+        <p className="text-body text-text-2">{t('candidateProfile.awaitingRubric')}</p>
+        {cv && cv.state !== 'afterApproval' && <CvStatusLine cv={cv} name={name} retry={retry} />}
+      </>
+    );
+  if (fit.status === 'not_scored' && cv) return <CvStatusLine cv={cv} name={name} retry={retry} />;
   if (fit.status === 'not_scored')
     return (
       <p className="flex flex-wrap items-center gap-2 text-body text-text">
