@@ -72,6 +72,9 @@ const webEnvSchema = z
     // queued, so nothing that sends one (an invitation) can be done.
     NOTIFICATIONS_ENCRYPTION_KEY: z.string().min(1).optional(),
     AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
+    // AIV-P1-165: whether anything leaves the app (an email, an invitation, a public job listing). Off unless set to on,
+    // so the pilot sends nothing; the send tickets (P2) turn it on.
+    OUTBOUND: z.enum(['on', 'off']).default('off'),
     // Uploads (AIV-P0-016): the storage account's blob endpoint (infra/modules/storage.bicep); unset, no upload or
     // download is offered. MALWARE_SCANNING defaults on and the pilot and production refuse to start without it.
     // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on
@@ -84,6 +87,8 @@ const webEnvSchema = z
   .refine((e) => e.MALWARE_SCANNING === 'on' || e.APP_ENV === 'local' || e.APP_ENV === 'dev', {
     path: ['MALWARE_SCANNING'],
   })
+  // Sending on needs what every send needs, so no confirmed action goes through with its email silently dropped.
+  .refine((e) => e.OUTBOUND === 'off' || (e.NOTIFICATIONS_ENCRYPTION_KEY && e.AUTH_URL), { path: ['OUTBOUND'] })
   // Auth.js trusts the request host (trustHost); where real people sign in, the public origin is pinned instead.
   .refine((e) => e.AUTH_URL?.startsWith('https://') || (e.APP_ENV !== 'pilot' && e.APP_ENV !== 'prod'), {
     path: ['AUTH_URL'],

@@ -7,13 +7,8 @@ import { getWorkspaces } from '@/server/workspace';
 import { reviewPath } from '../domain/rubric.ts';
 
 // The rubric approval emails (AIV-P1-014), queued in the confirmed action's transaction, so none is sent unless the
-// action commits. Each throws when this environment cannot send email, so no version is sent or decided without it.
-
-const configured = () => {
-  const email = getNotifications();
-  if (!email) throw new Error('email is not configured in this environment');
-  return email;
-};
+// action commits. Where sending is off (the pilot, AIV-P1-165) neither is queued and the action still goes through:
+// the version waits on the rubric page and My desk, where its approvers see it.
 
 /** The job's versions, and the one asked for; throws when it is not this job's, so a forged job id sends nothing. */
 async function versionOf(ctx: WorkspaceContext, jobId: string, versionId: string) {
@@ -26,10 +21,12 @@ async function versionOf(ctx: WorkspaceContext, jobId: string, versionId: string
 /**
  * "Rubric waiting for your approval" (ERubric) to the job's hiring owner, from the recruiter who sent it, linking to
  * the version and revision sent. Nothing is queued for a job with no hiring owner, or one who can no longer approve it
- * (removed, or no longer a hiring owner or admin, AIV-P2-060): its recruiters approve it themselves (ADR-014). Returns
- * whether an email was queued.
+ * (removed, or no longer a hiring owner or admin, AIV-P2-060): its recruiters approve it themselves (ADR-014). Nothing
+ * is queued either where sending is off. Returns whether an email was queued.
  */
 export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVersion): Promise<boolean> {
+  const email = getNotifications();
+  if (!email) return false;
   const job = await getJobs().getJob(ctx, sent.jobId);
   if (!job?.hiringOwnerUserId) return false;
   // shortcut: a job whose owner was removed before AIV-P2-060 keeps their id, so its header still shows their name; this
@@ -40,7 +37,6 @@ export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVe
     (m) => m.userId === job.hiringOwnerUserId && m.status === 'active',
   );
   if (!member || approvesAs(member.role, member.userId, job) !== 'owner') return false;
-  const email = configured();
   const owner = await getIdentity().getUser(job.hiringOwnerUserId, ctx);
   if (!owner) throw new Error('hiring owner not found');
   const { versions, version } = await versionOf(ctx, job.id, sent.id);
@@ -71,14 +67,15 @@ export async function queueApprovalRequest(ctx: WorkspaceContext, sent: RubricVe
 /**
  * "Rubric approved" (EApproved) or "Rubric returned with a note" (EReturned) to whoever sent the version, from the
  * person who decided. Nothing is queued for a version never sent (a draft a recruiter approved directly, ADR-014) or
- * one the decider sent themselves.
+ * one the decider sent themselves, nor where sending is off.
  */
 export async function queueDecisionEmail(ctx: WorkspaceContext, jobId: string, versionId: string): Promise<void> {
+  const email = getNotifications();
+  if (!email) return;
   const { versions, version } = await versionOf(ctx, jobId, versionId);
   // Only someone who sent the version is told the outcome: a draft approved directly emails no one (ADR-014).
   const recipientId = version.submittedBy;
   if (!recipientId || recipientId === ctx.userId) return;
-  const email = configured();
   const recipient = await getIdentity().getUser(recipientId, ctx);
   if (!recipient) throw new Error('recipient not found');
   const job = await getJobs().getJob(ctx, jobId);

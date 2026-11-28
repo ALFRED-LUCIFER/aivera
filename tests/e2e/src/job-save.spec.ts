@@ -53,6 +53,11 @@ for (const theme of themes) {
     await expect(
       page.getByText('Next: approve the rubric on its page. Candidates are assessed only after that.'),
     ).toBeVisible();
+    // AIV-P1-165 Scenario: The saved page leads to the rubric.
+    await expect(page.getByRole('link', { name: 'Review and approve the rubric' })).toHaveAttribute(
+      'href',
+      /^\/app\/jobs\/[0-9a-f-]+\/rubric$/,
+    );
     await expectAccessible(page);
 
     // Scenario: Nothing is assessed from a draft.

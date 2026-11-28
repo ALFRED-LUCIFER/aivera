@@ -62,7 +62,8 @@ export type RubricEditorView = {
   onRemove: (index: number) => void;
   onSuccessStatement: (value: string) => void;
   onSave: () => void;
-  onSend: () => void;
+  /** "Send changes for approval"; absent where sending is off (the pilot, AIV-P1-165): "Save draft" leads instead. */
+  onSend?: (() => void) | undefined;
 };
 
 /** The approval panel as the rubric component shows it: the decision controller's view model and handlers (AIV-P1-014). */

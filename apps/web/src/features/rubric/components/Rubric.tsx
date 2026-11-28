@@ -86,12 +86,18 @@ export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
                 <Button variant="ghost" onClick={editing.onCancel}>
                   {t('edit.cancel')}
                 </Button>
-                <Button disabled={!editing.canSave} onClick={editing.onSave}>
+                <Button
+                  variant={editing.onSend ? 'secondary' : 'primary'}
+                  disabled={!editing.canSave}
+                  onClick={editing.onSave}
+                >
                   {t('edit.save')}
                 </Button>
-                <Button variant="primary" disabled={!editing.canSave} onClick={editing.onSend}>
-                  {t('edit.send')}
-                </Button>
+                {editing.onSend && (
+                  <Button variant="primary" disabled={!editing.canSave} onClick={editing.onSend}>
+                    {t('edit.send')}
+                  </Button>
+                )}
               </div>
             )}
           </div>

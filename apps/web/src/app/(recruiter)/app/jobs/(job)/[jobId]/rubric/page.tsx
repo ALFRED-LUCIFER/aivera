@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { Rubric } from '@/features/rubric/components/Rubric.tsx';
 import { reviewLink } from '@/features/rubric/domain/rubric.ts';
 import { loadRubric } from '@/features/rubric/services/loadRubric.ts';
+import { outboundOn } from '@/server/notifications';
 import { loadJob } from '../loadJob.ts';
 import { jobPageMetadata } from '../metadata.ts';
 import { RubricEditable } from './RubricEditable.tsx';
@@ -27,6 +28,7 @@ export default async function RubricPage({ params, searchParams }: PageProps<'/a
       canEdit={loaded.canEdit}
       approver={loaded.approver}
       link={reviewLink(await searchParams)}
+      outbound={outboundOn()}
       publication={{
         published: header?.job.published ?? false,
         approved: Boolean(header?.approved),

@@ -497,6 +497,7 @@
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
     "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
     "backToJobs": "Back to Jobs",
+    "reviewRubric": "Review and approve the rubric",
     "forbidden": "You do not have access to add jobs.",
     "errors": {
       "title": "Add a job title.",

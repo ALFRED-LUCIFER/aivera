@@ -1,6 +1,14 @@
+import { createAudit } from '@credalent/audit/composition';
+import { createDb } from '@credalent/db/client';
+import { withWorkspace } from '@credalent/db/with-workspace';
+import { createJobs } from '@credalent/jobs/composition';
+import { createWorkspaces } from '@credalent/workspaces/composition';
 import { expect, test, type Page } from '@playwright/test';
+import { sql } from 'drizzle-orm';
+import { databaseUrl } from '../playwright.config.ts';
 import { signIn } from './auth.ts';
 import { expectAccessible, themes } from './gallery.ts';
+import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 
 // AIV-P1-011: AP's workspace "Demo" (seed.ts). Senior AI Engineer was added 3 Nov and has version 2 approved; Senior
 // Product Designer has a draft. Assessment, interviews and packs are not built yet, so those stages are not started.
@@ -117,3 +125,45 @@ for (const theme of themes) {
     await expect(page.getByRole('button', { name: 'Change hiring owner' })).toBeFocused();
   });
 }
+
+// AIV-P1-165 Scenario: Assigning a hiring owner does not nag a solo recruiter. A fresh workspace of its own, so the
+// seed's stay as they are; the job is added through the contract (no drafting needed for the header). That assigning
+// sends no email is apps/web/src/server/notifications.test.ts and rubricEmails.test.ts.
+test('Scenario: Assigning a hiring owner does not nag a solo recruiter', async ({ page }) => {
+  const solo = `solo.owner.${Date.now()}@example.com`;
+  const { workspaceId, creatorUserId } = await approvedWorkspace(solo, `Solo owner ${Date.now()}`);
+  const db = createDb(databaseUrl, { max: 1 });
+  let jobId = '';
+  try {
+    const workspaces = createWorkspaces(db, createAudit(db));
+    const job = await workspaces.withWorkspace({ userId: creatorUserId }, workspaceId, (ctx) =>
+      createJobs(workspaces, createAudit(db)).createJob(ctx, {
+        title: 'Solo AI Engineer',
+        jobType: 'ai_llm_engineering',
+        description: 'Solo AI Engineer, synthetic demo job.',
+        hiringOwnerUserId: null,
+        synthetic: true,
+      }),
+    );
+    jobId = job.id;
+    await signIn(page, { email: solo });
+    await page.goto(`/app/jobs/${jobId}/description`);
+    await expect(page.getByText(/Hiring owner: not assigned/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Assign one' })).toHaveCount(0);
+
+    const owner = await syntheticUser(db, `owner.${Date.now()}@example.com`);
+    await withWorkspace(db, workspaceId, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${workspaceId}, ${owner}, 'hiring_owner', 'active')`),
+    );
+  } finally {
+    await db.$client.end();
+  }
+  await page.reload();
+  const assign = page.getByRole('button', { name: 'Assign one' });
+  await expect(assign).toBeVisible();
+  // An inline link under the meta line, not a full-width button.
+  const header = await page.getByRole('heading', { level: 1, name: 'Solo AI Engineer' }).locator('..').boundingBox();
+  expect((await assign.boundingBox())?.width ?? 0).toBeLessThan((header?.width ?? 0) / 2);
+  await expectAccessible(page);
+});

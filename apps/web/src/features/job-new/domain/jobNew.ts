@@ -55,6 +55,8 @@ export type NewJobState = {
   error: 'failed' | SaveFailure | null;
   /** The job and rubric version 1 were saved (AIV-P1-010): the page shows what happens next. */
   saved: boolean;
+  /** The job, whose rubric page the saved state links to (AIV-P1-165); set once saved. */
+  jobId?: string;
   /** Version 1, which "Send rubric for approval" sends (AIV-P1-014); set once saved. */
   rubricVersionId?: string;
   values: NewJobValues;

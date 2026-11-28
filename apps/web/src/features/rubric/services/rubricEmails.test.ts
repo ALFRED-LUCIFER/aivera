@@ -27,6 +27,8 @@ const v = (more: Partial<Rubric>): Rubric =>
 let versions: Rubric[] = [];
 // The hiring owner's membership row, any status; null once it is gone.
 let ownerMember: { userId: string; role: string; status: string } | null = null;
+// What getNotifications gives: null where sending is off (the pilot, AIV-P1-165).
+let sending = true;
 // Every read gets the action's context, so none takes a second pooled connection (AIV-P2-061); the mocks have no
 // pool-reading getMembership, so calling it fails the test. The contract reads on one connection: workspaces.test.ts.
 // SAFETY: mutation check: getUser(id) without ctx in both emails -> the two tests asserting getUser's context failed
@@ -46,7 +48,7 @@ vi.mock('@/server/auth', () => ({
   getIdentity: () => ({ getUser }),
 }));
 vi.mock('@/server/notifications', () => ({
-  getNotifications: () => ({ notifications: { queueEmail }, origin: 'https://credalent.example' }),
+  getNotifications: () => (sending ? { notifications: { queueEmail }, origin: 'https://credalent.example' } : null),
   senderFor: async ({ userId }: { userId: string }) => ({
     name: userId === RANA ? 'Tariq Recruiter' : 'Design Director',
     shortName: 'x',
@@ -61,6 +63,27 @@ beforeEach(() => {
   vi.clearAllMocks();
   job.hiringOwnerUserId = DIRECTOR;
   ownerMember = { userId: DIRECTOR, role: 'hiring_owner', status: 'active' };
+  sending = true;
+});
+
+// AIV-P1-165 Scenarios: Approving sends nothing; Assigning a hiring owner sends no email (changeHiringOwner queues the
+// waiting version through queueApprovalRequest). The action goes through: neither throws.
+describe('Where sending is off, no rubric email is queued and the action still goes through', () => {
+  beforeEach(() => {
+    sending = false;
+  });
+
+  it('a version sent to a hiring owner who can approve it queues no approval request', async () => {
+    versions = [v({})];
+    await expect(queueApprovalRequest(ctx(RANA), v({}))).resolves.toBe(false);
+    expect(queueEmail).not.toHaveBeenCalled();
+  });
+
+  it('approving rubric v2 another member sent queues no decision email to them', async () => {
+    versions = [v({ version: 2, status: 'approved', approvedAt: new Date('2026-11-27T08:00:00Z') })];
+    await expect(queueDecisionEmail(ctx('ayesha'), 'spd', 'v1')).resolves.toBeUndefined();
+    expect(queueEmail).not.toHaveBeenCalled();
+  });
 });
 
 describe('Scenario: Send version 1 for approval from Add a job', () => {

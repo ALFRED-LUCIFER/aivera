@@ -109,6 +109,9 @@ export default defineConfig({
         // AIV-P1-003: invitations queue their email (AIV-P0-017); a test-only key that seals nothing anywhere else.
         NOTIFICATIONS_ENCRYPTION_KEY: Buffer.from('e2e-only-not-a-secret-e2e-only!!').toString('base64'),
         AUTH_URL: `http://localhost:${port}`,
+        // AIV-P1-165: sending on, for the specs of the send features (invitations, rubric emails, publishing); the
+        // unconfigured app below keeps the pilot's default, off (pilot-no-send.unconfigured.spec.ts).
+        OUTBOUND: 'on',
         // AIV-P1-008: the fake model answers "Draft competencies" from recorded fixtures, by description text.
         AI_PROVIDER: 'fake',
         AI_FAKE_FIXTURES: join(import.meta.dirname, 'ai-fixtures.json'),
