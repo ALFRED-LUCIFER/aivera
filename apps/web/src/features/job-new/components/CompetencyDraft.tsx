@@ -1,12 +1,17 @@
+// Deviations from the RoleNew artboard (AIV-P1-165, #677 section 2):
+// - A suggestion's "Why:" sentence and the description lines it rests on sit behind "Why suggested?"; the artboard
+//   shows them open. The list of competencies leads.
+// - "Duplicate an earlier job or rubric" is not on the artboard: it copies an earlier job's competencies into the draft.
+// - Weights that do not total 100 state their total; the artboard shows only "Weights rebalance when you save".
 import type { ReactNode } from 'react';
 import { useTranslations } from '@credalent/i18n/react';
 import {
   Button,
-  buttonClassName,
   Chip,
   DataTable,
   EvidenceHighlight,
   Input,
+  Label,
   Select,
   Textarea,
   type DataTableColumn,
@@ -52,6 +57,13 @@ type CompetencyDraftProps = RowHandlers & {
   /** The regional hint the recruiter last tried to make mandatory. */
   refusedId: string | null;
   onIndustry: (key: string | null) => void;
+  /** "Add industry skills" or "Not this industry" is open: the industries to choose from show. */
+  industriesOpen: boolean;
+  onToggleIndustries: () => void;
+  /** The earlier jobs whose rubric can be duplicated (AIV-P1-165); empty when the workspace has none. */
+  earlierJobs: readonly { value: string; label: string }[];
+  /** Copies that job's competencies into the draft; `from` is the job as the list names it. */
+  onDuplicate: (jobId: string, from: string) => void;
   onAddFromPack: (competency: DraftCompetency) => void;
   /** A save was tried with no competency kept. */
   emptyRubric: boolean;
@@ -123,10 +135,12 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
     drafted: drafted && !result.competencies.some((c) => c.origin === 'from_description') ? t('none') : null,
     failed: t('failed'),
     budget: t('budget'),
+    copied: result.status === 'copied' ? t('copied', { job: result.from }) : null,
+    copyFailed: t('copyFailed'),
     saveFailed: ta('saveFailed'),
     saveForbidden: ta('saveForbidden'),
   }[result.status];
-  const alert = ['failed', 'budget', 'saveFailed', 'saveForbidden'].includes(result.status);
+  const alert = ['failed', 'budget', 'copyFailed', 'saveFailed', 'saveForbidden'].includes(result.status);
 
   return (
     <section aria-labelledby="job-draft-heading" aria-busy={props.drafting} className="mt-8 flex flex-col gap-3">
@@ -144,6 +158,35 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
         >
           {notice}
         </p>
+      )}
+      {rows.length === 0 && props.earlierJobs.length > 0 && (
+        // Its own form, beside step 1's: choosing a job here posts nothing of the job being added.
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const jobId = String(new FormData(e.currentTarget).get('source') ?? '');
+            const from = props.earlierJobs.find((job) => job.value === jobId);
+            if (from) props.onDuplicate(jobId, from.label);
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="job-draft-source">{t('duplicate')}</Label>
+            <Select id="job-draft-source" name="source" defaultValue="" required>
+              <option value="" disabled>
+                {t('duplicateChoose')}
+              </option>
+              {props.earlierJobs.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button type="submit" disabled={props.drafting}>
+            {t('duplicateAction')}
+          </Button>
+        </form>
       )}
       {drafted && (
         <h3 className="text-body font-semibold text-text">
@@ -201,12 +244,23 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
           {!detected && industryLabel && (
             <p className="mt-3 text-body text-text">{t('industryChosen', { industry: industryLabel })}</p>
           )}
-          {/* Native disclosure: it stays open after a choice, so focus stays on the pressed industry. */}
-          <details>
-            <summary className={buttonClassName('ghost', 'compact')}>
+          {/* A real button (AIV-P1-165). The list stays open after a choice, so focus stays on the pressed industry. */}
+          <div>
+            <Button
+              variant="ghost"
+              size="compact"
+              aria-expanded={props.industriesOpen}
+              aria-controls="job-draft-industries"
+              onClick={props.onToggleIndustries}
+            >
               {industry ? t('notThisIndustry') : t('addIndustry')}
-            </summary>
-            <ul aria-label={t('industries')} className="mt-2 flex flex-wrap gap-2">
+            </Button>
+            <ul
+              id="job-draft-industries"
+              hidden={!props.industriesOpen}
+              aria-label={t('industries')}
+              className="mt-2 flex flex-wrap gap-2"
+            >
               {[...props.packs, null].map((pack) => (
                 <li key={pack?.key ?? 'none'}>
                   <Button
@@ -219,7 +273,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
                 </li>
               ))}
             </ul>
-          </details>
+          </div>
           {industryLabel && fromPack.length === 0 && props.more.length === 0 && (
             <p className="text-body text-text-2">{t('packEmpty', { industry: industryLabel })}</p>
           )}
@@ -291,7 +345,7 @@ export function CompetencyDraft(props: CompetencyDraftProps) {
       )}
       {rows.some((row) => !row.removed) && (
         <p className="text-meta font-semibold text-text">
-          {total === 100 ? t('weightsTotal', { total }) : t('rebalance')}
+          {total === 100 ? t('weightsTotal', { total }) : t('rebalance', { total })}
         </p>
       )}
       {props.evidence && (
@@ -357,13 +411,22 @@ function CompetencyCell({ row }: { row: Row }) {
       </div>
     );
   if (row.removed) return <span className="text-text-2">{t('removed', { name: row.name || t('newCompetency') })}</span>;
+  const excerpts = row.excerpts.map((excerpt) => (
+    <p key={`${excerpt.start}-${excerpt.end}`} className="text-meta text-text-2">
+      {t('citedFrom')}{' '}
+      <EvidenceHighlight
+        text={excerpt.text}
+        citations={[{ start: excerpt.start, end: excerpt.end, sourceId: 'description' }]}
+        markLabel={t('markLabel')}
+      />
+    </p>
+  ));
   return (
     <div className="flex max-w-xl flex-col items-start gap-1">
       {row.origin === 'suggested_by_aivera' && <Chip>{t('suggestedBy')}</Chip>}
       {row.packLabel && <Chip>{t('fromPack', { industry: row.packLabel })}</Chip>}
       <span className="font-semibold text-text">{row.name || t('newCompetency')}</span>
       {nameError}
-      {row.why !== null && <span className="text-meta text-text">{t('why', { why: row.why })}</span>}
       {row.evidenceExpected && (
         <span className="text-meta text-text-2">
           {row.origin !== 'suggested_by_aivera' && row.origin !== 'domain_pack'
@@ -371,16 +434,16 @@ function CompetencyCell({ row }: { row: Row }) {
             : t('evidenceExpected', { evidence: row.evidenceExpected })}
         </span>
       )}
-      {row.excerpts.map((excerpt) => (
-        <p key={`${excerpt.start}-${excerpt.end}`} className="text-meta text-text-2">
-          {t('citedFrom')}{' '}
-          <EvidenceHighlight
-            text={excerpt.text}
-            citations={[{ start: excerpt.start, end: excerpt.end, sourceId: 'description' }]}
-            markLabel={t('markLabel')}
-          />
-        </p>
-      ))}
+      {/* A suggestion's reasoning, and the lines it rests on, only behind "Why suggested?" (AIV-P1-165). */}
+      {row.why === null ? (
+        excerpts
+      ) : (
+        <details className="text-meta text-text">
+          <summary className="cursor-pointer font-semibold underline underline-offset-2">{t('whySuggested')}</summary>
+          <p className="mt-1">{row.why}</p>
+          {excerpts}
+        </details>
+      )}
     </div>
   );
 }

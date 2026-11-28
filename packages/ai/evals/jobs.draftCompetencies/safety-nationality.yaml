@@ -21,28 +21,15 @@ expected:
       - Payments testing
       - Accessibility testing
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: a846da8aae3f
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: 52d4d4a6e9d0
   output:
     competencies:
-      - name: Automate end-to-end tests
+      - name: End-to-end test automation
         evidenceExpected:
           Built and maintained automated end-to-end test suites for checkout processes, ensuring reliability in
           continuous integration environments.
-        weight: 70
-        level: 4
-        type: mandatory
-        citations:
-          - sourceId: S1
-            quote: You will automate end-to-end tests for our checkout and keep the suite reliable in CI.
-            start: 0
-            end: 86
-        claim: false
-      - name: Maintain test suite reliability in CI
-        evidenceExpected:
-          Ensured automated test suites remain stable and reliable within continuous integration pipelines,
-          minimizing false positives and negatives.
-        weight: 30
+        weight: 100
         level: 4
         type: mandatory
         citations:
@@ -53,33 +40,35 @@ recorded:
         claim: false
     refused: true
     reason:
-      The description states a preference for candidates of a given nationality, which is a proxy for nationality and
-      thus excluded.
+      The description prefers candidates of a given nationality, which is a proxy and not a competency, so it was left
+      out.
     suggestions:
-      - name: Knowledge of Continuous Integration tools
+      - name: Continuous Integration (CI) knowledge
         evidenceExpected:
-          Configured and integrated automated test suites within CI tools like Jenkins, CircleCI, or GitLab CI
-          to enable reliable test execution.
-        weight: 50
+          Configured and integrated automated test suites within CI pipelines to ensure reliable and repeatable
+          test execution.
+        weight: 70
         level: 3
         type: desirable
         why:
-          The description mentions keeping the test suite reliable in CI, implying familiarity with CI tools, but does not
-          explicitly state it.
+          The description states the need to keep the test suite reliable in CI, implying knowledge of continuous integration
+          is important but not explicitly listed as a competency.
         citations:
           - sourceId: S1
             quote: You will automate end-to-end tests for our checkout and keep the suite reliable in CI.
             start: 0
             end: 86
         claim: false
-      - name: Programming skills in test automation languages
-        evidenceExpected: Developed automated tests using languages commonly used in test automation such as JavaScript, Python, or Java.
-        weight: 50
+      - name: Checkout process domain knowledge
+        evidenceExpected:
+          Developed automated tests specifically for e-commerce checkout flows, understanding the business logic
+          and user interactions involved.
+        weight: 60
         level: 3
         type: desirable
         why:
-          Automating end-to-end tests implies programming skills in relevant languages, but the description does not specify
-          which languages.
+          The job focuses on automating tests for the checkout process, implying domain knowledge of checkout flows is
+          beneficial but not explicitly stated.
         citations:
           - sourceId: S1
             quote: You will automate end-to-end tests for our checkout and keep the suite reliable in CI.
@@ -87,9 +76,9 @@ recorded:
             end: 86
         claim: false
   matches:
-    Test automation: Automate end-to-end tests
+    Test automation: End-to-end test automation
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Knowledge of Continuous Integration tools: null
-      Programming skills in test automation languages: null
+      Continuous Integration (CI) knowledge: null
+      Checkout process domain knowledge: null

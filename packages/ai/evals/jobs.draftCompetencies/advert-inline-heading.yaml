@@ -32,10 +32,13 @@ expected:
     - path: competencies[*].name
       none: [lunch, gym, leave, flights, award]
 recorded:
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: a0d9c9dfd4c2
   output:
     competencies:
       - name: React and TypeScript development
-        evidenceExpected: Built and shipped a booking flow application using React and TypeScript, maintaining it in production.
+        evidenceExpected: Built and maintained booking flow features using React and TypeScript, deployed and owned in
+          production environments.
         weight: 25
         level: 4
         type: mandatory
@@ -45,8 +48,10 @@ recorded:
             start: 203
             end: 284
         claim: false
-      - name: Performance optimization for slow mobile networks
-        evidenceExpected: Improved page load speed and Core Web Vitals scores on slow mobile networks for a web application.
+      - name: Performance optimization on slow mobile networks
+        evidenceExpected:
+          Improved page load times and responsiveness on slow mobile networks, measured and optimized using Core
+          Web Vitals.
         weight: 15
         level: 4
         type: mandatory
@@ -57,7 +62,7 @@ recorded:
             end: 370
         claim: false
       - name: Accessibility implementation
-        evidenceExpected: Developed web pages fully usable with keyboard navigation and screen readers.
+        evidenceExpected: Developed screens fully usable with keyboard navigation and screen readers to ensure accessibility compliance.
         weight: 15
         level: 4
         type: mandatory
@@ -68,7 +73,7 @@ recorded:
             end: 441
         claim: false
       - name: Component and end-to-end testing
-        evidenceExpected: Wrote component tests and end-to-end tests for frontend components and flows.
+        evidenceExpected: Wrote component tests and end-to-end tests to ensure software quality and reliability.
         weight: 15
         level: 4
         type: mandatory
@@ -79,9 +84,9 @@ recorded:
             end: 494
         claim: false
       - name: Code review and collaboration
-        evidenceExpected: Reviewed pull requests from other engineers and collaborated on code quality improvements.
+        evidenceExpected: Reviewed pull requests from other engineers and collaborated effectively to maintain code quality.
         weight: 10
-        level: 3
+        level: 4
         type: mandatory
         citations:
           - sourceId: S1
@@ -90,7 +95,7 @@ recorded:
             end: 542
         claim: false
       - name: Design system collaboration
-        evidenceExpected: Worked with designers to implement and maintain a design system for consistent UI components.
+        evidenceExpected: Worked closely with designers to implement and maintain a consistent design system across the product.
         weight: 10
         level: 3
         type: mandatory
@@ -100,8 +105,8 @@ recorded:
             start: 543
             end: 593
         claim: false
-      - name: Next.js server-side rendering (desirable)
-        evidenceExpected: Built or maintained web applications using Next.js with server-side rendering capabilities.
+      - name: Next.js server rendering (nice to have)
+        evidenceExpected: Developed or contributed to server-rendered React applications using Next.js framework.
         weight: 10
         level: 3
         type: desirable
@@ -114,49 +119,44 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Web development in English
-        evidenceExpected: Developed frontend applications primarily in English language environments.
-        weight: 5
+      - name: Web performance monitoring tools
+        evidenceExpected: Used tools like Lighthouse or WebPageTest to monitor and analyze web performance metrics.
+        weight: 8
         level: 3
         type: desirable
-        why:
-          The job involves building user-facing web pages and collaborating with designers, implying English as the working
-          language, but the description does not explicitly state it.
+        why: The description requires measuring performance with Core Web Vitals but does not mention specific tools for
+          monitoring and analysis.
         citations:
           - sourceId: S1
-            quote: You will build the booking flow in React and TypeScript and own it in production.
-            start: 203
-            end: 284
+            quote: You will make pages fast on slow mobile networks and measure it with Core Web Vitals.
+            start: 285
+            end: 370
         claim: false
       - name: Internationalization and localization
-        evidenceExpected:
-          Implemented support for multiple languages and layouts in web applications, including right-to-left
-          text direction.
-        weight: 5
-        level: 3
+        evidenceExpected: Implemented support for multiple languages and layouts, including right-to-left text direction.
+        weight: 7
+        level: 2
         type: desirable
         why:
-          The mention of right-to-left layouts for Arabic implies a need for internationalization skills, but the description
-          only lists it as nice to have and does not elaborate.
+          The description mentions experience with right-to-left layouts as nice to have, implying internationalization
+          skills are relevant but not mandatory.
         citations:
           - sourceId: S1
             quote: 'Nice to have: experience with Next.js server rendering.'
             start: 594
             end: 649
         claim: false
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: d9dddea362ff
   matches:
     React and TypeScript in production: React and TypeScript development
-    Fast pages on slow mobile networks: Performance optimization for slow mobile networks
+    Fast pages on slow mobile networks: Performance optimization on slow mobile networks
     Keyboard and screen reader accessibility: Accessibility implementation
     Component and end-to-end tests: Component and end-to-end testing
     Code review: Code review and collaboration
     Design system work with designers: Design system collaboration
-    Next.js server rendering: Next.js server-side rendering (desirable)
+    Next.js server rendering: Next.js server rendering (nice to have)
     Right-to-left layouts: null
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Web development in English: null
-      Internationalization and localization: unrelated
+      Web performance monitoring tools: null
+      Internationalization and localization: citation

@@ -19,10 +19,11 @@ type Props = Pick<
   canSend: boolean;
   breadcrumb: ReactNode;
   titles: { form: string; saved: string };
+  earlierJobs: ComponentProps<typeof CompetencyDraft>['earlierJobs'];
 };
 
-export function NewJob({ defaultJobType, catalogue, canSend, breadcrumb, titles, ...props }: Props) {
-  const job = useNewJobController(defaultJobType);
+export function NewJob({ defaultJobType, catalogue, canSend, earlierJobs, breadcrumb, titles, ...props }: Props) {
+  const job = useNewJobController(defaultJobType, catalogue);
   const { result, onDraft, onSaving, onUseStarters, rubric, replacing, onConfirmRedraft, onCancelRedraft, ...draft } =
     useCompetencyDraftController(catalogue);
   const send = useSendRubricController(job.state.rubricVersionId);
@@ -41,7 +42,11 @@ export function NewJob({ defaultJobType, catalogue, canSend, breadcrumb, titles,
       membersHref={canSend ? props.membersHref : null}
       {...job}
       errors={result.status === 'invalid' ? result.errors : job.state.errors}
-      onDraft={onDraft}
+      // A new draft collapses the job fields again (AIV-P1-165).
+      onDraft={(values) => {
+        job.onDetailsOpenChange(false);
+        onDraft(values);
+      }}
       replacing={replacing}
       onConfirmRedraft={onConfirmRedraft}
       onCancelRedraft={onCancelRedraft}
@@ -53,6 +58,7 @@ export function NewJob({ defaultJobType, catalogue, canSend, breadcrumb, titles,
         <CompetencyDraft
           {...draft}
           result={result}
+          earlierJobs={earlierJobs}
           title={job.title}
           evidence={props.jobTypes.find((t) => t.value === job.jobType)?.evidence ?? null}
           onUseStarters={() => onUseStarters(job.jobType)}

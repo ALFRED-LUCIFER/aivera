@@ -64,6 +64,10 @@ export type DraftResult =
   | { status: 'failed' }
   /** The workspace has used its daily AI budget. */
   | { status: 'budget' }
+  /** The competencies of an earlier job's rubric are the rows (AIV-P1-165); `from` is that job as the list named it. */
+  | { status: 'copied'; from: string }
+  /** That job or its rubric was not found, or the copy failed; nothing on the page changed. */
+  | { status: 'copyFailed' }
   /** The call threw in the browser (a 403, the network); the rows already on the page stay (AIV-P2-064). */
   | { status: SaveFailure };
 
@@ -210,6 +214,22 @@ export const starterCompetencies = (catalogue: CatalogueContent, jobType: string
     excerpts: [],
     pack: null,
   }));
+
+/**
+ * A competency of an earlier job's rubric as a row of this job's draft (AIV-P1-165), field by field: what it is, never
+ * who was assessed on it. It is the recruiter's own row from here on, so it names no pack and cites no description.
+ */
+export const copiedCompetency = (c: Competency): DraftCompetency => ({
+  name: c.name,
+  evidenceExpected: c.evidenceExpected,
+  weightPercent: c.weightPercent,
+  levelNeeded: c.levelNeeded,
+  type: c.type,
+  origin: 'added_by_recruiter',
+  why: null,
+  excerpts: [],
+  pack: null,
+});
 
 export const blankCompetency = (): DraftCompetency => ({
   name: '',

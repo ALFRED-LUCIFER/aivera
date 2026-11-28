@@ -89,3 +89,31 @@ export const descriptionPlaceholder = (intro: string, starters: readonly string[
 /** The workspace's hiring focus preselects the job type when the catalogue offers it. */
 export const defaultJobType = (hiringFocus: string, catalogue: CatalogueContent): string =>
   offeredJobTypes(catalogue).some((t) => t.key === hiringFocus) ? hiringFocus : '';
+
+// shortcut: title keywords for the job types of catalogue version 1, by key; a job type an operator adds later is never
+// guessed. Move the keywords into the catalogue when a new job type needs them (ADR-013).
+const TITLE_KEYWORDS: readonly (readonly [string, RegExp])[] = [
+  ['qa_test_automation', /\b(qa|sdet|tester|testing|test|quality assurance)\b/],
+  ['ai_llm_engineering', /\b(ai|llm|genai|nlp|prompt)\b/],
+  ['forward_deployed_engineering', /\b(forward[- ]deployed|solutions? engineer)\b/],
+  ['data_ml', /\b(data|machine learning|ml|analytics|scientist)\b/],
+  ['devops_sre', /\b(devops|sre|site reliability|platform|infrastructure|cloud)\b/],
+  ['product_management', /\b(product (manager|owner|lead)|head of product)\b/],
+  ['product_design', /\b(designer|ux)\b/],
+  ['sales', /\b(sales|account (executive|manager)|business development)\b/],
+  ['technical_writing_support', /\b(technical writer|documentation|support)\b/],
+  ['software_engineering', /\b(software|developer|engineer|backend|frontend|full[- ]stack|programmer)\b/],
+];
+
+/**
+ * The job type a title points to (AIV-P1-165), from its words alone and only when the catalogue offers it; null when
+ * none does. The first match wins, the narrower job types first: "Senior AI Engineer" is AI, not software. A rule, not
+ * a model call; the recruiter can change the job type.
+ */
+export const guessJobType = (title: string, catalogue: CatalogueContent): string | null => {
+  const words = title.toLowerCase();
+  const offered = offeredJobTypes(catalogue);
+  return (
+    TITLE_KEYWORDS.find(([key, pattern]) => pattern.test(words) && offered.some((t) => t.key === key))?.[0] ?? null
+  );
+};

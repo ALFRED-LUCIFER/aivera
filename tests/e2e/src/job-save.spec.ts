@@ -72,7 +72,7 @@ for (const theme of themes) {
 test('Scenario: Weights rebalance when a suggestion was removed', async ({ page }) => {
   await draft(page, 'Rebalanced AI Engineer');
   await page.getByRole('button', { name: 'Remove Product judgement' }).click();
-  await expect(page.getByText('Weights rebalance when you save')).toBeVisible();
+  await expect(page.getByText('Weights total 85%. They rebalance to 100% when you save.')).toBeVisible();
   await save(page).click();
   await expect(page.getByText(SAVED)).toBeVisible();
 });

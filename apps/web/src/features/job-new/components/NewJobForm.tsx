@@ -1,5 +1,12 @@
-// Deviation from the RoleNew artboard: re-drafting over edited competencies first shows the shared preview-confirm
-// card listing what will be replaced (AIV-P2-064, AGENTS.md 1.5).
+// Deviations from the RoleNew artboard:
+// - Re-drafting over edited competencies first shows the shared preview-confirm card listing what will be replaced
+//   (AIV-P2-064, AGENTS.md 1.5).
+// - Once there is a draft, "1. The job" collapses to one line (title and job type) with "Edit job details", so the
+//   competencies lead; the artboard keeps the fields open (AIV-P1-165, #677 section 2).
+// - Step 4 reads "4. You approve" in a workspace with no hiring owner, where the artboard reads "4. Hiring owner
+//   approves": a recruiter approves the rubric herself (ADR-014, #677 section 2).
+// - "Save job and rubric" is drawn only once there is a draft to save; the artboard draws it from the start (#677).
+// - The job type follows the title until the recruiter picks one; the artboard starts from a fixed job type (#677).
 import type { ReactNode } from 'react';
 import { Button, Dialog, DialogClose, Input, Label, PreviewConfirmCard, Select, Textarea } from '@credalent/ui';
 import {
@@ -31,6 +38,8 @@ type NewJobLabels = {
   notChosen: string;
   noHiringOwner: string;
   inviteHiringOwner: string;
+  /** "Edit job details": opens the job fields again once they have collapsed to their summary. */
+  editDetails: string;
   submit: string;
   drafting: string;
   save: string;
@@ -67,6 +76,11 @@ type NewJobFormProps = {
   drafting: boolean;
   /** Once competencies are drafted, saving is the step's primary action. */
   drafted: boolean;
+  /** The recruiter reopened the job fields, which collapse to a one-line summary once there is a draft (AIV-P1-165). */
+  detailsOpen: boolean;
+  onDetailsOpenChange: (open: boolean) => void;
+  /** The title as typed, for the summary line. */
+  title: string;
   onTitleChange: (title: string) => void;
   /** Step 2, between the job fields and Save. */
   draftSection: ReactNode;
@@ -88,12 +102,17 @@ type NewJobFormProps = {
 };
 
 const id = (field: string) => `job-new-${field}`;
+// Stable, so focus moves to the summary once, when the first draft arrives: "Draft competencies" is disabled while it
+// drafts, which drops the focus it had.
+const focusOnMount = (element: HTMLElement | null) => element?.focus();
 
 /** Add a job, step 1 "Job and description" (RoleNew artboard, AIV-P1-007). */
 export function NewJobForm(props: NewJobFormProps) {
   const { state, errors, labels, jobType, pending } = props;
   const chosen = props.jobTypes.find((t) => t.value === jobType);
   const optional = <span className="ms-1 font-normal text-text-2">{labels.optional}</span>;
+  // A field to fix is never hidden: the fields open again with their error.
+  const collapsed = props.drafted && !props.detailsOpen && !errors.title && !errors.jobType;
   return (
     <>
       <nav aria-label={labels.steps} className="mb-6">
@@ -133,127 +152,149 @@ export function NewJobForm(props: NewJobFormProps) {
         className="flex max-w-2xl flex-col gap-3"
       >
         <input type="hidden" name="rubric" value={props.rubric} />
-        <Label htmlFor={id('type')}>{labels.jobType}</Label>
-        <Select
-          id={id('type')}
-          name="jobType"
-          value={jobType}
-          onChange={(e) => props.onJobTypeChange(e.target.value)}
-          aria-required="true"
-          aria-invalid={errors.jobType || undefined}
-          aria-describedby={`${id('type-hint')}${errors.jobType ? ` ${id('type-error')}` : ''}`}
-        >
-          <option value="" disabled>
-            {labels.chooseJobType}
-          </option>
-          {props.jobTypes.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-        <p id={id('type-hint')} className="text-meta text-text-2">
-          {labels.jobTypeHint}
-          {chosen?.evidence && ` ${labels.evidence} ${chosen.evidence}`}
-        </p>
-        {errors.jobType && (
-          <p id={id('type-error')} role="alert" className="text-meta font-semibold text-err-text">
-            {labels.errors.jobType}
-          </p>
-        )}
-
-        <Label htmlFor={id('title')}>{labels.title}</Label>
-        <Input
-          id={id('title')}
-          name="title"
-          maxLength={TEXT_MAX}
-          defaultValue={state.values.title}
-          onChange={(e) => props.onTitleChange(e.target.value)}
-          aria-required="true"
-          aria-invalid={errors.title || undefined}
-          aria-describedby={errors.title ? id('title-error') : undefined}
-        />
-        {errors.title && (
-          <p id={id('title-error')} role="alert" className="text-meta font-semibold text-err-text">
-            {labels.errors.title}
-          </p>
-        )}
-
-        <Label htmlFor={id('description')}>{labels.description}</Label>
-        <Textarea
-          id={id('description')}
-          name="description"
-          rows={8}
-          maxLength={DESCRIPTION_MAX}
-          defaultValue={state.values.description}
-          placeholder={descriptionPlaceholder(labels.placeholderIntro, chosen?.starters ?? [])}
-          aria-describedby={id('description-hint')}
-        />
-        <p id={id('description-hint')} className="text-meta text-text-2">
-          {labels.descriptionHint}
-        </p>
-
-        {props.clients ? (
-          <>
-            <Label htmlFor={id('client')}>{labels.client}</Label>
-            <Select id={id('client')} name="clientId" defaultValue={state.values.clientId}>
-              <option value="">{labels.ourTeam}</option>
-              {props.clients.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </>
-        ) : (
-          <>
-            <Label htmlFor={id('team')}>
-              {labels.team}
-              {optional}
-            </Label>
-            <Input id={id('team')} name="team" maxLength={TEXT_MAX} defaultValue={state.values.team} />
-          </>
-        )}
-
-        <Label htmlFor={id('location')}>
-          {labels.location}
-          {optional}
-        </Label>
-        <Input id={id('location')} name="location" maxLength={TEXT_MAX} defaultValue={state.values.location} />
-
-        {props.hiringOwners.length ? (
-          <>
-            <Label htmlFor={id('owner')}>
-              {labels.hiringOwner}
-              {optional}
-            </Label>
-            <Select id={id('owner')} name="hiringOwnerUserId" defaultValue={state.values.hiringOwnerUserId}>
-              <option value="">{labels.notChosen}</option>
-              {props.hiringOwners.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <p className="text-meta font-semibold text-text">{labels.hiringOwner}</p>
-            <p className="text-body text-text-2">
-              {labels.noHiringOwner}
-              {props.membersHref && (
-                <>
-                  {' '}
-                  <a href={props.membersHref} className="font-semibold text-text underline underline-offset-2">
-                    {labels.inviteHiringOwner}
-                  </a>
-                </>
-              )}
+        {props.drafted && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p tabIndex={-1} ref={focusOnMount} className="text-body font-semibold text-text">
+              {[props.title.trim(), chosen?.label].filter(Boolean).join(' · ')}
             </p>
+            <Button
+              size="compact"
+              aria-expanded={!collapsed}
+              aria-controls={id('fields')}
+              onClick={() => props.onDetailsOpenChange(collapsed)}
+            >
+              {labels.editDetails}
+            </Button>
           </div>
         )}
+        {/* Hidden, not removed: Save posts the fields and Draft reads them while they are collapsed. */}
+        <div id={id('fields')} hidden={collapsed} className="flex flex-col gap-3">
+          <Label htmlFor={id('type')}>{labels.jobType}</Label>
+          <Select
+            id={id('type')}
+            name="jobType"
+            value={jobType}
+            onChange={(e) => props.onJobTypeChange(e.target.value)}
+            aria-required="true"
+            aria-invalid={errors.jobType || undefined}
+            aria-describedby={`${id('type-hint')}${errors.jobType ? ` ${id('type-error')}` : ''}`}
+          >
+            <option value="" disabled>
+              {labels.chooseJobType}
+            </option>
+            {props.jobTypes.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+          <p id={id('type-hint')} className="text-meta text-text-2">
+            {labels.jobTypeHint}
+            {chosen?.evidence && ` ${labels.evidence} ${chosen.evidence}`}
+          </p>
+          {errors.jobType && (
+            <p id={id('type-error')} role="alert" className="text-meta font-semibold text-err-text">
+              {labels.errors.jobType}
+            </p>
+          )}
 
-        <div className="mt-3 flex flex-wrap gap-2">
+          <Label htmlFor={id('title')}>{labels.title}</Label>
+          <Input
+            id={id('title')}
+            name="title"
+            maxLength={TEXT_MAX}
+            defaultValue={state.values.title}
+            onChange={(e) => props.onTitleChange(e.target.value)}
+            aria-required="true"
+            aria-invalid={errors.title || undefined}
+            aria-describedby={errors.title ? id('title-error') : undefined}
+          />
+          {errors.title && (
+            <p id={id('title-error')} role="alert" className="text-meta font-semibold text-err-text">
+              {labels.errors.title}
+            </p>
+          )}
+
+          <Label htmlFor={id('description')}>{labels.description}</Label>
+          <Textarea
+            id={id('description')}
+            name="description"
+            rows={8}
+            maxLength={DESCRIPTION_MAX}
+            defaultValue={state.values.description}
+            placeholder={descriptionPlaceholder(labels.placeholderIntro, chosen?.starters ?? [])}
+            aria-describedby={id('description-hint')}
+          />
+          <p id={id('description-hint')} className="text-meta text-text-2">
+            {labels.descriptionHint}
+          </p>
+
+          {props.clients ? (
+            <>
+              <Label htmlFor={id('client')}>{labels.client}</Label>
+              <Select id={id('client')} name="clientId" defaultValue={state.values.clientId}>
+                <option value="">{labels.ourTeam}</option>
+                {props.clients.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </>
+          ) : (
+            <>
+              <Label htmlFor={id('team')}>
+                {labels.team}
+                {optional}
+              </Label>
+              <Input id={id('team')} name="team" maxLength={TEXT_MAX} defaultValue={state.values.team} />
+            </>
+          )}
+
+          <Label htmlFor={id('location')}>
+            {labels.location}
+            {optional}
+          </Label>
+          <Input id={id('location')} name="location" maxLength={TEXT_MAX} defaultValue={state.values.location} />
+
+          {props.hiringOwners.length ? (
+            <>
+              <Label htmlFor={id('owner')}>
+                {labels.hiringOwner}
+                {optional}
+              </Label>
+              <Select id={id('owner')} name="hiringOwnerUserId" defaultValue={state.values.hiringOwnerUserId}>
+                <option value="">{labels.notChosen}</option>
+                {props.hiringOwners.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <p className="text-meta font-semibold text-text">
+                {labels.hiringOwner}
+                {optional}
+              </p>
+              <p className="text-body text-text-2">
+                {labels.noHiringOwner}
+                {props.membersHref && (
+                  <>
+                    {' '}
+                    <a href={props.membersHref} className="font-semibold text-text underline underline-offset-2">
+                      {labels.inviteHiringOwner}
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Outside the collapsing fields: a new draft is one Tab from the summary. */}
+        <div className={collapsed ? 'flex flex-wrap gap-2' : 'mt-3 flex flex-wrap gap-2'}>
           <Button type="submit" variant={props.drafted ? 'secondary' : 'primary'} disabled={props.drafting}>
             {props.drafting ? labels.drafting : labels.submit}
           </Button>
@@ -261,15 +302,12 @@ export function NewJobForm(props: NewJobFormProps) {
       </form>
       {props.draftSection}
       <div className="mt-6 flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          id={id('save')}
-          form={id('form')}
-          variant={props.drafted ? 'primary' : 'secondary'}
-          disabled={pending}
-        >
-          {pending ? labels.submitting : labels.save}
-        </Button>
+        {/* Only once there is a draft to save (AIV-P1-165): until then "Draft competencies" is the one primary. */}
+        {props.drafted && (
+          <Button type="submit" id={id('save')} form={id('form')} variant="primary" disabled={pending}>
+            {pending ? labels.submitting : labels.save}
+          </Button>
+        )}
         <Button onClick={props.onCancel}>{labels.cancel}</Button>
       </div>
       <PreviewConfirmCard

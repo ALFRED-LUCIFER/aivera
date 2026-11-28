@@ -32,12 +32,35 @@ for (const theme of themes) {
     baseURL,
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
+    await page.setViewportSize({ width: 1280, height: 800 });
     await fill(page, 'Senior AI Engineer', DESCRIPTION);
+    // AIV-P1-165 "Save appears only when there is a draft to save".
+    const saveButton = page.getByRole('button', { name: 'Save job and rubric' });
+    await expect(saveButton).toHaveCount(0);
     await draftButton(page).focus();
     await page.keyboard.press('Enter');
 
     await expect(page.getByRole('heading', { name: 'From your job description · 4 competencies' })).toBeVisible();
     await expect(page.getByText('2. Competencies, drafted and suggested')).toHaveAttribute('aria-current', 'step');
+    await expect(saveButton).toBeVisible();
+    // AIV-P1-165 "After drafting, the job fields collapse and the list leads": one line to expand, which takes the
+    // focus, and at 1280 x 800 the stepper, the summary and the first competencies share the screen.
+    const details = page.getByRole('button', { name: 'Edit job details' });
+    const summary = page.getByText('Senior AI Engineer · AI and LLM engineering');
+    await expect(summary).toBeFocused();
+    await expect(summary).toBeInViewport({ ratio: 1 });
+    await expect(details).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByLabel('Job description')).toBeHidden();
+    await expect(page.getByRole('navigation', { name: 'Steps' })).toBeInViewport({ ratio: 1 });
+    for (const name of ['LLM systems in production', 'Retrieval and evaluation'])
+      await expect(rowOf(page, name)).toBeInViewport({ ratio: 1 });
+    await page.keyboard.press('Tab');
+    await expect(details).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(details).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByLabel('Job description')).toHaveValue(DESCRIPTION);
+    await page.keyboard.press('Space');
+    await expect(page.getByLabel('Job title')).toBeHidden();
     const rows = [
       [
         'LLM systems in production',
@@ -109,6 +132,20 @@ for (const theme of themes) {
     );
     await expect(page.getByRole('button', { name: 'Restore Python service engineering' })).toBeFocused();
     await expect(page.getByRole('heading', { name: 'From your job description · 3 competencies' })).toBeVisible();
+
+    // AIV-P1-165 "Remove is a real button": reached by Tab from Edit, and Space removes as Enter does.
+    await rowOf(page, 'LLM systems in production')
+      .getByRole('button', { name: 'Edit LLM systems in production' })
+      .focus();
+    await page.keyboard.press('Tab');
+    const remove = page.getByRole('button', { name: 'Remove LLM systems in production' });
+    await expect(remove).toBeFocused();
+    expect(await remove.evaluate((element) => element.tagName)).toBe('BUTTON');
+    await page.keyboard.press('Space');
+    await expect(rowOf(page, 'LLM systems in production')).toContainText(
+      'LLM systems in production removed from this rubric.',
+    );
+    await expect(page.getByRole('heading', { name: 'From your job description · 2 competencies' })).toBeVisible();
   });
 }
 
@@ -235,6 +272,12 @@ test('Scenario: Drafting in progress, then the AI service fails', async ({ page 
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(rowOf(page, 'Assistant operations')).toBeVisible();
   await page.getByRole('button', { name: 'Remove Assistant operations' }).click();
+  // A job is saved with its rubric: saving with no competency kept asks for one and stores nothing.
+  await page.getByRole('button', { name: 'Save job and rubric' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Keep at least' })).toHaveText(
+    'Keep at least one competency to save the job and rubric.',
+  );
+  await expect(page).toHaveURL(/\/app\/jobs\/new$/);
   await page.getByRole('button', { name: 'Use the starter competencies' }).click();
   await expect(rowOf(page, 'Retrieval and evaluation').getByRole('cell').nth(1)).toHaveText('25%');
 });

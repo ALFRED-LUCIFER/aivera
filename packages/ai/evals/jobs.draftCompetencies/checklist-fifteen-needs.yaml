@@ -36,10 +36,14 @@ expected:
       - Payments domain
       - CI pipelines
 recorded:
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: a334c5b40ad2
   output:
     competencies:
       - name: Playwright end-to-end test suite development
-        evidenceExpected: Built and maintained an end-to-end automated test suite using Playwright covering critical user flows.
+        evidenceExpected:
+          Built and maintained a comprehensive end-to-end test suite using Playwright that reliably validates
+          application workflows.
         weight: 15
         level: 4
         type: mandatory
@@ -49,8 +53,9 @@ recorded:
             start: 0
             end: 50
         claim: false
-      - name: API testing for payments service
-        evidenceExpected: Created and executed automated API tests specifically targeting payments service endpoints.
+      - name: API testing for payment services
+        evidenceExpected: Developed and executed API tests specifically targeting payment service endpoints to ensure
+          correctness and reliability.
         weight: 10
         level: 4
         type: mandatory
@@ -61,7 +66,7 @@ recorded:
             end: 101
         claim: false
       - name: Contract testing between services
-        evidenceExpected: Owned and maintained contract tests ensuring service integrations meet agreed contracts.
+        evidenceExpected: Owned and implemented contract tests to verify interactions and data exchange between microservices.
         weight: 10
         level: 4
         type: mandatory
@@ -71,8 +76,8 @@ recorded:
             start: 102
             end: 147
         claim: false
-      - name: Load testing with k6 and capacity reporting
-        evidenceExpected: Designed and ran load tests using k6 and reported system capacity based on results.
+      - name: Load testing and capacity reporting with k6
+        evidenceExpected: Designed and ran load tests using k6, analyzed performance data, and reported system capacity metrics.
         weight: 10
         level: 4
         type: mandatory
@@ -82,8 +87,10 @@ recorded:
             start: 148
             end: 200
         claim: false
-      - name: Accessibility testing in CI
-        evidenceExpected: Integrated accessibility checks into continuous integration pipelines to ensure compliance.
+      - name: Accessibility testing integration in CI
+        evidenceExpected:
+          Added automated accessibility checks into continuous integration pipelines to ensure compliance with
+          accessibility standards.
         weight: 8
         level: 3
         type: mandatory
@@ -94,7 +101,7 @@ recorded:
             end: 241
         claim: false
       - name: Mobile app testing with Appium
-        evidenceExpected: Tested mobile applications using Appium automation framework to ensure quality across devices.
+        evidenceExpected: Tested mobile applications using Appium to validate functionality across devices and platforms.
         weight: 8
         level: 4
         type: mandatory
@@ -105,18 +112,26 @@ recorded:
             end: 284
         claim: false
       - name: Test suite optimization and flakiness resolution
-        evidenceExpected: Kept automated test suites efficient (under ten minutes) and identified/fixed flaky tests.
-        weight: 7
+        evidenceExpected:
+          Maintained test suite execution time under ten minutes and identified and fixed flaky tests to improve
+          reliability.
+        weight: 8
         level: 4
         type: mandatory
         citations:
           - sourceId: S1
-            quote: You will keep the suite under ten minutes. You will find and fix flaky tests.
+            quote: You will keep the suite under ten minutes.
             start: 285
+            end: 327
+          - sourceId: S1
+            quote: You will find and fix flaky tests.
+            start: 328
             end: 362
         claim: false
-      - name: Test strategy creation for releases
-        evidenceExpected: Authored comprehensive test strategies for each software release to guide testing efforts.
+      - name: Test strategy development for releases
+        evidenceExpected:
+          Authored comprehensive test strategies tailored for each software release to guide testing efforts and
+          coverage.
         weight: 7
         level: 4
         type: mandatory
@@ -127,7 +142,7 @@ recorded:
             end: 413
         claim: false
       - name: Exploratory testing of new features
-        evidenceExpected: Performed exploratory testing to discover issues in newly developed features.
+        evidenceExpected: Performed exploratory testing on new features to uncover defects and usability issues beyond scripted tests.
         weight: 6
         level: 3
         type: mandatory
@@ -138,7 +153,7 @@ recorded:
             end: 462
         claim: false
       - name: Security scanning and triage
-        evidenceExpected: Ran security scans and triaged findings to mitigate vulnerabilities.
+        evidenceExpected: Conducted security scans and triaged findings to identify and mitigate vulnerabilities.
         weight: 6
         level: 3
         type: mandatory
@@ -149,8 +164,8 @@ recorded:
             end: 511
         claim: false
       - name: Test data and environment management
-        evidenceExpected: Managed test data sets and testing environments to support reliable test execution.
-        weight: 6
+        evidenceExpected: Managed test data sets and testing environments to ensure accurate and efficient test execution.
+        weight: 5
         level: 3
         type: mandatory
         citations:
@@ -159,12 +174,16 @@ recorded:
             start: 512
             end: 555
         claim: false
-      - name: Mentoring junior testers
-        evidenceExpected: Mentored and guided junior testers to improve team testing capabilities.
+      - name: Quality metrics reporting and mentoring
+        evidenceExpected: Reported quality metrics to leadership monthly and mentored junior testers to improve team capabilities.
         weight: 7
         level: 3
         type: mandatory
         citations:
+          - sourceId: S1
+            quote: You will report quality metrics to leadership each month.
+            start: 556
+            end: 613
           - sourceId: S1
             quote: You will mentor two junior testers.
             start: 614
@@ -173,52 +192,50 @@ recorded:
     refused: false
     reason: null
     suggestions:
-      - name: Knowledge of software development lifecycle (SDLC)
-        evidenceExpected: Demonstrated understanding of SDLC phases through involvement in test planning and release cycles.
-        weight: 5
+      - name: Arabic language proficiency
+        evidenceExpected: Demonstrated ability to work with Arabic language content, especially for testing right-to-left screen layouts.
+        weight: 7
         level: 3
         type: desirable
         why:
-          The description mentions writing test strategies for releases and reporting quality metrics, implying involvement
-          in release cycles but does not explicitly state SDLC knowledge.
+          The description states testing Arabic right-to-left screens but does not mention language skills explicitly,
+          implying knowledge of Arabic or right-to-left language handling is beneficial.
         citations:
           - sourceId: S1
-            quote: You will write the test strategy for each release.
-            start: 363
-            end: 413
+            quote: You will test Arabic right-to-left screens.
+            start: 650
+            end: 693
         claim: false
-      - name: Proficiency in English language for technical communication
-        evidenceExpected: Produced clear and concise test reports and quality metrics communicated to leadership.
-        weight: 5
+      - name: Continuous Integration (CI) pipeline management
+        evidenceExpected: Experience integrating and managing automated tests and checks within CI pipelines to ensure smooth delivery.
+        weight: 6
         level: 3
         type: desirable
         why:
-          Reporting quality metrics to leadership implies need for strong English communication skills, but the description
-          does not explicitly mention language requirements.
+          The description mentions adding accessibility checks to CI, implying familiarity with CI pipelines is needed but
+          does not explicitly state it.
         citations:
           - sourceId: S1
-            quote: You will report quality metrics to leadership each month.
-            start: 556
-            end: 613
+            quote: You will add accessibility checks to CI.
+            start: 201
+            end: 241
         claim: false
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: fcb51857d7e3
   matches:
     End-to-end tests in Playwright: Playwright end-to-end test suite development
-    API testing: API testing for payments service
+    API testing: API testing for payment services
     Contract testing: Contract testing between services
-    Load testing: Load testing with k6 and capacity reporting
-    Accessibility checks in CI: Accessibility testing in CI
+    Load testing: Load testing and capacity reporting with k6
+    Accessibility checks in CI: Accessibility testing integration in CI
     Fixing flaky tests: Test suite optimization and flakiness resolution
-    Test strategy: Test strategy creation for releases
+    Test strategy: Test strategy development for releases
     Exploratory testing: Exploratory testing of new features
     Security scanning: Security scanning and triage
     Test data and environments: Test data and environment management
-    Quality metrics reporting: null
-    Mentoring testers: Mentoring junior testers
+    Quality metrics reporting: Quality metrics reporting and mentoring
+    Mentoring testers: null
     Right-to-left screen testing: null
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      Knowledge of software development lifecycle (SDLC): null
-      Proficiency in English language for technical communication: null
+      Arabic language proficiency: null
+      Continuous Integration (CI) pipeline management: null

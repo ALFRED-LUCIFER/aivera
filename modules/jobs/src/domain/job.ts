@@ -184,6 +184,29 @@ export function rebalanceWeights<C extends Pick<Competency, 'weightPercent'>>(co
 }
 
 /**
+ * A draft's weights in steps of 5 that still total 100 (AIV-P1-165): a drafted "13%" states a precision the draft does
+ * not have. Each weight goes down to its multiple of 5, never under 5, and the steps still missing go one each to the
+ * largest remainders (or come off the smallest), earlier first on a tie. Kept as they are when they do not total 100
+ * or more than 20 competencies leave no room for 5 each. For a draft only: a save keeps the recruiter's own weights.
+ */
+export function roundWeightsToFives<C extends Pick<Competency, 'weightPercent'>>(competencies: C[]): C[] {
+  const total = competencies.reduce((sum, c) => sum + c.weightPercent, 0);
+  if (total !== 100 || competencies.length > 20) return competencies;
+  const parts = competencies.map((c) => ({ c, steps: Math.max(1, Math.floor(c.weightPercent / 5)) }));
+  const rest = (p: (typeof parts)[number]) => p.c.weightPercent - 5 * p.steps;
+  let missing = 20 - parts.reduce((sum, p) => sum + p.steps, 0);
+  for (; missing !== 0; missing -= Math.sign(missing)) {
+    const up = missing > 0;
+    // Strict comparison, so the earlier competency wins a tie. Taking a step off never empties one: some hold two.
+    const pick = parts
+      .filter((p) => up || p.steps > 1)
+      .reduce((best, p) => ((up ? rest(p) > rest(best) : rest(p) < rest(best)) ? p : best));
+    pick.steps += up ? 1 : -1;
+  }
+  return parts.map((p) => ({ ...p.c, weightPercent: p.steps * 5 }));
+}
+
+/**
  * The suggestions that repeat no drafted competency and no earlier suggestion, comparing names without case or extra
  * spaces (AIV-P1-009). The prompt asks for this too; code makes sure.
  */

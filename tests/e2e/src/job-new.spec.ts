@@ -43,14 +43,10 @@ for (const theme of themes) {
     await owner.selectOption({ label: 'Head of Engineering' });
     await page.keyboard.press('Tab');
     await expect(draft(page)).toBeFocused();
-    // Drafting is job-draft.spec.ts (AIV-P1-008) and saving job-save.spec.ts (AIV-P1-010): a job is saved with its
-    // rubric, so saving before any competency is kept asks for one and stores nothing.
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Save job and rubric' })).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect(page.getByRole('alert').filter({ hasText: 'Keep at least' })).toHaveText(
-      'Keep at least one competency to save the job and rubric.',
-    );
+    // AIV-P1-165 "Save appears only when there is a draft to save": until then Draft is the one primary button.
+    // Drafting is job-draft.spec.ts (AIV-P1-008) and saving job-save.spec.ts (AIV-P1-010).
+    await expect(page.getByRole('button', { name: 'Save job and rubric' })).toHaveCount(0);
+    await expect(page.getByText('4. Hiring owner approves')).toBeVisible();
     await expect(page).toHaveURL(/\/app\/jobs\/new$/);
   });
 }
@@ -93,8 +89,30 @@ test('Scenario: Hiring owner comes from the workspace', async ({ page }) => {
   expect(options).not.toContain('Rami Panel');
 });
 
-test('Scenario: No hiring owner yet', async ({ page }) => {
+test('Scenario: The job type is guessed from the title, and she can change it (AIV-P1-165)', async ({ page }) => {
+  await open(page);
+  const jobType = page.getByLabel('Job type');
+  await page.getByLabel('Job title').pressSequentially('Senior AI Engineer');
+  await expect(jobType).toHaveValue('ai_llm_engineering');
+  // Her own choice stays, whatever she types next.
+  await jobType.selectOption({ label: 'Sales' });
+  await page.getByLabel('Job title').fill('Senior AI Engineer, Riyadh');
+  await expect(jobType).toHaveValue('sales');
+});
+
+test('Scenario: The stepper says the recruiter approves (AIV-P1-165), with no hiring owner yet', async ({ page }) => {
   await open(page, 'nadia@example.com');
+  await expect(page.getByRole('navigation', { name: 'Steps' }).getByRole('listitem')).toHaveText([
+    '1. Job and description',
+    '2. Competencies, drafted and suggested',
+    '3. Save to the job as its rubric',
+    '4. You approve',
+  ]);
+  await expect(page.getByText('Hiring owner approves')).toHaveCount(0);
+  // Inviting one is offered, never required: the field is marked optional and says who approves.
+  await expect(page.getByText('Hiring ownerOptional')).toBeVisible();
+  await expect(page.getByText('This workspace has no hiring owner, so you approve the rubric yourself.')).toBeVisible();
+  await expectAccessible(page);
   await expect(page.getByRole('link', { name: 'Invite a hiring owner' })).toHaveAttribute(
     'href',
     '/app/settings/members',

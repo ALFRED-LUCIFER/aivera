@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_V1 } from '@/test/catalogue-v1.ts';
-import { defaultJobType, descriptionPlaceholder, jobTypeOptions, parseNewJobForm } from './jobNew.ts';
+import { defaultJobType, descriptionPlaceholder, guessJobType, jobTypeOptions, parseNewJobForm } from './jobNew.ts';
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -106,5 +106,34 @@ describe('defaultJobType', () => {
       jobTypes: CATALOGUE_V1.jobTypes.map((t) => ({ ...t, retired: t.key === 'data_ml' })),
     };
     expect(defaultJobType('data_ml', retired)).toBe('');
+  });
+});
+
+describe('guessJobType (AIV-P1-165): the job type is guessed from the title', () => {
+  it.each([
+    ['Senior AI Engineer', 'ai_llm_engineering'],
+    ['Staff Backend Engineer', 'software_engineering'],
+    ['QA Automation Engineer', 'qa_test_automation'],
+    ['Data Scientist', 'data_ml'],
+    ['Site Reliability Engineer', 'devops_sre'],
+    ['Forward-Deployed Engineer', 'forward_deployed_engineering'],
+    ['Product Manager', 'product_management'],
+    ['Product Designer', 'product_design'],
+    ['Real Estate Sales Consultant', 'sales'],
+    ['Technical Writer', 'technical_writing_support'],
+    // "ai" inside a word is not the job type, and a title with no known word guesses nothing.
+    ['Maintenance Lead', null],
+    ['', null],
+  ])('%s -> %s', (title, expected) => {
+    expect(guessJobType(title, CATALOGUE_V1)).toBe(expected);
+  });
+
+  it('never guesses a job type the catalogue has retired', () => {
+    const retired = {
+      ...CATALOGUE_V1,
+      jobTypes: CATALOGUE_V1.jobTypes.map((t) => (t.key === 'ai_llm_engineering' ? { ...t, retired: true } : t)),
+    };
+    // The next match in order is offered instead.
+    expect(guessJobType('Senior AI Engineer', retired)).toBe('software_engineering');
   });
 });

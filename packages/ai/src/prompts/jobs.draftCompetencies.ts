@@ -6,7 +6,7 @@ import { cited, type Source } from '../citations.ts';
 // the eval runner calls the same.
 
 /** Bump with any change to the system prompt, the prompt or the schema; it goes on telemetry and the eval results. */
-export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@5';
+export const DRAFT_COMPETENCIES_VERSION = 'jobs.draftCompetencies@6';
 
 /** The most competencies one draft lists (AIV-P1-145): the prompt and the schema both read it, so they cannot drift. */
 const MAX_DRAFTED = 12;
@@ -20,7 +20,11 @@ export const DRAFT_COMPETENCIES_SYSTEM = [
   'For each give: a short name of at most 60 characters; the evidence of work that would show it (what the candidate',
   'built, shipped or wrote) in one sentence of at most 300 characters; a weight from 1 to 100 for how central it is',
   'compared with the others (Credalent scales the weights to total 100, so they need not add up); the level the job',
-  'needs from 1 (basic) to 5 (expert); and mandatory or desirable, as the description says. A competency is a skill',
+  // AIV-P1-165: @5 drafted every row as "4 of 5, mandatory" for a senior title, whatever the description asked of each.
+  // Kept to one clause here: a paragraph of level and type rules made buzzwords competencies or cost a suggestion, live.
+  'needs from 1 (basic) to 5 (expert), judged for that competency alone from what the description asks of it, so a',
+  'senior title never gives every competency the same level; and mandatory or desirable, as the description says',
+  '(a bonus, a plus, preferred or nice to have is desirable). A competency is a skill',
   'shown by work. Never a proxy: no nationality, age, gender, religion, marital status, health, where someone lives',
   'or comes from, what someone owns, an employer or school name, a kind of employer or school, or years of experience on their own (years',
   'never set a level either). Leave out any line that asks for',
@@ -37,7 +41,7 @@ export const DRAFT_COMPETENCIES_SYSTEM = [
   'Then suggest the 2 competencies the job most needs that no sentence of the description mentions, such as knowledge',
   'of the industry or market, a language the work is done in, or a skill the work implies (a customer-facing design',
   'implies accessibility). Never repeat or reword a listed competency, and never suggest a soft skill any job asks',
-  'for. Work the description mentions is a listed competency, never a suggestion. Give each suggestion the same fields, and in why one sentence of at most 300 characters on what in the',
+  'for. Work the description mentions is a listed competency, never a suggestion. Give each suggestion the same fields, its type always desirable, and in why one sentence of at most 300 characters on what in the',
   'description implies it and what the description leaves out; cite each sentence of the description that implies',
   'it, one citation per sentence. When the title implies it (an industry named in the title), cite the description',
   'line about the work it applies to. Weigh suggestions against the listed competencies on the same scale. Suggest',
