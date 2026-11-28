@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, primaryButtons, themes } from './gallery.ts';
+import { expectAccessible, pickJobTypeAndTitle, primaryButtons, themes } from './gallery.ts';
 import { approvedWorkspace } from './workspaces.ts';
 
 // AIV-P1-083 (ADR-014): the recruiter on a job approves its rubric. A recruiter alone in a fresh workspace with no
@@ -16,8 +16,7 @@ const DESCRIPTION =
 
 async function addJob(page: Page, title: string, withOwner = false) {
   await page.goto('/app/jobs/new');
-  await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByLabel('Job title').fill(title);
+  await pickJobTypeAndTitle(page, title);
   await page.getByLabel('Job description').fill(DESCRIPTION);
   // The workspace's only hiring owner, when it has one.
   if (withOwner) await page.getByLabel('Hiring owner').selectOption({ index: 1 });

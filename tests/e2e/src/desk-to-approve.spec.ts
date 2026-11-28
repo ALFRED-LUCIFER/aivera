@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, primaryButtons, themes } from './gallery.ts';
+import { expectAccessible, pickJobTypeAndTitle, primaryButtons, themes } from './gallery.ts';
 import { approvedWorkspace } from './workspaces.ts';
 
 // AIV-P1-084 (ADR-014): My desk's "Rubrics to approve". A recruiter alone in a fresh workspace sees the
@@ -16,8 +16,7 @@ const DESCRIPTION =
 
 async function saveDraft(page: Page, title: string) {
   await page.goto('/app/jobs/new');
-  await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByLabel('Job title').fill(title);
+  await pickJobTypeAndTitle(page, title);
   await page.getByLabel('Job description').fill(DESCRIPTION);
   await page.getByRole('button', { name: 'Draft competencies' }).click();
   await expect(page.getByText('Weights total 100%')).toBeVisible();

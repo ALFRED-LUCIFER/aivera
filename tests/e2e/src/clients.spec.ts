@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, pickJobTypeAndTitle, themes } from './gallery.ts';
 
 // AIV-P1-056 J1 step 3, agency variant (the ticket's archive examples use Dune Logistics, which has the job). seed.ts: Zaid is a recruiter in the agency Oasis Talent (no clients yet), where
 // Faisal Client is a hiring owner with no grants; Alex's Demo Hiring Co is an in-house team. The fake model drafts from
@@ -38,8 +38,7 @@ test('Scenarios: add clients, pick one on Add a job with a hiring owner, archive
   await page.goto('/app/jobs/new');
   const picker = page.getByLabel('Team or client');
   await expect(picker.locator('option')).toHaveText(['Our team', 'Dune Logistics', 'Falcon Pay']);
-  await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByLabel('Job title').fill('Staff Backend Engineer');
+  await pickJobTypeAndTitle(page, 'Staff Backend Engineer');
   await page.getByLabel('Job description').fill(DESCRIPTION);
   await picker.selectOption({ label: 'Dune Logistics' });
   await page.getByLabel('Hiring owner').selectOption({ label: 'Faisal Client' });

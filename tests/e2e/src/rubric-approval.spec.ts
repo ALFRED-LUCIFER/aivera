@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, pickJobTypeAndTitle, themes } from './gallery.ts';
 
 // AIV-P1-014 J1 step: Tariq (admin of "Approvals Co", seed.ts) adds a job owned by the Head of Engineering and sends
 // its rubric for approval; the Head of Engineering approves it; Tariq sees it approved, and done on My desk. Drafting
@@ -20,8 +20,7 @@ const DESCRIPTION =
 async function addJobAndSend(page: Page, title: string) {
   await signIn(page, { email: 'tariq@example.com' });
   await page.goto('/app/jobs/new');
-  await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByLabel('Job title').fill(title);
+  await pickJobTypeAndTitle(page, title);
   await page.getByLabel('Job description').fill(DESCRIPTION);
   // The only hiring owner; their name is what the mocked sign-in gave them.
   await page.getByLabel('Hiring owner').selectOption({ index: 1 });
