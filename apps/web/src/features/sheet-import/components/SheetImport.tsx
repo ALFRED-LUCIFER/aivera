@@ -13,10 +13,12 @@ import {
   SuccessBanner,
   type DataTableColumn,
 } from '@credalent/ui';
+import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { RIGHT_TO_PROCESS_KEY } from '@/features/add-applicants/domain/addApplicants.ts';
 import type { DirectUpload } from '@/features/files';
+import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import {
   FIELDS,
   peopleOf,
@@ -100,7 +102,7 @@ function Step(p: Exclude<Props, { readOnly: true }>) {
       ) : view.status === 'ready' ? (
         <Check {...p} view={view} />
       ) : (
-        <Link href={`/app/jobs/${view.jobId}/candidates`} className="text-body text-action underline">
+        <Link href={jobPageHref(view.jobId, 'candidates') as Route} className="text-body text-action underline">
           {t('toCandidates')}
         </Link>
       )}

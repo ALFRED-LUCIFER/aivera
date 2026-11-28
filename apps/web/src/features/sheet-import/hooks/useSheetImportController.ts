@@ -1,6 +1,8 @@
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useDirectUpload } from '@/features/files';
+import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import {
   completeMapping,
   isWaiting,
@@ -53,7 +55,7 @@ export function useSheetImportController(jobId: string, view: SheetImportView | 
         .startSheetImport({ jobId, fileId })
         .catch(() => ({ ok: false, error: 'failed' }) as const);
       if (!result.ok) return setError(result.error);
-      router.replace(`/app/jobs/${jobId}/import/sheet?import=${result.sheetImportId}`);
+      router.replace(`${jobPageHref(jobId, 'import')}/sheet?import=${result.sheetImportId}` as Route);
     });
   }, [upload.state, jobId, router, services]);
 
@@ -99,7 +101,7 @@ export function useSheetImportController(jobId: string, view: SheetImportView | 
     onStartOver() {
       upload.reset();
       setError(null);
-      router.replace(`/app/jobs/${jobId}/import/sheet`);
+      router.replace(`${jobPageHref(jobId, 'import')}/sheet` as Route);
     },
     pending,
     error,
