@@ -53,13 +53,14 @@ for (const theme of themes) {
     await expect(page.getByRole('button', { name: 'Return with a note' })).toHaveCount(0);
     await expect(page.getByText(/on their behalf/)).toHaveCount(0);
     // AIV-P1-165 "No empty success box": before any decision the panel's status region is empty and draws nothing.
-    const panel = page
-      .locator('section')
-      .filter({ has: page.getByRole('heading', { name: /ready for you to approve/ }) });
+    const status = page
+      .getByRole('heading', { name: 'Version 1 is ready for you to approve' })
+      .locator('..')
+      .locator('output');
     // (The empty live region has no box, so it is found by its element, not its role.)
-    await expect(panel.locator('output')).toBeEmpty();
-    await expect(panel.locator('output')).toHaveClass('');
-    expect((await panel.locator('output').boundingBox())?.height ?? 0).toBe(0);
+    await expect(status).toBeEmpty();
+    await expect(status).toHaveClass('');
+    expect((await status.boundingBox())?.height ?? 0).toBe(0);
     // AIV-P1-165 "Levels and Mandatory are explained where they appear".
     await expect(page.getByText('Mandatory never rejects anyone automatically.', { exact: false })).toBeVisible();
     const levels = page
