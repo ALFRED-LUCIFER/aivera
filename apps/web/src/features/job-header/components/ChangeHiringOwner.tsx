@@ -10,12 +10,13 @@ import { REASON_MAX, type ChangeOwnerView, type OwnerOption } from '../domain/hi
 const MEMBERS = '/app/settings/members' as Route;
 
 /**
- * The admin's control in the job header's meta line (AIV-P1-097): "Assign one" while the job has no hiring owner,
- * "Change hiring owner" otherwise. It opens the shared preview-confirm card with the active hiring-owner members, a
- * required reason, and the access that will be granted and revoked.
- * Deviations: no loading state (the members arrive with the page); no artboard draws this button, so it sits under the
- * meta line as a secondary button; the dialog assigns or changes but cannot clear an owner; the 22 Nov "client: …" line
- * is not in the header yet.
+ * The admin's control in the job header's meta line (AIV-P1-097): "Assign one", an inline link, while the job has no
+ * hiring owner, and nothing when the workspace has no hiring owner to assign, so a solo recruiter is not nagged
+ * (AIV-P1-165); "Change hiring owner" otherwise. It opens the shared preview-confirm card with the active hiring-owner
+ * members, a required reason, and the access that will be granted and revoked.
+ * Deviations: no loading state (the members arrive with the page); no artboard draws this control, so it sits under the
+ * meta line ("Change hiring owner" as a secondary button); the dialog assigns or changes but cannot clear an owner; the
+ * 22 Nov "client: …" line is not in the header yet.
  */
 export function ChangeHiringOwner({
   view,
@@ -31,11 +32,23 @@ export function ChangeHiringOwner({
   const t = useTranslations('jobHeader.owner');
   const pickId = useId();
   const reasonId = useId();
+  if (!hasOwner && options.length === 0) return null;
   return (
     <>
       <PreviewConfirmCard
         title={t(hasOwner ? 'changeTitle' : 'assignTitle')}
-        trigger={<Button variant="secondary">{t(hasOwner ? 'change' : 'assignOne')}</Button>}
+        trigger={
+          hasOwner ? (
+            <Button variant="secondary">{t('change')}</Button>
+          ) : (
+            <button
+              type="button"
+              className="cursor-pointer self-start text-body font-semibold text-text underline underline-offset-2"
+            >
+              {t('assignOne')}
+            </button>
+          )
+        }
         open={view.open}
         onOpenChange={view.onOpenChange}
         closeLabel={t('close')}

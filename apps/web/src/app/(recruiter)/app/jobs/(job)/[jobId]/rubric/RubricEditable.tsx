@@ -17,16 +17,21 @@ type Props = {
   approver: ReturnType<typeof approvesAs>;
   link: { versionId: string; revision: number } | null;
   publication: PublicationView;
+  /** Sending is on here (OUTBOUND); off in the pilot, where no send or publish button shows (AIV-P1-165). */
+  outbound: boolean;
 };
 
 /**
  * The rubric with edit mode for admins and recruiters (AIV-P1-013), and the approval panel (AIV-P1-014): an admin or
  * recruiter approves the open version, a draft directly (ADR-014); the job's hiring owner reads and decides the version
- * sent to them. Admins and recruiters also publish the job on the candidate site (AIV-P1-015).
+ * sent to them. Admins and recruiters also publish the job on the candidate site (AIV-P1-015). Where sending is off,
+ * nothing here sends or publishes: the recruiter approves alone (AIV-P1-165).
  */
-export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, link, publication }: Props) {
+export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, link, publication, outbound }: Props) {
   const editor = useRubricEditController(jobId, rubric.edit);
-  const { review, canReturn, canSend, withOwner } = decisionPanel(rubric, approver, canEdit, hiringOwner !== null);
+  const panel = decisionPanel(rubric, approver, canEdit, hiringOwner !== null);
+  const { review, canReturn, withOwner } = panel;
+  const canSend = panel.canSend && outbound;
   const decision = useRubricDecisionController(jobId, review);
   const publish = useRubricPublishController(jobId, publication.descriptor);
   const view = approverView(rubric, link);
@@ -34,7 +39,7 @@ export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, 
     <Rubric
       // An editor keeps reading the version in force, as edit mode does (AIV-P1-013); the hiring owner reads what was sent.
       state={{ status: 'ready', rubric: approver && !canEdit ? view.rubric : rubric }}
-      editor={canEdit ? editor : undefined}
+      editor={canEdit ? (outbound ? editor : { ...editor, onSend: undefined }) : undefined}
       hiringOwner={hiringOwner}
       aside={
         <>
@@ -50,8 +55,10 @@ export function RubricEditable({ jobId, rubric, hiringOwner, canEdit, approver, 
             />
           )}
           {/* job.publish allows the same roles as rubric.edit; the jobs module checks it again. It steps aside while
-              editing too, so the view keeps one primary button. */}
-          {canEdit && !editor.editing && <RubricPublish publication={publication} publish={publish} />}
+              editing too, so the view keeps one primary button. Where sending is off it shows only to unpublish. */}
+          {(outbound || publication.published) && canEdit && !editor.editing && (
+            <RubricPublish publication={publication} publish={publish} />
+          )}
         </>
       }
     />

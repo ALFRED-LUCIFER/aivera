@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { forbidden, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';
 import { getJobs } from '@/server/jobs';
+import { outboundOn } from '@/server/notifications';
 import { inActiveWorkspace } from '@/server/workspace';
 import type { PublishResult } from '../domain/rubric.ts';
 
@@ -18,12 +19,14 @@ const input = z.object({
 /**
  * "Publish" in the preview and "Unpublish" (AIV-P1-015), each in one transaction with its audit entry and its
  * JobPublished.v1 or JobUnpublished.v1 event. The jobs module authorises `job.publish` (admins and recruiters; anyone
- * else gets the 403 page) and needs an approved rubric to publish.
+ * else gets the 403 page) and needs an approved rubric to publish. Where sending is off (the pilot, AIV-P1-165) nothing
+ * is published; unpublishing still works.
  */
 export async function publishListing(raw: z.input<typeof input>): Promise<PublishResult> {
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { error: 'failed' };
   const { jobId, publicDescriptor } = parsed.data;
+  if (publicDescriptor !== undefined && !outboundOn()) return { error: 'failed' };
   let result;
   try {
     result = await inActiveWorkspace((ctx) =>
