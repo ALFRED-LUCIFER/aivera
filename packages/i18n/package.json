@@ -12,7 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "use-intl": "4.14.10"
+    "use-intl": "4.15.1"
   },
   "peerDependencies": {
     "react": "^19.0.0"
