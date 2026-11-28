@@ -727,6 +727,69 @@ describe('Feature: Retry a CV that failed to parse (AIV-P1-134)', () => {
       code: 'not_retryable',
     });
   });
+
+  // SAFETY: mutation check: retryCvParse also set the application's stage to 'not_advanced' -> this test failed (stage)
+  // SAFETY: mutation check: retryCvParse also inserted a lower assessment.result -> this test failed (assessment.result)
+  // SAFETY: mutation check: retryCvParse logged the candidate's display_name -> this test failed (telemetry held the name)
+  it('Scenario: The retry decides nothing and carries no personal data', async () => {
+    const { candidateId, sourceId } = await parse('Imran Qureshi', 'unavailable', answer({}));
+    // This relay pass also carried the previous scenario's retry: only his parse is delivered for the last time here.
+    const parseRequest = lastSent.filter(
+      (e) => e.type === CvParseRequestedV1.type && JSON.stringify(e).includes(sourceId),
+    );
+    expect(await consume(parseRequest, answer({}), MAX_DELIVERIES)).toEqual(['deadLetter: max deliveries']);
+    // His place in the job and the ranking, which the retry must leave alone.
+    await admin.execute(sql`insert into intake.application (id, workspace_id, person_id, job_id, stage, received_at)
+      values (${randomUUID()}, ${w1}, ${candidateId}, ${JOB}, 'assessing', ${NOW.toISOString()})`);
+    await admin.execute(sql`insert into assessment.result (id, workspace_id, candidate_id, job_id, rubric_version_id,
+      backed_score, upper_bound, meets_need, competency_count, missing_critical, confidence, competencies, assessed_at)
+      values (${randomUUID()}, ${w1}, ${candidateId}, ${JOB}, ${randomUUID()}, 40, 60, 2, 4, '[]', 'Medium', '[]',
+      ${NOW.toISOString()})`);
+    // Only the parse status, the queued message and the audit entry may change: a write anywhere else would be a
+    // decision, a score, a visibility change or a message to someone.
+    const writable = ['evidence.cv_parse', 'evidence.outbox', 'audit.entry'];
+    const everythingElse = async () => {
+      const tables = await admin.execute<{ s: string; t: string }>(sql`select table_schema as s, table_name as t
+        from information_schema.tables
+        where table_type = 'BASE TABLE' and table_schema not in ('pg_catalog', 'information_schema')`);
+      const hashes: Record<string, unknown> = {};
+      for (const { s, t } of tables)
+        if (!writable.includes(`${s}.${t}`))
+          [hashes[`${s}.${t}`]] = await admin.execute(
+            sql`select md5(coalesce(string_agg(r::text, '|' order by r::text), '')) as h
+              from ${sql.identifier(s)}.${sql.identifier(t)} r`,
+          );
+      return hashes;
+    };
+    const outboxTypes = async () =>
+      [
+        ...(await admin.execute<{ type: string }>(
+          sql`select type from evidence.outbox where workspace_id = ${w1} order by type`,
+        )),
+      ].map((r) => r.type);
+    const tablesBefore = await everythingElse();
+    const outboxBefore = await outboxTypes();
+
+    spans.reset();
+    const logs = [vi.spyOn(log, 'warn'), vi.spyOn(log, 'info'), vi.spyOn(log, 'error')];
+    await as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId));
+    const telemetry = JSON.stringify([
+      ...spans.getFinishedSpans().map((s) => ({ name: s.name, attributes: s.attributes, events: s.events })),
+      ...logs.flatMap((spy) => spy.mock.calls),
+    ]);
+    for (const spy of logs) spy.mockRestore();
+
+    expect((await read(candidateId, sourceId)).view?.status).toBe('pending');
+    const [application] = await admin.execute(
+      sql`select stage from intake.application where person_id = ${candidateId} and job_id = ${JOB}`,
+    );
+    expect(application).toEqual({ stage: 'assessing' });
+    expect(await everythingElse()).toEqual(tablesBefore);
+    // Nobody is contacted: the one new message asks for the parse (its opaque-id payload is asserted above).
+    expect(await outboxTypes()).toEqual([...outboxBefore, CvParseRequestedV1.type].toSorted());
+    // The action then logs `{ sourceId }` and "cv retry queued" only (retryCv.test.ts); evidence logs nothing personal.
+    expect(telemetry).not.toMatch(/imran|qureshi|cv\.pdf|%PDF/i);
+  });
 });
 
 const MARIA_CV = [

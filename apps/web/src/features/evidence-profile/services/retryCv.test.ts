@@ -1,4 +1,5 @@
 import { EvidenceError } from '@credalent/evidence';
+import { log } from '@credalent/observability';
 import { ForbiddenError } from '@credalent/workspaces';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { retryCv } from './retryCv.ts';
@@ -34,6 +35,14 @@ describe('the CV "Try again" action', () => {
     expect(await retryCv({ kind: 'cv', sourceId: SOURCE })).toEqual({ ok: true });
     expect(evidence.retryCvParse).toHaveBeenCalledWith(ctx, SOURCE);
     expect(evidence.retryMapping).not.toHaveBeenCalled();
+  });
+
+  // SAFETY: mutation check: logged the whole input (`...target`) -> this test failed (kind in the log)
+  it('logs the opaque source id and the outcome only (AIV-P1-134: carries no personal data)', async () => {
+    const info = vi.spyOn(log, 'info');
+    await retryCv({ kind: 'cv', sourceId: SOURCE });
+    expect(info.mock.calls).toEqual([[{ area: 'candidates', code: 'cv', sourceId: SOURCE }, 'cv retry queued']]);
+    info.mockRestore();
   });
 
   it("a failed assessment re-runs that candidate's for that job only", async () => {
