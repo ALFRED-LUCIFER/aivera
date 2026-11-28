@@ -88,7 +88,8 @@ const mappingSchema = z.strictObject({
 });
 
 // shortcut: CV links are fetched eight at a time in the worker's one transaction, so 1,000 links at the 10 s timeout
-// take up to about 21 minutes; queue one fetch per row if pilot sheets are that large.
+// take up to about 21 minutes, past the message lock's 5 minutes of renewal (a redelivery then waits on the inbox row
+// and is skipped); queue one fetch per row if pilot sheets have hundreds of slow links.
 const FETCHES_AT_ONCE = 8;
 
 export function sheetImportUseCases(p: SheetPorts) {

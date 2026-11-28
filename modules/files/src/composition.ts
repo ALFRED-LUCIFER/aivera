@@ -15,7 +15,8 @@ import { parseScanResult } from './infrastructure/scanResult.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 export { createBlobStore, type BlobStoreConfig } from './infrastructure/blobs.ts';
-export type { Resolve } from './infrastructure/cvFetch.ts';
+// The guarded fetch alone, for its tests (tests/integration/src/cv-link-fetch.test.ts).
+export { createCvFetcher, type Resolve } from './infrastructure/cvFetch.ts';
 export type { BlobStore } from './application/files.ts';
 
 /** The Service Bus queue Event Grid delivers Defender's scan results to (infra/modules/storage.bicep). */

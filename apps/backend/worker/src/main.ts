@@ -93,8 +93,8 @@ const { createPackSummaryHandlers, PACK_SUMMARY_QUEUE, readDecisionsAsSystem } =
   await import('@credalent/decisions/composition');
 const { InterviewCompletedV1, InterviewScheduledV1, MeetingSummarySubmittedV1 } = await import('@credalent/interviews');
 const { createSummaryHandlers, SUMMARY_QUEUE } = await import('@credalent/interviews/composition');
-const { ApplicationReceivedV1 } = await import('@credalent/intake');
-const { createApplicationReads, createDecisionStageHandler, readApplicationSourceAsSystem } =
+const { ApplicationReceivedV1, SheetImportRequestedV1 } = await import('@credalent/intake');
+const { createApplicationReads, createDecisionStageHandler, createSheetImportHandler, readApplicationSourceAsSystem } =
   await import('@credalent/intake/composition');
 const { createAiTokenBudget } = await import('@credalent/workspaces/composition');
 const { CatalogueEvalRequestedV1, JobPublishedV1, JobUnpublishedV1, RubricApprovedV1 } =
@@ -105,8 +105,14 @@ const { evaluateCatalogue, runBudget } = await import('@credalent/ai/evals');
 const { EmailQueuedV1 } = await import('@credalent/notifications');
 const { createEmailHandler, NOTIFICATIONS_QUEUE } = await import('@credalent/notifications/composition');
 const { FileCleanV1, FileRejectedV1 } = await import('@credalent/files');
-const { createBlobStore, createCleanFileReader, createFiles, readFilePurposeAsSystem, SCAN_RESULTS_QUEUE } =
-  await import('@credalent/files/composition');
+const {
+  createBlobStore,
+  createCleanFileReader,
+  createCvLinkFetcher,
+  createFiles,
+  readFilePurposeAsSystem,
+  SCAN_RESULTS_QUEUE,
+} = await import('@credalent/files/composition');
 const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
@@ -158,6 +164,11 @@ const QUEUES: Record<string, string> = {
   // shortcut: on the pack summaries' queue, which every environment has; move both to a `decisions` queue
   // (infra/modules/messaging.bicep) when the decision email drafts (AIV-P2-073) add a consumer of their own.
   [DecisionsRecordedV1.type]: PACK_SUMMARY_QUEUE,
+  // A recruiter's sheet import (AIV-P1-103): read and its CV links fetched wherever there is Blob storage to read it from
+  // and store the CVs in; otherwise its requests wait in intake.outbox.
+  // shortcut: on the pack summaries' queue like DecisionsRecorded.v1 above, which every environment has; move it to an
+  // `intake` queue (infra/modules/messaging.bicep) with the decisions one.
+  ...(env.AZURE_STORAGE_BLOB_URL && { [SheetImportRequestedV1.type]: PACK_SUMMARY_QUEUE }),
   // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
   // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
   [JobPublishedV1.type]: 'candidates',
@@ -316,6 +327,17 @@ const identity = createIdentity(appDb, { trustedIssuer: 'worker: reads display n
     audit: createAudit(appDb, now),
   }),
 );
+// The sheet import's steps (AIV-P1-103): its header row, then its rows and their CV links, each fetched behind the SSRF
+// guard into quarantine for Defender's scan. Nothing is added to a job here; the recruiter confirms that.
+if (env.AZURE_STORAGE_BLOB_URL) {
+  const blobs = createBlobStore({ url: env.AZURE_STORAGE_BLOB_URL, clientId: env.AZURE_CLIENT_ID });
+  (CONSUMERS[PACK_SUMMARY_QUEUE] ??= []).push(
+    createSheetImportHandler({
+      readCleanFile: createCleanFileReader(blobs),
+      fetchCv: createCvLinkFetcher({ db: appDb, blobs, malwareScanning: env.MALWARE_SCANNING === 'on', now }),
+    }),
+  );
+}
 if (mapping)
   evidenceHandlers.push(
     ...createEvidenceMappingHandlers({
