@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@credalent/config": "workspace:*",
-    "@opentelemetry/context-async-hooks": "2.10.0",
+    "@opentelemetry/context-async-hooks": "3.1.1",
     "@types/node": "26.6.6",
     "oxlint": "1.94.0",
     "typescript": "6.0.3",
