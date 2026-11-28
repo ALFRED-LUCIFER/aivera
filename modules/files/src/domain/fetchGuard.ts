@@ -6,10 +6,11 @@ import { BlockList, isIP } from 'node:net';
 /** A CV link is fetched within 10 s, at most the CV upload limit, through at most 3 redirects. */
 export const CV_FETCH_LIMITS = { timeoutMs: 10_000, maxBytes: 10 * 1024 * 1024, maxRedirects: 3 } as const;
 
-/** The URL when it may be fetched at all: https, no `user:pass@`. Anything else makes no request. */
+/** The URL when it may be fetched at all: https on its standard port, no `user:pass@`. Anything else makes no request. */
 export function checkFetchUrl(url: string): URL | null {
   const parsed = URL.parse(url);
-  if (!parsed || parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
+  // A port other than 443 is how a link reaches an internal service on a public address; a CV host needs none.
+  if (!parsed || parsed.protocol !== 'https:' || parsed.port !== '' || parsed.username || parsed.password) return null;
   return parsed;
 }
 
@@ -45,6 +46,7 @@ for (const [net, prefix] of [
   ['2002::', 16], // 6to4: embeds an IPv4 address of any kind
   ['fc00::', 7], // unique local (private)
   ['fe80::', 10], // link-local
+  ['fec0::', 10], // site-local (deprecated, still routed privately by some networks)
   ['ff00::', 8], // multicast
 ] as const)
   refused.addSubnet(net, prefix, 'ipv6');

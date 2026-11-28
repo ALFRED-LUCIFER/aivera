@@ -9,6 +9,9 @@ describe('Scenario Outline: CV links that are not HTTPS to a public host are ref
     expect(checkFetchUrl('http://cv.credalent.example/a.pdf')).toBeNull();
     expect(checkFetchUrl('ftp://cv.credalent.example/a.pdf')).toBeNull();
     expect(checkFetchUrl('https://user:pass@cv.credalent.example/a.pdf')).toBeNull();
+    // Review finding: a non-standard port reaches internal services on public addresses.
+    expect(checkFetchUrl('https://cv.credalent.example:8443/a.pdf')).toBeNull();
+    expect(checkFetchUrl('https://cv.credalent.example:443/a.pdf')?.port).toBe('');
     expect(checkFetchUrl('not a url')).toBeNull();
     expect(checkFetchUrl('https://cv.credalent.example/a.pdf')?.hostname).toBe('cv.credalent.example');
   });
@@ -25,6 +28,7 @@ describe('Scenario Outline: CV links that are not HTTPS to a public host are ref
     '::1',
     '::ffff:10.0.0.5',
     'fe80::1',
+    'fec0::1',
     'fd00::1',
     'not-an-address',
   ])('refuses %s', (address) => {
